@@ -1,0 +1,86 @@
+// Host seam (docs/05 "Host") — loading + execution + trust. The host turns an app module into
+// something the runtime can call, choosing the runner by provenance (direct for trusted,
+// QuickJS-WASM isolate for untrusted) and building the mediated `ctx`.
+
+import type {
+  AppDefinition,
+  Ctx,
+  CustomViewComponent,
+  Id,
+  KartaApp,
+  PermissionManifest,
+  Resolved,
+  Value,
+} from "karta";
+import type { Capabilities } from "@karta/capabilities";
+import type { Store } from "@karta/store";
+
+export type Provenance = "trusted" | "untrusted";
+
+/** Where an app came from. Determines the runner (docs/07). */
+export type AppSource =
+  /** An already-imported module (trusted dev path: Vite imports the `.app.ts`). */
+  | { kind: "module"; app: KartaApp; provenance?: Provenance }
+  /** A self-contained bundled JS string (untrusted-by-default: shared/imported). */
+  | { kind: "bundle"; code: string; provenance?: Provenance }
+  /** A URL to fetch a bundle from (untrusted-by-default). */
+  | { kind: "url"; url: string; provenance?: Provenance };
+
+/** Identifies a function *binding* so untrusted calls can be marshalled by reference. */
+export type BindingRef =
+  | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "date" | "title" | "color" | "text" }
+  | { kind: "reminder"; id: string; path: "title" | "body" };
+
+/** What the shell provides to build `ctx.ui`. */
+export interface UiBridge {
+  toast(msg: string): void;
+  confirm(msg: string): Promise<boolean>;
+  prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
+  pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
+}
+
+/** What the shell provides to build `ctx.navigate`. */
+export interface NavBridge {
+  navigate(pageId: string, params?: Record<string, string>): void;
+}
+
+/** Inputs to build a `ctx` (docs/02 composition root). */
+export interface MakeCtxBase {
+  store: Store;
+  caps: Capabilities;
+  ui: UiBridge;
+  nav: NavBridge;
+  params?: Record<string, unknown>;
+  /** Fixed evaluation time; defaults to now. Injected once so computed values are stable. */
+  now?: Date;
+}
+
+/**
+ * A loaded app: its declarative definition + provenance + permissions, plus the ability to
+ * invoke its functions in the correct runner (direct or isolate).
+ */
+export interface LoadedApp {
+  definition: AppDefinition;
+  provenance: Provenance;
+  permissions: PermissionManifest;
+
+  callComputed(entity: string, key: string, record: Resolved, ctx: Ctx): Promise<Value>;
+  callAction(entity: string, key: string, record: Resolved, ctx: Ctx, input?: unknown): Promise<void>;
+  callFilter(pageId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
+  callSort(pageId: string, a: Resolved, b: Resolved): Promise<number>;
+  callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
+  reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
+  /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
+  customView(pageId: string): CustomViewComponent | null;
+
+  dispose(): void;
+}
+
+export interface Host {
+  load(source: AppSource): Promise<LoadedApp>;
+  makeCtx(app: LoadedApp, base: MakeCtxBase): Ctx;
+  /** Promote an untrusted app to trusted (explicit user action; docs/07). */
+  promote(appId: string): Promise<void>;
+}
+
+export type { Id };

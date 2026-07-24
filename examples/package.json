@@ -1,0 +1,19 @@
+{
+  "name": "@karta/examples",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Living fixtures + sandbox corpus (WP9): recipes / plants / places .app.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "karta": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12"
+  }
+}

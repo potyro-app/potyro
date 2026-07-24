@@ -1,0 +1,102 @@
+# 07 · Execution, Trust & Targets
+
+App logic is full JavaScript. Safety comes from **where the code runs** and **what `ctx.caps`
+it's handed** — chosen by the app's **provenance**, not by restricting the language.
+
+## Provenance → execution mode
+
+The `host` package (WP2) tags every loaded app as **trusted** or **untrusted** and picks a
+runner accordingly.
+
+| provenance | example | runner | `ctx.caps` |
+|---|---|---|---|
+| **trusted** | app in your own workspace dir; app you authored/promoted | **direct**: real import / dynamic `import()` in the host (main thread or worker), full language, real modules | all real, unmediated, no prompts |
+| **untrusted** | app imported via share-sheet, URL, or received file, not yet promoted | **isolated**: bundled and run in a **QuickJS-WASM** isolate | denied by default; each declared permission granted only after a user consent prompt, then handed a **mediated** wrapper |
+
+The user can inspect an untrusted app's source and **promote** it to trusted (then it runs
+direct, full authority) — same mental model as trusting a browser extension or a userscript.
+Promotion is explicit and revocable.
+
+## Why QuickJS-WASM for the untrusted runner
+
+- **Identical semantics on web and native.** The same isolate runs in the PWA and inside the
+  Capacitor app — no per-target sandbox divergence.
+- **No ambient authority.** The isolate has no `fetch`, `window`, DOM, filesystem, or storage
+  unless the host explicitly injects a function. `ctx` is the *only* bridge in.
+- **Hard limits.** Memory ceiling and execution timeout per call; a runaway or malicious app
+  is bounded, not fatal.
+- **Real JavaScript.** Full language inside the box — loops, closures, classes, the app's own
+  bundled helpers. Nothing about the *language* is reduced; only *authority* is.
+
+Trusted apps **skip the isolate entirely** — native speed, real imports, native modules. You
+don't pay sandbox cost for your own code. (On web, a trusted app may still run in a Worker for
+UI responsiveness; that's a performance choice, not a trust boundary.)
+
+## The `ctx` mediation layer (untrusted apps)
+
+For untrusted apps the host builds a `ctx` whose non-cap members (data, time, storage, ui,
+nav) are real but **namespaced to the app** (its own Store namespace, its own kv, its own
+media area), and whose `caps` are:
+
+- **absent** unless the app's `permissions` manifest requests them,
+- **prompted** on first use (or at install) with a clear description,
+- **wrapped** when granted — e.g. `network.fetch` may be restricted to an allow-list of hosts,
+  `filesystem` to an app-private folder, `notifications` rate-limited. App code sees the
+  standard `ctx.caps.*` interface; the wrapper enforces scope.
+
+Data isolation: an untrusted app can never read another app's records — the `Store` is opened
+per app id, and the isolate only receives a `ctx` bound to that app's store.
+
+## Distribution: what a shareable app is
+
+- A `*.app.ts` module is **bundled** (esbuild) to a single self-contained `*.app.js` (plus an
+  optional assets folder). That bundle is the shareable artifact.
+- The bundle carries the `permissions` manifest and metadata; the receiving shell shows it
+  before running, runs it **untrusted** by default, and offers "inspect source / promote".
+- Honest tradeoff (accepted): a code bundle is less trivially inspectable than a data file and
+  *always* means running code — so the trust prompt for untrusted apps is not optional, it is
+  the whole safety story. This is the price of full control, and it's the right price.
+
+## Authoring loop (offline)
+
+- **Trusted dev:** `pnpm dev` loads `examples/*.app.ts` directly via Vite; edit + hot-reload,
+  full debugging, real breakpoints. No isolate in the way.
+- **Sandbox check:** `pnpm dev:sandbox` bundles an app and runs it untrusted in QuickJS-WASM so
+  you can feel the mediated-caps experience a recipient would get.
+- All authoring works offline; bundling is local (esbuild in-process / WASM).
+
+## Targets
+
+### PWA (first)
+Vite build + cache-first service worker. Persistence via OPFS SQLite. `WebCapabilities` backs
+`ctx.caps`. Trusted apps run direct (main/worker); untrusted in QuickJS-WASM (WASM runs fine in
+the browser).
+
+### Capacitor (second)
+Wraps the same web build. `CapacitorCapabilities` backs `ctx.caps` with real native camera,
+**exact local notifications**, geolocation, filesystem. Same two runners. Added via
+`npx cap add`; only the composition root changes.
+
+## Capability matrix (unchanged truths)
+
+| capability | Web (PWA) | Capacitor (native) | note |
+|---|---|---|---|
+| camera / photos | getUserMedia / input capture | @capacitor/camera | both fine |
+| filesystem | File System Access / download | @capacitor/filesystem | native nicer for share-sheet |
+| geolocation | navigator.geolocation | @capacitor/geolocation | both fine |
+| **notifications** | web push (installed PWA only), no reliable exact local schedule | @capacitor/local-notifications — real offline exact schedule | **deciding feature** |
+| haptics | navigator.vibrate | @capacitor/haptics | non-sensitive; manifest-gated, no prompt |
+| network | fetch (gated via ctx.caps.network) | native http/fetch | gated for untrusted apps |
+| map tiles | online, or cache a region | same + native caching | offline maps need cached tiles |
+
+### Notifications & maps
+Same design as before: on native, schedule exact local notifications (offline). On web,
+degrade to prominent in-app "due" state, with optional Web Push only if the user self-hosts a
+tiny relay. Map tiles: online by default; optional per-region offline caching later.
+
+## App Store note
+
+Your published shell app embeds a JS engine that runs app logic — that's a scripting host /
+browser pattern, which is permitted. Shared apps run **sandboxed and non-native**; you never
+download and execute *native* code. Keep it that way and you stay compliant while app logic
+remains full JavaScript.

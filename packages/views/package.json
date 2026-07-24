@@ -1,0 +1,26 @@
+{
+  "name": "@karta/views",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "View registry + built-in views (WP6): list, table, detail, gallery, custom (M1). calendar/map later.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@karta/runtime": "workspace:*",
+    "karta": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1"
+  }
+}

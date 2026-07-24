@@ -1,0 +1,22 @@
+{
+  "name": "@karta/host",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Loading, execution & trust (WP2): DirectHost runner + makeCtx + capability mediation. IsolateHost (QuickJS-WASM) lands after DirectHost.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./isolate": "./src/isolate/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@karta/capabilities": "workspace:*",
+    "@karta/store": "workspace:*",
+    "karta": "workspace:*",
+    "quickjs-emscripten": "^0.31.0"
+  }
+}

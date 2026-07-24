@@ -1,0 +1,29 @@
+{
+  "name": "appinator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.5.0",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint:boundaries": "node scripts/check-boundaries.mjs",
+    "dev": "pnpm --filter @karta/shell dev",
+    "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
+    "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

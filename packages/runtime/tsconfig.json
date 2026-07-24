@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "// note": "Build typechecks src only. Tests import the loosely-typed example fixtures (docs/09) and are run/validated by Vitest (esbuild transpile), not strict tsc.",
+  "include": ["src"]
+}

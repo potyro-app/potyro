@@ -1,0 +1,10 @@
+{
+  "name": "Karta",
+  "short_name": "Karta",
+  "description": "Personal apps that are real TypeScript modules.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#141310",
+  "icons": []
+}

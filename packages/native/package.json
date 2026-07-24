@@ -1,0 +1,19 @@
+{
+  "name": "@karta/native",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Capacitor target (WP8, starts at M2): native capability impls + composition root. Placeholder for M0/M1.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@karta/capabilities": "workspace:*",
+    "karta": "workspace:*"
+  }
+}

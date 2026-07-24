@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+
+    // App modules are authored against the permissive `Resolved` record (docs/04 "no ceiling").
+    // Precise per-field inference from a single `defineApp({...})` literal is not expressible in
+    // TypeScript (see defineApp's doc comment), so inline logic callbacks over resolved arrays
+    // (e.g. `r.ingredients.reduce((s, i) => …)`) would otherwise trip `noImplicitAny`. Relaxing
+    // it *only for app modules* keeps the framework strict while honoring CLAUDE.md rule #4:
+    // logic is typed, not validated. Everything else stays strict (null checks, etc.).
+    "noImplicitAny": false
+  },
+  "include": ["."]
+}

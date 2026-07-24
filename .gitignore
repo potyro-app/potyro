@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+coverage/
+.DS_Store
+*.log
+
+# Local agent config (do not publish)
+.claude/
