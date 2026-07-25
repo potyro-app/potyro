@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@karta/capabilities": "workspace:*",
+    "@karta/generator": "workspace:^",
     "@karta/host": "workspace:*",
     "@karta/runtime": "workspace:*",
     "@karta/store": "workspace:*",

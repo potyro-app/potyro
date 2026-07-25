@@ -132,6 +132,9 @@ importers:
       '@karta/capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      '@karta/generator':
+        specifier: workspace:^
+        version: link:../generator
       '@karta/host':
         specifier: workspace:*
         version: link:../host

@@ -13,6 +13,13 @@ test("create-an-app panel bundles + previews an app in the isolate", async ({ pa
   await expect(panel).toBeVisible();
   await expect(panel.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
 
+  // The AI "Generate" control is gated on a description + API key (no live call in the test).
+  const generate = panel.getByRole("button", { name: "Generate" });
+  await expect(generate).toBeDisabled();
+  await panel.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
+  await panel.getByLabel("Anthropic API key").fill("sk-ant-example");
+  await expect(generate).toBeEnabled();
+
   // Bundle (esbuild-wasm) + run untrusted (QuickJS isolate) + render the preview.
   await panel.getByRole("button", { name: "Preview" }).click();
   const preview = page.locator(".k-gen-preview");
