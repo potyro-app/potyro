@@ -1,0 +1,129 @@
+// Map built-in view (M3, issue #20). Renders records as markers on a MapLibre GL map, positioned by
+// a `geo` binding, with optional `title`/`color`. MapLibre is imported lazily (kept out of the main
+// bundle). Marker resolution goes through `runtime.resolveBinding`, so it works trusted + in the
+// isolate. The view's JS `filter` is applied by the runtime query, so markers reflect current
+// params. Online tiles first; offline tiles are a later milestone (M5).
+
+import { useEffect, useRef, useState } from "react";
+import type { KartaRuntime } from "@karta/runtime";
+import type { Resolved } from "karta";
+import type { BuiltinViewProps } from "./types.js";
+
+// A public demo style (online tiles). Swappable per-deployment; offline tiles land in M5.
+const DEFAULT_STYLE = "https://demotiles.maplibre.org/style.json";
+
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  color?: string;
+}
+
+function toLatLng(v: unknown): { lat: number; lng: number } | null {
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if (typeof o.lat === "number" && typeof o.lng === "number") return { lat: o.lat, lng: o.lng };
+  }
+  return null;
+}
+
+/** Resolve geo/title/color per row (async host calls), skipping rows without a valid geo point. */
+export function useMapMarkers(runtime: KartaRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    const ctx = runtime.ctx;
+    const resolve = (path: "geo" | "title" | "color", row: Resolved) =>
+      runtime.resolveBinding({ kind: "view", page: pageId, path }, row, ctx);
+
+    void Promise.all(
+      rows.map(async (row): Promise<MapMarker | null> => {
+        const geo = toLatLng(await resolve("geo", row));
+        if (!geo) return null;
+        const title = String((await resolve("title", row)) ?? "");
+        const colorRaw = await resolve("color", row);
+        return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw) };
+      }),
+    ).then((ms) => {
+      if (alive) setMarkers(ms.filter((m): m is MapMarker => m !== null));
+    });
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime, pageId, rows]);
+
+  return markers;
+}
+
+export function MapView(props: BuiltinViewProps) {
+  const { runtime, pageId, params } = props;
+  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const markers = useMapMarkers(runtime, pageId, rows);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // MapLibre types are only available after the lazy import, so these refs are intentionally loose.
+  const mapRef = useRef<{ remove?: () => void; fitBounds?: (...a: unknown[]) => void } | null>(null);
+  const markerObjs = useRef<{ remove: () => void }[]>([]);
+
+  // Create the map once.
+  useEffect(() => {
+    let disposed = false;
+    const el = containerRef.current;
+    if (!el) return;
+    void (async () => {
+      const maplibre = await import("maplibre-gl");
+      await import("maplibre-gl/dist/maplibre-gl.css");
+      if (disposed || !el) return;
+      mapRef.current = new maplibre.Map({
+        container: el,
+        style: DEFAULT_STYLE,
+        center: [0, 20],
+        zoom: 1,
+      }) as unknown as typeof mapRef.current;
+    })();
+    return () => {
+      disposed = true;
+      mapRef.current?.remove?.();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Sync markers whenever the resolved set changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    void (async () => {
+      const maplibre = await import("maplibre-gl");
+      if (cancelled || !mapRef.current) return;
+      for (const m of markerObjs.current) m.remove();
+      markerObjs.current = [];
+      const bounds = new maplibre.LngLatBounds();
+      for (const mk of markers) {
+        const marker = new maplibre.Marker({ color: mk.color })
+          .setLngLat([mk.lng, mk.lat])
+          .setPopup(new maplibre.Popup({ offset: 24 }).setText(mk.title))
+          .addTo(map as never);
+        markerObjs.current.push(marker);
+        bounds.extend([mk.lng, mk.lat]);
+      }
+      if (markers.length > 0 && !bounds.isEmpty()) {
+        map.fitBounds?.(bounds, { padding: 48, maxZoom: 14, animate: false });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [markers]);
+
+  return (
+    <div className="k-map">
+      <div ref={containerRef} className="k-map-canvas" role="application" aria-label="Map" />
+      {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">No places to show.</p> : null}
+    </div>
+  );
+}

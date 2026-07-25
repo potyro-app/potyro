@@ -618,6 +618,27 @@ button {
   }
 }
 
+/* Map view (M3) */
+.k-map {
+  position: relative;
+}
+.k-map-canvas {
+  width: 100%;
+  height: min(70vh, 560px); /* explicit height so the map never causes layout shift */
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.k-map-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
 /* Calendar view (M2) */
 .k-calendar {
   display: flex;
