@@ -631,6 +631,34 @@ button {
   }
 }
 
+/* "Create an app" generator panel */
+.k-gen-panel {
+  width: min(880px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.k-gen-source {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
+}
+.k-gen-preview {
+  margin-top: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--paper);
+}
+.k-gen-preview .k-app {
+  min-height: unset;
+}
+
 /* Filter-chip chrome groups (M3) */
 .k-chip-group {
   display: flex;
