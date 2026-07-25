@@ -73,9 +73,20 @@ export class ClaudeBackend implements ModelBackend {
   }
 }
 
-/** Wire the real Anthropic SDK (reads ANTHROPIC_API_KEY from env unless a key is passed). */
-export async function createClaudeBackend(opts?: { apiKey?: string; model?: string }): Promise<ClaudeBackend> {
+/**
+ * Wire the real Anthropic SDK (reads ANTHROPIC_API_KEY from env unless a key is passed). Set
+ * `dangerouslyAllowBrowser` for the in-browser "Describe an app…" panel — the key is the user's own,
+ * held only in-memory for their local personal tool (never persisted or sent anywhere but Anthropic).
+ */
+export async function createClaudeBackend(opts?: {
+  apiKey?: string;
+  model?: string;
+  dangerouslyAllowBrowser?: boolean;
+}): Promise<ClaudeBackend> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic(opts?.apiKey ? { apiKey: opts.apiKey } : {});
+  const client = new Anthropic({
+    ...(opts?.apiKey ? { apiKey: opts.apiKey } : {}),
+    ...(opts?.dangerouslyAllowBrowser ? { dangerouslyAllowBrowser: true } : {}),
+  });
   return new ClaudeBackend(client as unknown as MessagesClient, opts?.model);
 }

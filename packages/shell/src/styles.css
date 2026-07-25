@@ -640,6 +640,18 @@ button {
   flex-direction: column;
   gap: 0.6rem;
 }
+.k-gen-generate {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.k-gen-generate .k-input {
+  flex: 1 1 12rem;
+}
+.k-gen-generate .k-gen-key {
+  flex: 1 1 10rem;
+}
 .k-gen-source {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.8rem;
