@@ -6,6 +6,7 @@ export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export {
   createSqliteStore,
   createMemorySqliteStore,
+  importSqliteStore,
   initSqlite,
   type SqliteStoreFactoryResult,
 } from "./sqlite-backend.js";

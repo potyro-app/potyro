@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMemorySqliteStore, packBundle, rowsToCsv, unpackBundle, type ExportManifest } from "../src/index.js";
+import { createMemorySqliteStore, importSqliteStore, packBundle, rowsToCsv, unpackBundle, type ExportManifest } from "../src/index.js";
 import type { KartaRecord } from "karta";
 
 // Data-export bundle (KA-04): CSV rendering, and a full pack → unpack → reopen round-trip proving
@@ -60,5 +60,15 @@ describe("export bundle round-trip", () => {
 
   it("rejects a malformed bundle", () => {
     expect(() => unpackBundle(new Uint8Array([1, 2, 3]))).toThrow();
+  });
+
+  it("importSqliteStore reopens exported bytes as a working store (memory fallback in Node)", async () => {
+    const first = await createMemorySqliteStore("demo");
+    await first.store.insert("note", { title: "Imported" });
+    const bytes = first.store.exportSqlite();
+    first.destroy();
+
+    const store = await importSqliteStore("demo", unpackBundle(packBundle({ sqlite: bytes, manifest: manifest() })).sqlite);
+    expect((await store.all("note")).map((r) => r.title)).toEqual(["Imported"]);
   });
 });
