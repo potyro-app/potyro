@@ -11,8 +11,25 @@ export async function seedIfEmpty(store: Store, appId = "recipes"): Promise<void
 
 const SEEDERS: Record<string, (store: Store) => Promise<void>> = {
   recipes: seedRecipes,
+  plants: seedPlants,
   workout: seedWorkout,
 };
+
+async function seedPlants(store: Store): Promise<void> {
+  const existing = await store.all("plant");
+  if (existing.length > 0) return;
+
+  const now = new Date();
+  // Pin one plant's next watering to the 15th of the current month so the calendar always has a
+  // visible event (interval 7 → lastWatered = the 15th minus 7 days).
+  const midMonth = new Date(now.getFullYear(), now.getMonth(), 15, 9, 0, 0);
+  const plant = (name: string, over: Record<string, unknown>) =>
+    store.insert("plant", { name, active: true, wateringIntervalDays: 7, seasonalCare: [], needsDirectSun: false, ...over });
+
+  await plant("Fern", { lastWatered: new Date(now.getTime() - 30 * DAY) }); // overdue → shows in "Due"
+  await plant("Monstera", { lastWatered: new Date(midMonth.getTime() - 7 * DAY), needsDirectSun: true }); // next = the 15th
+  await plant("Cactus", { lastWatered: now, wateringIntervalDays: 30 }); // freshly watered → not due
+}
 
 async function seedRecipes(store: Store): Promise<void> {
   const existing = await store.all("recipe");
