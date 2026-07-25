@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { MemoryStore } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
+import { createClaudeBackend } from "@karta/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
@@ -50,6 +51,39 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [description, setDescription] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+
+  // Generate the source with Claude. The API key is the user's own, kept only in-memory for this
+  // local tool (dangerouslyAllowBrowser). Without a key + description the button stays disabled.
+  const generate = async (): Promise<void> => {
+    setGenBusy(true);
+    setError(null);
+    try {
+      const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
+      setSource(await backend.generate({ id: "panel", description }));
+      setPreview(null);
+    } catch (e) {
+      setError(`Generate failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setGenBusy(false);
+    }
+  };
+
+  // Ask the model to fix the current source given the last error (browser-native repair loop).
+  const fixWithAI = async (): Promise<void> => {
+    if (!error) return;
+    setGenBusy(true);
+    try {
+      const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
+      setSource(await backend.repair(source, [error], { id: "panel", description }));
+    } catch (e) {
+      setError(`Fix failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setGenBusy(false);
+    }
+  };
 
   const runPreview = async (): Promise<void> => {
     setBusy(true);
@@ -86,8 +120,36 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
       <div className="k-modal k-gen-panel" onClick={(e) => e.stopPropagation()}>
         <h3>Create an app</h3>
         <p className="k-muted">
-          Paste or edit a Karta <code>.app.ts</code>, then preview it — it runs untrusted in the QuickJS isolate.
+          Describe an app (Claude fills the source), or paste/edit a Karta <code>.app.ts</code>, then preview it —
+          it runs untrusted in the QuickJS isolate.
         </p>
+
+        <div className="k-gen-generate">
+          <input
+            className="k-input"
+            aria-label="Describe the app"
+            placeholder="Describe an app… e.g. a reading tracker with progress"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <input
+            className="k-input k-gen-key"
+            aria-label="Anthropic API key"
+            type="password"
+            placeholder="sk-ant-… (your key, kept in memory)"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+          <button
+            type="button"
+            className="k-add k-primary-action"
+            disabled={genBusy || !apiKey || description.trim().length === 0}
+            onClick={() => void generate()}
+          >
+            {genBusy ? "Generating…" : "Generate"}
+          </button>
+        </div>
+
         <textarea
           className="k-input k-gen-source"
           aria-label="App source"
@@ -101,6 +163,11 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
           <button type="button" className="k-add" onClick={onClose}>
             Close
           </button>
+          {error && apiKey ? (
+            <button type="button" className="k-add" disabled={genBusy} onClick={() => void fixWithAI()}>
+              {genBusy ? "Fixing…" : "Fix with AI"}
+            </button>
+          ) : null}
           <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void runPreview()}>
             {busy ? "Building…" : "Preview"}
           </button>
