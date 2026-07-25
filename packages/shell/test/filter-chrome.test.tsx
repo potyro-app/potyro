@@ -84,3 +84,50 @@ describe("FilterChrome", () => {
     expect(container.querySelector(".k-chrome")).toBeNull();
   });
 });
+
+// A record-source chip (`from` names an entity): the pantry picker, unified into FilterChrome (#21).
+const pantryApp = defineApp({
+  id: "pantry-fixture",
+  name: "Pantry Fixture",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    ingredient: { label: "Ingredient", displayField: "name", fields: { name: { type: "text", required: true } } },
+    recipe: { label: "Recipe", displayField: "name", fields: { name: { type: "text", required: true } } },
+  },
+  pages: [
+    {
+      id: "cook",
+      title: "Cook",
+      view: {
+        type: "list",
+        entity: "recipe",
+        filters: [{ label: "In my pantry", param: "pantry", from: "ingredient", multi: true }],
+        display: { primary: "name" },
+      },
+    },
+  ],
+});
+
+describe("FilterChrome record-source chips (pantry)", () => {
+  it("renders entity records as chips and toggles ids into params", async () => {
+    const store = new MemoryStore();
+    await store.open("pantry-fixture");
+    const egg = await store.insert("ingredient", { name: "Egg" });
+    await store.insert("ingredient", { name: "Flour" });
+
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    const nav: NavBridge = { navigate: () => {} };
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app: pantryApp });
+    const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav });
+
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="cook" params={{}} setParam={setParam} />);
+
+    const eggChip = await screen.findByRole("button", { name: "Egg" });
+    expect(screen.getByRole("button", { name: "Flour" })).toBeTruthy();
+    fireEvent.click(eggChip);
+    expect(setParam).toHaveBeenCalledWith("pantry", [egg.id]);
+  });
+});
