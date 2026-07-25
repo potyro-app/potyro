@@ -54,12 +54,22 @@ export class SqliteStore implements Store {
   private txDepth = 0;
   private pendingEmits: string[] = [];
 
-  /** `db` must be an already-opened SQLite database handle (in-memory or OPFS-backed). */
-  constructor(private readonly db: SqliteDbHandle) {}
+  /**
+   * `db` must be an already-opened SQLite database handle (in-memory or OPFS-backed). `exporter`,
+   * when provided by the factory, serializes the whole database to bytes (a real `.sqlite` file) —
+   * used by the data-export bundle (KA-04).
+   */
+  constructor(private readonly db: SqliteDbHandle, private readonly exporter?: () => Uint8Array) {}
 
   async open(appId: string): Promise<void> {
     this.appId = appId;
     for (const stmt of SCHEMA) this.db.exec(stmt);
+  }
+
+  /** Serialize the whole database to a standalone `.sqlite` file (opens in any SQLite tool). */
+  exportSqlite(): Uint8Array {
+    if (!this.exporter) throw new Error("SqliteStore: this store was created without an exporter");
+    return this.exporter();
   }
 
   async close(): Promise<void> {
