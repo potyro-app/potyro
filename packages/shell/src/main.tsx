@@ -195,6 +195,7 @@ async function boot(): Promise<void> {
         apps={APPS as readonly string[]}
         onExport={() => void exportApp(composed.runtime, store, caps, SANDBOX ? "untrusted" : "trusted", appSource, toaster)}
         onImport={() => void importApp(caps, toaster)}
+        generator
       />
     </StrictMode>,
   );

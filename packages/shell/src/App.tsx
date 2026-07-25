@@ -7,6 +7,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
+import { GeneratorPanel } from "./generator-panel.js";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -22,14 +23,17 @@ interface AppProps {
   apps?: readonly string[];
   onExport?: () => void;
   onImport?: () => void;
+  /** Enables the "New app" generator panel (the shell's top-level app only — not the preview). */
+  generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, onExport, onImport }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, onExport, onImport, generator }: AppProps) {
   const def = runtime.definition;
   const visiblePages = def.pages.filter((p) => !p.hidden);
   const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
 
   const params = paramsByPage[pageId] ?? {};
   const setParam = (key: string, value: unknown): void =>
@@ -74,6 +78,11 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
                 </option>
               ))}
             </select>
+          ) : null}
+          {generator ? (
+            <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
+              New app
+            </button>
           ) : null}
           {onImport ? (
             <button type="button" className="k-add" onClick={onImport}>
@@ -131,6 +140,8 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
           </div>
         </div>
       ) : null}
+
+      {genOpen ? <GeneratorPanel onClose={() => setGenOpen(false)} /> : null}
 
       <Toasts toaster={toaster} />
     </div>
