@@ -10,4 +10,13 @@ export {
   type SqliteStoreFactoryResult,
 } from "./sqlite-backend.js";
 export { applyMigrationStep, type EntityRecords } from "./migrate.js";
+export {
+  packBundle,
+  unpackBundle,
+  rowsToCsv,
+  type ExportManifest,
+  type ExportMode,
+  type BundleInputs,
+  type UnpackedBundle,
+} from "./export.js";
 export { ulid } from "./ulid.js";

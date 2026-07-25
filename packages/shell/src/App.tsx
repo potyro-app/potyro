@@ -20,9 +20,10 @@ interface AppProps {
   toaster: Toaster;
   appId?: string;
   apps?: readonly string[];
+  onExport?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, onExport }: AppProps) {
   const def = runtime.definition;
   const visiblePages = def.pages.filter((p) => !p.hidden);
   const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
@@ -72,6 +73,11 @@ export function App({ runtime, provenance, toaster, appId, apps }: AppProps) {
                 </option>
               ))}
             </select>
+          ) : null}
+          {onExport ? (
+            <button type="button" className="k-add" onClick={onExport}>
+              Export
+            </button>
           ) : null}
           <button type="button" className="k-add" onClick={() => setEditor({ entity: currentEntity })}>
             + New {currentEntityLabel}
