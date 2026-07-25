@@ -21,9 +21,10 @@ interface AppProps {
   appId?: string;
   apps?: readonly string[];
   onExport?: () => void;
+  onImport?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, onExport }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, onExport, onImport }: AppProps) {
   const def = runtime.definition;
   const visiblePages = def.pages.filter((p) => !p.hidden);
   const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
@@ -73,6 +74,11 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport }: App
                 </option>
               ))}
             </select>
+          ) : null}
+          {onImport ? (
+            <button type="button" className="k-add" onClick={onImport}>
+              Import
+            </button>
           ) : null}
           {onExport ? (
             <button type="button" className="k-add" onClick={onExport}>
