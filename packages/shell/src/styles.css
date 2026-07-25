@@ -618,6 +618,14 @@ button {
   }
 }
 
+/* Filter-chip chrome groups (M3) */
+.k-chip-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 /* Map view (M3) */
 .k-map {
   position: relative;

@@ -62,6 +62,7 @@ export interface ListView {
   onOpen?: OnOpen;
   emptyText?: string;
   param?: string;
+  filters?: FilterChip[];
 }
 
 export interface GalleryView {
@@ -109,13 +110,17 @@ export interface CalendarView {
   filter?: FilterFn;
 }
 
-/** A filter chip surfaced in a map/list view chrome; writes into `ctx.params[param]`. */
+/** A filter chip surfaced in a map/list view chrome; writes into `ctx.params[param]`.
+ *  - `type: "boolean"` → a toggle (param = true | undefined).
+ *  - `type: "geo"` → a "use my location" button (param = { lat, lng } from `ctx.caps.geo`).
+ *  - otherwise `from` names an enum/tags field whose options become selectable chips (single, or
+ *    multi when `multi` is set). */
 export interface FilterChip {
   label: string;
   param: string;
   from?: string;
   multi?: boolean;
-  type?: "boolean";
+  type?: "boolean" | "geo";
 }
 
 export interface MapView {

@@ -3,8 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     name: "shell",
-    environment: "node",
-    include: ["test/**/*.test.ts"],
+    environment: "node", // React render tests opt into a DOM per-file via `// @vitest-environment happy-dom`
+    include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
     passWithNoTests: true,
   },
 });
