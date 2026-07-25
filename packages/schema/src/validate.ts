@@ -112,6 +112,14 @@ const listDisplaySchema = z.object({
   badges: z.array(z.string()).optional(),
 });
 
+const filterChipSchema = z.object({
+  label: z.string(),
+  param: z.string(),
+  from: z.string().optional(),
+  multi: z.boolean().optional(),
+  type: z.enum(["boolean", "geo"]).optional(),
+});
+
 const listView = z.object({
   type: z.literal("list"),
   entity: z.string(),
@@ -122,6 +130,7 @@ const listView = z.object({
   onOpen: onOpenSchema.optional(),
   emptyText: z.string().optional(),
   param: z.string().optional(),
+  filters: z.array(filterChipSchema).optional(),
 });
 
 const galleryView = z.object({
@@ -165,14 +174,6 @@ const calendarView = z.object({
   title: zBinding.optional(),
   color: zBinding.optional(),
   filter: zFn.optional(),
-});
-
-const filterChipSchema = z.object({
-  label: z.string(),
-  param: z.string(),
-  from: z.string().optional(),
-  multi: z.boolean().optional(),
-  type: z.literal("boolean").optional(),
 });
 
 const mapView = z.object({

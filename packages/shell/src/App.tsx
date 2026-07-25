@@ -6,6 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost } from "@karta/views";
+import { FilterChrome } from "./filter-chrome.js";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -93,6 +94,7 @@ export function App({ runtime, provenance, toaster, appId, apps }: AppProps) {
       </nav>
 
       <ViewChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
+      <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
 
       <main className="k-main">
         <ViewHost

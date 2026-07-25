@@ -91,7 +91,8 @@ export default defineApp({
       view: {
         type: "list",
         entity: "place",
-        // ctx.params.me is filled from ctx.caps.geo by the view chrome
+        // the "Near me" chip fills ctx.params.me from ctx.caps.geo (view chrome)
+        filters: [{ label: "Near me", param: "me", type: "geo" }],
         filter: (p, ctx) => {
           const me = ctx.params.me as { lat: number; lng: number } | undefined;
           return !!me && distanceKm(p.location, me) <= 2;
