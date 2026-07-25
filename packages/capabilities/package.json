@@ -14,5 +14,8 @@
   },
   "dependencies": {
     "karta": "workspace:*"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.11.1"
   }
 }
