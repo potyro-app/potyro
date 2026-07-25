@@ -6,7 +6,7 @@ coverage/
 .DS_Store
 *.log
 
-# Playwright e2e artifacts
+# Playwright e2e artifacts (issue #15)
 test-results/
 playwright-report/
 /playwright/.cache/

@@ -14,9 +14,11 @@
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "dev": "pnpm --filter @karta/shell dev",
     "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
+    "e2e": "playwright test",
     "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@types/node": "^20.14.0",
     "typescript": "^5.5.4",
     "vitest": "^2.1.8"

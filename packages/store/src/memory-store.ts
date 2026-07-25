@@ -1,8 +1,9 @@
 // In-memory Store for tests and the runtime's default (docs/05). Correct + reactive; not
 // durable. SqliteStore (OPFS + JSON1) implements the same interface for the PWA (WP3, later).
 
-import type { Id, KartaRecord, MediaRef, MigrationStep, Value } from "karta";
+import type { Id, KartaRecord, MediaRef, Value } from "karta";
 import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
 interface BlobEntry {
@@ -168,75 +169,12 @@ export class MemoryStore implements Store {
   async runMigrations(plan: MigrationPlan): Promise<void> {
     for (const migration of plan.migrations) {
       for (const step of migration.steps) {
-        this.applyStep(step);
+        const affected = applyMigrationStep(step, this.records, nowIso);
+        for (const entity of affected) this.emit(entity);
       }
     }
     this.schemaVersion = plan.toSchemaVersion;
     this.kv.set("__appVersion", plan.toAppVersion);
     this.changed();
-  }
-
-  private applyStep(step: MigrationStep): void {
-    if ("transform" in step) {
-      for (const [entity, m] of this.records) {
-        for (const [id, r] of m) {
-          // Migrations run in the app's trust context; a full ctx is only available at the
-          // host level. MemoryStore supplies a minimal placeholder for pure record transforms.
-          const out = step.transform(r, undefined as never);
-          m.set(id, { ...out, id, createdAt: r.createdAt, updatedAt: nowIso() });
-        }
-      }
-      // notify all entities changed
-      for (const entity of this.records.keys()) this.emit(entity);
-      return;
-    }
-
-    switch (step.op) {
-      case "addField":
-      case "addRelation": {
-        const def = step.op === "addField" ? step.default : step.many ? [] : null;
-        for (const r of this.entityMap(step.entity).values()) {
-          if (r[step.field] === undefined) r[step.field] = def as unknown;
-        }
-        break;
-      }
-      case "dropField": {
-        for (const r of this.entityMap(step.entity).values()) delete r[step.field];
-        break;
-      }
-      case "renameField": {
-        for (const r of this.entityMap(step.entity).values()) {
-          if (step.from in r) {
-            r[step.to] = r[step.from];
-            delete r[step.from];
-          }
-        }
-        break;
-      }
-      case "changeType": {
-        for (const r of this.entityMap(step.entity).values()) {
-          r[step.field] = step.via(r[step.field]);
-        }
-        break;
-      }
-      case "setDefaultForExisting": {
-        for (const r of this.entityMap(step.entity).values()) {
-          if (r[step.field] === undefined) r[step.field] = step.value;
-        }
-        break;
-      }
-      case "renameEntity": {
-        const from = this.records.get(step.from);
-        if (from) {
-          this.records.set(step.to, from);
-          this.records.delete(step.from);
-        }
-        break;
-      }
-    }
-    if (!("transform" in step)) {
-      const affected = "entity" in step ? step.entity : "to" in step ? step.to : null;
-      if (affected) this.emit(affected);
-    }
   }
 }

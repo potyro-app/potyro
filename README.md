@@ -89,3 +89,13 @@ prove reminders on the native target. See `docs/08`.
 - Filtering/sorting is **JS predicates over fetched rows** at personal scale (no query DSL,
   no pushdown planner) — with optional declarative fast-paths later for indexable fields.
 - PWA target first; **Capacitor** second. Future CRDT sync = a new `Store` impl (not in scope).
+
+## Testing
+
+- **Unit / integration:** `pnpm -r test` (Vitest, per package).
+- **End-to-end (M1 smoke, issue #15):** `pnpm e2e` runs Playwright against the recipes app in a
+  real browser — the **trusted** path (`pnpm dev`: list, custom cook-along view, computed macros,
+  add-a-recipe, "ingredients I have" JS filter, persistence across reload) and the **sandbox**
+  path (`pnpm dev:sandbox`: the same app untrusted in the QuickJS-WASM isolate). Playwright starts
+  both Vite dev servers itself. Requires **Node 20+** (Playwright constraint); install browsers
+  once with `pnpm exec playwright install chromium`.
