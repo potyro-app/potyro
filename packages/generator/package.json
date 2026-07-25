@@ -1,0 +1,23 @@
+{
+  "name": "@karta/generator",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "AI generator eval harness (KA-06): score generated .app.ts sources (compile/validate/render) against a prompt corpus and a pluggable model backend. The measurable base for KA-05/KA-07.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@karta/capabilities": "workspace:*",
+    "@karta/host": "workspace:*",
+    "@karta/runtime": "workspace:*",
+    "@karta/store": "workspace:*",
+    "esbuild": "^0.21.5",
+    "karta": "workspace:*"
+  }
+}
