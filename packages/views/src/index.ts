@@ -2,6 +2,7 @@
 export { ViewHost } from "./host.js";
 export { defaultRegistry, resolveViewComponent } from "./registry.js";
 export { ListView, GalleryView, TableView, DetailView, PlaceholderView } from "./builtins.js";
+export { CalendarView, buildMonthGrid, sameDay, type CalendarCell, type CalendarEvent } from "./calendar.js";
 export { CustomView } from "./custom.js";
 export { useDisplayCells } from "./cells.js";
 export { FieldValue } from "./field-value.js";
