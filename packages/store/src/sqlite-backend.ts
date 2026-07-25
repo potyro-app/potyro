@@ -25,6 +25,7 @@ interface Sqlite3Module {
   wasm: { allocFromTypedArray(bytes: Uint8Array): number };
   installOpfsSAHPoolVfs?(opts: { name?: string; directory?: string }): Promise<{
     OpfsSAHPoolDb: new (filename: string) => Sqlite3Db;
+    importDb?(path: string, bytes: Uint8Array): void;
   }>;
 }
 
@@ -74,6 +75,28 @@ export async function createSqliteStore(appId: string, opts?: { directory?: stri
   }
   const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `karta-${appId}`, directory: opts?.directory ?? `/karta/${appId}` });
   const db = new pool.OpfsSAHPoolDb(`/${appId}.sqlite3`);
+  const store = new SqliteStore(db, () => sqlite3.capi.sqlite3_js_db_export(db.pointer));
+  await store.open(appId);
+  return store;
+}
+
+/**
+ * Import a `.sqlite` database (from an export bundle, KA-04) as `appId`'s durable store, replacing
+ * whatever was there. On the browser it writes the bytes into the OPFS SAH-pool file so the imported
+ * data survives reloads; where OPFS is unavailable it falls back to an in-memory store seeded from
+ * the bytes. Call this on a fresh page (before `createSqliteStore` for the same app) so the pool VFS
+ * is installed once.
+ */
+export async function importSqliteStore(appId: string, bytes: Uint8Array, opts?: { directory?: string }): Promise<SqliteStore> {
+  const sqlite3 = await initSqlite();
+  if (!sqlite3.installOpfsSAHPoolVfs) {
+    const { store } = await createMemorySqliteStore(appId, { bytes }); // non-durable fallback
+    return store;
+  }
+  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `karta-${appId}`, directory: opts?.directory ?? `/karta/${appId}` });
+  const filename = `/${appId}.sqlite3`;
+  if (typeof pool.importDb === "function") pool.importDb(filename, bytes);
+  const db = new pool.OpfsSAHPoolDb(filename);
   const store = new SqliteStore(db, () => sqlite3.capi.sqlite3_js_db_export(db.pointer));
   await store.open(appId);
   return store;
