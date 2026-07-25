@@ -74,7 +74,7 @@ export async function createSqliteStore(appId: string, opts?: { directory?: stri
   }
   const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `karta-${appId}`, directory: opts?.directory ?? `/karta/${appId}` });
   const db = new pool.OpfsSAHPoolDb(`/${appId}.sqlite3`);
-  const store = new SqliteStore(db);
+  const store = new SqliteStore(db, () => sqlite3.capi.sqlite3_js_db_export(db.pointer));
   await store.open(appId);
   return store;
 }
@@ -95,12 +95,13 @@ export async function createMemorySqliteStore(appId: string, opts?: { bytes?: Ui
     if (rc !== 0) throw new Error(`createMemorySqliteStore: sqlite3_deserialize failed (rc=${rc})`);
   }
 
-  const store = new SqliteStore(db);
+  const exporter = () => sqlite3.capi.sqlite3_js_db_export(db.pointer);
+  const store = new SqliteStore(db, exporter);
   await store.open(appId);
 
   return {
     store,
-    export: () => sqlite3.capi.sqlite3_js_db_export(db.pointer),
+    export: exporter,
     destroy: () => void store.close(), // idempotent; closes the underlying db handle once
   };
 }

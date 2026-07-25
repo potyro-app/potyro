@@ -4,9 +4,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
-import type { KartaApp } from "karta";
-import { createSqliteStore, LocalStore, type Store } from "@karta/store";
-import { createWebCapabilities } from "@karta/capabilities";
+import type { KartaApp, KartaRecord } from "karta";
+import { createSqliteStore, LocalStore, packBundle, SqliteStore, type Store } from "@karta/store";
+import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
+import type { Provenance } from "@karta/host";
+import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
@@ -51,6 +53,45 @@ async function openStore(appId: AppId): Promise<Store> {
   }
 }
 
+// Export the current app as a portable `.karta.zip` bundle (KA-04): logic + a real SQLite data file
+// + manifest + CSV/JSON, saved via the filesystem cap. Requires the durable SQLite store.
+async function exportApp(
+  runtime: KartaRuntime,
+  store: Store,
+  caps: Capabilities,
+  provenance: Provenance,
+  appSource: string | undefined,
+  toaster: Toaster,
+): Promise<void> {
+  if (!(store instanceof SqliteStore)) {
+    toaster.push("Export needs the SQLite store (unavailable in this browser).");
+    return;
+  }
+  const def = runtime.definition;
+  const rowsByEntity: Record<string, KartaRecord[]> = {};
+  for (const entity of Object.keys(def.entities)) rowsByEntity[entity] = await store.all(entity);
+
+  const zip = packBundle({
+    sqlite: store.exportSqlite(),
+    manifest: {
+      format: "karta-bundle/1",
+      appId: def.id,
+      appVersion: def.version,
+      schemaVersion: def.schemaVersion,
+      provenance,
+      grantedCaps: Object.keys(def.permissions ?? {}),
+      mode: "snapshot",
+      exportedAt: new Date().toISOString(),
+      entities: Object.keys(def.entities),
+    },
+    appSource,
+    rowsByEntity,
+  });
+
+  await caps.filesystem.save(`${def.id}.karta.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
+  toaster.push(`Exported ${def.id}.karta.zip`);
+}
+
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
@@ -71,11 +112,12 @@ async function boot(): Promise<void> {
   const app = await loadTrusted();
 
   let composed: Composed;
+  let appSource: string | undefined;
   if (SANDBOX) {
     const { createSandboxLoader } = await import("./isolate-bridge.js");
-    const bundleCode = await sandboxBundle(appId);
+    appSource = await sandboxBundle(appId); // the untrusted app's bundled logic, for the export
     const loadIsolated = await createSandboxLoader(store);
-    composed = await compose({ app, provenance: "untrusted", bundleCode, store, caps, ui, nav, loadIsolated });
+    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated });
   } else {
     composed = await compose({ app, provenance: "trusted", store, caps, ui, nav });
   }
@@ -92,6 +134,7 @@ async function boot(): Promise<void> {
         toaster={toaster}
         appId={appId}
         apps={APPS as readonly string[]}
+        onExport={() => void exportApp(composed.runtime, store, caps, SANDBOX ? "untrusted" : "trusted", appSource, toaster)}
       />
     </StrictMode>,
   );
