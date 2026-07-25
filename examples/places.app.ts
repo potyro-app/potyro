@@ -119,6 +119,7 @@ export default defineApp({
           media: "photo",
           badges: ["vibes"],
         },
+        onOpen: { page: "detail", param: { placeId: "id" } },
       },
     },
     {
