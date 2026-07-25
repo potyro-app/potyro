@@ -39,6 +39,10 @@ importers:
       karta:
         specifier: workspace:*
         version: link:../schema
+    devDependencies:
+      happy-dom:
+        specifier: ^20.11.1
+        version: 20.11.1
 
   packages/host:
     dependencies:

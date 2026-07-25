@@ -1,11 +1,54 @@
-// WebCapabilities — the browser (PWA) implementation of the capability seam. This is the WP4
-// starter: it implements the capabilities that are trivial + safe on the web today (haptics,
-// geolocation, network, basic filesystem). Camera and notifications are deferred to full WP4 /
-// M2 (web local-notification scheduling is unreliable — docs/07 "the deciding feature" — so it
-// degrades to `null` until the Capacitor target lands).
+// WebCapabilities — the browser (PWA) implementation of the capability seam (WP4 / KA-02). It
+// implements what the web does reliably today: camera (file-input capture), geolocation, haptics,
+// filesystem (File System Access API with an <input>/<a download> fallback), and network (fetch).
+//
+// Notifications stay `null` on the web deliberately: durable/exact local-notification scheduling is
+// not reliable in a browser (docs/07), so reminders degrade to the in-app "due" surface (issue #18)
+// and exact offline scheduling arrives with the native target (KA-03). The host wraps whichever caps
+// are present with per-app mediation for untrusted code — unchanged by what this class exposes.
 
 import type { Geo } from "karta";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
+
+// Minimal shapes for the File System Access API (not in older lib.dom typings).
+interface WritableFileStream {
+  write(data: Blob): Promise<void>;
+  close(): Promise<void>;
+}
+interface FileHandle {
+  getFile(): Promise<File>;
+  createWritable(): Promise<WritableFileStream>;
+}
+interface FsAccessGlobals {
+  showOpenFilePicker?: () => Promise<FileHandle[]>;
+  showSaveFilePicker?: (opts?: { suggestedName?: string }) => Promise<FileHandle>;
+}
+
+const hasDom = (): boolean => typeof document !== "undefined";
+
+/** Read a Blob from a transient file input (optionally cueing the camera on mobile). */
+function pickFile(opts: { accept?: string; capture?: string } = {}): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    if (opts.accept) input.accept = opts.accept;
+    if (opts.capture) input.setAttribute("capture", opts.capture);
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (file) resolve(file);
+      else reject(new Error("no file selected"));
+    };
+    input.click();
+  });
+}
+
+function makeCamera(): CameraCap | null {
+  if (!hasDom()) return null;
+  return {
+    // On mobile web, `capture` cues the camera directly; on desktop it falls back to a file dialog.
+    capture: (o) => pickFile(o?.source === "library" ? { accept: "image/*" } : { accept: "image/*", capture: "environment" }),
+  };
+}
 
 function makeGeo(): GeoCap | null {
   const g = globalThis.navigator;
@@ -33,19 +76,25 @@ function makeHaptics(): HapticsCap | null {
 }
 
 function makeFilesystem(): FileCap {
+  const fs = globalThis as unknown as FsAccessGlobals;
   return {
-    pick: () =>
-      new Promise<Blob>((resolve, reject) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (file) resolve(file);
-          else reject(new Error("no file picked"));
-        };
-        input.click();
-      }),
+    pick: async () => {
+      if (fs.showOpenFilePicker) {
+        const [handle] = await fs.showOpenFilePicker();
+        if (!handle) throw new Error("no file picked");
+        return handle.getFile();
+      }
+      return pickFile();
+    },
     save: async (name, data) => {
+      if (fs.showSaveFilePicker) {
+        const handle = await fs.showSaveFilePicker({ suggestedName: name });
+        const writable = await handle.createWritable();
+        await writable.write(data);
+        await writable.close();
+        return;
+      }
+      // Fallback: trigger a download via an object URL.
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
@@ -57,17 +106,23 @@ function makeFilesystem(): FileCap {
 }
 
 export class WebCapabilities implements Capabilities {
-  readonly camera: CameraCap | null = null; // WP4
-  readonly notifications: NotificationCap | null = null; // WP4 / M2 (native gives exact scheduling)
+  readonly camera: CameraCap | null;
+  readonly notifications: NotificationCap | null = null; // web → in-app "due"; native (KA-03) schedules exactly
   readonly geolocation: GeoCap | null;
   readonly haptics: HapticsCap | null;
   readonly filesystem: FileCap;
   readonly network: NetworkCap;
 
   constructor() {
+    this.camera = makeCamera();
     this.geolocation = makeGeo();
     this.haptics = makeHaptics();
     this.filesystem = makeFilesystem();
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
   }
+}
+
+/** Factory for the web target's capability set (used by the shell composition root). */
+export function createWebCapabilities(): Capabilities {
+  return new WebCapabilities();
 }

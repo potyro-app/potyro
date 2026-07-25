@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { KartaApp } from "karta";
 import { createSqliteStore, LocalStore, type Store } from "@karta/store";
-import { WebCapabilities } from "@karta/capabilities";
+import { createWebCapabilities } from "@karta/capabilities";
 import { App } from "./App.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
@@ -60,7 +60,7 @@ async function boot(): Promise<void> {
   const store = await openStore(appId); // durable OPFS SQLite, per-app namespace
   await seedIfEmpty(store, appId);
 
-  const caps = new WebCapabilities();
+  const caps = createWebCapabilities();
   const ui = createUiBridge(toaster.push);
   const nav = createNavBridge(() => {}); // in-app nav is handled by App state
 
