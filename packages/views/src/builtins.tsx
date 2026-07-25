@@ -219,7 +219,7 @@ function mapDetailNav(param: Record<string, string> | undefined, record: Resolve
   return out;
 }
 
-/** map / steps land in M3 — a clear placeholder keeps navigation working (calendar shipped in M2). */
+/** `steps` lands later — a clear placeholder keeps navigation working (calendar + map shipped). */
 export function PlaceholderView(props: BuiltinViewProps) {
   const view = getView(props.runtime, props.pageId);
   const [, force] = useState(0);
