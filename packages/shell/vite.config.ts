@@ -55,10 +55,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["react", "react-dom", "react/jsx-runtime"],
-    // Emscripten/wasm packages must NOT go through the dep pre-bundler: it rewrites them into
-    // .vite/deps and fails to serve the sibling .wasm with the correct MIME, so dev boot aborts
-    // with "expected magic word 00 61 73 6d". Excluding them lets Vite serve the .wasm as an asset.
-    exclude: ["quickjs-emscripten", "@sqlite.org/sqlite-wasm"],
+    // Packages the dep pre-bundler mishandles: the emscripten/wasm ones (it rewrites them into
+    // .vite/deps and fails to serve the sibling .wasm with the correct MIME → dev boot aborts with
+    // "expected magic word 00 61 73 6d"), and maplibre-gl (its worker .mjs isn't emitted into
+    // .vite/deps). Excluding them lets Vite serve those assets directly.
+    exclude: ["quickjs-emscripten", "@sqlite.org/sqlite-wasm", "maplibre-gl"],
   },
   server: {
     port: 5173,

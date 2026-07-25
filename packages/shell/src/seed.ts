@@ -12,8 +12,23 @@ export async function seedIfEmpty(store: Store, appId = "recipes"): Promise<void
 const SEEDERS: Record<string, (store: Store) => Promise<void>> = {
   recipes: seedRecipes,
   plants: seedPlants,
+  places: seedPlaces,
   workout: seedWorkout,
 };
+
+async function seedPlaces(store: Store): Promise<void> {
+  const existing = await store.all("place");
+  if (existing.length > 0) return;
+
+  const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const allDay = DAYS.map((day) => ({ day, from: "00:00", to: "23:59" }));
+
+  // Two spots near Berlin centre (within ~1km) and one far away in Paris, so "Near me" (2km) and
+  // "Open now" (all-day vs no hours) filters have a deterministic effect in tests + the demo.
+  await store.insert("place", { name: "Corner Café", location: { lat: 52.521, lng: 13.406 }, kind: "cafe", vibes: ["quiet", "outdoor"], visited: true, rating: 4.5, openingHours: allDay });
+  await store.insert("place", { name: "Nachtbar", location: { lat: 52.515, lng: 13.41 }, kind: "bar", vibes: ["late-night"], visited: false, rating: 4, openingHours: [] });
+  await store.insert("place", { name: "Paris Bakery", location: { lat: 48.8566, lng: 2.3522 }, kind: "bakery", vibes: ["cheap"], visited: true, rating: 5, openingHours: allDay });
+}
 
 async function seedPlants(store: Store): Promise<void> {
   const existing = await store.all("plant");
