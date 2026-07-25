@@ -77,7 +77,7 @@ export function FieldInput({ runtime, field, value, onChange }: FieldInputProps)
     }
 
     case "geo":
-      return <GeoInput value={value as Geo | null} onChange={onChange} />;
+      return <GeoInput runtime={runtime} value={value as Geo | null} onChange={onChange} />;
 
     case "media":
       return <MediaInput runtime={runtime} value={value as MediaRef | MediaRef[] | null} onChange={onChange} />;
@@ -128,23 +128,44 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
   );
 }
 
-function GeoInput({ value, onChange }: { value: Geo | null; onChange: (v: unknown) => void }) {
-  const g = value ?? { lat: 0, lng: 0 };
+function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: Geo | null; onChange: (v: unknown) => void }) {
+  const g: Geo = value ?? { lat: 0, lng: 0 };
   const set = (patch: Partial<Geo>) => onChange({ ...g, ...patch });
+  const geo = runtime.ctx.caps.geo;
+  const [busy, setBusy] = useState(false);
+
+  const useMyLocation = async (): Promise<void> => {
+    if (!geo) return;
+    setBusy(true);
+    try {
+      const pos = await geo.current();
+      onChange({ ...g, lat: pos.lat, lng: pos.lng });
+    } catch {
+      // denied/unavailable → keep manual entry as the fallback
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="k-geo-input">
-      <label>
-        lat
-        <input className="k-input" type="number" step="any" value={g.lat} onChange={(e) => set({ lat: Number(e.target.value) })} />
-      </label>
-      <label>
-        lng
-        <input className="k-input" type="number" step="any" value={g.lng} onChange={(e) => set({ lng: Number(e.target.value) })} />
-      </label>
-      <label>
-        label
-        <input className="k-input" type="text" value={g.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
-      </label>
+      <button type="button" className="k-add-row" disabled={busy || !geo} onClick={useMyLocation}>
+        {busy ? "Locating…" : "📍 Use my location"}
+      </button>
+      <div className="k-geo-coords">
+        <label>
+          lat
+          <input className="k-input" type="number" step="any" value={g.lat} onChange={(e) => set({ lat: Number(e.target.value) })} />
+        </label>
+        <label>
+          lng
+          <input className="k-input" type="number" step="any" value={g.lng} onChange={(e) => set({ lng: Number(e.target.value) })} />
+        </label>
+        <label>
+          label
+          <input className="k-input" type="text" value={g.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
+        </label>
+      </div>
     </div>
   );
 }

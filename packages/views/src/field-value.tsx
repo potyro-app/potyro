@@ -110,7 +110,13 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
     }
     case "geo": {
       const g = value as Geo;
-      return <>{g.label ?? `${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`}</>;
+      const label = g.label ?? `${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`;
+      const href = `https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=15/${g.lat}/${g.lng}`;
+      return (
+        <a className="k-geo-value" href={href} target="_blank" rel="noreferrer noopener">
+          📍 {label}
+        </a>
+      );
     }
     case "datetime":
       return <>{value instanceof Date ? value.toLocaleString() : String(value)}</>;
