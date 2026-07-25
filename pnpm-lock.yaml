@@ -44,6 +44,27 @@ importers:
         specifier: ^20.11.1
         version: 20.11.1
 
+  packages/generator:
+    dependencies:
+      '@karta/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
+      '@karta/host':
+        specifier: workspace:*
+        version: link:../host
+      '@karta/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@karta/store':
+        specifier: workspace:*
+        version: link:../store
+      esbuild:
+        specifier: ^0.21.5
+        version: 0.21.5
+      karta:
+        specifier: workspace:*
+        version: link:../schema
+
   packages/host:
     dependencies:
       '@karta/capabilities':
