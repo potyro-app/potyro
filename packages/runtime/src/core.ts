@@ -12,6 +12,9 @@ import { asyncSort } from "./async-sort.js";
 /** Sentinel a bundler/isolate loader uses to mark a function-valued binding it can't serialize. */
 export const FN_SENTINEL = "__karta_fn__";
 
+/** kv key holding the set of currently-scheduled reminder notification ids (for idempotent reconcile). */
+const REMINDER_KV_KEY = "reminders.scheduled";
+
 export interface RuntimeDeps {
   app: LoadedApp;
   host: Host;
@@ -137,25 +140,40 @@ export class RuntimeCore {
     return this.app.callBinding(ref, record, ctx);
   }
 
-  /** Reconcile reminders: schedule future ones via notifications (docs/03). No-op offline. */
+  /**
+   * Reconcile reminders against the notification cap, idempotently: schedule every future reminder
+   * and cancel any previously-scheduled one that is now stale (record deleted, or `when` became
+   * null/past). The live id set is tracked in kv so a stale notification can be cancelled even
+   * across reloads. No notification cap (web today) → no-op: the app degrades to its in-app "due"
+   * surface (docs/03, M2). Exact offline scheduling arrives with the native target (KA-03).
+   */
   async reconcileReminders(params?: Record<string, unknown>): Promise<void> {
     const ctx = this.ctxFor(params);
     const notif = ctx.caps.notifications;
+    if (!notif) return;
+
+    const previous = ((await ctx.storage.get(REMINDER_KV_KEY)) as string[] | null) ?? [];
+    const desired = new Map<string, { id: string; at: Date; title: string; body?: string }>();
+
     for (const rem of this.definition.reminders ?? []) {
       const rows = await ctx.query(rem.entity);
       for (const r of rows) {
         const when = await this.app.reminderWhen(rem.id, r, ctx);
-        if (!when || !notif) continue;
-        if (when.getTime() <= ctx.now().getTime()) continue; // only schedule future
+        if (!when || when.getTime() <= ctx.now().getTime()) continue; // only future reminders
+        const id = `${rem.id}:${r.id}`;
         const title = await this.resolveBinding({ kind: "reminder", id: rem.id, path: "title" }, r, ctx);
         const body = rem.body ? await this.resolveBinding({ kind: "reminder", id: rem.id, path: "body" }, r, ctx) : undefined;
-        await notif.schedule({
-          id: `${rem.id}:${r.id}`,
-          at: when,
-          title: String(title ?? ""),
-          body: body == null ? undefined : String(body),
-        });
+        desired.set(id, { id, at: when, title: String(title ?? ""), body: body == null ? undefined : String(body) });
       }
     }
+
+    // Cancel notifications that should no longer exist, then (re)schedule the live set — both keyed
+    // by `${reminderId}:${recordId}`, so scheduling is idempotent.
+    for (const id of previous) {
+      if (!desired.has(id)) await notif.cancel(id);
+    }
+    for (const n of desired.values()) await notif.schedule(n);
+
+    await ctx.storage.set(REMINDER_KV_KEY, [...desired.keys()]);
   }
 }
