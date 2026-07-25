@@ -12,3 +12,11 @@ export {
   type CreateParams,
   type MessageResponse,
 } from "./claude-backend.js";
+export {
+  WebLLMBackend,
+  createWebLLMBackend,
+  type ChatEngine,
+  type ChatRequest,
+  type ChatResponse,
+} from "./webllm-backend.js";
+export { HybridBackend } from "./hybrid-backend.js";
