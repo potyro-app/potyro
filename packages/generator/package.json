@@ -13,6 +13,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@karta/capabilities": "workspace:*",
     "@karta/host": "workspace:*",
     "@karta/runtime": "workspace:*",
