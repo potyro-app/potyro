@@ -523,6 +523,12 @@ button {
 }
 .k-geo-input {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.k-geo-coords {
+  display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
@@ -532,6 +538,13 @@ button {
   gap: 0.2rem;
   font-size: 0.75rem;
   color: var(--ink-soft);
+}
+.k-geo-value {
+  color: var(--accent);
+  text-decoration: none;
+}
+.k-geo-value:hover {
+  text-decoration: underline;
 }
 .k-media-input {
   display: flex;
