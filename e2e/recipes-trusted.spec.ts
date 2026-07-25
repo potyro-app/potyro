@@ -35,7 +35,7 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   // Add a recipe through the generated form and confirm it appears in the list.
   await page.getByRole("button", { name: /Recipes/ }).click(); // back to the list tab
   const unique = `E2E Test Dish ${Date.now()}`;
-  await page.locator("header").getByRole("button", { name: /New/ }).click();
+  await page.locator("header").getByRole("button", { name: /\+ New/ }).click();
   const modal = page.locator(".k-modal");
   await expect(modal).toBeVisible();
   await modal.getByRole("textbox").first().fill(unique);

@@ -26,7 +26,7 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   const bundlePath = await download.path();
 
   // Add a recipe that is NOT in the exported bundle.
-  await page.locator("header").getByRole("button", { name: /New/ }).click();
+  await page.locator("header").getByRole("button", { name: /\+ New/ }).click();
   const modal = page.locator(".k-modal");
   await modal.getByRole("textbox").first().fill("Ephemeral Dish");
   await modal.getByRole("button", { name: "Create" }).click();
