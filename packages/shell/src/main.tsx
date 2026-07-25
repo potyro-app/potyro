@@ -12,6 +12,7 @@ import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { seedIfEmpty } from "./seed.js";
+import { startReminderSync } from "./reminder-sync.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
 const APPS = ["recipes", "plants", "places", "workout"] as const;
@@ -78,6 +79,10 @@ async function boot(): Promise<void> {
   } else {
     composed = await compose({ app, provenance: "trusted", store, caps, ui, nav });
   }
+
+  // Keep reminder notifications reconciled with the data (on load + on change). No-op on web
+  // (no notification cap) — the in-app "due" view covers it; native (KA-03) schedules exactly.
+  startReminderSync(composed.runtime, store);
 
   createRoot(root).render(
     <StrictMode>
