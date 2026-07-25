@@ -43,7 +43,40 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
 function ChipControl({ chip, entity, runtime, params, setParam }: ChipProps) {
   if (chip.type === "boolean") return <BooleanChip chip={chip} params={params} setParam={setParam} />;
   if (chip.type === "geo") return <GeoChip chip={chip} runtime={runtime} params={params} setParam={setParam} />;
+  // `from` naming an entity → record-source chips (the values are record ids, e.g. the recipes
+  // pantry picking ingredients); otherwise it names an enum/tags field → option chips.
+  if (chip.from && runtime.definition.entities[chip.from]) {
+    return <RecordChips chip={chip} runtime={runtime} params={params} setParam={setParam} />;
+  }
   return <OptionChips chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />;
+}
+
+function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">) {
+  const fromEntity = chip.from!;
+  const { rows } = runtime.useQuery(fromEntity);
+  const displayField = (runtime.definition.entities[fromEntity]?.displayField as string | undefined) ?? "id";
+  const selected = new Set((params[chip.param] as string[] | undefined) ?? []);
+
+  const toggle = (id: string): void => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setParam(chip.param, next.size ? [...next] : undefined);
+  };
+
+  return (
+    <div className="k-chip-group" role="group" aria-label={chip.label}>
+      <span className="k-chrome-label">{chip.label}:</span>
+      <div className="k-chips">
+        {rows.map((r) => (
+          <button key={r.id} type="button" className="k-chip" data-on={selected.has(r.id)} onClick={() => toggle(r.id)}>
+            {String(r[displayField] ?? r.id)}
+          </button>
+        ))}
+        {rows.length === 0 ? <span className="k-muted">Nothing to pick yet.</span> : null}
+      </div>
+    </div>
+  );
 }
 
 function BooleanChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "runtime">) {

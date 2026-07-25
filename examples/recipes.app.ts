@@ -142,7 +142,9 @@ export default defineApp({
       view: {
         type: "list",
         entity: "recipe",
-        // arbitrary JS predicate; ctx.params.pantry is set by a picker in the view chrome
+        // the "In my pantry" chip picks ingredient records into ctx.params.pantry (record-source
+        // filter chrome); the JS predicate below then keeps only fully-satisfiable recipes.
+        filters: [{ label: "In my pantry", param: "pantry", from: "ingredient", multi: true }],
         filter: (r, ctx) => {
           const have = new Set((ctx.params.pantry as string[]) ?? []);
           return r.ingredients.length > 0 && r.ingredients.every((i) => have.has(i.ingredient.id));

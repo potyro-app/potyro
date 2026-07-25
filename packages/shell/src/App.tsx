@@ -105,7 +105,6 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
         ))}
       </nav>
 
-      <ViewChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
       <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
 
       <main className="k-main">
@@ -135,52 +134,6 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
 
       <Toasts toaster={toaster} />
     </div>
-  );
-}
-
-/** View-chrome: the pantry picker for the "what can I cook?" page (writes ctx.params.pantry). */
-function ViewChrome({
-  runtime,
-  pageId,
-  params,
-  setParam,
-}: {
-  runtime: KartaRuntime;
-  pageId: string;
-  params: Record<string, unknown>;
-  setParam: (k: string, v: unknown) => void;
-}) {
-  const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as { filter?: unknown } | undefined;
-  const isPantryPage = pageId === "cook-with";
-  const { rows } = runtime.useQuery("ingredient");
-  if (!isPantryPage || !view?.filter) return null;
-
-  const selected = new Set((params.pantry as string[]) ?? []);
-  const toggle = (id: string): void => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setParam("pantry", [...next]);
-  };
-
-  return (
-    <section className="k-chrome" aria-label="Pantry">
-      <span className="k-chrome-label">In my pantry:</span>
-      <div className="k-chips">
-        {rows.map((ing) => (
-          <button
-            key={ing.id}
-            type="button"
-            className="k-chip"
-            data-on={selected.has(ing.id)}
-            onClick={() => toggle(ing.id)}
-          >
-            {String(ing.name)}
-          </button>
-        ))}
-        {rows.length === 0 ? <span className="k-muted">No ingredients yet.</span> : null}
-      </div>
-    </section>
   );
 }
 
