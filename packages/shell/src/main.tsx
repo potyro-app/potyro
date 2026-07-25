@@ -5,7 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { KartaApp, KartaRecord } from "karta";
-import { createSqliteStore, LocalStore, packBundle, SqliteStore, type Store } from "@karta/store";
+import { createMemorySqliteStore, createSqliteStore, importSqliteStore, LocalStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
 import type { Provenance } from "@karta/host";
 import type { KartaRuntime } from "@karta/runtime";
@@ -54,7 +54,9 @@ async function openStore(appId: AppId): Promise<Store> {
 }
 
 // Export the current app as a portable `.karta.zip` bundle (KA-04): logic + a real SQLite data file
-// + manifest + CSV/JSON, saved via the filesystem cap. Requires the durable SQLite store.
+// + manifest + CSV/JSON, saved via the filesystem cap. The current data is snapshotted into a fresh
+// in-memory SQLite so a genuine `data.sqlite` is produced from ANY durable store (even the LocalStore
+// fallback) — the export never depends on the browser having OPFS.
 async function exportApp(
   runtime: KartaRuntime,
   store: Store,
@@ -63,33 +65,80 @@ async function exportApp(
   appSource: string | undefined,
   toaster: Toaster,
 ): Promise<void> {
-  if (!(store instanceof SqliteStore)) {
-    toaster.push("Export needs the SQLite store (unavailable in this browser).");
-    return;
-  }
   const def = runtime.definition;
   const rowsByEntity: Record<string, KartaRecord[]> = {};
   for (const entity of Object.keys(def.entities)) rowsByEntity[entity] = await store.all(entity);
 
-  const zip = packBundle({
-    sqlite: store.exportSqlite(),
-    manifest: {
-      format: "karta-bundle/1",
-      appId: def.id,
-      appVersion: def.version,
-      schemaVersion: def.schemaVersion,
-      provenance,
-      grantedCaps: Object.keys(def.permissions ?? {}),
-      mode: "snapshot",
-      exportedAt: new Date().toISOString(),
-      entities: Object.keys(def.entities),
-    },
-    appSource,
-    rowsByEntity,
-  });
+  const snapshot = await createMemorySqliteStore(def.id);
+  try {
+    for (const [entity, rows] of Object.entries(rowsByEntity)) {
+      for (const row of rows) await snapshot.store.insert(entity, row);
+    }
+    const zip = packBundle({
+      sqlite: snapshot.export(),
+      manifest: {
+        format: "karta-bundle/1",
+        appId: def.id,
+        appVersion: def.version,
+        schemaVersion: def.schemaVersion,
+        provenance,
+        grantedCaps: Object.keys(def.permissions ?? {}),
+        mode: "snapshot",
+        exportedAt: new Date().toISOString(),
+        entities: Object.keys(def.entities),
+      },
+      appSource,
+      rowsByEntity,
+    });
+    await caps.filesystem.save(`${def.id}.karta.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
+    toaster.push(`Exported ${def.id}.karta.zip`);
+  } finally {
+    snapshot.destroy();
+  }
+}
 
-  await caps.filesystem.save(`${def.id}.karta.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
-  toaster.push(`Exported ${def.id}.karta.zip`);
+// Session-storage handoff for an import: the picked bundle's data.sqlite bytes (base64) survive the
+// reload so the OPFS pool VFS is installed exactly once — on the fresh page — before the store opens.
+const IMPORT_KEY = "karta:import";
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Import a `.karta.zip` bundle's data into the matching app (KA-04): pick → unpack → stash the
+// SQLite bytes → reload into that app, where boot() restores them into the durable store.
+async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
+  let blob: Blob;
+  try {
+    blob = await caps.filesystem.pick();
+  } catch {
+    return; // cancelled
+  }
+  const zip = new Uint8Array(await blob.arrayBuffer());
+  let appId: string;
+  let sqlite: Uint8Array;
+  try {
+    const bundle = unpackBundle(zip);
+    appId = bundle.manifest.appId;
+    sqlite = bundle.sqlite;
+  } catch {
+    toaster.push("Not a valid Karta export bundle.");
+    return;
+  }
+  if (!(APPS as readonly string[]).includes(appId)) {
+    toaster.push(`No app "${appId}" installed to import into.`);
+    return;
+  }
+  sessionStorage.setItem(IMPORT_KEY, bytesToBase64(sqlite));
+  location.search = `?app=${appId}`; // reload → boot() detects the pending import
 }
 
 async function boot(): Promise<void> {
@@ -98,8 +147,18 @@ async function boot(): Promise<void> {
 
   const appId = selectedAppId();
   const toaster = new Toaster();
-  const store = await openStore(appId); // durable OPFS SQLite, per-app namespace
-  await seedIfEmpty(store, appId);
+
+  // A pending import (from a prior reload) restores its data into the durable store, once.
+  const pending = sessionStorage.getItem(IMPORT_KEY);
+  let store: Store;
+  if (pending) {
+    sessionStorage.removeItem(IMPORT_KEY);
+    store = await importSqliteStore(appId, base64ToBytes(pending));
+    toaster.push(`Imported data into ${appId}.`);
+  } else {
+    store = await openStore(appId); // durable OPFS SQLite, per-app namespace
+    await seedIfEmpty(store, appId);
+  }
 
   const caps = createWebCapabilities();
   const ui = createUiBridge(toaster.push);
@@ -135,6 +194,7 @@ async function boot(): Promise<void> {
         appId={appId}
         apps={APPS as readonly string[]}
         onExport={() => void exportApp(composed.runtime, store, caps, SANDBOX ? "untrusted" : "trusted", appSource, toaster)}
+        onImport={() => void importApp(caps, toaster)}
       />
     </StrictMode>,
   );
