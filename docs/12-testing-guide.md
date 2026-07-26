@@ -82,11 +82,14 @@ Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a 
 | Header **New app** | A panel with a starter `.app.ts` in an editable source box |
 | Click **Preview** | The source is bundled in-browser (esbuild-wasm) and run **untrusted in the QuickJS isolate**; the app renders inline with an `untrusted` badge |
 | Edit the source (add a field/entity/page) → **Preview** again | Your edited app renders |
-| **Describe an app…** + your **Anthropic API key** → **Generate** | Claude writes a `.app.ts` into the source box; **Preview** it. If it errors, **Fix with AI** feeds the error back |
+| **Describe an app…** → **Generate (claude -p)** | Uses your local Claude Code auth via the dev server — **no API key**. Writes a `.app.ts` into the source box; **Preview** it |
+| **On-device** (with a WebGPU browser) | Runs a small coder model locally (WebLLM); first use downloads + caches the model, then fully offline |
+| **Cloud** (paste `sk-ant-…`) | Uses your own Anthropic key (in-memory only) — for when the CLI isn't available |
+| On any generated app that errors → **Fix with AI** | Feeds the error back to the model (claude -p, or cloud if a key is set) |
 
-> The API key is your own, held only in memory for this local tool. Generation needs a valid key
-> (and Anthropic browser access). Edge/on-device generation (WebGPU) is wired in the backend but not
-> yet in this panel.
+> **Three ways to generate, no key required for the first two:** `claude -p` reuses your Claude Code
+> login (dev server only); **On-device** needs a WebGPU browser (Chrome/Edge) and a one-time model
+> download. **Cloud** is the fallback if you'd rather paste a key.
 
 ## 7. Sandbox mode (untrusted execution)
 

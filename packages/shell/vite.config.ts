@@ -1,9 +1,66 @@
 import { defineConfig, type Plugin } from "vite";
 import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
 import react from "@vitejs/plugin-react";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
+/**
+ * Dev-only generation via the local `claude -p` CLI — so the "Describe an app…" panel can generate
+ * without pasting an API key (it reuses your existing Claude Code auth). The client builds the prompt
+ * (the generator's contract lives in `@karta/generator`); this endpoint is a dumb shell: POST
+ * /__generate { prompt } → `claude -p <prompt>` → { text }. Never part of the built app.
+ */
+function claudeCliPlugin(): Plugin {
+  return {
+    name: "karta-claude-cli",
+    configureServer(server) {
+      server.middlewares.use("/__generate", (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", () => {
+          let prompt = "";
+          try {
+            prompt = String(JSON.parse(body).prompt ?? "");
+          } catch {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: "invalid request body" }));
+            return;
+          }
+          if (!prompt) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: "missing prompt" }));
+            return;
+          }
+          const child = spawn("claude", ["-p", prompt], { stdio: ["ignore", "pipe", "pipe"] });
+          let out = "";
+          let err = "";
+          child.stdout.on("data", (d) => (out += d));
+          child.stderr.on("data", (d) => (err += d));
+          child.on("error", (e) => {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: `claude CLI unavailable: ${e.message}` }));
+          });
+          child.on("close", (code) => {
+            if (code !== 0) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: err.trim() || `claude exited ${code}` }));
+              return;
+            }
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify({ text: out }));
+          });
+        });
+      });
+    },
+  };
+}
 
 /**
  * Bundles an example `.app.ts` into a self-contained IIFE string for the untrusted isolate
@@ -46,7 +103,7 @@ function sandboxBundlePlugin(): Plugin {
 // `pnpm dev` runs trusted; `pnpm dev:sandbox` (mode "sandbox") runs an example untrusted in the
 // QuickJS-WASM isolate.
 export default defineConfig({
-  plugins: [react(), sandboxBundlePlugin()],
+  plugins: [react(), sandboxBundlePlugin(), claudeCliPlugin()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.
