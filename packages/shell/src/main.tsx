@@ -5,7 +5,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { KartaApp, KartaRecord } from "karta";
-import { createMemorySqliteStore, createSqliteStore, importSqliteStore, LocalStore, packBundle, unpackBundle, type Store } from "@karta/store";
+import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
+import { openStore } from "./open-store.js";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
 import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
@@ -37,20 +38,6 @@ async function sandboxBundle(appId: AppId): Promise<string> {
       return (await import("virtual:sandbox:places")).default;
     case "workout":
       return (await import("virtual:sandbox:workout")).default;
-  }
-}
-
-// Durable store for the web target: OPFS-backed SQLite (KA-01). Falls back to LocalStore where the
-// OPFS SAH-pool VFS is unavailable (older browsers / no cross-origin isolation), so the app still
-// runs — just less durable. Swapping the store implementation is confined to this composition root.
-async function openStore(appId: AppId): Promise<Store> {
-  try {
-    return await createSqliteStore(appId);
-  } catch (err) {
-    console.warn("[karta] SqliteStore unavailable; falling back to LocalStore.", err);
-    const store = new LocalStore();
-    await store.open(appId);
-    return store;
   }
 }
 
