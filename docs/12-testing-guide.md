@@ -84,6 +84,7 @@ Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a 
 | Edit the source (add a field/entity/page) → **Preview** again | Your edited app renders |
 | **Describe an app…** → **Generate (claude -p)** | Uses your local Claude Code auth via the dev server — **no API key**. Writes a `.app.ts` into the source box; **Preview** it |
 | **On-device** (with a WebGPU browser) | Runs a small coder model locally (WebLLM); first use downloads + caches the model, then fully offline. Pick the model from the dropdown — **0.5B** (~0.5 GB, fastest) → **1.5B** (~1 GB, recommended) → **3B** (~2 GB, best) |
+| **Built-in (Chrome)** — only shows if your browser exposes the Prompt API | Uses Chrome's built-in **Gemini Nano** — on-device, **no weight download** (the model ships in the browser). General-purpose (not coder-tuned), so expect more **Fix** rounds |
 | **Cloud** (paste `sk-ant-…`) | Uses your own Anthropic key (in-memory only) — for when the CLI isn't available |
 | On any generated app that errors → **Fix with AI** | Feeds the error back to the model (claude -p, or cloud if a key is set) |
 

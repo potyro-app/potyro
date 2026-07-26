@@ -13,6 +13,8 @@ import { createWebCapabilities } from "@karta/capabilities";
 import {
   createClaudeBackend,
   createWebLLMBackend,
+  createGeminiNanoBackend,
+  hasBuiltInAI,
   WEBLLM_MODELS,
   SYSTEM_PROMPT,
   buildUserMessage,
@@ -66,6 +68,7 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
   const [model, setModel] = useState("Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC");
 
   const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
+  const hasBuiltIn = hasBuiltInAI();
   const canDescribe = description.trim().length > 0 && !genBusy;
 
   const withGen = async (label: string, run: () => Promise<string>): Promise<void> => {
@@ -104,6 +107,14 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
         model,
         initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
       });
+      return backend.generate({ id: "panel", description });
+    });
+
+  // 2b) Chrome built-in AI (Gemini Nano) — on-device with no weight download (ships in the browser).
+  const generateBuiltIn = (): Promise<void> =>
+    withGen("Built-in", async () => {
+      setProgress("Preparing Chrome built-in model…");
+      const backend = await createGeminiNanoBackend();
       return backend.generate({ id: "panel", description });
     });
 
@@ -214,6 +225,17 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </span>
+          {hasBuiltIn ? (
+            <button
+              type="button"
+              className="k-add"
+              disabled={!canDescribe}
+              title="Chrome's built-in Gemini Nano — on-device, no download"
+              onClick={() => void generateBuiltIn()}
+            >
+              Built-in (Chrome)
+            </button>
+          ) : null}
           <input
             className="k-input k-gen-key"
             aria-label="Anthropic API key"
