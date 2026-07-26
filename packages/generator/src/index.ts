@@ -15,8 +15,18 @@ export {
 export {
   WebLLMBackend,
   createWebLLMBackend,
+  WEBLLM_MODELS,
   type ChatEngine,
   type ChatRequest,
   type ChatResponse,
+  type WebLLMModel,
 } from "./webllm-backend.js";
+export {
+  GeminiNanoBackend,
+  createGeminiNanoBackend,
+  hasBuiltInAI,
+  getPromptModel,
+  type PromptModel,
+  type PromptSession,
+} from "./gemini-nano-backend.js";
 export { HybridBackend } from "./hybrid-backend.js";

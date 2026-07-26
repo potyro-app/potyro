@@ -8,5 +8,13 @@ export { FixtureBackend } from "./backend.js";
 export { SYSTEM_PROMPT, buildUserMessage, buildRepairMessage, extractSource } from "./prompt.js";
 export { ClaudeBackend, createClaudeBackend, type MessagesClient } from "./claude-backend.js";
 export { WebLLMBackend, createWebLLMBackend, WEBLLM_MODELS, type ChatEngine, type WebLLMModel } from "./webllm-backend.js";
+export {
+  GeminiNanoBackend,
+  createGeminiNanoBackend,
+  hasBuiltInAI,
+  getPromptModel,
+  type PromptModel,
+  type PromptSession,
+} from "./gemini-nano-backend.js";
 export { HybridBackend } from "./hybrid-backend.js";
 export { PROMPTS } from "./prompts.js";
