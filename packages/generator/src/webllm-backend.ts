@@ -24,6 +24,24 @@ export interface ChatEngine {
   chat: { completions: { create(req: ChatRequest): Promise<ChatResponse> } };
 }
 
+/**
+ * Curated on-device models for the picker. All coder-tuned (the output is a structured `.app.ts`,
+ * so a code model beats a bigger general one). Trade-off is size↔quality: a weaker device wants the
+ * 0.5B; a strong GPU can afford the 3B. `download` is the approximate first-use cache cost.
+ */
+export interface WebLLMModel {
+  id: string;
+  label: string;
+  download: string;
+  note?: string;
+}
+
+export const WEBLLM_MODELS: readonly WebLLMModel[] = [
+  { id: "Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5-Coder 0.5B", download: "~0.5 GB", note: "Fastest, weakest — for low-end devices" },
+  { id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5-Coder 1.5B", download: "~1 GB", note: "Recommended balance" },
+  { id: "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5-Coder 3B", download: "~2 GB", note: "Best quality; larger download · non-commercial license" },
+];
+
 // Apache-2.0, small enough for on-device; commercial-safe (avoids the non-commercial 3B).
 const DEFAULT_MODEL = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
 const MAX_TOKENS = 2048;

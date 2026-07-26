@@ -17,6 +17,10 @@ test("create-an-app panel bundles + previews an app in the isolate", async ({ pa
   await panel.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
   await expect(panel.getByRole("button", { name: /claude -p/ })).toBeEnabled(); // no key needed
   await expect(panel.getByRole("button", { name: "On-device" })).toBeVisible(); // gated on WebGPU (env-dependent)
+  const modelPicker = panel.getByRole("combobox", { name: "On-device model" });
+  await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-1.5B/); // recommended default
+  await modelPicker.selectOption("Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC"); // pick a lighter model
+  await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-0.5B/);
   const cloud = panel.getByRole("button", { name: "Cloud", exact: true });
   await expect(cloud).toBeDisabled(); // needs a key
   await panel.getByLabel("Anthropic API key").fill("sk-ant-example");

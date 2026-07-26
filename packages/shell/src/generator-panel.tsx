@@ -13,6 +13,7 @@ import { createWebCapabilities } from "@karta/capabilities";
 import {
   createClaudeBackend,
   createWebLLMBackend,
+  WEBLLM_MODELS,
   SYSTEM_PROMPT,
   buildUserMessage,
   buildRepairMessage,
@@ -62,6 +63,7 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
   const [apiKey, setApiKey] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
+  const [model, setModel] = useState("Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC");
 
   const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
   const canDescribe = description.trim().length > 0 && !genBusy;
@@ -99,6 +101,7 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
   const generateEdge = (): Promise<void> =>
     withGen("On-device", async () => {
       const backend = await createWebLLMBackend({
+        model,
         initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
       });
       return backend.generate({ id: "panel", description });
@@ -186,15 +189,31 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
           <button type="button" className="k-add k-primary-action" disabled={!canDescribe} onClick={() => void generateCli()}>
             {genBusy ? "Generating…" : "Generate (claude -p)"}
           </button>
-          <button
-            type="button"
-            className="k-add"
-            disabled={!canDescribe || !hasWebGPU}
-            title={hasWebGPU ? "Runs a small model on-device (WebGPU)" : "Needs a WebGPU browser"}
-            onClick={() => void generateEdge()}
-          >
-            On-device
-          </button>
+          <span className="k-gen-edge">
+            <button
+              type="button"
+              className="k-add"
+              disabled={!canDescribe || !hasWebGPU}
+              title={hasWebGPU ? "Runs a small model on-device (WebGPU)" : "Needs a WebGPU browser"}
+              onClick={() => void generateEdge()}
+            >
+              On-device
+            </button>
+            <select
+              className="k-input k-gen-model"
+              aria-label="On-device model"
+              value={model}
+              disabled={!hasWebGPU || genBusy}
+              title={WEBLLM_MODELS.find((m) => m.id === model)?.note}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {WEBLLM_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} · {m.download}
+                </option>
+              ))}
+            </select>
+          </span>
           <input
             className="k-input k-gen-key"
             aria-label="Anthropic API key"
