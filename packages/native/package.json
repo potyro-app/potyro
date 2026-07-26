@@ -2,7 +2,7 @@
   "name": "@karta/native",
   "version": "0.0.0",
   "type": "module",
-  "description": "Capacitor target (WP8, starts at M2): native capability impls + composition root. Placeholder for M0/M1.",
+  "description": "Capacitor target (WP8 / KA-03): native capability impls (exact notifications, camera, geo, filesystem) + composition-root selection.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -10,10 +10,25 @@
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "cap:add:android": "cap add android && node scripts/patch-manifest.mjs",
+    "cap:sync": "cap sync android && node scripts/patch-manifest.mjs",
+    "cap:copy": "cap copy android",
+    "cap:open": "cap open android",
+    "android": "pnpm --filter @karta/shell build:web && pnpm cap:sync && pnpm cap:open"
   },
   "dependencies": {
+    "@capacitor/camera": "^8.2.1",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.2.1",
     "@karta/capabilities": "workspace:*",
     "karta": "workspace:*"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2"
   }
 }

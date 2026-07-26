@@ -7,6 +7,7 @@ import "./styles.css";
 import type { KartaApp, KartaRecord } from "karta";
 import { createMemorySqliteStore, createSqliteStore, importSqliteStore, LocalStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
+import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
 import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
@@ -160,7 +161,10 @@ async function boot(): Promise<void> {
     await seedIfEmpty(store, appId);
   }
 
-  const caps = createWebCapabilities();
+  // Native (Capacitor) capabilities when running on a device — chiefly EXACT offline notifications
+  // — else the web impl. The native module is only imported when actually on a device (web bundle
+  // stays Capacitor-free). This is the sole target-selection point (CLAUDE.md: respect the seams).
+  const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   const ui = createUiBridge(toaster.push);
   const nav = createNavBridge(() => {}); // in-app nav is handled by App state
 

@@ -1,16 +1,34 @@
-// @karta/native — Capacitor target (WP8). Introduced at M2 (docs/08). Placeholder now: the
-// interface it will implement (`Capabilities`) already exists; only the composition root swaps
-// `WebCapabilities` for `CapacitorCapabilities`. The QuickJS-WASM isolate runs unchanged.
+// @karta/native — Capacitor target (WP8 / KA-03): native capability impls. The composition root
+// swaps `WebCapabilities` for `CapacitorCapabilities` when running under Capacitor; the QuickJS-WASM
+// isolate and the host's per-app mediation run unchanged.
 
 import type { Capabilities } from "@karta/capabilities";
 
-/** Marker so downstream can detect the native target is not yet wired. */
-export const NATIVE_TARGET_READY = false;
+export {
+  CapacitorCapabilities,
+  createCapacitorCapabilities,
+  stableNotificationId,
+  type CapacitorPlugins,
+  type CapacitorHostHelpers,
+} from "./capacitor-capabilities.js";
+
+/** True once the native impl is wired (kept for callers that gate on it). */
+export const NATIVE_TARGET_READY = true;
+
+/** Is the app running inside a Capacitor native shell (Android/iOS), vs a plain browser? Reads the
+ *  global Capacitor bridge injected by the native runtime — safe to call on the web (returns false). */
+export function isNativePlatform(): boolean {
+  const cap = (globalThis as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  return typeof cap?.isNativePlatform === "function" ? cap.isNativePlatform() : false;
+}
 
 /**
- * Placeholder factory. At M2 this returns a `CapacitorCapabilities` (real camera, exact local
- * notifications, geo, filesystem) satisfying the same conformance suite as the web impl.
+ * Composition-root helper: returns the native capabilities when running under Capacitor, else null
+ * (the caller falls back to `createWebCapabilities()`). Keeps the web bundle free of Capacitor —
+ * the native module is only imported when actually on a device.
  */
-export function createCapacitorCapabilities(): Capabilities {
-  throw new Error("@karta/native: CapacitorCapabilities is implemented at M2 (see docs/08).");
+export async function maybeCreateNativeCapabilities(): Promise<Capabilities | null> {
+  if (!isNativePlatform()) return null;
+  const { createCapacitorCapabilities } = await import("./capacitor-capabilities.js");
+  return createCapacitorCapabilities();
 }

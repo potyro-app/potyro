@@ -13,3 +13,7 @@ playwright-report/
 
 # Local agent config (do not publish)
 .claude/
+
+# Capacitor generated native projects (regenerate with: pnpm --filter @karta/native cap:add:android)
+packages/native/android/
+packages/native/ios/

@@ -1,0 +1,20 @@
+import type { CapacitorConfig } from "@capacitor/cli";
+
+// Capacitor wraps the SHELL's web build (packages/shell/dist) into a native Android/iOS app. Build
+// the shell first (`pnpm --filter @karta/shell build:web`), then `cap sync` copies dist → native.
+// The QuickJS isolate + capability seam are unchanged; only the composition root swaps in
+// CapacitorCapabilities (see src/index.ts → maybeCreateNativeCapabilities).
+const config: CapacitorConfig = {
+  appId: "io.karta.app",
+  appName: "Karta",
+  webDir: "../shell/dist",
+  plugins: {
+    LocalNotifications: {
+      // Exact, offline, app-closed reminders — the deciding native feature (business plan §8.3).
+      smallIcon: "ic_stat_icon_config_sample",
+      iconColor: "#1f6feb",
+    },
+  },
+};
+
+export default config;
