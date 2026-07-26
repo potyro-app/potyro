@@ -649,6 +649,16 @@ button {
 .k-gen-sources .k-gen-key {
   flex: 1 1 12rem;
 }
+.k-gen-edge {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.k-gen-model {
+  width: auto;
+  font-size: 0.8rem;
+  padding-block: 0.35rem;
+}
 .k-gen-source {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.8rem;
