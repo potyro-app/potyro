@@ -19,6 +19,7 @@
     "@karta/host": "workspace:*",
     "@karta/runtime": "workspace:*",
     "@karta/store": "workspace:*",
+    "@mlc-ai/web-llm": "^0.2.84",
     "esbuild": "^0.21.5",
     "karta": "workspace:*"
   }

@@ -13,12 +13,14 @@ test("create-an-app panel bundles + previews an app in the isolate", async ({ pa
   await expect(panel).toBeVisible();
   await expect(panel.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
 
-  // The AI "Generate" control is gated on a description + API key (no live call in the test).
-  const generate = panel.getByRole("button", { name: "Generate" });
-  await expect(generate).toBeDisabled();
+  // Three generation sources, each gated (no live model call in the test):
   await panel.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
+  await expect(panel.getByRole("button", { name: /claude -p/ })).toBeEnabled(); // no key needed
+  await expect(panel.getByRole("button", { name: "On-device" })).toBeVisible(); // gated on WebGPU (env-dependent)
+  const cloud = panel.getByRole("button", { name: "Cloud", exact: true });
+  await expect(cloud).toBeDisabled(); // needs a key
   await panel.getByLabel("Anthropic API key").fill("sk-ant-example");
-  await expect(generate).toBeEnabled();
+  await expect(cloud).toBeEnabled();
 
   // Bundle (esbuild-wasm) + run untrusted (QuickJS isolate) + render the preview.
   await panel.getByRole("button", { name: "Preview" }).click();

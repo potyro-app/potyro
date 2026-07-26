@@ -7,8 +7,6 @@ export type { GenPrompt, ModelBackend } from "./backend.js";
 export { FixtureBackend } from "./backend.js";
 export { SYSTEM_PROMPT, buildUserMessage, buildRepairMessage, extractSource } from "./prompt.js";
 export { ClaudeBackend, createClaudeBackend, type MessagesClient } from "./claude-backend.js";
+export { WebLLMBackend, createWebLLMBackend, type ChatEngine } from "./webllm-backend.js";
 export { HybridBackend } from "./hybrid-backend.js";
-// NOTE: the WebLLM (edge) backend is intentionally NOT re-exported here — it imports the browser-only
-// `@mlc-ai/web-llm`, which isn't in every consumer's type graph. Import it from the full barrel where
-// that package is present. Wiring edge generation into the shell is a follow-up.
 export { PROMPTS } from "./prompts.js";

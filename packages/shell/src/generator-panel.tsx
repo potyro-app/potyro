@@ -10,7 +10,14 @@
 import { useState } from "react";
 import { MemoryStore } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
-import { createClaudeBackend } from "@karta/generator/backends";
+import {
+  createClaudeBackend,
+  createWebLLMBackend,
+  SYSTEM_PROMPT,
+  buildUserMessage,
+  buildRepairMessage,
+  extractSource,
+} from "@karta/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
@@ -54,35 +61,79 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [genBusy, setGenBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
 
-  // Generate the source with Claude. The API key is the user's own, kept only in-memory for this
-  // local tool (dangerouslyAllowBrowser). Without a key + description the button stays disabled.
-  const generate = async (): Promise<void> => {
+  const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
+  const canDescribe = description.trim().length > 0 && !genBusy;
+
+  const withGen = async (label: string, run: () => Promise<string>): Promise<void> => {
     setGenBusy(true);
     setError(null);
     try {
-      const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
-      setSource(await backend.generate({ id: "panel", description }));
+      setSource(await run());
       setPreview(null);
     } catch (e) {
-      setError(`Generate failed: ${e instanceof Error ? e.message : String(e)}`);
+      setError(`${label} failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setGenBusy(false);
+      setProgress(null);
     }
   };
 
-  // Ask the model to fix the current source given the last error (browser-native repair loop).
-  const fixWithAI = async (): Promise<void> => {
-    if (!error) return;
-    setGenBusy(true);
-    try {
+  // 1) Local `claude -p` via the dev server — no API key, uses your existing Claude Code auth.
+  // The prompt (the generator's contract + few-shot) is built here; the dev endpoint just shells out.
+  const runCli = async (prompt: string): Promise<string> => {
+    const res = await fetch("/__generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
+    return extractSource((await res.json()).text as string);
+  };
+
+  const generateCli = (): Promise<void> =>
+    withGen("claude -p", () => runCli(`${SYSTEM_PROMPT}\n\n${buildUserMessage({ id: "panel", description })}`));
+
+  // 2) On-device via WebLLM (WebGPU) — fully offline once the model is cached.
+  const generateEdge = (): Promise<void> =>
+    withGen("On-device", async () => {
+      const backend = await createWebLLMBackend({
+        initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
+      });
+      return backend.generate({ id: "panel", description });
+    });
+
+  // 3) Cloud with the user's own API key (in-memory only, this local tool).
+  const generateCloud = (): Promise<void> =>
+    withGen("Cloud", async () => {
       const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
-      setSource(await backend.repair(source, [error], { id: "panel", description }));
-    } catch (e) {
-      setError(`Fix failed: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setGenBusy(false);
-    }
+      return backend.generate({ id: "panel", description });
+    });
+
+  // Feed the last error back to fix the source. Uses cloud when a key is set, else `claude -p`.
+  const fixWithAI = (): Promise<void> => {
+    const lastError = error;
+    if (!lastError) return Promise.resolve();
+    return withGen("Fix", async () => {
+      if (apiKey) {
+        const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
+        return backend.repair(source, [lastError], { id: "panel", description });
+      }
+      const prompt = [
+        SYSTEM_PROMPT,
+        "",
+        buildUserMessage({ id: "panel", description }),
+        "",
+        "The previous attempt:",
+        "```ts",
+        source,
+        "```",
+        "",
+        buildRepairMessage([lastError]),
+      ].join("\n");
+      return runCli(prompt);
+    });
   };
 
   const runPreview = async (): Promise<void> => {
@@ -120,35 +171,43 @@ export function GeneratorPanel({ onClose }: { onClose: () => void }) {
       <div className="k-modal k-gen-panel" onClick={(e) => e.stopPropagation()}>
         <h3>Create an app</h3>
         <p className="k-muted">
-          Describe an app (Claude fills the source), or paste/edit a Karta <code>.app.ts</code>, then preview it —
+          Describe an app (the model fills the source), or paste/edit a Karta <code>.app.ts</code>, then preview it —
           it runs untrusted in the QuickJS isolate.
         </p>
 
-        <div className="k-gen-generate">
-          <input
-            className="k-input"
-            aria-label="Describe the app"
-            placeholder="Describe an app… e.g. a reading tracker with progress"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
+        <input
+          className="k-input"
+          aria-label="Describe the app"
+          placeholder="Describe an app… e.g. a reading tracker with progress"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <div className="k-gen-sources">
+          <button type="button" className="k-add k-primary-action" disabled={!canDescribe} onClick={() => void generateCli()}>
+            {genBusy ? "Generating…" : "Generate (claude -p)"}
+          </button>
+          <button
+            type="button"
+            className="k-add"
+            disabled={!canDescribe || !hasWebGPU}
+            title={hasWebGPU ? "Runs a small model on-device (WebGPU)" : "Needs a WebGPU browser"}
+            onClick={() => void generateEdge()}
+          >
+            On-device
+          </button>
           <input
             className="k-input k-gen-key"
             aria-label="Anthropic API key"
             type="password"
-            placeholder="sk-ant-… (your key, kept in memory)"
+            placeholder="or paste sk-ant-… for cloud"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
-          <button
-            type="button"
-            className="k-add k-primary-action"
-            disabled={genBusy || !apiKey || description.trim().length === 0}
-            onClick={() => void generate()}
-          >
-            {genBusy ? "Generating…" : "Generate"}
+          <button type="button" className="k-add" disabled={!canDescribe || !apiKey} onClick={() => void generateCloud()}>
+            Cloud
           </button>
         </div>
+        {progress ? <p className="k-muted">{progress}</p> : null}
 
         <textarea
           className="k-input k-gen-source"
