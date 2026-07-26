@@ -44,4 +44,11 @@ test("studio previews an app in the isolate by default and saves it to My Apps",
   await expect(page.locator("h1").first()).toHaveText("My App");
   await expect(page.locator(".k-prov").first()).toHaveText("untrusted");
   await expect(page.getByRole("button", { name: "Switch app" })).toBeVisible(); // the ⊞ Apps switcher
+
+  // The ⊞ Apps launcher lists the saved app under My Apps, and can delete it inline.
+  await page.getByRole("button", { name: "Switch app" }).click();
+  const overlay = page.locator(".k-launcher-overlay");
+  await expect(overlay.locator(".k-launch-usertile .k-launch-name")).toHaveText("My App");
+  await overlay.getByRole("button", { name: "Delete My App" }).click();
+  await expect(overlay.locator(".k-launch-usertile")).toHaveCount(0);
 });
