@@ -7,7 +7,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
-import { GeneratorPanel } from "./generator-panel.js";
+import { Studio } from "./studio.js";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -81,7 +81,7 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
           ) : null}
           {generator ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
-              New app
+              Studio
             </button>
           ) : null}
           {onImport ? (
@@ -141,7 +141,7 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
         </div>
       ) : null}
 
-      {genOpen ? <GeneratorPanel onClose={() => setGenOpen(false)} /> : null}
+      {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
 
       <Toasts toaster={toaster} />
     </div>

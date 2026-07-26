@@ -75,22 +75,26 @@ the in-app **Due** view (native exact notifications are a separate, device-only 
 
 Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a real, standalone DB.
 
-## 6. "Create an app" panel — run any app safely
+## 6. Studio — build, run, and save apps (full screen)
+
+Header **Studio** opens a full-screen builder. The **live app is the default view** — the starter
+app renders immediately (bundled in-browser with esbuild-wasm, run **untrusted in the QuickJS
+isolate**, `untrusted` badge). It's fully interactive: add records, switch pages, tick things.
 
 | Do | Expect |
 |---|---|
-| Header **New app** | A panel with a starter `.app.ts` in an editable source box |
-| Click **Preview** | The source is bundled in-browser (esbuild-wasm) and run **untrusted in the QuickJS isolate**; the app renders inline with an `untrusted` badge |
-| Edit the source (add a field/entity/page) → **Preview** again | Your edited app renders |
-| **Describe an app…** → **Generate (claude -p)** | Uses your local Claude Code auth via the dev server — **no API key**. Writes a `.app.ts` into the source box; **Preview** it |
-| **On-device** (with a WebGPU browser) | Runs a small coder model locally (WebLLM); first use downloads + caches the model, then fully offline. Pick the model from the dropdown — **0.5B** (~0.5 GB, fastest) → **1.5B** (~1 GB, recommended) → **3B** (~2 GB, best) |
-| **Built-in (Chrome)** — only shows if your browser exposes the Prompt API | Uses Chrome's built-in **Gemini Nano** — on-device, **no weight download** (the model ships in the browser). General-purpose (not coder-tuned), so expect more **Fix** rounds |
-| **Cloud** (paste `sk-ant-…`) | Uses your own Anthropic key (in-memory only) — for when the CLI isn't available |
-| On any generated app that errors → **Fix with AI** | Feeds the error back to the model (claude -p, or cloud if a key is set) |
+| Open **Studio** | Full-screen: controls on the left, the **running app** filling the stage |
+| Type in **Describe your app** (a textarea) → **Generate (claude -p)** | Local Claude Code auth via the dev server — **no API key**. The app regenerates and re-runs in the preview |
+| **On-device** (WebGPU browser) + the model dropdown | Runs a local coder model (WebLLM): **0.5B** (~0.5 GB, fastest) → **1.5B** (~1 GB, recommended) → **3B** (~2 GB, best); cached then offline |
+| **Built-in (Chrome)** — only if your browser exposes the Prompt API | Chrome's built-in **Gemini Nano**, on-device, **no download** (general-purpose → expect more **Fix** rounds) |
+| **Cloud** (paste `sk-ant-…`) | Your own Anthropic key (in-memory only) |
+| Toggle **Source** (top of the stage) → edit → **Run ▶** | See/edit the `.app.ts`; **Run** re-bundles and previews. **Preview** is the default tab |
+| On an error → **Fix with AI** | Feeds the error back (claude -p, or cloud if a key is set) |
+| **Save to My Apps** | The app is stored locally and appears in the **My Apps** list (left). Saved apps re-open with a **durable per-app store**, so their data persists — they're usable, not preview-only |
+| Click a saved app in **My Apps** | It re-opens and runs; **✕** deletes it |
 
-> **Three ways to generate, no key required for the first two:** `claude -p` reuses your Claude Code
-> login (dev server only); **On-device** needs a WebGPU browser (Chrome/Edge) and a one-time model
-> download. **Cloud** is the fallback if you'd rather paste a key.
+> **Answers "how do I save an app?"** — Save to My Apps. Everything you make lives in that list and
+> re-opens as a real, running app. (A shared/community library is a later layer.)
 
 ## 7. Sandbox mode (untrusted execution)
 
@@ -106,9 +110,10 @@ QuickJS-WASM with mediated capabilities, not directly.
 
 ## What's intentionally not done yet
 
-- **Native app** (Capacitor) — exact offline notifications, camera, etc. (needs a device build).
-- **On-device generation** in the panel (WebGPU/WebLLM) — backend exists, panel wiring pending.
-- **Run an arbitrary *shared* app** (community fork) — the runtime path exists; the discovery/registry UI does not.
+- **Native app** (Capacitor/Android) — the target is wired (see `docs/13-native-android.md`); exact
+  offline notifications, camera, etc. need a device build to exercise.
+- **Run an arbitrary *shared* app** (community fork) — the runtime path exists and **My Apps** is the
+  local library; the shared/community discovery/registry UI does not exist yet.
 - **CRDT sync** across devices.
 - Functional **snapshot vs mergeable** export stripping (waits on CRDT).
 
