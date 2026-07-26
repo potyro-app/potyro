@@ -31,6 +31,9 @@ test("studio previews an app in the isolate by default and saves it to My Apps",
   await studio.getByLabel("Anthropic API key").fill("sk-ant-example");
   await expect(cloud).toBeEnabled();
 
+  // With an app previewed, "Modify this app" adapts the current app (no live model call here).
+  await expect(studio.getByRole("button", { name: /Modify this app/ })).toBeEnabled();
+
   // Source is behind a toggle, not the default view.
   await studio.getByRole("tab", { name: "Source" }).click();
   await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);

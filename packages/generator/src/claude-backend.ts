@@ -4,7 +4,7 @@
 // `createClaudeBackend` factory wires the real Anthropic SDK.
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
 
 // The slice of the Anthropic SDK we use (structurally satisfied by the real client + by test fakes).
 export interface MessageParam {
@@ -67,6 +67,21 @@ export class ClaudeBackend implements ModelBackend {
         { role: "user", content: buildUserMessage(prompt) },
         { role: "assistant", content: "```ts\n" + source + "\n```" },
         { role: "user", content: buildRepairMessage(errors) },
+      ],
+    });
+    return extractSource(joinText(res));
+  }
+
+  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
+    const res = await this.client.messages.create({
+      model: this.model,
+      max_tokens: this.maxTokens,
+      system: SYSTEM_PROMPT,
+      thinking: { type: "adaptive" },
+      messages: [
+        { role: "user", content: buildUserMessage(prompt) },
+        { role: "assistant", content: "```ts\n" + source + "\n```" },
+        { role: "user", content: buildModifyMessage(instruction) },
       ],
     });
     return extractSource(joinText(res));

@@ -16,6 +16,9 @@ export interface ModelBackend {
   /** Optional structured-repair step: given the failing source + errors, return a fixed source.
    *  Backends without it simply don't get repair attempts (the harness records 0 repairs). */
   repair?(source: string, errors: string[], prompt: GenPrompt): Promise<string>;
+  /** Optional edit step: given the current source + a natural-language change, return the updated
+   *  source (the whole file). Powers "adapt this app" without regenerating from scratch. */
+  modify?(source: string, instruction: string, prompt: GenPrompt): Promise<string>;
 }
 
 /**

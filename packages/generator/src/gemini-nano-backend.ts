@@ -7,7 +7,7 @@
 // so it's unit-testable without Chrome; `createGeminiNanoBackend` resolves the real global.
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
 
 /** A live prompting session (Chrome's `LanguageModel` session). */
 export interface PromptSession {
@@ -60,6 +60,21 @@ export class GeminiNanoBackend implements ModelBackend {
       "```",
       "",
       buildRepairMessage(errors),
+    ].join("\n");
+    const session = await this.newSession();
+    return once(session, async (s) => extractSource(await s.prompt(message)));
+  }
+
+  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
+    const message = [
+      buildUserMessage(prompt),
+      "",
+      "The current app:",
+      "```ts",
+      source,
+      "```",
+      "",
+      buildModifyMessage(instruction),
     ].join("\n");
     const session = await this.newSession();
     return once(session, async (s) => extractSource(await s.prompt(message)));

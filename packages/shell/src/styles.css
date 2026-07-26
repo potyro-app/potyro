@@ -690,6 +690,13 @@ button {
 .k-gen-cloud .k-input {
   flex: 1 1 auto;
 }
+.k-gen-modify {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
+}
 .k-gen-edge {
   display: inline-flex;
   gap: 0.35rem;
