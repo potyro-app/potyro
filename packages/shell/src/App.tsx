@@ -33,7 +33,9 @@ interface AppProps {
 
 export function App({ runtime, provenance, toaster, appId, apps, currentKind, onExport, onImport, generator }: AppProps) {
   const def = runtime.definition;
-  const visiblePages = def.pages.filter((p) => !p.hidden);
+  // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
+  // them out of the tab bar so nav shows real sections only (no redundant singular "Session" tabs).
+  const visiblePages = def.pages.filter((p) => !p.hidden && (p.view as { type?: string }).type !== "detail");
   const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);

@@ -20,34 +20,38 @@ function RowActions({
   entity,
   actions,
   id,
+  onEdit,
 }: {
   runtime: BuiltinViewProps["runtime"];
   entity: string;
   actions: string[] | undefined;
   id: string;
+  onEdit?: (entity: string, id: string) => void;
 }) {
-  if (!actions?.length) return null;
+  if (!actions?.length && !onEdit) return null;
   return (
-    <span className="k-row-actions">
-      {actions.map((a) => (
+    <span className="k-row-actions" onClick={(e) => e.stopPropagation()}>
+      {actions?.map((a) => (
         <button
           key={a}
           type="button"
           className="k-action"
-          onClick={(e) => {
-            e.stopPropagation();
-            void runtime.runAction(entity, a, id);
-          }}
+          onClick={() => void runtime.runAction(entity, a, id)}
         >
           {a}
         </button>
       ))}
+      {onEdit ? (
+        <button type="button" className="k-action" aria-label="Edit" onClick={() => onEdit(entity, id)}>
+          Edit
+        </button>
+      ) : null}
     </span>
   );
 }
 
 export function ListView(props: BuiltinViewProps) {
-  const { runtime, pageId, params, navigate } = props;
+  const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as {
@@ -56,6 +60,14 @@ export function ListView(props: BuiltinViewProps) {
     onOpen?: { page: string; param?: Record<string, string> };
     emptyText?: string;
   };
+
+  // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
+  // always reachable to view/edit even when the generated app didn't link a detail page.
+  const openRow = view.onOpen
+    ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
+    : onEdit
+    ? (row: Resolved) => onEdit(view.entity, String(row.id))
+    : undefined;
 
   if (loading) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">{view.emptyText ?? "Nothing here yet."}</p>;
@@ -68,8 +80,8 @@ export function ListView(props: BuiltinViewProps) {
           <li
             key={row.id}
             className="k-list-row"
-            data-clickable={Boolean(view.onOpen)}
-            onClick={view.onOpen ? () => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row)) : undefined}
+            data-clickable={Boolean(openRow)}
+            onClick={openRow ? () => openRow(row) : undefined}
           >
             {cell.mediaUrl ? <img className="k-thumb" src={cell.mediaUrl} alt="" width={48} height={48} /> : null}
             <span className="k-list-text">
@@ -85,7 +97,7 @@ export function ListView(props: BuiltinViewProps) {
                 </span>
               ) : null}
             </span>
-            <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={row.id} />
+            <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={String(row.id)} onEdit={onEdit} />
           </li>
         );
       })}
@@ -94,10 +106,16 @@ export function ListView(props: BuiltinViewProps) {
 }
 
 export function GalleryView(props: BuiltinViewProps) {
-  const { runtime, pageId, params, navigate } = props;
+  const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
-  const view = getView(runtime, pageId) as { onOpen?: { page: string; param?: Record<string, string> }; emptyText?: string };
+  const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; emptyText?: string };
+
+  const openCard = view.onOpen
+    ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
+    : onEdit
+    ? (row: Resolved) => onEdit(view.entity, String(row.id))
+    : undefined;
 
   if (loading) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">{view.emptyText ?? "Nothing here yet."}</p>;
@@ -111,7 +129,7 @@ export function GalleryView(props: BuiltinViewProps) {
             key={row.id}
             type="button"
             className="k-card"
-            onClick={view.onOpen ? () => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row)) : undefined}
+            onClick={openCard ? () => openCard(row) : undefined}
           >
             {cell.mediaUrl ? <img className="k-card-media" src={cell.mediaUrl} alt="" /> : <div className="k-card-media k-placeholder" />}
             <span className="k-primary">{cell.primary ?? String(row.id)}</span>
@@ -124,9 +142,9 @@ export function GalleryView(props: BuiltinViewProps) {
 }
 
 export function TableView(props: BuiltinViewProps) {
-  const { runtime, pageId, params } = props;
+  const { runtime, pageId, params, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
-  const view = getView(runtime, pageId) as { display?: { columns: string[] } };
+  const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] } };
   const columns = view.display?.columns ?? [];
 
   if (loading) return <p className="k-loading">Loading…</p>;
@@ -139,14 +157,20 @@ export function TableView(props: BuiltinViewProps) {
           {columns.map((c) => (
             <th key={c}>{c}</th>
           ))}
+          {onEdit ? <th aria-label="Edit" /> : null}
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id}>
+          <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
             {columns.map((c) => (
               <td key={c}>{formatValue(row[c])}</td>
             ))}
+            {onEdit ? (
+              <td>
+                <button type="button" className="k-action" onClick={(e) => { e.stopPropagation(); onEdit(view.entity, String(row.id)); }}>Edit</button>
+              </td>
+            ) : null}
           </tr>
         ))}
       </tbody>

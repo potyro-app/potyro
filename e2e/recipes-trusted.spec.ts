@@ -55,6 +55,26 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await expect(page.locator(".k-chip[data-on='true']").first()).toBeVisible(); // filter state applied
 });
 
+test("edits an existing record in place from the list (universal edit)", async ({ page }) => {
+  await openRecipes(page);
+  const firstRow = page.locator(".k-list-row").first();
+  await expect(firstRow).toBeVisible();
+
+  // Every list row is editable — click its inline Edit (previously impossible without a wired detail).
+  await firstRow.getByRole("button", { name: "Edit" }).click();
+  const modal = page.locator(".k-modal");
+  await expect(modal).toBeVisible();
+
+  // It's an EDIT form: the name is prefilled and the button says "Save changes", not "Create".
+  const nameInput = modal.getByRole("textbox").first();
+  expect((await nameInput.inputValue()).length).toBeGreaterThan(0);
+  await nameInput.fill("Edited Dish E2E");
+  await modal.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(modal).toBeHidden();
+  await expect(page.locator(".k-list-row", { hasText: "Edited Dish E2E" })).toBeVisible();
+});
+
 test("captures responsive screenshots of the recipes list", async ({ page }) => {
   await openRecipes(page);
   await expect(page.locator(".k-list-row").first()).toBeVisible();
