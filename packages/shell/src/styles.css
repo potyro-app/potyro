@@ -812,6 +812,117 @@ button {
   }
 }
 
+/* Launcher — home surface + slide-in overlay */
+.k-launcher {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.k-launcher-home {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--space);
+  min-height: 100%;
+}
+.k-launcher-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.k-launcher-head .k-brand strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+.k-launch-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.k-launch-title {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.k-launch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.k-launch-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  text-align: left;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: transform 150ms var(--ease), box-shadow 150ms var(--ease), border-color 150ms var(--ease);
+}
+.k-launch-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent);
+}
+.k-launch-tile[data-active="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.k-launch-avatar {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--accent) 22%, var(--paper));
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.k-launch-name {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.k-launch-new {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+.k-launch-empty {
+  margin: 0;
+}
+
+/* Overlay variant: a scrim + a panel sliding in from the left */
+.k-launcher-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: oklch(20% 0.02 60 / 0.32);
+  animation: k-fade 150ms var(--ease);
+}
+.k-launcher-overlay {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(420px, 92vw);
+  height: 100%;
+  overflow: auto;
+  padding: 1.25rem;
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: k-slide-in 240ms var(--ease);
+}
+@keyframes k-fade {
+  from { opacity: 0; }
+}
+@keyframes k-slide-in {
+  from { transform: translateX(-100%); }
+}
+
 /* Filter-chip chrome groups (M3) */
 .k-chip-group {
   display: flex;

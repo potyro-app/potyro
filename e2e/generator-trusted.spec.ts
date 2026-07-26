@@ -38,4 +38,10 @@ test("studio previews an app in the isolate by default and saves it to My Apps",
   // Save to the local library → it appears in "My Apps".
   await studio.getByRole("button", { name: /Save to My Apps/ }).click();
   await expect(studio.locator(".k-myapps .k-myapp-open")).toHaveText("My App");
+
+  // The saved app is now launchable full-screen from its route — runs UNTRUSTED with its own store.
+  await page.goto("/?user=my-app");
+  await expect(page.locator("h1").first()).toHaveText("My App");
+  await expect(page.locator(".k-prov").first()).toHaveText("untrusted");
+  await expect(page.getByRole("button", { name: "Switch app" })).toBeVisible(); // the ⊞ Apps switcher
 });

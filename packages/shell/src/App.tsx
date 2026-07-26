@@ -8,6 +8,8 @@ import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { Studio } from "./studio.js";
+import { Launcher, openBuiltinApp, openUserApp } from "./launcher.js";
+import { listUserApps } from "./user-apps.js";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -21,19 +23,22 @@ interface AppProps {
   toaster: Toaster;
   appId?: string;
   apps?: readonly string[];
+  /** How the current app was launched — for highlighting it in the launcher. */
+  currentKind?: "builtin" | "user";
   onExport?: () => void;
   onImport?: () => void;
-  /** Enables the "New app" generator panel (the shell's top-level app only — not the preview). */
+  /** Enables the Studio + launcher (the shell's top-level app only — not the preview). */
   generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, onExport, onImport, generator }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, currentKind, onExport, onImport, generator }: AppProps) {
   const def = runtime.definition;
   const visiblePages = def.pages.filter((p) => !p.hidden);
   const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
 
   const params = paramsByPage[pageId] ?? {};
   const setParam = (key: string, value: unknown): void =>
@@ -63,21 +68,10 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
           <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
         </div>
         <div className="k-header-actions">
-          {apps && apps.length > 1 ? (
-            <select
-              className="k-app-switch"
-              aria-label="Switch app"
-              value={appId ?? ""}
-              onChange={(e) => {
-                location.search = `?app=${e.target.value}`;
-              }}
-            >
-              {apps.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
+          {generator ? (
+            <button type="button" className="k-add k-apps-btn" aria-label="Switch app" onClick={() => setLauncherOpen(true)}>
+              ⊞ Apps
+            </button>
           ) : null}
           {generator ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
@@ -139,6 +133,22 @@ export function App({ runtime, provenance, toaster, appId, apps, onExport, onImp
             />
           </div>
         </div>
+      ) : null}
+
+      {launcherOpen ? (
+        <Launcher
+          variant="overlay"
+          builtins={apps ?? []}
+          userApps={listUserApps()}
+          selected={appId ? { kind: currentKind ?? "builtin", id: appId } : undefined}
+          onOpenBuiltin={openBuiltinApp}
+          onOpenUser={openUserApp}
+          onNewApp={() => {
+            setLauncherOpen(false);
+            setGenOpen(true);
+          }}
+          onClose={() => setLauncherOpen(false)}
+        />
       ) : null}
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
