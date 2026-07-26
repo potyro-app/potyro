@@ -5,7 +5,8 @@
 // user's saved apps from My Apps, run in the QuickJS isolate). Selecting a tile navigates via a
 // reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
-import type { UserApp } from "./user-apps.js";
+import { useState } from "react";
+import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 
 export function openBuiltinApp(id: string): void {
   location.search = `?app=${encodeURIComponent(id)}`;
@@ -56,6 +57,20 @@ function Tile({
 }
 
 export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin, onOpenUser, onNewApp, onClose }: LauncherProps) {
+  // Local copy so inline delete/rename reflect immediately (navigation elsewhere is reload-based).
+  const [myApps, setMyApps] = useState(userApps);
+  const del = (a: UserApp): void => {
+    removeUserApp(a.id);
+    setMyApps(listUserApps());
+  };
+  const rename = (a: UserApp): void => {
+    const name = globalThis.prompt("Rename app", a.name);
+    if (name && name.trim()) {
+      renameUserApp(a.id, name, new Date().toISOString());
+      setMyApps(listUserApps());
+    }
+  };
+
   const body = (
     <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label="App launcher" onClick={(e) => e.stopPropagation()}>
       <header className="k-launcher-head">
@@ -65,9 +80,10 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
           <span className="k-muted">{variant === "home" ? "· choose an app" : "· switch app"}</span>
         </div>
         {onClose ? (
-          <button type="button" className="k-add" aria-label="Close launcher" onClick={onClose}>
-            Close ✕
-          </button>
+          <div className="k-launcher-head-actions">
+            <button type="button" className="k-add" onClick={goHome}>⌂ Home</button>
+            <button type="button" className="k-add" aria-label="Close launcher" onClick={onClose}>Close ✕</button>
+          </div>
         ) : null}
       </header>
 
@@ -89,14 +105,19 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       <section className="k-launch-section">
         <h3 className="k-launch-title">My Apps</h3>
         <div className="k-launch-grid">
-          {userApps.map((a) => (
-            <Tile
-              key={a.id}
-              name={a.name}
-              badge="untrusted"
-              active={selected?.kind === "user" && selected.id === a.id}
-              onOpen={() => onOpenUser(a.id)}
-            />
+          {myApps.map((a) => (
+            <div key={a.id} className="k-launch-usertile">
+              <Tile
+                name={a.name}
+                badge="untrusted"
+                active={selected?.kind === "user" && selected.id === a.id}
+                onOpen={() => onOpenUser(a.id)}
+              />
+              <div className="k-launch-actions">
+                <button type="button" className="k-launch-act" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => rename(a)}>✎</button>
+                <button type="button" className="k-launch-act" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => del(a)}>✕</button>
+              </div>
+            </div>
           ))}
           <button type="button" className="k-launch-tile k-launch-new" onClick={onNewApp}>
             <span className="k-launch-avatar" aria-hidden>+</span>
@@ -104,7 +125,7 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
             <span className="k-muted">Studio</span>
           </button>
         </div>
-        {userApps.length === 0 ? (
+        {myApps.length === 0 ? (
           <p className="k-muted k-launch-empty">No saved apps yet — create one in the Studio, then it appears here.</p>
         ) : null}
       </section>

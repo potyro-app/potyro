@@ -892,6 +892,46 @@ button {
   border-style: dashed;
   color: var(--ink-soft);
 }
+.k-launcher-head-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.k-launch-usertile {
+  position: relative;
+  display: flex;
+}
+.k-launch-usertile .k-launch-tile {
+  flex: 1 1 auto;
+}
+.k-launch-actions {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  gap: 0.15rem;
+  opacity: 0;
+  transition: opacity 150ms var(--ease);
+}
+.k-launch-usertile:hover .k-launch-actions,
+.k-launch-usertile:focus-within .k-launch-actions {
+  opacity: 1;
+}
+.k-launch-act {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.k-launch-act:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
 .k-launch-empty {
   margin: 0;
 }

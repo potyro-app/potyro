@@ -64,3 +64,10 @@ export function saveUserApp(input: { id?: string; name: string; source: string }
 export function removeUserApp(id: string): void {
   write(read().filter((a) => a.id !== id));
 }
+
+/** Rename a saved app in place (keeps its id, source, and data namespace). */
+export function renameUserApp(id: string, name: string, now: string): void {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  write(read().map((a) => (a.id === id ? { ...a, name: trimmed, updatedAt: now } : a)));
+}

@@ -8,7 +8,7 @@ import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { Studio } from "./studio.js";
-import { Launcher, openBuiltinApp, openUserApp } from "./launcher.js";
+import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { listUserApps } from "./user-apps.js";
 import type { Toaster } from "./toaster.js";
 
@@ -68,6 +68,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
           <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
         </div>
         <div className="k-header-actions">
+          {generator ? (
+            <button type="button" className="k-add" aria-label="Home" title="Launcher home" onClick={goHome}>
+              ⌂
+            </button>
+          ) : null}
           {generator ? (
             <button type="button" className="k-add k-apps-btn" aria-label="Switch app" onClick={() => setLauncherOpen(true)}>
               ⊞ Apps
