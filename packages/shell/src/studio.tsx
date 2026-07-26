@@ -16,6 +16,7 @@ import {
   SYSTEM_PROMPT,
   buildUserMessage,
   buildRepairMessage,
+  buildModifyMessage,
   extractSource,
 } from "@karta/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
@@ -69,6 +70,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const [model, setModel] = useState("Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC");
   const [savedApps, setSavedApps] = useState<UserApp[]>(() => listUserApps());
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [engine, setEngine] = useState<"cli" | "edge" | "builtin" | "cloud">("cli");
   const buildRef = useRef(0);
 
   const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
@@ -139,33 +141,49 @@ export function Studio({ onClose }: { onClose: () => void }) {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
     return extractSource((await res.json()).text as string);
   };
-  const generateCli = (): Promise<void> =>
-    withGen("claude -p", () => runCli(`${SYSTEM_PROMPT}\n\n${buildUserMessage({ id: "studio", description })}`));
+  const generateCli = (): Promise<void> => {
+    setEngine("cli");
+    return withGen("claude -p", () => runCli(`${SYSTEM_PROMPT}\n\n${buildUserMessage({ id: "studio", description })}`));
+  };
 
   // 2) On-device via WebLLM (WebGPU) — offline once the model is cached.
-  const generateEdge = (): Promise<void> =>
-    withGen("On-device", async () => {
-      const backend = await createWebLLMBackend({
-        model,
-        initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
-      });
-      return backend.generate({ id: "studio", description });
-    });
+  const edgeBackend = () =>
+    createWebLLMBackend({ model, initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…") });
+  const generateEdge = (): Promise<void> => {
+    setEngine("edge");
+    return withGen("On-device", async () => (await edgeBackend()).generate({ id: "studio", description }));
+  };
 
   // 2b) Chrome built-in AI (Gemini Nano) — on-device, no download.
-  const generateBuiltIn = (): Promise<void> =>
-    withGen("Built-in", async () => {
+  const generateBuiltIn = (): Promise<void> => {
+    setEngine("builtin");
+    return withGen("Built-in", async () => {
       setProgress("Preparing Chrome built-in model…");
-      const backend = await createGeminiNanoBackend();
-      return backend.generate({ id: "studio", description });
+      return (await createGeminiNanoBackend()).generate({ id: "studio", description });
     });
+  };
 
   // 3) Cloud with the user's own API key (in-memory only).
-  const generateCloud = (): Promise<void> =>
-    withGen("Cloud", async () => {
-      const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
-      return backend.generate({ id: "studio", description });
+  const generateCloud = (): Promise<void> => {
+    setEngine("cloud");
+    return withGen("Cloud", async () => (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).generate({ id: "studio", description }));
+  };
+
+  // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
+  // apply, and the model returns the whole updated file — keeping the rest intact. Uses the same
+  // engine you last generated with (defaults to claude -p).
+  const modify = (): Promise<void> => {
+    const instruction = description.trim();
+    if (!instruction || !preview) return Promise.resolve();
+    const p = { id: "studio", description: instruction };
+    return withGen("Modify", async () => {
+      if (engine === "cloud") return (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).modify(source, instruction, p);
+      if (engine === "edge") return (await edgeBackend()).modify(source, instruction, p);
+      if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instruction, p);
+      const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instruction)].join("\n");
+      return runCli(prompt);
     });
+  };
 
   const fixWithAI = (): Promise<void> => {
     const lastError = error;
@@ -237,12 +255,12 @@ export function Studio({ onClose }: { onClose: () => void }) {
 
       <div className="k-studio-body">
         <aside className="k-studio-controls">
-          <label className="k-field-label" htmlFor="k-studio-desc">Describe your app</label>
+          <label className="k-field-label" htmlFor="k-studio-desc">Describe an app — or a change to make</label>
           <textarea
             id="k-studio-desc"
             className="k-input k-studio-desc"
             aria-label="Describe the app"
-            placeholder="e.g. a reading tracker with a rating and a 'currently reading' shelf"
+            placeholder="Create: “a reading tracker with a rating”  ·  Modify: “add a 5-star rating field”"
             rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -292,6 +310,20 @@ export function Studio({ onClose }: { onClose: () => void }) {
               Cloud
             </button>
           </div>
+          {preview ? (
+            <div className="k-gen-modify">
+              <button
+                type="button"
+                className="k-add k-primary-action"
+                disabled={!canDescribe}
+                title="Adapt the current app with the agent (keeps the rest; uses the engine you last generated with)"
+                onClick={() => void modify()}
+              >
+                {genBusy ? "Working…" : "✎ Modify this app"}
+              </button>
+              <span className="k-muted">edits the running app</span>
+            </div>
+          ) : null}
           {progress ? <p className="k-muted k-studio-progress">{progress}</p> : null}
 
           <div className="k-studio-savebar">

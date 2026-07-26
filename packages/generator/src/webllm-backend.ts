@@ -6,7 +6,7 @@
 // validator-gated, and safe-when-wrong (untrusted → isolate).
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -76,6 +76,20 @@ export class WebLLMBackend implements ModelBackend {
         { role: "user", content: buildUserMessage(prompt) },
         { role: "assistant", content: "```ts\n" + source + "\n```" },
         { role: "user", content: buildRepairMessage(errors) },
+      ],
+      temperature: 0.1,
+      max_tokens: MAX_TOKENS,
+    });
+    return extractSource(firstContent(res));
+  }
+
+  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
+    const res = await this.engine.chat.completions.create({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserMessage(prompt) },
+        { role: "assistant", content: "```ts\n" + source + "\n```" },
+        { role: "user", content: buildModifyMessage(instruction) },
       ],
       temperature: 0.1,
       max_tokens: MAX_TOKENS,

@@ -89,6 +89,16 @@ export function buildUserMessage(prompt: GenPrompt): string {
   return `Create a Karta app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
 }
 
+export function buildModifyMessage(instruction: string): string {
+  return [
+    "Apply this change to the app above, keeping everything else intact:",
+    "",
+    `"${instruction}"`,
+    "",
+    "Return the complete updated .app.ts (the whole file, not a diff) in one ```ts block.",
+  ].join("\n");
+}
+
 export function buildRepairMessage(errors: string[]): string {
   return [
     "The app you produced failed these checks:",

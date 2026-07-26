@@ -65,6 +65,20 @@ describe("ClaudeBackend prompt assembly", () => {
     expect(msgs[1]!.content).toContain("BROKEN SOURCE");
     expect(msgs[2]!.content).toContain("validate: boom");
   });
+
+  it("modify feeds back the current source and the change instruction", async () => {
+    const { client, calls } = fakeClient(() => "```ts\n" + GOOD + "\n```");
+    const backend = new ClaudeBackend(client);
+
+    const src = await backend.modify("CURRENT SOURCE", "add a 5-star rating field", { id: "t", description: "books" });
+
+    expect(src).toBe(GOOD);
+    const msgs = calls[0]!.messages;
+    expect(msgs).toHaveLength(3);
+    expect(msgs[1]).toMatchObject({ role: "assistant" });
+    expect(msgs[1]!.content).toContain("CURRENT SOURCE"); // the app being adapted
+    expect(msgs[2]!.content).toContain("add a 5-star rating field"); // the change, not framed as an error
+  });
 });
 
 describe("ClaudeBackend drives the KA-06 eval repair loop", () => {
