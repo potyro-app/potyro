@@ -1,7 +1,7 @@
 // Shell entry / composition root wiring. `pnpm dev` → trusted (recipes imported directly).
 // `pnpm dev:sandbox` (mode "sandbox") → the same app UNTRUSTED in the QuickJS-WASM isolate.
 
-import { StrictMode } from "react";
+import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { KartaApp, KartaRecord } from "karta";
@@ -12,6 +12,9 @@ import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
 import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
+import { Studio } from "./studio.js";
+import { Launcher, openBuiltinApp, openUserApp } from "./launcher.js";
+import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -22,9 +25,15 @@ const SANDBOX = import.meta.env.MODE === "sandbox";
 const APPS = ["recipes", "plants", "places", "workout"] as const;
 type AppId = (typeof APPS)[number];
 
-function selectedAppId(): AppId {
-  const q = new URLSearchParams(location.search).get("app");
-  return (APPS as readonly string[]).includes(q ?? "") ? (q as AppId) : "recipes";
+// Route from the URL: a saved user app (?user=), a built-in example (?app=), or the launcher home.
+type Route = { kind: "builtin"; id: AppId } | { kind: "user"; id: string } | { kind: "home" };
+function route(): Route {
+  const p = new URLSearchParams(location.search);
+  const user = p.get("user");
+  if (user && getUserApp(user)) return { kind: "user", id: user };
+  const app = p.get("app");
+  if (app && (APPS as readonly string[]).includes(app)) return { kind: "builtin", id: app as AppId };
+  return { kind: "home" };
 }
 
 // Static specifiers so Vite can resolve each sandbox virtual module.
@@ -129,14 +138,32 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
   location.search = `?app=${appId}`; // reload → boot() detects the pending import
 }
 
-async function boot(): Promise<void> {
-  const root = document.getElementById("root");
-  if (!root) throw new Error("no #root");
+// The launcher home — first surface when no app is selected. Lists trusted examples + untrusted
+// saved apps; a tile launches (reload → ?app / ?user); "New app" opens the Studio in place.
+function Home() {
+  const [studio, setStudio] = useState(false);
+  return (
+    <>
+      <Launcher
+        variant="home"
+        builtins={APPS as readonly string[]}
+        userApps={listUserApps()}
+        onOpenBuiltin={openBuiltinApp}
+        onOpenUser={openUserApp}
+        onNewApp={() => setStudio(true)}
+      />
+      {studio ? <Studio onClose={() => setStudio(false)} /> : null}
+    </>
+  );
+}
 
-  const appId = selectedAppId();
-  const toaster = new Toaster();
+function mount(root: HTMLElement, node: ReactNode): void {
+  createRoot(root).render(<StrictMode>{node}</StrictMode>);
+  registerServiceWorker();
+}
 
-  // A pending import (from a prior reload) restores its data into the durable store, once.
+// A built-in example: trusted (direct) by default, or untrusted (isolate) under `dev:sandbox`.
+async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
   const pending = sessionStorage.getItem(IMPORT_KEY);
   let store: Store;
   if (pending) {
@@ -144,18 +171,12 @@ async function boot(): Promise<void> {
     store = await importSqliteStore(appId, base64ToBytes(pending));
     toaster.push(`Imported data into ${appId}.`);
   } else {
-    store = await openStore(appId); // durable OPFS SQLite, per-app namespace
+    store = await openStore(appId);
     await seedIfEmpty(store, appId);
   }
-
-  // Native (Capacitor) capabilities when running on a device — chiefly EXACT offline notifications
-  // — else the web impl. The native module is only imported when actually on a device (web bundle
-  // stays Capacitor-free). This is the sole target-selection point (CLAUDE.md: respect the seams).
-  const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   const ui = createUiBridge(toaster.push);
-  const nav = createNavBridge(() => {}); // in-app nav is handled by App state
+  const nav = createNavBridge(() => {});
 
-  // Load the chosen example. `import.meta.glob` keeps them out of strict tsc while Vite bundles them.
   const examples = import.meta.glob("../../../examples/*.app.ts", { import: "default" });
   const loadTrusted = examples[`../../../examples/${appId}.app.ts`] as (() => Promise<KartaApp>) | undefined;
   if (!loadTrusted) throw new Error(`example "${appId}" not found`);
@@ -165,33 +186,81 @@ async function boot(): Promise<void> {
   let appSource: string | undefined;
   if (SANDBOX) {
     const { createSandboxLoader } = await import("./isolate-bridge.js");
-    appSource = await sandboxBundle(appId); // the untrusted app's bundled logic, for the export
-    const loadIsolated = await createSandboxLoader(store);
-    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated });
+    appSource = await sandboxBundle(appId);
+    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
   } else {
     composed = await compose({ app, provenance: "trusted", store, caps, ui, nav });
   }
-
-  // Keep reminder notifications reconciled with the data (on load + on change). No-op on web
-  // (no notification cap) — the in-app "due" view covers it; native (KA-03) schedules exactly.
   startReminderSync(composed.runtime, store);
 
-  createRoot(root).render(
-    <StrictMode>
-      <App
-        runtime={composed.runtime}
-        provenance={SANDBOX ? "untrusted" : "trusted"}
-        toaster={toaster}
-        appId={appId}
-        apps={APPS as readonly string[]}
-        onExport={() => void exportApp(composed.runtime, store, caps, SANDBOX ? "untrusted" : "trusted", appSource, toaster)}
-        onImport={() => void importApp(caps, toaster)}
-        generator
-      />
-    </StrictMode>,
+  const provenance: Provenance = SANDBOX ? "untrusted" : "trusted";
+  mount(
+    root,
+    <App
+      runtime={composed.runtime}
+      provenance={provenance}
+      toaster={toaster}
+      appId={appId}
+      apps={APPS as readonly string[]}
+      currentKind="builtin"
+      onExport={() => void exportApp(composed.runtime, store, caps, provenance, appSource, toaster)}
+      onImport={() => void importApp(caps, toaster)}
+      generator
+    />,
   );
+}
 
-  registerServiceWorker();
+// A saved user app — always UNTRUSTED (isolate), with its own durable store, so it's usable, not
+// preview-only. Same runtime path a shared app takes.
+async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
+  const saved = getUserApp(id);
+  if (!saved) {
+    mount(root, <Home />); // deleted out from under us → home
+    return;
+  }
+  const store = await openStore(`user:${id}`);
+  const ui = createUiBridge(toaster.push);
+  const nav = createNavBridge(() => {});
+  const [{ createAppBundler }, { createSandboxLoader }] = await Promise.all([
+    import("./app-bundler.js"),
+    import("./isolate-bridge.js"),
+  ]);
+  const bundleCode = await (await createAppBundler())(saved.source);
+  const composed = await compose({ provenance: "untrusted", bundleCode, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
+  startReminderSync(composed.runtime, store);
+
+  mount(
+    root,
+    <App
+      runtime={composed.runtime}
+      provenance="untrusted"
+      toaster={toaster}
+      appId={id}
+      apps={APPS as readonly string[]}
+      currentKind="user"
+      onExport={() => void exportApp(composed.runtime, store, caps, "untrusted", bundleCode, toaster)}
+      generator
+    />,
+  );
+}
+
+async function boot(): Promise<void> {
+  const root = document.getElementById("root");
+  if (!root) throw new Error("no #root");
+
+  const r = route();
+  if (r.kind === "home") {
+    mount(root, <Home />);
+    return;
+  }
+
+  const toaster = new Toaster();
+  // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
+  // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
+  const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
+
+  if (r.kind === "user") await bootUserApp(r.id, root, toaster, caps);
+  else await bootBuiltin(r.id, root, toaster, caps);
 }
 
 function registerServiceWorker(): void {
