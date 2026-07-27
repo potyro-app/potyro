@@ -29,6 +29,8 @@ export type Binding<T = Value> = string | BindingFn<T>;
 
 export interface EntityDef {
   label?: string;
+  /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
+  icon?: string;
   displayField?: string;
   fields: Record<string, Field>;
   computed?: Record<string, Computed>;
@@ -232,6 +234,22 @@ export interface Theme {
   accent?: string;
 }
 
+/**
+ * A prominent create-flow trigger (e.g. "Start a session"). Declarative: the shell owns the flow —
+ * pick a single required enum inline ("menu") or open the create form ("form"); "auto" chooses menu
+ * when the entity has exactly one required enum and no other required fields, else form. When
+ * `open` (default true), the new record's detail is opened after creating.
+ */
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon?: string;
+  entity: string;
+  mode?: "auto" | "form" | "menu";
+  open?: boolean;
+  prefill?: Record<string, unknown>;
+}
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -239,6 +257,12 @@ export interface AppDefinition {
   schemaVersion: number;
   theme?: Theme;
   permissions?: PermissionManifest;
+  /** How the app presents its object types: a grid home or a tab bar. Default: grid when there are
+   *  several entities, tabs when few. */
+  nav?: "grid" | "tabs";
+  /** Prominent create triggers shown in the action bar / grid home. When omitted, the shell
+   *  auto-derives a "New <Entity>" per top-level entity. */
+  quickActions?: QuickAction[];
   entities: Record<string, EntityDef>;
   pages: Page[];
   reminders?: Reminder[];

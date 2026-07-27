@@ -28,6 +28,13 @@ export default defineApp({
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
 
+  // Quick actions: "Start session" picks the day inline (instant menu → creates + opens the session);
+  // "New exercise" opens the form (the exercise has other required fields). Demonstrates KA-04 ④.
+  quickActions: [
+    { id: "start-session", label: "Start session", icon: "▶", entity: "session", mode: "menu", open: true },
+    { id: "new-exercise", label: "New exercise", icon: "＋", entity: "exercise" },
+  ],
+
   entities: {
     // ---- the PROGRAM: editable exercise records ----
     exercise: {

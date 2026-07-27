@@ -12,6 +12,8 @@ export interface RecordFormProps {
   entity: string;
   /** Present → edit that record; absent → create a new one. */
   recordId?: string;
+  /** Preset values for a new record (e.g. a quick action's prefill). Ignored when editing. */
+  initial?: Record<string, unknown>;
   onDone: (id: string) => void;
   onCancel: () => void;
 }
@@ -49,11 +51,17 @@ function defaultFor(runtime: KartaRuntime, field: Field): unknown {
   return undefined;
 }
 
-function initialFormState(runtime: KartaRuntime, entity: string, resolved: Record<string, unknown> | null): Record<string, unknown> {
+function initialFormState(
+  runtime: KartaRuntime,
+  entity: string,
+  resolved: Record<string, unknown> | null,
+  preset?: Record<string, unknown>,
+): Record<string, unknown> {
   const fields = runtime.definition.entities[entity]?.fields ?? {};
   const out: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(fields)) {
-    out[key] = resolved ? toRaw(runtime, field, resolved[key]) : defaultFor(runtime, field);
+    if (resolved) out[key] = toRaw(runtime, field, resolved[key]);
+    else out[key] = preset?.[key] ?? defaultFor(runtime, field);
   }
   return out;
 }
@@ -62,7 +70,14 @@ function isEmpty(v: unknown): boolean {
   return v == null || v === "" || (Array.isArray(v) && v.length === 0);
 }
 
-export function RecordForm({ runtime, entity, recordId, onDone, onCancel }: RecordFormProps) {
+/** Default-filled raw values for a NEW record of `entity`, with optional presets applied. Mirrors
+ *  what the create form seeds, so a programmatic create (e.g. a quick action) matches a form create
+ *  — including field defaults like a `datetime` default of `ctx.now()`. */
+export function createDefaults(runtime: KartaRuntime, entity: string, preset?: Record<string, unknown>): Record<string, unknown> {
+  return initialFormState(runtime, entity, null, preset);
+}
+
+export function RecordForm({ runtime, entity, recordId, initial, onDone, onCancel }: RecordFormProps) {
   const isEdit = Boolean(recordId);
   const { record, loading } = runtime.useRecord(entity, recordId ?? "");
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
@@ -74,9 +89,9 @@ export function RecordForm({ runtime, entity, recordId, onDone, onCancel }: Reco
     if (isEdit) {
       if (!loading && record) setForm(initialFormState(runtime, entity, record));
     } else {
-      setForm(initialFormState(runtime, entity, null));
+      setForm(initialFormState(runtime, entity, null, initial));
     }
-  }, [form, isEdit, loading, record, runtime, entity]);
+  }, [form, isEdit, loading, record, runtime, entity, initial]);
 
   if (!form) return <p className="k-loading">Loading…</p>;
 

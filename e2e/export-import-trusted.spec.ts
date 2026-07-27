@@ -26,10 +26,11 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   const bundlePath = await download.path();
 
   // Add a recipe that is NOT in the exported bundle.
-  await page.locator("header").getByRole("button", { name: /\+ New/ }).click();
+  await page.locator(".k-quickbar").getByRole("button", { name: /New Recipe/ }).click();
   const modal = page.locator(".k-modal");
   await modal.getByRole("textbox").first().fill("Ephemeral Dish");
   await modal.getByRole("button", { name: "Create" }).click();
+  await page.getByRole("button", { name: /Recipes/ }).click(); // create-and-open → back to the list
   await expect(page.locator(".k-list-row", { hasText: "Ephemeral Dish" })).toBeVisible();
 
   // Import the earlier bundle → replaces the live data (reloads the app).

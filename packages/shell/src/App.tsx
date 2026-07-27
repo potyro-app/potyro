@@ -5,7 +5,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
-import { RecordForm, ViewHost } from "@karta/views";
+import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
@@ -15,6 +15,27 @@ import type { Toaster } from "./toaster.js";
 interface EditorState {
   entity: string;
   id?: string;
+  /** Preset values for a new record (a quick action's prefill). */
+  initial?: Record<string, unknown>;
+  /** After creating, open the new record's detail. */
+  openAfter?: boolean;
+}
+
+// Declarative quick action (mirrors karta's QuickAction; kept structural to avoid a hard dep here).
+interface QuickActionDef {
+  id: string;
+  label: string;
+  icon?: string;
+  entity: string;
+  mode?: "auto" | "form" | "menu";
+  open?: boolean;
+  prefill?: Record<string, unknown>;
+}
+
+interface QuickMenuState {
+  qa: QuickActionDef;
+  field: string;
+  options: string[];
 }
 
 interface AppProps {
@@ -41,6 +62,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [launcherOpen, setLauncherOpen] = useState(false);
+  const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
 
   const params = paramsByPage[pageId] ?? {};
   const setParam = (key: string, value: unknown): void =>
@@ -53,11 +75,64 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
 
-  // Entity for the "+ New" button: the current page's view entity, else the first entity.
-  const currentEntity =
-    (def.pages.find((p) => p.id === pageId)?.view as { entity?: string } | undefined)?.entity ??
-    Object.keys(def.entities)[0]!;
-  const currentEntityLabel = def.entities[currentEntity]?.label ?? currentEntity;
+  const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
+
+  // Quick actions: the app's declared triggers, else an auto "New <Entity>" per top-level object
+  // (an entity that has a visible list-like page, else every entity).
+  const topEntities = Array.from(
+    new Set(visiblePages.map((p) => (p.view as { entity?: string }).entity).filter((e): e is string => Boolean(e))),
+  );
+  const baseEntities = topEntities.length ? topEntities : Object.keys(def.entities);
+  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions ?? [];
+  const quickActions: QuickActionDef[] = declaredQuick.length
+    ? declaredQuick
+    : baseEntities.map((e) => ({ id: `new-${e}`, label: `New ${entityLabel(e)}`, entity: e, mode: "auto", open: true }));
+
+  // Which enum field a quick action picks inline (the "menu" style): explicit menu → the first enum;
+  // auto → a lone enum with no OTHER required fields ("select the type"); form → none.
+  const menuFieldFor = (qa: QuickActionDef): string | null => {
+    const fields = def.entities[qa.entity]?.fields ?? {};
+    const enums = Object.entries(fields).filter(([, f]) => (f as { type?: string }).type === "enum").map(([k]) => k);
+    if (qa.mode === "form") return null;
+    if (qa.mode === "menu") return enums[0] ?? null;
+    if (enums.length !== 1) return null; // auto
+    const required = Object.entries(fields).filter(([, f]) => (f as { required?: boolean }).required).map(([k]) => k);
+    return required.every((k) => k === enums[0]) ? enums[0]! : null;
+  };
+
+  // After creating, open the new record: its detail page if one exists, else jump to its list.
+  const openRecord = (entity: string, id: string): void => {
+    const detail = def.pages.find(
+      (p) => (p.view as { type?: string; entity?: string }).type === "detail" && (p.view as { entity?: string }).entity === entity,
+    );
+    if (detail) {
+      const param = (detail.view as { param?: string }).param ?? "id";
+      navigate(detail.id, { [param]: id });
+      return;
+    }
+    const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === entity);
+    if (list) setPageId(list.id);
+  };
+
+  const triggerQuick = (qa: QuickActionDef): void => {
+    const field = menuFieldFor(qa);
+    const options = field ? ((def.entities[qa.entity]?.fields[field] as { options?: string[] }).options ?? []) : [];
+    if (field && options.length) {
+      setQuickMenu({ qa, field, options });
+    } else {
+      setEditor({ entity: qa.entity, initial: qa.prefill, openAfter: qa.open !== false });
+    }
+  };
+
+  const pickQuick = async (option: string): Promise<void> => {
+    const m = quickMenu;
+    if (!m) return;
+    setQuickMenu(null);
+    // Seed defaults like the form does (bare create() doesn't), then set the picked value + prefill.
+    const values = createDefaults(runtime, m.qa.entity, { [m.field]: option, ...(m.qa.prefill ?? {}) });
+    const created = await runtime.create(m.qa.entity, values);
+    if (m.qa.open !== false) openRecord(m.qa.entity, created.id);
+  };
 
   const accent = def.theme?.accent ?? "#E4A93C";
 
@@ -95,11 +170,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               Export
             </button>
           ) : null}
-          <button type="button" className="k-add" onClick={() => setEditor({ entity: currentEntity })}>
-            + New {currentEntityLabel}
-          </button>
         </div>
       </header>
+
+      {quickActions.length ? (
+        <div className="k-quickbar">
+          {quickActions.map((qa) => (
+            <button key={qa.id} type="button" className="k-add k-primary-action k-quick" onClick={() => triggerQuick(qa)}>
+              <span aria-hidden>{qa.icon ?? def.entities[qa.entity]?.icon ?? "＋"}</span> {qa.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <nav className="k-nav" aria-label="Pages">
         {visiblePages.map((p) => (
@@ -135,9 +217,29 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               runtime={runtime}
               entity={editor.entity}
               recordId={editor.id}
-              onDone={() => setEditor(null)}
+              initial={editor.initial}
+              onDone={(id) => {
+                const ed = editor;
+                setEditor(null);
+                if (ed?.openAfter && id) openRecord(ed.entity, id);
+              }}
               onCancel={() => setEditor(null)}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {quickMenu ? (
+        <div className="k-modal-scrim" onClick={() => setQuickMenu(null)}>
+          <div className="k-quickmenu" onClick={(e) => e.stopPropagation()}>
+            <h4>{quickMenu.qa.label}</h4>
+            <div className="k-quickmenu-options">
+              {quickMenu.options.map((opt) => (
+                <button key={opt} type="button" className="k-add" onClick={() => void pickQuick(opt)}>
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}

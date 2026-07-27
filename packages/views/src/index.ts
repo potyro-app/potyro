@@ -8,6 +8,6 @@ export { CustomView } from "./custom.js";
 export { useDisplayCells } from "./cells.js";
 export { FieldValue } from "./field-value.js";
 export { FieldInput, type FieldInputProps } from "./field-input.js";
-export { RecordForm, type RecordFormProps } from "./record-form.js";
+export { RecordForm, createDefaults, type RecordFormProps } from "./record-form.js";
 export { formatValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
 export type { BuiltinViewProps, DisplayCell, ViewRegistration } from "./types.js";
