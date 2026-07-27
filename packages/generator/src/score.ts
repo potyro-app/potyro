@@ -31,7 +31,7 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-interface LoadedKartaApp {
+export interface LoadedKartaApp {
   id: string;
   pages: { id: string }[];
   __kartaApp?: boolean;
@@ -60,6 +60,15 @@ async function importModule(code: string): Promise<{ default?: unknown }> {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/** Bundle + import a generated source, returning the validated app. Throws on compile/validate
+ *  failure — `scoreSource` reports those as gates; `smoke.ts` needs the app itself. */
+export async function loadApp(source: string): Promise<LoadedKartaApp> {
+  const mod = await importModule(await bundle(source));
+  const candidate = mod.default as LoadedKartaApp | undefined;
+  if (!candidate?.__kartaApp) throw new Error("default export is not a validated KartaApp");
+  return candidate;
 }
 
 export async function scoreSource(source: string): Promise<ScoreResult> {

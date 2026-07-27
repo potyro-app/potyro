@@ -17,3 +17,6 @@ playwright-report/
 # Capacitor generated native projects (regenerate with: pnpm --filter @karta/native cap:add:android)
 packages/native/android/
 packages/native/ios/
+
+# Generator eval artifacts — generated apps + reports (regenerate with: pnpm --filter @karta/generator eval:cli)
+packages/generator/eval-out/
