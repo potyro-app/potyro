@@ -94,10 +94,21 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
 
 const entitySchema = z.object({
   label: z.string().optional(),
+  icon: z.string().optional(),
   displayField: z.string().optional(),
   fields: z.record(fieldSchema),
   computed: z.record(zFn).optional(),
   actions: z.record(zFn).optional(),
+});
+
+const quickActionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  icon: z.string().optional(),
+  entity: z.string().min(1),
+  mode: z.enum(["auto", "form", "menu"]).optional(),
+  open: z.boolean().optional(),
+  prefill: z.record(z.any()).optional(),
 });
 
 const onOpenSchema = z.object({
@@ -265,6 +276,8 @@ export const structureSchema = z.object({
   schemaVersion: z.number().int().min(1),
   theme: z.object({ accent: z.string().optional() }).optional(),
   permissions: permissionSchema.optional(),
+  nav: z.enum(["grid", "tabs"]).optional(),
+  quickActions: z.array(quickActionSchema).optional(),
   entities: z.record(entitySchema),
   pages: z.array(pageSchema),
   reminders: z.array(reminderSchema).optional(),
@@ -392,6 +405,12 @@ export function checkReferences(def: AppDefinition): string[] {
   // reminders
   for (const r of def.reminders ?? []) {
     ensureEntity(r.entity, `reminder "${r.id}"`);
+  }
+
+  // quick actions target a real entity (and its prefill keys are real fields)
+  for (const qa of def.quickActions ?? []) {
+    const e = ensureEntity(qa.entity, `quickAction "${qa.id}"`);
+    if (e) for (const key of Object.keys(qa.prefill ?? {})) ensureKey(e, qa.entity, key, `quickAction "${qa.id}" prefill`);
   }
 
   return issues;
