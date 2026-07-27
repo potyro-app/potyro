@@ -27,6 +27,10 @@ export default defineApp({
   schemaVersion: 1,
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
+  nav: "grid", // land on an object grid (Exercises / Sessions) with the quick actions on top
+
+  // Give the object tiles a glyph on the grid home.
+  // (icons live on the entities below)
 
   // Quick actions: "Start session" picks the day inline (instant menu → creates + opens the session);
   // "New exercise" opens the form (the exercise has other required fields). Demonstrates KA-04 ④.
@@ -39,6 +43,7 @@ export default defineApp({
     // ---- the PROGRAM: editable exercise records ----
     exercise: {
       label: "Exercise",
+      icon: "💪",
       displayField: "name",
       fields: {
         name: { type: "text", required: true },
@@ -77,6 +82,7 @@ export default defineApp({
     // ---- HISTORY: each finished workout is one record, with nested lists inside ----
     session: {
       label: "Session",
+      icon: "🏋",
       displayField: "label",
       fields: {
         day: { type: "enum", options: ["push", "pull", "legs"], required: true },

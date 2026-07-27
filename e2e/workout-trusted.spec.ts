@@ -18,6 +18,23 @@ test("workout quick action starts a session via the instant menu and opens it", 
   await expect(page.locator("article.k-detail")).toBeVisible();
 });
 
+test("workout grid home shows object tiles and opens an object", async ({ page }) => {
+  await page.goto("/?app=workout");
+  const grid = page.locator(".k-objgrid");
+  await expect(grid).toBeVisible(); // grid nav: lands on the object overview, not a tab
+
+  // A tile per object type (icon + label + count).
+  await expect(grid.getByRole("button", { name: /Exercise/ })).toBeVisible();
+  const sessionTile = grid.getByRole("button", { name: /Session/ });
+  await expect(sessionTile).toBeVisible();
+
+  // Opening a tile leaves the grid for that object; the "⊞ Home" tab returns to it.
+  await sessionTile.click();
+  await expect(grid).toBeHidden();
+  await page.locator(".k-nav").getByRole("button", { name: /Home/ }).click();
+  await expect(grid).toBeVisible();
+});
+
 test("workout 'New exercise' quick action opens the create form", async ({ page }) => {
   await page.goto("/?app=workout");
   await page.locator(".k-quickbar").getByRole("button", { name: /New exercise/ }).click();

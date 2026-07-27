@@ -38,6 +38,34 @@ interface QuickMenuState {
   options: string[];
 }
 
+// Sentinel page id for the grid "home" overview (grid nav mode only).
+const HOME = "__home__";
+
+// One object-type tile on the grid home: icon + label + live record count. Reuses the entity's list
+// page query for the count, so it reflects the same data the list shows.
+function GridTile({
+  runtime,
+  pageId,
+  label,
+  icon,
+  onOpen,
+}: {
+  runtime: KartaRuntime;
+  pageId: string;
+  label: string;
+  icon: string;
+  onOpen: () => void;
+}) {
+  const { rows } = runtime.usePageQuery(pageId, {});
+  return (
+    <button type="button" className="k-objtile" onClick={onOpen}>
+      <span className="k-objtile-icon" aria-hidden>{icon}</span>
+      <span className="k-objtile-name">{label}</span>
+      <span className="k-objtile-count">{rows.length}</span>
+    </button>
+  );
+}
+
 interface AppProps {
   runtime: KartaRuntime;
   provenance: Provenance;
@@ -57,7 +85,16 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
   // them out of the tab bar so nav shows real sections only (no redundant singular "Session" tabs).
   const visiblePages = def.pages.filter((p) => !p.hidden && (p.view as { type?: string }).type !== "detail");
-  const [pageId, setPageId] = useState(visiblePages[0]?.id ?? def.pages[0]!.id);
+
+  // Top-level object types = entities that own a visible list-like page (else every entity).
+  const topEntities = Array.from(
+    new Set(visiblePages.map((p) => (p.view as { entity?: string }).entity).filter((e): e is string => Boolean(e))),
+  );
+  const baseEntities = topEntities.length ? topEntities : Object.keys(def.entities);
+  // Nav model: a grid "home" of object types, or a tab bar. Default: grid for many objects, tabs few.
+  const navMode: "grid" | "tabs" = (def as { nav?: "grid" | "tabs" }).nav ?? (baseEntities.length >= 3 ? "grid" : "tabs");
+
+  const [pageId, setPageId] = useState<string>(navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id));
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
@@ -77,12 +114,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
 
-  // Quick actions: the app's declared triggers, else an auto "New <Entity>" per top-level object
-  // (an entity that has a visible list-like page, else every entity).
-  const topEntities = Array.from(
-    new Set(visiblePages.map((p) => (p.view as { entity?: string }).entity).filter((e): e is string => Boolean(e))),
-  );
-  const baseEntities = topEntities.length ? topEntities : Object.keys(def.entities);
+  // Quick actions: the app's declared triggers, else an auto "New <Entity>" per top-level object.
   const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions ?? [];
   const quickActions: QuickActionDef[] = declaredQuick.length
     ? declaredQuick
@@ -184,6 +216,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
       ) : null}
 
       <nav className="k-nav" aria-label="Pages">
+        {navMode === "grid" ? (
+          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => setPageId(HOME)}>
+            ⊞ Home
+          </button>
+        ) : null}
         {visiblePages.map((p) => (
           <button
             key={p.id}
@@ -197,18 +234,40 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
         ))}
       </nav>
 
-      <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
-
-      <main className="k-main">
-        <ViewHost
-          runtime={runtime}
-          pageId={pageId}
-          params={params}
-          setParam={setParam}
-          navigate={navigate}
-          onEdit={onEdit}
-        />
-      </main>
+      {pageId === HOME ? (
+        <main className="k-main">
+          <div className="k-objgrid" aria-label="Objects">
+            {baseEntities.map((e) => {
+              const lp = visiblePages.find((p) => (p.view as { entity?: string }).entity === e);
+              if (!lp) return null;
+              return (
+                <GridTile
+                  key={e}
+                  runtime={runtime}
+                  pageId={lp.id}
+                  label={entityLabel(e)}
+                  icon={def.entities[e]?.icon ?? "◇"}
+                  onOpen={() => setPageId(lp.id)}
+                />
+              );
+            })}
+          </div>
+        </main>
+      ) : (
+        <>
+          <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
+          <main className="k-main">
+            <ViewHost
+              runtime={runtime}
+              pageId={pageId}
+              params={params}
+              setParam={setParam}
+              navigate={navigate}
+              onEdit={onEdit}
+            />
+          </main>
+        </>
+      )}
 
       {editor ? (
         <div className="k-modal-scrim" onClick={() => setEditor(null)}>
