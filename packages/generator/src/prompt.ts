@@ -81,7 +81,13 @@ CONTRACT
 - Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`entities\`, \`pages\`.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
 - Field \`type\` is one of: text, richtext, url, number, duration, boolean, datetime, enum (with \`options\`),
-  tags (with \`options\`), media, geo, relation (with \`to\`), list (with \`of\`).
+  tags (with \`options\`), media, geo, relation (with \`to\`), list (with \`of\`). There is NO "object" type.
+- To REFERENCE another object type, use a \`relation\` field: \`{ type: "relation", to: "<entity>" }\` (add
+  \`many: true\` for a multi-select). The form then shows a PICKER of that entity's existing records.
+- A \`list\` field's \`of\` is a FLAT MAP of sub-fields — the sub-fields go DIRECTLY in \`of\`, keyed by name.
+  Do NOT wrap them: NEVER \`of: { type: "object", fields: {...} }\`. A sub-field may itself be a
+  \`relation\` (to reference another object) or another \`list\` (to nest). Example:
+  \`sets: { type: "list", of: { exercise: { type: "relation", to: "exercise" }, reps: { type: "number" } } }\`
 - Structure (entities/fields/view layout) is plain data. All LOGIC — computed, filters, sorts, actions,
   display bindings — is ordinary TypeScript functions that receive the record (and \`ctx\`). There is NO
   expression language; write real functions.

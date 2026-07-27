@@ -5,6 +5,7 @@
 // runs UNTRUSTED in the QuickJS isolate, the same safe path a shared app takes.
 
 import { useEffect, useRef, useState } from "react";
+import { structureSchema, checkReferences } from "karta";
 import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
 import {
@@ -78,10 +79,20 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const canDescribe = description.trim().length > 0 && !genBusy;
   const appName = preview?.composed.runtime.definition.name;
 
-  // Build (or rebuild) the live app from `source`. Drafts use an ephemeral MemoryStore; a saved app
-  // (storeNamespace set) uses its durable store so its data persists across opens — "use it", not
-  // just preview it. Runs untrusted in the isolate.
-  const buildPreview = async (src: string, storeNamespace: string | null): Promise<void> => {
+  // Real structure validation (the isolate's defineApp does NOT validate — so a malformed app would
+  // otherwise run as broken UI). Runs the same Zod schema + referential checks the trusted path uses.
+  // The isolate marshals the def with functions replaced by "__karta_fn__" (isolate-host); revive
+  // those to no-ops so binding fields pass the function check — the DATA shape is what we're checking.
+  const validateDef = (def: unknown): string[] => {
+    const parsed = structureSchema.safeParse(reviveFns(def));
+    if (!parsed.success) return parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`);
+    return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
+  };
+
+  // Build (or rebuild) the live app from `source` and VALIDATE its structure. Returns the validation
+  // issues (empty = valid). Drafts use an ephemeral MemoryStore; a saved app (storeNamespace) uses its
+  // durable store so its data persists across opens. Runs untrusted in the isolate.
+  const buildPreview = async (src: string, storeNamespace: string | null): Promise<string[]> => {
     setBusy(true);
     setError(null);
     try {
@@ -101,9 +112,13 @@ export function Studio({ onClose }: { onClose: () => void }) {
       buildRef.current += 1;
       setPreview({ composed, toaster, build: buildRef.current });
       setTab("preview");
+      const issues = validateDef(composed.runtime.definition);
+      if (issues.length) setError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
+      return issues;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setTab("source");
+      return [e instanceof Error ? e.message : String(e)];
     } finally {
       setBusy(false);
     }
@@ -115,13 +130,21 @@ export function Studio({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const withGen = async (label: string, run: () => Promise<string>): Promise<void> => {
+  const withGen = async (label: string, run: () => Promise<string>, autoRepair = true): Promise<void> => {
     setGenBusy(true);
     setError(null);
     try {
       const next = await run();
       setSource(next);
-      await buildPreview(next, currentId);
+      let issues = await buildPreview(next, currentId);
+      // The model sometimes emits a structurally-invalid app (e.g. a wrong list shape). Feed the
+      // validator's errors back once and rebuild — so you get a working app, not broken UI.
+      if (autoRepair && issues.length) {
+        setProgress("Fixing structure…");
+        const fixed = await repairSource(next, issues);
+        setSource(fixed);
+        issues = await buildPreview(fixed, currentId);
+      }
     } catch (e) {
       setError(`${label} failed: ${e instanceof Error ? e.message : String(e)}`);
       setTab("source");
@@ -169,6 +192,16 @@ export function Studio({ onClose }: { onClose: () => void }) {
     return withGen("Cloud", async () => (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).generate({ id: "studio", description }));
   };
 
+  // Repair a source given a list of problems (validator issues or an error), via the current engine.
+  const repairSource = async (src: string, issues: string[]): Promise<string> => {
+    const p = { id: "studio", description };
+    if (engine === "cloud") return (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).repair(src, issues, p);
+    if (engine === "edge") return (await edgeBackend()).repair(src, issues, p);
+    if (engine === "builtin") return (await createGeminiNanoBackend()).repair(src, issues, p);
+    const prompt = [SYSTEM_PROMPT, "", buildUserMessage(p), "", "The previous attempt:", "```ts", src, "```", "", buildRepairMessage(issues)].join("\n");
+    return runCli(prompt);
+  };
+
   // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
   // apply, and the model returns the whole updated file — keeping the rest intact. Uses the same
   // engine you last generated with (defaults to claude -p).
@@ -188,25 +221,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const fixWithAI = (): Promise<void> => {
     const lastError = error;
     if (!lastError) return Promise.resolve();
-    return withGen("Fix", async () => {
-      if (apiKey) {
-        const backend = await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true });
-        return backend.repair(source, [lastError], { id: "studio", description });
-      }
-      const prompt = [
-        SYSTEM_PROMPT,
-        "",
-        buildUserMessage({ id: "studio", description }),
-        "",
-        "The previous attempt:",
-        "```ts",
-        source,
-        "```",
-        "",
-        buildRepairMessage([lastError]),
-      ].join("\n");
-      return runCli(prompt);
-    });
+    // Split a multi-issue validation message back into individual problems for the repair prompt.
+    const issues = lastError.replace(/^Invalid app structure:\n?/, "").split("\n- ").map((s) => s.replace(/^- /, "").trim()).filter(Boolean);
+    return withGen("Fix", () => repairSource(source, issues.length ? issues : [lastError]));
   };
 
   // --- My Apps ----------------------------------------------------------------------------------
@@ -400,4 +417,19 @@ async function newMemoryStore(): Promise<Store> {
   const store = new MemoryStore();
   await store.open("studio-draft");
   return store;
+}
+
+// The isolate serializes the app def with every function replaced by the marker "__karta_fn__"
+// (host/isolate). Revive those to no-op functions so structure validation checks the DATA shape
+// without tripping the "expected a function" check on legitimate computed/binding fields.
+const FN_MARKER = "__karta_fn__";
+function reviveFns(v: unknown): unknown {
+  if (v === FN_MARKER) return () => undefined;
+  if (Array.isArray(v)) return v.map(reviveFns);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = reviveFns(val);
+    return out;
+  }
+  return v;
 }
