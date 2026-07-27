@@ -9,7 +9,8 @@ import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
-import { listUserApps } from "./user-apps.js";
+import { listUserApps, getUserApp, saveUserApp } from "./user-apps.js";
+import { SYSTEM_PROMPT, buildModifyMessage, extractSource } from "@karta/generator/backends";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -166,6 +167,59 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     if (m.qa.open !== false) openRecord(m.qa.entity, created.id);
   };
 
+  // ⑤ Edit mode → agent: point at a piece of UI and describe a change; the target + your text go to
+  // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
+  const canEdit = Boolean(generator && currentKind === "user" && appId);
+  const [editMode, setEditMode] = useState(false);
+  const [modifyTarget, setModifyTarget] = useState<string | null>(null);
+  const [modifyText, setModifyText] = useState("");
+  const [modifyBusy, setModifyBusy] = useState(false);
+  const [modifyError, setModifyError] = useState<string | null>(null);
+
+  const editMark = (label: string) =>
+    editMode ? (
+      <button
+        type="button"
+        className="k-editmark"
+        aria-label={`Edit ${label}`}
+        title={`Ask the agent to change ${label}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setModifyText("");
+          setModifyError(null);
+          setModifyTarget(label);
+        }}
+      >
+        ✎
+      </button>
+    ) : null;
+
+  const applyModify = async (): Promise<void> => {
+    if (!appId || !modifyTarget) return;
+    const app = getUserApp(appId);
+    if (!app) return;
+    setModifyBusy(true);
+    setModifyError(null);
+    try {
+      const instruction = `Regarding ${modifyTarget}: ${modifyText.trim()}`;
+      const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", app.source, "```", "", buildModifyMessage(instruction)].join("\n");
+      const res = await fetch("/__generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
+      const newSource = extractSource((await res.json()).text as string);
+      saveUserApp({ id: appId, name: app.name, source: newSource }, new Date().toISOString());
+      location.reload(); // re-run the app with the edited source (its data persists in user:<id>)
+    } catch (e) {
+      setModifyError(e instanceof Error ? e.message : String(e));
+      setModifyBusy(false);
+    }
+  };
+
+  const currentPageLabel = pageId === HOME ? "the object grid (home)" : `the "${def.pages.find((p) => p.id === pageId)?.title ?? pageId}" page`;
+
   const accent = def.theme?.accent ?? "#E4A93C";
 
   return (
@@ -192,6 +246,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               Studio
             </button>
           ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className="k-add"
+              aria-label="Edit mode"
+              data-active={editMode}
+              title="Edit mode — click a UI element to change it with the agent"
+              onClick={() => setEditMode((v) => !v)}
+            >
+              ✎ Edit
+            </button>
+          ) : null}
           {onImport ? (
             <button type="button" className="k-add" onClick={onImport}>
               Import
@@ -212,10 +278,12 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               <span aria-hidden>{qa.icon ?? def.entities[qa.entity]?.icon ?? "＋"}</span> {qa.label}
             </button>
           ))}
+          {editMark("the quick action buttons")}
         </div>
       ) : null}
 
       <nav className="k-nav" aria-label="Pages">
+        {editMark("the navigation / tabs")}
         {navMode === "grid" ? (
           <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => setPageId(HOME)}>
             ⊞ Home
@@ -236,6 +304,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
       {pageId === HOME ? (
         <main className="k-main">
+          {editMark("the object grid home")}
           <div className="k-objgrid" aria-label="Objects">
             {baseEntities.map((e) => {
               const lp = visiblePages.find((p) => (p.view as { entity?: string }).entity === e);
@@ -257,6 +326,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
         <>
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           <main className="k-main">
+            {editMark(currentPageLabel)}
             <ViewHost
               runtime={runtime}
               pageId={pageId}
@@ -298,6 +368,38 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
                   {opt}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {modifyTarget ? (
+        <div className="k-modal-scrim" onClick={() => (modifyBusy ? undefined : setModifyTarget(null))}>
+          <div className="k-modal k-modifydialog" onClick={(e) => e.stopPropagation()}>
+            <h3>Change {modifyTarget}</h3>
+            <p className="k-muted">Describe the change — the agent edits this app, keeping the rest.</p>
+            <textarea
+              className="k-input k-modify-text"
+              aria-label="Describe the change"
+              placeholder='e.g. "make this a grid of icons, and put Start Session first"'
+              rows={4}
+              autoFocus
+              value={modifyText}
+              onChange={(e) => setModifyText(e.target.value)}
+            />
+            {modifyError ? <p className="k-form-error">{modifyError}</p> : null}
+            <div className="k-form-actions">
+              <button type="button" className="k-add" disabled={modifyBusy} onClick={() => setModifyTarget(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="k-add k-primary-action"
+                disabled={modifyBusy || modifyText.trim().length === 0}
+                onClick={() => void applyModify()}
+              >
+                {modifyBusy ? "Applying…" : "Apply with AI"}
+              </button>
             </div>
           </div>
         </div>
