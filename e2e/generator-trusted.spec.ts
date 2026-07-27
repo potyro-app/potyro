@@ -48,6 +48,18 @@ test("studio previews an app in the isolate by default and saves it to My Apps",
   await expect(page.locator(".k-prov").first()).toHaveText("untrusted");
   await expect(page.getByRole("button", { name: "Switch app" })).toBeVisible(); // the ⊞ Apps switcher
 
+  // ⑤ Edit mode: toggle it, click a UI element's ✎, and get a targeted Modify dialog (no live call).
+  await page.getByRole("button", { name: "Edit mode" }).click();
+  const mark = page.locator(".k-editmark").first();
+  await expect(mark).toBeVisible();
+  await mark.click();
+  const dialog = page.locator(".k-modifydialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Describe the change" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toBeDisabled(); // needs text
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Edit mode" }).click(); // toggle off before switching apps
+
   // The ⊞ Apps launcher lists the saved app under My Apps, and can delete it inline.
   await page.getByRole("button", { name: "Switch app" }).click();
   const overlay = page.locator(".k-launcher-overlay");
