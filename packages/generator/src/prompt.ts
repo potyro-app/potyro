@@ -4,7 +4,7 @@
 
 import type { GenPrompt } from "./backend.js";
 
-const EXAMPLE_TODO = `import { defineApp } from "karta";
+export const EXAMPLE_TODO = `import { defineApp } from "karta";
 
 export default defineApp({
   id: "todo",
@@ -27,19 +27,24 @@ export default defineApp({
   ],
 });`;
 
-const EXAMPLE_COMPUTED = `import { defineApp } from "karta";
+export const EXAMPLE_COMPUTED = `import { defineApp } from "karta";
 
 export default defineApp({
   id: "books",
   name: "Books",
   version: "1.0.0",
   schemaVersion: 1,
+  quickActions: [
+    { id: "add-book", label: "Add book", icon: "＋", entity: "book", open: true },
+  ],
   entities: {
     book: {
       label: "Book",
+      icon: "📚",
       displayField: "title",
       fields: {
         title: { type: "text", required: true },
+        status: { type: "enum", options: ["to read", "reading", "done"], default: "to read" },
         pages: { type: "number", min: 0 },
         pagesRead: { type: "number", min: 0, default: 0 },
       },
@@ -50,9 +55,21 @@ export default defineApp({
   },
   pages: [
     {
+      // ONE top-level list per entity; rows open the (hidden) detail so records are viewable/editable.
       id: "all",
       title: "Books",
-      view: { type: "list", entity: "book", display: { primary: "title", secondary: (b) => \`\${b.percent}%\` } },
+      view: {
+        type: "list",
+        entity: "book",
+        display: { primary: "title", secondary: (b) => \`\${b.percent}%\` },
+        onOpen: { page: "detail", param: { bookId: "id" } },
+      },
+    },
+    {
+      id: "detail",
+      title: "Book",
+      hidden: true,
+      view: { type: "detail", entity: "book", param: "bookId", sections: [{ fields: ["title", "status", "pages", "pagesRead"] }] },
     },
   ],
 });`;
@@ -71,6 +88,21 @@ CONTRACT
 - A page has \`id\`, \`title\`, and a \`view\`. View \`type\` is one of: list, gallery, table, detail, calendar,
   map, custom. A \`display.primary\`/\`secondary\` binding is a field-key string OR a function \`(r) => ...\`.
 - Every field/computed referenced by a view must exist on that entity.
+
+NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
+- Give every entity a \`label\` and an \`icon\` (a single emoji).
+- Make exactly ONE top-level LIST page per entity (title = plural, e.g. "Sessions"). NEVER add a
+  separate top-level page for a single record (no "Session" tab next to "Sessions").
+- To show a record's details, add a \`detail\` page, mark it \`hidden: true\`, and link the list to it with
+  \`onOpen: { page: "<detailPageId>", param: { <detailParam>: "id" } }\`. Rows are then tappable to
+  open + edit — this is how users edit existing records.
+- Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\`. If the
+  entity's ONLY required field is a single enum (a "type"/"day"), add \`mode: "menu"\` to pick it inline;
+  otherwise the shell opens the create form. \`open: true\` lands the user in the new record.
+- Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
+- Do NOT expose sub-records (e.g. a session's individual sets) as their own top-level tab — model them
+  as a nested \`list\` field or reach them from the parent's detail.
+- Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).
 
 OUTPUT
 - Return ONLY the \`.app.ts\` source in a single \`\`\`ts code block. No prose before or after.
