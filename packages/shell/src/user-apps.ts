@@ -12,6 +12,9 @@ export interface UserApp {
   name: string;
   source: string;
   updatedAt: string; // ISO
+  /** The user has vouched for this app → it runs directly (trusted), not in the isolate. Default:
+   *  undefined/false (untrusted). Editing the source resets this (a new version isn't vouched-for). */
+  trusted?: boolean;
 }
 
 function read(): UserApp[] {
@@ -56,13 +59,21 @@ export function saveUserApp(input: { id?: string; name: string; source: string }
     const taken = new Set(apps.map((a) => a.id));
     while (taken.has(id)) id = `${base}-${n++}`;
   }
-  const record: UserApp = { id, name, source: input.source, updatedAt: now };
+  // Preserve trust only if the source is unchanged; any edit is a new, not-yet-vouched-for version.
+  const prev = apps.find((a) => a.id === id);
+  const trusted = prev?.trusted && prev.source === input.source ? true : undefined;
+  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted };
   write([record, ...apps.filter((a) => a.id !== id)]);
   return record;
 }
 
 export function removeUserApp(id: string): void {
   write(read().filter((a) => a.id !== id));
+}
+
+/** Promote/demote a saved app's trust. Trusted apps run directly (not in the isolate). */
+export function setUserAppTrusted(id: string, trusted: boolean, now: string): void {
+  write(read().map((a) => (a.id === id ? { ...a, trusted, updatedAt: now } : a)));
 }
 
 /** Rename a saved app in place (keeps its id, source, and data namespace). */

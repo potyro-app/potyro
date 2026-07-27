@@ -99,6 +99,20 @@ isolate**, `untrusted` badge). It's fully interactive: add records, switch pages
 > **Answers "how do I save an app?"** — Save to My Apps. Everything you make lives in that list and
 > re-opens as a real, running app. (A shared/community library is a later layer.)
 
+### Promote untrusted → trusted
+
+Saved apps run **untrusted** (in the sandbox) by default. To run one **directly** (trusted):
+
+| Do | Expect |
+|---|---|
+| Open a saved app → click the **untrusted ▾** badge (top-left) | A trust prompt listing the app's declared capabilities |
+| **Promote to trusted** | The app reloads and runs **directly** as a real module — badge shows **trusted**. Its data persists |
+| Click **trusted ▾** → **Revoke trust** | Back to running in the isolate |
+
+Editing a trusted app's source (Studio or Edit mode) resets it to untrusted — a new version isn't
+vouched-for until you promote it again. A trusted load that fails (e.g. an invalid edit) falls back to
+the sandbox so the app still opens.
+
 ## 7. Sandbox mode (untrusted execution)
 
 ```bash

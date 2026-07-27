@@ -45,8 +45,22 @@ test("studio previews an app in the isolate by default and saves it to My Apps",
   // The saved app is now launchable full-screen from its route — runs UNTRUSTED with its own store.
   await page.goto("/?user=my-app");
   await expect(page.locator("h1").first()).toHaveText("My App");
-  await expect(page.locator(".k-prov").first()).toHaveText("untrusted");
+  await expect(page.locator(".k-prov").first()).toHaveText(/^untrusted/);
   await expect(page.getByRole("button", { name: "Switch app" })).toBeVisible(); // the ⊞ Apps switcher
+
+  // Promote untrusted → trusted: the badge is actionable → a trust prompt → runs DIRECTLY on reload.
+  await expect(page.locator(".k-prov").first()).toHaveText(/^untrusted/);
+  await page.locator(".k-prov-btn").click();
+  const trust = page.locator(".k-trustdialog");
+  await expect(trust).toBeVisible();
+  await trust.getByRole("button", { name: "Promote to trusted" }).click();
+  // Reloads and re-runs the saved source as a real module (trusted). h1 still renders → it executed.
+  await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
+  await expect(page.locator(".k-prov").first()).toHaveText(/^trusted/);
+  // Revoke returns it to the isolate.
+  await page.locator(".k-prov-btn").click();
+  await page.locator(".k-trustdialog").getByRole("button", { name: "Revoke trust" }).click();
+  await expect(page.locator(".k-prov").first()).toHaveText(/^untrusted/, { timeout: 30_000 });
 
   // ⑤ Edit mode: toggle it, click a UI element's ✎, and get a targeted Modify dialog (no live call).
   await page.getByRole("button", { name: "Edit mode" }).click();

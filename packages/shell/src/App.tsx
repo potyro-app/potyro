@@ -9,8 +9,9 @@ import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
-import { listUserApps, getUserApp, saveUserApp } from "./user-apps.js";
-import { SYSTEM_PROMPT, buildModifyMessage, extractSource } from "@karta/generator/backends";
+import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
+import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, extractSource } from "@karta/generator/backends";
+import { buildAndValidate } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 
 interface EditorState {
@@ -194,6 +195,19 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
       </button>
     ) : null;
 
+  // Build a modify/repair prompt and run it through the local `claude -p` dev endpoint.
+  const runAgent = async (currentSource: string, instruction: string, repairIssues?: string[]): Promise<string> => {
+    const parts = [SYSTEM_PROMPT, "", "The current app:", "```ts", currentSource, "```", ""];
+    parts.push(repairIssues ? buildRepairMessage(repairIssues) : buildModifyMessage(instruction));
+    const res = await fetch("/__generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: parts.join("\n") }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
+    return extractSource((await res.json()).text as string);
+  };
+
   const applyModify = async (): Promise<void> => {
     if (!appId || !modifyTarget) return;
     const app = getUserApp(appId);
@@ -202,15 +216,12 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     setModifyError(null);
     try {
       const instruction = `Regarding ${modifyTarget}: ${modifyText.trim()}`;
-      const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", app.source, "```", "", buildModifyMessage(instruction)].join("\n");
-      const res = await fetch("/__generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
-      const newSource = extractSource((await res.json()).text as string);
-      saveUserApp({ id: appId, name: app.name, source: newSource }, new Date().toISOString());
+      let next = await runAgent(app.source, instruction);
+      // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
+      // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
+      let issues = await buildAndValidate(next);
+      if (issues.length) next = await runAgent(next, instruction, issues);
+      saveUserApp({ id: appId, name: app.name, source: next }, new Date().toISOString());
       location.reload(); // re-run the app with the edited source (its data persists in user:<id>)
     } catch (e) {
       setModifyError(e instanceof Error ? e.message : String(e));
@@ -220,6 +231,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
   const currentPageLabel = pageId === HOME ? "the object grid (home)" : `the "${def.pages.find((p) => p.id === pageId)?.title ?? pageId}" page`;
 
+  // Promote/demote trust. Promotion runs the app DIRECTLY (not in the isolate) — a deliberate,
+  // prompted decision (CLAUDE.md rule 3). Only for your own saved apps.
+  const [trustPrompt, setTrustPrompt] = useState(false);
+  const grantedCaps = Object.entries(def.permissions ?? {})
+    .filter(([, v]) => v)
+    .map(([k]) => k);
+  const setTrust = (trusted: boolean): void => {
+    if (!appId) return;
+    setUserAppTrusted(appId, trusted, new Date().toISOString());
+    location.reload();
+  };
+
   const accent = def.theme?.accent ?? "#E4A93C";
 
   return (
@@ -228,7 +251,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
         <div className="k-brand">
           <span className="k-logo" aria-hidden>◆</span>
           <h1>{def.name}</h1>
-          <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
+          {canEdit ? (
+            <button
+              type="button"
+              className={`k-prov k-prov-${provenance} k-prov-btn`}
+              title={provenance === "trusted" ? "Trusted — runs directly. Click to review / revoke." : "Untrusted — runs in a sandbox. Click to promote to trusted."}
+              onClick={() => setTrustPrompt(true)}
+            >
+              {provenance} ▾
+            </button>
+          ) : (
+            <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
+          )}
         </div>
         <div className="k-header-actions">
           {generator ? (
@@ -369,6 +403,41 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {trustPrompt ? (
+        <div className="k-modal-scrim" onClick={() => setTrustPrompt(false)}>
+          <div className="k-modal k-trustdialog" onClick={(e) => e.stopPropagation()}>
+            {provenance === "trusted" ? (
+              <>
+                <h3>Trusted app</h3>
+                <p className="k-muted">
+                  <strong>{def.name}</strong> runs directly on this device (not sandboxed). Revoke to run it in the
+                  isolate again.
+                </p>
+                <div className="k-form-actions">
+                  <button type="button" className="k-add" onClick={() => setTrustPrompt(false)}>Close</button>
+                  <button type="button" className="k-add" onClick={() => setTrust(false)}>Revoke trust</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>Promote to trusted?</h3>
+                <p className="k-muted">
+                  Trusted apps run <strong>directly</strong> with full access — no sandbox. Only promote an app you
+                  wrote or fully trust. <strong>{def.name}</strong> declares:
+                </p>
+                <ul className="k-trust-caps">
+                  {grantedCaps.length ? grantedCaps.map((c) => <li key={c}>{c}</li>) : <li className="k-muted">no special capabilities</li>}
+                </ul>
+                <div className="k-form-actions">
+                  <button type="button" className="k-add" onClick={() => setTrustPrompt(false)}>Cancel</button>
+                  <button type="button" className="k-add k-primary-action" onClick={() => setTrust(true)}>Promote to trusted</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}

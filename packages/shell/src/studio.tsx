@@ -5,9 +5,9 @@
 // runs UNTRUSTED in the QuickJS isolate, the same safe path a shared app takes.
 
 import { useEffect, useRef, useState } from "react";
-import { structureSchema, checkReferences } from "karta";
 import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
+import { validateDefinition } from "./validate-app.js";
 import {
   createClaudeBackend,
   createWebLLMBackend,
@@ -79,16 +79,6 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const canDescribe = description.trim().length > 0 && !genBusy;
   const appName = preview?.composed.runtime.definition.name;
 
-  // Real structure validation (the isolate's defineApp does NOT validate — so a malformed app would
-  // otherwise run as broken UI). Runs the same Zod schema + referential checks the trusted path uses.
-  // The isolate marshals the def with functions replaced by "__karta_fn__" (isolate-host); revive
-  // those to no-ops so binding fields pass the function check — the DATA shape is what we're checking.
-  const validateDef = (def: unknown): string[] => {
-    const parsed = structureSchema.safeParse(reviveFns(def));
-    if (!parsed.success) return parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`);
-    return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
-  };
-
   // Build (or rebuild) the live app from `source` and VALIDATE its structure. Returns the validation
   // issues (empty = valid). Drafts use an ephemeral MemoryStore; a saved app (storeNamespace) uses its
   // durable store so its data persists across opens. Runs untrusted in the isolate.
@@ -112,7 +102,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
       buildRef.current += 1;
       setPreview({ composed, toaster, build: buildRef.current });
       setTab("preview");
-      const issues = validateDef(composed.runtime.definition);
+      const issues = validateDefinition(composed.runtime.definition);
       if (issues.length) setError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
       return issues;
     } catch (e) {
@@ -417,19 +407,4 @@ async function newMemoryStore(): Promise<Store> {
   const store = new MemoryStore();
   await store.open("studio-draft");
   return store;
-}
-
-// The isolate serializes the app def with every function replaced by the marker "__karta_fn__"
-// (host/isolate). Revive those to no-op functions so structure validation checks the DATA shape
-// without tripping the "expected a function" check on legitimate computed/binding fields.
-const FN_MARKER = "__karta_fn__";
-function reviveFns(v: unknown): unknown {
-  if (v === FN_MARKER) return () => undefined;
-  if (Array.isArray(v)) return v.map(reviveFns);
-  if (v && typeof v === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = reviveFns(val);
-    return out;
-  }
-  return v;
 }
