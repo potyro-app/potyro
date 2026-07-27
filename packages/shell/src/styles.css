@@ -163,6 +163,33 @@ button {
   text-transform: capitalize;
 }
 
+/* Trust promotion */
+.k-prov-btn {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: box-shadow 150ms var(--ease);
+}
+.k-prov-btn:hover {
+  box-shadow: var(--shadow);
+}
+.k-trustdialog {
+  width: min(460px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.k-trust-caps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-transform: capitalize;
+}
+
 /* Edit mode — point-and-describe affordances */
 .k-add[data-active="true"] {
   border-color: var(--accent);

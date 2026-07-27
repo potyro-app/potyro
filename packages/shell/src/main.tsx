@@ -210,8 +210,9 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   );
 }
 
-// A saved user app — always UNTRUSTED (isolate), with its own durable store, so it's usable, not
-// preview-only. Same runtime path a shared app takes.
+// A saved user app. UNTRUSTED by default (isolate); if the user promoted it, TRUSTED (direct) — the
+// source runs as a real module. A trusted load that fails (e.g. an edited, invalid version) falls
+// back to untrusted so the app still opens. Either way it has its own durable store.
 async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
   const saved = getUserApp(id);
   if (!saved) {
@@ -221,24 +222,41 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const store = await openStore(`user:${id}`);
   const ui = createUiBridge(toaster.push);
   const nav = createNavBridge(() => {});
-  const [{ createAppBundler }, { createSandboxLoader }] = await Promise.all([
-    import("./app-bundler.js"),
-    import("./isolate-bridge.js"),
-  ]);
-  const bundleCode = await (await createAppBundler())(saved.source);
-  const composed = await compose({ provenance: "untrusted", bundleCode, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
-  startReminderSync(composed.runtime, store);
+
+  let composed: Composed;
+  let provenance: Provenance = "untrusted";
+  let appSource: string | undefined;
+
+  if (saved.trusted) {
+    try {
+      const { loadTrustedModule } = await import("./trusted-loader.js");
+      const app = await loadTrustedModule(saved.source); // real defineApp validates or throws
+      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav });
+      provenance = "trusted";
+    } catch (e) {
+      toaster.push(`Couldn't run "${saved.name}" trusted; opening safely. ${e instanceof Error ? e.message : ""}`.trim());
+    }
+  }
+  if (provenance === "untrusted") {
+    const [{ createAppBundler }, { createSandboxLoader }] = await Promise.all([
+      import("./app-bundler.js"),
+      import("./isolate-bridge.js"),
+    ]);
+    appSource = await (await createAppBundler())(saved.source);
+    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
+  }
+  startReminderSync(composed!.runtime, store);
 
   mount(
     root,
     <App
-      runtime={composed.runtime}
-      provenance="untrusted"
+      runtime={composed!.runtime}
+      provenance={provenance}
       toaster={toaster}
       appId={id}
       apps={APPS as readonly string[]}
       currentKind="user"
-      onExport={() => void exportApp(composed.runtime, store, caps, "untrusted", bundleCode, toaster)}
+      onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
       generator
     />,
   );

@@ -69,11 +69,8 @@ export async function bundleAppSource(source: string, esbuild: EsbuildLike, stub
 
 let esbuildReady: Promise<EsbuildLike> | null = null;
 
-/**
- * Browser factory: lazily loads + initialises esbuild-wasm (once) and inlines the isolate stubs,
- * returning a `bundle(source)` closure. The wasm asset is resolved locally (offline-first) via Vite.
- */
-export async function createAppBundler(): Promise<(source: string) => Promise<string>> {
+/** Lazily load + initialise esbuild-wasm once; shared by the isolate and trusted bundlers. */
+export async function getEsbuild(): Promise<EsbuildLike> {
   if (!esbuildReady) {
     esbuildReady = (async () => {
       const esbuild = await import("esbuild-wasm");
@@ -81,10 +78,50 @@ export async function createAppBundler(): Promise<(source: string) => Promise<st
       return esbuild as unknown as EsbuildLike;
     })();
   }
-  const esbuild = await esbuildReady;
+  return esbuildReady;
+}
+
+/**
+ * Browser factory: inlines the isolate stubs and returns a `bundle(source)` closure producing the
+ * untrusted-isolate IIFE. The wasm asset is resolved locally (offline-first) via Vite.
+ */
+export async function createAppBundler(): Promise<(source: string) => Promise<string>> {
+  const esbuild = await getEsbuild();
   const [karta, react] = await Promise.all([
     import("./isolate-stubs/karta.ts?raw"),
     import("./isolate-stubs/react.ts?raw"),
   ]);
   return (source: string) => bundleAppSource(source, esbuild, { karta: karta.default, react: react.default });
+}
+
+/**
+ * Bundle a `.app.ts` source to a self-contained ES module for TRUSTED (direct) execution. Unlike the
+ * isolate bundle, `karta`/`react` resolve to the SHELL's real modules (read from globals at eval
+ * time), so the real `defineApp` runs — validating the app and yielding live functions + a branded
+ * KartaApp. Used only after the user promotes an app to trusted (see trusted-loader).
+ */
+export async function bundleTrustedModule(source: string): Promise<string> {
+  const esbuild = await getEsbuild();
+  const real = (name: string) => `module.exports = globalThis.${name};`;
+  const plugin: EsbuildPlugin = {
+    name: "karta-real-modules",
+    setup(build) {
+      build.onResolve({ filter: /^(karta|react)(\/jsx-(dev-)?runtime)?$/ }, (args) => ({ path: args.path, namespace: "karta-real" }));
+      build.onLoad({ filter: /.*/, namespace: "karta-real" }, (args) => ({
+        contents: args.path === "karta" ? real("__kartaReal") : args.path.startsWith("react/jsx") ? real("__reactJsxReal") : real("__reactReal"),
+        loader: "js",
+      }));
+    },
+  };
+  const result = await esbuild.build({
+    stdin: { contents: source, loader: "ts", sourcefile: "app.ts" },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "browser",
+    target: "es2020",
+    logLevel: "silent",
+    plugins: [plugin],
+  });
+  return result.outputFiles[0]!.text;
 }
