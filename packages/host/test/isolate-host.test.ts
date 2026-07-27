@@ -107,6 +107,15 @@ describe("IsolateHost — marshalled function execution", () => {
     expect(primary).toBe("Soup (100)");
     loaded.dispose();
   });
+
+  // SANDBOX-PARITY DEBT (deliberate, tracked). The direct path now lets a computed query its OWN
+  // entity: the re-entered key is replaced by an accessor that throws only if the value is actually
+  // read (see `defineCycleTrap` in resolve.ts, and runtime/test/same-entity-computed.test.ts).
+  // That accessor cannot survive serialization into QuickJS, so an UNTRUSTED app doing the same
+  // thing still fails as it did before — trusted and untrusted diverge here for the first time.
+  // Deliberate: the isolate answer is only needed once a B2B integration or an iOS submission makes
+  // it real. Do not delete this marker without either implementing parity or recording the decision.
+  it.todo("parity: an untrusted computed may query its own entity (see defineCycleTrap)");
 });
 
 describe("IsolateHost — containment (must fail closed)", () => {
