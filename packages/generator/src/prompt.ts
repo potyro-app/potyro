@@ -91,9 +91,39 @@ CONTRACT
 - Structure (entities/fields/view layout) is plain data. All LOGIC — computed, filters, sorts, actions,
   display bindings — is ordinary TypeScript functions that receive the record (and \`ctx\`). There is NO
   expression language; write real functions.
+- \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
+- \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
+  \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
+  NEVER \`actions: { water: { label: "...", run: ... } }\`. A detail view lists action KEYS:
+  \`actions: ["water", "repot"]\`.
+
+THE \`ctx\` API — THIS IS THE COMPLETE SURFACE. Calling anything not on this list is a runtime crash.
+There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and are ALL async:
+- \`await ctx.query(entity, { filter?, sort?, limit?, offset? })\` → Resolved[]   (NOT \`ctx.data.list\`,
+  NOT a \`where\` option — the option is \`filter\`, a JS predicate \`(r) => boolean\`)
+- \`await ctx.get(entity, id)\` → Resolved | null
+- \`await ctx.create(entity, data)\` → Resolved                                    (NOT \`ctx.data.create\`)
+- \`await ctx.patch(entity, id, data)\` → Resolved   — this is how you UPDATE      (NOT \`ctx.update\`,
+  NOT \`ctx.data.update\`)
+- \`await ctx.delete(entity, id)\`
+- \`await ctx.transaction(async (tx) => { ... })\`
+- \`ctx.now()\` → Date, \`ctx.today()\` → Date          (sync; NOT \`ctx.data.now\`)
+- \`ctx.params\` — view/route params
+- \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
+- \`ctx.caps\` — \`camera\`, \`geolocation\`, \`notifications\`, \`filesystem\`, \`network\` (may be denied)
+- \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
+- \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg)\`, \`await prompt(msg)\`, \`await pick(items, opts)\`
+  (there is NOTHING else on \`ctx.ui\` — no \`openUrl\`, no \`alert\`)
+- \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
+Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
 - A page has \`id\`, \`title\`, and a \`view\`. View \`type\` is one of: list, gallery, table, detail, calendar,
   map, custom. A \`display.primary\`/\`secondary\` binding is a field-key string OR a function \`(r) => ...\`.
 - Every field/computed referenced by a view must exist on that entity.
+- A \`custom\` view is a REACT COMPONENT: \`{ type: "custom", entity, render: (props) => ReactElement }\`.
+  \`props\` is \`{ runtime, entity, options, param, navigate }\` — reach the host via \`props.runtime.ctx\`,
+  NOT via a \`ctx\` argument. \`render\` is synchronous and MUST return JSX, never a data object; do async
+  reads in a \`useEffect\`/hook inside the component. Prefer a built-in view unless the ask genuinely
+  needs bespoke interaction. There is NO chart/graph view type — do not invent one.
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
 - Give every entity a \`label\` and an \`icon\` (a single emoji).
@@ -110,6 +140,21 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   as a nested \`list\` field or reach them from the parent's detail.
 - Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).
 
+SIZE BUDGET — build the SMALLEST app that answers the ask. Measured: without this section the
+generator turned a two-line request into 4 entities / 17 fields; with it, the same corpus produced
+132-line apps instead of 369-line ones at the same correctness. A user can always add more later;
+every field they did not ask for is a form they scroll past on every single entry.
+- Default to ONE entity. Add a second only if the request clearly involves two distinct things the
+  person manages separately (e.g. clients AND time entries). Three is almost always too many.
+- Aim for at most 6 fields per entity. Include a field only if the request implies it. Do NOT add
+  rating/notes/tags/photo/priority "for completeness" — omitting a field is better than guessing it.
+- Aim for at most 3 pages: one list per entity plus its hidden detail. Add a third only if the ask
+  names a genuinely separate screen.
+- At most 2 actions per entity, for the obvious one-tap operations only.
+- Prefer a BUILT-IN view. Reach for \`custom\` only when the ask truly cannot be served by
+  list/gallery/table/detail/calendar/map — not merely because bespoke would be nicer.
+- If the request is ambiguous, choose the smaller reading.
+
 OUTPUT
 - Return ONLY the \`.app.ts\` source in a single \`\`\`ts code block. No prose before or after.
 
@@ -122,6 +167,7 @@ EXAMPLE 2 — a computed value used in a display binding:
 \`\`\`ts
 ${EXAMPLE_COMPUTED}
 \`\`\``;
+
 
 export function buildUserMessage(prompt: GenPrompt): string {
   return `Create a Karta app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
