@@ -10,12 +10,12 @@ import { smokeApp, smokePassed, type SmokeResult } from "../src/smoke.js";
 
 async function main(): Promise<void> {
   const dir = resolve(process.argv[2] ?? "eval-out/baseline");
-  const files = readdirSync(dir).filter((f) => f.endsWith(".app.ts")).sort();
+  const files = readdirSync(dir).filter((f) => /\.app\.tsx?$/.test(f)).sort();
   console.log(`smoke: ${files.length} apps in ${dir}\n`);
 
   const rows: Array<{ id: string; passed: boolean; smoke: SmokeResult | null; error?: string }> = [];
   for (const file of files) {
-    const id = file.replace(/\.app\.ts$/, "");
+    const id = file.replace(/\.app\.tsx?$/, "");
     try {
       const app = await loadApp(readFileSync(join(dir, file), "utf8"));
       const smoke = await smokeApp(app as never);

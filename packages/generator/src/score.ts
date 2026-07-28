@@ -6,7 +6,6 @@
 
 import { build } from "esbuild";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { FakeCapabilities } from "@karta/capabilities";
@@ -50,13 +49,20 @@ async function bundle(source: string): Promise<string> {
     platform: "node",
     target: "es2020",
     logLevel: "silent",
+    // React must stay EXTERNAL so the app shares the harness's single instance. Bundling it gives
+    // the app a second copy whose hook dispatcher is null under react-dom/server — every hook-using
+    // custom view then fails for a reason that has nothing to do with the app. The shell resolves
+    // react to its own real module for exactly the same reason (trusted-loader.ts).
+    external: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   });
   return res.outputFiles[0]!.text;
 }
 
-/** Import a bundled ESM string via a temp file (native import; bypasses any test transform). */
+/** Import a bundled ESM string via a temp file (native import; bypasses any test transform).
+ *  The file lives INSIDE the package so Node resolves the externalized `react` to this package's
+ *  copy — the same instance react-dom/server uses. */
 async function importModule(code: string): Promise<{ default?: unknown }> {
-  const dir = mkdtempSync(join(tmpdir(), "karta-eval-"));
+  const dir = mkdtempSync(join(RESOLVE_DIR, ".karta-eval-"));
   const file = join(dir, "gen.mjs");
   try {
     writeFileSync(file, code);

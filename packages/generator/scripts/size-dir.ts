@@ -22,7 +22,7 @@ interface Size {
 
 async function measure(dir: string): Promise<Size[]> {
   const out: Size[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".app.ts")).sort()) {
+  for (const file of readdirSync(dir).filter((f) => /\.app\.tsx?$/.test(f)).sort()) {
     const source = readFileSync(join(dir, file), "utf8");
     try {
       const app = (await loadApp(source)) as unknown as {
@@ -32,7 +32,7 @@ async function measure(dir: string): Promise<Size[]> {
       const ents = Object.values(app.entities ?? {});
       const perEntity = ents.map((e) => Object.keys(e.fields ?? {}).length);
       out.push({
-        id: file.replace(/\.app\.ts$/, ""),
+        id: file.replace(/\.app\.tsx?$/, ""),
         entities: ents.length,
         fields: perEntity.reduce((a, b) => a + b, 0),
         maxFields: perEntity.length ? Math.max(...perEntity) : 0,
