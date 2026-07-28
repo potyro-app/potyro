@@ -245,8 +245,13 @@ export interface QuickAction {
   label: string;
   icon?: string;
   entity: string;
-  mode?: "auto" | "form" | "menu";
+  /** `instant` creates the record straight from field defaults + `prefill` with NO form — the point
+   *  of a quick action when every field has a default (e.g. "Start workout" mid-gym). */
+  mode?: "auto" | "form" | "menu" | "instant";
   open?: boolean;
+  /** Page to land on after creating. Defaults to the entity's detail page, then its list. Use this
+   *  to jump straight into a custom view (a runner/tracker) instead of a settings screen. */
+  openPage?: string;
   prefill?: Record<string, unknown>;
 }
 
