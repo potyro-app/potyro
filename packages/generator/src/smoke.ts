@@ -33,8 +33,10 @@ export interface SmokeResult {
   actionsOk: boolean;
   /** Reminder `when` functions ran without throwing. */
   remindersOk: boolean;
+  /** Every custom view rendered (server-side) without throwing. */
+  customViewsOk: boolean;
   /** Counts, so a vacuous pass (nothing to run) is distinguishable from a real one. */
-  ran: { entities: number; records: number; pages: number; computed: number; actions: number; reminders: number };
+  ran: { entities: number; records: number; pages: number; computed: number; actions: number; reminders: number; customViews: number };
   errors: string[];
 }
 
@@ -94,12 +96,13 @@ function seedValue(field: Field, i: number, key: string): unknown {
 
 export async function smokeApp(app: AppDefinition & { id: string }): Promise<SmokeResult> {
   const errors: string[] = [];
-  const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0 };
+  const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0, customViews: 0 };
   let seeded = false;
   let computedOk = true;
   let bindingsOk = true;
   let actionsOk = true;
   let remindersOk = true;
+  let customViewsOk = true;
 
   const store = new MemoryStore();
   await store.open(app.id);
@@ -189,6 +192,43 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
     }
   }
 
+  // ---- custom views: actually execute the component ----
+  // Without this the biggest class of generated code is unverified: `render` bodies are arbitrary
+  // React, and everything else here only proves the DECLARATIVE parts work. Server-rendering runs
+  // the component body, its hooks and its JSX — catching invented UI APIs, bad prop access, and
+  // anything thrown on first paint. Effects do NOT run under renderToStaticMarkup, so this proves
+  // first paint, not interaction.
+  for (const page of app.pages ?? []) {
+    const view = page.view as { type?: string; entity?: string; param?: string; render?: unknown } | undefined;
+    if (view?.type !== "custom" || typeof view.render !== "function") continue;
+    const params: Record<string, string> = {};
+    if (view.param && view.entity) {
+      const first = created[view.entity]?.[0];
+      if (first) params[view.param] = first;
+    }
+    try {
+      const props = {
+        runtime,
+        entity: view.entity ?? "",
+        options: view,
+        param: params,
+        navigate: () => {},
+      };
+      // Render `render` AS A COMPONENT (createElement), never by calling it directly: a direct call
+      // executes the body as a plain function, so any hook it uses throws "Cannot read properties
+      // of null (reading 'useState')" — failing correct apps for the wrong reason.
+      const [{ renderToStaticMarkup }, { createElement }] = await Promise.all([
+        import("react-dom/server"),
+        import("react"),
+      ]);
+      renderToStaticMarkup(createElement(view.render as never, props as never));
+      ran.customViews++;
+    } catch (e) {
+      customViewsOk = false;
+      errors.push(`custom view ${page.id}: ${message(e)}`);
+    }
+  }
+
   // ---- actions: the gate that catches hallucinated ctx methods ----
   for (const [name, entity] of entities) {
     for (const key of Object.keys(entity.actions ?? {})) {
@@ -215,10 +255,10 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
     }
   }
 
-  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, ran, errors };
+  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors };
 }
 
 /** True when the app not only validates but actually executed its own logic without throwing. */
 export function smokePassed(s: SmokeResult): boolean {
-  return s.seeded && s.computedOk && s.bindingsOk && s.actionsOk && s.remindersOk;
+  return s.seeded && s.computedOk && s.bindingsOk && s.actionsOk && s.remindersOk && s.customViewsOk;
 }
