@@ -74,6 +74,50 @@ export default defineApp({
   ],
 });`;
 
+export const EXAMPLE_CUSTOM_VIEW = `import { defineApp, type ViewProps } from "karta";
+import { useEffect, useState } from "react";
+
+// A custom view is a NORMAL React component in the same file. Import React hooks from "react";
+// they are NOT on \`props\`. Reach data through \`props.runtime\`.
+function Today({ runtime }: ViewProps) {
+  const { rows } = runtime.useQuery("glass");           // live query hook — re-renders on change
+  const [now, setNow] = useState(0);
+  useEffect(() => {                                     // timers/subscriptions go in an effect
+    const t = setInterval(() => setNow((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const total = rows.reduce((n, r) => n + Number(r.ml ?? 0), 0);
+  return (
+    <div>
+      <h2>{total} ml today</h2>
+      <progress value={total} max={2000} />
+      <button type="button" onClick={() => void runtime.create("glass", { ml: 250 })}>
+        + glass
+      </button>
+    </div>
+  );
+}
+
+export default defineApp({
+  id: "water",
+  name: "Water",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    glass: {
+      label: "Glass",
+      icon: "💧",
+      displayField: "ml",
+      fields: { ml: { type: "number", default: 250 }, at: { type: "datetime", default: (ctx) => ctx.now() } },
+    },
+  },
+  pages: [
+    { id: "today", title: "Today", view: { type: "custom", entity: "glass", render: (props) => Today(props) } },
+    { id: "all", title: "Glasses", view: { type: "list", entity: "glass", display: { primary: "ml" } } },
+  ],
+});`;
+
 export const SYSTEM_PROMPT = `You generate a single Karta app module (a \`.app.ts\` file) from a natural-language description.
 
 CONTRACT
@@ -119,11 +163,18 @@ Because reads are async, a computed that queries other records MUST be \`async\`
 - A page has \`id\`, \`title\`, and a \`view\`. View \`type\` is one of: list, gallery, table, detail, calendar,
   map, custom. A \`display.primary\`/\`secondary\` binding is a field-key string OR a function \`(r) => ...\`.
 - Every field/computed referenced by a view must exist on that entity.
-- A \`custom\` view is a REACT COMPONENT: \`{ type: "custom", entity, render: (props) => ReactElement }\`.
-  \`props\` is \`{ runtime, entity, options, param, navigate }\` — reach the host via \`props.runtime.ctx\`,
-  NOT via a \`ctx\` argument. \`render\` is synchronous and MUST return JSX, never a data object; do async
-  reads in a \`useEffect\`/hook inside the component. Prefer a built-in view unless the ask genuinely
-  needs bespoke interaction. There is NO chart/graph view type — do not invent one.
+- A \`custom\` view is a REACT COMPONENT — write JSX (the file is compiled as .tsx). Import hooks with
+  \`import { useState, useEffect } from "react"\`. React is NOT on \`props\`, NOT on \`runtime\`, and NOT a
+  global: \`props.runtime.React\` and \`globalThis.React\` DO NOT EXIST. Never invent UI helpers —
+  \`ctx.ui.stack/panel/header/checkboxRow/tick\` do not exist, and returning a \`{ kind: "..." }\` object
+  instead of JSX renders nothing.
+  \`props\` is \`{ runtime, entity, options, param, navigate }\`. From \`runtime\`:
+  \`runtime.useQuery(entity, spec?)\` -> \`{ rows, loading }\`, \`runtime.useRecord(entity, id)\` ->
+  \`{ record, loading }\`, \`runtime.create/patch/remove\`, \`runtime.runAction(entity, key, id)\`, and the
+  full host surface at \`runtime.ctx\`. Read a route param via \`props.param\`.
+  \`render\` is SYNCHRONOUS and MUST return JSX; do async work in \`useEffect\`, never in the body.
+  Prefer a built-in view unless the ask genuinely needs bespoke interaction. There is NO chart/graph
+  view type — do not invent one; build it from JSX (e.g. sized \`div\`s) inside a custom view.
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
 - Give every entity a \`label\` and an \`icon\` (a single emoji).
@@ -166,6 +217,11 @@ ${EXAMPLE_TODO}
 EXAMPLE 2 — a computed value used in a display binding:
 \`\`\`ts
 ${EXAMPLE_COMPUTED}
+\`\`\`
+
+EXAMPLE 3 — a custom view: a real React component, in the same file, with hooks imported from "react":
+\`\`\`ts
+${EXAMPLE_CUSTOM_VIEW}
 \`\`\``;
 
 
