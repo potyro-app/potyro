@@ -628,6 +628,21 @@ button {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   animation: modal-in 200ms var(--ease);
+  /* Padding belongs to the modal box itself. Without it, only children that bring their own spacing
+     (`.k-form`) looked right — a modal whose content sits directly inside, like the trust dialog,
+     rendered flush to all four edges with its text clipped at the border. */
+  padding: 1.25rem 1.4rem;
+  box-sizing: border-box;
+}
+/* `.k-form` supplies the padding for modals built around it; don't double it up. */
+.k-modal > .k-form {
+  padding: 0;
+}
+.k-modal > :first-child {
+  margin-top: 0;
+}
+.k-modal > :last-child {
+  margin-bottom: 0;
 }
 @keyframes modal-in {
   from {
