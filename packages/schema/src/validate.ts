@@ -138,8 +138,9 @@ const quickActionSchema = z.object({
   label: z.string().min(1),
   icon: z.string().optional(),
   entity: z.string().min(1),
-  mode: z.enum(["auto", "form", "menu"]).optional(),
+  mode: z.enum(["auto", "form", "menu", "instant"]).optional(),
   open: z.boolean().optional(),
+  openPage: z.string().optional(),
   prefill: z.record(z.any()).optional(),
 });
 

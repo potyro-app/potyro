@@ -18,6 +18,7 @@ import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
 import { startReminderSync } from "./reminder-sync.js";
 
@@ -174,7 +175,8 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
     store = await openStore(appId);
     await seedIfEmpty(store, appId);
   }
-  const ui = createUiBridge(toaster.push);
+  const picker = new PickerHost();
+  const ui = createUiBridge(toaster.push, picker);
   const nav = createNavBridge(() => {});
 
   const examples = import.meta.glob("../../../examples/*.app.ts", { import: "default" });
@@ -197,6 +199,7 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   mount(
     root,
     <App
+      picker={picker}
       runtime={composed.runtime}
       provenance={provenance}
       toaster={toaster}
@@ -220,7 +223,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     return;
   }
   const store = await openStore(`user:${id}`);
-  const ui = createUiBridge(toaster.push);
+  const picker = new PickerHost();
+  const ui = createUiBridge(toaster.push, picker);
   const nav = createNavBridge(() => {});
 
   let composed: Composed;
@@ -250,6 +254,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   mount(
     root,
     <App
+      picker={picker}
       runtime={composed!.runtime}
       provenance={provenance}
       toaster={toaster}

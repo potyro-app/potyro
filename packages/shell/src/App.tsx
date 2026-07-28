@@ -13,6 +13,7 @@ import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user
 import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, extractSource } from "@karta/generator/backends";
 import { buildAndValidate } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
+import { Picker, type PickerHost } from "./picker.js";
 
 interface EditorState {
   entity: string;
@@ -29,8 +30,9 @@ interface QuickActionDef {
   label: string;
   icon?: string;
   entity: string;
-  mode?: "auto" | "form" | "menu";
+  mode?: "auto" | "form" | "menu" | "instant";
   open?: boolean;
+  openPage?: string;
   prefill?: Record<string, unknown>;
 }
 
@@ -69,6 +71,8 @@ function GridTile({
 }
 
 interface AppProps {
+  /** Backs a real `ctx.ui.pick` modal; omit for surfaces that never pick. */
+  picker?: PickerHost;
   runtime: KartaRuntime;
   provenance: Provenance;
   toaster: Toaster;
@@ -82,7 +86,7 @@ interface AppProps {
   generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, currentKind, onExport, onImport, generator }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, currentKind, onExport, onImport, generator, picker }: AppProps) {
   const def = runtime.definition;
   // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
   // them out of the tab bar so nav shows real sections only (no redundant singular "Session" tabs).
@@ -135,7 +139,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   };
 
   // After creating, open the new record: its detail page if one exists, else jump to its list.
-  const openRecord = (entity: string, id: string): void => {
+  const openRecord = (entity: string, id: string, preferPage?: string): void => {
+    if (preferPage) {
+      const target = def.pages.find((p) => p.id === preferPage);
+      if (target) {
+        const param = (target.view as { param?: string }).param ?? "id";
+        navigate(preferPage, { [param]: id });
+        return;
+      }
+    }
     const detail = def.pages.find(
       (p) => (p.view as { type?: string; entity?: string }).type === "detail" && (p.view as { entity?: string }).entity === entity,
     );
@@ -149,6 +161,22 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   };
 
   const triggerQuick = (qa: QuickActionDef): void => {
+    // `instant`: no form at all — create from field defaults + prefill and go. This is what makes a
+    // quick action quick; anything else is a form standing between the user and the thing they
+    // opened the app to do.
+    if (qa.mode === "instant") {
+      void runtime.create(qa.entity, createDefaults(runtime, qa.entity, qa.prefill)).then((rec) => {
+        if (qa.open === false) return;
+        if (qa.openPage) {
+          const target = def.pages.find((p) => p.id === qa.openPage);
+          const param = (target?.view as { param?: string } | undefined)?.param ?? "id";
+          navigate(qa.openPage, { [param]: rec.id });
+          return;
+        }
+        openRecord(qa.entity, rec.id);
+      });
+      return;
+    }
     const field = menuFieldFor(qa);
     const options = field ? ((def.entities[qa.entity]?.fields[field] as { options?: string[] }).options ?? []) : [];
     if (field && options.length) {
@@ -492,6 +520,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
 
+      {picker ? <Picker host={picker} /> : null}
       <Toasts toaster={toaster} />
     </div>
   );
