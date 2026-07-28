@@ -282,11 +282,21 @@ async function boot(): Promise<void> {
 }
 
 function registerServiceWorker(): void {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      /* offline SW is best-effort */
-    });
+  if (!("serviceWorker" in navigator)) return;
+
+  // NEVER in dev. The SW is cache-first, so in dev it serves stale modules indefinitely: an edit is
+  // invisible until the cache happens to miss, and a route change (which is a real navigation —
+  // `location.search = ...`) reliably replays the OLD bundle. Actively tear down any SW + caches a
+  // previous dev session installed, otherwise it keeps serving this page forever.
+  if (import.meta.env.DEV) {
+    void navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister())));
+    if ("caches" in globalThis) void caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k))));
+    return;
   }
+
+  navigator.serviceWorker.register("/sw.js").catch(() => {
+    /* offline SW is best-effort */
+  });
 }
 
 boot().catch((err: unknown) => {

@@ -73,6 +73,24 @@ body {
   align-items: center;
   gap: 0.5rem;
 }
+/* Every control in the header bar is the same height. Left to each class, they drifted: `.k-add`
+   never set `font: inherit` (so it fell back to the ~13px UA button font) and used different padding
+   from `.k-app-switch`, giving visibly different heights in the same row. Height is set here, once,
+   rather than re-derived from each button's own font and padding. */
+.k-header-actions > button,
+.k-header-actions > .k-app-switch,
+.k-header-actions > .k-prov {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  box-sizing: border-box;
+}
+/* The provenance pill keeps its small-caps type without shrinking the row. */
+.k-header-actions > .k-prov {
+  font-size: 0.66rem;
+}
 .k-app-switch {
   font: inherit;
   padding: 0.45rem 0.6rem;
