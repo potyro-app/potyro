@@ -23,6 +23,8 @@ import {
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
+import { loadTrustedModule } from "./trusted-loader.js";
+import type { Provenance } from "@karta/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { openStore } from "./open-store.js";
 import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
@@ -56,6 +58,8 @@ interface Preview {
   composed: Composed;
   toaster: Toaster;
   build: number;
+  /** Which path actually ran — the isolate fallback is only taken if the trusted load throws. */
+  provenance: Provenance;
 }
 
 export function Studio({ onClose }: { onClose: () => void }) {
@@ -86,21 +90,37 @@ export function Studio({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const bundle = await createAppBundler();
-      const bundleCode = await bundle(src);
       const store: Store = storeNamespace ? await openStore(`user:${storeNamespace}`) : await newMemoryStore();
       const toaster = new Toaster();
-      const composed = await compose({
-        provenance: "untrusted",
-        bundleCode,
+      const base = {
         store,
         caps: createWebCapabilities(),
         ui: createUiBridge(toaster.push),
         nav: createNavBridge(() => {}),
-        loadIsolated: await createSandboxLoader(store),
-      });
+      };
+
+      // TRUSTED by default: this is the user's own app (CLAUDE.md rule 3 — provenance decides
+      // execution, and "trusted = user's own"). It also has to be direct for the preview to be
+      // truthful: custom views never run untrusted (React is stubbed inside the isolate), so an
+      // isolate preview silently renders every custom view as a blank panel.
+      let composed: Composed;
+      let provenance: Provenance = "trusted";
+      try {
+        composed = await compose({ provenance: "trusted", app: await loadTrustedModule(src), ...base });
+      } catch {
+        // A malformed app can't produce a KartaApp — fall back to the isolate so the user still
+        // gets a preview plus the validation issues, rather than a hard failure.
+        provenance = "untrusted";
+        const bundle = await createAppBundler();
+        composed = await compose({
+          provenance: "untrusted",
+          bundleCode: await bundle(src),
+          ...base,
+          loadIsolated: await createSandboxLoader(store),
+        });
+      }
       buildRef.current += 1;
-      setPreview({ composed, toaster, build: buildRef.current });
+      setPreview({ composed, toaster, build: buildRef.current, provenance });
       setTab("preview");
       const issues = validateDefinition(composed.runtime.definition);
       if (issues.length) setError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
@@ -219,6 +239,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // --- My Apps ----------------------------------------------------------------------------------
 
   const save = (): void => {
+    // Saving an app the preview already flagged is how invalid apps reached My Apps and only
+    // surfaced much later, once validation existed. Confirm rather than block: an author may still
+    // want to park work in progress.
+    if (error && !globalThis.confirm(`This app has structure problems:\n\n${error}\n\nSave anyway?`)) return;
     const record = saveUserApp({ id: currentId ?? undefined, name: appName ?? description, source }, new Date().toISOString());
     setCurrentId(record.id);
     setSavedApps(listUserApps());
@@ -385,7 +409,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
               {busy && !preview ? (
                 <p className="k-muted k-studio-building">Building…</p>
               ) : preview ? (
-                <App key={preview.build} runtime={preview.composed.runtime} provenance="untrusted" toaster={preview.toaster} />
+                <App key={preview.build} runtime={preview.composed.runtime} provenance={preview.provenance} toaster={preview.toaster} />
               ) : null}
             </div>
           ) : (
