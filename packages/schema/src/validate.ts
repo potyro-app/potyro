@@ -68,9 +68,41 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     many: z.boolean().optional(),
     ...common,
   });
+  // `of` is a flat map of NAMED sub-fields. Two wrong shapes are common enough — and produce error
+  // messages misleading enough — to be worth naming explicitly: without this, `of: "boolean"` reports
+  // `of.type: Expected object, received string` and `of: { type: "object", fields }` reports
+  // `of.fields.type: Invalid discriminator value…`, because Zod is parsing `type`/`fields` as
+  // sub-field NAMES. Both descriptions send the reader (or the repair loop) after the wrong thing.
+  // Recognise the two wrong shapes FIRST, so `of` keeps its `Record<string, Field>` output type
+  // (checkFieldRelations walks it) while still reporting them accurately.
+  const ofSchema = z.preprocess((val, ctx) => {
+    if (typeof val === "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "a list's `of` must be a map of named sub-fields, not a type name — a list of bare scalars is " +
+          'not supported; wrap it, e.g. of: { value: { type: "boolean" } }, or use a `tags` field for strings',
+      });
+      return {}; // issue already recorded; an empty map keeps the inner parse from adding noise
+    }
+    if (val && typeof val === "object") {
+      const keys = Object.keys(val as Record<string, unknown>);
+      if (keys.includes("type") && keys.includes("fields")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'a list\'s `of` is a flat map of named sub-fields — drop the { type: "object", fields } wrapper ' +
+            'and put the sub-fields directly in `of`, e.g. of: { name: { type: "text" }, qty: { type: "number" } }',
+        });
+        return {};
+      }
+    }
+    return val;
+  }, z.record(fieldSchema));
+
   const list = z.object({
     type: z.literal("list"),
-    of: z.record(fieldSchema),
+    of: ofSchema,
     ordered: z.boolean().optional(),
     ...common,
   });
