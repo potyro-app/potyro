@@ -12,8 +12,9 @@ export interface UserApp {
   name: string;
   source: string;
   updatedAt: string; // ISO
-  /** The user has vouched for this app → it runs directly (trusted), not in the isolate. Default:
-   *  undefined/false (untrusted). Editing the source resets this (a new version isn't vouched-for). */
+  /** Runs directly (trusted) rather than in the isolate. Apps authored in the Studio are the user's
+   *  own, so this defaults to TRUE; an app that arrived from someone else is saved with
+   *  `trusted: false` and must be promoted explicitly. */
   trusted?: boolean;
 }
 
@@ -22,7 +23,13 @@ function read(): UserApp[] {
     const raw = globalThis.localStorage?.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as UserApp[]).filter((a) => a && a.id && a.source) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Records written before trust defaulted to true have `trusted: undefined`. They are all
+    // Studio-authored (nothing else writes here yet), so read them as the user's own rather than
+    // stranding them in the isolate — where their custom views would render blank.
+    return (parsed as UserApp[])
+      .filter((a) => a && a.id && a.source)
+      .map((a) => (a.trusted === undefined ? { ...a, trusted: true } : a));
   } catch {
     return [];
   }
@@ -48,7 +55,10 @@ export function getUserApp(id: string): UserApp | undefined {
 
 /** Create or update a saved app. A new app gets a unique id derived from its name; passing an
  *  existing `id` updates that app in place. Returns the stored record. */
-export function saveUserApp(input: { id?: string; name: string; source: string }, now: string): UserApp {
+export function saveUserApp(
+  input: { id?: string; name: string; source: string; trusted?: boolean },
+  now: string,
+): UserApp {
   const apps = read();
   const name = input.name.trim() || "Untitled app";
   let id = input.id;
@@ -59,9 +69,12 @@ export function saveUserApp(input: { id?: string; name: string; source: string }
     const taken = new Set(apps.map((a) => a.id));
     while (taken.has(id)) id = `${base}-${n++}`;
   }
-  // Preserve trust only if the source is unchanged; any edit is a new, not-yet-vouched-for version.
+  // An app authored here is the USER'S OWN, so it is trusted by default (CLAUDE.md rule 3:
+  // provenance decides execution; trusted = user's own → direct). The isolate exists for code that
+  // arrived from someone else — an importer passes `trusted: false` explicitly. Editing your own app
+  // does NOT demote it; you are still the author.
   const prev = apps.find((a) => a.id === id);
-  const trusted = prev?.trusted && prev.source === input.source ? true : undefined;
+  const trusted = input.trusted ?? prev?.trusted ?? true;
   const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted };
   write([record, ...apps.filter((a) => a.id !== id)]);
   return record;
