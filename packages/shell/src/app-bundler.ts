@@ -22,6 +22,8 @@ export interface EsbuildPlugin {
 export interface EsbuildLike {
   build(options: {
     stdin: { contents: string; loader: string; sourcefile?: string };
+    /** "automatic" uses react/jsx-runtime (resolved by the stub plugins) instead of React.createElement. */
+    jsx?: "automatic" | "transform" | "preserve";
     bundle: boolean;
     write: boolean;
     format: string;
@@ -53,7 +55,11 @@ export async function bundleAppSource(source: string, esbuild: EsbuildLike, stub
   };
 
   const result = await esbuild.build({
-    stdin: { contents: source, loader: "ts", sourcefile: "gen.app.ts" },
+    // `tsx`, not `ts`: a custom view is a React component, so app source may contain JSX. The `ts`
+    // loader rejects it outright, which left generated apps no way to express UI at all — they
+    // invented `ctx.ui.stack()`-style frameworks instead. `react/jsx-runtime` already resolves above.
+    stdin: { contents: source, loader: "tsx", sourcefile: "gen.app.tsx" },
+    jsx: "automatic",
     bundle: true,
     write: false,
     format: "iife",
@@ -114,7 +120,8 @@ export async function bundleTrustedModule(source: string): Promise<string> {
     },
   };
   const result = await esbuild.build({
-    stdin: { contents: source, loader: "ts", sourcefile: "app.ts" },
+    stdin: { contents: source, loader: "tsx", sourcefile: "app.tsx" }, // see bundleAppSource
+    jsx: "automatic",
     bundle: true,
     write: false,
     format: "esm",

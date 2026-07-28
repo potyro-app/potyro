@@ -39,7 +39,11 @@ export interface LoadedKartaApp {
 
 async function bundle(source: string): Promise<string> {
   const res = await build({
-    stdin: { contents: source, resolveDir: RESOLVE_DIR, loader: "ts", sourcefile: "gen.app.ts" },
+    // `tsx` + automatic runtime: custom views are React components, so app source may contain JSX.
+    // Must match the shell's bundler (packages/shell/src/app-bundler.ts) or the eval scores a
+    // different language than the product runs.
+    stdin: { contents: source, resolveDir: RESOLVE_DIR, loader: "tsx", sourcefile: "gen.app.tsx" },
+    jsx: "automatic",
     bundle: true,
     write: false,
     format: "esm",
