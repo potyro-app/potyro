@@ -1,9 +1,10 @@
 // Launcher — the app switcher. Two variants share one presentation:
 //   • "home"    — the full-screen first surface when no app is selected.
 //   • "overlay" — a slide-in panel opened from inside a running app, to switch quickly.
-// Apps are grouped by provenance: trusted (built-in examples, run directly) and untrusted (the
-// user's saved apps from My Apps, run in the QuickJS isolate). Selecting a tile navigates via a
-// reload (?app=<id> or ?user=<id>) — boot() routes on that.
+// Each tile shows the provenance the app ACTUALLY runs under: built-in examples are trusted; a saved
+// app reports its own `trusted` flag (Studio-authored apps are the user's own and run directly;
+// something imported from elsewhere runs in the QuickJS isolate until promoted). Selecting a tile
+// navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
 import { useState } from "react";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
@@ -109,7 +110,9 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
             <div key={a.id} className="k-launch-usertile">
               <Tile
                 name={a.name}
-                badge="untrusted"
+                // Read the record, don't assume: a Studio-authored app is the user's own and runs
+                // trusted. Hardcoding "untrusted" here reported the opposite of what actually ran.
+                badge={a.trusted === false ? "untrusted" : "trusted"}
                 active={selected?.kind === "user" && selected.id === a.id}
                 onOpen={() => onOpenUser(a.id)}
               />

@@ -99,3 +99,13 @@ test("a workout can be started, filled and logged without a form", async ({ page
 
   expect(errors, `console/page errors:\n${errors.join("\n")}`).toEqual([]);
 });
+
+// The launcher hardcoded `badge="untrusted"` on every saved app, so a trusted app was labelled the
+// opposite of how it actually ran. The badge must reflect the record.
+test("the launcher reports a saved app's real provenance", async ({ page }) => {
+  await page.goto("/");
+  const tile = page.locator(".k-launch-usertile").filter({ hasText: "Workout Sessions" });
+  await expect(tile).toBeVisible({ timeout: 30_000 });
+  await expect(tile).toContainText("trusted");
+  await expect(tile).not.toContainText("untrusted");
+});
