@@ -33,6 +33,7 @@ import { App } from "./App.js";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
+const POLL_MS = 1_500;
 
 const STARTER = `import { defineApp } from "karta";
 
@@ -174,28 +175,47 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
   // its tools) active — a different setup from the one the eval harness measures.
   const runCli = async (prompt: string): Promise<string> => {
-    const abort = new AbortController();
-    // Without this a stalled generation surfaces as a bare "NetworkError" with nothing actionable.
-    const timer = setTimeout(() => abort.abort(), CLI_TIMEOUT_MS);
-    let res: Response;
-    try {
-      res = await fetch("/__generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ system: SYSTEM_PROMPT, prompt }),
-        signal: abort.signal,
-      });
-    } catch (e) {
-      if (abort.signal.aborted) throw new Error(`timed out after ${CLI_TIMEOUT_MS / 1000}s — try a shorter description`);
-      throw new Error(
-        `couldn't reach the dev server's generator. Is \`pnpm dev\` still running? (${e instanceof Error ? e.message : String(e)})`,
-      );
-    } finally {
-      clearTimeout(timer);
+    const post = async (): Promise<string> => {
+      let res: Response;
+      try {
+        res = await fetch("/__generate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ system: SYSTEM_PROMPT, prompt }),
+        });
+      } catch (e) {
+        throw new Error(
+          `couldn't reach the dev server's generator. Is \`pnpm dev\` still running? (${e instanceof Error ? e.message : String(e)})`,
+        );
+      }
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
+      return ((await res.json()) as { id: string }).id;
+    };
+
+    // Poll rather than hold a request open for a minute or more: a page reload (an HMR update, a
+    // vite.config restart, a stray refresh) aborts an in-flight fetch and looks like a network
+    // failure while the generation was actually fine. Each poll is a fast, disposable request.
+    const id = await post();
+    const deadline = Date.now() + CLI_TIMEOUT_MS;
+    for (;;) {
+      if (Date.now() > deadline) throw new Error(`timed out after ${CLI_TIMEOUT_MS / 1000}s — try a shorter description`);
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      let body: { status?: string; text?: string; error?: string; elapsedMs?: number };
+      try {
+        const res = await fetch(`/__generate?id=${encodeURIComponent(id)}`);
+        body = (await res.json()) as typeof body;
+      } catch {
+        continue; // a dropped poll is harmless — the job keeps running server-side
+      }
+      if (body.status === "running") {
+        setProgress(`Generating… ${Math.round((body.elapsedMs ?? 0) / 1000)}s`);
+        continue;
+      }
+      if (body.status === "done") return extractSource(body.text ?? "");
+      throw new Error(body.error ?? "generation failed");
     }
-    if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
-    return extractSource(((await res.json()) as { text: string }).text);
   };
+
   const generateCli = (): Promise<void> => {
     setEngine("cli");
     return withGen("claude -p", () => runCli(buildUserMessage({ id: "studio", description })));
