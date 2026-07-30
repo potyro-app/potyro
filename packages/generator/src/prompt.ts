@@ -154,7 +154,13 @@ There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and ar
 - \`ctx.now()\` → Date, \`ctx.today()\` → Date          (sync; NOT \`ctx.data.now\`)
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
-- \`ctx.caps\` — \`camera\`, \`geolocation\`, \`notifications\`, \`filesystem\`, \`network\` (may be denied)
+- \`ctx.caps\` — native capabilities. EVERY ONE IS OPTIONAL and may be undefined when not granted, so
+  guard before use: \`if (!ctx.caps.geo) { ctx.ui.toast("Location unavailable"); return; }\`
+    \`ctx.caps.geo.current()\`            → { lat, lng }        (the key is \`geo\`, NOT \`geolocation\`)
+    \`ctx.caps.camera.capture(opts?)\`    → Blob  (then \`await ctx.media.put(blob)\` for a media field)
+    \`ctx.caps.notifications.schedule({ id, at, title, body? })\`
+    \`ctx.caps.filesystem.pick()\` / \`.save(name, blob)\`, \`ctx.caps.haptics\`, \`ctx.caps.network\`
+  Declare what the app needs at the top level: \`permissions: { geo: true, camera: true }\`.
 - \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
 - \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg)\`, \`await prompt(msg)\`, \`await pick(items, opts)\`
   (there is NOTHING else on \`ctx.ui\` — no \`openUrl\`, no \`alert\`)

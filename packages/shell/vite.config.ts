@@ -12,28 +12,56 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 /** Mirrors packages/generator/src/cli-backend.ts — keep in step. */
 const NO_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch", "Task"];
 const GEN_TIMEOUT_MS = 300_000;
+const JOB_TTL_MS = 600_000; // a finished job nobody polls is dropped after this
+
+interface GenJob {
+  status: "running" | "done" | "error";
+  text?: string;
+  error?: string;
+  startedAt: number;
+}
 
 /**
- * Dev-only generation via the local `claude -p` CLI — so the "Describe an app…" panel can generate
- * without pasting an API key (it reuses your existing Claude Code auth). POST /__generate
- * { prompt, system? } → `claude -p` → { text }. Never part of the built app.
+ * Dev-only generation via the local `claude -p` CLI — no API key (reuses your Claude Code auth).
  *
- * Invocation MUST match the eval harness (packages/generator/src/cli-backend.ts) or the Studio
- * generates under different conditions than anything measured: the contract goes in via
- * `--system-prompt-file` (REPLACING Claude Code's own agent prompt, rather than being buried in the
- * user text) and tools are disallowed so generation can never wander into the repo. The prompt
- * arrives on stdin instead of argv — no shell/length surprises with a 10KB+ contract.
+ * JOB-BASED, not a long-held request. A generation takes 40-90s, and any page reload — an HMR update,
+ * a vite.config restart, a stray refresh — aborts an in-flight fetch and surfaces as a bare
+ * "NetworkError" with the work thrown away. So:
+ *
+ *   POST /__generate { system?, prompt }  -> { id }         (returns immediately)
+ *   GET  /__generate?id=<id>              -> { status, text? | error? }
+ *
+ * The client polls. A reload now costs nothing: the job keeps running and can be re-attached.
+ *
+ * The invocation MUST match the eval harness (packages/generator/src/cli-backend.ts) or the Studio
+ * generates under different conditions than anything measured: contract via `--system-prompt-file`
+ * (REPLACING Claude Code's agent prompt), tools disallowed, prompt on stdin.
  */
 function claudeCliPlugin(): Plugin {
+  const jobs = new Map<string, GenJob>();
+  let seq = 0;
+
   return {
     name: "karta-claude-cli",
     configureServer(server) {
       server.middlewares.use("/__generate", (req, res) => {
-        if (req.method !== "POST") {
-          res.statusCode = 405;
-          res.end();
-          return;
+        const send = (status: number, payload: unknown): void => {
+          res.statusCode = status;
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify(payload));
+        };
+
+        if (req.method === "GET") {
+          const id = new URL(req.url ?? "", "http://x").searchParams.get("id") ?? "";
+          const job = jobs.get(id);
+          if (!job) return send(404, { error: "unknown job" });
+          if (job.status === "running") return send(200, { status: "running", elapsedMs: Date.now() - job.startedAt });
+          jobs.delete(id); // one read per finished job; the client has it now
+          return send(200, job.status === "done" ? { status: "done", text: job.text } : { status: "error", error: job.error });
         }
+
+        if (req.method !== "POST") return send(405, { error: "POST to start, GET ?id= to poll" });
+
         let body = "";
         req.on("data", (c) => (body += c));
         req.on("end", () => {
@@ -44,15 +72,14 @@ function claudeCliPlugin(): Plugin {
             prompt = String(parsed.prompt ?? "");
             system = String(parsed.system ?? "");
           } catch {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: "invalid request body" }));
-            return;
+            return send(400, { error: "invalid request body" });
           }
-          if (!prompt) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: "missing prompt" }));
-            return;
-          }
+          if (!prompt) return send(400, { error: "missing prompt" });
+
+          const id = `gen-${Date.now()}-${++seq}`;
+          const job: GenJob = { status: "running", startedAt: Date.now() };
+          jobs.set(id, job);
+          send(202, { id });
 
           const dir = mkdtempSync(join(tmpdir(), "karta-gen-"));
           const args = ["-p", "--output-format", "text", "--disallowedTools", ...NO_TOOLS];
@@ -65,29 +92,25 @@ function claudeCliPlugin(): Plugin {
           const child = spawn("claude", args, { stdio: ["pipe", "pipe", "pipe"] });
           let out = "";
           let err = "";
-          let settled = false;
-          const finish = (status: number, payload: Record<string, unknown>): void => {
-            if (settled) return;
-            settled = true;
+          const settle = (patch: Partial<GenJob>): void => {
+            if (job.status !== "running") return;
+            Object.assign(job, patch);
             clearTimeout(timer);
             rmSync(dir, { recursive: true, force: true });
-            res.statusCode = status;
-            res.setHeader("content-type", "application/json");
-            res.end(JSON.stringify(payload));
+            // Don't leak a job nobody collects.
+            setTimeout(() => jobs.delete(id), JOB_TTL_MS).unref?.();
           };
-          // A generation that hangs would otherwise leave the browser waiting forever and surface as
-          // an opaque "NetworkError" rather than something actionable.
           const timer = setTimeout(() => {
             child.kill("SIGKILL");
-            finish(504, { error: `claude -p timed out after ${GEN_TIMEOUT_MS / 1000}s` });
+            settle({ status: "error", error: `claude -p timed out after ${GEN_TIMEOUT_MS / 1000}s` });
           }, GEN_TIMEOUT_MS);
 
           child.stdout.on("data", (d) => (out += d));
           child.stderr.on("data", (d) => (err += d));
-          child.on("error", (e) => finish(500, { error: `claude CLI unavailable: ${e.message}` }));
+          child.on("error", (e) => settle({ status: "error", error: `claude CLI unavailable: ${e.message}` }));
           child.on("close", (code) => {
-            if (code !== 0) finish(500, { error: err.trim() || `claude exited ${code}` });
-            else finish(200, { text: out });
+            if (code !== 0) settle({ status: "error", error: err.trim() || `claude exited ${code}` });
+            else settle({ status: "done", text: out });
           });
           child.stdin.end(prompt);
         });
