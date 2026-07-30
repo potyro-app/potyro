@@ -62,7 +62,15 @@ test("a geo field is a map you tap, not two number boxes", async ({ page }) => {
   await expect(form).toBeVisible();
 
   // The map is the input. Coordinates are behind a toggle, not the primary affordance.
-  await expect(form.locator(".k-geo-map")).toBeVisible({ timeout: 30_000 });
+  //
+  // Asserting the CONTAINER is visible proves nothing — an empty div is visible, which is exactly
+  // how a blank map area shipped. MapLibre renders into a <canvas>; require one, sized.
+  const canvas = form.locator(".k-geo-map canvas");
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  const box = await canvas.boundingBox();
+  expect(box, "map canvas has no layout box").not.toBeNull();
+  expect(box!.width, "map canvas has zero width").toBeGreaterThan(50);
+  expect(box!.height, "map canvas has zero height").toBeGreaterThan(50);
   await expect(form.getByText("Tap the map to place a point")).toBeVisible();
   await expect(form.locator(".k-geo-coords")).toHaveCount(0);
 
@@ -102,4 +110,21 @@ test("a relation to an empty entity can create its first record inline", async (
   await form.getByRole("button", { name: "Create" }).click();
   await expect(form).toBeHidden();
   await expect(page.getByText("Parque Ibirapuera")).toBeVisible();
+});
+
+// Tiles come from a third-party host, which a VPN, an ad blocker, or an offline device can block.
+// The old behaviour was a silent blank rectangle indistinguishable from a broken app. The field must
+// say so and fall back to coordinates.
+test("a blocked tile host degrades to a visible message, not an empty area", async ({ page }) => {
+  await page.route("**tile.openstreetmap.org/**", (r) => r.abort());
+
+  await page.goto("/?user=places-form");
+  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
+  await page.getByRole("button", { name: /New place/ }).click();
+  const form = page.locator(".k-modal");
+  await expect(form).toBeVisible();
+
+  await expect(form.getByText(/Map tiles could not load/i)).toBeVisible({ timeout: 30_000 });
+  // …and the escape hatch is opened for them, so the field is still usable.
+  await expect(form.locator('.k-geo-coords input[type="number"]')).toHaveCount(2);
 });

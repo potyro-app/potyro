@@ -42,6 +42,13 @@ export default defineConfig({
       testMatch: /.*trusted\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}` },
     },
+    // Firefox, for the trusted app surface only. The geo picker rendered fine in Chromium and blank
+    // in the user's Firefox — a Chrome-only suite could not see it.
+    {
+      name: "trusted-firefox",
+      testMatch: /.*trusted\.spec\.ts/,
+      use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${TRUSTED_PORT}` },
+    },
     {
       name: "sandbox",
       testMatch: /.*sandbox\.spec\.ts/,
