@@ -32,6 +32,8 @@ import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-a
 import { App } from "./App.js";
 import { Toaster } from "./toaster.js";
 
+const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
+
 const STARTER = `import { defineApp } from "karta";
 
 export default defineApp({
@@ -168,18 +170,35 @@ export function Studio({ onClose }: { onClose: () => void }) {
   };
 
   // 1) Local `claude -p` via the dev server — no API key (reuses your Claude Code auth).
+  // `system` is sent SEPARATELY so the dev endpoint passes it via --system-prompt-file, replacing
+  // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
+  // its tools) active — a different setup from the one the eval harness measures.
   const runCli = async (prompt: string): Promise<string> => {
-    const res = await fetch("/__generate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
-    return extractSource((await res.json()).text as string);
+    const abort = new AbortController();
+    // Without this a stalled generation surfaces as a bare "NetworkError" with nothing actionable.
+    const timer = setTimeout(() => abort.abort(), CLI_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch("/__generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ system: SYSTEM_PROMPT, prompt }),
+        signal: abort.signal,
+      });
+    } catch (e) {
+      if (abort.signal.aborted) throw new Error(`timed out after ${CLI_TIMEOUT_MS / 1000}s — try a shorter description`);
+      throw new Error(
+        `couldn't reach the dev server's generator. Is \`pnpm dev\` still running? (${e instanceof Error ? e.message : String(e)})`,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
+    return extractSource(((await res.json()) as { text: string }).text);
   };
   const generateCli = (): Promise<void> => {
     setEngine("cli");
-    return withGen("claude -p", () => runCli(`${SYSTEM_PROMPT}\n\n${buildUserMessage({ id: "studio", description })}`));
+    return withGen("claude -p", () => runCli(buildUserMessage({ id: "studio", description })));
   };
 
   // 2) On-device via WebLLM (WebGPU) — offline once the model is cached.

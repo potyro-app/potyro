@@ -162,6 +162,19 @@ There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and ar
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
 - A page has \`id\`, \`title\`, and a \`view\`. View \`type\` is one of: list, gallery, table, detail, calendar,
   map, custom. A \`display.primary\`/\`secondary\` binding is a field-key string OR a function \`(r) => ...\`.
+- EACH VIEW TYPE HAS REQUIRED OPTIONS — omitting one fails validation:
+  \`list\`     { entity, display?: { primary, secondary?, media?, badges? }, sort?, filter?, onOpen?, emptyText? }
+  \`gallery\`  same as list; \`display.media\` names a \`media\` field to show as the tile image
+  \`table\`    { entity, display: { columns: string[] } }   — columns live under \`display\`, not top level
+  \`detail\`   { entity, param, sections: [{ title?, fields: string[] }], actions?: string[] }
+  \`calendar\` { entity, date: <REQUIRED binding to a datetime field>, title?, color? }
+  \`map\`      { entity, geo: "<REQUIRED name of a geo field>", title?, color?, filters? }
+  \`custom\`   { entity, param?, render }
+- A \`map\` view REQUIRES \`geo\` — the KEY of a \`geo\` field on that entity (a string, not a function):
+  \`{ type: "map", entity: "place", geo: "location", title: "name" }\`
+- Filter chips (list/map \`filters\`) are declarative: \`{ label, param, from: "<enum-or-tags field>", multi? }\`,
+  or \`{ label, param, type: "boolean" }\`, or \`{ label, param, type: "geo" }\` for a "near me" button. Read the
+  chosen value in the view's \`filter\` via \`ctx.params[param]\`.
 - Every field/computed referenced by a view must exist on that entity.
 - A \`custom\` view is a REACT COMPONENT — write JSX (the file is compiled as .tsx). Import hooks with
   \`import { useState, useEffect } from "react"\`. React is NOT on \`props\`, NOT on \`runtime\`, and NOT a
