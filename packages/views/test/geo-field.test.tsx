@@ -54,10 +54,20 @@ describe("geo field input", () => {
     expect((screen.getByRole("button", { name: /Use my location/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("supports manual coordinate entry", async () => {
+  // The map is the primary affordance; nobody picks a place by typing coordinates. They stay
+  // reachable as an escape hatch, one click away.
+  it("hides raw coordinates behind a toggle", async () => {
+    const runtime = await makeRuntime(new FakeCapabilities());
+    render(<FieldInput runtime={runtime} field={GEO_FIELD} value={{ lat: 0, lng: 0 }} onChange={() => {}} />);
+    expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
+    expect(screen.getByText(/Tap the map to place a point/)).toBeTruthy();
+  });
+
+  it("supports manual coordinate entry once revealed", async () => {
     const runtime = await makeRuntime(new FakeCapabilities());
     const onChange = vi.fn();
     render(<FieldInput runtime={runtime} field={GEO_FIELD} value={{ lat: 0, lng: 0 }} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: /Enter coordinates/ }));
     const [lat] = screen.getAllByRole("spinbutton");
     fireEvent.change(lat!, { target: { value: "48.85" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ lat: 48.85 }));

@@ -2,9 +2,11 @@
 // buys "generated forms"). Works in RAW value space (relations are ids, not resolved objects)
 // so the result can go straight into create()/patch(). Recurses for `list` fields.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Field, Geo, MediaRef } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
+import { RecordForm } from "./record-form.js";
+import { MAP_STYLE } from "./map.js";
 import { displayFieldFor, humanizeKey } from "./format.js";
 
 export interface FieldInputProps {
@@ -128,11 +130,69 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
   );
 }
 
+/** A tiny MapLibre map you click to drop the point. Same tiles as the map view. */
+function GeoPicker({ value, onChange }: { value: Geo; onChange: (v: Geo) => void }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<{ remove?: () => void; setCenter?: (c: [number, number]) => void } | null>(null);
+  const markerRef = useRef<{ setLngLat: (c: [number, number]) => void; remove: () => void } | null>(null);
+  const latest = useRef(onChange);
+  latest.current = onChange;
+
+  useEffect(() => {
+    let disposed = false;
+    const el = ref.current;
+    if (!el) return;
+    void (async () => {
+      const maplibre = await import("maplibre-gl");
+      await import("maplibre-gl/dist/maplibre-gl.css");
+      if (disposed || !el) return;
+      const hasPoint = value.lat !== 0 || value.lng !== 0;
+      const map = new maplibre.Map({
+        container: el,
+        style: MAP_STYLE as never,
+        center: [value.lng, value.lat],
+        zoom: hasPoint ? 14 : 2,
+      });
+      mapRef.current = map as unknown as typeof mapRef.current;
+      if (hasPoint) {
+        markerRef.current = new maplibre.Marker().setLngLat([value.lng, value.lat]).addTo(map) as never;
+      }
+      // Tap/click anywhere to set the point — the whole reason this exists.
+      map.on("click", (e: { lngLat: { lat: number; lng: number } }) => {
+        const { lat, lng } = e.lngLat;
+        if (markerRef.current) markerRef.current.setLngLat([lng, lat]);
+        else markerRef.current = new maplibre.Marker().setLngLat([lng, lat]).addTo(map) as never;
+        latest.current({ lat, lng });
+      });
+    })();
+    return () => {
+      disposed = true;
+      mapRef.current?.remove?.();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+    // Created once; later value changes move the marker via the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the marker in step when the point is set elsewhere (e.g. "use my location").
+  useEffect(() => {
+    if (!markerRef.current || (value.lat === 0 && value.lng === 0)) return;
+    markerRef.current.setLngLat([value.lng, value.lat]);
+    mapRef.current?.setCenter?.([value.lng, value.lat]);
+  }, [value.lat, value.lng]);
+
+  return <div ref={ref} className="k-geo-map" aria-label="Pick a point on the map" />;
+}
+
 function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: Geo | null; onChange: (v: unknown) => void }) {
   const g: Geo = value ?? { lat: 0, lng: 0 };
   const set = (patch: Partial<Geo>) => onChange({ ...g, ...patch });
   const geo = runtime.ctx.caps.geo;
   const [busy, setBusy] = useState(false);
+  // Typing coordinates is not how anyone picks a place; the map is the default and the numbers are
+  // the escape hatch.
+  const [showCoords, setShowCoords] = useState(false);
 
   const useMyLocation = async (): Promise<void> => {
     if (!geo) return;
@@ -141,31 +201,43 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
       const pos = await geo.current();
       onChange({ ...g, lat: pos.lat, lng: pos.lng });
     } catch {
-      // denied/unavailable → keep manual entry as the fallback
+      // denied/unavailable → the map and the manual fields still work
     } finally {
       setBusy(false);
     }
   };
 
+  const placed = g.lat !== 0 || g.lng !== 0;
   return (
     <div className="k-geo-input">
-      <button type="button" className="k-add-row" disabled={busy || !geo} onClick={useMyLocation}>
-        {busy ? "Locating…" : "📍 Use my location"}
-      </button>
-      <div className="k-geo-coords">
-        <label>
-          lat
-          <input className="k-input" type="number" step="any" value={g.lat} onChange={(e) => set({ lat: Number(e.target.value) })} />
-        </label>
-        <label>
-          lng
-          <input className="k-input" type="number" step="any" value={g.lng} onChange={(e) => set({ lng: Number(e.target.value) })} />
-        </label>
-        <label>
-          label
-          <input className="k-input" type="text" value={g.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
-        </label>
+      <GeoPicker value={g} onChange={(next) => onChange({ ...g, ...next })} />
+      <div className="k-geo-actions">
+        <button type="button" className="k-add-row" disabled={busy || !geo} onClick={useMyLocation}>
+          {busy ? "Locating…" : "📍 Use my location"}
+        </button>
+        <span className="k-muted">
+          {placed ? `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}` : "Tap the map to place a point"}
+        </span>
+        <button type="button" className="k-add-row" onClick={() => setShowCoords((v) => !v)}>
+          {showCoords ? "Hide coordinates" : "Enter coordinates"}
+        </button>
       </div>
+      <label className="k-geo-label">
+        <span className="k-form-label">Label</span>
+        <input className="k-input" type="text" value={g.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
+      </label>
+      {showCoords ? (
+        <div className="k-geo-coords">
+          <label>
+            lat
+            <input className="k-input" type="number" step="any" value={g.lat} onChange={(e) => set({ lat: Number(e.target.value) })} />
+          </label>
+          <label>
+            lng
+            <input className="k-input" type="number" step="any" value={g.lng} onChange={(e) => set({ lng: Number(e.target.value) })} />
+          </label>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -207,49 +279,83 @@ function MediaInput({
 function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRuntime; field: Extract<Field, { type: "relation" }>; value: unknown; onChange: (v: unknown) => void }) {
   const { rows, loading } = runtime.useQuery(field.to);
   const disp = displayFieldFor(runtime, field.to);
+  // Creating the FIRST related record used to require abandoning this form, making the other record,
+  // and starting over — a relation to an empty entity was a dead end ("No placeType yet").
+  const [creating, setCreating] = useState(false);
+  const label = runtime.definition.entities[field.to]?.label ?? field.to;
+
   if (loading) return <span className="k-muted">Loading…</span>;
+
+  const addNew = (
+    <button type="button" className="k-add-row" onClick={() => setCreating(true)}>
+      ＋ New {label}
+    </button>
+  );
+
+  const inlineForm = creating ? (
+    <div className="k-inline-create">
+      <RecordForm
+        nested
+        runtime={runtime}
+        entity={field.to}
+        onCancel={() => setCreating(false)}
+        onDone={(id) => {
+          setCreating(false);
+          // Select what was just created — that is why the user made it.
+          if (field.many) {
+            const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
+            sel.add(id);
+            onChange([...sel]);
+          } else {
+            onChange(id);
+          }
+        }}
+      />
+    </div>
+  ) : null;
 
   if (field.many) {
     const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
     return (
-      <div className="k-chips">
-        {rows.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            className="k-chip"
-            data-on={sel.has(r.id)}
-            onClick={() => {
-              const next = new Set(sel);
-              if (next.has(r.id)) next.delete(r.id);
-              else next.add(r.id);
-              onChange([...next]);
-            }}
-          >
-            {String(r[disp] ?? r.id)}
-          </button>
-        ))}
-        {rows.length === 0 ? <span className="k-muted">No {field.to} yet</span> : null}
+      <div className="k-relation-input">
+        <div className="k-chips">
+          {rows.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              className="k-chip"
+              data-on={sel.has(r.id)}
+              onClick={() => {
+                const next = new Set(sel);
+                if (next.has(r.id)) next.delete(r.id);
+                else next.add(r.id);
+                onChange([...next]);
+              }}
+            >
+              {String(r[disp] ?? r.id)}
+            </button>
+          ))}
+          {rows.length === 0 ? <span className="k-muted">No {label} yet</span> : null}
+        </div>
+        {creating ? inlineForm : addNew}
       </div>
     );
   }
 
+  const selected = typeof value === "string" ? value : ((value as { id?: string } | null)?.id ?? "");
   return (
-    <select className="k-input" value={relId(value)} onChange={(e) => onChange(e.target.value || null)}>
-      <option value="">— choose —</option>
-      {rows.map((r) => (
-        <option key={r.id} value={r.id}>
-          {String(r[disp] ?? r.id)}
-        </option>
-      ))}
-    </select>
+    <div className="k-relation-input">
+      <select className="k-input" value={selected} onChange={(e) => onChange(e.target.value || null)}>
+        <option value="">{rows.length ? "— choose —" : `No ${label} yet`}</option>
+        {rows.map((r) => (
+          <option key={r.id} value={r.id}>
+            {String(r[disp] ?? r.id)}
+          </option>
+        ))}
+      </select>
+      {creating ? inlineForm : addNew}
+    </div>
   );
-}
-
-/** A relation value can be a raw id or a resolved object; normalize to an id string. */
-function relId(value: unknown): string {
-  if (value && typeof value === "object") return String((value as { id?: string }).id ?? "");
-  return value ? String(value) : "";
 }
 
 function ListInput({ runtime, field, value, onChange }: { runtime: KartaRuntime; field: Extract<Field, { type: "list" }>; value: unknown; onChange: (v: unknown) => void }) {
