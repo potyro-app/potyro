@@ -27,6 +27,7 @@ import { loadTrustedModule } from "./trusted-loader.js";
 import type { Provenance } from "@karta/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
+import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
 import { App } from "./App.js";
@@ -174,47 +175,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // `system` is sent SEPARATELY so the dev endpoint passes it via --system-prompt-file, replacing
   // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
   // its tools) active — a different setup from the one the eval harness measures.
-  const runCli = async (prompt: string): Promise<string> => {
-    const post = async (): Promise<string> => {
-      let res: Response;
-      try {
-        res = await fetch("/__generate", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ system: SYSTEM_PROMPT, prompt }),
-        });
-      } catch (e) {
-        throw new Error(
-          `couldn't reach the dev server's generator. Is \`pnpm dev\` still running? (${e instanceof Error ? e.message : String(e)})`,
-        );
-      }
-      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
-      return ((await res.json()) as { id: string }).id;
-    };
-
-    // Poll rather than hold a request open for a minute or more: a page reload (an HMR update, a
-    // vite.config restart, a stray refresh) aborts an in-flight fetch and looks like a network
-    // failure while the generation was actually fine. Each poll is a fast, disposable request.
-    const id = await post();
-    const deadline = Date.now() + CLI_TIMEOUT_MS;
-    for (;;) {
-      if (Date.now() > deadline) throw new Error(`timed out after ${CLI_TIMEOUT_MS / 1000}s — try a shorter description`);
-      await new Promise((r) => setTimeout(r, POLL_MS));
-      let body: { status?: string; text?: string; error?: string; elapsedMs?: number };
-      try {
-        const res = await fetch(`/__generate?id=${encodeURIComponent(id)}`);
-        body = (await res.json()) as typeof body;
-      } catch {
-        continue; // a dropped poll is harmless — the job keeps running server-side
-      }
-      if (body.status === "running") {
-        setProgress(`Generating… ${Math.round((body.elapsedMs ?? 0) / 1000)}s`);
-        continue;
-      }
-      if (body.status === "done") return extractSource(body.text ?? "");
-      throw new Error(body.error ?? "generation failed");
-    }
-  };
+  const runCli = async (prompt: string): Promise<string> =>
+    extractSource(
+      await generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Generating… ${secs}s`) }),
+    );
 
   const generateCli = (): Promise<void> => {
     setEngine("cli");

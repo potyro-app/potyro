@@ -14,6 +14,7 @@ import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, extractSource } 
 import { buildAndValidate } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
+import { generateViaCli } from "./generate-client.js";
 
 interface EditorState {
   entity: string;
@@ -204,6 +205,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
   const [modifyError, setModifyError] = useState<string | null>(null);
+  // Editing runs a real model call for a minute or more; silence reads as a hang.
+  const [modifyProgress, setModifyProgress] = useState<string | null>(null);
 
   const editMark = (label: string) =>
     editMode ? (
@@ -225,15 +228,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
   // Build a modify/repair prompt and run it through the local `claude -p` dev endpoint.
   const runAgent = async (currentSource: string, instruction: string, repairIssues?: string[]): Promise<string> => {
-    const parts = [SYSTEM_PROMPT, "", "The current app:", "```ts", currentSource, "```", ""];
+    // The contract goes in `system`, not the prompt — see generate-client.ts.
+    const parts = ["The current app:", "```ts", currentSource, "```", ""];
     parts.push(repairIssues ? buildRepairMessage(repairIssues) : buildModifyMessage(instruction));
-    const res = await fetch("/__generate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: parts.join("\n") }),
+    const text = await generateViaCli({
+      system: SYSTEM_PROMPT,
+      prompt: parts.join("\n"),
+      onProgress: (s) => setModifyProgress(`Working… ${s}s`),
     });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
-    return extractSource((await res.json()).text as string);
+    return extractSource(text);
   };
 
   const applyModify = async (): Promise<void> => {
@@ -242,6 +245,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     if (!app) return;
     setModifyBusy(true);
     setModifyError(null);
+    setModifyProgress("Working…");
     try {
       const instruction = `Regarding ${modifyTarget}: ${modifyText.trim()}`;
       let next = await runAgent(app.source, instruction);
@@ -254,6 +258,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     } catch (e) {
       setModifyError(e instanceof Error ? e.message : String(e));
       setModifyBusy(false);
+      setModifyProgress(null);
     }
   };
 
@@ -484,6 +489,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               value={modifyText}
               onChange={(e) => setModifyText(e.target.value)}
             />
+            {modifyProgress && !modifyError ? <p className="k-muted">{modifyProgress}</p> : null}
             {modifyError ? <p className="k-form-error">{modifyError}</p> : null}
             <div className="k-form-actions">
               <button type="button" className="k-add" disabled={modifyBusy} onClick={() => setModifyTarget(null)}>
