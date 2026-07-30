@@ -131,7 +131,7 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
 }
 
 /** A tiny MapLibre map you click to drop the point. Same tiles as the map view. */
-function GeoPicker({ value, onChange }: { value: Geo; onChange: (v: Geo) => void }) {
+function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v: Geo) => void; onTileError: () => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<{ remove?: () => void; setCenter?: (c: [number, number]) => void } | null>(null);
   const markerRef = useRef<{ setLngLat: (c: [number, number]) => void; remove: () => void } | null>(null);
@@ -154,6 +154,14 @@ function GeoPicker({ value, onChange }: { value: Geo; onChange: (v: Geo) => void
         zoom: hasPoint ? 14 : 2,
       });
       mapRef.current = map as unknown as typeof mapRef.current;
+      // Tiles are a third-party host: a VPN, an ad blocker or being offline can block them, and
+      // MapLibre just renders an empty canvas. Surface it instead of showing a blank rectangle.
+      map.on("error", (e: { error?: { status?: number } }) => {
+        if (disposed) return;
+        onTileError();
+        // eslint-disable-next-line no-console
+        console.warn("[karta] map tiles failed to load", e?.error);
+      });
       if (hasPoint) {
         markerRef.current = new maplibre.Marker().setLngLat([value.lng, value.lat]).addTo(map) as never;
       }
@@ -193,6 +201,7 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
   // Typing coordinates is not how anyone picks a place; the map is the default and the numbers are
   // the escape hatch.
   const [showCoords, setShowCoords] = useState(false);
+  const [tilesFailed, setTilesFailed] = useState(false);
 
   const useMyLocation = async (): Promise<void> => {
     if (!geo) return;
@@ -210,7 +219,20 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
   const placed = g.lat !== 0 || g.lng !== 0;
   return (
     <div className="k-geo-input">
-      <GeoPicker value={g} onChange={(next) => onChange({ ...g, ...next })} />
+      <GeoPicker
+        value={g}
+        onChange={(next) => onChange({ ...g, ...next })}
+        onTileError={() => {
+          setTilesFailed(true);
+          setShowCoords(true); // keep the field usable — don't strand them on a blank map
+        }}
+      />
+      {tilesFailed ? (
+        <p className="k-form-error">
+          Map tiles could not load — a VPN, ad blocker or offline device can block
+          tile.openstreetmap.org. You can still place a point by coordinates or by using your location.
+        </p>
+      ) : null}
       <div className="k-geo-actions">
         <button type="button" className="k-add-row" disabled={busy || !geo} onClick={useMyLocation}>
           {busy ? "Locating…" : "📍 Use my location"}

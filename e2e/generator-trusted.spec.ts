@@ -26,8 +26,15 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(studio.getByRole("button", { name: "On-device" })).toBeVisible(); // gated on WebGPU
   const modelPicker = studio.getByRole("combobox", { name: "On-device model" });
   await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-1.5B/); // recommended default
-  await modelPicker.selectOption("Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC");
-  await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-0.5B/);
+  // The on-device engine needs WebGPU, which Firefox does not ship — the control is correctly
+  // disabled there, so only exercise it where the capability exists.
+  const hasWebGPU = await page.evaluate(() => "gpu" in navigator);
+  if (hasWebGPU) {
+    await modelPicker.selectOption("Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC");
+    await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-0.5B/);
+  } else {
+    await expect(modelPicker).toBeDisabled();
+  }
   const cloud = studio.getByRole("button", { name: "Cloud", exact: true });
   await expect(cloud).toBeDisabled(); // needs a key
   await studio.getByLabel("Anthropic API key").fill("sk-ant-example");
