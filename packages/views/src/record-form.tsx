@@ -16,6 +16,8 @@ export interface RecordFormProps {
   initial?: Record<string, unknown>;
   onDone: (id: string) => void;
   onCancel: () => void;
+  /** Render as a div, not a form — for nesting inside another form (see RelationInput). */
+  nested?: boolean;
 }
 
 function relId(value: unknown): string | null {
@@ -77,7 +79,7 @@ export function createDefaults(runtime: KartaRuntime, entity: string, preset?: R
   return initialFormState(runtime, entity, null, preset);
 }
 
-export function RecordForm({ runtime, entity, recordId, initial, onDone, onCancel }: RecordFormProps) {
+export function RecordForm({ runtime, entity, recordId, initial, onDone, onCancel, nested }: RecordFormProps) {
   const isEdit = Boolean(recordId);
   const { record, loading } = runtime.useRecord(entity, recordId ?? "");
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
@@ -99,8 +101,8 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
   const fields = Object.entries(def?.fields ?? {}).filter(([, f]) => !(f as { hidden?: boolean }).hidden);
   const set = (key: string, v: unknown): void => setForm((prev) => ({ ...(prev ?? {}), [key]: v }));
 
-  const submit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
+  const submit = async (e?: React.FormEvent): Promise<void> => {
+    e?.preventDefault();
     const missing = fields
       .filter(([key, f]) => (f as { required?: boolean }).required && isEmpty(form[key]))
       .map(([key]) => fieldLabel(runtime, entity, key));
@@ -122,8 +124,13 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     }
   };
 
+  // `nested` renders a div instead of a form: a relation field can open a create form for its target
+  // entity inline, and a <form> inside a <form> is invalid HTML (the inner submit would bubble).
+  const Root = (nested ? "div" : "form") as "div";
+  const rootProps = nested ? {} : { onSubmit: submit as unknown as React.FormEventHandler };
+
   return (
-    <form className="k-form" onSubmit={submit}>
+    <Root className={`k-form${nested ? " k-form-nested" : ""}`} {...rootProps}>
       <h3>{isEdit ? `Edit ${def?.label ?? entity}` : `New ${def?.label ?? entity}`}</h3>
       {errors.length > 0 ? <p className="k-form-error">Required: {errors.join(", ")}</p> : null}
       {fields.map(([key, field]) => (
@@ -139,10 +146,15 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
         <button type="button" className="k-add" onClick={onCancel}>
           Cancel
         </button>
-        <button type="submit" className="k-add k-primary-action" disabled={saving}>
+        <button
+          type={nested ? "button" : "submit"}
+          className="k-add k-primary-action"
+          disabled={saving}
+          onClick={nested ? () => void submit() : undefined}
+        >
           {saving ? "Saving…" : isEdit ? "Save changes" : "Create"}
         </button>
       </div>
-    </form>
+    </Root>
   );
 }

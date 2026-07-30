@@ -1317,3 +1317,40 @@ button {
 .k-picker-empty {
   padding: 0.75rem 0.25rem;
 }
+
+/* Geo field: the map IS the input; coordinates are the escape hatch. */
+.k-geo-map {
+  height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.k-geo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.k-geo-label {
+  display: block;
+  margin-top: 0.5rem;
+}
+/* Relation field: create the first related record without abandoning the form. */
+.k-relation-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.k-inline-create {
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  padding: 0.25rem 0.5rem;
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface));
+}
+.k-form-nested {
+  padding: 0.6rem 0.2rem;
+}
+.k-form-nested h3 {
+  font-size: 1rem;
+}

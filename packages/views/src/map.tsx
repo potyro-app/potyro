@@ -9,8 +9,26 @@ import type { KartaRuntime } from "@karta/runtime";
 import type { Resolved } from "karta";
 import type { BuiltinViewProps } from "./types.js";
 
-// A public demo style (online tiles). Swappable per-deployment; offline tiles land in M5.
-const DEFAULT_STYLE = "https://demotiles.maplibre.org/style.json";
+/**
+ * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
+ * `demotiles` style, which is country outlines only: unusable for "places I liked in a city".
+ *
+ * Attribution is REQUIRED by the OSM tile usage policy and is rendered by MapLibre from this source.
+ * The public tile server is fine at personal scale; a deployment expecting real traffic should point
+ * `MAP_STYLE` at its own tiles or a provider. Offline tiles land in M5.
+ */
+export const MAP_STYLE = {
+  version: 8 as const,
+  sources: {
+    osm: {
+      type: "raster" as const,
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
+};
 
 export interface MapMarker {
   id: string;
@@ -80,7 +98,7 @@ export function MapView(props: BuiltinViewProps) {
       if (disposed || !el) return;
       mapRef.current = new maplibre.Map({
         container: el,
-        style: DEFAULT_STYLE,
+        style: MAP_STYLE as never,
         center: [0, 20],
         zoom: 1,
       }) as unknown as typeof mapRef.current;
