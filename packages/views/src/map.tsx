@@ -94,6 +94,12 @@ export function MapView(props: BuiltinViewProps) {
   entityRef.current = view?.entity ?? "";
   const geoFieldKey = useRef(typeof view?.geo === "string" ? view.geo : "");
   geoFieldKey.current = typeof view?.geo === "string" ? view.geo : "";
+  const onOpenRef = useRef((view as { onOpen?: { page: string; param?: Record<string, string> } } | undefined)?.onOpen);
+  onOpenRef.current = (view as { onOpen?: { page: string; param?: Record<string, string> } } | undefined)?.onOpen;
+  const navigateRef = useRef(props.navigate);
+  navigateRef.current = props.navigate;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   // Create the map once.
   useEffect(() => {
@@ -145,10 +151,25 @@ export function MapView(props: BuiltinViewProps) {
       markerObjs.current = [];
       const bounds = new maplibre.LngLatBounds();
       for (const mk of markers) {
-        const marker = new maplibre.Marker({ color: mk.color })
-          .setLngLat([mk.lng, mk.lat])
-          .setPopup(new maplibre.Popup({ offset: 24 }).setText(mk.title))
-          .addTo(map as never);
+        const marker = new maplibre.Marker({ color: mk.color }).setLngLat([mk.lng, mk.lat]);
+        const onOpen = onOpenRef.current;
+        if (onOpen) {
+          // Tapping a pin opens the record, like tapping a list row — the popup only ever showed the
+          // title binding, which is not "the place".
+          marker.getElement().style.cursor = "pointer";
+          marker.getElement().addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const row = rowsRef.current.find((r) => String(r.id) === mk.id);
+            const param: Record<string, string> = {};
+            for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) {
+              param[target] = String((row?.[sourceKey] as unknown) ?? "");
+            }
+            navigateRef.current(onOpen.page, param);
+          });
+        } else {
+          marker.setPopup(new maplibre.Popup({ offset: 24 }).setText(mk.title));
+        }
+        marker.addTo(map as never);
         markerObjs.current.push(marker);
         bounds.extend([mk.lng, mk.lat]);
       }

@@ -133,6 +133,8 @@ export interface MapView {
   color?: Binding;
   filter?: FilterFn;
   filters?: FilterChip[];
+  /** Where tapping a marker goes. Without it a marker only shows its `title` in a popup. */
+  onOpen?: OnOpen;
 }
 
 export interface StepsView {

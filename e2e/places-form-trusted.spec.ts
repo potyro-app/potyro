@@ -39,9 +39,10 @@ export default defineApp({
     },
   },
   pages: [
-    { id: "map", title: "Map", view: { type: "map", entity: "place", geo: "location", title: "name" } },
+    { id: "map", title: "Map", view: { type: "map", entity: "place", geo: "location", title: "name", onOpen: { page: "place-detail", param: { placeId: "id" } } } },
     { id: "places", title: "Places", view: { type: "list", entity: "place", display: { primary: "name" } } },
     { id: "types", title: "Types", view: { type: "list", entity: "placeType", display: { primary: "name" } } },
+    { id: "place-detail", title: "Place", hidden: true, view: { type: "detail", entity: "place", param: "placeId", sections: [{ fields: ["name", "type", "tags", "description", "location"] }] } },
   ],
 });
 `;
@@ -178,8 +179,9 @@ test("tapping an existing marker shows the place, not a new form", async ({ page
   await expect(marker).toBeVisible({ timeout: 30_000 });
 
   await marker.click();
-  // The place's info shows…
-  await expect(page.locator(".maplibregl-popup")).toContainText("Bar do Zé", { timeout: 10_000 });
+  // With `onOpen`, a pin opens the record's detail — the popup only ever showed the title binding.
+  await expect(page.getByText("Bar do Zé")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Place" })).toBeVisible();
   // …and no create form opened.
   await expect(page.locator(".k-modal")).toHaveCount(0);
 });
