@@ -112,9 +112,15 @@ export function MapView(props: BuiltinViewProps) {
       });
       mapRef.current = created as unknown as typeof mapRef.current;
 
-      // Tap the map to add a place THERE. Placing first and filling the form after beats opening a
+      // Tap EMPTY map to add a place there. Placing first and filling the form after beats opening a
       // second map inside the form — the map is already right here.
-      created.on("click", (e: { lngLat: { lat: number; lng: number } }) => {
+      //
+      // Markers and their popups sit in the same container and their clicks reach this handler, so a
+      // tap on an existing place would open the create form instead of showing that place. Ignore
+      // any click that started on marker/popup chrome.
+      created.on("click", (e: { lngLat: { lat: number; lng: number }; originalEvent?: Event }) => {
+        const target = e.originalEvent?.target;
+        if (target instanceof Element && target.closest(".maplibregl-marker, .maplibregl-popup")) return;
         const geoKey = geoFieldKey.current;
         if (!onCreateRef.current || !geoKey) return;
         onCreateRef.current(entityRef.current, { [geoKey]: { lat: e.lngLat.lat, lng: e.lngLat.lng } });
