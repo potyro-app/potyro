@@ -78,7 +78,7 @@ export function useMapMarkers(runtime: KartaRuntime, pageId: string, rows: Resol
 }
 
 export function MapView(props: BuiltinViewProps) {
-  const { runtime, pageId, params } = props;
+  const { runtime, pageId, params, onCreate } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const markers = useMapMarkers(runtime, pageId, rows);
 
@@ -86,6 +86,14 @@ export function MapView(props: BuiltinViewProps) {
   // MapLibre types are only available after the lazy import, so these refs are intentionally loose.
   const mapRef = useRef<{ remove?: () => void; fitBounds?: (...a: unknown[]) => void } | null>(null);
   const markerObjs = useRef<{ remove: () => void }[]>([]);
+  // The map is created once; these keep its click handler current without re-creating it.
+  const onCreateRef = useRef(onCreate);
+  onCreateRef.current = onCreate;
+  const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as { entity?: string; geo?: string } | undefined;
+  const entityRef = useRef(view?.entity ?? "");
+  entityRef.current = view?.entity ?? "";
+  const geoFieldKey = useRef(typeof view?.geo === "string" ? view.geo : "");
+  geoFieldKey.current = typeof view?.geo === "string" ? view.geo : "";
 
   // Create the map once.
   useEffect(() => {
@@ -96,12 +104,21 @@ export function MapView(props: BuiltinViewProps) {
       const maplibre = await import("maplibre-gl");
       await import("maplibre-gl/dist/maplibre-gl.css");
       if (disposed || !el) return;
-      mapRef.current = new maplibre.Map({
+      const created = new maplibre.Map({
         container: el,
         style: MAP_STYLE as never,
         center: [0, 20],
         zoom: 1,
-      }) as unknown as typeof mapRef.current;
+      });
+      mapRef.current = created as unknown as typeof mapRef.current;
+
+      // Tap the map to add a place THERE. Placing first and filling the form after beats opening a
+      // second map inside the form — the map is already right here.
+      created.on("click", (e: { lngLat: { lat: number; lng: number } }) => {
+        const geoKey = geoFieldKey.current;
+        if (!onCreateRef.current || !geoKey) return;
+        onCreateRef.current(entityRef.current, { [geoKey]: { lat: e.lngLat.lat, lng: e.lngLat.lng } });
+      });
     })();
     return () => {
       disposed = true;

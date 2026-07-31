@@ -143,6 +143,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     const el = ref.current;
     if (!el) return;
     void (async () => {
+      try {
       const maplibre = await import("maplibre-gl");
       await import("maplibre-gl/dist/maplibre-gl.css");
       if (disposed || !el) return;
@@ -172,6 +173,15 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
         else markerRef.current = new maplibre.Marker().setLngLat([lng, lat]).addTo(map) as never;
         latest.current({ lat, lng });
       });
+      } catch (e) {
+        // Constructing a Map can THROW — most often no WebGL context available, which happens when a
+        // map view is already on screen behind this form and the browser's context budget is spent.
+        // Inside `void (async …)()` that rejection was invisible: a blank div and no message at all.
+        if (disposed) return;
+        onTileError();
+        // eslint-disable-next-line no-console
+        console.warn("[karta] map picker unavailable", e);
+      }
     })();
     return () => {
       disposed = true;
@@ -229,8 +239,8 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
       />
       {tilesFailed ? (
         <p className="k-form-error">
-          Map tiles could not load — a VPN, ad blocker or offline device can block
-          tile.openstreetmap.org. You can still place a point by coordinates or by using your location.
+          Map unavailable here — the browser could not open a second map (or the tile host is
+          blocked). Place the point on the main map instead, or use the coordinates below.
         </p>
       ) : null}
       <div className="k-geo-actions">

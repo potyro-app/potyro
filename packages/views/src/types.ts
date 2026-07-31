@@ -12,6 +12,9 @@ export interface BuiltinViewProps {
   navigate: (pageId: string, param?: Record<string, string>) => void;
   /** Open the generated editor for a record (provided by the shell). Enables the Edit button. */
   onEdit?: (entity: string, id: string) => void;
+  /** Open the create form pre-filled — e.g. the map passes the point you tapped, so you place first
+   *  and fill in details after, instead of opening a second map inside the form. */
+  onCreate?: (entity: string, initial: Record<string, unknown>) => void;
 }
 
 export interface DisplayCell {
