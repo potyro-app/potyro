@@ -228,6 +228,7 @@ const mapView = z.object({
   color: zBinding.optional(),
   filter: zFn.optional(),
   filters: z.array(filterChipSchema).optional(),
+  onOpen: onOpenSchema.optional(),
 });
 
 const stepsView = z.object({

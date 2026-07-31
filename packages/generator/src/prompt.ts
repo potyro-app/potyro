@@ -174,7 +174,10 @@ Because reads are async, a computed that queries other records MUST be \`async\`
   \`table\`    { entity, display: { columns: string[] } }   — columns live under \`display\`, not top level
   \`detail\`   { entity, param, sections: [{ title?, fields: string[] }], actions?: string[] }
   \`calendar\` { entity, date: <REQUIRED binding to a datetime field>, title?, color? }
-  \`map\`      { entity, geo: "<REQUIRED name of a geo field>", title?, color?, filters? }
+  \`map\`      { entity, geo: "<REQUIRED name of a geo field>", title?, color?, filters?, onOpen? }
+             — give a map \`onOpen\` so tapping a pin opens that record's detail page; without it a
+             pin only shows its \`title\` in a popup. Tapping EMPTY map always starts a new record
+             with the geo field pre-filled, so no separate "add here" affordance is needed.
   \`custom\`   { entity, param?, render }
 - A \`map\` view REQUIRES \`geo\` — the KEY of a \`geo\` field on that entity (a string, not a function):
   \`{ type: "map", entity: "place", geo: "location", title: "name" }\`
