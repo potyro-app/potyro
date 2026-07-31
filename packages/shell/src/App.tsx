@@ -118,6 +118,9 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
+  // Placing a point on the map opens the create form already carrying it.
+  const onCreate = (entity: string, initial: Record<string, unknown>): void =>
+    setEditor({ entity, initial, openAfter: false });
 
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
 
@@ -401,6 +404,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               setParam={setParam}
               navigate={navigate}
               onEdit={onEdit}
+              onCreate={onCreate}
             />
           </main>
         </>

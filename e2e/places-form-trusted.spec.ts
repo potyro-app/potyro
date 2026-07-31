@@ -29,12 +29,17 @@ export default defineApp({
       displayField: "name",
       fields: {
         name: { type: "text", required: true },
-        location: { type: "geo" },
         type: { type: "relation", to: "placeType" },
+        tags: { type: "tags", options: ["favorite", "cheap", "outdoor", "cozy", "date night", "with friends"] },
+        photo: { type: "media" },
+        description: { type: "text", multiline: true },
+        // LAST, like the generated app — the map then mounts below the fold in a scrolled modal.
+        location: { type: "geo" },
       },
     },
   },
   pages: [
+    { id: "map", title: "Map", view: { type: "map", entity: "place", geo: "location", title: "name" } },
     { id: "places", title: "Places", view: { type: "list", entity: "place", display: { primary: "name" } } },
     { id: "types", title: "Types", view: { type: "list", entity: "placeType", display: { primary: "name" } } },
   ],
@@ -106,9 +111,10 @@ test("a relation to an empty entity can create its first record inline", async (
   await expect(relation.locator("select")).toHaveValue(/.+/);
   await expect(relation.locator("select")).toContainText("Park");
 
-  // The outer form still saves normally.
+  // The outer form still saves normally. (The default page is the Map, so check the list.)
   await form.getByRole("button", { name: "Create" }).click();
   await expect(form).toBeHidden();
+  await page.getByRole("button", { name: "Places", exact: true }).click();
   await expect(page.getByText("Parque Ibirapuera")).toBeVisible();
 });
 
@@ -124,7 +130,28 @@ test("a blocked tile host degrades to a visible message, not an empty area", asy
   const form = page.locator(".k-modal");
   await expect(form).toBeVisible();
 
-  await expect(form.getByText(/Map tiles could not load/i)).toBeVisible({ timeout: 30_000 });
+  await expect(form.getByText(/Map unavailable here/i)).toBeVisible({ timeout: 30_000 });
   // …and the escape hatch is opened for them, so the field is still usable.
   await expect(form.locator('.k-geo-coords input[type="number"]')).toHaveCount(2);
+});
+
+// The map is already on screen — tapping it should start the place THERE, so you fill the form with
+// the location already set. Opening a second map inside the form was both redundant and fragile
+// (a second WebGL context can fail when one map is already rendering).
+test("tapping the map starts a place at that point", async ({ page }) => {
+  await page.goto("/?user=places-form");
+  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
+  await page.getByRole("tab", { name: "Map" }).or(page.getByRole("button", { name: "Map" })).first().click();
+
+  const canvas = page.locator(".k-map canvas, .maplibregl-canvas").first();
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  // The create form opens with the tapped point already in the geo field.
+  const form = page.locator(".k-modal");
+  await expect(form).toBeVisible({ timeout: 15_000 });
+  await expect(form.getByText(/-?\d+\.\d+,\s*-?\d+\.\d+/)).toBeVisible();
 });
