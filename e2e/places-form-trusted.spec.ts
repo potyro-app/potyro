@@ -155,3 +155,31 @@ test("tapping the map starts a place at that point", async ({ page }) => {
   await expect(form).toBeVisible({ timeout: 15_000 });
   await expect(form.getByText(/-?\d+\.\d+,\s*-?\d+\.\d+/)).toBeVisible();
 });
+
+// A marker is an existing place: tapping it must show that place, NOT start a new one. The
+// create-on-tap handler receives marker clicks too, so it has to ignore them.
+test("tapping an existing marker shows the place, not a new form", async ({ page }) => {
+  await page.goto("/?user=places-form");
+  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
+
+  // Create the place the way a user now does: tap the map, then fill in the name.
+  const canvas = page.locator(".maplibregl-canvas").first();
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  const form = page.locator(".k-modal");
+  await expect(form).toBeVisible({ timeout: 15_000 });
+  await form.getByLabel(/^Name/).first().fill("Bar do Zé");
+  await form.getByRole("button", { name: "Create" }).click();
+  await expect(form).toBeHidden();
+
+  const marker = page.locator(".maplibregl-marker").first();
+  await expect(marker).toBeVisible({ timeout: 30_000 });
+
+  await marker.click();
+  // The place's info shows…
+  await expect(page.locator(".maplibregl-popup")).toContainText("Bar do Zé", { timeout: 10_000 });
+  // …and no create form opened.
+  await expect(page.locator(".k-modal")).toHaveCount(0);
+});
