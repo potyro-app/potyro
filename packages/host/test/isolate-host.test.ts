@@ -214,3 +214,56 @@ describe("IsolateHost — mediated caps", () => {
     loaded.dispose();
   });
 });
+
+// ── Page summary aggregates across the isolate (KA-24) ──────────────────────────────────────
+//
+// `computed` is per-record, so an aggregate over the WHOLE set lives in `page.summary`. For an
+// untrusted app that function never leaves the VM: the extracted definition carries the
+// `__karta_fn__` sentinel string where the function was. Before `callSummary` existed the shell
+// called that string, threw, and every function-form figure silently rendered a dash — i.e. the
+// one shape built-in views cannot express was exactly the shape untrusted apps could not compute.
+const SUMMARY_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "expenses", name: "Expenses", version: "1.0.0", schemaVersion: 1,
+  entities: {
+    expense: { fields: { amount: { type: "number" }, month: { type: "number" } } }
+  },
+  pages: [
+    { id: "all", title: "All",
+      summary: [
+        { label: "This month", value: function(rows, ctx){
+            var m = ctx.today().getMonth();
+            return rows.filter(function(r){ return r.month === m; })
+                       .reduce(function(n, r){ return n + r.amount; }, 0);
+          } },
+        { label: "Count", op: "count" }
+      ],
+      view: { type: "list", entity: "expense" } }
+  ],
+  reminders: []
+};
+`;
+
+describe("IsolateHost — page summary aggregates", () => {
+  const rows = [
+    { id: "a", createdAt: "", updatedAt: "", amount: 10, month: new Date().getMonth() },
+    { id: "b", createdAt: "", updatedAt: "", amount: 99, month: (new Date().getMonth() + 11) % 12 },
+    { id: "c", createdAt: "", updatedAt: "", amount: 5, month: new Date().getMonth() },
+  ] as unknown as Parameters<Awaited<ReturnType<typeof setup>>["loaded"]["callSummary"]>[2];
+
+  it("runs a summary `value` function inside the VM over the whole row set", async () => {
+    const { loaded, ctx } = await setup(SUMMARY_BUNDLE);
+    // The definition proves the function did NOT cross the boundary...
+    const spec = (loaded.definition.pages[0] as { summary: { value?: unknown }[] }).summary[0];
+    expect(spec.value).toBe("__karta_fn__");
+    // ...and the host call is what makes it computable anyway.
+    expect(await loaded.callSummary("all", 0, rows, ctx)).toBe(15);
+  });
+
+  it("reports a missing value function instead of returning a wrong number", async () => {
+    const { loaded, ctx } = await setup(SUMMARY_BUNDLE);
+    // Index 1 is the declarative `count` form — it has no function to call, and saying so is the
+    // only safe answer. A silent 0 here would read as "nothing spent".
+    await expect(loaded.callSummary("all", 1, rows, ctx)).rejects.toThrow(/no value function/);
+  });
+});

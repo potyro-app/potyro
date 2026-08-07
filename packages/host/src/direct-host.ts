@@ -3,7 +3,7 @@
 // returns the real React component. No isolate, no marshalling. This is the runner for the
 // user's own apps and for tests.
 
-import type { AppDefinition, CustomViewComponent, Resolved, Value } from "karta";
+import type { AppDefinition, CustomViewComponent, CustomViewMount, Resolved, Value } from "karta";
 import type { Binding, ReminderWhen } from "karta";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
@@ -76,6 +76,16 @@ export class DirectLoadedApp implements LoadedApp {
     return (await (b as Fn)(record, ctx)) as Value;
   }
 
+  async callSummary(pageId: string, index: number, rows: Resolved[], ctx: unknown): Promise<Value> {
+    const page = this.definition.pages.find((p) => p.id === pageId);
+    const spec = page?.summary?.[index];
+    if (!spec) throw new Error(`summary ${pageId}[${index}] not found`);
+    if (typeof spec.value !== "function") {
+      throw new Error(`summary ${pageId}[${index}] declares no value function`);
+    }
+    return (await spec.value(rows, ctx as never)) as Value;
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: unknown): Promise<Date | null> {
     const rem = (this.definition.reminders ?? []).find((r) => r.id === id);
     if (!rem) throw new Error(`reminder ${id} not found`);
@@ -86,7 +96,14 @@ export class DirectLoadedApp implements LoadedApp {
     if (this.provenance !== "trusted") return null; // docs/05 policy
     const view = pageView(this.definition, pageId);
     if (view?.type !== "custom") return null;
-    return view.render as CustomViewComponent;
+    return (view.render ?? null) as CustomViewComponent | null;
+  }
+
+  customViewMount(pageId: string): CustomViewMount | null {
+    if (this.provenance !== "trusted") return null; // same policy as `customView`
+    const view = pageView(this.definition, pageId);
+    if (view?.type !== "custom") return null;
+    return (view.mount ?? null) as CustomViewMount | null;
   }
 
   dispose(): void {

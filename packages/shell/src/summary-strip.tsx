@@ -1,0 +1,65 @@
+// The page's summary figures, rendered above its view — alongside the filter chips, because they
+// answer the same question: "what am I looking at, and what does it add up to?"
+//
+// It runs the page query itself rather than receiving rows, which costs a second query per write at
+// personal scale. That is the price of the figures tracking the filter chips exactly: a total that
+// disagreed with the rows beneath it would read as a bug, and threading rows up from inside the view
+// would mean every view type had to cooperate.
+
+import { useEffect, useState } from "react";
+import type { KartaRuntime } from "@karta/runtime";
+import type { Field, Resolved, SummaryValue } from "karta";
+import { computeSummary, type SummaryFigure } from "./summary.js";
+
+interface SummaryStripProps {
+  runtime: KartaRuntime;
+  pageId: string;
+  params: Record<string, unknown>;
+}
+
+export function SummaryStrip({ runtime, pageId, params }: SummaryStripProps) {
+  const page = runtime.definition.pages.find((p) => p.id === pageId);
+  const specs = page?.summary as SummaryValue[] | undefined;
+  const { rows, loading } = runtime.usePageQuery(pageId, specs?.length ? params : undefined);
+  // Figures became async when the `value` form started going through the host (so it works for
+  // untrusted apps too — the function lives in the isolate). Hooks stay above every early return.
+  const [figures, setFigures] = useState<SummaryFigure[]>([]);
+
+  const entity = (page?.view as { entity?: string } | undefined)?.entity;
+
+  useEffect(() => {
+    if (!specs?.length) return;
+    let alive = true;
+    const unitFor = (field: string): string | undefined => {
+      const def = entity ? runtime.definition.entities[entity] : undefined;
+      return (def?.fields[field] as (Field & { unit?: string }) | undefined)?.unit;
+    };
+    void computeSummary(specs, rows, runtime.ctx, unitFor, (index, rs) =>
+      runtime.core.app.callSummary(pageId, index, [...rs] as Resolved[], runtime.ctx),
+    ).then((next) => {
+      // A late result after unmount (or after the rows changed again) must not push state into a
+      // torn-down strip — the same guard `watch()` uses in the runtime.
+      if (alive) setFigures(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [specs, rows, entity, pageId, runtime]);
+
+  if (!specs?.length) return null;
+
+  return (
+    <section className="k-summary" aria-label="Summary">
+      {figures.map((figure, i) => (
+        <div key={i} className="k-summary-figure">
+          <span className="k-summary-label">{figure.label}</span>
+          {/* A figure that failed shows a dash with the reason on hover — one bad summary must not
+              blank the page it sits above. */}
+          <span className="k-summary-value" title={figure.error} data-loading={loading || undefined}>
+            {figure.text ?? "–"}
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
