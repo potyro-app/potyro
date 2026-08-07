@@ -1,0 +1,67 @@
+// "Is this actually syncing?" — answered in the header, not in devtools.
+//
+// Sync that gives no feedback is untestable by a user: with nothing on screen, a working relay and
+// a dead one look identical, and the only way to tell them apart was the network tab. This watches
+// the relay socket directly, so it reports the transport rather than a guess.
+
+import { useEffect, useState } from "react";
+import { syncRelayUrl } from "./open-store.js";
+
+type State = "off" | "local" | "connecting" | "synced" | "offline";
+
+const LABEL: Record<State, string> = {
+  off: "",
+  local: "Sync on · no relay",
+  connecting: "Connecting…",
+  synced: "Synced",
+  offline: "Offline · changes saved here",
+};
+
+/**
+ * Probes the relay with its own short-lived socket rather than reading cojson's peer state.
+ *
+ * cojson does not surface a stable "is this peer up" signal, and a wrong-but-confident indicator is
+ * worse than none — it is the thing a user would trust when deciding whether their data is safe.
+ * A probe can only be honest about what it observed.
+ */
+export function SyncStatus({ sync }: { sync?: boolean }) {
+  const [state, setState] = useState<State>(sync ? "connecting" : "off");
+
+  useEffect(() => {
+    if (!sync) return setState("off");
+    const url = syncRelayUrl();
+    if (!url) return setState("local");
+
+    let alive = true;
+    let socket: WebSocket | null = null;
+    const probe = (): void => {
+      if (!alive) return;
+      if (!navigator.onLine) return setState("offline");
+      try {
+        socket = new WebSocket(url);
+        socket.onopen = () => {
+          if (alive) setState("synced");
+          socket?.close();
+        };
+        socket.onerror = () => alive && setState("offline");
+      } catch {
+        if (alive) setState("offline");
+      }
+    };
+    probe();
+    const timer = setInterval(probe, 15_000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      socket?.close();
+      clearInterval(timer);
+    };
+  }, [sync]);
+
+  if (state === "off") return null;
+  return (
+    <span className="k-sync-status" data-state={state} title={LABEL[state]} aria-live="polite">
+      {state === "synced" ? "⇄" : state === "connecting" ? "◌" : "⇄̸"} {LABEL[state]}
+    </span>
+  );
+}

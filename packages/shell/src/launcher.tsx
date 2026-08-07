@@ -11,6 +11,7 @@ import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
+import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { History } from "./history.js";
 
 export function openBuiltinApp(id: string): void {
@@ -80,6 +81,10 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
   const [busy, setBusy] = useState<string | null>(null);
   const toggleSync = async (a: UserApp): Promise<void> => {
     const on = !a.sync;
+    if (on && !canSync()) {
+      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      return;
+    }
     const ok = await shellDialogs.confirm(
       on
         ? `Turn on sync for "${a.name}"? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off.`
@@ -107,11 +112,30 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
   // Sharing hands over a link whose fragment carries the app source AND the invite secret. The
   // fragment never reaches a server, which is what keeps the key off the relay.
   const share = async (a: UserApp): Promise<void> => {
+    if (!canSync()) {
+      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      return;
+    }
     try {
+      // Sharing implies sync. Making the user find the sync toggle first was a step that taught
+      // them nothing — the reason to turn sync on IS to share.
+      if (!a.sync) {
+        const ok = await shellDialogs.confirm(
+          `Share "${a.name}"? This turns on sync and copies its data into the synced store. You can turn it off again later.`,
+        );
+        if (!ok) return;
+        setBusy(a.id);
+        const { inspect } = await import("./app-source.js");
+        const shape = await inspect(a.source);
+        await toggleAppSync(a.id, shape.entities.map((e) => e.key), true, new Date().toISOString());
+        setMyApps(listUserApps());
+        setBusy(null);
+      }
       const link = await createShareLink(a.id);
       await navigator.clipboard?.writeText(link).catch(() => {});
       await shellDialogs.prompt("Send this link. Whoever opens it joins your app and its data.", { default: link });
     } catch (e) {
+      setBusy(null);
       await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
     }
   };
@@ -181,7 +205,7 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
                 >
                   {busy === a.id ? "…" : a.sync ? "⇄" : "⇄̸"}
                 </button>
-                {a.sync ? (
+                {true ? (
                   <button
                     type="button"
                     className="k-launch-act"
