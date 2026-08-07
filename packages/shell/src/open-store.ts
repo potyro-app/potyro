@@ -31,8 +31,33 @@ export interface OpenStoreOpts {
  * no socket at all.
  */
 export function syncRelayUrl(): string | undefined {
-  return globalThis.localStorage?.getItem("karta:sync:relay") ?? undefined;
+  const configured = globalThis.localStorage?.getItem("karta:sync:relay");
+  if (configured) return configured;
+  // `pnpm dev` starts a relay alongside the shell, so sync works with ZERO configuration while
+  // developing. Without this default, turning sync on appeared to do nothing until you knew to
+  // set a URL by hand — which is not a feature anyone can test.
+  if (import.meta.env?.DEV) return "ws://localhost:4201";
+  return undefined;
 }
+
+/**
+ * Whether this browser can run the CRDT store at all.
+ *
+ * `openJazzStore` needs the OPFS sync-access-handle pool. Firefox and Safari do not have it, and
+ * without this check they got a raw `Missing required OPFS APIs` from deep inside sqlite-wasm.
+ * Callers use it to say something true instead.
+ */
+export function canSync(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    !!navigator.storage?.getDirectory &&
+    typeof FileSystemFileHandle !== "undefined" &&
+    "createSyncAccessHandle" in FileSystemFileHandle.prototype
+  );
+}
+
+export const CANNOT_SYNC_MESSAGE =
+  "Sync needs a browser with OPFS storage — Chrome or Edge on desktop. Firefox and Safari can't do it yet.";
 
 export async function openStore(namespace: string, opts?: OpenStoreOpts): Promise<Store> {
   if (opts?.sync) {

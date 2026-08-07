@@ -2,18 +2,37 @@
 // active view, an add-recipe panel, and toasts. Renders whatever app the composition root
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
+import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
+import { SyncStatus } from "./sync-status.js";
+import { History } from "./history.js";
 import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
-import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, extractSource } from "@karta/generator/backends";
+import {
+  SYSTEM_PROMPT,
+  buildModifyMessage,
+  buildRepairMessage,
+  extractSource,
+  parseModifyReply,
+  type ModifyContext,
+  type ModifyReply,
+} from "@karta/generator/backends";
+import { VIEW_FIELDS, PAGE_FIELDS } from "karta";
+import { listVersions } from "./app-history.js";
+import { listDiagnoses, recordDiagnosis } from "./app-diagnoses.js";
+import { StructurePanel } from "./structure-panel.js";
+import type { Edit } from "./app-source.js";
+import type { StructureTarget } from "./structure-panel.js";
 import { buildAndValidate } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
+import type { NavHost } from "./nav-host.js";
+
 import { generateViaCli } from "./generate-client.js";
 
 interface EditorState {
@@ -46,6 +65,9 @@ interface QuickMenuState {
 // Sentinel page id for the grid "home" overview (grid nav mode only).
 const HOME = "__home__";
 
+/** Survives the reload that re-runs an edited app, so an edit doesn't cost you your place. */
+const RETURN_TO_PAGE = "karta:return-to-page";
+
 // One object-type tile on the grid home: icon + label + live record count. Reuses the entity's list
 // page query for the count, so it reflects the same data the list shows.
 function GridTile({
@@ -72,6 +94,10 @@ function GridTile({
 }
 
 interface AppProps {
+  /** Whether this app uses the CRDT store — drives the sync status pill. */
+  sync?: boolean;
+  /** Lets `ctx.navigate` from app code actually change pages — bound on mount. */
+  navHost?: NavHost;
   /** Backs a real `ctx.ui.pick` modal; omit for surfaces that never pick. */
   picker?: PickerHost;
   runtime: KartaRuntime;
@@ -87,7 +113,7 @@ interface AppProps {
   generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, currentKind, onExport, onImport, generator, picker }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, apps, currentKind, sync, onExport, onImport, generator, picker, navHost }: AppProps) {
   const def = runtime.definition;
   // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
   // them out of the tab bar so nav shows real sections only (no redundant singular "Session" tabs).
@@ -101,7 +127,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   // Nav model: a grid "home" of object types, or a tab bar. Default: grid for many objects, tabs few.
   const navMode: "grid" | "tabs" = (def as { nav?: "grid" | "tabs" }).nav ?? (baseEntities.length >= 3 ? "grid" : "tabs");
 
-  const [pageId, setPageId] = useState<string>(navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id));
+  const [pageId, setPageId] = useState<string>(() => {
+    // READ ONLY. Clearing it here would make this initialiser impure, and StrictMode double-invokes
+    // initialisers on purpose — the second call would find nothing and fall back to the first tab,
+    // which is exactly how "come back to the page you were on" silently did nothing.
+    const returning = globalThis.sessionStorage?.getItem(RETURN_TO_PAGE);
+    if (returning && (returning === HOME || def.pages.some((p) => p.id === returning))) return returning;
+    return navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id);
+  });
+  // Consumed once, after mount, so it can't affect a later boot.
+  useEffect(() => {
+    globalThis.sessionStorage?.removeItem(RETURN_TO_PAGE);
+  }, []);
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
@@ -116,6 +153,12 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     setPageId(target);
     if (param) setParamsByPage((prev) => ({ ...prev, [target]: { ...(prev[target] ?? {}), ...param } }));
   };
+
+  // `ctx.navigate` from an action lands here. Bound through a ref so the binding survives re-renders
+  // without re-registering on every one.
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  useEffect(() => navHost?.bind((page, param) => navigateRef.current(page, param)), [navHost]);
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
   // Placing a point on the map opens the create form already carrying it.
@@ -204,24 +247,58 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
   // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
   const canEdit = Boolean(generator && currentKind === "user" && appId);
   const [editMode, setEditMode] = useState(false);
+  // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
   const [modifyError, setModifyError] = useState<string | null>(null);
+  // Not an error: the agent looked and reported the cause lives in the host, not in this app.
+  const [modifyDiagnosis, setModifyDiagnosis] = useState<string | null>(null);
+  // The source as it stands, read when the panel opens — the structural controls are derived from
+  // what can actually be located in it.
+  const [modifySource, setModifySource] = useState<string | null>(null);
+  const [modifyKind, setModifyKind] = useState<StructureTarget["kind"]>("page");
+  // Set once a structural control has actually changed something, so the dialog can say so and offer
+  // "Done" instead of leaving "Apply with AI" looking like the way to save.
+  const [modifyApplied, setModifyApplied] = useState<string | null>(null);
   // Editing runs a real model call for a minute or more; silence reads as a hang.
   const [modifyProgress, setModifyProgress] = useState<string | null>(null);
 
-  const editMark = (label: string) =>
+  // What the ✎ was clicked on. The panel renders controls for THIS, not for whatever page happens to
+  // be open — clicking "navigation / tabs" used to show the current page's entity fields, which is
+  // why it looked like the panel ignored you.
+  /**
+   * Close the edit panel, re-running the app if anything was actually changed.
+   *
+   * The re-run is a reload because the module is evaluated at boot; deferring it to here is what lets
+   * you make several changes in one sitting. `RETURN_TO_PAGE` carries the open page across it, so you
+   * land back where you were instead of on the first tab.
+   */
+  const closeModify = (): void => {
+    const applied = modifyApplied;
+    setModifyTarget(null);
+    setModifyApplied(null);
+    if (applied) {
+      sessionStorage.setItem(RETURN_TO_PAGE, pageId);
+      location.reload();
+    }
+  };
+
+  const editMark = (label: string, kind: StructureTarget["kind"]) =>
     editMode ? (
       <button
         type="button"
         className="k-editmark"
         aria-label={`Edit ${label}`}
-        title={`Ask the agent to change ${label}`}
+        title={`Change ${label}`}
         onClick={(e) => {
           e.stopPropagation();
           setModifyText("");
           setModifyError(null);
+          setModifyDiagnosis(null);
+          setModifySource(appId ? getUserApp(appId)?.source ?? null : null);
+          setModifyKind(kind);
           setModifyTarget(label);
         }}
       >
@@ -229,17 +306,72 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
       </button>
     ) : null;
 
-  // Build a modify/repair prompt and run it through the local `claude -p` dev endpoint.
-  const runAgent = async (currentSource: string, instruction: string, repairIssues?: string[]): Promise<string> => {
-    // The contract goes in `system`, not the prompt — see generate-client.ts.
-    const parts = ["The current app:", "```ts", currentSource, "```", ""];
-    parts.push(repairIssues ? buildRepairMessage(repairIssues) : buildModifyMessage(instruction));
-    const text = await generateViaCli({
+  // What the agent may declare about the view the user pointed at. Derived from the Zod schema
+  // (VIEW_FIELDS), so what the agent is told the boundary is cannot drift from what is enforced.
+  const modifyTargetView = ((): ModifyContext["target"] => {
+    const page = def.pages.find((p) => p.id === pageId);
+    const viewType = (page?.view as { type?: string } | undefined)?.type;
+    if (!viewType || !VIEW_FIELDS[viewType]) return undefined;
+    return { viewType, pageTitle: page?.title, fields: VIEW_FIELDS[viewType]!, pageFields: PAGE_FIELDS };
+  })();
+
+  // One round-trip through the local `claude -p` dev endpoint. The contract goes in `system`, not
+  // the prompt — see generate-client.ts.
+  const askAgent = async (currentSource: string, message: string): Promise<string> =>
+    generateViaCli({
       system: SYSTEM_PROMPT,
-      prompt: parts.join("\n"),
+      prompt: ["The current app:", "```ts", currentSource, "```", "", message].join("\n"),
       onProgress: (s) => setModifyProgress(`Working… ${s}s`),
     });
-    return extractSource(text);
+
+  /** An edit round, which may legitimately come back as "this isn't the app's to fix". */
+  const runModify = async (currentSource: string, instruction: string, ctx: ModifyContext): Promise<ModifyReply> =>
+    parseModifyReply(await askAgent(currentSource, buildModifyMessage(instruction, ctx)));
+
+  /** A repair round answers "your output didn't compile" — a diagnosis is not a legal reply here. */
+  const runRepair = async (currentSource: string, issues: string[]): Promise<string> =>
+    extractSource(await askAgent(currentSource, buildRepairMessage(issues)));
+
+  /**
+   * Save a direct structural edit. No model, no repair round.
+   *
+   * It is still validated and still written as a version — a change you made by hand deserves the
+   * same audit trail and the same way back as one the agent made. It is recorded as `adjusted`
+   * rather than `edited` so History can tell them apart: an agent edit is a whole-file rewrite,
+   * this one only touched declarative data.
+   */
+  const applyStructuralEdit = async (_edit: Edit, next: string, note: string): Promise<void> => {
+    setModifyApplied(note);
+    if (!appId) return;
+    const app = getUserApp(appId);
+    if (!app) return;
+    setModifyBusy(true);
+    setModifyError(null);
+    try {
+      const issues = await buildAndValidate(next);
+      if (issues.length) {
+        // A structural edit that doesn't validate is a bug in the editor, not something to hand to a
+        // model to repair. Discard it and say so rather than saving a broken app.
+        setModifyError(`That change didn't validate, so nothing was saved: ${issues[0]}`);
+        setModifyBusy(false);
+        return;
+      }
+      await saveUserApp(
+        { id: appId, name: app.name, source: next, origin: "adjusted", note },
+        new Date().toISOString(),
+      );
+      // Re-inspect from the SAVED source, so a second change is computed from the first rather than
+      // from the source as it was when the panel opened — two reorders in a row would otherwise both
+      // be derived from the original and fight each other.
+      setModifySource(next);
+      setModifyBusy(false);
+      // Deliberately no reload here. Reloading per click meant moving a field two places cost two
+      // full app restarts, each closing this panel, turning Edit mode off and dropping you back on
+      // the first tab. The app is re-run once, when you close the panel.
+    } catch (e) {
+      setModifyError(e instanceof Error ? e.message : String(e));
+      setModifyBusy(false);
+    }
   };
 
   const applyModify = async (): Promise<void> => {
@@ -248,15 +380,44 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
     if (!app) return;
     setModifyBusy(true);
     setModifyError(null);
+    setModifyDiagnosis(null);
     setModifyProgress("Working…");
     try {
       const instruction = `Regarding ${modifyTarget}: ${modifyText.trim()}`;
-      let next = await runAgent(app.source, instruction);
+      // What has already been tried on this app, so a repeated complaint escalates instead of
+      // producing a third rewrite of whatever function looked closest last time.
+      const [priorVersions, priorDiagnoses] = await Promise.all([listVersions(appId), listDiagnoses(appId)]);
+      const reply = await runModify(app.source, instruction, {
+        target: modifyTargetView,
+        priorAttempts: priorVersions
+          .filter((v) => v.origin === "edited" && v.note)
+          .slice(0, 4)
+          .map((v) => v.note!),
+        priorDiagnoses: priorDiagnoses.slice(0, 3).map((d) => d.text),
+      });
+
+      // The agent says this isn't the app's to fix. Record it and show it — appending a version here
+      // would be recording an edit that was deliberately not made, and would feed the next prompt a
+      // source change that never happened.
+      if (reply.kind === "diagnosis") {
+        await recordDiagnosis(appId, { complaint: instruction, text: reply.text, target: modifyTarget }, new Date().toISOString());
+        setModifyDiagnosis(reply.text);
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
+
       // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
       // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
-      let issues = await buildAndValidate(next);
-      if (issues.length) next = await runAgent(next, instruction, issues);
-      saveUserApp({ id: appId, name: app.name, source: next }, new Date().toISOString());
+      let next = reply.source;
+      const issues = await buildAndValidate(next);
+      if (issues.length) next = await runRepair(next, issues);
+      // Awaited, not fired-and-forgotten: the reload below would otherwise race the history write
+      // and lose the very version you'd want to roll back to.
+      await saveUserApp(
+        { id: appId, name: app.name, source: next, origin: "edited", note: instruction, rationale: reply.rationale },
+        new Date().toISOString(),
+      );
       location.reload(); // re-run the app with the edited source (its data persists in user:<id>)
     } catch (e) {
       setModifyError(e instanceof Error ? e.message : String(e));
@@ -299,6 +460,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
           ) : (
             <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
           )}
+          <SyncStatus sync={sync} />
         </div>
         <div className="k-header-actions">
           {generator ? (
@@ -314,6 +476,17 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
           {generator ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
               Studio
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className="k-add"
+              aria-label="History"
+              title="History — review and roll back changes to this app"
+              onClick={() => setHistoryOpen(true)}
+            >
+              ⟲ History
             </button>
           ) : null}
           {canEdit ? (
@@ -348,12 +521,12 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
               <span aria-hidden>{qa.icon ?? def.entities[qa.entity]?.icon ?? "＋"}</span> {qa.label}
             </button>
           ))}
-          {editMark("the quick action buttons")}
+          {editMark("the quick action buttons", "quickActions")}
         </div>
       ) : null}
 
       <nav className="k-nav" aria-label="Pages">
-        {editMark("the navigation / tabs")}
+        {editMark("the navigation / tabs", "nav")}
         {navMode === "grid" ? (
           <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => setPageId(HOME)}>
             ⊞ Home
@@ -374,7 +547,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
 
       {pageId === HOME ? (
         <main className="k-main">
-          {editMark("the object grid home")}
+          {editMark("the object grid home", "home")}
           <div className="k-objgrid" aria-label="Objects">
             {baseEntities.map((e) => {
               const lp = visiblePages.find((p) => (p.view as { entity?: string }).entity === e);
@@ -395,8 +568,9 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
       ) : (
         <>
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
+          <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
           <main className="k-main">
-            {editMark(currentPageLabel)}
+            {editMark(currentPageLabel, "page")}
             <ViewHost
               runtime={runtime}
               pageId={pageId}
@@ -480,33 +654,60 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
       ) : null}
 
       {modifyTarget ? (
-        <div className="k-modal-scrim" onClick={() => (modifyBusy ? undefined : setModifyTarget(null))}>
+        <div className="k-modal-scrim" onClick={() => (modifyBusy ? undefined : closeModify())}>
           <div className="k-modal k-modifydialog" onClick={(e) => e.stopPropagation()}>
             <h3>Change {modifyTarget}</h3>
-            <p className="k-muted">Describe the change — the agent edits this app, keeping the rest.</p>
+
+            {/* Direct controls first, the agent second. A label, a field's order and whether a field
+                shows in the form are declarative data — they need no model, and asking one to change
+                a string means it rewrites the whole file, functions included. */}
+            {modifySource ? (
+              <StructurePanel
+                source={modifySource}
+                target={{ kind: modifyKind, pageId }}
+                busy={modifyBusy}
+                onApply={applyStructuralEdit}
+              />
+            ) : null}
+
+            <p className="k-muted">
+              {modifySource
+                ? "Anything the controls above can't do — describe it, and the agent edits this app."
+                : "Describe the change — the agent edits this app, keeping the rest."}
+            </p>
             <textarea
               className="k-input k-modify-text"
               aria-label="Describe the change"
               placeholder='e.g. "make this a grid of icons, and put Start Session first"'
               rows={4}
-              autoFocus
               value={modifyText}
               onChange={(e) => setModifyText(e.target.value)}
             />
             {modifyProgress && !modifyError ? <p className="k-muted">{modifyProgress}</p> : null}
             {modifyError ? <p className="k-form-error">{modifyError}</p> : null}
+            {modifyDiagnosis ? (
+              // Deliberately not styled as an error. Nothing failed: the agent was asked for a change
+              // this app cannot express and said so instead of inventing one that could not work.
+              <div className="k-diagnosis" role="note">
+                <p className="k-diagnosis-head">This one isn&rsquo;t in your app</p>
+                <p className="k-diagnosis-body">{modifyDiagnosis}</p>
+                <p className="k-muted">
+                  Nothing was changed. It&rsquo;s saved in History so a later edit doesn&rsquo;t retry it.
+                </p>
+              </div>
+            ) : null}
             <div className="k-form-actions">
-              <button type="button" className="k-add" disabled={modifyBusy} onClick={() => setModifyTarget(null)}>
-                Cancel
+              <button type="button" className="k-add" disabled={modifyBusy} onClick={closeModify}>
+                {modifyDiagnosis || modifyApplied ? "Close" : "Cancel"}
               </button>
-              <button
-                type="button"
-                className="k-add k-primary-action"
-                disabled={modifyBusy || modifyText.trim().length === 0}
-                onClick={() => void applyModify()}
-              >
-                {modifyBusy ? "Applying…" : "Apply with AI"}
-              </button>
+              {/* Only offered once there is something to send. Otherwise it is the only button that
+                  looks like "save", so a direct edit — which has already been applied — reads as
+                  needing a model call it does not need. */}
+              {modifyText.trim().length > 0 || modifyBusy ? (
+                <button type="button" className="k-add k-primary-action" disabled={modifyBusy} onClick={() => void applyModify()}>
+                  {modifyBusy ? "Applying…" : "Apply with AI"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -525,6 +726,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, on
             setGenOpen(true);
           }}
           onClose={() => setLauncherOpen(false)}
+        />
+      ) : null}
+
+      {historyOpen && appId ? (
+        <History
+          appId={appId}
+          appName={def.name}
+          onClose={() => setHistoryOpen(false)}
+          onRestored={() => location.reload()}
         />
       ) : null}
 

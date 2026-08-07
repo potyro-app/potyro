@@ -49,7 +49,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
+  /* The actions drop to their own row rather than being squeezed: at 390px they are 454px wide, and
+     without this the whole page scrolled sideways. */
+  flex-wrap: wrap;
 }
 .k-brand {
   display: flex;
@@ -72,6 +75,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 /* Every control in the header bar is the same height. Left to each class, they drifted: `.k-add`
    never set `font: inherit` (so it fell back to the ~13px UA button font) and used different padding
@@ -84,8 +88,16 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   box-sizing: border-box;
+  /* Height was set here but wrapping was not, so a squeezed row broke "⊞ Apps" onto two lines and
+     that button alone became 64px next to its 41px neighbours. */
+  white-space: nowrap;
+  flex-shrink: 0;
+  /* And a FIXED line box, or the glyph decides the height: "⊞ Apps" and "⟲ History" sat 2px taller
+     than their plain-text neighbours because those symbols have a taller natural line box. With this,
+     content height is always under the min-height, so every control resolves to the same number. */
+  line-height: 1.25;
 }
 /* The provenance pill keeps its small-caps type without shrinking the row. */
 .k-header-actions > .k-prov {
@@ -246,6 +258,258 @@ button {
 .k-modify-text {
   resize: vertical;
   line-height: 1.5;
+}
+
+/* Map chrome: arming a placement, and what a pin says when you tap it. */
+.k-map-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.k-map-hint {
+  font-size: 0.86rem;
+  color: color-mix(in oklab, var(--ink) 75%, var(--accent));
+}
+/* Armed: the cursor says the next tap does something, and the map is visibly the target. */
+.k-map[data-placing] .k-map-canvas {
+  cursor: crosshair;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.k-map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 8rem;
+}
+.k-map-popup-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+.k-map-popup-open {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  align-self: flex-start;
+}
+
+/* ctx.ui.confirm / prompt. Deliberately narrow and quiet — it interrupts, so it should say one thing
+   and offer two answers, in the app's own type rather than the browser chrome's. */
+/* Above everything, including the launcher scrim (60) and the Studio (50). A dialog interrupts
+   whatever is on screen by definition — if it stacks below, you can see the buttons and not press
+   them, which is how "Confirm" became unclickable inside the launcher. */
+.k-modal-scrim:has(> .k-dialog) {
+  z-index: 100;
+}
+.k-dialog {
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.k-dialog-message {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+/* Destructive actions read as destructive. Not red-by-default screaming — this is still a small
+   inline control — but unmistakably not the same thing as "Edit". */
+.k-action-danger {
+  color: oklch(48% 0.16 27);
+  border-color: color-mix(in oklab, oklch(60% 0.18 27) 45%, var(--line));
+}
+.k-action-danger:hover {
+  background: oklch(96% 0.04 27);
+  border-color: oklch(60% 0.18 27);
+}
+
+/* The `steps` built-in: an ordered walk-through you tick off. Done steps recede rather than vanish,
+   so the list keeps its shape and you can see how far you've come. */
+.k-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.k-steps-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.k-steps-progress {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.k-steps-list {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.k-steps-item > label {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 150ms var(--ease), background 150ms var(--ease), opacity 150ms var(--ease);
+}
+.k-steps-item > label::before {
+  counter-increment: step;
+  content: counter(step);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.k-steps-item > label:hover {
+  border-color: var(--accent);
+}
+.k-steps-item[data-done] > label {
+  opacity: 0.55;
+  background: color-mix(in oklab, var(--ink) 3%, var(--surface));
+}
+.k-steps-item[data-done] .k-steps-text {
+  text-decoration: line-through;
+}
+.k-steps-text {
+  line-height: 1.45;
+}
+.k-steps-done {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: color-mix(in oklab, var(--ink) 70%, var(--accent));
+}
+
+/* Summary figures, above the view and below the filter chips. Given real scale contrast — the number
+   is the thing you came for, the label just says which number it is. */
+.k-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 7%, var(--surface)), var(--surface));
+}
+.k-summary-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+.k-summary-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+}
+.k-summary-value {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* Re-running after a filter change: dim rather than blank, so the strip doesn't flicker its height. */
+.k-summary-value[data-loading] {
+  opacity: 0.45;
+}
+
+/* Direct structural controls, above the describe-a-change box. Visually the primary path: these are
+   instant and exact, where the box below costs a minute and rewrites the file. */
+.k-structure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.k-structure-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+}
+.k-structure-label {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-structure-heading {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-structure-fields {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+.k-structure-field {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.k-structure-order {
+  display: flex;
+  gap: 0.15rem;
+}
+.k-structure-move {
+  padding: 0.2rem 0.4rem;
+  line-height: 1;
+  border-radius: 7px;
+}
+.k-structure-move:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  border-color: var(--line);
+}
+.k-structure-name {
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.88rem;
+}
+.k-structure-hide {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+/* Not an error — the app simply isn't written in a shape this can reach, and the agent below is the
+   way through. Same register as a NOT-IN-APP diagnosis. */
+.k-structure-blocked {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid color-mix(in oklab, var(--ink) 25%, var(--line));
+  padding-left: 0.7rem;
 }
 
 /* Object grid (grid nav home) */
@@ -979,12 +1243,124 @@ button {
 .k-studio-source {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* ---- highlighted code ----------------------------------------------------
+   A painted `<pre>` sits behind a transparent-text textarea. The illusion holds only while both
+   layers agree on EVERY metric that affects where a glyph lands, so the typography and box are
+   declared once here and inherited by both children. Changing font-size on one alone will drift the
+   colour off the code. */
+.k-code {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.82rem;
   line-height: 1.5;
+  tab-size: 2;
+}
+.k-code-paint,
+.k-code-input {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  font: inherit;
+  line-height: inherit;
+  tab-size: inherit;
+  letter-spacing: inherit;
   white-space: pre;
   overflow: auto;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.k-code-paint {
+  pointer-events: none;
+  /* The textarea owns scrolling; this layer is dragged along in JS. Its own scrollbars would both
+     steal width from the text and desynchronise the two. */
+  overflow: hidden;
+  color: var(--ink);
+}
+.k-code-input {
   resize: none;
+  background: transparent;
+  /* Transparent glyphs, real caret: the text under the cursor is the paint layer's. */
+  color: transparent;
+  caret-color: var(--ink);
+  outline: none;
+}
+.k-code-input::selection {
+  /* Selection must stay visible with transparent text — without an explicit colour it disappears. */
+  background: color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.k-code:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--line));
+}
+
+/* Token palette — built from the app's own accent and ink rather than a stock Prism theme, so the
+   Studio still looks like this product. Kept to a few hues: colour here is for scanning structure,
+   not decoration.
+
+   On its own class, not on `.k-code`: the History diff wants these colours but none of the editor's
+   layout, and inheriting an overlay's grid and border was never what it asked for. */
+.k-syntax .token.comment,
+.k-syntax .token.prolog,
+.k-syntax .token.doctype,
+.k-syntax .token.cdata {
+  color: color-mix(in oklab, var(--ink) 45%, transparent);
+  font-style: italic;
+}
+.k-syntax .token.punctuation {
+  color: color-mix(in oklab, var(--ink) 60%, transparent);
+}
+.k-syntax .token.string,
+.k-syntax .token.char,
+.k-syntax .token.template-string,
+.k-syntax .token.attr-value,
+.k-syntax .token.regex {
+  color: #4f9d69;
+}
+.k-syntax .token.number,
+.k-syntax .token.boolean,
+.k-syntax .token.constant,
+.k-syntax .token.symbol {
+  color: #b07219;
+}
+.k-syntax .token.keyword,
+.k-syntax .token.control-flow,
+.k-syntax .token.module,
+.k-syntax .token.important {
+  color: #9558b2;
+  font-weight: 600;
+}
+.k-syntax .token.function,
+.k-syntax .token.method,
+.k-syntax .token.class-name,
+.k-syntax .token.maybe-class-name {
+  color: #2f6fb0;
+}
+.k-syntax .token.tag,
+.k-syntax .token.selector {
+  color: #c0574d;
+}
+.k-syntax .token.attr-name,
+.k-syntax .token.property,
+.k-syntax .token.parameter {
+  color: color-mix(in oklab, var(--ink) 78%, var(--accent));
+}
+.k-syntax .token.operator,
+.k-syntax .token.entity,
+.k-syntax .token.url {
+  color: color-mix(in oklab, var(--ink) 70%, transparent);
+}
+.k-syntax .token.builtin {
+  color: #2f6fb0;
+}
+.k-syntax .token.namespace {
+  opacity: 0.7;
 }
 @media (max-width: 760px) {
   .k-studio-body {
@@ -1320,6 +1696,9 @@ button {
 
 /* Geo field: the map IS the input; coordinates are the escape hatch. */
 .k-geo-map {
+  /* WIDTH IS LOAD-BEARING: the parent is `align-items: flex-start`, so without it this collapses to
+     its (empty) content and renders a 2px sliver of map — visible as "a blank area". */
+  width: 100%;
   height: 220px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1354,3 +1733,278 @@ button {
 .k-form-nested h3 {
   font-size: 1rem;
 }
+
+/* History — versions on the left, the diff of the selected one on the right. The list is the
+   narrative ("what did I ask for?"), the diff is the evidence ("what did that actually change?"). */
+.k-history {
+  width: min(1040px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: 88vh;
+}
+.k-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.k-history-head h3 {
+  margin: 0 0 0.15rem;
+}
+.k-history-head p {
+  margin: 0;
+}
+.k-history-body {
+  display: grid;
+  grid-template-columns: minmax(210px, 30%) 1fr;
+  gap: 1rem;
+  min-height: 0;
+  flex: 1;
+}
+.k-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-right: 1px solid var(--line);
+  padding-right: 0.75rem;
+}
+.k-history-item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.k-history-item:hover {
+  background: var(--paper);
+}
+.k-history-item[data-active="true"] {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+}
+.k-history-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.k-history-seq {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+.k-history-origin {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+.k-history-origin-edited {
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--line));
+  color: color-mix(in oklab, var(--ink) 70%, var(--accent));
+}
+.k-history-origin-restored {
+  border-style: dashed;
+}
+/* A change the user made directly. Distinct from `edit` on purpose: that one is a whole-file agent
+   rewrite, this one only touched declarative data. */
+.k-history-origin-adjusted {
+  border-color: color-mix(in oklab, var(--ink) 35%, var(--line));
+  color: var(--ink-soft);
+}
+.k-history-now {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+.k-history-note {
+  font-size: 0.86rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.k-history-when {
+  font-size: 0.72rem;
+}
+/* The agent's account of a change, above the diff it explains. Set apart from the code but not
+   dressed as a warning — it is context, not a problem. */
+.k-history-rationale {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  padding: 0.1rem 0 0.1rem 0.7rem;
+  margin: 0;
+}
+
+/* Changes that were correctly not made. Deliberately quieter than the version list: it is a footnote
+   to the history, not a competing timeline. */
+.k-history-diagnoses {
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.k-history-diagnoses h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.k-history-diagnoses ul {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 11rem;
+  overflow-y: auto;
+}
+.k-history-diagnoses li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-left: 2px dashed color-mix(in oklab, var(--ink) 25%, var(--line));
+  padding-left: 0.7rem;
+}
+
+/* Edit mode's "this isn't in your app" answer. Distinct from .k-form-error on purpose: nothing went
+   wrong, so it must not read as a failure the user should retry. */
+.k-diagnosis {
+  border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--line));
+  border-radius: 0.55rem;
+  background: color-mix(in oklab, var(--accent) 7%, transparent);
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.k-diagnosis-head {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.k-diagnosis-body {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.k-history-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.k-history-detailhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.k-history-detailactions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* The diff itself: monospace, scrolls in its own box (never the page), sign + line number in the
+   gutter so a change reads without colour alone. */
+.k-diff {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  max-height: 58vh;
+}
+.k-diff-hunk + .k-diff-hunk {
+  border-top: 1px solid var(--line);
+}
+.k-diff-gap {
+  padding: 0.2rem 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  background: color-mix(in oklab, var(--ink) 4%, var(--paper));
+}
+.k-diff-line {
+  display: grid;
+  grid-template-columns: 3.2rem 1rem 1fr;
+  align-items: baseline;
+  column-gap: 0.2rem;
+  padding: 0 0.5rem 0 0;
+  white-space: pre;
+}
+.k-diff-line code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+}
+.k-diff-num {
+  text-align: right;
+  padding-right: 0.5rem;
+  color: color-mix(in oklab, var(--ink-soft) 70%, transparent);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.k-diff-sign {
+  user-select: none;
+  font-weight: 700;
+}
+.k-diff-add {
+  background: oklch(93% 0.07 150);
+  box-shadow: inset 2px 0 0 oklch(60% 0.14 150);
+}
+.k-diff-del {
+  background: oklch(93% 0.06 30);
+  box-shadow: inset 2px 0 0 oklch(60% 0.16 30);
+}
+@media (max-width: 720px) {
+  .k-history-body {
+    grid-template-columns: 1fr;
+  }
+  .k-history-list {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding-right: 0;
+    padding-bottom: 0.6rem;
+    max-height: 30vh;
+  }
+}
+
+/* Sync status pill — the only on-screen answer to "is this actually syncing?" */
+.k-sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.75rem;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.k-sync-status[data-state="synced"] { color: #2E9E5B; }
+.k-sync-status[data-state="connecting"] { color: #8A8A8A; }
+.k-sync-status[data-state="offline"],
+.k-sync-status[data-state="local"] { color: #B4762A; }
