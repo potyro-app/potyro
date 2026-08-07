@@ -126,6 +126,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
           case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b)) : 0; break; }
           case "binding": result = await resolveBinding(app, p, record, ctx); break;
+          case "summary": {
+            var pg = (app.pages||[]).find(function(x){ return x.id === p.pageId; });
+            var spec = (pg && pg.summary) ? pg.summary[p.index] : null;
+            if (!spec || typeof spec.value !== "function") throw new Error("summary " + p.pageId + "[" + p.index + "] has no value function");
+            result = await spec.value(p.rows || [], ctx);
+            break;
+          }
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }
           default: return __serialize({ ok:false, error:"unknown kind " + p.kind });
         }

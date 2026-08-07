@@ -6,6 +6,7 @@ import type {
   AppDefinition,
   Ctx,
   CustomViewComponent,
+  CustomViewMount,
   Id,
   KartaApp,
   PermissionManifest,
@@ -69,9 +70,21 @@ export interface LoadedApp {
   callFilter(pageId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
   callSort(pageId: string, a: Resolved, b: Resolved): Promise<number>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
+  /**
+   * Compute a page summary figure's `value` function over the page's filtered rows.
+   *
+   * Aggregates are the one shape that cannot be a per-record binding, so this is the only call that
+   * takes the whole row set. It exists as a host call for the same reason `callBinding` does: for an
+   * untrusted app the function never leaves the isolate, so the shell cannot invoke it directly —
+   * its definition carries the `__karta_fn__` sentinel where the function was. Routing both
+   * provenances through here keeps trust out of the shell's arithmetic.
+   */
+  callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
   customView(pageId: string): CustomViewComponent | null;
+  /** The `mount` form of a custom view, when the app declared one instead of `render`. */
+  customViewMount?(pageId: string): CustomViewMount | null;
 
   dispose(): void;
 }

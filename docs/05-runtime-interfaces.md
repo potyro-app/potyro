@@ -101,6 +101,11 @@ export interface LoadedApp {
   callAction(entity: string, key: string, record: Resolved, ctx: Ctx, input?: unknown): Promise<void>;
   callFilter(viewId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
+  // Page summary aggregates (docs/03 `Page.summary`). The only call taking the whole row set:
+  // `computed` is per-record, so a figure over the WHOLE set cannot be a per-record binding.
+  // It is a host call because for an untrusted app the function never leaves the isolate —
+  // the extracted definition carries the `__karta_fn__` sentinel where the function was.
+  callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
   dispose(): void;

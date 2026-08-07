@@ -246,6 +246,11 @@ class IsolateLoadedApp implements LoadedApp {
         : { kind: "binding", refKind: "reminder", id: ref.id, path: ref.path, record, ...this.base(ctx) };
     return this.invoke(payload, ctx);
   }
+  async callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value> {
+    // The whole filtered set crosses in one payload. At personal scale (docs/01: thousands, not
+    // millions) that is cheaper than N per-row round trips through the string bridge.
+    return this.invoke({ kind: "summary", pageId, index, rows, ...this.base(ctx) }, ctx);
+  }
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
     const v = await this.invoke({ kind: "reminderWhen", id, record, ...this.base(ctx) }, ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));
