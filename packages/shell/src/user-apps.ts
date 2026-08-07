@@ -4,6 +4,13 @@
 //
 // Storage: a single localStorage key holding a JSON array. The app *source* lives here; each app's
 // *data* lives in its own durable store namespaced `user:<id>` (see open-store.ts). Immutable ops.
+//
+// Every source change is also appended to the app's history (app-history.ts) so an AI edit can be
+// reviewed and rolled back. That happens inside `saveUserApp` on purpose: it is the only path that
+// writes source, so no caller can quietly skip the audit trail.
+
+import { clearHistory, recordVersion, type VersionOrigin } from "./app-history.js";
+import { clearDiagnoses } from "./app-diagnoses.js";
 
 const KEY = "karta:user-apps";
 
@@ -16,6 +23,11 @@ export interface UserApp {
    *  own, so this defaults to TRUE; an app that arrived from someone else is saved with
    *  `trusted: false` and must be promoted explicitly. */
   trusted?: boolean;
+  /** Opt this app into the CRDT store (ADR 0001 D3). Off by default: sync is a choice the user
+   *  makes per app, not a property of the product. Flipping it changes which `Store` the
+   *  composition root opens, and the two stores hold data in different files — so a flip does NOT
+   *  migrate existing records. See `setUserAppSync`. */
+  sync?: boolean;
 }
 
 function read(): UserApp[] {
@@ -54,11 +66,15 @@ export function getUserApp(id: string): UserApp | undefined {
 }
 
 /** Create or update a saved app. A new app gets a unique id derived from its name; passing an
- *  existing `id` updates that app in place. Returns the stored record. */
-export function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean },
+ *  existing `id` updates that app in place. Returns the stored record.
+ *
+ *  Async because it also appends to the app's history. Callers that reload the page afterwards
+ *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
+ *  where the new source came from; they are what the History panel shows next to each version. */
+export async function saveUserApp(
+  input: { id?: string; name: string; source: string; trusted?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
   now: string,
-): UserApp {
+): Promise<UserApp> {
   const apps = read();
   const name = input.name.trim() || "Untitled app";
   let id = input.id;
@@ -75,18 +91,46 @@ export function saveUserApp(
   // does NOT demote it; you are still the author.
   const prev = apps.find((a) => a.id === id);
   const trusted = input.trusted ?? prev?.trusted ?? true;
-  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted };
+  // `sync` is carried over explicitly: this function REBUILDS the record, so any field not listed
+  // here is silently dropped. Losing it would switch an app back to the non-CRDT store on the next
+  // edit and open it empty — indistinguishable from data loss.
+  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted, sync: prev?.sync };
   write([record, ...apps.filter((a) => a.id !== id)]);
+  // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
+  // first diff needs. A brand-new app has none — its first version IS the creation.
+  await recordVersion(
+    id,
+    {
+      source: input.source,
+      origin: input.origin ?? (prev ? "edited" : "created"),
+      note: input.note,
+      rationale: input.rationale,
+      baseline: prev?.source,
+    },
+    now,
+  );
   return record;
 }
 
-export function removeUserApp(id: string): void {
+export async function removeUserApp(id: string): Promise<void> {
   write(read().filter((a) => a.id !== id));
+  await clearHistory(id);
+  await clearDiagnoses(id);
 }
 
 /** Promote/demote a saved app's trust. Trusted apps run directly (not in the isolate). */
 export function setUserAppTrusted(id: string, trusted: boolean, now: string): void {
   write(read().map((a) => (a.id === id ? { ...a, trusted, updatedAt: now } : a)));
+}
+
+/** Turn the CRDT store on or off for an app.
+ *
+ *  NOTE: SqliteStore and JazzStore keep their data in separate files, so this does not move
+ *  existing records — an app switched on will open empty until data is migrated across. Callers
+ *  must warn before flipping it; silently showing an empty app reads as data loss. Migrating the
+ *  rows across is tracked with KA-08's remaining work. */
+export function setUserAppSync(id: string, sync: boolean, now: string): void {
+  write(read().map((a) => (a.id === id ? { ...a, sync, updatedAt: now } : a)));
 }
 
 /** Rename a saved app in place (keeps its id, source, and data namespace). */

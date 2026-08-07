@@ -3,14 +3,19 @@ export type { Store, Unsubscribe, Narrow, MigrationPlan } from "./types.js";
 export { MemoryStore } from "./memory-store.js";
 export { LocalStore, type StorageLike } from "./local-store.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
+export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
+export { createJazzStore, openJazzStore, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
+export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
   createSqliteStore,
   createMemorySqliteStore,
   importSqliteStore,
   initSqlite,
+  openOpfsDb,
   type SqliteStoreFactoryResult,
 } from "./sqlite-backend.js";
 export { applyMigrationStep, type EntityRecords } from "./migrate.js";
+export { copyStoreData, type CopyStoreResult } from "./copy-store.js";
 export {
   packBundle,
   unpackBundle,

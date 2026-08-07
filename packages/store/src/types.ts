@@ -45,6 +45,15 @@ export interface Store {
 
   // blobs (media), kv (ctx.storage), migration support
   putBlob(b: Blob): Promise<MediaRef>;
+  /**
+   * Write a blob under an EXISTING key.
+   *
+   * `putBlob` mints a new key, which is right for capture but wrong for copying: every `MediaRef`
+   * already embedded in a record points at the old key, so a re-keyed copy silently loses every
+   * photo. Optional so a minimal Store need not implement it; `copyStoreData` reports what it
+   * could not move rather than dropping media quietly.
+   */
+  putBlobWithKey?(key: string, b: Blob): Promise<MediaRef>;
   getBlob(r: MediaRef): Promise<Blob | null>;
   kvGet(k: string): Promise<string | null>;
   kvSet(k: string, v: string): Promise<void>;
