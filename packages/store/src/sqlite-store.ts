@@ -203,6 +203,16 @@ export class SqliteStore implements Store {
     return { key, mime };
   }
 
+  async putBlobWithKey(key: string, b: Blob): Promise<MediaRef> {
+    const bytes = new Uint8Array(await b.arrayBuffer());
+    const mime = b.type || "application/octet-stream";
+    this.db.exec({
+      sql: "INSERT INTO blobs(key, mime, bytes) VALUES(?, ?, ?) ON CONFLICT(key) DO UPDATE SET mime=excluded.mime, bytes=excluded.bytes",
+      bind: [key, mime, bytes],
+    });
+    return { key, mime };
+  }
+
   async getBlob(r: MediaRef): Promise<Blob | null> {
     const row = this.db.selectObjects("SELECT mime, bytes FROM blobs WHERE key=?", [r.key])[0];
     if (!row) return null;

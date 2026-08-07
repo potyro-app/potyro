@@ -138,6 +138,14 @@ export class MemoryStore implements Store {
     return { key, mime: b.type || "application/octet-stream" };
   }
 
+  async putBlobWithKey(key: string, b: Blob): Promise<MediaRef> {
+    const bytes = await b.arrayBuffer();
+    const mime = b.type || "application/octet-stream";
+    this.blobs.set(key, { mime, bytes });
+    this.changed();
+    return { key, mime };
+  }
+
   async getBlob(r: MediaRef): Promise<Blob | null> {
     const e = this.blobs.get(r.key);
     if (!e) return null;

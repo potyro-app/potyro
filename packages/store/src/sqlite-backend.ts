@@ -68,6 +68,26 @@ export interface SqliteStoreFactoryResult {
  * COOP/COEP headers required) so data survives reloads and works fully offline. `appId` namespaces
  * the physical file so different apps never share storage.
  */
+/**
+ * Open a raw OPFS-backed SQLite handle.
+ *
+ * Exists so cojson can be given a database of its OWN (`createJazzStore`). Its schema
+ * (coValues/sessions/transactions/…) is entirely its business, and sharing a file with Karta's
+ * `records`/`blobs`/`meta` tables would couple two migration timelines that never need to meet.
+ * The `name`/`directory` are namespaced by caller, so the files never collide.
+ */
+export async function openOpfsDb(name: string, opts?: { directory?: string }): Promise<SqliteDbHandle> {
+  const sqlite3 = await initSqlite();
+  if (!sqlite3.installOpfsSAHPoolVfs) {
+    throw new Error("openOpfsDb: OPFS SAH-pool VFS unavailable in this environment");
+  }
+  const pool = await sqlite3.installOpfsSAHPoolVfs({
+    name: `karta-${name}`,
+    directory: opts?.directory ?? `/karta/${name}`,
+  });
+  return new pool.OpfsSAHPoolDb(`/${name}.sqlite3`) as unknown as SqliteDbHandle;
+}
+
 export async function createSqliteStore(appId: string, opts?: { directory?: string }): Promise<SqliteStore> {
   const sqlite3 = await initSqlite();
   if (!sqlite3.installOpfsSAHPoolVfs) {

@@ -18,6 +18,8 @@ import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { NavHost } from "./nav-host.js";
+import { Dialogs, shellDialogs } from "./dialog.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
 import { startReminderSync } from "./reminder-sync.js";
@@ -158,8 +160,23 @@ function Home() {
   );
 }
 
+// One React root per document, reused.
+//
+// `mount` is called from several boot paths, and some of them run in sequence — a user app that has
+// been deleted mounts the launcher after boot has already mounted something. Calling `createRoot` a
+// second time on the same element makes React warn and leaves the first root orphaned, still
+// subscribed to the store.
+let reactRoot: ReturnType<typeof createRoot> | null = null;
+
 function mount(root: HTMLElement, node: ReactNode): void {
-  createRoot(root).render(<StrictMode>{node}</StrictMode>);
+  reactRoot ??= createRoot(root);
+  reactRoot.render(
+    <StrictMode>
+      {node}
+      {/* Once, around every route — home, a built-in, or a saved app. */}
+      <Dialogs host={shellDialogs} />
+    </StrictMode>,
+  );
   registerServiceWorker();
 }
 
@@ -176,8 +193,9 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
     await seedIfEmpty(store, appId);
   }
   const picker = new PickerHost();
-  const ui = createUiBridge(toaster.push, picker);
-  const nav = createNavBridge(() => {});
+  const ui = createUiBridge(toaster.push, picker, shellDialogs);
+  const navHost = new NavHost();
+  const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
 
   const examples = import.meta.glob("../../../examples/*.app.ts", { import: "default" });
   const loadTrusted = examples[`../../../examples/${appId}.app.ts`] as (() => Promise<KartaApp>) | undefined;
@@ -199,6 +217,7 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   mount(
     root,
     <App
+      navHost={navHost}
       picker={picker}
       runtime={composed.runtime}
       provenance={provenance}
@@ -222,10 +241,13 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     mount(root, <Home />); // deleted out from under us → home
     return;
   }
-  const store = await openStore(`user:${id}`);
+  // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
+  // exactly the previous SqliteStore/LocalStore path.
+  const store = await openStore(`user:${id}`, { sync: saved.sync });
   const picker = new PickerHost();
-  const ui = createUiBridge(toaster.push, picker);
-  const nav = createNavBridge(() => {});
+  const ui = createUiBridge(toaster.push, picker, shellDialogs);
+  const navHost = new NavHost();
+  const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
 
   let composed: Composed;
   let provenance: Provenance = "untrusted";
@@ -254,6 +276,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   mount(
     root,
     <App
+      navHost={navHost}
       picker={picker}
       runtime={composed!.runtime}
       provenance={provenance}

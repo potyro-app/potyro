@@ -7,7 +7,10 @@
 // navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
 import { useState } from "react";
+import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { toggleAppSync } from "./toggle-sync.js";
+import { History } from "./history.js";
 
 export function openBuiltinApp(id: string): void {
   location.search = `?app=${encodeURIComponent(id)}`;
@@ -60,12 +63,48 @@ function Tile({
 export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin, onOpenUser, onNewApp, onClose }: LauncherProps) {
   // Local copy so inline delete/rename reflect immediately (navigation elsewhere is reload-based).
   const [myApps, setMyApps] = useState(userApps);
-  const del = (a: UserApp): void => {
-    removeUserApp(a.id);
+  // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
+  // app badly enough that its own header is no longer reachable.
+  const [history, setHistory] = useState<UserApp | null>(null);
+  // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
+  // undo. It asked for nothing at all before.
+  const del = async (a: UserApp): Promise<void> => {
+    if (!(await shellDialogs.confirm(`Delete "${a.name}" and everything in it? This can't be undone.`))) return;
+    await removeUserApp(a.id);
     setMyApps(listUserApps());
   };
-  const rename = (a: UserApp): void => {
-    const name = globalThis.prompt("Rename app", a.name);
+  // Sync moves the app's data between two stores that keep it in DIFFERENT files, so this is a
+  // migration, not a checkbox. It says what it will do, reports anything it could not move, and
+  // never deletes the old copy — flipping back is the way out if it was a mistake.
+  const [busy, setBusy] = useState<string | null>(null);
+  const toggleSync = async (a: UserApp): Promise<void> => {
+    const on = !a.sync;
+    const ok = await shellDialogs.confirm(
+      on
+        ? `Turn on sync for "${a.name}"? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off.`
+        : `Turn off sync for "${a.name}"? Its data will be copied back to local-only storage.`,
+    );
+    if (!ok) return;
+    setBusy(a.id);
+    try {
+      const { inspect } = await import("./app-source.js");
+      const shape = await inspect(a.source);
+      const entities = shape.entities.map((e) => e.key);
+      const { copied, warnings } = await toggleAppSync(a.id, entities, on, new Date().toISOString());
+      setMyApps(listUserApps());
+      const moved = `Moved ${copied.records} record(s)`;
+      // A partial migration must be surfaced. Silently losing photos is the failure this whole
+      // path exists to avoid.
+      await shellDialogs.confirm(warnings.length ? `${moved}. ${warnings.join(" ")}` : `${moved}. Sync is ${on ? "on" : "off"}.`);
+    } catch (e) {
+      await shellDialogs.confirm(`Could not change sync: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rename = async (a: UserApp): Promise<void> => {
+    const name = await shellDialogs.prompt("Rename app", { default: a.name });
     if (name && name.trim()) {
       renameUserApp(a.id, name, new Date().toISOString());
       setMyApps(listUserApps());
@@ -117,8 +156,20 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
                 onOpen={() => onOpenUser(a.id)}
               />
               <div className="k-launch-actions">
-                <button type="button" className="k-launch-act" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => rename(a)}>✎</button>
-                <button type="button" className="k-launch-act" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => del(a)}>✕</button>
+                <button type="button" className="k-launch-act" aria-label={`History of ${a.name}`} title="History" onClick={() => setHistory(a)}>⟲</button>
+                <button
+                  type="button"
+                  className="k-launch-act"
+                  aria-label={`${a.sync ? "Turn off" : "Turn on"} sync for ${a.name}`}
+                  title={a.sync ? "Sync on — click to turn off" : "Sync off — click to turn on"}
+                  data-on={a.sync || undefined}
+                  disabled={busy === a.id}
+                  onClick={() => void toggleSync(a)}
+                >
+                  {busy === a.id ? "…" : a.sync ? "⇄" : "⇄̸"}
+                </button>
+                <button type="button" className="k-launch-act" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => void rename(a)}>✎</button>
+                <button type="button" className="k-launch-act" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => void del(a)}>✕</button>
               </div>
             </div>
           ))}
@@ -132,6 +183,17 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
           <p className="k-muted k-launch-empty">No saved apps yet — create one in the Studio, then it appears here.</p>
         ) : null}
       </section>
+
+      {history ? (
+        <History
+          appId={history.id}
+          appName={history.name}
+          onClose={() => setHistory(null)}
+          // Restoring from the launcher opens the app on the version you just chose, so you can see
+          // what you got back.
+          onRestored={() => openUserApp(history.id)}
+        />
+      ) : null}
     </div>
   );
 
