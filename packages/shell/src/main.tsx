@@ -235,6 +235,23 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
 // A saved user app. UNTRUSTED by default (isolate); if the user promoted it, TRUSTED (direct) — the
 // source runs as a real module. A trusted load that fails (e.g. an edited, invalid version) falls
 // back to untrusted so the app still opens. Either way it has its own durable store.
+/** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
+async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
+  const { pendingInvite, acceptInvite } = await import("./share-sync.js");
+  const invite = pendingInvite();
+  if (!invite) return null;
+  root.textContent = `Joining "${invite.name}"…`;
+  try {
+    const id = await acceptInvite(invite);
+    // Drop the fragment so a reload does not re-accept, and so the secret stops sitting in the bar.
+    history.replaceState(null, "", `${location.pathname}?user=${encodeURIComponent(id)}`);
+    return id;
+  } catch (e) {
+    root.textContent = `Could not join: ${e instanceof Error ? e.message : String(e)}`;
+    return null;
+  }
+}
+
 async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
   const saved = getUserApp(id);
   if (!saved) {
@@ -293,6 +310,16 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
+
+  // A shared link is handled before routing: it creates the local app, so the route it should land
+  // on does not exist until the invite has been accepted.
+  const joined = await bootInviteIfPresent(root);
+  if (joined) {
+    const toaster = new Toaster();
+    const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
+    await bootUserApp(joined, root, toaster, caps);
+    return;
+  }
 
   const r = route();
   if (r.kind === "home") {

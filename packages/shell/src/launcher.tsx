@@ -10,6 +10,7 @@ import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
+import { createShareLink } from "./share-sync.js";
 import { History } from "./history.js";
 
 export function openBuiltinApp(id: string): void {
@@ -103,6 +104,18 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
     }
   };
 
+  // Sharing hands over a link whose fragment carries the app source AND the invite secret. The
+  // fragment never reaches a server, which is what keeps the key off the relay.
+  const share = async (a: UserApp): Promise<void> => {
+    try {
+      const link = await createShareLink(a.id);
+      await navigator.clipboard?.writeText(link).catch(() => {});
+      await shellDialogs.prompt("Send this link. Whoever opens it joins your app and its data.", { default: link });
+    } catch (e) {
+      await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const rename = async (a: UserApp): Promise<void> => {
     const name = await shellDialogs.prompt("Rename app", { default: a.name });
     if (name && name.trim()) {
@@ -168,6 +181,17 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
                 >
                   {busy === a.id ? "…" : a.sync ? "⇄" : "⇄̸"}
                 </button>
+                {a.sync ? (
+                  <button
+                    type="button"
+                    className="k-launch-act"
+                    aria-label={`Share ${a.name}`}
+                    title="Share this app and its data"
+                    onClick={() => void share(a)}
+                  >
+                    ⇗
+                  </button>
+                ) : null}
                 <button type="button" className="k-launch-act" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => void rename(a)}>✎</button>
                 <button type="button" className="k-launch-act" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => void del(a)}>✕</button>
               </div>

@@ -65,6 +65,8 @@ export interface JazzStoreHandle {
   accountID: string;
   /** The app's space. Membership and roles hang off this (KA-17). */
   groupID: string;
+  /** The raw group, for minting invites. */
+  group: unknown;
   /** Resolves when every local write has reached storage. Writes already await this; exposed for
    *  the shell to flush on `beforeunload` / `visibilitychange`. */
   whenDurable: () => Promise<void>;
@@ -189,7 +191,7 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
   await store.open(appId);
   if (!savedRoot) keys.set(rootKey(appId), store.rootId);
 
-  return { store, node, accountID, groupID: (group as { id: string }).id, whenDurable: durability.whenDurable };
+  return { store, node, group, accountID, groupID: (group as { id: string }).id, whenDurable: durability.whenDurable };
 }
 
 /**
@@ -233,4 +235,38 @@ async function createRelayPeer(url: string): Promise<unknown> {
     role: "server",
     expectPings: true,
   } as never);
+}
+
+/** Mint an invite to this app's space. `writer` lets the guest edit; `reader` is read-only. */
+export function createSpaceInvite(handle: JazzStoreHandle, role: "writer" | "reader" = "writer"): string {
+  const group = (handle as unknown as { group?: unknown }).group;
+  const g = (group ?? null) as { createInvite(role: string): string } | null;
+  if (!g) throw new Error("createSpaceInvite: no group on this handle");
+  return g.createInvite(role);
+}
+
+/**
+ * Join someone else's space and open it as `appId`.
+ *
+ * `acceptInvite` grants this device the role the inviter minted, using a secret that travelled in a
+ * URL *fragment* and therefore never reached the relay. Afterwards the group and root ids are
+ * remembered exactly as for a space we created, so subsequent opens are indistinguishable.
+ */
+export async function joinSpace(
+  appId: string,
+  invite: { group: string; root: string; secret: string },
+  opts?: { keys?: JazzKeyStore; relay?: string; profileName?: string },
+): Promise<JazzStoreHandle> {
+  const keys = opts?.keys ?? browserKeys();
+  // Remember the shared ids BEFORE opening, so `openJazzStore` attaches to the invited space
+  // instead of minting a fresh one.
+  keys.set(groupKey(appId), invite.group);
+  keys.set(rootKey(appId), invite.root);
+
+  const handle = await openJazzStore(appId, { keys, relay: opts?.relay, profileName: opts?.profileName });
+  await (handle.node as { acceptInvite(id: string, secret: string): Promise<void> }).acceptInvite(
+    invite.group,
+    invite.secret,
+  );
+  return handle;
 }
