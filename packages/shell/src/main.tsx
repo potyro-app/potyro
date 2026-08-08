@@ -206,14 +206,19 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   if (!loadTrusted) throw new Error(`example "${appId}" not found`);
   const app = await loadTrusted();
 
+  // Built-in examples get the same identity as everything else: `ctx.me` is a property of the
+  // device, not of how an app happened to be installed.
+  const { ensureIdentity } = await import("@karta/identity");
+  const me = await ensureIdentity();
+
   let composed: Composed;
   let appSource: string | undefined;
   if (SANDBOX) {
     const { createSandboxLoader } = await import("./isolate-bridge.js");
     appSource = await sandboxBundle(appId);
-    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
+    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, loadIsolated: await createSandboxLoader(store) });
   } else {
-    composed = await compose({ app, provenance: "trusted", store, caps, ui, nav });
+    composed = await compose({ app, provenance: "trusted", store, caps, ui, nav, me });
   }
   // docs/06: bring stored data up to the definition before anything reads it. A read-only store
   // (older copy of a shared app) refuses this, which is correct — it must not rewrite shared
@@ -311,6 +316,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // exactly the previous SqliteStore/LocalStore path.
   const rawStore = await openStore(`user:${id}`, { sync: saved.sync });
 
+  // Who this device is (KA-18). Minted on first run with crypto alone — no database, no network —
+  // so it is the same person whether or not this app has ever synced. `ctx.me` is always present,
+  // which is what lets app code stop branching on whether identity exists.
+  const { ensureIdentity } = await import("@karta/identity");
+  const me = await ensureIdentity();
+
   // A synced app shares its SOURCE through the space too, so an edit by one person reaches the
   // others instead of silently diverging (and, if the edit changed the schema, silently misreading
   // each other's records).
@@ -367,7 +378,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     try {
       const { loadTrustedModule } = await import("./trusted-loader.js");
       const app = await loadTrustedModule(saved.source); // real defineApp validates or throws
-      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav });
+      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me });
       provenance = "trusted";
     } catch (e) {
       toaster.push(`Couldn't run "${saved.name}" trusted; opening safely. ${e instanceof Error ? e.message : ""}`.trim());
@@ -379,7 +390,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       import("./isolate-bridge.js"),
     ]);
     appSource = await (await createAppBundler())(saved.source);
-    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
+    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, loadIsolated: await createSandboxLoader(store) });
   }
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);

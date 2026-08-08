@@ -29,6 +29,19 @@ export interface KartaRecord {
   id: Id;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Who entered this record — the account id of whoever inserted it (KA-18).
+   *
+   * **Stamped by the host and never app-settable.** In a shared ledger, code that could write its
+   * own `createdBy` could rewrite authorship, and untrusted code is exactly the code that would
+   * want to. An app that wants an editable "who did this" uses an ordinary `member` field: who
+   * *entered* an expense is genuinely not who *paid* for it (spike F5), and conflating the two
+   * makes the unforgeable one useless.
+   *
+   * Optional because records written before this existed do not have it, and because a `Store` is
+   * free of identity — the runtime stamps it.
+   */
+  createdBy?: Id;
   [field: string]: unknown;
 }
 

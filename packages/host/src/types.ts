@@ -10,6 +10,8 @@ import type {
   Id,
   KartaApp,
   PermissionManifest,
+  Person,
+  Space,
   Resolved,
   Value,
 } from "karta";
@@ -54,6 +56,16 @@ export interface MakeCtxBase {
   params?: Record<string, unknown>;
   /** Fixed evaluation time; defaults to now. Injected once so computed values are stable. */
   now?: Date;
+  /**
+   * Who this device is (KA-18). Supplied by the composition root from `@karta/identity`.
+   *
+   * Defaulted rather than required so a `MemoryStore` test or a fake host need not stand up an
+   * identity to build a `ctx` — `ctx.me` is always *present*, which is the contract app code
+   * depends on, and the composition root is what makes it the real person.
+   */
+  me?: Person;
+  /** The space this app's data lives in, when it is synced. Absent = solo (ADR D3). */
+  space?: Space;
 }
 
 /**

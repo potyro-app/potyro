@@ -39,7 +39,7 @@ globalThis.__kartaApp = {
 };
 `;
 
-async function setup(bundle: string, params: Record<string, unknown> = {}) {
+async function setup(bundle: string, params: Record<string, unknown> = {}, extra: Partial<MakeCtxBase> = {}) {
   const store = new MemoryStore();
   await store.open("recipes");
   const toasts: string[] = [];
@@ -50,7 +50,7 @@ async function setup(bundle: string, params: Record<string, unknown> = {}) {
   const loadIsolated = createIsolateLoader({ store, newContext });
   const host = createHost({ loadIsolated });
   const loaded = await host.load({ kind: "bundle", code: bundle, provenance: "untrusted" });
-  const base: MakeCtxBase = { store, caps, ui, nav, params };
+  const base: MakeCtxBase = { store, caps, ui, nav, params, ...extra };
   const ctx = host.makeCtx(loaded, base);
   return { store, ui, toasts, host, loaded, ctx };
 }
@@ -265,5 +265,83 @@ describe("IsolateHost — page summary aggregates", () => {
     // Index 1 is the declarative `count` form — it has no function to call, and saying so is the
     // only safe answer. A silent 0 here would read as "nothing spent".
     await expect(loaded.callSummary("all", 1, rows, ctx)).rejects.toThrow(/no value function/);
+  });
+});
+
+// KA-18: identity has to survive the isolate boundary, or one app source behaves differently
+// depending on how it was installed — which is exactly what provenance is supposed NOT to change.
+const IDENTITY_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "ledger", name: "Ledger", version: "1.0.0", schemaVersion: 1,
+  entities: {
+    expense: {
+      label: "Expense", displayField: "description",
+      fields: { description: { type: "text" }, paidBy: { type: "member" } },
+      computed: {
+        mine: function(r, ctx){ return r.paidBy === ctx.me.id; },
+        whoAmI: function(r, ctx){ return ctx.me.name; },
+        crowd: function(r, ctx){ return (ctx.space ? ctx.space.members.length : 1); }
+      }
+    }
+  },
+  pages: [
+    { id: "all", title: "All", view: { type: "list", entity: "expense", display: { primary: function(r){ return r.description; } } } }
+  ],
+  reminders: []
+};
+`;
+
+describe("IsolateHost — identity across the boundary (KA-18)", () => {
+  const ana = { id: "co_zAna", name: "Ana" };
+
+  it("gives untrusted code ctx.me", async () => {
+    const { store, loaded, ctx } = await setup(IDENTITY_BUNDLE, {}, { me: ana });
+    const row = await store.insert("expense", { description: "Dinner", paidBy: "co_zAna" });
+
+    expect(await loaded.callComputed("expense", "whoAmI", row as never, ctx)).toBe("Ana");
+    expect(await loaded.callComputed("expense", "mine", row as never, ctx)).toBe(true);
+  });
+
+  it("reports a solo app as having no space, not as an error", async () => {
+    const { store, loaded, ctx } = await setup(IDENTITY_BUNDLE, {}, { me: ana });
+    const row = await store.insert("expense", { description: "Dinner" });
+    expect(await loaded.callComputed("expense", "crowd", row as never, ctx)).toBe(1);
+  });
+
+  it("passes the space's members through", async () => {
+    const { store, loaded, ctx } = await setup(IDENTITY_BUNDLE, {}, {
+      me: ana,
+      space: {
+        id: "co_zSpace",
+        role: "writer",
+        members: [
+          { id: "co_zAna", name: "Ana", role: "admin" },
+          { id: "co_zBruno", name: "Bruno", role: "writer" },
+        ],
+        invite: async () => "https://example.test/#join=…",
+      },
+    });
+    const row = await store.insert("expense", { description: "Dinner" });
+    expect(await loaded.callComputed("expense", "crowd", row as never, ctx)).toBe(2);
+  });
+
+  it("does NOT hand the isolate a way to mint invites", async () => {
+    // `space.invite()` is host-mediated UI. Untrusted code able to call it could hand the space to a
+    // stranger with no prompt, so it is left behind at the boundary rather than marshalled.
+    const probe = IDENTITY_BUNDLE.replace(
+      'return (ctx.space ? ctx.space.members.length : 1);',
+      'return typeof (ctx.space && ctx.space.invite);',
+    );
+    const { store, loaded, ctx } = await setup(probe, {}, {
+      me: ana,
+      space: {
+        id: "co_zSpace",
+        role: "admin",
+        members: [{ id: "co_zAna", name: "Ana", role: "admin" }],
+        invite: async () => "https://example.test/#join=…",
+      },
+    });
+    const row = await store.insert("expense", { description: "Dinner" });
+    expect(await loaded.callComputed("expense", "crowd", row as never, ctx)).toBe("undefined");
   });
 });

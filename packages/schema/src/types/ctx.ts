@@ -58,6 +58,44 @@ export interface Caps {
   network?: NetworkCapability;
 }
 
+/**
+ * A person — you, or someone you share a space with (KA-18, ADR D2 amended).
+ *
+ * `id` is a cojson account id, stable for life. It is the *provable* identity: cojson signs every
+ * transaction with the account that made it, which is what lets `createdBy` mean something in a
+ * shared ledger. An id an app could write into a field would be forgeable by any member.
+ */
+export interface Person {
+  id: Id;
+  name: string;
+}
+
+/** What a member may do in a space (ADR D3). */
+export type SpaceRole = "admin" | "writer" | "reader";
+
+export interface Member extends Person {
+  role: SpaceRole;
+}
+
+/**
+ * The space this app's data lives in — present only when the app is synced (ADR D3).
+ *
+ * Absent for a solo app, which is the default. App code should read `ctx.space?.members ?? [ctx.me]`
+ * rather than branching on whether sync exists: solo is "a space with one member", not a different
+ * world.
+ */
+export interface Space {
+  id: Id;
+  members: readonly Member[];
+  /** This device's own role in the space. */
+  role: SpaceRole;
+  /**
+   * Mint an invite link. Host-mediated: the shell owns the UI and the admin check, because an app
+   * that could silently mint invites could silently hand its data to someone.
+   */
+  invite(): Promise<string>;
+}
+
 /** App-scoped key/value storage, separate from entity records. */
 export interface CtxStorage {
   get<T = unknown>(k: string): Promise<T | null>;
@@ -97,6 +135,20 @@ export interface Ctx {
   // ---- time (injected once per evaluation pass for determinism) ----
   now(): Date;
   today(): Date;
+
+  // ---- identity (KA-18) ----
+  /**
+   * Who you are. **Always present**, including in a solo app that has never synced — so app code
+   * never has to branch on whether identity or sync exists.
+   */
+  me: Person;
+  /**
+   * The space this app's data lives in, or `undefined` for a solo (local-only) app.
+   *
+   * Solo is a space with one member and no transport, so the honest reading of "everyone here" is
+   * `ctx.space?.members ?? [ctx.me]`.
+   */
+  space?: Space;
 
   // ---- runtime inputs (view filter params, custom-view args) ----
   params: Readonly<Record<string, unknown>>;

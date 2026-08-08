@@ -1,7 +1,7 @@
 // Composition root (docs/02). Wires Store + Capabilities + Host + Runtime for one app, at one
 // provenance. Swap store/caps/target here and nothing else changes.
 
-import type { KartaApp } from "karta";
+import type { KartaApp, Person, Space } from "karta";
 import { createHost, type LoadedApp, type NavBridge, type Provenance, type UiBridge } from "@karta/host";
 import type { Store } from "@karta/store";
 import type { Capabilities } from "@karta/capabilities";
@@ -19,6 +19,14 @@ export interface ComposeOptions {
   ui: UiBridge;
   nav: NavBridge;
   loadIsolated?: LoadIsolated;
+  /**
+   * Who this device is (KA-18), and the space when the app is synced.
+   *
+   * The composition root is where identity enters — this is the seam docs/02 describes: swap the
+   * store, the caps or the person here and nothing downstream changes.
+   */
+  me?: Person;
+  space?: Space;
 }
 
 export interface Composed {
@@ -33,7 +41,16 @@ export async function compose(opts: ComposeOptions): Promise<Composed> {
       ? await host.load({ kind: "module", app: requireApp(opts.app), provenance: "trusted" })
       : await host.load({ kind: "bundle", code: requireBundle(opts.bundleCode), provenance: "untrusted" });
 
-  const runtime = createRuntime({ app: loaded, host, store: opts.store, caps: opts.caps, ui: opts.ui, nav: opts.nav });
+  const runtime = createRuntime({
+    app: loaded,
+    host,
+    store: opts.store,
+    caps: opts.caps,
+    ui: opts.ui,
+    nav: opts.nav,
+    me: opts.me,
+    space: opts.space,
+  });
   return { runtime, loaded };
 }
 

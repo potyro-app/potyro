@@ -81,6 +81,23 @@ export interface RelationField extends FieldCommon {
   many?: boolean;
 }
 
+/**
+ * A person in this app's space (KA-19) — assignee, owner, borrower, participant.
+ *
+ * Deliberately NOT a `relation` to a `person` entity. Membership lives in space metadata,
+ * maintained by the invite and key machinery, not in rows the app can write; modelling it as a
+ * relation would let any app forge a member, and would give every shared app the chore of keeping
+ * a people table in step with who is actually in the space. As a distinct type the runtime can
+ * render a real person chip and validate values against `ctx.space.members`.
+ *
+ * Stored as an account id (or an array of them with `many`). Resolves to a `Person`, so
+ * `e.paidBy.name` works. Solo degrades to the single local identity rather than to nothing.
+ */
+export interface MemberField extends FieldCommon {
+  type: "member";
+  many?: boolean;
+}
+
 /** A list of homogeneous nested rows. Each row is a mini field set (`of`). */
 export interface ListField extends FieldCommon {
   type: "list";
@@ -102,6 +119,7 @@ export type Field =
   | GeoField
   | MediaField
   | RelationField
+  | MemberField
   | ListField;
 
 /** All valid field type discriminants. */
@@ -118,6 +136,7 @@ export const FIELD_TYPES = [
   "geo",
   "media",
   "relation",
+  "member",
   "list",
 ] as const;
 

@@ -30,10 +30,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     return row;
   }
 
-  function makeCtx(app, params, nowIso, capsAvailable){
+  function makeCtx(app, params, nowIso, capsAvailable, me, space){
     var fixedNow = new Date(nowIso);
     var ctx = {
       params: params || {},
+      // Always present, exactly as in a trusted app — so one app source behaves the same either way.
+      me: me || { id: "local", name: "Me" },
+      space: space,
       now: function(){ return new Date(nowIso); },
       today: function(){ return new Date(fixedNow.getFullYear(), fixedNow.getMonth(), fixedNow.getDate()); },
       log: function(){ var a=[].slice.call(arguments).map(String); bridgeSync({op:"log", args:a}); },
@@ -116,7 +119,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       var p = __deserialize(payloadJson);
       var app = globalThis.__kartaApp;
       if (!app) return __serialize({ ok:false, error:"no app loaded" });
-      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || []);
+      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space);
       var record = (p.record !== undefined && p.record !== null) ? p.record : null;
       try {
         var result = null;

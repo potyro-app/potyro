@@ -25,6 +25,7 @@ export type {
   GeoField,
   MediaField,
   RelationField,
+  MemberField,
   ListField,
 } from "./types/fields.js";
 export { FIELD_TYPES } from "./types/fields.js";
@@ -33,6 +34,10 @@ export { FIELD_TYPES } from "./types/fields.js";
 export type {
   Ctx,
   Caps,
+  Person,
+  Member,
+  Space,
+  SpaceRole,
   QuerySpec,
   CtxStorage,
   CtxUi,

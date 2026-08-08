@@ -2,13 +2,22 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, Id, KartaRecord, MediaRef, QuerySpec, Resolved, Value } from "karta";
+import type { Ctx, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, Value } from "karta";
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
 import { resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase } from "./types.js";
 
 const KV_PREFIX = "kv:";
+
+/**
+ * Stand-in identity for hosts built without one (tests, fakes, the Studio preview).
+ *
+ * `ctx.me` is always *present* — that is the contract app code is written against, and the reason
+ * it never has to branch on whether sync exists. The composition root supplies the real person from
+ * `@karta/identity`; this only keeps a `MemoryStore` test from having to mint an account.
+ */
+const ANONYMOUS: Person = { id: "local", name: "Me" };
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -27,6 +36,7 @@ async function mediaUrl(store: Store, ref: MediaRef): Promise<string> {
 export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
   const { store, caps, ui, nav } = base;
   const fixedNow = base.now ?? new Date();
+  const me = base.me ?? ANONYMOUS;
 
   // Resolver dependencies. `ctx` is filled in after construction (computed fns receive it).
   // memo/computing are per-ctx → per evaluation pass (docs/04: now() is fixed per pass too).
@@ -59,6 +69,9 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
   };
 
   const ctx: Ctx = {
+    me,
+    ...(base.space ? { space: base.space } : {}),
+
     async query(entity, spec) {
       const rows = await store.all(entity);
       const resolved = await resolveMany(entity, rows);
@@ -71,13 +84,22 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     },
 
     async create(entity, data) {
-      const row = await store.insert(entity, data as Partial<KartaRecord>);
+      // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18). App code that
+      // could set it could rewrite authorship in a shared ledger, and untrusted code is precisely
+      // the code that would want to. An app needing an editable "who" uses a `member` field — who
+      // entered a record is not who it is about (spike F5).
+      const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
+      const row = await store.insert(entity, { ...clean, createdBy: me.id } as Partial<KartaRecord>);
       deps.memo.clear(); // data changed → invalidate memoized computed for this pass
       return resolveRecord(deps, entity, row);
     },
 
     async patch(entity, id, data) {
-      const row = await store.update(entity, id, data as Partial<KartaRecord>);
+      // Authorship is a fact about the insert, so an edit can never change it — not even the
+      // author's own. Dropped rather than rejected: a patch that echoes back a resolved record
+      // would otherwise fail for doing nothing wrong.
+      const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
+      const row = await store.update(entity, id, clean as Partial<KartaRecord>);
       deps.memo.clear();
       return resolveRecord(deps, entity, row);
     },

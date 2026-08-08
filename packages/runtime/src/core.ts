@@ -3,7 +3,7 @@
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
-import type { AppDefinition, Ctx, Id, KartaRecord, Resolved, Value, View } from "karta";
+import type { AppDefinition, Ctx, Id, KartaRecord, Person, Resolved, Space, Value, View } from "karta";
 import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@karta/host";
 import type { Capabilities } from "@karta/capabilities";
 import type { Store } from "@karta/store";
@@ -24,6 +24,15 @@ export interface RuntimeDeps {
   nav: NavBridge;
   /** Fixed evaluation time (tests); omit for real now(). */
   now?: Date;
+  /**
+   * Who this device is, and the space this app's data lives in (KA-18).
+   *
+   * Both optional here: the runtime does not *own* identity, it carries it from the composition
+   * root to `ctx`. Omitted, the host supplies a local stand-in, so a `MemoryStore` test still gets
+   * a `ctx.me` without minting an account.
+   */
+  me?: Person;
+  space?: Space;
 }
 
 function viewOf(def: AppDefinition, pageId: string): View {
@@ -40,6 +49,8 @@ export class RuntimeCore {
   private readonly ui: UiBridge;
   private readonly nav: NavBridge;
   private readonly now?: Date;
+  private readonly me?: Person;
+  private readonly space?: Space;
 
   constructor(deps: RuntimeDeps) {
     this.app = deps.app;
@@ -49,6 +60,8 @@ export class RuntimeCore {
     this.ui = deps.ui;
     this.nav = deps.nav;
     this.now = deps.now;
+    this.me = deps.me;
+    this.space = deps.space;
   }
 
   get definition(): AppDefinition {
@@ -57,7 +70,16 @@ export class RuntimeCore {
 
   /** Build a fresh ctx (deterministic time per pass) with optional view params. */
   ctxFor(params?: Record<string, unknown>): Ctx {
-    const base: MakeCtxBase = { store: this.store, caps: this.caps, ui: this.ui, nav: this.nav, params, now: this.now };
+    const base: MakeCtxBase = {
+      store: this.store,
+      caps: this.caps,
+      ui: this.ui,
+      nav: this.nav,
+      params,
+      now: this.now,
+      me: this.me,
+      space: this.space,
+    };
     return this.host.makeCtx(this.app, base);
   }
 
