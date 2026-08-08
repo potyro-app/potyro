@@ -47,9 +47,21 @@ async function device(context: BrowserContext): Promise<Page> {
   return context.newPage();
 }
 
-/** The account id this page booted with — the thing linking has to make equal. */
-const accountId = (page: Page): Promise<string | null> =>
-  page.evaluate(() => localStorage.getItem("karta:identity:id"));
+/**
+ * The account id this page booted with — the thing linking has to make equal.
+ *
+ * Tolerates the page navigating out from under it. Signing in ends with `location.reload()`, so
+ * polling this necessarily races a real navigation and `page.evaluate` throws "Execution context was
+ * destroyed" when it lands mid-flight. That is the expected path, not a failure, so it is retried
+ * rather than reported.
+ */
+const accountId = async (page: Page): Promise<string | null> => {
+  try {
+    return await page.evaluate(() => localStorage.getItem("karta:identity:id"));
+  } catch {
+    return null;
+  }
+};
 
 test("a second device adopts the same identity from the recovery words", async ({ browser }) => {
   test.slow();
