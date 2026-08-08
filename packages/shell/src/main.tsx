@@ -237,12 +237,34 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
 // back to untrusted so the app still opens. Either way it has its own durable store.
 /** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
 async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
-  const { pendingInvite, acceptInvite } = await import("./share-sync.js");
+  const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
   const invite = pendingInvite();
   if (!invite) return null;
-  root.textContent = `Joining "${invite.name}"…`;
+
+  // Ask BEFORE opening. A shared app runs sandboxed by default, and a sandboxed app whose screens
+  // are its own code renders nothing — so opening first and asking later meant landing in an empty
+  // app with a message about a control you had not found yet.
+  // `shellDialogs` renders through a mounted host; at this point in boot nothing is on screen yet,
+  // so the prompt would resolve into a void. Mount the dialog host (and a line of context, so the
+  // page is not blank behind it) before asking.
+  const custom = usesCustomViews(invite.source);
+  mount(
+    root,
+    <div className="k-joining">
+      <p>Joining “{invite.name}”…</p>
+      <Dialogs host={shellDialogs} />
+    </div>,
+  );
+  const trust = await shellDialogs.confirm(
+    `"${invite.name}" was shared with you.\n\n` +
+      (custom
+        ? "Its screens are built with its own code, so it needs to run trusted to display them. Trust this app?"
+        : "Apps from other people run sandboxed by default. Trust this app so it runs directly?") +
+      "\n\nYou can change this later from the app header.",
+  );
+
   try {
-    const id = await acceptInvite(invite);
+    const id = await acceptInvite(invite, trust);
     // Drop the fragment so a reload does not re-accept, and so the secret stops sitting in the bar.
     history.replaceState(null, "", `${location.pathname}?user=${encodeURIComponent(id)}`);
     return id;
