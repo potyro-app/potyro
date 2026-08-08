@@ -322,6 +322,26 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const { ensureIdentity } = await import("@karta/identity");
   const me = await ensureIdentity();
 
+  // The space, for `ctx.space` — only for a synced app. Solo stays `undefined` rather than becoming
+  // a one-member space object, so `ctx.space?.members ?? [ctx.me]` reads correctly and app code
+  // never has to ask whether sync is on.
+  const space = saved.sync
+    ? await (async () => {
+        const { currentSpace } = await import("./open-store.js");
+        const s = await currentSpace();
+        if (!s) return undefined;
+        return {
+          ...s,
+          // Host-mediated: the shell owns the UI and the admin check, so an app cannot hand its
+          // space to a stranger without the user seeing it happen.
+          invite: async (): Promise<string> => {
+            const { createShareLink } = await import("./share-sync.js");
+            return createShareLink(id);
+          },
+        };
+      })()
+    : undefined;
+
   // A synced app shares its SOURCE through the space too, so an edit by one person reaches the
   // others instead of silently diverging (and, if the edit changed the schema, silently misreading
   // each other's records).
@@ -378,7 +398,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     try {
       const { loadTrustedModule } = await import("./trusted-loader.js");
       const app = await loadTrustedModule(saved.source); // real defineApp validates or throws
-      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me });
+      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me, space });
       provenance = "trusted";
     } catch (e) {
       toaster.push(`Couldn't run "${saved.name}" trusted; opening safely. ${e instanceof Error ? e.message : ""}`.trim());
@@ -390,7 +410,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       import("./isolate-bridge.js"),
     ]);
     appSource = await (await createAppBundler())(saved.source);
-    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, loadIsolated: await createSandboxLoader(store) });
+    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSandboxLoader(store) });
   }
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);

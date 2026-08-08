@@ -17,6 +17,33 @@
 
 import { createSqliteStore, LocalStore, type Store } from "@karta/store";
 
+/**
+ * The handle from the most recent synced `openStore`, so the composition root can read the space
+ * (`ctx.space`) without the shell importing cojson.
+ *
+ * A module-level value rather than a return field because `openStore` is the seam every caller uses
+ * and its `Store` return type is deliberately engine-free — widening it would leak Jazz into every
+ * call site for the benefit of one. Read immediately after the call that set it.
+ */
+let lastSyncHandle: Awaited<ReturnType<typeof import("@karta/store").openJazzStore>> | null = null;
+
+/** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
+export async function currentSpace(): Promise<
+  { id: string; role: "admin" | "writer" | "reader"; members: Array<{ id: string; name: string; role: "admin" | "writer" | "reader" }> } | null
+> {
+  const handle = lastSyncHandle;
+  if (!handle) return null;
+  const { spaceMembers, myRole } = await import("@karta/store");
+  const raw = await spaceMembers(handle);
+  return {
+    id: handle.groupID,
+    role: myRole(handle) ?? "reader",
+    // A name that has not synced yet shows as the id rather than blanking the person — you can
+    // still tell two people apart, which is what the chip is for.
+    members: raw.map((m) => ({ id: m.id, name: m.name ?? m.id.slice(0, 10), role: m.role })),
+  };
+}
+
 export interface OpenStoreOpts {
   /** Opt this app into the CRDT store. Off = today's behaviour, byte for byte. */
   sync?: boolean;
@@ -72,11 +99,12 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       import("@karta/store"),
       import("@karta/identity"),
     ]);
-    const { store } = await openJazzStore(namespace, {
+    const handle = await openJazzStore(namespace, {
       relay: syncRelayUrl(),
       account: await identityAccount(),
     });
-    return store;
+    lastSyncHandle = handle;
+    return handle.store;
   }
 
   try {
