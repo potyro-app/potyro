@@ -1,37 +1,28 @@
-// React hooks over RuntimeCore. Each subscribes to the relevant entity so the JS query re-runs
-// on any write (docs/02 read path step 5). Params/spec changes also re-run.
+// React adapters over the framework-free watchers in `watch.ts`.
+//
+// These used to BE the data layer — three near-identical copies of "query, subscribe, re-query". The
+// logic now lives in `watch.ts`, which any framework can consume; this file is the React binding and
+// nothing more. That is the point: `useQuery`/`useRecord` remain available as convenience, but the
+// contract app code is typed against is `watchQuery`/`watchRecord`, so a view written in something
+// other than React is not shut out.
 
 import { useEffect, useRef, useState } from "react";
 import type { Id, Resolved } from "karta";
 import type { RuntimeCore } from "./core.js";
+import { watchEntityQuery, watchPageQuery, watchRecord, type QueryState, type RecordState } from "./watch.js";
 
-export interface QueryState {
-  rows: Resolved[];
-  loading: boolean;
-}
-
-export interface RecordState {
-  record: Resolved | null;
-  loading: boolean;
-}
+export type { QueryState, RecordState };
 
 export function usePageQuery(core: RuntimeCore, pageId: string, params?: Record<string, unknown>): QueryState {
   const [state, setState] = useState<QueryState>({ rows: [], loading: true });
+  // Params are read at query time rather than baked into the subscription, so a params change
+  // re-queries without tearing down and rebuilding the store subscription.
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
   const paramsKey = JSON.stringify(params ?? null);
 
   useEffect(() => {
-    let alive = true;
-    const run = (): void => {
-      void core.queryPage(pageId, params).then(({ rows }) => {
-        if (alive) setState({ rows, loading: false });
-      });
-    };
-    run();
-    const unsub = core.store.subscribe(core.entityForPage(pageId), run);
-    return () => {
-      alive = false;
-      unsub();
-    };
+    return watchPageQuery(core, pageId, () => paramsRef.current, setState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [core, pageId, paramsKey]);
 
@@ -48,19 +39,7 @@ export function useEntityQuery(
   specRef.current = spec;
 
   useEffect(() => {
-    let alive = true;
-    const run = (): void => {
-      void core.queryEntity(entity, specRef.current).then((rows) => {
-        if (alive) setState({ rows, loading: false });
-      });
-    };
-    run();
-    const unsub = core.store.subscribe(entity, run);
-    return () => {
-      alive = false;
-      unsub();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return watchEntityQuery(core, entity, () => specRef.current, setState);
   }, [core, entity]);
 
   return state;
@@ -70,18 +49,7 @@ export function useRecord(core: RuntimeCore, entity: string, id: Id): RecordStat
   const [state, setState] = useState<RecordState>({ record: null, loading: true });
 
   useEffect(() => {
-    let alive = true;
-    const run = (): void => {
-      void core.getRecord(entity, id).then((record) => {
-        if (alive) setState({ record, loading: false });
-      });
-    };
-    run();
-    const unsub = core.store.subscribe(entity, run);
-    return () => {
-      alive = false;
-      unsub();
-    };
+    return watchRecord(core, entity, id, setState);
   }, [core, entity, id]);
 
   return state;
