@@ -4,3 +4,8 @@ declare module "*?raw" {
   const contents: string;
   export default contents;
 }
+
+// Prism's grammar files have no types of their own: they are side-effecting modules that register a
+// language against the core, and export nothing. Declared here so importing them for their effect
+// isn't an implicit `any`.
+declare module "prismjs/components/*" {}
