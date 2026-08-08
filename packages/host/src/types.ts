@@ -92,6 +92,14 @@ export interface LoadedApp {
    * provenances through here keeps trust out of the shell's arithmetic.
    */
   callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  /**
+   * Fold a page's rows into display-ready aggregate rows (KA-24).
+   *
+   * Goes through the host for the same reason `callSummary` does: for an untrusted app the
+   * definition carries a sentinel string where the function should be, so calling it in the shell
+   * process throws. Routing it here is what lets a shared app render its own main screen.
+   */
+  callAggregate(pageId: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
   customView(pageId: string): CustomViewComponent | null;

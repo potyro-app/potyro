@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { VIEW_FIELDS, structureSchema } from "../src/validate.js";
+import { VIEW_TYPES } from "../src/types/app.js";
 
 // VIEW_FIELDS is the boundary the Edit-mode agent is told about: what an app module can declare
 // about a view, and therefore where "fix it in the app" stops. It is derived from the Zod schemas
@@ -16,10 +17,19 @@ const page = (view: unknown) => ({
 });
 
 describe("VIEW_FIELDS", () => {
+  // Against VIEW_TYPES rather than a hand-written list: the invariant worth pinning is that the Zod
+  // union and the TypeScript union describe the SAME set. A copied list drifts silently the moment a
+  // view type is added to one and not the other — which is exactly the failure this file exists to
+  // catch, since the Edit-mode agent reasons from whatever VIEW_FIELDS says.
   test("covers every view type the schema accepts", () => {
-    expect(Object.keys(VIEW_FIELDS).sort()).toEqual(
-      ["calendar", "custom", "detail", "gallery", "list", "map", "steps", "table"].sort(),
-    );
+    expect(Object.keys(VIEW_FIELDS).sort()).toEqual([...VIEW_TYPES].sort());
+  });
+
+  test("describes the aggregate view", () => {
+    expect(VIEW_FIELDS.aggregate).toContain("entity");
+    expect(VIEW_FIELDS.aggregate).toContain("rows"); // required — a fold-less aggregate shows nothing
+    expect(VIEW_FIELDS.aggregate).toContain("title?");
+    expect(VIEW_FIELDS.aggregate).toContain("emptyText?");
   });
 
   test("marks optional fields and omits the discriminator", () => {

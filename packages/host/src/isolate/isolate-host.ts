@@ -260,6 +260,12 @@ class IsolateLoadedApp implements LoadedApp {
     // millions) that is cheaper than N per-row round trips through the string bridge.
     return this.invoke({ kind: "summary", pageId, index, rows, ...this.base(ctx) }, ctx);
   }
+  async callAggregate(pageId: string, rows: Resolved[], ctx: Ctx): Promise<Value> {
+    // Same one-payload trade as `callSummary`: the whole filtered set crosses once rather than N
+    // times, which at personal scale is much cheaper than per-row round trips.
+    return this.invoke({ kind: "aggregate", pageId, rows, ...this.base(ctx) }, ctx);
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
     const v = await this.invoke({ kind: "reminderWhen", id, record, ...this.base(ctx) }, ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));

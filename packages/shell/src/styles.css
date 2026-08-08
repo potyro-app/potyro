@@ -2100,3 +2100,57 @@ button {
   word-spacing: 0.25em;
   user-select: all;
 }
+
+/* Derived screens (`aggregate` views, KA-24). A balance sheet is read down the right-hand edge, so
+   the values form a column and the labels stay left — the alignment is the affordance. */
+.k-aggregate {
+  padding: 0.5rem 0 1.5rem;
+}
+.k-aggregate h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+.k-aggregate-group {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--k-muted, #6b6b6b);
+}
+.k-aggregate-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-aggregate-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.25rem;
+  border-bottom: 1px solid var(--k-border, #ececec);
+}
+.k-aggregate-row:last-child {
+  border-bottom: none;
+}
+.k-aggregate-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.k-aggregate-detail {
+  color: var(--k-muted, #6b6b6b);
+  font-size: 0.8rem;
+}
+/* Tabular figures so digits line up between rows; the sign is in the text too, never colour alone. */
+.k-aggregate-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.k-aggregate-row[data-tone="positive"] .k-aggregate-value { color: #2e9e5b; }
+.k-aggregate-row[data-tone="negative"] .k-aggregate-value { color: #b4762a; }
+.k-aggregate-error {
+  color: #b4762a;
+}

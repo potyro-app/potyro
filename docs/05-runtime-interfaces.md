@@ -127,10 +127,27 @@ Runner behavior:
   mediated wrappers for granted permissions only.
 
 Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
-surface than pure functions. v1 policy — **custom views run only for trusted apps**; an
-untrusted app falls back to its built-in views (or prompts for promotion). Revisit later with a
-DOM-sandboxing strategy if needed. (This keeps the untrusted path to value-returning functions,
-which the isolate marshals safely.)
+surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app
+falls back to its built-in views. This keeps the untrusted path to value-returning functions, which
+the isolate marshals safely.
+
+**That policy used to make shared apps useless, and no longer does (KA-24).** A shared app's main
+screen is typically an *aggregate* — "who owes whom", "what's still to buy" — and `computed` is
+per-record, so aggregates had no declarative home and had to be custom views. A friend's app
+therefore arrived untrusted (correctly) and rendered its whole point as a blank rectangle, whose only
+remedy was promoting a stranger's code to ambient authority: the capitulation the isolate exists to
+prevent.
+
+The **`aggregate` view type** closes that. Its `rows(rows, ctx)` fold is ordinary TypeScript — the
+arithmetic is not restricted in any way — but it RETURNS DATA, so it crosses the isolate bridge
+exactly as `computed`/`filter`/`sort`/`binding`/`summary` already do, and the screen renders
+identically at both provenances. Only the *rendering* is declarative, never the thinking.
+
+This was chosen over DOM-sandboxing on the evidence of the bridge itself: it is a single
+string-in/string-out JSON function, so value-returning functions cross natively while a React
+component would need a serializable-VDOM plus an event-callback protocol that does not exist.
+A DOM-sandboxing strategy remains the long-term answer for genuinely bespoke UI — it is no longer
+load-bearing for sharing.
 
 ## Runtime API (packages/runtime) — what views consume
 

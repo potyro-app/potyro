@@ -135,6 +135,44 @@ export default defineApp({
       },
     },
     {
+      // A screen folded out of the WHOLE set rather than out of each record (KA-24). Counting places
+      // per category is not per-record arithmetic and is not one figure either, so before the
+      // `aggregate` view it could only have been a custom view — and would then have rendered blank
+      // for anyone this app was shared with, because custom views are trusted-only.
+      //
+      // The fold is ordinary TypeScript and runs through the host, so it behaves identically in the
+      // isolate. That is the whole claim, and `places-sandbox.spec.ts` checks it untrusted.
+      id: "by-kind",
+      title: "By category",
+      view: {
+        type: "aggregate",
+        entity: "place",
+        title: "Places by category",
+        emptyText: "No places yet.",
+        rows: (places) => {
+          const counts = new Map<string, { n: number; rated: number[] }>();
+          for (const p of places) {
+            const kind = String(p.kind ?? "unknown");
+            const bucket = counts.get(kind) ?? { n: 0, rated: [] };
+            bucket.n += 1;
+            if (typeof p.rating === "number") bucket.rated.push(p.rating);
+            counts.set(kind, bucket);
+          }
+          return [...counts.entries()]
+            .sort((a, b) => b[1].n - a[1].n)
+            .map(([kind, { n, rated }]) => ({
+              id: kind,
+              label: kind,
+              value: n,
+              detail: rated.length
+                ? `avg ${(rated.reduce((s, r) => s + r, 0) / rated.length).toFixed(1)}★`
+                : undefined,
+              group: "Categories",
+            }));
+        },
+      },
+    },
+    {
       id: "detail",
       title: "Place",
       hidden: true,
