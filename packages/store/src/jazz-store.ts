@@ -46,6 +46,8 @@ import { ulid } from "./ulid.js";
 // testable. Only the surface actually used is declared.
 interface RawMapLike {
   id: string;
+  /** Fires when this CoValue changes — including changes that arrived from a PEER. */
+  subscribe(listener: (m: RawMapLike) => void): () => void;
   set(key: string, value: unknown, privacy?: "private" | "trusting"): void;
   delete(key: string, privacy?: "private" | "trusting"): void;
   get(key: string): unknown;
@@ -107,6 +109,18 @@ export class JazzStore implements Store {
   private root!: RawMapLike;
   private appId: string | null = null;
   private listeners = new Map<string, Set<() => void>>();
+  /** cojson subscriptions per entity, so remote changes reach `Store.subscribe`. */
+  private watched = new Map<string, () => void>();
+  /**
+   * Depth of the local mutation currently running.
+   *
+   * cojson notifies synchronously when THIS device writes, which would double-fire alongside the
+   * local `emit` — every other Store impl notifies exactly once per write, and the shared battery
+   * asserts it. A counter rather than a boolean so nested writes (a transaction) unwind correctly,
+   * and synchronous so it is impossible for a REMOTE notification to be mistaken for a local one:
+   * remote changes never arrive while a local mutation is on the stack.
+   */
+  private localDepth = 0;
 
   constructor(deps: JazzStoreDeps) {
     this.node = deps.node;
@@ -179,10 +193,69 @@ export class JazzStore implements Store {
     );
   }
 
-  /** Local listeners fire synchronously on write, matching every other Store impl. Remote
-   *  convergence will additionally drive these from a cojson subscription when a peer attaches. */
+  /** Local listeners fire synchronously on write, matching every other Store impl. */
   private emit(entity: string): void {
     for (const cb of this.listeners.get(entity) ?? []) cb();
+  }
+
+  /** Run a local mutation with cojson's synchronous self-notification suppressed. */
+  private local<T>(fn: () => T): T {
+    this.localDepth++;
+    try {
+      return fn();
+    } finally {
+      this.localDepth--;
+    }
+  }
+
+  /**
+   * Bridge cojson's change notifications into `Store.subscribe`.
+   *
+   * Without this, a remote change updated the CoValues but nothing told the runtime to re-query, so
+   * a peer's edits only became visible once THIS device happened to write something — which is the
+   * bug this fixes: tab 1 sat on stale data until you typed into it.
+   *
+   * Two levels are needed. The entity index fires when records are added or removed; each record
+   * CoMap fires when its own fields change. Watching only the index would miss every edit to an
+   * existing record — which is exactly the case the whole engine was chosen for.
+   */
+  private async watchEntity(entity: string): Promise<void> {
+    if (this.watched.has(entity)) return;
+    const index = await this.entityIndex(entity);
+    const perRecord = new Map<string, () => void>();
+
+    const syncRecordWatchers = (): void => {
+      for (const recordId of index.keys()) {
+        const refId = index.get(recordId);
+        if (typeof refId !== "string" || perRecord.has(refId)) continue;
+        void this.loadMap(refId)
+          .then((m) => {
+            if (!perRecord.has(refId)) {
+              perRecord.set(
+                refId,
+                m.subscribe(() => {
+                  if (this.localDepth === 0) this.emit(entity);
+                }),
+              );
+            }
+          })
+          // A record that cannot be loaded yet is not fatal: it will arrive with a later index
+          // notification, and throwing here would kill the whole subscription.
+          .catch(() => {});
+      }
+    };
+
+    const unsubIndex = index.subscribe(() => {
+      if (this.localDepth > 0) return; // our own write; `emit` already fired
+      syncRecordWatchers();
+      this.emit(entity);
+    });
+    syncRecordWatchers();
+
+    this.watched.set(entity, () => {
+      unsubIndex();
+      for (const un of perRecord.values()) un();
+    });
   }
 
   // ---- lifecycle --------------------------------------------------------------------------
@@ -195,6 +268,8 @@ export class JazzStore implements Store {
   }
 
   async close(): Promise<void> {
+    for (const un of this.watched.values()) un();
+    this.watched.clear();
     this.appId = null;
   }
 
@@ -232,8 +307,11 @@ export class JazzStore implements Store {
       updatedAt: ts,
     } as KartaRecord;
     // One CoMap per record — this is what makes concurrent edits to different fields merge.
-    const created = this.group.createMap<RawMapLike>(record as unknown as Record<string, unknown>);
-    (await this.entityIndex(entity)).set(id, created.id);
+    const index = await this.entityIndex(entity);
+    this.local(() => {
+      const created = this.group.createMap<RawMapLike>(record as unknown as Record<string, unknown>);
+      index.set(id, created.id);
+    });
     this.emit(entity);
     await this.whenDurable?.();
     return record;
@@ -245,11 +323,13 @@ export class JazzStore implements Store {
     // Set only the changed keys. Writing the whole record back would make every field a write and
     // clobber a concurrent peer's edit to a field this caller never touched — throwing away the
     // per-key merge that is the entire reason for this store.
-    for (const [k, v] of Object.entries(toJsonValue(patch))) {
-      if (k === "id" || k === "createdAt") continue; // immutable
-      m.set(k, v);
-    }
-    m.set("updatedAt", nowIso());
+    this.local(() => {
+      for (const [k, v] of Object.entries(toJsonValue(patch))) {
+        if (k === "id" || k === "createdAt") continue; // immutable
+        m.set(k, v);
+      }
+      m.set("updatedAt", nowIso());
+    });
     this.emit(entity);
     await this.whenDurable?.();
     return m.toJSON() as unknown as KartaRecord;
@@ -260,7 +340,7 @@ export class JazzStore implements Store {
     if (typeof index.get(id) !== "string") return;
     // Tombstone by dropping the index entry. The record CoMap itself is left addressable so a
     // concurrent peer editing it does not resurrect a half-record through the index.
-    index.delete(id);
+    this.local(() => index.delete(id));
     this.emit(entity);
     await this.whenDurable?.();
   }
@@ -301,6 +381,9 @@ export class JazzStore implements Store {
       this.listeners.set(entity, set);
     }
     set.add(cb);
+    // Attaching is async (CoValues load async) while `subscribe` is sync by contract; a peer's
+    // change arriving before it attaches is caught by the initial `syncRecordWatchers` pass.
+    void this.watchEntity(entity);
     return () => set!.delete(cb);
   }
 

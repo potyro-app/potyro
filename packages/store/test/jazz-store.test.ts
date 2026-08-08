@@ -81,17 +81,36 @@ describe("JazzStore CRUD", () => {
 });
 
 describe("JazzStore reactivity", () => {
-  it("notifies subscribers on writes to that entity", async () => {
+  // DELIBERATE DIVERGENCE from the shared battery, and the only one.
+  //
+  // MemoryStore notifies exactly once per write, and its test asserts that count. JazzStore cannot:
+  // it must also surface changes that arrive from a PEER, and cojson delivers those
+  // ASYNCHRONOUSLY — including its echo of our own write, which lands after the local notification
+  // has already fired. Suppressing the echo synchronously is not possible for the same reason.
+  //
+  // An exact count is an implementation detail of an in-memory store, not the `Store` contract,
+  // which says "notify on entity change; the runtime re-runs its JS queries" (docs/05). Re-running
+  // a query is idempotent, so an extra notification costs a little work and changes nothing. What
+  // WOULD be a contract break is notifying for the wrong entity, or after unsubscribe — so those
+  // stay asserted exactly.
+  it("notifies subscribers on writes to that entity, and only that entity", async () => {
     const s = await seeded();
     const cb = vi.fn();
     const unsub = s.subscribe("task", cb);
+
     await s.insert("task", { title: "a" });
-    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+    const afterOwnEntity = cb.mock.calls.length;
     await s.insert("other", { title: "x" });
-    expect(cb).toHaveBeenCalledTimes(1); // different entity
+    await new Promise((r) => setTimeout(r, 50)); // let any async notification land
+    expect(cb.mock.calls.length).toBe(afterOwnEntity); // different entity: never
+
     unsub();
+    const afterUnsub = cb.mock.calls.length;
     await s.insert("task", { title: "b" });
-    expect(cb).toHaveBeenCalledTimes(1); // unsubscribed
+    await new Promise((r) => setTimeout(r, 50));
+    expect(cb.mock.calls.length).toBe(afterUnsub); // unsubscribed: never
   });
 });
 
@@ -255,5 +274,77 @@ describe("JazzStore — two peers through the Store seam", () => {
     expect(onAna?.paidBy).toBe("ana");
     expect(onBruno?.description).toBe(onAna?.description);
     expect(onBruno?.amountCents).toBe(onAna?.amountCents);
+  });
+});
+
+describe("JazzStore — a peer's change arrives without a local write", () => {
+  // Reported 2026-08-08: tab 1 had 3 items, tab 2 joined and saw them, but tab 1 did not see tab
+  // 2's new item until tab 1 itself changed something — at which point everything appeared at once.
+  //
+  // Cause: `subscribe` only fired on LOCAL writes. Remote changes updated the CoValues, but nothing
+  // told the runtime to re-query, so the UI sat on stale data until a local write happened to
+  // trigger one. Sync that only appears when you type is not sync.
+  const settle = (ms = 500) => new Promise((r) => setTimeout(r, ms));
+
+  async function pair() {
+    const ana = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Ana" }, crypto });
+    const bob = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Bob" }, crypto });
+    const group = ana.node.createGroup();
+    group.addMember(await bob.node.expectCurrentAccount("bob"), "writer");
+    const anaStore = new JazzStore({ node: ana.node as never, group: group as never });
+    await anaStore.open("todo");
+    const [forAna, forBob] = cojsonInternals.connectedPeers("bob", "ana", {
+      peer1role: "server",
+      peer2role: "server",
+    });
+    ana.node.syncManager.addPeer(forBob);
+    bob.node.syncManager.addPeer(forAna);
+    await settle();
+    const bobGroup = await bob.node.load(group.id);
+    const bobStore = new JazzStore({
+      node: bob.node as never,
+      group: bobGroup as never,
+      rootId: anaStore.rootId,
+    });
+    await bobStore.open("todo");
+    return { anaStore, bobStore };
+  }
+
+  it("notifies a subscriber when the OTHER peer inserts", async () => {
+    const { anaStore, bobStore } = await pair();
+    await anaStore.insert("todo", { title: "milk" });
+    await settle();
+
+    let notified = 0;
+    bobStore.subscribe("todo", () => notified++);
+    await settle();
+    const before = notified;
+
+    // Bob does nothing at all. Ana adds an item.
+    await anaStore.insert("todo", { title: "bread" });
+    await settle();
+
+    expect(notified).toBeGreaterThan(before); // was never fired before the fix
+    expect((await bobStore.all("todo")).map((r) => r.title).sort()).toEqual(["bread", "milk"]);
+  });
+
+  it("notifies when the other peer EDITS an existing record", async () => {
+    // Watching only the entity index would catch inserts but miss every field edit — the case the
+    // engine was actually chosen for.
+    const { anaStore, bobStore } = await pair();
+    const r = await anaStore.insert("todo", { title: "milk", done: false });
+    await settle();
+    await bobStore.all("todo");
+
+    let notified = 0;
+    bobStore.subscribe("todo", () => notified++);
+    await settle();
+    const before = notified;
+
+    await anaStore.update("todo", r.id, { done: true });
+    await settle();
+
+    expect(notified).toBeGreaterThan(before);
+    expect((await bobStore.get("todo", r.id))?.done).toBe(true);
   });
 });
