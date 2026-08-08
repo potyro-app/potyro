@@ -208,12 +208,26 @@ export async function openJazzStore(
   appId: string,
   opts?: { keys?: JazzKeyStore; peers?: unknown[]; profileName?: string; relay?: string },
 ): Promise<JazzStoreHandle> {
-  const [{ openOpfsDb }, { WasmCrypto }] = await Promise.all([
+  const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }] = await Promise.all([
     import("./sqlite-backend.js"),
+    import("./idb-sqlite.js"),
     import("cojson/crypto/WasmCrypto"),
   ]);
-  // cojson gets its own database file, separate from the app's SqliteStore file.
-  const db = await openOpfsDb(`${appId}-jazz`);
+
+  // OPFS first (fastest), IndexedDB otherwise. Gating sync on OPFS made it unavailable to most
+  // browsers — including many Chrome contexts, where `createSyncAccessHandle` is worker-only — so
+  // the fallback is the difference between a feature that exists and one that does not.
+  // cojson gets its own database, separate from the app's SqliteStore.
+  let db: Awaited<ReturnType<typeof openOpfsDb>>;
+  let whenPersisted: (() => Promise<void>) | undefined;
+  try {
+    db = await openOpfsDb(`${appId}-jazz`);
+  } catch {
+    if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
+    const idb = await openIdbSqliteDb(`${appId}-jazz`);
+    db = idb.db;
+    whenPersisted = idb.whenPersisted;
+  }
   const crypto = await WasmCrypto.create();
 
   // A relay is OPTIONAL and additive. With none, this is a durable local-only store and no socket
@@ -223,7 +237,18 @@ export async function openJazzStore(
   const peers = [...(opts?.peers ?? [])];
   if (opts?.relay) peers.push(await createRelayPeer(opts.relay));
 
-  return createJazzStore(appId, { db, crypto, keys: opts?.keys, profileName: opts?.profileName, peers });
+  const handle = await createJazzStore(appId, { db, crypto, keys: opts?.keys, profileName: opts?.profileName, peers });
+  if (!whenPersisted) return handle;
+
+  // On the IndexedDB path a cojson flush only reaches the in-memory database; the snapshot to IDB
+  // is what actually survives a reload. Both must complete before a write is called durable.
+  const cojsonDurable = handle.whenDurable;
+  const both = async (): Promise<void> => {
+    await cojsonDurable();
+    await whenPersisted!();
+  };
+  handle.store.setWhenDurable?.(both);
+  return { ...handle, whenDurable: both };
 }
 
 /** A reconnecting WebSocket peer pointed at a sync relay. */
