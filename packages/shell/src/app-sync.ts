@@ -28,6 +28,34 @@ export interface PublishedApp {
   name: string;
   /** ISO. The `UserApp.updatedAt` of the copy that published it. */
   updatedAt: string;
+  /** The app's declared `schemaVersion`. Drives the read-only gate (KA-22). */
+  schemaVersion?: number;
+}
+
+/**
+ * Read `schemaVersion` straight out of the source text.
+ *
+ * Deliberately a regex rather than an evaluation: this runs before the app is loaded, on source
+ * that may have come from someone else, and the whole point of the gate is to decide whether that
+ * code is safe to run against our data. Executing it to find out would defeat the exercise.
+ * Unreadable → `undefined`, and the gate stays open rather than locking someone out on a guess.
+ */
+export function schemaVersionOf(source: string): number | undefined {
+  const m = /schemaVersion\s*:\s*(\d+)/.exec(source);
+  return m ? Number(m[1]) : undefined;
+}
+
+/**
+ * Is this device's copy behind the schema the space is now written with?
+ *
+ * Behind means: do not write. An old schema writing into the shared document produces records the
+ * current app does not expect, and every peer replicates them.
+ */
+export function isSchemaBehind(local: PublishedApp, published: PublishedApp | null): boolean {
+  const mine = local.schemaVersion ?? schemaVersionOf(local.source);
+  const theirs = published?.schemaVersion ?? (published ? schemaVersionOf(published.source) : undefined);
+  if (mine == null || theirs == null) return false; // unknown: do not lock anyone out
+  return theirs > mine;
 }
 
 export async function readPublishedApp(store: Store): Promise<PublishedApp | null> {

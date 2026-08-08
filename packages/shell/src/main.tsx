@@ -7,6 +7,7 @@ import "./styles.css";
 import type { KartaApp, KartaRecord } from "karta";
 import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
+import { readOnlyStore } from "./read-only-store.js";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
 import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
@@ -282,18 +283,29 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   }
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
   // exactly the previous SqliteStore/LocalStore path.
-  const store = await openStore(`user:${id}`, { sync: saved.sync });
+  const rawStore = await openStore(`user:${id}`, { sync: saved.sync });
 
   // A synced app shares its SOURCE through the space too, so an edit by one person reaches the
   // others instead of silently diverging (and, if the edit changed the schema, silently misreading
   // each other's records).
+  let store = rawStore;
   if (saved.sync) {
     const appSync = await import("./app-sync.js");
-    const mine = { source: saved.source, name: saved.name, updatedAt: saved.updatedAt };
+    const mine = {
+      source: saved.source,
+      name: saved.name,
+      updatedAt: saved.updatedAt,
+      schemaVersion: appSync.schemaVersionOf(saved.source),
+    };
     const update = await appSync.pendingAppUpdate(store, mine);
+    // A newer SCHEMA is not merely a nicer version — writing with the old one puts records into the
+    // shared document in a shape the current app does not expect, and every peer replicates them.
+    const behind = appSync.isSchemaBehind(mine, await appSync.readPublishedApp(store));
     if (update) {
       const take = await shellDialogs.confirm(
-        `“${update.name}” was updated by someone you share it with.\n\nUpdate your copy? Your version is kept in History, so you can go back.`,
+        behind
+          ? `“${update.name}” has been updated to a newer version.\n\nUpdate to keep making changes. Until you do, the app opens read-only so an old version cannot corrupt the shared data.\n\nUpdate now?`
+          : `“${update.name}” was updated by someone you share it with.\n\nUpdate your copy? Your version is kept in History, so you can go back.`,
       );
       if (take) {
         const { saveUserApp } = await import("./user-apps.js");
@@ -303,6 +315,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
         );
         location.reload();
         return;
+      }
+      if (behind) {
+        // Declined while behind: readable, not writable, and it says why rather than failing
+        // mysteriously at the first tap.
+        store = readOnlyStore(store, `This app has been updated. Your copy is an older version, so it is read-only until you update.`);
+        toaster.push("Read-only: this app has a newer version. Reload to update.");
       }
     } else {
       // Only publishes when this copy is strictly newer, so declining an update above does not
