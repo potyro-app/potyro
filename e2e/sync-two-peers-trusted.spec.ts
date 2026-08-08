@@ -32,10 +32,21 @@ export default defineApp({
 });
 `;
 
-async function seeded(context: BrowserContext): Promise<Page> {
+/**
+ * A device. `app` seeds the registry with the starter app — device A owns it; device B must NOT have
+ * it, because "the source arrived over sync" is half of what this test claims.
+ *
+ * The seed is written ONCE per context, not once per navigation. An init script runs on every page
+ * load, so an unconditional `setItem` re-wrote the registry each time and silently reset `sync` to
+ * off. The reload after sharing then opened the LOCAL store, and every later assertion was answered
+ * by the copy `toggleAppSync` deliberately leaves behind rather than by the CRDT store — which is
+ * exactly why this spec appeared to fail at the sync pill.
+ */
+async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
-    ([source]) => {
+    ([source, seedApp]) => {
       localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
       localStorage.setItem(
         "karta:user-apps",
         JSON.stringify([
@@ -43,7 +54,7 @@ async function seeded(context: BrowserContext): Promise<Page> {
         ]),
       );
     },
-    [STARTER],
+    [STARTER, opts?.app ?? false] as const,
   );
   return context.newPage();
 }
@@ -55,26 +66,21 @@ const add = async (page: Page, title: string): Promise<void> => {
   await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible();
 };
 
-// STATUS: fixme — UNFINISHED, and the failure is in the test's own wiring, not the feature.
+// Two bugs stood between this and green, and neither was where the feature is:
 //
-// Verified working up to this point: sync turns on, the data migrates, the invite link is minted and
-// is small (<2000 chars), and the record survives a full reload served by the CRDT store.
+//   - the seed re-ran on every navigation and reset `sync` to off, so the reload after sharing
+//     opened the local store (see `device` above);
+//   - the join screen mounted a SECOND `<Dialogs>` on the one host `mount` already provides, so the
+//     trust prompt rendered twice, stacked. That one was a real product bug, visible to anyone who
+//     ever opened an invite.
 //
-// Where it stops: `expect(".k-sync-status").toContainText("Synced")`. The element never appears.
-// `sync={saved.sync}` IS now passed to <App> and `SyncStatus` does render it, so the likely causes,
-// in order: (a) the toggle set `sync` on a DIFFERENT app id than `?user=sync-pair` (the share flow
-// enables sync itself, so `saved.sync` may still be stale on the reload right after); (b) the pill
-// returns null while `state === "off"` and the effect has not yet run; (c) the relay probe fails in
-// the Playwright network sandbox, leaving it "offline" rather than "Synced".
-//
-// Diagnose by dropping the pill assertion and letting the rest run — everything after it (the actual
-// two-peer convergence) has never executed, so the feature itself is still UNVERIFIED end to end.
-test.fixme("two devices share one dataset through the relay", async ({ browser }) => {
+// The convergence assertions passed on the first run after both were fixed.
+test("two devices share one dataset through the relay", async ({ browser }) => {
   test.slow();
 
   // ---- device A: owns the app, turns on sync, shares it ----
   const ctxA = await browser.newContext();
-  const a = await seeded(ctxA);
+  const a = await device(ctxA, { app: true });
   await a.goto("/?user=sync-pair");
   await expect(a.locator("h1").first()).toHaveText("Sync Pair", { timeout: 30_000 });
   await add(a, "milk");
@@ -98,7 +104,7 @@ test.fixme("two devices share one dataset through the relay", async ({ browser }
 
   // ---- device B: a separate context, so separate storage and a separate identity ----
   const ctxB = await browser.newContext();
-  const b = await seeded(ctxB);
+  const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // trust prompt
 

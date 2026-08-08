@@ -12,21 +12,14 @@ import { test, expect } from "@playwright/test";
 //   -> the record survived the migration -> RELOAD -> it is still there, now served by the CRDT
 //   store.
 //
-// ## STATUS: `fixme` — these tests are correct, the FEATURE is not ready.
+// The original blocker here — `openJazzStore` demanding the OPFS SAH-pool VFS, which headless
+// Chromium and Firefox do not provide — is gone: the store falls back to IndexedDB-backed SQLite.
 //
-// Running them was worth it: they surfaced the blocker immediately. The toggle reports
-//
-//     "Could not change sync: Missing required OPFS APIs."
-//
-// `openJazzStore` requires the OPFS SAH-pool VFS, and headless Chromium does not provide it — nor
-// does Firefox. So sync is currently unavailable to a large share of real browsers, and cannot be
-// exercised in a browser at all. (The failure at least surfaces LOUDLY in the dialog rather than
-// silently degrading, which is the deliberate no-fallback design: falling back to a non-CRDT store
-// would look like it worked and then lose a peer's concurrent edits.)
-//
-// The fix is a non-OPFS storage backend for cojson (IndexedDB), after which these tests should be
-// switched from `fixme` to live and will be KA-08's real acceptance criterion. Tracked in
-// docs/10-backlog.md#ka-08.
+// The seed is written ONCE per browser, not once per navigation. An init script runs on every page
+// load, and an unconditional `setItem` re-wrote the registry each time, resetting `sync` to off. The
+// reloads below then opened the LOCAL store — and since `toggleAppSync` deliberately never deletes
+// the pre-migration copy, every assertion was answered by that copy. Both tests passed without the
+// CRDT store being read even once, which is the entire thing they exist to check.
 
 const STARTER = `import { defineApp } from "karta";
 
@@ -52,6 +45,7 @@ export default defineApp({
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source]) => {
+      if (localStorage.getItem("karta:user-apps")) return;
       localStorage.setItem(
         "karta:user-apps",
         JSON.stringify([
@@ -92,6 +86,10 @@ test("sync can be turned on, and the app's data comes with it", async ({ page })
   // cojson out of OPFS, after a genuine page teardown.
   await page.goto("/?user=sync-target");
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
+  // Non-vacuity guard: the pill renders only when the app is flagged synced, which is the exact
+  // condition under which `openStore` takes the CRDT branch (it has no fallback). Without it, a
+  // record read back out of the pre-migration local copy would look identical to a passing test.
+  await expect(page.locator(".k-sync-status")).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".k-list-row", { hasText: "Before sync" })).toBeVisible({ timeout: 30_000 });
 });
 
@@ -106,6 +104,8 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
 
   await page.goto("/?user=sync-target");
+  // Same guard: this note has to be WRITTEN to the CRDT store for the reload below to mean anything.
+  await expect(page.locator(".k-sync-status")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: /New Note|Add Note/i }).first().click();
   await page.getByLabel(/title/i).fill("Written to the CRDT store");
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();

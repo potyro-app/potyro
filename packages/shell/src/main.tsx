@@ -255,15 +255,14 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   // are its own code renders nothing — so opening first and asking later meant landing in an empty
   // app with a message about a control you had not found yet.
   // `shellDialogs` renders through a mounted host; at this point in boot nothing is on screen yet,
-  // so the prompt would resolve into a void. Mount the dialog host (and a line of context, so the
-  // page is not blank behind it) before asking.
+  // so the prompt would resolve into a void. Mount SOMETHING first — `mount` brings the dialog host
+  // with it — plus a line of context so the page is not blank behind the question.
   // Modern links state this outright; legacy ones still carry the source to inspect.
   const custom = invite.custom ?? (invite.source ? usesCustomViews(invite.source) : false);
   mount(
     root,
     <div className="k-joining">
       <p>Joining “{invite.name}”…</p>
-      <Dialogs host={shellDialogs} />
     </div>,
   );
   const trust = await shellDialogs.confirm(
