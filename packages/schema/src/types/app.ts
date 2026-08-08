@@ -125,6 +125,13 @@ export interface FilterChip {
   type?: "boolean" | "geo";
 }
 
+/**
+ * How a map frames itself when opened. `"remember"` (the default) reopens where the user left it and
+ * frames the markers only on a first-ever open; `"fit"` always frames the current markers; a literal
+ * `{ center, zoom }` always opens at one fixed spot. `center` is `[lng, lat]`.
+ */
+export type MapCamera = "remember" | "fit" | { center: [number, number]; zoom: number };
+
 export interface MapView {
   type: "map";
   entity: string;
@@ -135,6 +142,7 @@ export interface MapView {
   filters?: FilterChip[];
   /** Where tapping a marker goes. Without it a marker only shows its `title` in a popup. */
   onOpen?: OnOpen;
+  camera?: MapCamera;
 }
 
 export interface StepsView {
@@ -143,14 +151,35 @@ export interface StepsView {
   param?: string;
   /** Field key of the ordered list to walk. */
   list: string;
+  /** How to render one step. A field key of the list's sub-fields, or a function over the step. */
   text?: Binding;
+  /** Action key to run once every step is ticked. Without it, finishing does nothing. */
+  onFinish?: string;
 }
 
 export interface CustomView {
   type: "custom";
   entity: string;
   param?: string;
-  render: (props: ViewProps) => ReactElement;
+  /**
+   * React form: return an element. Convenient, and what most views use.
+   *
+   * Declare `mount` instead to write the view in anything else — this one names React in the app
+   * contract, which is what made the host's framework an architectural decision rather than a
+   * changeable one.
+   */
+  render?: (props: ViewProps) => ReactElement;
+  /**
+   * Framework-neutral form: put your UI inside `el`, return a teardown.
+   *
+   * ```ts
+   * mount: (el, props) => { const app = mount(Thing, { target: el, props }); return () => unmount(app); }
+   * ```
+   *
+   * The host only ever hands over a container, exactly as it does for MapLibre — so the view and the
+   * shell need not agree on a framework.
+   */
+  mount?: (el: HTMLElement, props: ViewProps) => () => void;
   onFinish?: string;
 }
 
@@ -177,10 +206,32 @@ export const VIEW_TYPES = [
 
 export type ViewType = (typeof VIEW_TYPES)[number];
 
+/** How a summary figure is aggregated. `count` needs no field; the rest aggregate one. */
+export type SummaryOp = "sum" | "count" | "avg" | "max";
+
+/**
+ * One figure shown above a page's view.
+ *
+ * Give either `op` (with a `field`, unless counting) or a `value` function — the same
+ * declarative-or-function pairing as `filters`/`filter`. The declarative form is the one the
+ * structural editor can edit and the one that ports to another framework, so prefer it when the
+ * figure is a plain aggregate; push per-record arithmetic into a `computed` field to keep it there.
+ */
+export interface SummaryValue {
+  label: string;
+  /** The field (or computed) to aggregate. Not used with `value`, not needed for `count`. */
+  field?: string;
+  op?: SummaryOp;
+  /** Full control: receives the page's filtered, resolved rows. */
+  value?: (rows: Resolved[], ctx: Ctx) => unknown;
+}
+
 export interface Page {
   id: string;
   title: string;
   hidden?: boolean;
+  /** Figures shown above the view, computed over the page's filtered rows. */
+  summary?: SummaryValue[];
   view: View;
 }
 
