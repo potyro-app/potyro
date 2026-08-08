@@ -8,6 +8,7 @@ import type { KartaApp, KartaRecord } from "karta";
 import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
 import { readOnlyStore } from "./read-only-store.js";
+import { migrateOnLoad } from "./migrate-on-load.js";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
 import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
@@ -212,6 +213,10 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   } else {
     composed = await compose({ app, provenance: "trusted", store, caps, ui, nav });
   }
+  // docs/06: bring stored data up to the definition before anything reads it. A read-only store
+  // (older copy of a shared app) refuses this, which is correct — it must not rewrite shared
+  // records with an old app's idea of the schema.
+  await runMigrationsIfPossible(composed.runtime.definition, store, toaster);
   startReminderSync(composed.runtime, store);
 
   const provenance: Provenance = SANDBOX ? "untrusted" : "trusted";
@@ -272,6 +277,23 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   } catch (e) {
     root.textContent = `Could not join: ${e instanceof Error ? e.message : String(e)}`;
     return null;
+  }
+}
+
+/** Run pending migrations, reporting rather than crashing the app if they fail. */
+async function runMigrationsIfPossible(
+  definition: Parameters<typeof migrateOnLoad>[1],
+  store: Parameters<typeof migrateOnLoad>[0],
+  toaster: Toaster,
+): Promise<void> {
+  try {
+    const { ran, from } = await migrateOnLoad(store, definition);
+    if (ran.length) toaster.push(`Updated your data from ${from} to ${definition.version}.`);
+  } catch (e) {
+    // A failed migration must not leave the user staring at a blank screen with no explanation.
+    // The app still opens; the data is simply not migrated yet.
+    console.warn("[karta] migration failed:", e);
+    toaster.push(`Could not update your data: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
@@ -355,6 +377,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     appSource = await (await createAppBundler())(saved.source);
     composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, loadIsolated: await createSandboxLoader(store) });
   }
+  await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);
 
   mount(
