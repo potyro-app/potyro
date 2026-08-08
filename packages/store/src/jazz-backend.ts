@@ -218,13 +218,28 @@ export async function openJazzStore(
   // browsers — including many Chrome contexts, where `createSyncAccessHandle` is worker-only — so
   // the fallback is the difference between a feature that exists and one that does not.
   // cojson gets its own database, separate from the app's SqliteStore.
+  //
+  // ONE database per DEVICE, not per app — `karta-jazz`, not `${appId}-jazz`.
+  //
+  // The device account is global (see the header) but its CoValue is only ever written to the
+  // database that created it. With a database per app, the SECOND synced app read the saved
+  // `accountID`/`accountSecret` against an empty store and cojson answered
+  // `Account unavailable from all peers` — so the second app a person synced simply failed to open.
+  // It was invisible because a dev relay can serve the account CoValue back, and every test passed
+  // both apps one shared `db`; a local-only synced app (no relay — ADR D3's default) had no such
+  // luck. Pinned by `jazz-account-portability.test.ts`.
+  //
+  // Apps stay isolated by GROUP, not by file (`jazz-backend.test.ts` pins that two apps get separate
+  // spaces and cannot read each other). The cost of sharing a file is that deleting one app's data
+  // no longer means deleting a file — tracked as a follow-up.
+  const DEVICE_DB = "karta-jazz";
   let db: Awaited<ReturnType<typeof openOpfsDb>>;
   let whenPersisted: (() => Promise<void>) | undefined;
   try {
-    db = await openOpfsDb(`${appId}-jazz`);
+    db = await openOpfsDb(DEVICE_DB);
   } catch {
     if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
-    const idb = await openIdbSqliteDb(`${appId}-jazz`);
+    const idb = await openIdbSqliteDb(DEVICE_DB);
     db = idb.db;
     whenPersisted = idb.whenPersisted;
   }
