@@ -95,10 +95,67 @@ Interface mapping:
 | `putBlob` / `getBlob` | **not in the doc** — `MediaRef` only; see D5 |
 | `transaction` | ⚠️ local atomicity only; see Consequences |
 
-### D2 — Build identity ourselves: keypairs, not accounts
+### D2 — Identity is a **cojson account**, held behind our own seam
 
-New `packages/identity`. An Ed25519 keypair generated on first run. A person is a display name
-plus a public key. No signup, no email, no server-side identity, works offline.
+**Amended 2026-08-08. The original D2 is superseded — see below.** A person is a display name
+plus a **cojson account**, created silently on first run. No signup, no email, no server-side
+identity, works offline. `packages/identity` still exists, but it *owns and wraps* the account
+rather than implementing crypto: creation, the cached `{ id, name }`, renaming, passphrase
+export, and sign-in on a second device.
+
+**Why the change.** The original D2 specified an Ed25519 keypair of our own, written while D1
+was still Yjs — which has no identity layer, so we would have had to build one. D1 now adopts
+Jazz, and cojson brings accounts, signed transactions, groups and roles with it. Keeping our own
+keypair alongside it would mean **two identities per person** that must be kept in agreement,
+with the app-visible one unable to prove anything: cojson signs every transaction with the
+account that made it, so an account id is verifiable, while an id carried as a field value is
+just data any writer can forge. `createdBy` has to be the verifiable one (see the spike's F5).
+
+**Consequences that follow, and they are the reason this is worth writing down:**
+
+- **One id for life.** `ctx.me.id` is the account id from first run, unchanged by turning sync
+  on. An id that changed on toggle would orphan every `createdBy` already stamped — the same
+  class of failure `toggleAppSync` exists to prevent, and the trap this amendment avoids.
+- **Solo still pays almost nothing.** The account is created on first app open and its
+  `{ id, name }` is cached, so every later boot answers `ctx.me` from the key store with no
+  cojson load at all. Only the very first run pays for the wasm crypto.
+- **`packages/store` stops minting accounts.** `jazz-backend.ts` currently owns
+  `karta:jazz:accountID` / `:accountSecret`. Ownership of the secret moves to
+  `packages/identity`, and the store consumes it — one place responsible for the most
+  security-sensitive value we hold.
+
+### D2a — Multi-device is a **passphrase**, never a server
+
+A second device is linked by transferring the account secret as BIP39 words:
+`getCurrentAccountPassphrase()` on the old device, `logIn(passphrase)` on the new one — both
+already in `jazz-tools`. Spaces reappear on their own, because membership is keyed on the
+account. No server is involved at any point, and later transports (a QR handoff over the LAN)
+are a UI change over the same string, not an architectural one.
+
+Because the passphrase is *derived from the secret already held*, there is **no signup
+ceremony and no migration**: an account created silently months ago can be exported as words
+the first time anyone asks.
+
+**When the words are surfaced** is a product decision with a correctness argument behind it:
+permanently available in Settings, and prompted **the first time sync is turned on for any
+app** — share, join, or the plain toggle. Never for a solo user, because for a never-synced app
+**the words restore nothing**: the data is in local storage on that one device, and the relay
+has never held a byte of it. Prompting there would promise a backup that does not exist.
+
+**Recovery is the sellable service, and identity is not.** If someone loses the words *and*
+every device, the ciphertext on the relay is undecryptable and the data is gone — local-first
+cannot fix that by construction. Optional hosted key escrow is an honest paid service on top
+(alongside the hosted relay, business plan §8.4); charging for *identity itself* would reinstate
+the signup wall `docs/01` is positioned against. Recovery must never become mandatory, or it is
+a central user server wearing a different hat.
+
+#### Superseded — the original D2 (our own Ed25519 keypair)
+
+> New `packages/identity`. An Ed25519 keypair generated on first run. A person is a display name
+> plus a public key. No signup, no email, no server-side identity, works offline.
+
+Kept for the record: it remains the right design **if D1 is ever reverted to Yjs**, which has no
+identity of its own.
 
 ### D3 — A **space** is the unit of sync; solo is a local-only space
 
@@ -421,12 +478,17 @@ former has no adversarial peer and no key rotation, so it is far easier to get r
 | # | Step | Issues |
 |---|---|---|
 | 0 | **Shared apps must be able to render their primary screen untrusted.** Discovered by the spike; upstream of everything here. | KA-24 |
-| 1 | Identity + spaces, **local only** — `ctx.me`, `member` field type, `createdBy`. No network. | KA-16, KA-18, KA-19, KA-25, KA-26 |
-| 2 | `YjsStore` behind `Store`; two tabs converge in-process, no server | KA-08 |
-| 3 | Relay + E2E + **multi-device, single user**. Sellable alone (§8.4 Step B). | KA-08, KA-20 |
+| 1 | Identity + spaces, **local only** — `ctx.me`, `member` field type, `createdBy`, `ctx`-aware defaults, **device linking by passphrase** (D2a). No network. | KA-16, KA-18, KA-19, KA-25, KA-26 |
+| 2 | ~~`YjsStore`~~ **`JazzStore`** behind `Store`; two peers converge in-process, no server | KA-08 ✅ |
+| 3 | Relay + E2E + **multi-device, single user**. Sellable alone (§8.4 Step B). | KA-08 ✅, KA-20 |
 | 4 | **Multi-user** spaces: invites, roles, key rotation, inbound validation, version gating | KA-17, KA-21, KA-22, KA-23 |
 | 5 | Presence / awareness | KA-09 |
 | 6 | Share / fork distribution channel | KA-10, KA-11 |
+
+**Steps 2 and 3 landed before step 1** — the engine question was the risky one, so it was
+answered first. Two peers converge through a real relay in a real browser
+(`e2e/sync-two-peers-trusted.spec.ts`). Step 1 is what is being built now, and D2a folds the
+device-linking half of step 3 into it, since both rest on the same account.
 
 Step 1 is fully testable against `MemoryStore` with zero network, and it is what unblocks
 *writing* the Splitwise fixture before any sync exists. A shared shopping list is usable at
