@@ -80,7 +80,12 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   const dialog = page.locator(".k-modifydialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("textbox", { name: "Describe the change" })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toBeDisabled(); // needs text
+  // Absent, not disabled. With direct structural controls in the same dialog, an "Apply with AI"
+  // button sitting there is the only thing that looks like "save" — so a rename reads as needing a
+  // model call it does not need. It appears once there is something to send.
+  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toHaveCount(0);
+  await dialog.getByRole("textbox", { name: "Describe the change" }).fill("make it a gallery");
+  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toBeEnabled();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Edit mode" }).click(); // toggle off before switching apps
 
@@ -88,6 +93,12 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await page.getByRole("button", { name: "Switch app" }).click();
   const overlay = page.locator(".k-launcher-overlay");
   await expect(overlay.locator(".k-launch-usertile .k-launch-name")).toHaveText("My App");
+  // Deleting an app destroys its records, history and diagnoses, so it asks first — in-app, not a
+  // platform dialog.
   await overlay.getByRole("button", { name: "Delete My App" }).click();
+  const confirmDialog = page.locator(".k-dialog");
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog).toContainText("can't be undone");
+  await confirmDialog.getByRole("button", { name: "Confirm" }).click();
   await expect(overlay.locator(".k-launch-usertile")).toHaveCount(0);
 });

@@ -1,0 +1,214 @@
+import { test, expect, type Page } from "@playwright/test";
+
+// Direct structural editing: change a label, hide a field, reorder fields, rename a page — without a
+// model in the loop.
+//
+// These are edits to declarative data, so they need no intelligence, and routing them through the
+// agent is where the cost/risk is worst: a minute of waiting and a whole-file rewrite to change six
+// characters. What has to hold end to end:
+//
+//   - the change reaches the running app (not just the stored source)
+//   - the source is edited surgically — everything outside the change is untouched
+//   - it lands in History as `adjusted`, distinguishable from an agent rewrite
+//   - where the source can't be edited structurally, the panel says so instead of pretending
+
+const APP_SOURCE = `import { defineApp } from "karta";
+
+export default defineApp({
+  id: "kit",
+  name: "Kit",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    item: {
+      label: "Item",
+      displayField: "title",
+      fields: {
+        title: { type: "text", required: true },
+        // how many of them there are
+        quantity: { type: "number" },
+        notes: { type: "text", multiline: true },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Everything", view: { type: "list", entity: "item", display: { primary: "title" } } }],
+});
+`;
+
+async function seed(page: Page, source = APP_SOURCE): Promise<void> {
+  // Seed once: the panel reloads the app after saving, and re-seeding would overwrite the edit.
+  await page.addInitScript((src) => {
+    if (localStorage.getItem("karta:user-apps")) return;
+    localStorage.setItem(
+      "karta:user-apps",
+      JSON.stringify([{ id: "kit", name: "Kit", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
+    );
+  }, source);
+}
+
+/** Applying an edit reloads the app, so a poll can land mid-navigation — treat that as "not yet". */
+const storedSource = async (page: Page): Promise<string> => {
+  try {
+    return await page.evaluate(
+      () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[])[0]!.source,
+    );
+  } catch {
+    return "";
+  }
+};
+
+/** The app declares no quick actions, so the shell offers an automatic "New <Entity>". */
+async function openNewItemForm(page: Page): Promise<void> {
+  await page.locator(".k-quickbar").getByRole("button", { name: /New Item/ }).click();
+  await expect(page.locator(".k-modal")).toBeVisible();
+}
+
+/** The form's field labels, in the order they are rendered. */
+const formLabels = (page: Page): Promise<string[]> => page.locator(".k-modal .k-form-label").allInnerTexts();
+
+async function openPanel(page: Page): Promise<void> {
+  const toggle = page.getByRole("button", { name: "Edit mode" });
+  if ((await toggle.getAttribute("data-active")) !== "true") await toggle.click();
+  await page.locator(".k-editmark").last().click();
+  await expect(page.locator(".k-modifydialog")).toBeVisible();
+}
+
+test("renaming a field label edits the source surgically and lands in History", async ({ page }) => {
+  await seed(page);
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+  const before = await storedSource(page);
+
+  await openPanel(page);
+  await page.getByLabel("Label for quantity").fill("How many");
+  await page.getByLabel("Label for quantity").blur();
+
+  await expect.poll(() => storedSource(page)).toContain('label: "How many"');
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  // Let the re-run settle before reading again — a read mid-navigation comes back empty.
+  await expect(page.locator("h1")).toHaveText("Kit");
+  const after = await storedSource(page);
+
+  // Surgical: same line count, and exactly one line differs. This is the property that makes a
+  // structural edit reviewable — a printer that reflowed the file would make History useless.
+  const b = before.split("\n");
+  const a = after.split("\n");
+  expect(a).toHaveLength(b.length);
+  expect(b.filter((line, i) => a[i] !== line)).toHaveLength(1);
+  // The field's own comment is still on the field it explains.
+  expect(after).toMatch(/\/\/ how many of them there are\s*\n\s*quantity:/);
+
+  await page.getByRole("button", { name: "History" }).click();
+  const newest = page.locator(".k-history-item").first();
+  // `adjusted`, not `edit`: you changed this, the agent didn't rewrite the file.
+  await expect(newest.locator(".k-history-origin")).toHaveText("adjusted");
+  await expect(newest.locator(".k-history-note")).toContainText("quantity");
+  await expect(page.locator(".k-diff-line")).not.toHaveCount(0);
+});
+
+test("hiding a field takes it out of the running app's form", async ({ page }) => {
+  await seed(page);
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+
+  // It's in the form to begin with.
+  await openNewItemForm(page);
+  expect(await formLabels(page)).toContain("Notes");
+  await page.locator(".k-modal").getByRole("button", { name: "Cancel" }).click();
+
+  await openPanel(page);
+  await page.getByLabel("Hide notes from the form").check();
+  await expect.poll(() => storedSource(page)).toContain("hidden: true");
+  // Closing is what re-runs the app now — edits no longer reload on every click.
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0);
+
+  // The decisive check: gone from the form the user actually sees, not just from the source.
+  await openNewItemForm(page);
+  const labels = await formLabels(page);
+  expect(labels).toContain("Title *");
+  expect(labels).not.toContain("Notes");
+});
+
+test("reordering fields reorders the form", async ({ page }) => {
+  await seed(page);
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+
+  await openPanel(page);
+  await page.getByLabel("Move notes up").click();
+  await expect.poll(() => storedSource(page)).toMatch(/notes:[\s\S]*quantity:/);
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0);
+
+  // Order in the source is the order in the form — `Object.entries(fields)` drives both.
+  await openNewItemForm(page);
+  const labels = await formLabels(page);
+  const iNotes = labels.findIndex((l) => /notes/i.test(l));
+  const iQuantity = labels.findIndex((l) => /quantity/i.test(l));
+  expect(iNotes).toBeGreaterThanOrEqual(0);
+  expect(iNotes).toBeLessThan(iQuantity);
+});
+
+test("several reorders in one sitting, without losing the panel or your place", async ({ page }) => {
+  // Every structural edit used to reload the app immediately: the panel closed, Edit mode switched
+  // off and you landed back on the first tab. Moving a field two places meant doing the whole dance
+  // twice, which reads as "reordering doesn't work".
+  await seed(page);
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+  await page.locator(".k-tab", { hasText: "Everything" }).click();
+
+  await openPanel(page);
+  const order = () =>
+    page.locator(".k-structure-field input.k-structure-name")
+      .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).placeholder));
+  // Poll: the panel lazy-loads its parser, so the first inspect lands a beat after the dialog.
+  await expect.poll(order).toEqual(["Title", "Quantity", "Notes"]);
+
+  // Two moves in a row on the SAME open panel, each computed from the result of the last.
+  await page.getByLabel("Move notes up").click();
+  await expect.poll(order).toEqual(["Title", "Notes", "Quantity"]);
+  await page.getByLabel("Move notes up").click();
+  await expect.poll(order).toEqual(["Notes", "Title", "Quantity"]);
+  await expect(page.locator(".k-modifydialog")).toBeVisible();
+
+  // Closing re-runs the app once — and brings you back to the page you were on.
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await expect(page.locator(".k-tab[data-active='true']")).toHaveText("Everything");
+
+  await expect.poll(() => storedSource(page)).toMatch(/notes:[\s\S]*title:[\s\S]*quantity:/);
+  await openNewItemForm(page);
+  expect(await formLabels(page)).toEqual(["Notes", "Title *", "Quantity"]);
+});
+
+test("renaming a page renames its tab", async ({ page }) => {
+  await seed(page);
+  await page.goto("/?user=kit");
+  await expect(page.locator(".k-tab", { hasText: "Everything" })).toBeVisible();
+
+  await openPanel(page);
+  await page.getByLabel("Page name").fill("All of it");
+  await page.getByLabel("Page name").blur();
+  await expect.poll(() => storedSource(page)).toContain('title: "All of it"');
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+
+  await expect(page.locator(".k-tab", { hasText: "All of it" })).toBeVisible();
+  expect(await storedSource(page)).toContain('title: "All of it"');
+});
+
+test("a source it can't edit structurally says so, and offers the agent", async ({ page }) => {
+  // Fields built by a spread: there is no literal to edit. Guessing here would corrupt the app, so
+  // the panel must decline and name the reason rather than render a control that silently does
+  // nothing.
+  const spread = APP_SOURCE.replace('title: { type: "text", required: true },', "...shared,");
+  await seed(page, spread.replace('import { defineApp } from "karta";', 'import { defineApp } from "karta";\nconst shared = { title: { type: "text", required: true } };'));
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+
+  await openPanel(page);
+  await expect(page.locator(".k-structure-blocked")).toContainText(/spread|computed/);
+  await expect(page.locator(".k-structure-field")).toHaveCount(0);
+  // The way through is still open.
+  await expect(page.getByLabel("Describe the change")).toBeVisible();
+});

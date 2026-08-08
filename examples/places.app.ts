@@ -109,9 +109,21 @@ export default defineApp({
     {
       id: "list",
       title: "All places",
+      // Figures over the page's filtered rows. Both forms: `op` for a plain aggregate (declarative,
+      // so the structural editor can edit it), a `value` function for the one that needs a rule.
+      summary: [
+        { label: "Places", op: "count" },
+        { label: "Average rating", field: "rating", op: "avg" },
+        { label: "Visited", value: (rows) => rows.filter((p) => p.visited).length },
+      ],
       view: {
         type: "list",
         entity: "place",
+        filters: [{ label: "Category", param: "kind", from: "kind" }],
+        filter: (p, ctx) => {
+          const kind = (ctx.params as { kind?: string }).kind;
+          return !kind || p.kind === kind;
+        },
         sort: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
         display: {
           primary: "name",
