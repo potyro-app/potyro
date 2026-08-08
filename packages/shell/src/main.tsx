@@ -283,6 +283,33 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
   // exactly the previous SqliteStore/LocalStore path.
   const store = await openStore(`user:${id}`, { sync: saved.sync });
+
+  // A synced app shares its SOURCE through the space too, so an edit by one person reaches the
+  // others instead of silently diverging (and, if the edit changed the schema, silently misreading
+  // each other's records).
+  if (saved.sync) {
+    const appSync = await import("./app-sync.js");
+    const mine = { source: saved.source, name: saved.name, updatedAt: saved.updatedAt };
+    const update = await appSync.pendingAppUpdate(store, mine);
+    if (update) {
+      const take = await shellDialogs.confirm(
+        `“${update.name}” was updated by someone you share it with.\n\nUpdate your copy? Your version is kept in History, so you can go back.`,
+      );
+      if (take) {
+        const { saveUserApp } = await import("./user-apps.js");
+        await saveUserApp(
+          { id, name: update.name, source: update.source, origin: "imported", note: "updated by a collaborator" },
+          new Date().toISOString(),
+        );
+        location.reload();
+        return;
+      }
+    } else {
+      // Only publishes when this copy is strictly newer, so declining an update above does not
+      // push the older source back over the newer one.
+      void appSync.publishAppSource(store, mine);
+    }
+  }
   const picker = new PickerHost();
   const ui = createUiBridge(toaster.push, picker, shellDialogs);
   const navHost = new NavHost();
