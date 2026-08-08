@@ -135,8 +135,10 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
     try {
       const pos = await geo.current();
       setParam(chip.param, { lat: pos.lat, lng: pos.lng });
-    } catch {
-      // denied/unavailable → leave the param unset (the filter simply matches nothing)
+    } catch (e) {
+      // Say so. Swallowing this left the button looking like it simply does nothing when location is
+      // denied — you press it, the label flicks to "Locating…" and back, and nothing ever explains why.
+      runtime.ctx.ui.toast(e instanceof Error ? e.message : "Could not get your location");
     } finally {
       setBusy(false);
     }

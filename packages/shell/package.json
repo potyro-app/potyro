@@ -16,6 +16,7 @@
     "build:web": "vite build"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.8",
     "@karta/capabilities": "workspace:*",
     "@karta/generator": "workspace:^",
     "@karta/host": "workspace:*",
@@ -25,6 +26,8 @@
     "@karta/views": "workspace:*",
     "esbuild-wasm": "^0.28.1",
     "karta": "workspace:*",
+    "magic-string": "^1.1.0",
+    "prismjs": "^1.30.0",
     "quickjs-emscripten": "^0.31.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -32,6 +35,8 @@
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
+    "@types/babel__parser": "^7.1.5",
+    "@types/prismjs": "^1.26.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
