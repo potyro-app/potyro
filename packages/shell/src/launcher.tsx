@@ -11,6 +11,7 @@ import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
+import { IdentityPanel, offerBackupOnFirstSync } from "./identity-panel.js";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { History } from "./history.js";
 
@@ -68,6 +69,8 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
+  // You and your other devices — reachable from every launcher, nagged from none.
+  const [identity, setIdentity] = useState(false);
   // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
   // undo. It asked for nothing at all before.
   const del = async (a: UserApp): Promise<void> => {
@@ -102,6 +105,10 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
       // path exists to avoid.
       await shellDialogs.confirm(warnings.length ? `${moved}. ${warnings.join(" ")}` : `${moved}. Sync is ${on ? "on" : "off"}.`);
+      // Only after the outcome is reported. The first time anything syncs is the first time the
+      // recovery words are TRUE — before that they restore nothing, because the data has never left
+      // this device — but stacking the question on top of the result reads as one confusing dialog.
+      if (on) await offerBackupOnFirstSync(() => setIdentity(true));
     } catch (e) {
       await shellDialogs.confirm(`Could not change sync: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -134,6 +141,9 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       const link = await createShareLink(a.id);
       await navigator.clipboard?.writeText(link).catch(() => {});
       await shellDialogs.prompt("Send this link. Whoever opens it joins your app and its data.", { default: link });
+      // After the link, not before it: the user came here to share, and interrupting that with a
+      // question about recovery words buries the thing they actually asked for.
+      await offerBackupOnFirstSync(() => setIdentity(true));
     } catch (e) {
       setBusy(null);
       await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
@@ -156,13 +166,19 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
           <strong>Karta</strong>
           <span className="k-muted">{variant === "home" ? "· choose an app" : "· switch app"}</span>
         </div>
-        {onClose ? (
-          <div className="k-launcher-head-actions">
-            <button type="button" className="k-add" onClick={goHome}>⌂ Home</button>
-            <button type="button" className="k-add" aria-label="Close launcher" onClick={onClose}>Close ✕</button>
-          </div>
-        ) : null}
+        <div className="k-launcher-head-actions">
+          <button type="button" className="k-add" aria-label="You and your devices" onClick={() => setIdentity(true)}>
+            ⌾ You
+          </button>
+          {onClose ? (
+            <>
+              <button type="button" className="k-add" onClick={goHome}>⌂ Home</button>
+              <button type="button" className="k-add" aria-label="Close launcher" onClick={onClose}>Close ✕</button>
+            </>
+          ) : null}
+        </div>
       </header>
+      {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
 
       <section className="k-launch-section">
         <h3 className="k-launch-title">Apps</h3>

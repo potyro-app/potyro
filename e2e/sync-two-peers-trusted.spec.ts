@@ -95,6 +95,11 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   const link = await linkField.inputValue();
   await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click(); // a prompt, not a confirm
 
+  // Sharing is the first time this device's data leaves it, so the recovery-words offer appears
+  // once, right after the link (ADR D2a). Declined here — the words are tested on their own spec.
+  await expect(a.locator(".k-dialog")).toContainText("more than one place", { timeout: 30_000 });
+  await a.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
+
   // The link must be small enough to survive a deep link on a device.
   expect(link.length).toBeLessThan(2000);
 
