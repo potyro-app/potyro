@@ -94,6 +94,20 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
       }
       return <>{relText(value, disp)}</>;
     }
+    case "member": {
+      // Resolution already turned ids into people, so this renders names — but it tolerates a bare
+      // id (an unresolved raw row) rather than printing "[object Object]" or nothing.
+      const people = Array.isArray(value) ? value : [value];
+      return (
+        <span className="k-badges">
+          {people.filter((p) => p != null).map((p) => (
+            <span key={String((p as { id?: string })?.id ?? p)} className="k-person-chip">
+              {typeof p === "string" ? p : String((p as { name?: string })?.name ?? "Unknown")}
+            </span>
+          ))}
+        </span>
+      );
+    }
     case "media":
       return <MediaValue runtime={runtime} value={value as MediaRef | MediaRef[]} />;
     case "tags": {

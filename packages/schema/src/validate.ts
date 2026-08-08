@@ -401,6 +401,8 @@ const migrationSchema = z.object({
 const networkPermissionSchema = z.union([z.boolean(), z.object({ hosts: z.array(z.string()).optional() })]);
 
 const permissionSchema = z.object({
+  // Declared, not yet enforced — the consent prompt is KA-23. See PermissionManifest.
+  sync: z.boolean().optional(),
   camera: z.boolean().optional(),
   filesystem: z.boolean().optional(),
   notifications: z.boolean().optional(),

@@ -275,6 +275,15 @@ export interface Migration {
 export type NetworkPermission = boolean | { hosts?: string[] };
 
 export interface PermissionManifest {
+  /**
+   * This app writes to a document that leaves the device (ADR D8).
+   *
+   * **Declared, not yet enforced.** The manifest is the app's own statement of intent; the consent
+   * prompt and the gating that make it *mean* something are KA-23. Recorded here because it is part
+   * of the surface app code is authored against — but nothing today refuses sync to an app that
+   * omits it, and no code should be written as though it does.
+   */
+  sync?: boolean;
   camera?: boolean;
   filesystem?: boolean;
   notifications?: boolean;
