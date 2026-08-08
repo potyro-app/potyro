@@ -415,3 +415,62 @@ export async function joinSpace(
   );
   return handle;
 }
+
+/**
+ * Who is in this app's space, for `ctx.space.members` (KA-18/KA-17).
+ *
+ * Membership is read from the GROUP, which is what makes a `member` field unforgeable: the invite
+ * and key machinery maintains this list, not rows the app can write.
+ *
+ * Names are best-effort. A member's display name lives in their account profile, which is a
+ * separate CoValue that may not be local yet on a device that has only just joined — so a name that
+ * has not arrived reads as `undefined` and the caller shows the id. Blocking the whole app on
+ * fetching every peer's profile would be a worse trade: you can settle up with someone whose
+ * display name has not synced, but not with an app that will not open.
+ */
+export async function spaceMembers(
+  handle: JazzStoreHandle,
+): Promise<Array<{ id: string; name?: string; role: "admin" | "writer" | "reader" }>> {
+  const group = handle.group as {
+    getMemberKeys(): string[];
+    roleOf(id: string): string | undefined;
+  } | null;
+  if (!group?.getMemberKeys) return [];
+
+  const node = handle.node as { load(id: string): Promise<unknown> };
+  const out: Array<{ id: string; name?: string; role: "admin" | "writer" | "reader" }> = [];
+
+  for (const key of group.getMemberKeys()) {
+    // Member keys include non-account agents (e.g. the relay's server agent). Only accounts are
+    // people, and listing a relay as a housemate would be a memorable bug.
+    if (!key.startsWith("co_")) continue;
+    const role = group.roleOf(key);
+    if (role !== "admin" && role !== "writer" && role !== "reader") continue;
+
+    let name: string | undefined;
+    try {
+      const account = (await node.load(key)) as { get?(k: string): unknown } | "unavailable";
+      if (account && account !== "unavailable") {
+        const profileId = account.get?.("profile");
+        if (typeof profileId === "string") {
+          const profile = (await node.load(profileId)) as { get?(k: string): unknown } | "unavailable";
+          if (profile && profile !== "unavailable") {
+            const n = profile.get?.("name");
+            if (typeof n === "string" && n) name = n;
+          }
+        }
+      }
+    } catch {
+      // A profile that will not load is not a reason to fail; the id still identifies the person.
+    }
+    out.push(name ? { id: key, name, role } : { id: key, role });
+  }
+  return out;
+}
+
+/** This device's own role in an app's space. */
+export function myRole(handle: JazzStoreHandle): "admin" | "writer" | "reader" | undefined {
+  const group = handle.group as { myRole(): string | undefined } | null;
+  const role = group?.myRole?.();
+  return role === "admin" || role === "writer" || role === "reader" ? role : undefined;
+}
