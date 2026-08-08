@@ -50,16 +50,38 @@ function makeCamera(): CameraCap | null {
   };
 }
 
+/**
+ * How long we are willing to wait for a fix, in total.
+ *
+ * `getCurrentPosition`'s own `timeout` only starts once permission has been GRANTED — while the
+ * browser is showing its permission prompt the clock is not running. So a prompt the user never
+ * answers (or one a headless browser never shows) leaves the promise pending forever, and any caller
+ * that put itself in a "locating…" state stays there for good. This is the outer bound that makes
+ * the promise always settle.
+ */
+const GEO_TIMEOUT_MS = 12_000;
+
 function makeGeo(): GeoCap | null {
   const g = globalThis.navigator;
   if (!g?.geolocation) return null;
   return {
     current: () =>
       new Promise<Geo>((resolve, reject) => {
+        let settled = false;
+        const done = (fn: () => void): void => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          fn();
+        };
+        const timer = setTimeout(
+          () => done(() => reject(new Error("Timed out waiting for your location — is location permission allowed?"))),
+          GEO_TIMEOUT_MS,
+        );
         g.geolocation.getCurrentPosition(
-          (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-          (err) => reject(new Error(err.message)),
-          { enableHighAccuracy: true, timeout: 10_000 },
+          (p) => done(() => resolve({ lat: p.coords.latitude, lng: p.coords.longitude })),
+          (err) => done(() => reject(new Error(err.message || "Could not get your location"))),
+          { enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS },
         );
       }),
   };
