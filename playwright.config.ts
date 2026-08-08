@@ -23,6 +23,17 @@ export default defineConfig({
 
   webServer: [
     {
+      // The sync relay. Without it the sync specs exercise a local CRDT store and nothing else —
+      // two peers converging is the actual claim, and that needs a relay to converge THROUGH.
+      // `--in-memory` needs no native build and a test relay has nothing worth persisting.
+      command: "pnpm jazz-run sync --port 4201 --in-memory",
+      // `port`, not `url`: a websocket-only server never answers an HTTP GET, so a `url` probe
+      // waits until the whole run times out. `port` just checks something is listening.
+      port: 4201,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
       command: shellVite("", TRUSTED_PORT),
       url: `http://localhost:${TRUSTED_PORT}`,
       reuseExistingServer: !process.env.CI,

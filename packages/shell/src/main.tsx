@@ -390,6 +390,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     <App
       navHost={navHost}
       picker={picker}
+      sync={saved.sync}
       runtime={composed!.runtime}
       provenance={provenance}
       toaster={toaster}

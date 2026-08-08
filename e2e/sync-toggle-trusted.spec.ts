@@ -63,7 +63,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test.fixme("sync can be turned on, and the app's data comes with it", async ({ page }) => {
+test("sync can be turned on, and the app's data comes with it", async ({ page }) => {
 
   await page.goto("/?user=sync-target");
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
@@ -95,7 +95,7 @@ test.fixme("sync can be turned on, and the app's data comes with it", async ({ p
   await expect(page.locator(".k-list-row", { hasText: "Before sync" })).toBeVisible({ timeout: 30_000 });
 });
 
-test.fixme("a record added AFTER sync is on survives an immediate reload", async ({ page }) => {
+test("a record added AFTER sync is on survives an immediate reload", async ({ page }) => {
 
   await page.goto("/?user=sync-target");
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
