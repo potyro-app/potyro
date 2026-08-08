@@ -253,7 +253,8 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   // `shellDialogs` renders through a mounted host; at this point in boot nothing is on screen yet,
   // so the prompt would resolve into a void. Mount the dialog host (and a line of context, so the
   // page is not blank behind it) before asking.
-  const custom = usesCustomViews(invite.source);
+  // Modern links state this outright; legacy ones still carry the source to inspect.
+  const custom = invite.custom ?? (invite.source ? usesCustomViews(invite.source) : false);
   mount(
     root,
     <div className="k-joining">
