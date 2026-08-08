@@ -126,14 +126,36 @@ just data any writer can forge. `createdBy` has to be the verifiable one (see th
 
 ### D2a — Multi-device is a **passphrase**, never a server
 
-A second device is linked by transferring the account secret as BIP39 words:
+A second device is linked by transferring a **32-byte secret seed** as BIP39 words:
 `getCurrentAccountPassphrase()` on the old device, `logIn(passphrase)` on the new one — both
-already in `jazz-tools`. Spaces reappear on their own, because membership is keyed on the
-account. No server is involved at any point, and later transports (a QR handoff over the LAN)
-are a UI change over the same string, not an architectural one.
+already in `jazz-tools`. Spaces reappear on their own, because membership is keyed on the account.
 
-Because the passphrase is *derived from the secret already held*, there is **no signup
-ceremony and no migration**: an account created silently months ago can be exported as words
+Two things were checked against the implementation rather than assumed, and both changed the
+design:
+
+1. **The account must be created FROM a seed, or it can never produce a passphrase.**
+   cojson defaults `initialAgentSecret` to `newRandomAgentSecret()`, which has no seed behind it,
+   and `getCurrentAccountPassphrase` recovers the words from a stored seed. An account created the
+   default way is therefore unlinkable **forever** — you cannot invent the seed of an existing key,
+   so no migration can rescue it. `createJazzStore` now derives from an explicit
+   `newRandomSecretSeed()` and keeps it (`karta:jazz:accountSeed`), pinned by
+   `jazz-account-seed.test.ts`. Accounts created before this change cannot be linked; sync is
+   unreleased, so the blast radius is development data only.
+
+2. **Linking is not server-free, and the earlier draft of this section was wrong to say so.**
+   The account *id* is derived locally — `idforHeader(accountHeaderForInitialAgentSecret(...))` —
+   so the words alone identify you with no lookup. But the new device still has to *load the
+   account CoValue*, and against empty storage with no peer that is the same
+   `Account unavailable from all peers` failure that forced the device-global database. So linking
+   needs the account to arrive from somewhere: the relay today, a direct LAN/QR transport later.
+
+   This is a weaker claim but still the right one: there is no **identity** server and no signup.
+   Linking rides the same relay the user is already syncing through, which only ever sees
+   ciphertext. It is honest to say linking requires a transport, and dishonest to imply the words
+   are sufficient on a device that has never talked to anything.
+
+Because the passphrase is derived from a seed held since creation, there is **no signup ceremony
+and no migration** for accounts created under (1): one made silently months ago exports as words
 the first time anyone asks.
 
 **When the words are surfaced** is a product decision with a correctness argument behind it:
