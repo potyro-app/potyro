@@ -263,6 +263,18 @@ const stepsView = z.object({
   onFinish: z.string().optional(),
 });
 
+// `rows` is a function, so it is typed rather than validated (CLAUDE.md rule 4) — but its PRESENCE
+// is required, because an aggregate page without a fold has nothing to show and would render an
+// empty screen that looks like a data problem rather than a missing declaration.
+const aggregateView = z.object({
+  type: z.literal("aggregate"),
+  entity: z.string(),
+  param: z.string().optional(),
+  rows: zFn,
+  title: z.string().optional(),
+  emptyText: z.string().optional(),
+});
+
 const customView = z.object({
   type: z.literal("custom"),
   entity: z.string(),
@@ -290,6 +302,7 @@ const viewSchema = z.discriminatedUnion("type", [
   calendarView.strict(),
   mapView.strict(),
   stepsView.strict(),
+  aggregateView.strict(),
   customView.strict(),
 ]);
 

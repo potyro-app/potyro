@@ -68,6 +68,8 @@ export type {
   SummaryValue,
   SummaryOp,
   StepsView,
+  AggregateView,
+  AggregateRow,
   CustomView,
   ListDisplay,
   DetailSection,

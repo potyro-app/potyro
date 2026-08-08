@@ -196,12 +196,40 @@ which is fine at personal scale.
 It sits on the **page**, not the view: one schema field and one component that works above any view
 type, rather than the same option repeated across eight.
 
+### `aggregate` view — a screen folded out of the whole set
+
+```ts
+{
+  type: "aggregate",
+  entity: "expense",
+  title: "Who owes whom",
+  rows: (rows, ctx) => AggregateRow[],   // { label, value?, detail?, tone?, group? }
+}
+```
+
+`summary` (above) answers "one number over many records". This answers "**a table** derived from many
+records" — who owes whom, what is still to buy, hours per project. Neither is per-record, so neither
+belongs in `computed`.
+
+The fold is ordinary TypeScript with no restrictions; what makes it declarative is that it returns
+**display-ready data** rather than markup. That is not a stylistic choice: value-returning functions
+cross the isolate bridge natively, so an `aggregate` screen renders identically for a trusted app and
+for one a friend shared with you. The same screen written as a `custom` view renders **blank** when
+untrusted — which is why this view type exists (KA-24, `docs/05`).
+
+Rows sharing a consecutive `group` render under one heading, so "balances" and "settle up" are one
+view rather than two pages. `tone` colours a value, but the sign always appears in the text too — the
+screen has to be readable in monochrome and to a screen reader.
+
 ### `custom` view — the no-ceiling escape hatch
 
 `{ type: "custom", render: (props: ViewProps) => JSX }`. The app ships a real React component
 with full `ctx` access via `props.runtime`. This is the ultimate "fully control the app":
 when the built-ins don't fit, write the screen yourself. Built-ins exist only to save you from
 writing list/table/etc. by hand.
+
+**Reach for `aggregate` first when the screen is a derived table.** A custom view does not render for
+an untrusted app, so an app built around one is an app that cannot usefully be shared.
 
 ## Reminders (functions)
 

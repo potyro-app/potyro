@@ -86,6 +86,14 @@ export class DirectLoadedApp implements LoadedApp {
     return (await spec.value(rows, ctx as never)) as Value;
   }
 
+  async callAggregate(pageId: string, rows: Resolved[], ctx: unknown): Promise<Value> {
+    const page = this.definition.pages.find((p) => p.id === pageId);
+    const view = page?.view;
+    if (!view || view.type !== "aggregate") throw new Error(`page ${pageId} is not an aggregate view`);
+    if (typeof view.rows !== "function") throw new Error(`aggregate ${pageId} declares no rows function`);
+    return (await view.rows(rows, ctx as never)) as unknown as Value;
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: unknown): Promise<Date | null> {
     const rem = (this.definition.reminders ?? []).find((r) => r.id === id);
     if (!rem) throw new Error(`reminder ${id} not found`);

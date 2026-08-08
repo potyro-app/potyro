@@ -157,6 +157,57 @@ export interface StepsView {
   onFinish?: string;
 }
 
+/**
+ * One row of a derived table — a balance, a settle-up transfer, a remaining quantity.
+ *
+ * Deliberately display-ready plain data, not markup. That is the whole design of the aggregate view
+ * (KA-24): the isolate bridge is a single string-in/string-out JSON function, so a *value*-returning
+ * function crosses it natively, exactly as `computed`/`filter`/`summary` already do. A React
+ * component would need a serializable-VDOM and event-callback protocol that does not exist — so a
+ * declarative aggregate runs with the architecture's grain, and a custom view runs against it.
+ */
+export interface AggregateRow {
+  /** Stable identity for the row. Falls back to `label` when omitted. */
+  id?: string;
+  /** The row's subject — "Ana → Bruno", "Milk". */
+  label: string;
+  /** The number or amount, rendered at the end of the row. Pre-formatted if you want it exact. */
+  value?: string | number;
+  /** A quieter second line. */
+  detail?: string;
+  /**
+   * Semantic colouring — "you are owed" vs "you owe". Colour is never the only signal: the value
+   * text carries the sign too, so this stays readable in monochrome and to a screen reader.
+   */
+  tone?: "positive" | "negative" | "neutral";
+  /** Optional section heading; consecutive rows sharing one are grouped under it. */
+  group?: string;
+}
+
+/**
+ * A screen computed from the WHOLE set rather than from each record (KA-24).
+ *
+ * The gap this closes: `computed` is per-record and every other built-in renders rows, so "who owes
+ * whom" and "what's still to buy" — the *main screen* of most shared apps — had nowhere to live but
+ * a custom view. Custom views are trusted-only, so a shared app's whole point rendered blank for
+ * precisely the people sharing exists to serve.
+ *
+ * `rows` receives the page's filtered, resolved rows and returns display-ready rows. It is ordinary
+ * TypeScript — the fold, the rounding, the debt simplification — so this is not a retreat into a
+ * DSL; only the *rendering* is declarative.
+ */
+export interface AggregateView {
+  type: "aggregate";
+  entity: string;
+  param?: string;
+  /** Fold the page's rows into what should be displayed. */
+  rows: (rows: Resolved[], ctx: Ctx) => AggregateRow[] | Promise<AggregateRow[]>;
+  /** Heading above the derived table. */
+  title?: string;
+  /** Shown when the fold returns nothing — "Nobody owes anybody." */
+  emptyText?: string;
+}
+
 export interface CustomView {
   type: "custom";
   entity: string;
@@ -191,6 +242,7 @@ export type View =
   | CalendarView
   | MapView
   | StepsView
+  | AggregateView
   | CustomView;
 
 export const VIEW_TYPES = [
@@ -201,6 +253,7 @@ export const VIEW_TYPES = [
   "calendar",
   "map",
   "steps",
+  "aggregate",
   "custom",
 ] as const;
 

@@ -136,6 +136,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             result = await spec.value(p.rows || [], ctx);
             break;
           }
+          case "aggregate": {
+            var av = findView(app, p.pageId);
+            if (!av || av.type !== "aggregate" || typeof av.rows !== "function") throw new Error("page " + p.pageId + " is not an aggregate view");
+            result = await av.rows(p.rows || [], ctx);
+            break;
+          }
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }
           default: return __serialize({ ok:false, error:"unknown kind " + p.kind });
         }
