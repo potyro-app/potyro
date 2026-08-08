@@ -13,7 +13,7 @@
 
 import { createSpaceInvite, joinSpace, openJazzStore } from "@karta/store";
 import { syncRelayUrl } from "./open-store.js";
-import { getUserApp, listUserApps, saveUserApp, setUserAppSync } from "./user-apps.js";
+import { getUserApp, listUserApps, saveUserApp, setUserAppSync, setUserAppTrusted } from "./user-apps.js";
 
 interface InvitePayload {
   appId: string;
@@ -57,11 +57,22 @@ export function pendingInvite(): InvitePayload | null {
   }
 }
 
+/** Does this app render any of its screens with its own code? Those need trust to display. */
+export function usesCustomViews(source: string): boolean {
+  return /type:\s*["']custom["']/.test(source);
+}
+
 /**
  * Accept an invite: save the app (untrusted — it came from someone else), join the space, and
  * return the local app id to open.
+ *
+ * `trust` is the answer to a prompt the CALLER shows before this runs. Deciding up front is the
+ * point: an app whose screens are custom code opened untrusted shows nothing at all, so the old
+ * flow dropped people into an empty app and asked them to find the trust control afterwards.
+ * Asking first is better UX and a better consent moment — it is asked while the user is deciding
+ * whether to accept a stranger's app, which is when the question actually means something.
  */
-export async function acceptInvite(payload: InvitePayload): Promise<string> {
+export async function acceptInvite(payload: InvitePayload, trust = false): Promise<string> {
   const existing = listUserApps().find((a) => a.id === payload.appId);
   const saved = await saveUserApp(
     {
@@ -77,5 +88,8 @@ export async function acceptInvite(payload: InvitePayload): Promise<string> {
 
   await joinSpace(`user:${saved.id}`, payload, { relay: syncRelayUrl() });
   setUserAppSync(saved.id, true, new Date().toISOString());
+  // Promotion stays an explicit, recorded act (CLAUDE.md rule 3) — it is just asked at a moment
+  // where the user has the context to answer, instead of after a blank screen.
+  if (trust) setUserAppTrusted(saved.id, true, new Date().toISOString());
   return saved.id;
 }
