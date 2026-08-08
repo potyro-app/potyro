@@ -222,7 +222,16 @@ class IsolateLoadedApp implements LoadedApp {
   }
 
   private base(ctx: Ctx): Record<string, unknown> {
-    return { params: ctx.params, nowIso: ctx.now().toISOString(), capsAvailable: this.capsAvailable(ctx) };
+    // Identity crosses as plain data (KA-18). `me` is a value, not a handle, so an isolate cannot
+    // reach back through it; `space.invite()` is deliberately NOT sent, because minting an invite is
+    // host-mediated UI — untrusted code that could call it could hand the space away silently.
+    return {
+      params: ctx.params,
+      nowIso: ctx.now().toISOString(),
+      capsAvailable: this.capsAvailable(ctx),
+      me: ctx.me,
+      space: ctx.space ? { id: ctx.space.id, role: ctx.space.role, members: ctx.space.members } : undefined,
+    };
   }
 
   async callComputed(entity: string, key: string, record: Resolved, ctx: Ctx): Promise<Value> {

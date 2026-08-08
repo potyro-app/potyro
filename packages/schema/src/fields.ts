@@ -11,6 +11,7 @@ import type {
   GeoField,
   ListField,
   MediaField,
+  MemberField,
   NumberField,
   RelationField,
   RichTextField,
@@ -34,5 +35,7 @@ export const f = {
   geo: (o: Omit1<GeoField, "type"> = {}): GeoField => ({ type: "geo", ...o }),
   media: (o: Omit1<MediaField, "type"> = {}): MediaField => ({ type: "media", ...o }),
   relation: (to: string, o: Omit1<RelationField, "type" | "to"> = {}): RelationField => ({ type: "relation", to, ...o }),
+  /** A person in this app's space (KA-19). No target entity — membership is space metadata. */
+  member: (o: Omit1<MemberField, "type"> = {}): MemberField => ({ type: "member", ...o }),
   list: (of: Record<string, Field>, o: Omit1<ListField, "type" | "of"> = {}): ListField => ({ type: "list", of, ...o }),
 } as const;

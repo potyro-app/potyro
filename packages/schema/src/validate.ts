@@ -68,6 +68,13 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     many: z.boolean().optional(),
     ...common,
   });
+  // No `to`: a member is a person in this app's SPACE, not a row in an entity the app maintains.
+  // That is the whole reason it is not a relation (KA-19).
+  const member = z.object({
+    type: z.literal("member"),
+    many: z.boolean().optional(),
+    ...common,
+  });
   // `of` is a flat map of NAMED sub-fields. Two wrong shapes are common enough — and produce error
   // messages misleading enough — to be worth naming explicitly: without this, `of: "boolean"` reports
   // `of.type: Expected object, received string` and `of: { type: "object", fields }` reports
@@ -120,6 +127,7 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     geo,
     media,
     relation,
+    member,
     list,
   ]);
 });
