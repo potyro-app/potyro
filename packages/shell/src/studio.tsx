@@ -30,6 +30,9 @@ import { PickerHost } from "./picker.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
+import { History } from "./history.js";
+import { CodeEditor } from "./code-editor.js";
+import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
 import { Toaster } from "./toaster.js";
 
@@ -70,6 +73,10 @@ interface Preview {
 
 export function Studio({ onClose }: { onClose: () => void }) {
   const [source, setSource] = useState(STARTER);
+  // Every generate/modify in the Studio is a real step in how the app came to be, but until Save
+  // there is no app id to hang history on — so the steps were simply dropped and only the final
+  // source survived. They accumulate here and are flushed into the app's history on save, in order.
+  const [drafts, setDrafts] = useState<Array<{ source: string; note?: string }>>([]);
   const [tab, setTab] = useState<"preview" | "source">("preview");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +154,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const withGen = async (label: string, run: () => Promise<string>, autoRepair = true): Promise<void> => {
+  const withGen = async (label: string, run: () => Promise<string>, autoRepair = true, note?: string): Promise<void> => {
     setGenBusy(true);
     setError(null);
     try {
@@ -161,6 +168,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
         const fixed = await repairSource(next, issues);
         setSource(fixed);
         issues = await buildPreview(fixed, currentId);
+        setDrafts((d) => [...d, { source: fixed, note: note ?? label }]);
+      } else {
+        setDrafts((d) => [...d, { source: next, note: note ?? label }]);
       }
     } catch (e) {
       setError(`${label} failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -182,7 +192,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
 
   const generateCli = (): Promise<void> => {
     setEngine("cli");
-    return withGen("claude -p", () => runCli(buildUserMessage({ id: "studio", description })));
+    return withGen("claude -p", () => runCli(buildUserMessage({ id: "studio", description })), true, description.trim() || undefined);
   };
 
   // 2) On-device via WebLLM (WebGPU) — offline once the model is cached.
@@ -190,7 +200,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
     createWebLLMBackend({ model, initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…") });
   const generateEdge = (): Promise<void> => {
     setEngine("edge");
-    return withGen("On-device", async () => (await edgeBackend()).generate({ id: "studio", description }));
+    return withGen("On-device", async () => (await edgeBackend()).generate({ id: "studio", description }), true, description.trim() || undefined);
   };
 
   // 2b) Chrome built-in AI (Gemini Nano) — on-device, no download.
@@ -205,7 +215,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // 3) Cloud with the user's own API key (in-memory only).
   const generateCloud = (): Promise<void> => {
     setEngine("cloud");
-    return withGen("Cloud", async () => (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).generate({ id: "studio", description }));
+    return withGen("Cloud", async () => (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).generate({ id: "studio", description }), true, description.trim() || undefined);
   };
 
   // Repair a source given a list of problems (validator issues or an error), via the current engine.
@@ -231,7 +241,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
       if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instruction, p);
       const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instruction)].join("\n");
       return runCli(prompt);
-    });
+    }, true, instruction);
   };
 
   const fixWithAI = (): Promise<void> => {
@@ -244,12 +254,30 @@ export function Studio({ onClose }: { onClose: () => void }) {
 
   // --- My Apps ----------------------------------------------------------------------------------
 
-  const save = (): void => {
+  const save = async (): Promise<void> => {
     // Saving an app the preview already flagged is how invalid apps reached My Apps and only
     // surfaced much later, once validation existed. Confirm rather than block: an author may still
     // want to park work in progress.
-    if (error && !globalThis.confirm(`This app has structure problems:\n\n${error}\n\nSave anyway?`)) return;
-    const record = saveUserApp({ id: currentId ?? undefined, name: appName ?? description, source }, new Date().toISOString());
+    if (error && !(await shellDialogs.confirm(`This app has structure problems:\n\n${error}\n\nSave anyway?`))) return;
+    // The description that produced this source is what makes a version legible later ("add a
+    // 5-star rating"), so it rides along instead of being dropped once the model has answered.
+    // Replay the chain through `saveUserApp` rather than writing history directly: it is the only
+    // path that writes source, so going around it is how an unaudited edit would slip in. Each call
+    // records one version, and consecutive duplicates are dropped (the last draft is usually
+    // identical to the current source).
+    const chain = [...drafts, { source, note: description.trim() || undefined }];
+    const steps = chain.filter((step, i) => i === 0 || step.source !== chain[i - 1]!.source);
+    let id = currentId ?? undefined;
+    let record = null as Awaited<ReturnType<typeof saveUserApp>> | null;
+    for (const step of steps) {
+      record = await saveUserApp(
+        { id, name: appName ?? description, source: step.source, note: step.note },
+        new Date().toISOString(),
+      );
+      id = record.id;
+    }
+    if (!record) return;
+    setDrafts([]);
     setCurrentId(record.id);
     setSavedApps(listUserApps());
     preview?.toaster.push(`Saved "${record.name}" to My Apps`);
@@ -264,10 +292,23 @@ export function Studio({ onClose }: { onClose: () => void }) {
     void buildPreview(app.source, app.id);
   };
 
-  const deleteSaved = (app: UserApp): void => {
-    removeUserApp(app.id);
+  const deleteSaved = async (app: UserApp): Promise<void> => {
+    await removeUserApp(app.id);
     setSavedApps(listUserApps());
     if (currentId === app.id) setCurrentId(null);
+  };
+
+  // Reviewing / rolling back a saved app's versions from the Studio. A restore lands in the editor
+  // and re-runs the preview, so you can keep working from the version you just brought back.
+  const [historyFor, setHistoryFor] = useState<UserApp | null>(null);
+  const onRestored = (restored: string): void => {
+    const app = historyFor;
+    setHistoryFor(null);
+    if (!app) return;
+    setSource(restored);
+    setCurrentId(app.id);
+    setSavedApps(listUserApps());
+    void buildPreview(restored, app.id);
   };
 
   const newDraft = (): void => {
@@ -364,10 +405,20 @@ export function Studio({ onClose }: { onClose: () => void }) {
           {progress ? <p className="k-muted k-studio-progress">{progress}</p> : null}
 
           <div className="k-studio-savebar">
-            <button type="button" className="k-add k-primary-action" disabled={busy} onClick={save}>
+            <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void save()}>
               {currentId ? "Save changes" : "Save to My Apps"}
             </button>
             <button type="button" className="k-add" onClick={newDraft}>New draft</button>
+            {currentId ? (
+              <button
+                type="button"
+                className="k-add"
+                title="History — review and roll back saved changes"
+                onClick={() => setHistoryFor(savedApps.find((a) => a.id === currentId) ?? null)}
+              >
+                ⟲ History
+              </button>
+            ) : null}
           </div>
 
           <h4 className="k-myapps-title">My Apps</h4>
@@ -380,7 +431,8 @@ export function Studio({ onClose }: { onClose: () => void }) {
                   <button type="button" className="k-myapp-open" onClick={() => openSaved(a)}>
                     {a.name}
                   </button>
-                  <button type="button" className="k-myapp-del" aria-label={`Delete ${a.name}`} onClick={() => deleteSaved(a)}>✕</button>
+                  <button type="button" className="k-myapp-del" aria-label={`History of ${a.name}`} title="History" onClick={() => setHistoryFor(a)}>⟲</button>
+                  <button type="button" className="k-myapp-del" aria-label={`Delete ${a.name}`} onClick={() => void deleteSaved(a)}>✕</button>
                 </li>
               ))}
             </ul>
@@ -419,16 +471,14 @@ export function Studio({ onClose }: { onClose: () => void }) {
               ) : null}
             </div>
           ) : (
-            <textarea
-              className="k-input k-studio-source"
-              aria-label="App source"
-              value={source}
-              spellCheck={false}
-              onChange={(e) => setSource(e.target.value)}
-            />
+            <CodeEditor className="k-studio-source" label="App source" value={source} onChange={setSource} />
           )}
         </section>
       </div>
+
+      {historyFor ? (
+        <History appId={historyFor.id} appName={historyFor.name} onClose={() => setHistoryFor(null)} onRestored={onRestored} />
+      ) : null}
     </div>
   );
 }
