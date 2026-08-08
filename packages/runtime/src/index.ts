@@ -3,3 +3,6 @@ export { createRuntime, type KartaRuntime } from "./create-runtime.js";
 export { RuntimeCore, type RuntimeDeps, FN_SENTINEL } from "./core.js";
 export { usePageQuery, useEntityQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 export { asyncSort } from "./async-sort.js";
+
+export { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
+export type { Unsubscribe } from "./watch.js";
