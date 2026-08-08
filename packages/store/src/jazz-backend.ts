@@ -41,6 +41,20 @@ export interface JazzKeyStore {
 
 const ACCOUNT_ID = "karta:jazz:accountID";
 const ACCOUNT_SECRET = "karta:jazz:accountSecret";
+/**
+ * The 32-byte seed the account secret is derived from, hex-encoded.
+ *
+ * Stored because it — not the account secret — is what becomes the BIP39 recovery passphrase that
+ * links a second device (ADR D2a). cojson's `withNewlyCreatedAccount` defaults to
+ * `newRandomAgentSecret()`, which has no seed behind it, so an account created that way can NEVER
+ * produce a passphrase: `getCurrentAccountPassphrase` needs the seed and there is none to find.
+ * Deriving from an explicit seed costs nothing and is the difference between multi-device being
+ * possible later and being impossible for every account created before someone noticed.
+ */
+const ACCOUNT_SEED = "karta:jazz:accountSeed";
+
+const toHex = (b: Uint8Array): string => [...b].map((n) => n.toString(16).padStart(2, "0")).join("");
+const fromHex = (s: string): Uint8Array => new Uint8Array(s.match(/../g)?.map((h) => parseInt(h, 16)) ?? []);
 const groupKey = (appId: string) => `karta:jazz:group:${appId}`;
 const rootKey = (appId: string) => `karta:jazz:root:${appId}`;
 
@@ -151,17 +165,26 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
       onLocalStoreDurabilityChange: durability.listener as never,
     });
   } else {
+    // Derive from an explicit seed, and keep the seed — see ACCOUNT_SEED above. Without this the
+    // account has no recoverable passphrase and the device can never be linked to another.
+    const c = crypto as unknown as {
+      newRandomSecretSeed(): Uint8Array;
+      agentSecretFromSecretSeed(seed: Uint8Array): unknown;
+    };
+    const seed = c.newRandomSecretSeed();
     const created = await LocalNode.withNewlyCreatedAccount({
       creationProps: { name: opts.profileName ?? "Me" },
       crypto,
       storage,
       peers,
+      initialAgentSecret: c.agentSecretFromSecretSeed(seed) as never,
       onLocalStoreDurabilityChange: durability.listener as never,
     });
     node = created.node;
     accountID = created.accountID as unknown as string;
     keys.set(ACCOUNT_ID, accountID);
     keys.set(ACCOUNT_SECRET, created.accountSecret as unknown as string);
+    keys.set(ACCOUNT_SEED, toHex(seed));
   }
 
   // ---- 2. the app's space --------------------------------------------------------------------
