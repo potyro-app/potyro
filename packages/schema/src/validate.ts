@@ -220,6 +220,19 @@ const calendarView = z.object({
   filter: zFn.optional(),
 });
 
+/**
+ * How a map frames itself when opened.
+ *
+ * `"remember"` (the default) reopens where the user last left it, framing the markers only on a
+ * first-ever open. `"fit"` always frames the current markers. A literal `{ center, zoom }` opens at a
+ * fixed spot — for a map that is about one place, not about wherever you happen to be.
+ */
+const cameraSchema = z.union([
+  z.literal("remember"),
+  z.literal("fit"),
+  z.object({ center: z.tuple([z.number(), z.number()]), zoom: z.number() }),
+]);
+
 const mapView = z.object({
   type: z.literal("map"),
   entity: z.string(),
@@ -229,6 +242,7 @@ const mapView = z.object({
   filter: zFn.optional(),
   filters: z.array(filterChipSchema).optional(),
   onOpen: onOpenSchema.optional(),
+  camera: cameraSchema.optional(),
 });
 
 const stepsView = z.object({
@@ -237,33 +251,119 @@ const stepsView = z.object({
   param: z.string().optional(),
   list: z.string(),
   text: zBinding.optional(),
+  /** Action key to run once every step is ticked — without it, finishing does nothing. */
+  onFinish: z.string().optional(),
 });
 
 const customView = z.object({
   type: z.literal("custom"),
   entity: z.string(),
   param: z.string().optional(),
-  render: zFn,
+  // Exactly one of these is required; the check lives on `pageSchema` because a discriminated union
+  // only accepts plain objects, and `.refine()` would turn this into a ZodEffects.
+  render: zFn.optional(),
+  mount: zFn.optional(),
   onFinish: z.string().optional(),
 });
 
+/**
+ * Views are STRICT: an unknown key is an error, not something quietly ignored.
+ *
+ * This is what makes VIEW_FIELDS honest. A silently-swallowed `zoomLevel: 12` is the exact shape of
+ * the failure this boundary exists to stop — a generated view field that looks like it does
+ * something, validates, and does nothing. Rejecting it turns an invented field into feedback the
+ * agent actually receives (Edit mode's repair round replays validation errors).
+ */
 const viewSchema = z.discriminatedUnion("type", [
-  listView,
-  galleryView,
-  tableView,
-  detailView,
-  calendarView,
-  mapView,
-  stepsView,
-  customView,
+  listView.strict(),
+  galleryView.strict(),
+  tableView.strict(),
+  detailView.strict(),
+  calendarView.strict(),
+  mapView.strict(),
+  stepsView.strict(),
+  customView.strict(),
 ]);
 
-const pageSchema = z.object({
-  id: z.string().min(1),
-  title: z.string(),
-  hidden: z.boolean().optional(),
-  view: viewSchema,
-});
+/**
+ * The declarable surface of each built-in view — what an app module can actually *say* about a view,
+ * derived from the schemas above rather than written out a second time.
+ *
+ * This is the boundary between "fixable by editing the app" and "the host's behaviour". The
+ * Edit-mode agent is handed the entry for the view it was pointed at, so it can tell the user a
+ * request is out of reach instead of inventing an app-level change that cannot work. Deriving it
+ * here is the point: a hand-maintained copy would drift from what is actually enforced, and the
+ * agent would confidently reason from a surface that no longer exists.
+ *
+ * Optional fields are suffixed `?`, matching how they read in the docs.
+ */
+/**
+ * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
+ * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
+ */
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "hidden?", "summary?"]);
+
+export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
+  Object.fromEntries(
+    viewSchema.options.map((option) => {
+      const shape = option.shape as Record<string, z.ZodTypeAny>;
+      const kind = (shape.type as z.ZodLiteral<string>).value;
+      const fields = Object.keys(shape)
+        .filter((k) => k !== "type")
+        .map((k) => (shape[k]!.isOptional() ? `${k}?` : k));
+      return [kind, Object.freeze(fields)];
+    }),
+  ),
+);
+
+/**
+ * One figure shown above a page's view — a monthly total, a head count, a running average.
+ *
+ * Two forms, mirroring how `filters` (declarative chips) and `filter` (a function) already coexist:
+ * `{ field, op }` covers the common case and is the only form the structural editor can edit and the
+ * only one that ports to another framework; `value` is a function for everything else. `op: "count"`
+ * needs no field — it counts rows.
+ */
+const summaryValueSchema = z
+  .object({
+    label: z.string().min(1),
+    field: z.string().optional(),
+    op: z.enum(["sum", "count", "avg", "max"]).optional(),
+    value: zFn.optional(),
+  })
+  .strict()
+  .refine((v) => (v.value === undefined) !== (v.op === undefined), {
+    message: 'a summary needs exactly one of `op` or `value: (rows, ctx) => …`',
+  })
+  .refine((v) => v.op === undefined || v.op === "count" || typeof v.field === "string", {
+    message: 'a summary using "sum", "avg" or "max" needs a `field` to aggregate',
+  })
+  .refine((v) => v.value === undefined || v.field === undefined, {
+    message: "a summary with a `value` function shouldn't also name a `field`",
+  });
+
+// Strict for the same reason views are: a misspelled `summaries:` that is silently ignored looks
+// exactly like a feature that doesn't work.
+const pageSchema = z
+  .object({
+    id: z.string().min(1),
+    title: z.string(),
+    hidden: z.boolean().optional(),
+    summary: z.array(summaryValueSchema).optional(),
+    view: viewSchema,
+  })
+  .strict()
+  .superRefine((page, ctx) => {
+    const view = page.view as { type?: string; render?: unknown; mount?: unknown };
+    if (view.type !== "custom") return;
+    if ((view.render === undefined) === (view.mount === undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["view"],
+        message: "a custom view needs exactly one of `render` (a React element) or `mount` (el, props) => cleanup",
+      });
+    }
+  });
 
 const reminderSchema = z.object({
   id: z.string().min(1),

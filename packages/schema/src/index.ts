@@ -2,7 +2,7 @@
 
 export { defineApp, isKartaApp } from "./defineApp.js";
 export { f } from "./fields.js";
-export { structureSchema, checkReferences, ValidationError } from "./validate.js";
+export { structureSchema, checkReferences, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- shared value types ----
 export type { Id, Value, KartaRecord, Resolved, MediaRef, Geo } from "./types/core.js";
@@ -59,6 +59,9 @@ export type {
   DetailView,
   CalendarView,
   MapView,
+  MapCamera,
+  SummaryValue,
+  SummaryOp,
   StepsView,
   CustomView,
   ListDisplay,
@@ -83,7 +86,7 @@ export type {
 export { VIEW_TYPES } from "./types/app.js";
 
 // ---- runtime contracts (implemented by @karta/runtime, consumed by @karta/views) ----
-export type { Runtime, ViewProps, CustomViewComponent } from "./types/runtime.js";
+export type { Runtime, ViewProps, CustomViewComponent, CustomViewMount, Unsubscribe } from "./types/runtime.js";
 
 // ---- opt-in precise-typing helpers (author may supply an explicit entity shape) ----
 export type {
