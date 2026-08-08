@@ -1,0 +1,133 @@
+// You, and your other devices (KA-16 · ADR 0001 D2a).
+//
+// Three things live here because they are the same subject: your name, the words that ARE your
+// identity, and adopting an identity from another device.
+//
+// ## Why the words are not shown at first run
+//
+// No signup is the product's position, and a "save these 24 words" wall on first launch is a signup
+// ceremony wearing different clothes. Worse, for a solo app it would be a lie: the data lives in
+// local storage on this one device, and the relay has never held a byte of it, so the words restore
+// NOTHING. They start being true the moment sync is turned on — which is when the prompt appears,
+// and where `noteSyncEnabled` is called from.
+//
+// Always reachable here regardless, because the honest version of "we won't nag you" is "and you can
+// find it whenever you want".
+
+import { useState } from "react";
+import { shellDialogs } from "./dialog.js";
+import { peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
+
+/** Set once the user has been offered their words, so the offer is made once and not on every sync. */
+const OFFERED = "karta:identity:offeredBackup";
+
+/**
+ * Offer the recovery words the first time sync is switched on for anything.
+ *
+ * Called from the sync toggle and the share flow — the two doors to "this data now exists somewhere
+ * other than this device". Returns immediately every later time.
+ */
+export async function offerBackupOnFirstSync(open: () => void): Promise<void> {
+  if (globalThis.localStorage?.getItem(OFFERED)) return;
+  globalThis.localStorage?.setItem(OFFERED, new Date().toISOString());
+  const yes = await shellDialogs.confirm(
+    "Your data now lives in more than one place.\n\n" +
+      "A short list of words is the only way back to it if you lose this device — and the only way " +
+      "to use it on another one. Nobody can recover them for you.\n\nShow them now?",
+  );
+  if (yes) open();
+}
+
+export function IdentityPanel({ onClose }: { onClose: () => void }) {
+  const [me, setMe] = useState(() => peekIdentity());
+  const [words, setWords] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const rename = async (): Promise<void> => {
+    const name = await shellDialogs.prompt(
+      "What should people you share with see you as?",
+      { default: me?.name ?? "" },
+    );
+    if (!name?.trim()) return;
+    setMe(renameIdentity(name));
+  };
+
+  const reveal = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      setWords(await recoveryPassphrase());
+    } catch (e) {
+      await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signIn = async (): Promise<void> => {
+    const entered = await shellDialogs.prompt(
+      "Paste the words from your other device.\n\nThis replaces the identity on THIS device — anything " +
+        "stored here under the current one stops being yours to open.",
+    );
+    if (!entered?.trim()) return;
+    setBusy(true);
+    try {
+      await signInWithPassphrase(entered);
+      // A full reload, not a re-render: every open store, space and runtime was built around the old
+      // identity, and rebuilding them in place is far more failure-prone than starting clean.
+      location.reload();
+    } catch (e) {
+      await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="k-modal-scrim" onClick={onClose}>
+      <div className="k-modal k-identity" role="dialog" aria-modal="true" aria-label="You and your devices" onClick={(e) => e.stopPropagation()}>
+        <header className="k-identity-head">
+          <h2>You</h2>
+          <button type="button" className="k-add" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </header>
+
+        <p className="k-identity-name">
+          <strong>{me?.name ?? "Me"}</strong>
+          <button type="button" className="k-add" onClick={() => void rename()}>
+            Rename
+          </button>
+        </p>
+        <p className="k-muted k-identity-id">{me?.id ?? "no identity yet"}</p>
+
+        <section aria-labelledby="k-backup-h">
+          <h3 id="k-backup-h">Add a device</h3>
+          <p className="k-muted">
+            Type these words into Karta on another device to use the same data there. They are the only
+            copy — write them down somewhere safe.
+          </p>
+          {words ? (
+            <>
+              <output className="k-passphrase">{words}</output>
+              <button type="button" className="k-add" onClick={() => void navigator.clipboard?.writeText(words).catch(() => {})}>
+                Copy
+              </button>
+            </>
+          ) : (
+            <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void reveal()}>
+              Show my words
+            </button>
+          )}
+        </section>
+
+        <section aria-labelledby="k-signin-h">
+          <h3 id="k-signin-h">I already use Karta</h3>
+          <p className="k-muted">Bring this device into an identity you already have elsewhere.</p>
+          <button type="button" className="k-add" disabled={busy} onClick={() => void signIn()}>
+            Enter my words
+          </button>
+        </section>
+      </div>
+    </div>
+  );
+}

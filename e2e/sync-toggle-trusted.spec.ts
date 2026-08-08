@@ -42,6 +42,17 @@ export default defineApp({
 });
 `;
 
+/**
+ * Dismiss the "save your recovery words" offer, which appears once per device the first time
+ * anything is synced (ADR D2a). It is real UI on this path, so the specs step through it rather
+ * than suppressing it — `identity-linking-trusted.spec.ts` is where the words themselves are tested.
+ */
+async function declineBackupOffer(page: import("@playwright/test").Page): Promise<void> {
+  const dialog = page.locator(".k-dialog");
+  await expect(dialog).toContainText("more than one place", { timeout: 30_000 });
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+}
+
 /** A SECOND app, for the two-synced-apps-on-one-device case below. */
 const SECOND = STARTER.replace(/sync-target/g, "sync-second").replace("Sync Target", "Sync Second");
 
@@ -86,6 +97,7 @@ test("sync can be turned on, and the app's data comes with it", async ({ page })
   // The result dialog reports what moved. A silent migration is exactly what we do not want.
   await expect(page.locator(".k-dialog")).toContainText("Moved 1 record", { timeout: 30_000 });
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await declineBackupOffer(page);
 
   // THE POINT: reload. The app now opens on JazzStore, and the record must be there — served by
   // cojson out of OPFS, after a genuine page teardown.
@@ -107,6 +119,7 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await expect(page.locator(".k-dialog")).toContainText("Moved", { timeout: 30_000 });
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await declineBackupOffer(page);
 
   await page.goto("/?user=sync-target");
   // Same guard: this note has to be WRITTEN to the CRDT store for the reload below to mean anything.
@@ -139,17 +152,19 @@ test("a SECOND app can be synced on the same device, with no relay", async ({ pa
   // Before any navigation, so it is in place for the first boot.
   await page.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://127.0.0.1:4299"));
 
-  const enableSyncFor = async (name: string): Promise<void> => {
+  const enableSyncFor = async (name: string, first = false): Promise<void> => {
     await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
     await page.getByRole("button", { name: `Turn on sync for ${name}` }).click();
     await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
     await expect(page.locator(".k-dialog")).toContainText("Moved", { timeout: 30_000 });
     await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+    // Offered once per DEVICE, so only the first app through here sees it.
+    if (first) await declineBackupOffer(page);
   };
 
   await page.goto("/?user=sync-target");
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
-  await enableSyncFor("Sync Target");
+  await enableSyncFor("Sync Target", true);
 
   await page.goto("/?user=sync-second");
   await expect(page.locator("h1").first()).toHaveText("Sync Second", { timeout: 30_000 });
