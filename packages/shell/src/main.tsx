@@ -9,6 +9,7 @@ import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, t
 import { openStore } from "./open-store.js";
 import { readOnlyStore } from "./read-only-store.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
+import { getLaunchUrl, onUrlOpen } from "@karta/native";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
 import { maybeCreateNativeCapabilities } from "@karta/native";
 import type { Provenance } from "@karta/host";
@@ -180,6 +181,7 @@ function mount(root: HTMLElement, node: ReactNode): void {
     </StrictMode>,
   );
   registerServiceWorker();
+  registerDeepLinks();
 }
 
 // A built-in example: trusted (direct) by default, or untrusted (isolate) under `dev:sandbox`.
@@ -244,7 +246,9 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
 /** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
 async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
-  const invite = pendingInvite();
+  // Web: the address bar. Device COLD start: the app was launched by the link, so nothing has
+  // listened yet and the URL must be fetched. (Warm starts are handled by the listener below.)
+  const invite = pendingInvite() ?? pendingInvite((await getLaunchUrl()) ?? undefined);
   if (!invite) return null;
 
   // Ask BEFORE opening. A shared app runs sandboxed by default, and a sandboxed app whose screens
@@ -425,6 +429,26 @@ async function boot(): Promise<void> {
 
   if (r.kind === "user") await bootUserApp(r.id, root, toaster, caps);
   else await bootBuiltin(r.id, root, toaster, caps);
+}
+
+/**
+ * A link opening the app while it is ALREADY running (device warm start).
+ *
+ * Reloading onto the invite is deliberate: joining rebuilds the store, the identity and the
+ * runtime, and doing that underneath a mounted app is far more failure-prone than starting clean.
+ */
+let deepLinksRegistered = false;
+
+function registerDeepLinks(): void {
+  // `mount` runs on every route, so without this each navigation would add another listener and a
+  // single incoming link would fire the join path several times over.
+  if (deepLinksRegistered) return;
+  deepLinksRegistered = true;
+  void onUrlOpen((url) => {
+    if (!/[#&]join=/.test(url)) return;
+    const hash = url.slice(url.indexOf("#"));
+    location.replace(`${location.pathname}${hash}`);
+  });
 }
 
 function registerServiceWorker(): void {
