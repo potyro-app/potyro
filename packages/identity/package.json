@@ -1,0 +1,19 @@
+{
+  "name": "@karta/identity",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Device identity (KA-16, ADR 0001 D2 amended): owns the cojson account seed, the cached {id,name}, and passphrase linking (D2a). No network, no database.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@scure/bip39": "^1.6.0",
+    "cojson": "^0.20.19"
+  }
+}
