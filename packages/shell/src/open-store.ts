@@ -48,16 +48,13 @@ export function syncRelayUrl(): string | undefined {
  * Callers use it to say something true instead.
  */
 export function canSync(): boolean {
-  return (
-    typeof navigator !== "undefined" &&
-    !!navigator.storage?.getDirectory &&
-    typeof FileSystemFileHandle !== "undefined" &&
-    "createSyncAccessHandle" in FileSystemFileHandle.prototype
-  );
+  // OPFS is preferred but no longer required: the store falls back to an IndexedDB-backed SQLite.
+  // The previous check demanded `createSyncAccessHandle`, which is worker-only in many Chrome
+  // contexts — so it reported "unsupported" in browsers that could in fact sync perfectly well.
+  return typeof indexedDB !== "undefined";
 }
 
-export const CANNOT_SYNC_MESSAGE =
-  "Sync needs a browser with OPFS storage — Chrome or Edge on desktop. Firefox and Safari can't do it yet.";
+export const CANNOT_SYNC_MESSAGE = "Sync needs IndexedDB, which this browser has disabled or blocked.";
 
 export async function openStore(namespace: string, opts?: OpenStoreOpts): Promise<Store> {
   if (opts?.sync) {

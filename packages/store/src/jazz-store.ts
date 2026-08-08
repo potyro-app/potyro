@@ -103,7 +103,7 @@ export class JazzStore implements Store {
   private readonly node: NodeLike;
   private readonly group: RawGroupLike;
   private readonly initialRootId?: string;
-  private readonly whenDurable?: () => Promise<void>;
+  private whenDurable?: () => Promise<void>;
   private root!: RawMapLike;
   private appId: string | null = null;
   private listeners = new Map<string, Set<() => void>>();
@@ -113,6 +113,12 @@ export class JazzStore implements Store {
     this.group = deps.group;
     this.initialRootId = deps.rootId;
     this.whenDurable = deps.whenDurable;
+  }
+
+  /** Replace the durability hook. The IndexedDB backend needs writes to await its snapshot too,
+   *  and that is only known once the backing store has been chosen. */
+  setWhenDurable(fn: () => Promise<void>): void {
+    this.whenDurable = fn;
   }
 
   /** The root CoValue id. Persist this and pass it back as `rootId` to reopen the same data. */
