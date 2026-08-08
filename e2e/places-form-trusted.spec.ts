@@ -77,6 +77,15 @@ test("a geo field is a map you tap, not two number boxes", async ({ page }) => {
   expect(box, "map canvas has no layout box").not.toBeNull();
   expect(box!.width, "map canvas has zero width").toBeGreaterThan(50);
   expect(box!.height, "map canvas has zero height").toBeGreaterThan(50);
+
+  // ...and the HOLDER must be as wide as the canvas it shows. Checking the canvas alone was not
+  // enough: the holder had a height but no width, so inside an `align-items: flex-start` column it
+  // shrank to 2px and clipped a perfectly well-sized 400px canvas down to a sliver. The canvas
+  // assertions above passed the whole time the map looked like an empty rectangle.
+  const holder = await form.locator(".k-geo-map").boundingBox();
+  expect(holder, "map holder has no layout box").not.toBeNull();
+  expect(holder!.width, "map holder collapsed — the canvas is clipped and the map looks blank")
+    .toBeGreaterThan(box!.width - 8);
   await expect(form.getByText("Tap the map to place a point")).toBeVisible();
   await expect(form.locator(".k-geo-coords")).toHaveCount(0);
 
@@ -139,7 +148,7 @@ test("a blocked tile host degrades to a visible message, not an empty area", asy
 // The map is already on screen — tapping it should start the place THERE, so you fill the form with
 // the location already set. Opening a second map inside the form was both redundant and fragile
 // (a second WebGL context can fail when one map is already rendering).
-test("tapping the map starts a place at that point", async ({ page }) => {
+test("arming placement, then tapping, starts a place at that point", async ({ page }) => {
   await page.goto("/?user=places-form");
   await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
   await page.getByRole("tab", { name: "Map" }).or(page.getByRole("button", { name: "Map" })).first().click();
@@ -149,6 +158,13 @@ test("tapping the map starts a place at that point", async ({ page }) => {
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
 
+  // Placement is explicit now. Unarmed, the map is just a map.
+  await page.mouse.click(box!.x + 30, box!.y + 30);
+  await page.waitForTimeout(600);
+  await expect(page.locator(".k-modal"), "an unarmed tap created a place").toHaveCount(0);
+
+  await page.getByRole("button", { name: /Add .* here/i }).click();
+  await expect(page.getByText(/Tap the map to place/i)).toBeVisible();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
   // The create form opens with the tapped point already in the geo field.
@@ -159,13 +175,15 @@ test("tapping the map starts a place at that point", async ({ page }) => {
 
 // A marker is an existing place: tapping it must show that place, NOT start a new one. The
 // create-on-tap handler receives marker clicks too, so it has to ignore them.
-test("tapping an existing marker shows the place, not a new form", async ({ page }) => {
+test("tapping an existing marker shows which place it is, not a new form", async ({ page }) => {
   await page.goto("/?user=places-form");
   await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
 
-  // Create the place the way a user now does: tap the map, then fill in the name.
+  // Create the place the way a user now does: arm placement, tap the map, then fill in the name.
+  // (Arming is explicit — a bare tap used to create a record, so you could never just look around.)
   const canvas = page.locator(".maplibregl-canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Add .* here/i }).click();
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
@@ -179,9 +197,14 @@ test("tapping an existing marker shows the place, not a new form", async ({ page
   await expect(marker).toBeVisible({ timeout: 30_000 });
 
   await marker.click();
-  // With `onOpen`, a pin opens the record's detail — the popup only ever showed the title binding.
-  await expect(page.getByText("Bar do Zé")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("heading", { name: "Place" })).toBeVisible();
+  // A pin says which place it is and offers a way in, rather than navigating on touch — so you can
+  // look at the map without leaving it.
+  const popup = page.locator(".k-map-popup");
+  await expect(popup).toBeVisible({ timeout: 10_000 });
+  await expect(popup.locator(".k-map-popup-title")).toHaveText("Bar do Zé");
   // …and no create form opened.
   await expect(page.locator(".k-modal")).toHaveCount(0);
+
+  await popup.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("heading", { name: "Place" })).toBeVisible();
 });

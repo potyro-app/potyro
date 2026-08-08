@@ -138,6 +138,64 @@ pages: [
 calendar, `geo` for map, `list` for steps, `columns` for table, `sections` for detail) are as
 before, except **any binding, filter, or sort may be a function** instead of a field key.
 
+Views are validated **strictly**: an unknown key on a view is an error, not something quietly
+ignored. A silently-accepted `zoomLevel: 12` is indistinguishable from a working feature until
+someone notices the map never moves — and it is exactly what a generated view invents when it is
+reaching for behaviour the view does not have. Rejecting it turns that guess into feedback.
+
+`map` takes an optional **`camera`**, which is how it frames itself when opened:
+
+| `camera` | behaviour |
+| --- | --- |
+| `"remember"` *(default)* | reopens where the user last left it; frames the markers only on a first-ever open |
+| `"fit"` | always frames the current markers, on every change to them |
+| `{ center: [lng, lat], zoom }` | always opens at one fixed spot |
+
+The remembered position lives in `ctx.storage` under `map:<pageId>:camera`, so it is the app's own
+data and behaves identically for an untrusted app in the isolate. Only moves the *user* made are
+recorded — a programmatic re-frame is not a preference.
+
+What `camera` deliberately does **not** cover is anything about *when* the map loads or in what
+order it renders. That is host behaviour (`packages/views/src/map.tsx`) and is not reachable from an
+app module; see `VIEW_FIELDS` and the Edit-mode contract in `docs/04`.
+
+### `steps` — walk an ordered list
+
+`{ type: "steps", entity, param?, list, text?, onFinish? }`. Renders the ordered `list` field of one
+record as a checklist. Progress is persisted per record in `ctx.storage` under
+`steps:<pageId>:<recordId>`, so you can leave a half-finished walk-through and come back to it, and
+`onFinish` names an action to run once the last step is ticked (once — not every time you reopen a
+finished one).
+
+### Page `summary` — numbers over many records
+
+`computed` is per-record and every view renders rows, so a figure derived from the *whole set* — a
+monthly total, a head count, an average — had nowhere to live. A page declares them:
+
+```ts
+{
+  id: "all", title: "Expenses",
+  summary: [
+    { label: "Entries", op: "count" },                        // count needs no field
+    { label: "Total", field: "amount", op: "sum" },           // sum | avg | max over a field
+    { label: "This month", value: (rows, ctx) => ... },       // anything else
+  ],
+  view: { type: "list", entity: "expense", filters: [...] },
+}
+```
+
+Two forms, the same pairing as `filters` (declarative chips) and `filter` (a function). Prefer `op`:
+it is the only form the structural editor can edit and the only one that ports to another framework,
+and per-record arithmetic belongs in a `computed` field you then aggregate. Reach for `value` when
+the figure needs a rule the enum cannot express — a date window, say.
+
+Figures are computed over the page's **filtered** rows, so they follow the filter chips. A total that
+disagreed with the rows beneath it would read as a bug. The cost is one extra page query per write,
+which is fine at personal scale.
+
+It sits on the **page**, not the view: one schema field and one component that works above any view
+type, rather than the same option repeated across eight.
+
 ### `custom` view — the no-ceiling escape hatch
 
 `{ type: "custom", render: (props: ViewProps) => JSX }`. The app ships a real React component

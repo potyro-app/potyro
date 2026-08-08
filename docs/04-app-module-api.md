@@ -123,3 +123,70 @@ bespoke logic, it's just a component.
 - **Async by default** for anything touching storage/caps; the runtime awaits.
 - **Deterministic time**: `now()` is fixed per evaluation pass so computed values are stable
   within a render.
+
+## The Edit-mode boundary (what an AI edit can and cannot reach)
+
+"Fix with AI" rewrites the app module and nothing else. So a complaint about how a **built-in view
+behaves** — when it loads, how it frames itself, what it does between renders — is not the app's to
+fix, no matter how the request is phrased.
+
+That has to be sayable. If the only legal reply to an edit request is updated source, an
+unreachable request comes back as a confident change to whichever function looked closest; the
+comment it writes to justify itself becomes the *input* to the next attempt, and one wrong guess
+survives round after round.
+
+So the contract (`buildModifyMessage` / `parseModifyReply` in `packages/generator`) has two legal
+replies:
+
+1. **Updated source**, in one ```ts block — the request was reachable.
+2. **`NOT-IN-APP: <what host behaviour is responsible, and what would have to change there>`** — it
+   was not. No code.
+
+Supporting this:
+
+- The prompt carries the **declarable surface of the view the user pointed at**, taken from
+  `VIEW_FIELDS` (derived from the Zod schemas, so it cannot drift from what is enforced).
+- The prompt carries **what was already tried** on this app and **what was already diagnosed**, so a
+  repeated complaint escalates instead of producing a third rewrite of the same function.
+- **Reasoning goes in the version's `rationale`, not in source comments.** A causal claim in a
+  comment is unverifiable and is read as fact by the next edit.
+- A diagnosis records **no version** (nothing changed) and is stored separately
+  (`app-diagnoses.ts`), shown in the History panel and fed back into later prompts.
+
+A diagnosis is also the best backlog signal there is: it names something an app wanted to express
+and could not. Per CLAUDE.md, the answer to a real gap is a wider declarative surface or a cleaner
+`ctx` — not a permanent "no". `map`'s `camera` field exists because of exactly such a gap.
+
+## Direct structural edits (no model in the loop)
+
+A label, a field's order, whether a field appears in the form, a page's name — these are
+**declarative data**, so they need no intelligence, and routing them through the agent is where the
+cost/risk is worst: a minute of waiting and a whole-file rewrite to change six characters.
+
+`app-source.ts` edits them directly. The load-bearing decision:
+
+> **Parse for positions; splice text; never reprint.**
+
+Parse-mutate-print reformats the whole file and mangles comments. The source here is versioned and
+diffed, so a label change that reflows 300 lines makes History useless. `@babel/parser` is used
+*only* to find byte ranges and `magic-string` splices them, so everything outside the edited range is
+byte-identical by construction rather than by a printer's best effort. Both are lazy-loaded (~85 kB
+gz together), like MapLibre.
+
+The panel's controls are rendered from what `inspect()` could actually **locate**, never from the
+schema — so a control exists only when there is a real byte range behind it, and the panel cannot
+offer a change it is unable to make. An app that builds its fields from a helper, a spread, or a
+computed key has no literal to edit; `inspect` says so, naming the reason, and the change routes to
+the agent instead. Same honesty as the `NOT-IN-APP` boundary above.
+
+Two hazards worth knowing about:
+
+- **`hidden` is not "remove".** It only affects the create/edit form. A field still named in a view's
+  `display` or a detail `section` keeps showing there, so the control says "hide from the form".
+- **Reordering can rename your records.** `displayFieldFor` falls back to the *first* field, so
+  moving a field to the top would silently change what every list row and relation picker shows.
+  The editor pins `displayField` explicitly before a reorder that would change it.
+
+Direct edits are still validated and still written to history — as `adjusted` rather than `edited`,
+because reviewing a whole-file agent rewrite and reviewing a one-line structural change are very
+different jobs.

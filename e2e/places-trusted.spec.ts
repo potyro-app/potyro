@@ -20,7 +20,8 @@ test("places app runs the M3 flow in the browser (trusted)", async ({ page }) =>
   await expect(row).toBeVisible();
   await row.click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-  await page.getByRole("button", { name: "markVisited" }).click(); // action runs without error
+  // Labelled, not keyed: an action's key is an identifier, so the button reads "Mark Visited".
+  await page.getByRole("button", { name: "Mark Visited" }).click(); // action runs without error
 
   // Map page: the canvas renders (not the empty state → markers resolved) and the Open-now chip toggles.
   await page.locator(".k-tab", { hasText: "Map" }).click();
