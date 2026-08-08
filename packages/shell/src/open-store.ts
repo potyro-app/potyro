@@ -64,8 +64,18 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     // Imported lazily so the default (non-sync) path never pays for the CRDT engine — the same
     // treatment the SQLite engine and MapLibre already get. The shell deliberately does not import
     // cojson itself: the engine stays behind the store seam.
-    const { openJazzStore } = await import("@karta/store");
-    const { store } = await openJazzStore(namespace, { relay: syncRelayUrl() });
+    // The account comes from `@karta/identity`, never from the store (ADR D2 amended). Identity is
+    // minted with crypto alone, so it already exists here whether or not this device has ever
+    // synced — and `ctx.me` therefore names the same person before and after sync is switched on.
+    // An id that changed on toggle would orphan every `createdBy` already stamped.
+    const [{ openJazzStore }, { identityAccount }] = await Promise.all([
+      import("@karta/store"),
+      import("@karta/identity"),
+    ]);
+    const { store } = await openJazzStore(namespace, {
+      relay: syncRelayUrl(),
+      account: await identityAccount(),
+    });
     return store;
   }
 

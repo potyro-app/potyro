@@ -108,6 +108,15 @@ importers:
         specifier: ^0.31.0
         version: 0.31.0
 
+  packages/identity:
+    dependencies:
+      '@scure/bip39':
+        specifier: ^1.6.0
+        version: 1.6.0
+      cojson:
+        specifier: ^0.20.19
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+
   packages/native:
     dependencies:
       '@capacitor/app':
@@ -194,6 +203,9 @@ importers:
       '@karta/host':
         specifier: workspace:*
         version: link:../host
+      '@karta/identity':
+        specifier: workspace:*
+        version: link:../identity
       '@karta/native':
         specifier: workspace:*
         version: link:../native

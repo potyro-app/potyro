@@ -51,7 +51,11 @@ export async function createShareLink(appId: string): Promise<string> {
   if (!app) throw new Error("app not found");
   if (!app.sync) throw new Error("Turn sync on for this app first — sharing needs a space to invite into.");
 
-  const handle = await openJazzStore(`user:${appId}`, { relay: syncRelayUrl() });
+  const { identityAccount } = await import("@karta/identity");
+  const handle = await openJazzStore(`user:${appId}`, {
+    relay: syncRelayUrl(),
+    account: await identityAccount(),
+  });
 
   // Publish before minting the link: the guest fetches the source from the space, so a link handed
   // out before anything was published would open an app with no code.
@@ -106,7 +110,13 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
 
   // Join first, then read the source out of the space. A legacy link carries it inline; a modern
   // one does not, so the space is the source of truth either way.
-  const joined = await joinSpace(`user:${payload.appId}`, payload, { relay: syncRelayUrl() });
+  // You join a space AS someone: the same device identity every other app uses, so the inviter sees
+  // one person rather than a new stranger per app.
+  const { identityAccount } = await import("@karta/identity");
+  const joined = await joinSpace(`user:${payload.appId}`, payload, {
+    relay: syncRelayUrl(),
+    account: await identityAccount(),
+  });
   const { readPublishedApp } = await import("./app-sync.js");
   const published = await readPublishedApp(joined.store);
   const source = published?.source ?? payload.source;

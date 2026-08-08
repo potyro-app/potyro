@@ -69,6 +69,19 @@ export interface CreateJazzStoreOpts {
   peers?: unknown[];
   /** Display name used only when the device account is first created. */
   profileName?: string;
+  /**
+   * The device account to open, from `@karta/identity`.
+   *
+   * Identity is not the store's to invent (ADR D2 amended): `@karta/identity` owns the seed the
+   * account is derived from, because that seed is also the recovery passphrase, and one place has
+   * to be responsible for the most security-sensitive value we hold. Passing it here also means the
+   * account exists *before* any app syncs, so `ctx.me` is answerable on a device that has never
+   * opened a database.
+   *
+   * Omitted, this falls back to minting and remembering an account in `keys` — which is what the
+   * store did on its own, kept so the store's tests stay independent of identity.
+   */
+  account?: { id: string; secret: string };
 }
 
 export interface JazzStoreHandle {
@@ -152,18 +165,62 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
   let node: InstanceType<typeof LocalNode>;
   let accountID: string;
 
-  if (savedId && savedSecret) {
-    accountID = savedId;
-    node = await LocalNode.withLoadedAccount({
-      accountID: savedId as never,
-      accountSecret: savedSecret as never,
+  const loadAccount = async (
+    id: string,
+    secret: string,
+    withPeers: never[],
+  ): Promise<InstanceType<typeof LocalNode>> =>
+    LocalNode.withLoadedAccount({
+      accountID: id as never,
+      accountSecret: secret as never,
       // A fresh session per load: cojson sessions identify a *run* of a device, not the device.
-      sessionID: (crypto as { newRandomSessionID(id: unknown): unknown }).newRandomSessionID(savedId) as never,
+      sessionID: (crypto as { newRandomSessionID(id: unknown): unknown }).newRandomSessionID(id) as never,
       crypto,
       storage,
-      peers,
+      peers: withPeers,
       onLocalStoreDurabilityChange: durability.listener as never,
     });
+
+  if (opts.account) {
+    // Identity was minted by `@karta/identity` with crypto alone — no database, no node — so the
+    // FIRST time any app syncs there is no account CoValue in storage yet and loading it fails.
+    // Creating it from the same secret produces the same id (that derivation is what makes
+    // passphrase linking work at all), so materialising here is a no-op for identity and simply
+    // gives cojson the CoValue it needs.
+    //
+    // Resolved with NO PEERS, then peers attached afterwards. Loading an absent account with a peer
+    // list means waiting for every peer to disclaim it before falling through to create — so an
+    // unreachable relay turned "turn sync on" into a stall of tens of seconds, and the first sync on
+    // a flaky network is exactly when that is least forgivable. Locally it fails in milliseconds.
+    accountID = opts.account.id;
+    try {
+      node = await loadAccount(opts.account.id, opts.account.secret, [] as never[]);
+    } catch (e) {
+      // Narrow on purpose: only "there is no account here" is a reason to create one. Any other
+      // failure (corrupt storage, bad secret) must surface rather than silently mint a second
+      // identity and strand the person's spaces.
+      if (!/unavailable/i.test(e instanceof Error ? e.message : String(e))) throw e;
+      const created = await LocalNode.withNewlyCreatedAccount({
+        creationProps: { name: opts.profileName ?? "Me" },
+        crypto,
+        storage,
+        peers: [] as never[],
+        initialAgentSecret: opts.account.secret as never,
+        onLocalStoreDurabilityChange: durability.listener as never,
+      });
+      node = created.node;
+      if ((created.accountID as unknown as string) !== opts.account.id) {
+        throw new Error(
+          `createJazzStore: materialised account ${String(created.accountID)} does not match the identity's ${opts.account.id}.`,
+        );
+      }
+    }
+    // cojson does this itself in both of its own constructors, so it is the supported way in.
+    const sync = (node as unknown as { syncManager: { addPeer(p: unknown): void } }).syncManager;
+    for (const peer of peers) sync.addPeer(peer);
+  } else if (savedId && savedSecret) {
+    accountID = savedId;
+    node = await loadAccount(savedId, savedSecret, peers);
   } else {
     // Derive from an explicit seed, and keep the seed — see ACCOUNT_SEED above. Without this the
     // account has no recoverable passphrase and the device can never be linked to another.
@@ -229,7 +286,14 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
  */
 export async function openJazzStore(
   appId: string,
-  opts?: { keys?: JazzKeyStore; peers?: unknown[]; profileName?: string; relay?: string },
+  opts?: {
+    keys?: JazzKeyStore;
+    peers?: unknown[];
+    profileName?: string;
+    relay?: string;
+    /** The device account from `@karta/identity`. See `CreateJazzStoreOpts.account`. */
+    account?: { id: string; secret: string };
+  },
 ): Promise<JazzStoreHandle> {
   const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }] = await Promise.all([
     import("./sqlite-backend.js"),
@@ -275,7 +339,14 @@ export async function openJazzStore(
   const peers = [...(opts?.peers ?? [])];
   if (opts?.relay) peers.push(await createRelayPeer(opts.relay));
 
-  const handle = await createJazzStore(appId, { db, crypto, keys: opts?.keys, profileName: opts?.profileName, peers });
+  const handle = await createJazzStore(appId, {
+    db,
+    crypto,
+    keys: opts?.keys,
+    profileName: opts?.profileName,
+    account: opts?.account,
+    peers,
+  });
   if (!whenPersisted) return handle;
 
   // On the IndexedDB path a cojson flush only reaches the in-memory database; the snapshot to IDB
@@ -318,7 +389,13 @@ export function createSpaceInvite(handle: JazzStoreHandle, role: "writer" | "rea
 export async function joinSpace(
   appId: string,
   invite: { group: string; root: string; secret: string },
-  opts?: { keys?: JazzKeyStore; relay?: string; profileName?: string },
+  opts?: {
+    keys?: JazzKeyStore;
+    relay?: string;
+    profileName?: string;
+    /** The device account from `@karta/identity` — you join a space AS someone. */
+    account?: { id: string; secret: string };
+  },
 ): Promise<JazzStoreHandle> {
   const keys = opts?.keys ?? browserKeys();
   // Remember the shared ids BEFORE opening, so `openJazzStore` attaches to the invited space
@@ -326,7 +403,12 @@ export async function joinSpace(
   keys.set(groupKey(appId), invite.group);
   keys.set(rootKey(appId), invite.root);
 
-  const handle = await openJazzStore(appId, { keys, relay: opts?.relay, profileName: opts?.profileName });
+  const handle = await openJazzStore(appId, {
+    keys,
+    relay: opts?.relay,
+    profileName: opts?.profileName,
+    account: opts?.account,
+  });
   await (handle.node as { acceptInvite(id: string, secret: string): Promise<void> }).acceptInvite(
     invite.group,
     invite.secret,
