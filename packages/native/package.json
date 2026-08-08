@@ -18,6 +18,7 @@
     "android": "pnpm --filter @karta/shell build:web && pnpm cap:sync && pnpm cap:open"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.1",
     "@capacitor/camera": "^8.2.1",
     "@capacitor/core": "^8.4.2",
     "@capacitor/filesystem": "^8.1.2",

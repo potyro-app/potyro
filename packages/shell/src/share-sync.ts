@@ -70,9 +70,14 @@ export async function createShareLink(appId: string): Promise<string> {
   return `${location.origin}${location.pathname}#join=${encode(payload)}`;
 }
 
-/** The `#join=…` payload on this URL, if any. */
-export function pendingInvite(): InvitePayload | null {
-  const m = /[#&]join=([^&]+)/.exec(location.hash);
+/**
+ * The `#join=…` payload on a URL, if any.
+ *
+ * Defaults to the address bar (web) but takes an explicit URL because on a device the link arrives
+ * as an OS event and never touches `location`.
+ */
+export function pendingInvite(url?: string): InvitePayload | null {
+  const m = /[#&]join=([^&]+)/.exec(url ?? location.hash);
   if (!m) return null;
   try {
     return decode(m[1]!);

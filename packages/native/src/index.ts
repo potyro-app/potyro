@@ -4,6 +4,8 @@
 
 import type { Capabilities } from "@karta/capabilities";
 
+export { getLaunchUrl, onUrlOpen } from "./deep-links.js";
+
 export {
   CapacitorCapabilities,
   createCapacitorCapabilities,
