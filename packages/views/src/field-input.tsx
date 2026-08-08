@@ -87,6 +87,9 @@ export function FieldInput({ runtime, field, value, onChange }: FieldInputProps)
     case "relation":
       return <RelationInput runtime={runtime} field={field} value={value} onChange={onChange} />;
 
+    case "member":
+      return <MemberInput runtime={runtime} field={field} value={value} onChange={onChange} />;
+
     case "list":
       return <ListInput runtime={runtime} field={field} value={value} onChange={onChange} />;
 
@@ -422,5 +425,64 @@ function ListInput({ runtime, field, value, onChange }: { runtime: KartaRuntime;
         + Add {field.label ?? "row"}
       </button>
     </div>
+  );
+}
+
+/**
+ * Person picker over the app's space (KA-19).
+ *
+ * The candidate list is space membership, never a table the app maintains — which is why this is
+ * not a relation input. Solo shows just you rather than an empty control: a `member` field has to be
+ * usable *before* an app is shared, or every shared app is broken until the moment it is shared.
+ */
+function MemberInput({
+  runtime,
+  field,
+  value,
+  onChange,
+}: {
+  runtime: KartaRuntime;
+  field: Extract<Field, { type: "member" }>;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const ctx = runtime.ctx;
+  const people = ctx.space?.members ?? (ctx.me ? [ctx.me] : []);
+
+  if (field.many) {
+    const selected = new Set(Array.isArray(value) ? (value as string[]) : []);
+    const toggle = (id: string): void => {
+      const next = new Set(selected);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      onChange([...next]);
+    };
+    return (
+      <div className="k-member-input" role="group">
+        {people.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className="k-person-chip"
+            aria-pressed={selected.has(p.id)}
+            data-on={selected.has(p.id) || undefined}
+            onClick={() => toggle(p.id)}
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <select className="k-input" value={String(value ?? "")} onChange={(e) => onChange(e.target.value || null)}>
+      <option value="">—</option>
+      {people.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </select>
   );
 }

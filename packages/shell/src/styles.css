@@ -2008,3 +2008,41 @@ button {
 .k-sync-status[data-state="connecting"] { color: #8A8A8A; }
 .k-sync-status[data-state="offline"],
 .k-sync-status[data-state="local"] { color: #B4762A; }
+
+/* Person chips — `member` fields (KA-19). A person reads as a person, not as an opaque id:
+   the chip is the same shape whether it is being displayed or picked, so the picker looks like
+   the thing it produces. */
+.k-person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em 0.6em;
+  border: 1px solid var(--k-border, #d9d9d9);
+  border-radius: 999px;
+  background: var(--k-surface, #fff);
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: inherit;
+}
+.k-member-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.k-member-input .k-person-chip {
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.k-member-input .k-person-chip:hover {
+  border-color: var(--k-accent, #3ba55d);
+}
+/* Selected is carried by aria-pressed too, so the state is not colour-only. */
+.k-member-input .k-person-chip[data-on] {
+  background: var(--k-accent, #3ba55d);
+  border-color: var(--k-accent, #3ba55d);
+  color: #fff;
+}
+.k-member-input .k-person-chip:focus-visible {
+  outline: 2px solid var(--k-accent, #3ba55d);
+  outline-offset: 2px;
+}
