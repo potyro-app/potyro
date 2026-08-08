@@ -251,14 +251,119 @@ export function buildUserMessage(prompt: GenPrompt): string {
   return `Create a Karta app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
 }
 
-export function buildModifyMessage(instruction: string): string {
-  return [
+/**
+ * The marker a reply uses to say the request is not the app module's to fix.
+ *
+ * Only counts at the start of a line, so prose that merely mentions it ("I considered whether this
+ * was NOT-IN-APP") is not mistaken for the verdict.
+ */
+export const NOT_IN_APP = "NOT-IN-APP:";
+
+/** What the agent may be told about where the change was aimed. */
+export interface ModifyContext {
+  /** The view the user pointed at, and what it can actually declare. */
+  target?: {
+    viewType: string;
+    pageTitle?: string;
+    /** From `VIEW_FIELDS` (derived from the Zod schema, so it cannot drift from what is enforced). */
+    fields: readonly string[];
+    /** From `PAGE_FIELDS` - what the PAGE can declare, as opposed to its view. */
+    pageFields?: readonly string[];
+  };
+  /** Edits already attempted on this app, newest first. */
+  priorAttempts?: readonly string[];
+  /** Requests already answered as host-side, so the same verdict is not re-derived. */
+  priorDiagnoses?: readonly string[];
+}
+
+/** Either an edit, or a reasoned refusal to make one. */
+export type ModifyReply =
+  | { kind: "source"; source: string; rationale?: string }
+  | { kind: "diagnosis"; text: string };
+
+/**
+ * The Edit-mode prompt.
+ *
+ * Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer. When updated source is
+ * the only legal reply, a request the module cannot express comes back as a confident edit to
+ * whatever function looked closest, and each attempt's rationalisation becomes the next attempt's
+ * premise.
+ */
+export function buildModifyMessage(instruction: string, ctx?: ModifyContext): string {
+  const lines: string[] = [
     "Apply this change to the app above, keeping everything else intact:",
     "",
     `"${instruction}"`,
     "",
-    "Return the complete updated .app.ts (the whole file, not a diff) in one ```ts block.",
-  ].join("\n");
+  ];
+
+  if (ctx?.target) {
+    const t = ctx.target;
+    const where = t.pageTitle ? `the "${t.pageTitle}" page` : `this ${t.viewType} view`;
+    lines.push(
+      `The change was aimed at ${where}, a built-in "${t.viewType}" view.`,
+      `Everything that view can declare: ${t.fields.join(", ")}.`,
+    );
+    if (t.pageFields?.length) lines.push(`Everything its page can declare: ${t.pageFields.join(", ")}.`);
+    lines.push(
+      "Anything outside those lists belongs to the host view, not to this app - the app cannot reach it.",
+      "",
+    );
+  }
+
+  if (ctx?.priorAttempts?.length) {
+    lines.push(
+      "These edits were already applied and did NOT work:",
+      ...ctx.priorAttempts.map((a) => `- ${a}`),
+      "Do not propose the same lever a third time; if it was the right lever it would have worked.",
+      "",
+    );
+  }
+
+  if (ctx?.priorDiagnoses?.length) {
+    lines.push("Already reported as host-side for this app:", ...ctx.priorDiagnoses.map((d) => `- ${d}`), "");
+  }
+
+  lines.push(
+    "Reply with exactly one of:",
+    "1. The complete updated .app.ts (the whole file, not a diff) in one ```ts block.",
+    `2. \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to change there>\` - and no code.`,
+    "",
+    "Answering (2) when it is true is cheap. A plausible edit that cannot possibly work is the more damaging mistake,",
+    "because it is indistinguishable from a fix until someone tries it.",
+    "",
+    "Put your reasoning in the prose before the block. Do NOT write comments that assert a cause",
+    '("// the map ignores this") - a causal claim in a comment is unverifiable and the next edit',
+    "reads it as fact.",
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * Read a reply as either an edit or a diagnosis.
+ *
+ * A diagnosis WINS over code the model attached anyway: models habitually ship a patch while
+ * explaining that the patch cannot help, and acting on source the model has just disowned is
+ * precisely the failure this contract exists to prevent.
+ */
+export function parseModifyReply(reply: string): ModifyReply {
+  const marker = new RegExp(`^${NOT_IN_APP}`, "m").exec(reply);
+  if (marker) {
+    const after = reply.slice(marker.index + NOT_IN_APP.length);
+    // Stop at any code fence, so a disowned patch never leaks into the explanation.
+    const text = after.split(/^```/m)[0]!.trim();
+    return { kind: "diagnosis", text };
+  }
+
+  const fence = /```(?:ts|typescript)?[ \t]*\r?\n([\s\S]*?)```/.exec(reply);
+  if (fence) {
+    const source = fence[1]!.trim();
+    const rationale = reply.slice(0, fence.index).trim();
+    // Reasoning belongs in the version's rationale, not in source comments (docs/04).
+    return rationale ? { kind: "source", source, rationale } : { kind: "source", source };
+  }
+  return { kind: "source", source: reply.trim() };
 }
 
 export function buildRepairMessage(errors: string[]): string {
