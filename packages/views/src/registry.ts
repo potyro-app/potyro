@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 import type { View } from "karta";
 import type { BuiltinViewProps } from "./types.js";
-import { DetailView, GalleryView, ListView, PlaceholderView, TableView } from "./builtins.js";
+import { DetailView, GalleryView, ListView, TableView } from "./builtins.js";
 import { CalendarView } from "./calendar.js";
+import { StepsView } from "./steps.js";
 import { MapView } from "./map.js";
 import { CustomView } from "./custom.js";
 
@@ -15,7 +16,7 @@ export const defaultRegistry: Record<View["type"], ComponentType<BuiltinViewProp
   custom: CustomView,
   calendar: CalendarView,
   map: MapView,
-  steps: PlaceholderView,
+  steps: StepsView,
 };
 
 export function resolveViewComponent(
