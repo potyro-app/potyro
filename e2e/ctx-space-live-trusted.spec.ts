@@ -61,7 +61,7 @@ async function device(context: BrowserContext, opts?: { app?: boolean }): Promis
   return context.newPage();
 }
 
-test("an app sees a new member without reloading", async ({ browser }) => {
+test("an app sees a new member without reloading, even if they write nothing", async ({ browser }) => {
   test.slow();
 
   const ctxA = await browser.newContext();
@@ -92,13 +92,19 @@ test("an app sees a new member without reloading", async ({ browser }) => {
   await bruno.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await expect(bruno.locator("h1").first()).toHaveText("Roster", { timeout: 60_000 });
 
+  // ---- THE POINT: Ana's app counts two members with no reload AND NO WRITE ----
+  //
+  // Bruno has joined and touched nothing. Views re-run on `Store.subscribe`, which fires for writes,
+  // and a join is not a write — so this used to stay at 1 until some unrelated edit happened along.
+  // Membership now raises the runtime's invalidation signal in its own right.
+  await expect(ana.locator(".k-aggregate-row")).toHaveCount(2, { timeout: 60_000 });
+
+  // And a later write still works, i.e. the two sources coexist rather than one replacing the other.
   await bruno.getByRole("button", { name: /New Note|Add Note/i }).first().click();
   await bruno.getByLabel(/title/i).fill("Hello");
   await bruno.getByRole("button", { name: "Create" }).first().click();
-
-  // ---- THE POINT: Ana's app now counts two members, with no reload ----
-  // A snapshot would have kept saying 1 for the rest of the session.
-  await expect(ana.locator(".k-aggregate-row")).toHaveCount(2, { timeout: 60_000 });
+  await ana.locator(".k-tab", { hasText: "Notes" }).click();
+  await expect(ana.locator(".k-list-row", { hasText: "Hello" })).toBeVisible({ timeout: 60_000 });
 
   await ctxA.close();
   await ctxB.close();

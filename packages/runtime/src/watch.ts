@@ -46,10 +46,15 @@ function watch<T>(
     });
   };
   run();
-  const unsub = core.store.subscribe(entity, run);
+  // Both sources: writes to this entity, and anything else that changes what a view would render —
+  // membership, for one. A watcher listening only to the store misses the second and shows stale
+  // output until an unrelated write happens along.
+  const unsubStore = core.store.subscribe(entity, run);
+  const unsubInvalidate = core.onInvalidate(run);
   return () => {
     alive = false;
-    unsub();
+    unsubStore();
+    unsubInvalidate();
   };
 }
 

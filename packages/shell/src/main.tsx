@@ -415,6 +415,14 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     appSource = await (await createAppBundler())(saved.source);
     composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSandboxLoader(store) });
   }
+  // Membership changes re-render the app. Wired here because the runtime does not exist when the
+  // space is first read, and a view showing "who is in this list" is otherwise stale until some
+  // unrelated write happens to refresh it.
+  if (saved.sync) {
+    const { onSpaceChange } = await import("./open-store.js");
+    onSpaceChange(() => composed!.runtime.core.invalidate());
+  }
+
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);
 

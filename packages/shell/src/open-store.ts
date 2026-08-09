@@ -43,6 +43,19 @@ type SpaceShape = {
  */
 let cachedSpace: SpaceShape | null = null;
 let stopWatchingSpace: (() => void) | null = null;
+/**
+ * Told when membership actually changed.
+ *
+ * Separate from the cache because the runtime is composed AFTER the space is first read, so the
+ * thing that wants to know does not exist yet at that point.
+ */
+const spaceListeners = new Set<() => void>();
+
+/** Be told when this app's membership changes. Returns an unsubscribe. */
+export function onSpaceChange(cb: () => void): () => void {
+  spaceListeners.add(cb);
+  return () => spaceListeners.delete(cb);
+}
 
 /** Synchronous, for `ctx` — app code reads `ctx.space.members` inline and cannot await. */
 export function liveSpace(): SpaceShape | undefined {
@@ -63,14 +76,19 @@ export async function watchSpace(): Promise<void> {
   const handle = lastSyncHandle;
   if (!handle) return;
 
-  const refresh = async (): Promise<void> => {
+  const refresh = async (notify: boolean): Promise<void> => {
     const next = await currentSpace().catch(() => null);
-    if (next) cachedSpace = next;
+    if (!next) return;
+    // Only when it really changed: a group CoValue fires for role changes and key rotations too, and
+    // re-rendering every view on each of those would be noise dressed as reactivity.
+    const changed = JSON.stringify(next.members) !== JSON.stringify(cachedSpace?.members);
+    cachedSpace = next;
+    if (notify && changed) for (const cb of spaceListeners) cb();
   };
-  await refresh();
+  await refresh(false);
 
   const { subscribeSpace } = await import("@karta/store");
-  stopWatchingSpace = subscribeSpace(handle, () => void refresh());
+  stopWatchingSpace = subscribeSpace(handle, () => void refresh(true));
 }
 
 /** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
