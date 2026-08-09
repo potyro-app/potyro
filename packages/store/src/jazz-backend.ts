@@ -58,6 +58,8 @@ const fromHex = (s: string): Uint8Array => new Uint8Array(s.match(/../g)?.map((h
 const groupKey = (appId: string) => `karta:jazz:group:${appId}`;
 /** Which cojson database this app's space lives in. See `openJazzStore`. */
 const dbKey = (appId: string) => `karta:jazz:db:${appId}`;
+/** The one cojson database a device uses for every space created from here on. */
+const DEVICE_DB = "karta-jazz";
 const rootKey = (appId: string) => `karta:jazz:root:${appId}`;
 
 export interface CreateJazzStoreOpts {
@@ -334,7 +336,6 @@ export async function openJazzStore(
   // existed and its data is in the legacy per-app file — so that is what gets opened, permanently.
   // Deterministic, with no probing of storage that would create the very file it is testing for.
   const keys = opts?.keys ?? browserKeys();
-  const DEVICE_DB = "karta-jazz";
   const recorded = keys.get(dbKey(appId));
   const predatesMove = !recorded && !!keys.get(groupKey(appId));
   const dbName = recorded ?? (predatesMove ? `${appId}-jazz` : DEVICE_DB);
@@ -396,6 +397,17 @@ export function createSpaceInvite(handle: JazzStoreHandle, role: "writer" | "rea
   const group = (handle as unknown as { group?: unknown }).group;
   const g = (group ?? null) as { createInvite(role: string): string } | null;
   if (!g) throw new Error("createSpaceInvite: no group on this handle");
+
+  // Only an admin may invite, and someone who JOINED is a writer. Checked here rather than left to
+  // cojson, which fails with `Failed to set role writerInvite to sealer_z… (role of current account
+  // is writer)` — true, and useless to the person reading it.
+  const mine = myRole(handle);
+  if (mine !== "admin") {
+    throw new Error(
+      "Only the person who created this app can share it. You joined it, so you can add and edit " +
+        "records, but not invite other people.",
+    );
+  }
   return g.createInvite(role);
 }
 
@@ -418,6 +430,14 @@ export async function joinSpace(
   },
 ): Promise<JazzStoreHandle> {
   const keys = opts?.keys ?? browserKeys();
+  // Claim the database FIRST, and only then the shared ids.
+  //
+  // Order is load-bearing. `openJazzStore` decides an app predates the database rename by seeing a
+  // group id with no database marker — and the two lines below are the one place a group id is
+  // written for a space this device never had. Without this, every JOIN was misread as a legacy app
+  // and opened a per-app file the invite knows nothing about, so the guest joined into an empty
+  // store and saw none of the shared data.
+  keys.set(dbKey(appId), DEVICE_DB);
   // Remember the shared ids BEFORE opening, so `openJazzStore` attaches to the invited space
   // instead of minting a fresh one.
   keys.set(groupKey(appId), invite.group);

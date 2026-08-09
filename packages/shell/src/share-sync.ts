@@ -128,7 +128,17 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
 
   const saved = await saveUserApp(
     {
-      id: existing ? payload.appId : undefined,
+      // ALWAYS the shared app's id, never a slug of its name.
+      //
+      // The space was joined under `user:${payload.appId}`, and every later open goes through the
+      // saved app's id — so letting `saveUserApp` derive one from the name pointed the guest at a
+      // different, empty namespace whenever `slug(name) !== appId`. It looked like sync had failed:
+      // the app opened, and none of the shared records were in it.
+      //
+      // Invisible for a long time because the fixtures were named so their slug matched their id
+      // ("Sync Pair" -> `sync-pair`). "Share Flow" -> `share-flow` does not match `shareflow`, which
+      // is what finally exposed it.
+      id: payload.appId,
       name: published?.name ?? payload.name,
       source,
       trusted: false, // arrived from someone else — runs in the isolate (rule 3)
