@@ -327,18 +327,21 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // never has to ask whether sync is on.
   const space = saved.sync
     ? await (async () => {
-        const { currentSpace } = await import("./open-store.js");
+        const { currentSpace, liveSpace, watchSpace } = await import("./open-store.js");
         const s = await currentSpace();
         if (!s) return undefined;
-        return {
-          ...s,
+        // Keep it current from here on: membership changes when someone joins, and a snapshot would
+        // leave every later edit of theirs attributed to an account id.
+        await watchSpace();
+        return () => ({
+          ...(liveSpace() ?? s),
           // Host-mediated: the shell owns the UI and the admin check, so an app cannot hand its
           // space to a stranger without the user seeing it happen.
           invite: async (): Promise<string> => {
             const { createShareLink } = await import("./share-sync.js");
             return createShareLink(id);
           },
-        };
+        });
       })()
     : undefined;
 

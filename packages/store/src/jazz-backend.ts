@@ -609,6 +609,17 @@ export async function spaceMembers(
   return out;
 }
 
+/**
+ * Be told when the space's membership changes — someone joined, a role changed.
+ *
+ * A group IS a CoValue, so this is its own `subscribe`; nothing polls. Returns a no-op unsubscribe
+ * for a handle without a group, so a caller never has to branch.
+ */
+export function subscribeSpace(handle: JazzStoreHandle, cb: () => void): () => void {
+  const group = handle.group as { subscribe?(l: () => void): () => void } | null;
+  return group?.subscribe?.(cb) ?? (() => {});
+}
+
 /** This device's own role in an app's space. */
 export function myRole(handle: JazzStoreHandle): "admin" | "writer" | "reader" | undefined {
   const group = handle.group as { myRole(): string | undefined } | null;
