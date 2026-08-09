@@ -72,6 +72,30 @@ export class RuntimeCore {
     this.space = deps.space;
   }
 
+  /**
+   * Things that change what a view would render WITHOUT changing any record.
+   *
+   * `Store.subscribe` covers writes, which is most of it — but not all. Membership is the case that
+   * exposed the gap: someone joins, so `ctx.space.members` changes, and a view that renders the
+   * people in a space (or defaults a field to "everyone") is now showing something stale. No record
+   * was touched, so no entity subscriber fired, and the screen stayed wrong until an unrelated write
+   * happened to refresh it.
+   *
+   * Deliberately a general signal rather than a membership-specific one: `ctx` has several parts a
+   * view can read that no record write covers.
+   */
+  private readonly invalidators = new Set<() => void>();
+
+  /** Re-run every live watcher. Called by whoever owns the thing that changed. */
+  invalidate(): void {
+    for (const cb of this.invalidators) cb();
+  }
+
+  onInvalidate(cb: () => void): () => void {
+    this.invalidators.add(cb);
+    return () => this.invalidators.delete(cb);
+  }
+
   get definition(): AppDefinition {
     return this.app.definition;
   }
