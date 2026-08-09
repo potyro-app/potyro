@@ -348,3 +348,65 @@ describe("JazzStore — a peer's change arrives without a local write", () => {
     expect((await bobStore.get("todo", r.id))?.done).toBe(true);
   });
 });
+
+describe("JazzStore — attribution across peers (KA-36)", () => {
+  // The activity feature claims "changed by X". That is only worth anything if X is the OTHER
+  // person when they are the one who changed it — attributing every edit to whoever is reading
+  // would look identical on one device and be wrong on two.
+  //
+  // Authorship here is derived from the signing session, so it cannot be forged by app code the way
+  // an app-emitted "system message" could. This pins that it survives the trip between peers.
+  const settle = (ms = 250) => new Promise((r) => setTimeout(r, ms));
+
+  async function pair() {
+    const ana = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Ana" }, crypto });
+    const bruno = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Bruno" }, crypto });
+
+    const group = ana.node.createGroup();
+    group.addMember(await bruno.node.expectCurrentAccount("bruno"), "writer");
+
+    const anaStore = new JazzStore({ node: ana.node as never, group: group as never });
+    await anaStore.open("split");
+
+    const [forAna, forBruno] = cojsonInternals.connectedPeers("bruno", "ana", {
+      peer1role: "server",
+      peer2role: "server",
+    });
+    ana.node.syncManager.addPeer(forBruno);
+    bruno.node.syncManager.addPeer(forAna);
+    await settle();
+
+    const brunoGroup = await bruno.node.load(group.id);
+    const brunoStore = new JazzStore({
+      node: bruno.node as never,
+      group: brunoGroup as never,
+      rootId: anaStore.rootId,
+    });
+    await brunoStore.open("split");
+    return { anaStore, brunoStore, ana, bruno };
+  }
+
+  it("attributes a peer's edit to the peer, seen from either side", async () => {
+    const { anaStore, brunoStore, ana, bruno } = await pair();
+
+    const row = await anaStore.insert("item", { name: "Milk", qty: 1 });
+    await settle();
+    await brunoStore.update("item", row.id, { qty: 5 });
+    await settle();
+
+    // Ana reads the history and must see BRUNO as the author of the quantity change.
+    const asAna = await anaStore.editHistory!("item", row.id);
+    const qtyEdit = asAna.filter((e) => e.field === "qty").at(-1);
+    expect(qtyEdit?.value).toBe(5);
+    expect(qtyEdit?.by).toBe(bruno.accountID);
+
+    // And the record's own creation is still attributed to Ana.
+    const nameEdit = asAna.find((e) => e.field === "name");
+    expect(nameEdit?.by).toBe(ana.accountID);
+
+    // Both peers agree on who did what — this is a fold over the same signed log, not a local guess.
+    const asBruno = await brunoStore.editHistory!("item", row.id);
+    expect(asBruno.filter((e) => e.field === "qty").at(-1)?.by).toBe(bruno.accountID);
+    expect(asBruno.find((e) => e.field === "name")?.by).toBe(ana.accountID);
+  });
+});

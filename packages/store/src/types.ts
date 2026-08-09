@@ -62,4 +62,33 @@ export interface Store {
   kvKeys?(prefix?: string): Promise<string[]>;
   storedSchemaVersion(): Promise<number>;
   runMigrations(plan: MigrationPlan): Promise<void>;
+
+  /**
+   * Who changed which field of a record, and when (KA-36).
+   *
+   * **Optional, and honestly so.** Only a CRDT store has this: a record there IS a CoMap and every
+   * write is a per-key signed transaction, so the history is already in the data and costs nothing
+   * to keep. `MemoryStore` and `SqliteStore` store current values and genuinely cannot answer —
+   * which is why this is `?` rather than a method they fake by returning `[]`. An empty array means
+   * "nothing changed"; absent means "this store cannot tell you", and a feature built on it must be
+   * able to say so rather than render a confidently empty screen.
+   *
+   * `since` windows the walk. The log grows with every edit ever made and never shrinks (KA-30), so
+   * folding an app's whole history to render a feed gets slower for as long as the app is used.
+   */
+  editHistory?(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]>;
+}
+
+/** One field of one record changing, attributed and timed. */
+export interface FieldEdit {
+  /** Field key as declared by the app. The caller maps it to a label. */
+  field: string;
+  /** The value written. `undefined` when the field was cleared. */
+  value: unknown;
+  /**
+   * The account that made the change, derived from the signing session — not an app-supplied field,
+   * so it cannot be forged (the same guarantee as `KartaRecord.createdBy`, KA-18).
+   */
+  by: string;
+  at: Date;
 }

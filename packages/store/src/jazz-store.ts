@@ -38,9 +38,12 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
-import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
+
+/** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
+const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
 
 // Structural types over cojson, so this module does not hard-depend on its class shapes and stays
 // testable. Only the surface actually used is declared.
@@ -53,6 +56,13 @@ interface RawMapLike {
   get(key: string): unknown;
   keys(): string[];
   toJSON(): Record<string, unknown>;
+  /**
+   * Every edit ever made to one key, oldest first, each with its author and time (KA-36).
+   *
+   * cojson keeps this because a CoMap write IS a signed per-key transaction — the history is a
+   * by-product of the merge strategy, not something we store on the side.
+   */
+  editsAt?(key: string): Iterable<{ by: string; at: Date; value: unknown }>;
 }
 interface RawGroupLike {
   createMap<T = RawMapLike>(init?: Record<string, unknown>): T;
@@ -289,6 +299,35 @@ export class JazzStore implements Store {
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
     const m = await this.recordMap(entity, id);
     return m ? (m.toJSON() as unknown as KartaRecord) : null;
+  }
+
+  /**
+   * Who changed what, when — read straight out of the CRDT log (KA-36).
+   *
+   * Nothing is stored to make this work: a record is a CoMap, a write is a per-key signed
+   * transaction, so the history is already there and the author is derived from the signing session
+   * rather than from anything an app wrote. That is what makes it unforgeable, and what makes it
+   * work RETROACTIVELY for edits made long before the feature existed.
+   *
+   * `id`/`createdAt`/`createdBy`/`updatedAt` are skipped: they are bookkeeping this store writes
+   * itself, and "Ana changed updatedAt" is noise, not activity.
+   */
+  async editHistory(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]> {
+    const m = await this.recordMap(entity, id);
+    if (!m?.editsAt) return [];
+
+    const since = opts?.since?.getTime();
+    const out: FieldEdit[] = [];
+    for (const field of m.keys()) {
+      if (BOOKKEEPING.has(field)) continue;
+      for (const edit of m.editsAt(field) ?? []) {
+        const at = edit.at instanceof Date ? edit.at : new Date(edit.at as never);
+        if (since !== undefined && at.getTime() <= since) continue;
+        out.push({ field, value: edit.value, by: String(edit.by), at });
+      }
+    }
+    // One record's edits across all its fields, in the order they happened.
+    return out.sort((a, b) => a.at.getTime() - b.at.getTime());
   }
 
   async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
