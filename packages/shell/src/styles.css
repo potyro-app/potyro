@@ -2204,3 +2204,97 @@ button {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* Talking to the people you share with (KA-35). Same always-visible rule as "Changes": a control
+   that only exists on :hover does not exist on a phone (docs/15 D1). */
+.k-chat-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.k-chat-modal { max-width: 34rem; }
+.k-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+.k-chat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  /* A conversation grows without bound; the composer must stay reachable rather than being pushed
+     off the bottom of the dialog. */
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.k-chat-empty { padding: 0.75rem 0; }
+.k-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.7rem;
+  background: var(--surface-soft, rgba(0, 0, 0, 0.035));
+  /* Yours sit off to the right: whose message it is has to be legible before a word is read. */
+  align-self: flex-start;
+  max-width: 85%;
+}
+.k-chat-msg[data-mine] {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.k-chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+.k-chat-who { font-weight: 600; }
+.k-chat-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.k-chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.k-chat-error { margin: 0; color: #b4762a; font-size: 0.85rem; }
+.k-chat-compose {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.k-chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.k-chat-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.k-chat-send:disabled { opacity: 0.45; cursor: default; }
+/* Permanent, never dismissible: delivery is store-and-forward, and a box that hides that is one
+   people read silence into (KA-35 acceptance). */
+.k-chat-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+.k-record-thread {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.k-record-thread-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}

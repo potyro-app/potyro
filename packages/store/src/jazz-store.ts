@@ -44,6 +44,7 @@
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
 import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import { recordThread } from "./types.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
@@ -354,8 +355,13 @@ export class JazzStore implements Store {
     return this.child(this.root, ROOT_CHAT);
   }
 
+  /** Everything in one map, so keys carry the thread. `\u0000` cannot occur in a thread key. */
+  private static threadPrefix(thread: string): string {
+    return `${thread}\u0000`;
+  }
+
   private static threadKey(thread: string, id: string): string {
-    return `${thread}\u0000${id}`;
+    return `${JazzStore.threadPrefix(thread)}${id}`;
   }
 
   async postMessage(thread: string, text: string): Promise<ChatMessage> {
@@ -374,7 +380,7 @@ export class JazzStore implements Store {
   async messages(thread: string, opts?: { since?: Date; limit?: number }): Promise<ChatMessage[]> {
     const map = await this.chat();
     const since = opts?.since?.getTime();
-    const prefix = `${thread}\u0000`;
+    const prefix = JazzStore.threadPrefix(thread);
     const out: ChatMessage[] = [];
 
     for (const key of map.keys()) {
@@ -395,6 +401,22 @@ export class JazzStore implements Store {
     // wall-clock alone cannot promise across devices.
     out.sort((a, b) => a.at.getTime() - b.at.getTime() || (a.id < b.id ? -1 : 1));
     return opts?.limit ? out.slice(-opts.limit) : out;
+  }
+
+  /**
+   * Stop a thread being readable. Called when the record it hangs off is deleted.
+   *
+   * `delete` on each key, not a container swap: everything lives in ONE map precisely so there is
+   * no container for two peers to race over, and replacing it would reintroduce that. A peer that
+   * posts concurrently with the delete keeps its message — per-key merge, nothing else to decide —
+   * and it is unreachable anyway once the record is gone.
+   */
+  private async dropThread(thread: string): Promise<void> {
+    const map = await this.chat();
+    const prefix = JazzStore.threadPrefix(thread);
+    for (const key of map.keys()) {
+      if (key.startsWith(prefix)) map.delete(key);
+    }
   }
 
   subscribeMessages(thread: string, cb: () => void): Unsubscribe {
@@ -478,6 +500,11 @@ export class JazzStore implements Store {
     // Tombstone by dropping the index entry. The record CoMap itself is left addressable so a
     // concurrent peer editing it does not resurrect a half-record through the index.
     this.local(() => index.delete(id));
+    // A record's conversation dies with it (KA-35). Left behind, the messages would be unreachable
+    // — nothing lists a thread whose record is gone — and would come back attached to the wrong
+    // thing if that id were ever reused. The transactions stay in the log, which nothing compacts
+    // (KA-30); what ends here is the thread being readable.
+    await this.dropThread(recordThread(entity, id));
     this.emit(entity);
     await this.whenDurable?.();
   }

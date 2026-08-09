@@ -558,6 +558,17 @@ async function publishProfileName(node: unknown, name: string): Promise<void> {
 }
 
 /**
+ * Publish a new display name to an app that is already open.
+ *
+ * Every open publishes the name, which is enough for the name to *eventually* be right — but "wait
+ * for a reload" is not a thing to tell someone who has just renamed themselves in front of a chat
+ * window with their old name in it. This is the same write, on demand.
+ */
+export async function publishName(handle: JazzStoreHandle, name: string): Promise<void> {
+  await publishProfileName(handle.node, name);
+}
+
+/**
  * Who is in this app's space, for `ctx.space.members` (KA-18/KA-17).
  *
  * Membership is read from the GROUP, which is what makes a `member` field unforgeable: the invite

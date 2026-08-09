@@ -49,7 +49,13 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
       { default: me?.name ?? "" },
     );
     if (!name?.trim()) return;
-    setMe(renameIdentity(name));
+    const renamed = renameIdentity(name);
+    setMe(renamed);
+    // Renaming writes locally; the copy other people read is the account profile, published on every
+    // open. Pushed here too, so the change lands on the people you are sharing with now rather than
+    // whenever you next reload — chat makes a stale name impossible to miss.
+    const { republishName } = await import("./open-store.js");
+    await republishName(renamed.name);
   };
 
   const reveal = async (): Promise<void> => {
