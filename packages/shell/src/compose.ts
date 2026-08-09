@@ -26,7 +26,8 @@ export interface ComposeOptions {
    * store, the caps or the person here and nothing downstream changes.
    */
   me?: Person;
-  space?: Space;
+  /** A function here keeps membership current; a value is a boot-time snapshot. See RuntimeDeps. */
+  space?: Space | (() => Space | undefined);
 }
 
 export interface Composed {

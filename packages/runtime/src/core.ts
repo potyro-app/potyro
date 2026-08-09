@@ -32,7 +32,15 @@ export interface RuntimeDeps {
    * a `ctx.me` without minting an account.
    */
   me?: Person;
-  space?: Space;
+  /**
+   * The space, or a function returning it.
+   *
+   * A plain value is a SNAPSHOT: `ctx` is rebuilt for every evaluation pass, but a captured `space`
+   * is not, so an app opened before someone joined listed only the people who were there then —
+   * forever, until reload. Passing a function lets each pass read the current membership. Both forms
+   * are accepted because tests and fakes have nothing to keep fresh.
+   */
+  space?: Space | (() => Space | undefined);
 }
 
 function viewOf(def: AppDefinition, pageId: string): View {
@@ -50,7 +58,7 @@ export class RuntimeCore {
   private readonly nav: NavBridge;
   private readonly now?: Date;
   private readonly me?: Person;
-  private readonly space?: Space;
+  private readonly space?: Space | (() => Space | undefined);
 
   constructor(deps: RuntimeDeps) {
     this.app = deps.app;
@@ -78,7 +86,8 @@ export class RuntimeCore {
       params,
       now: this.now,
       me: this.me,
-      space: this.space,
+      // Resolved per pass, never captured — see `RuntimeDeps.space`.
+      space: typeof this.space === "function" ? this.space() : this.space,
     };
     return this.host.makeCtx(this.app, base);
   }

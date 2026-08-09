@@ -27,6 +27,52 @@ import { createSqliteStore, LocalStore, type Store } from "@karta/store";
  */
 let lastSyncHandle: Awaited<ReturnType<typeof import("@karta/store").openJazzStore>> | null = null;
 
+type SpaceShape = {
+  id: string;
+  role: "admin" | "writer" | "reader";
+  members: Array<{ id: string; name: string; role: "admin" | "writer" | "reader" }>;
+};
+
+/**
+ * The last space read, kept current.
+ *
+ * `ctx.space` used to be a value captured at boot, so an app opened before someone joined listed
+ * only the people who were there then — and every later edit of theirs rendered as an account id.
+ * This cache is refreshed whenever the GROUP changes (a join, a role change), and `liveSpace()`
+ * hands out the current contents, so each evaluation pass sees the membership as it is now.
+ */
+let cachedSpace: SpaceShape | null = null;
+let stopWatchingSpace: (() => void) | null = null;
+
+/** Synchronous, for `ctx` — app code reads `ctx.space.members` inline and cannot await. */
+export function liveSpace(): SpaceShape | undefined {
+  return cachedSpace ?? undefined;
+}
+
+/**
+ * Start keeping `liveSpace()` up to date for the app just opened.
+ *
+ * Reads once, then re-reads on every group change. Nothing polls: a group is a CoValue and this is
+ * its own subscription.
+ */
+export async function watchSpace(): Promise<void> {
+  stopWatchingSpace?.();
+  stopWatchingSpace = null;
+  cachedSpace = null;
+
+  const handle = lastSyncHandle;
+  if (!handle) return;
+
+  const refresh = async (): Promise<void> => {
+    const next = await currentSpace().catch(() => null);
+    if (next) cachedSpace = next;
+  };
+  await refresh();
+
+  const { subscribeSpace } = await import("@karta/store");
+  stopWatchingSpace = subscribeSpace(handle, () => void refresh());
+}
+
 /** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
 export async function currentSpace(): Promise<
   { id: string; role: "admin" | "writer" | "reader"; members: Array<{ id: string; name: string; role: "admin" | "writer" | "reader" }> } | null
