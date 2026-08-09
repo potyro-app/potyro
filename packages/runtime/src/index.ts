@@ -6,3 +6,6 @@ export { asyncSort } from "./async-sort.js";
 
 export { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
 export type { Unsubscribe } from "./watch.js";
+
+// Activity — what changed, by whom, since you last looked (KA-36).
+export { activitySince, activitySupported, type ActivityItem, type ActivityDeps } from "./activity.js";

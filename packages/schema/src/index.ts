@@ -2,6 +2,7 @@
 
 export { defineApp, isKartaApp } from "./defineApp.js";
 export { f } from "./fields.js";
+export { humanizeKey } from "./humanize.js";
 export { structureSchema, checkReferences, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- shared value types ----

@@ -1,3 +1,4 @@
+import { humanizeKey } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import type { View } from "karta";
 
@@ -36,10 +37,9 @@ export function displayFieldFor(runtime: KartaRuntime, entity: string): string {
 }
 
 /** Humanize a field/computed key: "caloriesPerServing" → "Calories Per Serving". */
-export function humanizeKey(key: string): string {
-  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
+// Re-exported, not reimplemented — see `humanizeKey` in `karta` for why. Imported as well as
+// re-exported, because `fieldLabel` below calls it and `export … from` does not bring it into scope.
+export { humanizeKey };
 
 /** A readable label for a field/computed key on an entity. */
 export function fieldLabel(runtime: KartaRuntime, entity: string, key: string): string {
