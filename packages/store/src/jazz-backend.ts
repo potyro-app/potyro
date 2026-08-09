@@ -267,6 +267,14 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
     keys.set(ACCOUNT_SEED, toHex(seed));
   }
 
+  // ---- 1a. make sure other people can see your name --------------------------------------------
+  //
+  // The display name a peer renders comes from the ACCOUNT PROFILE, which is the only copy that
+  // syncs. Renaming yourself locally therefore reached nobody: everyone you shared with kept seeing
+  // a truncated account id, which is exactly what the rename control exists to prevent. Published
+  // here, on every open, so the name catches up wherever it was changed.
+  if (opts.profileName) await publishProfileName(node, opts.profileName);
+
   // ---- 1b. the relay ---------------------------------------------------------------------------
   // Between the account and the group, for the reasons on `CreateJazzStoreOpts.relay`.
   let relay: RelayConnection | undefined;
@@ -518,6 +526,35 @@ export async function joinSpace(
     invite.secret,
   );
   return handle;
+}
+
+
+/**
+ * Write this account's display name where peers can read it.
+ *
+ * Best-effort on purpose: a profile that will not load is not a reason to fail opening an app. The
+ * name is a nicety; the data is not.
+ */
+async function publishProfileName(node: unknown, name: string): Promise<void> {
+  try {
+    const n = node as {
+      expectCurrentAccount(hint: string): Promise<{ get(k: string): unknown }>;
+      load(id: string): Promise<unknown>;
+    };
+    const account = await n.expectCurrentAccount("profile");
+    const profileId = account.get("profile");
+    if (typeof profileId !== "string") return;
+    const profile = (await n.load(profileId)) as
+      | { get(k: string): unknown; set(k: string, v: unknown, privacy?: string): void }
+      | "unavailable";
+    if (!profile || profile === "unavailable") return;
+    // Written `trusting` (plaintext): a display name has to be readable by members of every space
+    // you are in, and they do not share one key. This is the same metadata visibility recorded in
+    // KA-33 — it is a name, not content.
+    if (profile.get("name") !== name) profile.set("name", name, "trusting");
+  } catch {
+    // Never block opening an app on this.
+  }
 }
 
 /**

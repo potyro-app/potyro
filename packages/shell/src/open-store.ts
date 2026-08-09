@@ -95,13 +95,16 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     // minted with crypto alone, so it already exists here whether or not this device has ever
     // synced — and `ctx.me` therefore names the same person before and after sync is switched on.
     // An id that changed on toggle would orphan every `createdBy` already stamped.
-    const [{ openJazzStore }, { identityAccount }] = await Promise.all([
+    const [{ openJazzStore }, identity] = await Promise.all([
       import("@karta/store"),
       import("@karta/identity"),
     ]);
     const handle = await openJazzStore(namespace, {
       relay: syncRelayUrl(),
-      account: await identityAccount(),
+      account: await identity.identityAccount(),
+      // Your display name, so peers see a person rather than a truncated account id. Passed on
+      // EVERY open, because renaming yourself must reach people you already share with.
+      profileName: identity.peekIdentity()?.name,
     });
     lastSyncHandle = handle;
     return handle.store;

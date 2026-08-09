@@ -3,7 +3,7 @@
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { KartaRuntime } from "@karta/runtime";
+import type { ActivityItem, KartaRuntime } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
@@ -12,6 +12,7 @@ import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
+import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
 import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
   SYSTEM_PROMPT,
@@ -243,12 +244,36 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     if (m.qa.open !== false) openRecord(m.qa.entity, created.id);
   };
 
+  // Recomputed when the store changes, so a peer's write raises the count without a reload.
+  useEffect(() => {
+    if (!appId) return;
+    let alive = true;
+    const refresh = (): void => {
+      void loadActivity(runtime, appId).then((items) => {
+        if (alive) setActivity(items);
+      });
+    };
+    refresh();
+    const stops = Object.keys(runtime.definition.entities).map((entity) =>
+      runtime.core.store.subscribe(entity, refresh),
+    );
+    return () => {
+      alive = false;
+      for (const stop of stops) stop();
+    };
+  }, [runtime, appId]);
+
   // ⑤ Edit mode → agent: point at a piece of UI and describe a change; the target + your text go to
   // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
   const canEdit = Boolean(generator && currentKind === "user" && appId);
   const [editMode, setEditMode] = useState(false);
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
+  // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
+  // app — and the control is hidden rather than showing an empty panel that would claim nothing
+  // happened.
+  const [activity, setActivity] = useState<ActivityItem[] | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
@@ -471,6 +496,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
           {generator ? (
             <button type="button" className="k-add k-apps-btn" aria-label="Switch app" onClick={() => setLauncherOpen(true)}>
               ⊞ Apps
+            </button>
+          ) : null}
+          {activity ? (
+            <button
+              type="button"
+              className="k-add k-activity-btn"
+              aria-label={activity.length ? `What changed — ${activity.length} since you last looked` : "What changed"}
+              data-unread={activity.length || undefined}
+              onClick={() => setActivityOpen(true)}
+            >
+              ✻ Changes
+              {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
             </button>
           ) : null}
           {generator ? (
@@ -735,6 +772,19 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
           appName={def.name}
           onClose={() => setHistoryOpen(false)}
           onRestored={() => location.reload()}
+        />
+      ) : null}
+
+      {activityOpen && activity && appId ? (
+        <ActivityPanel
+          runtime={runtime}
+          appId={appId}
+          items={activity}
+          onClose={() => {
+            setActivityOpen(false);
+            // Seen: clear the count without another round-trip to the log.
+            setActivity([]);
+          }}
         />
       ) : null}
 
