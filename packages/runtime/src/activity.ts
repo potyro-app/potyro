@@ -16,6 +16,7 @@
 import { humanizeKey } from "karta";
 import type { AppDefinition, Id, Person } from "karta";
 import type { FieldEdit, Store } from "@karta/store";
+import { memberName } from "./people.js";
 
 /** One field of one record changing, ready to show. */
 export interface ActivityItem {
@@ -53,25 +54,6 @@ export interface ActivityDeps {
  */
 export function activitySupported(store: Store): boolean {
   return typeof store.editHistory === "function";
-}
-
-/**
- * An account id as a person to read: "You", their name, or a short id.
- *
- * Shared with chat (KA-35) deliberately. Both features name the same accounts from the same
- * membership, and two copies of this would drift — one saying "You" where the other said `co_z9f…`
- * for the same person on the same screen.
- *
- * The last branch is not a fallback for a bug: someone who has LEFT the space is no longer in
- * `members`, and their edits and messages stay in the log forever. There is no name to find, so the
- * only honest answer is something stable and distinguishable rather than a blank.
- */
-export function memberName(
-  id: string,
-  who: { me?: Person; members?: readonly { id: string; name: string }[] },
-): string {
-  if (who.me && id === who.me.id) return "You";
-  return who.members?.find((m) => m.id === id)?.name ?? `${id.slice(0, 8)}…`;
 }
 
 function labelFor(definition: AppDefinition, entity: string, field: string): string {

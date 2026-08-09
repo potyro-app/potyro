@@ -35,9 +35,9 @@
 // empty CoMap and add a switch whose "off" position means "the people you share with cannot reach
 // you", which is not a setting worth offering.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
-import { memberName } from "@karta/runtime";
+import { memberName, personHue, personInitials } from "@karta/runtime";
 import type { ChatMessage, Store } from "@karta/store";
 import { ROOM_THREAD, recordThread } from "@karta/store";
 
@@ -138,6 +138,24 @@ export function useThread(runtime: KartaRuntime, thread: string | null): {
   return { messages, post, error };
 }
 
+/**
+ * Who is in the space, kept current.
+ *
+ * `runtime.ctx` is rebuilt per access, so the values are always fresh — but nothing would re-render
+ * this panel when they change. Chat has no query hooks to piggyback on (its data comes from the
+ * message subscription), so it subscribes to the runtime's own invalidation, which is what the
+ * membership watcher already fires. Without it a peer's rename lands in the store, updates `ctx`,
+ * and stays invisible until something unrelated happened to redraw the panel.
+ */
+function useLiveMembers(runtime: KartaRuntime): {
+  me: KartaRuntime["ctx"]["me"];
+  members: readonly { id: string; name: string }[] | undefined;
+} {
+  const [, bump] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => runtime.core.onInvalidate(() => bump()), [runtime]);
+  return { me: runtime.ctx.me, members: runtime.ctx.space?.members };
+}
+
 /** "14:32", or the date once it is not today — a conversation is scanned by time, not by date. */
 function when(at: Date): string {
   const today = new Date();
@@ -171,8 +189,7 @@ export function Thread({
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
 
-  const me = runtime.ctx.me;
-  const members = runtime.ctx.space?.members;
+  const { me, members } = useLiveMembers(runtime);
   const alone = (members?.length ?? 1) <= 1;
 
   // Reading IS having read. The watermark moves whenever the rendered set changes, so a thread left
@@ -204,17 +221,34 @@ export function Thread({
         {messages.length === 0 ? (
           <li className="k-muted k-chat-empty">{emptyText}</li>
         ) : (
-          messages.map((m) => (
-            <li key={m.id} className="k-chat-msg" data-mine={m.by === me?.id || undefined}>
-              <div className="k-chat-meta">
-                <span className="k-chat-who">{memberName(m.by, { me, members })}</span>
-                <time className="k-chat-when" dateTime={m.at.toISOString()}>
-                  {when(m.at)}
-                </time>
-              </div>
-              <p className="k-chat-text">{m.text}</p>
-            </li>
-          ))
+          messages.map((m) => {
+            const who = memberName(m.by, { me, members });
+            return (
+              <li
+                key={m.id}
+                className="k-chat-msg"
+                data-mine={m.by === me?.id || undefined}
+                // The colour is derived from the account id, so it is the same on everyone's screen
+                // and needs nothing stored or agreed. It is what distinguishes people when the NAMES
+                // cannot: a fresh identity is called "Me" until its owner renames it, and nothing
+                // stops two people picking the same name.
+                style={{ ["--k-hue" as string]: personHue(m.by) }}
+              >
+                <span className="k-avatar" aria-hidden>
+                  {personInitials(who === "You" ? (me?.name ?? "") : who, m.by)}
+                </span>
+                <div className="k-chat-body">
+                  <div className="k-chat-meta">
+                    <span className="k-chat-who">{who}</span>
+                    <time className="k-chat-when" dateTime={m.at.toISOString()}>
+                      {when(m.at)}
+                    </time>
+                  </div>
+                  <p className="k-chat-text">{m.text}</p>
+                </div>
+              </li>
+            );
+          })
         )}
         <div ref={endRef} />
       </ul>

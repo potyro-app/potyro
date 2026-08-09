@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 
 // Two people, one dataset, through a real relay (KA-08's actual acceptance criterion).
 //
@@ -88,6 +89,9 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await a.getByRole("button", { name: "Share Sync Pair" }).click();
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turn sync on
+  // Sharing asks what to call you now. Declined here: this spec is about data reaching the other
+  // device, not about names, and declining is a supported answer.
+  await answerNamePrompt(a);
 
   // The share dialog offers the link in an input.
   const linkField = a.locator(".k-dialog input");
@@ -112,6 +116,7 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // trust prompt
+  await answerNamePrompt(b);
 
   // B never created this app: both the DATA and the app SOURCE arrived over sync.
   await expect(b.locator("h1").first()).toHaveText("Sync Pair", { timeout: 60_000 });

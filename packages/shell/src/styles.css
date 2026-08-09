@@ -2235,18 +2235,43 @@ button {
 .k-chat-empty { padding: 0.75rem 0; }
 .k-chat-msg {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: flex-start;
+  gap: 0.55rem;
   padding: 0.45rem 0.65rem;
   border-radius: 0.7rem;
-  background: var(--surface-soft, rgba(0, 0, 0, 0.035));
+  /* Tinted by the author, faintly: enough to group a run of messages at a glance without turning
+     the panel into a colour chart. `--k-hue` is set per message from the account id. */
+  background: oklch(97% 0.03 var(--k-hue, 60) / 0.9);
   /* Yours sit off to the right: whose message it is has to be legible before a word is read. */
   align-self: flex-start;
   max-width: 85%;
 }
 .k-chat-msg[data-mine] {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  flex-direction: row-reverse;
+}
+.k-chat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+/* The identity mark. Colour is derived from the account id (see `personHue`), so the same person is
+   the same colour on every device — which is what tells three people apart while all three are
+   still called "Me". Never colour ALONE: the initials carry it for anyone who cannot see the hue. */
+.k-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: oklch(90% 0.08 var(--k-hue, 60));
+  color: oklch(35% 0.13 var(--k-hue, 60));
+  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 .k-chat-meta {
   display: flex;
@@ -2255,7 +2280,12 @@ button {
   font-size: 0.75rem;
   color: var(--ink-soft);
 }
-.k-chat-who { font-weight: 600; }
+.k-chat-msg[data-mine] .k-chat-meta { flex-direction: row-reverse; }
+.k-chat-who {
+  font-weight: 600;
+  /* Same hue as the avatar, darkened for text contrast — the name and the mark read as one person. */
+  color: oklch(40% 0.13 var(--k-hue, 60));
+}
 .k-chat-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .k-chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .k-chat-error { margin: 0; color: #b4762a; font-size: 0.85rem; }

@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 
@@ -133,6 +134,7 @@ test("two peers keep syncing after the relay dies and comes back", async ({ brow
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await a.getByRole("button", { name: "Share Reconnect" }).click();
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(a);
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
@@ -145,6 +147,7 @@ test("two peers keep syncing after the relay dies and comes back", async ({ brow
   const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(b);
   await expect(b.locator(".k-list-row", { hasText: "before" })).toBeVisible({ timeout: 60_000 });
 
   // ---- the relay dies. NEITHER PAGE RELOADS — that is the whole point. ----
