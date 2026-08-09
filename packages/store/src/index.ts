@@ -5,7 +5,7 @@ export { MemoryStore } from "./memory-store.js";
 export { LocalStore, type StorageLike } from "./local-store.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
-export { createJazzStore, openJazzStore, createSpaceInvite, joinSpace, spaceMembers, myRole, subscribeSpace, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
+export { createJazzStore, openJazzStore, createSpaceInvite, joinSpace, spaceMembers, myRole, publishName, subscribeSpace, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
 export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
   createSqliteStore,

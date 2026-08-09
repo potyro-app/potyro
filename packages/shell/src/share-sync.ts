@@ -51,10 +51,15 @@ export async function createShareLink(appId: string): Promise<string> {
   if (!app) throw new Error("app not found");
   if (!app.sync) throw new Error("Turn sync on for this app first — sharing needs a space to invite into.");
 
-  const { identityAccount } = await import("@karta/identity");
+  const { identityAccount, peekIdentity } = await import("@karta/identity");
+  // `identityAccount()` first, THEN the name: it is what mints the identity on a device that has
+  // never had one, and `peekIdentity` answers null until it has. See `acceptInvite` for the bug this
+  // ordering fixes.
+  const account = await identityAccount();
   const handle = await openJazzStore(`user:${appId}`, {
     relay: syncRelayUrl(),
-    account: await identityAccount(),
+    account,
+    profileName: peekIdentity()?.name,
   });
 
   // Publish before minting the link: the guest fetches the source from the space, so a link handed
@@ -112,10 +117,21 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // one does not, so the space is the source of truth either way.
   // You join a space AS someone: the same device identity every other app uses, so the inviter sees
   // one person rather than a new stranger per app.
-  const { identityAccount } = await import("@karta/identity");
+  const { identityAccount, peekIdentity } = await import("@karta/identity");
+  // Your NAME goes with you, not just your account.
+  //
+  // Joining is where a guest's account CoValue is first materialised, and without this it was
+  // created with the default profile name — so to the person who invited you, you appeared as "Me"
+  // until you happened to reload, which is when `openStore` publishes the real one. Everyone's first
+  // sight of a new member was the wrong name, on the one path every invited user takes.
+  //
+  // `identityAccount()` is awaited first because it MINTS the identity on a device that has never
+  // had one; `peekIdentity` answers null before that.
+  const account = await identityAccount();
   const joined = await joinSpace(`user:${payload.appId}`, payload, {
     relay: syncRelayUrl(),
-    account: await identityAccount(),
+    account,
+    profileName: peekIdentity()?.name,
   });
   const { readPublishedApp } = await import("./app-sync.js");
   const published = await readPublishedApp(joined.store);

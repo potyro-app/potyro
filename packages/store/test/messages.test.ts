@@ -89,6 +89,22 @@ describe("posting and reading", () => {
     expect((await store.messages(ROOM_THREAD, { limit: 1 })).map((m) => m.text)).toEqual(["three"]);
   });
 
+  it("a record's thread dies with the record", async () => {
+    // Otherwise the messages outlive the only thing that could ever show them — and would come back
+    // attached to the wrong record if that id were reused.
+    const { store } = await solo();
+    const rec = await store.insert("item", { title: "milk" });
+    const thread = recordThread("item", rec.id);
+    await store.postMessage(thread, "the oat one");
+    await store.postMessage(ROOM_THREAD, "unrelated");
+
+    await store.delete("item", rec.id);
+
+    expect(await store.messages(thread)).toEqual([]);
+    // Only that thread. Deleting a record must not take the room with it.
+    expect((await store.messages(ROOM_THREAD)).map((m) => m.text)).toEqual(["unrelated"]);
+  });
+
   it("never leaks into the app's data", async () => {
     // Chat sits beside the entity tree. If it showed up as records, an untrusted app could read it
     // through `ctx.query`, which is the one thing this placement exists to prevent.

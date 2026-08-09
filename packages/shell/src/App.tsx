@@ -13,6 +13,8 @@ import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
+import { ChatPanel, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
+import { ROOM_THREAD } from "@karta/store";
 import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
   SYSTEM_PROMPT,
@@ -147,6 +149,17 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
 
   const params = paramsByPage[pageId] ?? {};
+  // Which record the page in front of you is about, or null if it is not a record page. Read from
+  // the declared view rather than tracked separately, so it stays right however the page was
+  // reached — a nav action, a list tap, or a link opened cold.
+  const detailTarget = ((): { entity: string; id: string } | null => {
+    const view = def.pages.find((p) => p.id === pageId)?.view as
+      | { type?: string; entity?: string; param?: string }
+      | undefined;
+    if (view?.type !== "detail" || !view.entity) return null;
+    const id = String(params[view.param ?? "id"] ?? "");
+    return id ? { entity: view.entity, id } : null;
+  })();
   const setParam = (key: string, value: unknown): void =>
     setParamsByPage((prev) => ({ ...prev, [pageId]: { ...(prev[pageId] ?? {}), [key]: value } }));
 
@@ -274,6 +287,14 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // happened.
   const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  // Talking to the people you share with (KA-35). Only a CRDT store can carry it, and only a synced
+  // app has a CRDT store — so on a local-only app the control is absent rather than present and
+  // pointing at nobody. The room is loaded whether or not the panel is open, because the unread
+  // badge is the whole reason to notice a message at all.
+  const canChat = chatSupported(runtime.core.store);
+  const [chatOpen, setChatOpen] = useState(false);
+  const room = useThread(runtime, canChat ? ROOM_THREAD : null);
+  const roomUnread = appId ? unreadCount(room.messages, appId, ROOM_THREAD, runtime.ctx.me?.id) : 0;
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
@@ -510,6 +531,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
             </button>
           ) : null}
+          {canChat ? (
+            <button
+              type="button"
+              // Its own class, not `k-activity-btn`: that one is how the activity spec finds the
+              // Changes button, and sharing it made the selector ambiguous.
+              className="k-add k-chat-btn"
+              aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
+              data-unread={roomUnread || undefined}
+              onClick={() => setChatOpen(true)}
+            >
+              💬 Chat
+              {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
+            </button>
+          ) : null}
           {generator ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
               Studio
@@ -617,6 +652,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               onEdit={onEdit}
               onCreate={onCreate}
             />
+            {/* The record's own conversation, under the record — the half of KA-35 nothing else can
+                do. Rendered by the SHELL and not by the detail view, because `views` is reachable
+                from a page an app declares and messages must stay out of app code's reach entirely
+                (hard rule 3). The shell already knows which record is open: it is the detail page's
+                param. */}
+            {canChat && appId && detailTarget ? (
+              <RecordThread
+                runtime={runtime}
+                appId={appId}
+                entity={detailTarget.entity}
+                recordId={detailTarget.id}
+                label={entityLabel(detailTarget.entity)}
+              />
+            ) : null}
           </main>
         </>
       )}
@@ -787,6 +836,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
           }}
         />
       ) : null}
+
+      {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
 

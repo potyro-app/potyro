@@ -91,6 +91,20 @@ export async function watchSpace(): Promise<void> {
   stopWatchingSpace = subscribeSpace(handle, () => void refresh(true));
 }
 
+/**
+ * Push a new display name to the app that is open, if one is synced.
+ *
+ * A name is published on every open, so it would reach people eventually — but "eventually" here
+ * means the next reload, and someone who has just renamed themselves is usually looking at a screen
+ * with their old name on it. No-op when nothing is synced: there is nobody to tell.
+ */
+export async function republishName(name: string): Promise<void> {
+  const handle = lastSyncHandle;
+  if (!handle) return;
+  const { publishName } = await import("@karta/store");
+  await publishName(handle, name);
+}
+
 /** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
 export async function currentSpace(): Promise<
   { id: string; role: "admin" | "writer" | "reader"; members: Array<{ id: string; name: string; role: "admin" | "writer" | "reader" }> } | null
@@ -163,9 +177,12 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       import("@karta/store"),
       import("@karta/identity"),
     ]);
+    // Awaited before the name is read, not inline: `identityAccount()` mints the identity on a
+    // device that has never had one, and `peekIdentity()` answers null until it has.
+    const account = await identity.identityAccount();
     const handle = await openJazzStore(namespace, {
       relay: syncRelayUrl(),
-      account: await identity.identityAccount(),
+      account,
       // Your display name, so peers see a person rather than a truncated account id. Passed on
       // EVERY open, because renaming yourself must reach people you already share with.
       profileName: identity.peekIdentity()?.name,
