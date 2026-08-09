@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 
 // Two people actually talking (KA-35, part 2).
 //
@@ -66,15 +67,8 @@ async function device(context: BrowserContext, opts?: { app?: boolean }): Promis
   return context.newPage();
 }
 
-/**
- * Give this device's owner a name, through the dialog a person would use.
- *
- * Not seeded into `localStorage`: minting an identity writes the default name unconditionally, so a
- * pre-seeded one is overwritten on first boot and both devices would render as "Me" — which would
- * make every attribution assertion below vacuous while still passing. Going through "⌾ You" also
- * covers the thing that makes a name worth anything: it has to reach the OTHER person.
- */
-const nameSelf = async (page: Page, name: string): Promise<void> => {
+/** Rename yourself mid-session, through "⌾ You" — the control that exists for changing your mind. */
+const renameSelf = async (page: Page, name: string): Promise<void> => {
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await page.getByRole("button", { name: "You and your devices" }).click();
   await page.locator(".k-identity").getByRole("button", { name: "Rename", exact: true }).click();
@@ -117,12 +111,16 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   const a = await device(ctxA, { app: true });
   await a.goto("/?user=chat-pair");
   await expect(a.locator("h1").first()).toHaveText("Chat Pair", { timeout: 30_000 });
-  await nameSelf(a, "Ana");
   await add(a, "milk");
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await a.getByRole("button", { name: "Share Chat Pair" }).click();
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turn sync on
+
+  // Sharing asks what to call you, because this is the first moment anyone else can see it. Nothing
+  // asks at first run: for a solo app the name is private and the question would be signup wearing
+  // different clothes.
+  await answerNamePrompt(a, "Ana");
 
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
@@ -154,12 +152,11 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // trust prompt
+  // Joining asks too — and BEFORE the join completes, so the person who invited you never watches a
+  // "Me" arrive and then change.
+  await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Chat Pair", { timeout: 60_000 });
   await expect(b.locator(".k-list-row", { hasText: "milk" })).toBeVisible({ timeout: 60_000 });
-  // Named AFTER joining, and never reloaded afterwards: a rename has to reach the people you are
-  // already sharing with, not wait for the next open. Ana's assertion on "Bo" below is what proves
-  // it did.
-  await nameSelf(b, "Bo");
 
   // Bo has never opened the room, so Ana's message is unread — the badge is the only reason anyone
   // would think to look.
@@ -183,21 +180,26 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   await a.getByRole("button", { name: /^Chat/ }).click();
   const boSaid = a.locator(".k-chat-msg", { hasText: "getting some on the way home" });
   await expect(boSaid).toBeVisible({ timeout: 60_000 });
-  await a.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
+  await expect(boSaid.locator(".k-chat-who")).toHaveText("Bo", { timeout: 60_000 });
 
-  // The name needs a reload here, and that is a limitation rather than a test convenience.
+  // The two people are DIFFERENT COLOURS, and the colour is derived from the account id rather than
+  // assigned — so it needs nothing stored and cannot disagree between devices. This is what tells
+  // people apart when the names cannot: nothing stops two members choosing the same one.
+  const hueOf = (msg: ReturnType<Page["locator"]>) =>
+    msg.evaluate((el) => getComputedStyle(el).getPropertyValue("--k-hue").trim());
+  const anaHue = await hueOf(a.locator(".k-chat-msg", { hasText: "there is no milk in the shop" }));
+  const boHue = await hueOf(boSaid);
+  expect(anaHue).not.toBe("");
+  expect(boHue).not.toBe(anaHue);
+
+  // ---- a rename reaches an OPEN page, with no reload on either side ----
   //
-  // Ana's membership list is re-read when the GROUP changes — a join, a role change. Bo renamed
-  // himself AFTER joining, which changes his account profile and not the group, so nothing tells
-  // Ana's open page to look again. What the reload proves is the half that is fixed: the rename
-  // reached the space at all, from a device that never reloaded (`republishName`). Watching every
-  // member's profile is the other half, and is recorded as a loose end rather than done here.
-  await a.goto("/?user=chat-pair");
-  await expect(a.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });
-  await a.getByRole("button", { name: /^Chat/ }).click();
-  await expect(
-    a.locator(".k-chat-msg", { hasText: "getting some on the way home" }).locator(".k-chat-who"),
-  ).toHaveText("Bo", { timeout: 60_000 });
+  // Two subscriptions have to be right for this. Bo's rename publishes to his account profile
+  // immediately (`republishName`); Ana's page notices because it watches every member's profile, not
+  // just the group. Watching only the group — which fires on a join and a role change, and not on a
+  // rename — is what used to leave a peer's new name invisible until the next reload.
+  await renameSelf(b, "Bo Silva");
+  await expect(boSaid.locator(".k-chat-who")).toHaveText("Bo Silva", { timeout: 60_000 });
   await a.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
 
   // ---- and on the record itself: the half nothing else can do ----

@@ -65,8 +65,13 @@ export function liveSpace(): SpaceShape | undefined {
 /**
  * Start keeping `liveSpace()` up to date for the app just opened.
  *
- * Reads once, then re-reads on every group change. Nothing polls: a group is a CoValue and this is
- * its own subscription.
+ * Reads once, then re-reads on every group change AND on every member rename. Nothing polls: both
+ * are CoValues and these are their own subscriptions.
+ *
+ * TWO subscriptions, because there are two CoValues and watching only one was a bug people saw.
+ * The group fires on a join or a role change; a rename writes to that person's account profile,
+ * which the group does not contain — so a peer who renamed themselves stayed "Me" on your screen
+ * until you reloaded, which is exactly when chat made it obvious.
  */
 export async function watchSpace(): Promise<void> {
   stopWatchingSpace?.();
@@ -76,6 +81,22 @@ export async function watchSpace(): Promise<void> {
   const handle = lastSyncHandle;
   if (!handle) return;
 
+  const { subscribeSpace, subscribeMemberProfiles } = await import("@karta/store");
+
+  let stopProfiles: (() => void) | null = null;
+  /** Whose profiles are currently watched, so the set is only rebuilt when the PEOPLE change. */
+  let watching = "";
+
+  const rewatchProfiles = async (next: { members: Array<{ id: string }> }): Promise<void> => {
+    const ids = next.members.map((m) => m.id).sort().join(",");
+    // Only when the membership itself changed. A rename fires these subscriptions, and tearing them
+    // down and rebuilding them inside their own callback would churn on every keystroke-sized edit.
+    if (ids === watching) return;
+    watching = ids;
+    stopProfiles?.();
+    stopProfiles = await subscribeMemberProfiles(handle, () => void refresh(true));
+  };
+
   const refresh = async (notify: boolean): Promise<void> => {
     const next = await currentSpace().catch(() => null);
     if (!next) return;
@@ -83,12 +104,16 @@ export async function watchSpace(): Promise<void> {
     // re-rendering every view on each of those would be noise dressed as reactivity.
     const changed = JSON.stringify(next.members) !== JSON.stringify(cachedSpace?.members);
     cachedSpace = next;
+    await rewatchProfiles(next);
     if (notify && changed) for (const cb of spaceListeners) cb();
   };
   await refresh(false);
 
-  const { subscribeSpace } = await import("@karta/store");
-  stopWatchingSpace = subscribeSpace(handle, () => void refresh(true));
+  const stopGroup = subscribeSpace(handle, () => void refresh(true));
+  stopWatchingSpace = () => {
+    stopGroup();
+    stopProfiles?.();
+  };
 }
 
 /**

@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 
 // "What changed while I was away", end to end, in two browsers (KA-36).
 //
@@ -69,6 +70,7 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await ana.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await ana.getByRole("button", { name: "Share Shoplist" }).click();
   await ana.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(ana, "Ana");
   const linkField = ana.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
@@ -88,18 +90,11 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   const bruno = await device(ctxB);
   await bruno.goto(link);
   await bruno.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  // Joining asks for a name, which is how Ana's copy gets something to render instead of an account
+  // id. This used to be a detour through the identity panel plus a reload; the prompt is now on the
+  // path, so the detour was removed rather than left as ceremony.
+  await answerNamePrompt(bruno, "Bruno");
   await expect(bruno.locator(".k-list-row", { hasText: "Milk" })).toBeVisible({ timeout: 60_000 });
-
-  // Give Bruno a name Ana's copy can render, rather than an account id.
-  await bruno.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await bruno.getByRole("button", { name: "You and your devices" }).click();
-  // Scoped to the panel: the launcher behind it has a "Rename <app>" button too.
-  await bruno.locator(".k-identity").getByRole("button", { name: "Rename" }).click();
-  const nameField = bruno.locator(".k-dialog input");
-  await expect(nameField).toBeVisible({ timeout: 30_000 });
-  await nameField.fill("Bruno");
-  await bruno.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
-  await bruno.goto("/?user=shoplist");
 
   // Scoped to the ROW. `/^Edit/` alone also matches the header's "Edit mode" button, so an unscoped
   // locator toggled edit mode and no form ever opened.

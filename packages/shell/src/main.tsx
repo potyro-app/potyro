@@ -278,6 +278,13 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
       "\n\nYou can change this later from the app header.",
   );
 
+  // Asked after trust and before joining. After, because "do you trust this app?" is the question
+  // the user opened the link to answer and nothing should come between them and it. Before, because
+  // joining is what materialises your account for the people already in the space — answer later and
+  // the person who invited you watches "Me" arrive.
+  const { askNameIfUnnamed } = await import("./identity-panel.js");
+  await askNameIfUnnamed();
+
   try {
     const id = await acceptInvite(invite, trust);
     // Drop the fragment so a reload does not re-accept, and so the secret stops sitting in the bar.

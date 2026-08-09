@@ -631,6 +631,50 @@ export function subscribeSpace(handle: JazzStoreHandle, cb: () => void): () => v
   return group?.subscribe?.(cb) ?? (() => {});
 }
 
+/**
+ * Be told when a MEMBER's display name changes.
+ *
+ * Separate from `subscribeSpace` because they watch different CoValues, and only one of them was
+ * being watched: the group fires on a join or a role change, but renaming yourself writes to your
+ * ACCOUNT PROFILE, which the group does not contain. So a peer's new name reached everyone's storage
+ * immediately and appeared on nobody's screen until they happened to reload.
+ *
+ * Best-effort, member by member: a profile that will not load is skipped rather than failing the
+ * whole subscription — the same trade `spaceMembers` makes, for the same reason. Losing one person's
+ * live rename is survivable; losing everyone's is not.
+ */
+export async function subscribeMemberProfiles(
+  handle: JazzStoreHandle,
+  cb: () => void,
+): Promise<() => void> {
+  const group = handle.group as { getMemberKeys(): string[] } | null;
+  const node = handle.node as { load(id: string): Promise<unknown> };
+  if (!group?.getMemberKeys) return () => {};
+
+  const stops: Array<() => void> = [];
+  for (const key of group.getMemberKeys()) {
+    // Member keys include non-account agents (a relay's server agent); only accounts have profiles.
+    if (!key.startsWith("co_")) continue;
+    try {
+      const account = (await node.load(key)) as { get?(k: string): unknown } | "unavailable";
+      if (!account || account === "unavailable") continue;
+      const profileId = account.get?.("profile");
+      if (typeof profileId !== "string") continue;
+      const profile = (await node.load(profileId)) as
+        | { subscribe?(l: () => void): () => void }
+        | "unavailable";
+      if (!profile || profile === "unavailable") continue;
+      const stop = profile.subscribe?.(cb);
+      if (stop) stops.push(stop);
+    } catch {
+      // One unreachable profile is not a reason to watch none of them.
+    }
+  }
+  return () => {
+    for (const stop of stops) stop();
+  };
+}
+
 /** This device's own role in an app's space. */
 export function myRole(handle: JazzStoreHandle): "admin" | "writer" | "reader" | undefined {
   const group = handle.group as { myRole(): string | undefined } | null;

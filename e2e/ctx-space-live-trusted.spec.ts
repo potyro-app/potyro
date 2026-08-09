@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 
 // APP CODE must see the space as it is now, not as it was at boot (KA-36 follow-up).
 //
@@ -73,6 +74,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
   await ana.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await ana.getByRole("button", { name: "Share Roster" }).click();
   await ana.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(ana, "Ana");
   const linkField = ana.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
@@ -90,6 +92,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
   const bruno = await device(ctxB);
   await bruno.goto(link);
   await bruno.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(bruno, "Bruno");
   await expect(bruno.locator("h1").first()).toHaveText("Roster", { timeout: 60_000 });
 
   // ---- THE POINT: Ana's app counts two members with no reload AND NO WRITE ----

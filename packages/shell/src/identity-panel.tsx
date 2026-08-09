@@ -16,10 +16,50 @@
 
 import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
-import { peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
+import { ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
 const OFFERED = "karta:identity:offeredBackup";
+/** Set once the name has been ASKED for. Separate from having a name: declining is an answer. */
+const ASKED_NAME = "karta:identity:askedName";
+
+/**
+ * Ask what to call you, at the first moment somebody else can see it.
+ *
+ * A fresh identity is named "Me" and nothing used to change that, so every member of a space read as
+ * "Me" — on the chat, on the activity feed, on every member chip. Three people sharing a list saw
+ * three lines of "Me" and no way to tell who meant what. `identity.ts` had described this prompt for
+ * a while; it had simply never been built.
+ *
+ * Asked on SHARING and on JOINING — the two moments the name stops being private — and never at
+ * first run, which would be a signup ceremony for a solo app where nobody can see it.
+ *
+ * Asked ONCE. Declining is a real answer and re-asking on every share would be nagging; the control
+ * stays in this panel forever.
+ *
+ * Mints the identity itself rather than assuming one. On the JOINING path there may be none yet —
+ * a device whose first ever act is opening someone's link — and `renameIdentity` throws without one,
+ * so the question would have been skipped for exactly the person it matters most for.
+ */
+export async function askNameIfUnnamed(): Promise<void> {
+  if (globalThis.localStorage?.getItem(ASKED_NAME)) return;
+  await ensureIdentity();
+  globalThis.localStorage?.setItem(ASKED_NAME, new Date().toISOString());
+
+  const name = await shellDialogs.prompt(
+    "What should the people you share with see you as?\n\n" +
+      "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any " +
+      "time from ⌾ You.",
+    { default: "" },
+  );
+  if (!name?.trim()) return;
+
+  const renamed = renameIdentity(name);
+  // Publish now rather than on the next open: on the sharing path the space is already open, and on
+  // the joining path it is about to be, so waiting would show the invitee as "Me" to everyone.
+  const { republishName } = await import("./open-store.js");
+  await republishName(renamed.name);
+}
 
 /**
  * Offer the recovery words the first time sync is switched on for anything.
