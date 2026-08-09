@@ -86,10 +86,29 @@ export interface CreateJazzStoreOpts {
    * store did on its own, kept so the store's tests stay independent of identity.
    */
   account?: { id: string; secret: string };
+  /**
+   * Relay URL. Attached INSIDE this function, between resolving the account and loading the app's
+   * group — the only window that works. Later is too late: joining a space fetches the group over
+   * the network, so a relay attached after `createJazzStore` returns leaves the join with nothing to
+   * fetch from. Earlier is too early: resolving an absent account with peers attached waits for every
+   * peer to disclaim it, which turned "turn sync on" into a 30s stall against a dead relay.
+   */
+  relay?: string;
+}
+
+/** A live relay connection: whether it is up, and a way to be told when that changes. */
+export interface RelayConnection {
+  readonly connected: boolean;
+  subscribe(listener: (connected: boolean) => void): void;
+  unsubscribe(listener: (connected: boolean) => void): void;
+  /** Detach and stop reconnecting. */
+  disable(): void;
 }
 
 export interface JazzStoreHandle {
   store: JazzStore;
+  /** Present only when a relay URL was given. Reports the real transport state. */
+  relay?: RelayConnection;
   /** The cojson node, for attaching peers later or reading identity (KA-18). */
   node: unknown;
   /** This device's account id — the raw material for `ctx.me` once KA-18 lands. */
@@ -248,6 +267,11 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
     keys.set(ACCOUNT_SEED, toHex(seed));
   }
 
+  // ---- 1b. the relay ---------------------------------------------------------------------------
+  // Between the account and the group, for the reasons on `CreateJazzStoreOpts.relay`.
+  let relay: RelayConnection | undefined;
+  if (opts.relay) relay = await attachRelay(node, opts.relay);
+
   // ---- 2. the app's space --------------------------------------------------------------------
   const savedGroup = keys.get(groupKey(appId));
   let group: unknown;
@@ -275,7 +299,15 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
   await store.open(appId);
   if (!savedRoot) keys.set(rootKey(appId), store.rootId);
 
-  return { store, node, group, accountID, groupID: (group as { id: string }).id, whenDurable: durability.whenDurable };
+  return {
+    store,
+    node,
+    group,
+    relay,
+    accountID,
+    groupID: (group as { id: string }).id,
+    whenDurable: durability.whenDurable,
+  };
 }
 
 /**
@@ -357,8 +389,9 @@ export async function openJazzStore(
   // is ever opened — ADR D3's "solo = a space with one member, no transport". The relay only ever
   // sees ciphertext (measured: docs/spikes/jazz-selfhost-e2e.mjs), so pointing this at a
   // self-hosted `jazz-run sync` is the whole self-host story.
+  // The relay is NOT put in this list. It is attached to the node afterwards, because reconnecting
+  // means replacing the peer repeatedly and only the node can be given a new one.
   const peers = [...(opts?.peers ?? [])];
-  if (opts?.relay) peers.push(await createRelayPeer(opts.relay));
 
   const handle = await createJazzStore(appId, {
     db,
@@ -366,6 +399,7 @@ export async function openJazzStore(
     keys,
     profileName: opts?.profileName,
     account: opts?.account,
+    relay: opts?.relay,
     peers,
   });
   if (!whenPersisted) return handle;
@@ -381,15 +415,45 @@ export async function openJazzStore(
   return { ...handle, whenDurable: both };
 }
 
-/** A reconnecting WebSocket peer pointed at a sync relay. */
-async function createRelayPeer(url: string): Promise<unknown> {
-  const { createWebSocketPeer } = await import("cojson-transport-ws");
-  return createWebSocketPeer({
-    id: `relay-${url}`,
-    websocket: new WebSocket(url),
-    role: "server",
-    expectPings: true,
-  } as never);
+/**
+ * Attach a relay to a live node, and KEEP it attached.
+ *
+ * This used to build one `createWebSocketPeer` over a raw `new WebSocket(url)` and hand it to the
+ * node at construction. That socket is never replaced, so the first disconnection — a sleeping
+ * laptop, a wifi blip, a relay restart — ended sync permanently for that page, silently, until
+ * someone happened to reload. Writes kept working and kept being durable locally, which is exactly
+ * what makes it hard to notice: nothing looks wrong until two devices are compared.
+ *
+ * `WebSocketPeerWithReconnection` (already in `cojson-transport-ws`) reconnects with a linear
+ * backoff and re-adds the peer each time, which is why it needs the node rather than a socket.
+ */
+async function attachRelay(node: unknown, url: string): Promise<RelayConnection> {
+  const { WebSocketPeerWithReconnection } = await import("cojson-transport-ws");
+  const sync = (node as { syncManager: { addPeer(p: unknown): void; removePeer(id: string): void } }).syncManager;
+
+  const relay = new WebSocketPeerWithReconnection({
+    peer: url,
+    reconnectionTimeout: undefined, // library default (500ms, growing per attempt)
+    addPeer: (peer: { id: string }) => sync.addPeer(peer),
+    // The wrapper hands back the whole peer; cojson removes by id.
+    removePeer: (peer: { id: string }) => sync.removePeer(peer.id),
+  } as never) as unknown as {
+    enable(): void;
+    disable(): void;
+    connected: boolean;
+    subscribe(l: (connected: boolean) => void): void;
+    unsubscribe(l: (connected: boolean) => void): void;
+  };
+
+  relay.enable();
+  return {
+    get connected() {
+      return relay.connected;
+    },
+    subscribe: (l) => relay.subscribe(l),
+    unsubscribe: (l) => relay.unsubscribe(l),
+    disable: () => relay.disable(),
+  };
 }
 
 /** Mint an invite to this app's space. `writer` lets the guest edit; `reader` is read-only. */
