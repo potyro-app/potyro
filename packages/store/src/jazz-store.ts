@@ -15,7 +15,12 @@
 //        │                       └─ record CoMap: field -> JsonValue   ← per-key merge lives HERE
 //        ├─ "kv"       -> CoMap<string, string>        (ctx.storage)
 //        ├─ "blobs"    -> CoMap<key, {mime, base64}>   (see "Blobs" below)
-//        └─ "meta"     -> CoMap<string, JsonValue>     (schemaVersion, appVersion)
+//        ├─ "meta"     -> CoMap<string, JsonValue>     (schemaVersion, appVersion)
+//        └─ "chat"     -> CoMap<"<thread>\u0000<ulid>", text>   ← messages (KA-35)
+//
+// Chat sits BESIDE the entity tree, not inside it. It is in the space, so it syncs and is encrypted
+// to the members, but it is not app data: an app shared with you is untrusted code by someone else,
+// and nothing here is reachable from `ctx`.
 //
 // CoValue references are stored as their id strings and resolved through the node.
 //
@@ -38,7 +43,7 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
-import type { FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
@@ -101,6 +106,7 @@ const ROOT_ENTITIES = "entities";
 const ROOT_KV = "kv";
 const ROOT_BLOBS = "blobs";
 const ROOT_META = "meta";
+const ROOT_CHAT = "chat";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -272,9 +278,18 @@ export class JazzStore implements Store {
 
   async open(appId: string): Promise<void> {
     this.appId = appId;
-    this.root = this.initialRootId
-      ? await this.loadMap(this.initialRootId)
-      : this.group.createMap<RawMapLike>({ appId });
+    if (this.initialRootId) {
+      // Attaching to a root someone else made — a guest, or this device on a later open. Nothing is
+      // created here: a guest's `open()` runs BEFORE `acceptInvite`, so it has no write permission
+      // yet and any write would fail the whole boot.
+      this.root = await this.loadMap(this.initialRootId);
+      return;
+    }
+    this.root = this.group.createMap<RawMapLike>({ appId });
+    // Created with the root, by the only party that certainly may: a container made lazily is one
+    // two peers can make at the same time, and the loser's messages would be stranded in an
+    // orphaned CoValue. Apps whose root predates this fall back to lazy creation on first post.
+    await this.chat();
   }
 
   async close(): Promise<void> {
@@ -312,6 +327,89 @@ export class JazzStore implements Store {
    * `id`/`createdAt`/`createdBy`/`updatedAt` are skipped: they are bookkeeping this store writes
    * itself, and "Ana changed updatedAt" is noise, not activity.
    */
+  // ---- messages (KA-35) --------------------------------------------------------------------
+  //
+  // A thread is a CoMap keyed by a ULID, one message per key. That gives the same "cannot conflict"
+  // property an append-only stream would — two people posting at once write DIFFERENT keys, and
+  // per-key merge keeps both — while reusing the map machinery already in this file rather than
+  // declaring more of cojson's surface.
+  //
+  // Only the TEXT is stored. Author and time come from the transaction that wrote the key, exactly
+  // as `editHistory` reads them, so a sender cannot claim to be someone else and a message cannot be
+  // back-dated. Storing `by` as a field would have made both possible.
+
+  /**
+   * ONE map for all threads, keyed `<thread>\u0000<ulid>`.
+   *
+   * The first version gave each thread its own CoMap, created on demand — and two people posting
+   * their first message at the same time each created a DIFFERENT map and wrote the same key on the
+   * parent, so last-write-wins silently threw one conversation away. Exactly the "keying an index so
+   * peers diverge" failure this file warns about elsewhere, reproduced by a test before it was seen
+   * in the wild.
+   *
+   * Flattened, there is nothing to create concurrently: every message is its own unique key in a
+   * container that exists from `open()`.
+   */
+  private async chat(): Promise<RawMapLike> {
+    return this.child(this.root, ROOT_CHAT);
+  }
+
+  private static threadKey(thread: string, id: string): string {
+    return `${thread}\u0000${id}`;
+  }
+
+  async postMessage(thread: string, text: string): Promise<ChatMessage> {
+    const trimmed = text.trim();
+    if (!trimmed) throw new Error("An empty message has nothing to say.");
+    const map = await this.chat();
+    const id = ulid();
+    map.set(JazzStore.threadKey(thread, id), trimmed);
+    await this.whenDurable?.();
+
+    const posted = (await this.messages(thread)).find((m) => m.id === id);
+    // The write happened; if reading its own metadata back somehow fails, do not lose the message.
+    return posted ?? { id, text: trimmed, by: "", at: new Date() };
+  }
+
+  async messages(thread: string, opts?: { since?: Date; limit?: number }): Promise<ChatMessage[]> {
+    const map = await this.chat();
+    const since = opts?.since?.getTime();
+    const prefix = `${thread}\u0000`;
+    const out: ChatMessage[] = [];
+
+    for (const key of map.keys()) {
+      if (!key.startsWith(prefix)) continue;
+      const text = map.get(key);
+      if (typeof text !== "string") continue;
+      // The FIRST edit of the key is the post. A later one would be an edit, which nothing offers.
+      const first = map.editsAt?.(key)?.[Symbol.iterator]().next().value as
+        | { by: string; at: Date | number }
+        | undefined;
+      const at = first ? (first.at instanceof Date ? first.at : new Date(first.at)) : new Date(0);
+      if (since !== undefined && at.getTime() <= since) continue;
+      out.push({ id: key.slice(prefix.length), text, by: String(first?.by ?? ""), at });
+    }
+
+    // Oldest first, as a conversation reads. ULIDs are time-ordered, so they break a tie between two
+    // messages sharing a millisecond deterministically — every peer sorts the same way, which
+    // wall-clock alone cannot promise across devices.
+    out.sort((a, b) => a.at.getTime() - b.at.getTime() || (a.id < b.id ? -1 : 1));
+    return opts?.limit ? out.slice(-opts.limit) : out;
+  }
+
+  subscribeMessages(thread: string, cb: () => void): Unsubscribe {
+    let stop: (() => void) | null = null;
+    let alive = true;
+    void this.chat().then((map) => {
+      if (!alive) return;
+      stop = map.subscribe(() => cb());
+    });
+    return () => {
+      alive = false;
+      stop?.();
+    };
+  }
+
   async editHistory(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]> {
     const m = await this.recordMap(entity, id);
     if (!m?.editsAt) return [];

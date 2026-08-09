@@ -77,7 +77,41 @@ export interface Store {
    * folding an app's whole history to render a feed gets slower for as long as the app is used.
    */
   editHistory?(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]>;
+
+  // ---- messages between the people sharing this app (KA-35) ----
+  //
+  // Deliberately on the STORE and not on `ctx`. Messages live in the space but outside the app's
+  // entity tree, and an app shared with you is untrusted code by someone else — "their app can read
+  // the messages you send them" is an exfiltration path (hard rule 3). The shell calls these; app
+  // code has no route to them at all.
+  //
+  // Optional for the same reason as `editHistory`: a local-only app has no space and nobody to talk
+  // to, so the control should be absent rather than present and empty.
+
+  /** Post to a thread. The author is stamped from the signing session, never supplied. */
+  postMessage?(thread: string, text: string): Promise<ChatMessage>;
+  /** A thread's messages, oldest first. */
+  messages?(thread: string, opts?: { since?: Date; limit?: number }): Promise<ChatMessage[]>;
+  /** Fires when a message arrives, including from a peer. */
+  subscribeMessages?(thread: string, cb: () => void): Unsubscribe;
 }
+
+/** One message. `by`/`at` come from the CRDT transaction, so neither can be forged. */
+export interface ChatMessage {
+  id: string;
+  text: string;
+  by: string;
+  at: Date;
+}
+
+/**
+ * Thread keys.
+ *
+ * One room per app, plus a thread per record — the same storage either way, differing only in what
+ * the conversation is attached to.
+ */
+export const ROOM_THREAD = "room";
+export const recordThread = (entity: string, id: Id): string => `record:${entity}:${id}`;
 
 /** One field of one record changing, attributed and timed. */
 export interface FieldEdit {
