@@ -56,6 +56,8 @@ const ACCOUNT_SEED = "karta:jazz:accountSeed";
 const toHex = (b: Uint8Array): string => [...b].map((n) => n.toString(16).padStart(2, "0")).join("");
 const fromHex = (s: string): Uint8Array => new Uint8Array(s.match(/../g)?.map((h) => parseInt(h, 16)) ?? []);
 const groupKey = (appId: string) => `karta:jazz:group:${appId}`;
+/** Which cojson database this app's space lives in. See `openJazzStore`. */
+const dbKey = (appId: string) => `karta:jazz:db:${appId}`;
 const rootKey = (appId: string) => `karta:jazz:root:${appId}`;
 
 export interface CreateJazzStoreOpts {
@@ -319,14 +321,32 @@ export async function openJazzStore(
   // Apps stay isolated by GROUP, not by file (`jazz-backend.test.ts` pins that two apps get separate
   // spaces and cannot read each other). The cost of sharing a file is that deleting one app's data
   // no longer means deleting a file — tracked as a follow-up.
+  //
+  // ## Apps that predate the move keep their own file
+  //
+  // Changing the name orphaned every space that already existed: the group and root CoValues live in
+  // `${appId}-jazz`, so opening `karta-jazz` found nothing and the guard below correctly refused to
+  // mint a replacement over live data ("group … is unavailable"). A rename is a migration, and this
+  // one shipped without one.
+  //
+  // `karta:jazz:db:<ns>` records which file an app uses, written the first time it is opened from
+  // here on. If that marker is ABSENT but a group id is present, the space was created before this
+  // existed and its data is in the legacy per-app file — so that is what gets opened, permanently.
+  // Deterministic, with no probing of storage that would create the very file it is testing for.
+  const keys = opts?.keys ?? browserKeys();
   const DEVICE_DB = "karta-jazz";
+  const recorded = keys.get(dbKey(appId));
+  const predatesMove = !recorded && !!keys.get(groupKey(appId));
+  const dbName = recorded ?? (predatesMove ? `${appId}-jazz` : DEVICE_DB);
+  keys.set(dbKey(appId), dbName);
+
   let db: Awaited<ReturnType<typeof openOpfsDb>>;
   let whenPersisted: (() => Promise<void>) | undefined;
   try {
-    db = await openOpfsDb(DEVICE_DB);
+    db = await openOpfsDb(dbName);
   } catch {
     if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
-    const idb = await openIdbSqliteDb(DEVICE_DB);
+    const idb = await openIdbSqliteDb(dbName);
     db = idb.db;
     whenPersisted = idb.whenPersisted;
   }
@@ -342,7 +362,7 @@ export async function openJazzStore(
   const handle = await createJazzStore(appId, {
     db,
     crypto,
-    keys: opts?.keys,
+    keys,
     profileName: opts?.profileName,
     account: opts?.account,
     peers,

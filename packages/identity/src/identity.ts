@@ -57,6 +57,33 @@ const ID = "karta:identity:id";
 const NAME = "karta:identity:name";
 
 /**
+ * Where `packages/store` used to keep the account, before identity moved here.
+ *
+ * A device that synced anything before that move already HAS an account, and its spaces and records
+ * are signed by it. Minting a fresh one would not merely lose the passphrase — it would make every
+ * existing space unreadable, because they belong to the old account. So an existing account is
+ * ADOPTED, never replaced.
+ *
+ * Adopted accounts have no seed (the old code let cojson generate a random agent secret), so
+ * `recoveryPassphrase` refuses for them and says why. That is the honest outcome: the words for such
+ * an account do not exist and cannot be derived after the fact.
+ */
+const LEGACY_ID = "karta:jazz:accountID";
+const LEGACY_SECRET = "karta:jazz:accountSecret";
+const LEGACY_SEED = "karta:jazz:accountSeed";
+
+/**
+ * How the identity on this device came to be: `minted` | `adopted` | `passphrase`.
+ *
+ * It exists to tell an identity this package INVENTED from one the user chose. A build shipped
+ * between the move and the fix minted a fresh account on devices that already had one, so those
+ * devices now hold an identity that owns none of their data. Reclaiming the real account is only
+ * safe if a deliberate sign-in can be told apart from that automatic mint — otherwise linking a
+ * device would be silently undone by leftover keys from before.
+ */
+const ORIGIN = "karta:identity:origin";
+
+/**
  * The name a brand-new identity gets.
  *
  * Deliberately not a question at first run. Nothing in a solo app ever displays it, so asking would
@@ -118,8 +145,42 @@ export function peekIdentity(keys: IdentityKeys = browserKeys()): Identity | nul
  * Costs a single wasm crypto load, once ever. Every later run answers from `peekIdentity`.
  */
 export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promise<Identity> {
+  const legacyId = keys.get(LEGACY_ID);
+  const legacySecret = keys.get(LEGACY_SECRET);
   const existing = peekIdentity(keys);
-  if (existing) return existing;
+
+  if (existing) {
+    // Reclaim, for devices caught by the build that minted over an existing account.
+    //
+    // Only ever overrides an identity this package minted by itself (`minted`, or absent from before
+    // the marker existed). An `adopted` one already IS the legacy account, and a `passphrase` one was
+    // chosen by the user — reverting that would silently unlink a device they had just linked.
+    const origin = keys.get(ORIGIN);
+    const automatic = origin === null || origin === "minted";
+    if (automatic && legacyId && legacySecret && legacyId !== existing.id) {
+      keys.set(ID, legacyId);
+      keys.set(SECRET, legacySecret);
+      const legacySeed = keys.get(LEGACY_SEED);
+      if (legacySeed) keys.set(SEED, legacySeed);
+      keys.set(ORIGIN, "adopted");
+      return peekIdentity(keys)!;
+    }
+    return existing;
+  }
+
+  // Adopt the account the store minted before identity lived here. Doing this FIRST — before any
+  // minting — is what keeps a device that already synced from waking up as a stranger to its own
+  // data.
+  if (legacyId && legacySecret) {
+    keys.set(SECRET, legacySecret);
+    keys.set(NAME, keys.get(NAME) ?? DEFAULT_NAME);
+    // Only if the store had already started keeping one. Usually absent, hence no passphrase.
+    const legacySeed = keys.get(LEGACY_SEED);
+    if (legacySeed) keys.set(SEED, legacySeed);
+    keys.set(ORIGIN, "adopted");
+    keys.set(ID, legacyId);
+    return peekIdentity(keys)!;
+  }
 
   const crypto = await loadCrypto();
   const seed = crypto.newRandomSecretSeed();
@@ -131,6 +192,7 @@ export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promis
   keys.set(SEED, toHex(seed));
   keys.set(SECRET, secret);
   keys.set(NAME, DEFAULT_NAME);
+  keys.set(ORIGIN, "minted");
   keys.set(ID, crypto.idFor(secret));
 
   return peekIdentity(keys)!;
@@ -205,6 +267,8 @@ export async function signInWithPassphrase(
   keys.set(SEED, toHex(seed));
   keys.set(SECRET, secret);
   keys.set(NAME, name);
+  // Deliberate: never reclaimed over by leftover legacy keys.
+  keys.set(ORIGIN, "passphrase");
   keys.set(ID, crypto.idFor(secret));
 
   return peekIdentity(keys)!;
