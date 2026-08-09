@@ -75,6 +75,18 @@ function show(v: unknown): string {
   return String(v);
 }
 
+/** Did this write actually change anything? Values are JSON, so a structural compare is enough. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
 function sentence(item: Omit<ActivityItem, "text">): string {
   const who = item.byName;
   const on = item.recordLabel ? ` on ${item.recordLabel}` : "";
@@ -124,9 +136,16 @@ export async function activitySince(
       const previous = new Map<string, unknown>();
 
       for (const edit of history) {
-        const isNew = edit.at.getTime() > cutoff;
-        if (isNew) items.push(build(entity, row.id, displayField, row, edit, previous.get(edit.field), nameOf, definition));
+        const had = previous.has(edit.field);
+        const before = previous.get(edit.field);
         previous.set(edit.field, edit.value);
+
+        if (edit.at.getTime() <= cutoff) continue;
+        // Saving a form rewrites every field, so fields nobody touched arrive as edits. "Ana changed
+        // Name from Milk to Milk" is noise that would swamp the real change sitting next to it.
+        if (had && same(before, edit.value)) continue;
+
+        items.push(build(entity, row.id, displayField, row, edit, had ? before : undefined, nameOf, definition));
       }
     }
   }

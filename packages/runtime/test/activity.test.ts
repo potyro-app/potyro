@@ -181,3 +181,53 @@ describe("activitySince", () => {
     expect(await activitySince({ store, definition, me: ANA }, undefined, { limit: 3 })).toHaveLength(3);
   });
 });
+
+describe("no-op writes", () => {
+  const rows = [{ id: "r1", name: "Milk", updatedAt: "2026-08-09T12:00:00Z" }];
+
+  it("ignores a field rewritten to the value it already had", async () => {
+    // Saving a form rewrites every field, so untouched ones arrive as edits. "Ana changed Name from
+    // Milk to Milk" is noise, and it sits directly next to the change the reader actually wants.
+    const store = fakeStore(rows, {
+      r1: [
+        { field: "name", value: "Milk", by: ANA.id, at: t("2026-08-09T10:00:00Z") },
+        { field: "qty", value: 2, by: ANA.id, at: t("2026-08-09T10:00:00Z") },
+        { field: "name", value: "Milk", by: BRUNO.id, at: t("2026-08-09T11:00:00Z") }, // rewritten, unchanged
+        { field: "qty", value: 5, by: BRUNO.id, at: t("2026-08-09T11:00:00Z") },
+      ],
+    });
+
+    const items = await activitySince({ store, definition, me: ANA, members: [ANA, BRUNO] });
+    // Newest first; ties keep the log's own order, since `Array.sort` is stable and two edits saved
+    // in one form submit share a timestamp.
+    expect(items.map((i) => i.text)).toEqual([
+      "Bruno changed Quantity from 2 to 5 on Milk",
+      "You set Name to Milk on Milk",
+      "You set Quantity to 2 on Milk",
+    ]);
+  });
+
+  it("compares structurally, so a rewritten object is not a change", async () => {
+    const store = fakeStore(rows, {
+      r1: [
+        { field: "boughtBy", value: { id: BRUNO.id, name: "Bruno" }, by: ANA.id, at: t("2026-08-09T10:00:00Z") },
+        { field: "boughtBy", value: { id: BRUNO.id, name: "Bruno" }, by: ANA.id, at: t("2026-08-09T11:00:00Z") },
+      ],
+    });
+    expect(await activitySince({ store, definition, me: ANA })).toHaveLength(1);
+  });
+
+  it("still reports a real change back to a previous value", async () => {
+    // 2 -> 5 -> 2 is three states and two changes; the last one is not a no-op just because the
+    // value has been seen before.
+    const store = fakeStore(rows, {
+      r1: [
+        { field: "qty", value: 2, by: ANA.id, at: t("2026-08-09T10:00:00Z") },
+        { field: "qty", value: 5, by: BRUNO.id, at: t("2026-08-09T11:00:00Z") },
+        { field: "qty", value: 2, by: BRUNO.id, at: t("2026-08-09T12:00:00Z") },
+      ],
+    });
+    const items = await activitySince({ store, definition, me: ANA, members: [ANA, BRUNO] });
+    expect(items[0]!.text).toBe("Bruno changed Quantity from 5 to 2 on Milk");
+  });
+});

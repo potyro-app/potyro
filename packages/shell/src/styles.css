@@ -2154,3 +2154,53 @@ button {
 .k-aggregate-error {
   color: #b4762a;
 }
+
+/* What changed (KA-36). Always visible when the app can answer — never hover-gated, because a
+   hover-only control does not exist on a phone (docs/15 D1). */
+.k-activity-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.k-activity-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.k-activity { max-width: 34rem; }
+.k-activity-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.k-activity-head h2 { margin: 0; font-size: 1.15rem; letter-spacing: -0.01em; }
+.k-activity-list { margin: 0; padding: 0; list-style: none; }
+.k-activity-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.k-activity-item:last-child { border-bottom: none; }
+.k-activity-text { flex: 1; }
+/* The time is scannable down the right edge and must not wrap mid-value. */
+.k-activity-when {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
