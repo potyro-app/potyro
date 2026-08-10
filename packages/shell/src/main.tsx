@@ -319,6 +319,28 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     mount(root, <Home />); // deleted out from under us → home
     return;
   }
+
+  // Mount BEFORE anything that can ask a question. This is load-bearing, not cosmetic.
+  //
+  // `shellDialogs.confirm` returns a promise that settles only when a `<Dialogs>` host renders the
+  // request and someone answers it. Boot awaits one of those — "this app was updated by someone you
+  // share it with" — seventy lines before the app was mounted, so on a device that had an update
+  // waiting the promise could never settle: boot stopped there and the page stayed WHITE. Forever,
+  // through every reload, because the same update was still pending on the next boot.
+  //
+  // It needed two devices and an edit on one of them to happen at all, which is why it survived: the
+  // update path has no unit coverage that can see a React tree, and every browser spec that shared
+  // an app either never edited it afterwards or never reopened the other device.
+  //
+  // `mount` brings the dialog host with it, so mounting anything is enough. A line of text is also
+  // the honest thing to show while a CRDT store, an identity and a space are being opened.
+  mount(
+    root,
+    <div className="k-joining">
+      <p>Opening “{saved.name}”…</p>
+    </div>,
+  );
+
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
   // exactly the previous SqliteStore/LocalStore path.
   const rawStore = await openStore(`user:${id}`, { sync: saved.sync });
