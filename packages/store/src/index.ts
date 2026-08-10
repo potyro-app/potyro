@@ -27,3 +27,4 @@ export {
   type UnpackedBundle,
 } from "./export.js";
 export { ulid } from "./ulid.js";
+export { createPeerPair, type PeerPair } from "./peer-harness.js";
