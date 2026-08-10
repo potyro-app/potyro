@@ -17,7 +17,7 @@
 import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
-import { ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
+import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
 const OFFERED = "karta:identity:offeredBackup";
@@ -41,11 +41,21 @@ const ASKED_NAME = "karta:identity:askedName";
  * Mints the identity itself rather than assuming one. On the JOINING path there may be none yet —
  * a device whose first ever act is opening someone's link — and `renameIdentity` throws without one,
  * so the question would have been skipped for exactly the person it matters most for.
+ *
+ * **`Unnamed` is checked, not just `asked`.** The first version only looked at the flag, so someone
+ * who had already named themselves in this panel — the obvious thing to do before sharing — was
+ * asked again the moment they pressed Share. The question is about the NAME; the flag only records
+ * that we have bothered them once.
  */
 export async function askNameIfUnnamed(): Promise<void> {
   if (globalThis.localStorage?.getItem(ASKED_NAME)) return;
-  await ensureIdentity();
+  const me = await ensureIdentity();
+  // Marked before either exit: whether they answered by naming themselves earlier or answer the
+  // prompt below, the question is now settled and nothing asks again.
   globalThis.localStorage?.setItem(ASKED_NAME, new Date().toISOString());
+
+  // Already answered, by doing rather than by telling.
+  if (me.name && me.name !== DEFAULT_NAME) return;
 
   const name = await shellDialogs.prompt(
     "What should the people you share with see you as?\n\n" +
@@ -92,6 +102,10 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
     if (!name?.trim()) return;
     const renamed = renameIdentity(name);
     setMe(renamed);
+    // Naming yourself here IS the answer to "what should people see you as?", so the sharing and
+    // joining paths must not ask it again. Without this, doing the obvious thing before sharing —
+    // setting your name first — was rewarded with the same question the moment you pressed Share.
+    globalThis.localStorage?.setItem(ASKED_NAME, new Date().toISOString());
     // Renaming writes locally; the copy other people read is the account profile, published on every
     // open. Pushed here too, so the change lands on the people you are sharing with now rather than
     // whenever you next reload — chat makes a stale name impossible to miss.
