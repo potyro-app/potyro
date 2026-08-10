@@ -36,7 +36,7 @@ import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
 
-import { generateViaCli } from "./generate-client.js";
+import { canGenerate, generateViaCli } from "./generate-client.js";
 
 interface EditorState {
   entity: string;
@@ -279,6 +279,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // ⑤ Edit mode → agent: point at a piece of UI and describe a change; the target + your text go to
   // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
   const canEdit = Boolean(generator && currentKind === "user" && appId);
+  // Whether a MODEL can be reached, which is a different question from whether this is the full
+  // shell. A deployed build has no `/__generate` route, so every AI surface offered itself and then
+  // failed with "Is `pnpm dev` still running?" — see `canGenerate`. Structural editing and History
+  // stay available either way; neither calls a model.
+  const canAskAgent = canGenerate();
   const [editMode, setEditMode] = useState(false);
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -545,7 +550,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
             </button>
           ) : null}
-          {generator ? (
+          {generator && canAskAgent ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
               Studio
             </button>
@@ -756,19 +761,29 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               />
             ) : null}
 
-            <p className="k-muted">
-              {modifySource
-                ? "Anything the controls above can't do — describe it, and the agent edits this app."
-                : "Describe the change — the agent edits this app, keeping the rest."}
-            </p>
-            <textarea
-              className="k-input k-modify-text"
-              aria-label="Describe the change"
-              placeholder='e.g. "make this a grid of icons, and put Start Session first"'
-              rows={4}
-              value={modifyText}
-              onChange={(e) => setModifyText(e.target.value)}
-            />
+            {canAskAgent ? (
+              <>
+                <p className="k-muted">
+                  {modifySource
+                    ? "Anything the controls above can't do — describe it, and the agent edits this app."
+                    : "Describe the change — the agent edits this app, keeping the rest."}
+                </p>
+                <textarea
+                  className="k-input k-modify-text"
+                  aria-label="Describe the change"
+                  placeholder='e.g. "make this a grid of icons, and put Start Session first"'
+                  rows={4}
+                  value={modifyText}
+                  onChange={(e) => setModifyText(e.target.value)}
+                />
+              </>
+            ) : (
+              // Say what this build cannot do, rather than leaving a box that fails on submit. The
+              // controls above still work — they never needed a model.
+              <p className="k-muted">
+                This copy of Karta has no agent, so changes here are the structural ones above.
+              </p>
+            )}
             {modifyProgress && !modifyError ? <p className="k-muted">{modifyProgress}</p> : null}
             {modifyError ? <p className="k-form-error">{modifyError}</p> : null}
             {modifyDiagnosis ? (
@@ -789,7 +804,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               {/* Only offered once there is something to send. Otherwise it is the only button that
                   looks like "save", so a direct edit — which has already been applied — reads as
                   needing a model call it does not need. */}
-              {modifyText.trim().length > 0 || modifyBusy ? (
+              {canAskAgent && (modifyText.trim().length > 0 || modifyBusy) ? (
                 <button type="button" className="k-add k-primary-action" disabled={modifyBusy} onClick={() => void applyModify()}>
                   {modifyBusy ? "Applying…" : "Apply with AI"}
                 </button>

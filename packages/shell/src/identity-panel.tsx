@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
+import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
@@ -98,6 +99,32 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
     await republishName(renamed.name);
   };
 
+  /**
+   * Point this device at a different relay.
+   *
+   * A reload, not a re-render: every open store was built around the current relay and its socket,
+   * and re-pointing them in place is far more failure-prone than starting clean — the same call the
+   * passphrase sign-in makes, for the same reason. Blank clears the override and falls back to the
+   * deployment's own default.
+   */
+  const changeRelay = async (): Promise<void> => {
+    const entered = await shellDialogs.prompt(
+      "Which relay should this device use?\n\n" +
+        "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://.\n" +
+        "Leave it blank to use this site's own relay.",
+      { default: globalThis.localStorage?.getItem(RELAY_KEY) ?? "" },
+    );
+    if (entered === null) return; // cancelled — not the same as "clear it"
+    const next = entered.trim();
+    if (next && !/^wss?:\/\//i.test(next)) {
+      await shellDialogs.confirm("That is not a websocket URL. It needs to start with wss:// or ws://.");
+      return;
+    }
+    if (next) globalThis.localStorage?.setItem(RELAY_KEY, next);
+    else globalThis.localStorage?.removeItem(RELAY_KEY);
+    location.reload();
+  };
+
   const reveal = async (): Promise<void> => {
     setBusy(true);
     try {
@@ -164,6 +191,23 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               Show my words
             </button>
           )}
+        </section>
+
+        {/* KA-28. The relay had no UI at all: a deployed build had none, and the only way to give it
+            one was typing a localStorage key into devtools, on every device. "Bring your own relay"
+            is the self-host promise — it has to be reachable without a rebuild AND without devtools. */}
+        <section aria-labelledby="k-relay-h">
+          <h3 id="k-relay-h">Sync relay</h3>
+          <p className="k-muted">
+            Where synced apps meet the people you share them with. It only ever sees encrypted data —
+            it cannot read your records. Leave it alone unless you run your own.
+          </p>
+          <p className="k-muted k-relay-current">
+            <code>{syncRelayUrl() ?? "none — synced apps stay on this device"}</code>
+          </p>
+          <button type="button" className="k-add" disabled={busy} onClick={() => void changeRelay()}>
+            Change relay
+          </button>
         </section>
 
         <section aria-labelledby="k-signin-h">

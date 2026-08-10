@@ -152,22 +152,44 @@ export interface OpenStoreOpts {
   sync?: boolean;
 }
 
+/** Where a device's own choice of relay is kept. Exported so the settings UI writes the same key. */
+export const RELAY_KEY = "karta:sync:relay";
+
 /**
- * Sync relay URL, or null for local-only.
+ * Sync relay URL, or undefined for local-only.
  *
- * Read from `localStorage` so a self-hoster can point Karta at their own `jazz-run sync` without a
- * rebuild — the free self-host escape hatch the ethos requires (business plan §8.4). Absent by
- * default: a synced app with no relay is still useful (durable, CRDT, ready for a peer) and opens
- * no socket at all.
+ * Four sources, most specific first (KA-28):
+ *
+ *   1. **This device's setting.** `localStorage`, written by the ⌾ You panel. "Bring your own relay"
+ *      is the free self-host escape hatch the ethos promises (business plan §8.4), and it must not
+ *      require a rebuild.
+ *   2. **A build-time default**, `VITE_KARTA_RELAY`, for a deployment that puts its relay elsewhere.
+ *   3. **`ws://localhost:4201` in dev**, because `pnpm dev` starts one alongside the shell. Without
+ *      it, turning sync on appeared to do nothing until you knew to set a key by hand.
+ *   4. **Same origin, `/sync`.** A deployment that terminates TLS and proxies that path gets working
+ *      sync by deploying, with no build flag at all.
+ *
+ * (4) is what made this worth changing. A production build previously returned `undefined` here, so
+ * every deployed app was local-only and the only way to say otherwise was typing a `localStorage`
+ * key into devtools — on every device, for every person. Sync could not be tried on a domain at all.
+ *
+ * An unreachable relay is not a failure: `JazzStore` is durable on its own, the socket retries, and
+ * the app works throughout. So defaulting to a URL that might not answer is safe in a way that
+ * defaulting to "no sync" was not.
  */
 export function syncRelayUrl(): string | undefined {
-  const configured = globalThis.localStorage?.getItem("karta:sync:relay");
+  const configured = globalThis.localStorage?.getItem(RELAY_KEY);
   if (configured) return configured;
-  // `pnpm dev` starts a relay alongside the shell, so sync works with ZERO configuration while
-  // developing. Without this default, turning sync on appeared to do nothing until you knew to
-  // set a URL by hand — which is not a feature anyone can test.
+
+  const built = (import.meta.env?.VITE_KARTA_RELAY as string | undefined)?.trim();
+  if (built) return built;
+
   if (import.meta.env?.DEV) return "ws://localhost:4201";
-  return undefined;
+
+  const loc = globalThis.location;
+  // `file:` and any other non-http origin have no host to derive one from.
+  if (!loc?.host || !/^https?:$/.test(loc.protocol)) return undefined;
+  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/sync`;
 }
 
 /**
