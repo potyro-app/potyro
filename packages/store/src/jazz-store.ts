@@ -43,8 +43,9 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreSchema, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
+import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
@@ -121,6 +122,57 @@ function toJsonValue<T>(v: T): T {
   return v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T);
 }
 
+function asDate(v: unknown): Date {
+  return v instanceof Date ? v : new Date(v as never);
+}
+
+/**
+ * Replay one mergeable field's raw key edits into the values that field actually held (KA-36/KA-38).
+ *
+ * A counter and a set are each stored as a base plus a scatter of contributions under their own
+ * keys, precisely so two people never write the same key. That is what makes them merge, and it is
+ * also what makes their history unreadable: the log holds "session 7's subtotal became 2", never
+ * "the count became 5". Folding after every step recovers the second from the first, which is the
+ * only form anyone can be shown.
+ *
+ * `part === null` is the base — the plain value written before anything merged into it. A write to
+ * the base drops the contributions, matching what `update` does to the keys themselves.
+ */
+function replayDerived(
+  kind: "set" | "counter",
+  events: readonly { part: string | null; value: unknown; by: string; at: Date }[],
+): Array<{ value: unknown; by: string; at: Date }> {
+  let base: unknown = kind === "counter" ? 0 : undefined;
+  let parts = new Map<string, unknown>();
+  const out: Array<{ value: unknown; by: string; at: Date }> = [];
+
+  for (const e of events) {
+    if (e.part === null) {
+      base = e.value;
+      parts = new Map();
+    } else {
+      parts.set(e.part, e.value);
+    }
+
+    let value: unknown;
+    if (kind === "set") {
+      const deltas = new Map<string, boolean>();
+      for (const [element, on] of parts) deltas.set(element, Boolean(on));
+      value = foldSet(base, deltas);
+    } else {
+      let total = Number(base ?? 0);
+      if (!Number.isFinite(total)) total = 0;
+      for (const subtotal of parts.values()) {
+        const n = Number(subtotal);
+        if (Number.isFinite(n)) total += n;
+      }
+      value = total;
+    }
+    out.push({ value, by: e.by, at: e.at });
+  }
+  return out;
+}
+
 export class JazzStore implements Store {
   private readonly node: NodeLike;
   private readonly group: RawGroupLike;
@@ -141,6 +193,18 @@ export class JazzStore implements Store {
    * remote changes never arrive while a local mutation is on the stack.
    */
   private localDepth = 0;
+  /** entity -> set-valued field keys, from `describe`. Empty until the app says otherwise. */
+  private setFields = new Map<string, Set<string>>();
+
+  /**
+   * Learn which fields are sets, so writing one merges element by element (KA-38).
+   *
+   * Reading does not need this — `foldSetFields` recognises the shape from the keys — so a store
+   * that is never described stays correct, it just keeps writing whole arrays.
+   */
+  describe(schema: StoreSchema): void {
+    this.setFields = setFieldsOf(schema);
+  }
 
   constructor(deps: JazzStoreDeps) {
     this.node = deps.node;
@@ -206,7 +270,7 @@ export class JazzStore implements Store {
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push(JazzStore.withCounters(await this.loadMap(refId)) as unknown as KartaRecord);
+      rows.push(JazzStore.materialise(await this.loadMap(refId)) as unknown as KartaRecord);
     }
     return rows.sort((a, b) =>
       a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -317,7 +381,7 @@ export class JazzStore implements Store {
 
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? (JazzStore.withCounters(m) as unknown as KartaRecord) : null;
+    return m ? (JazzStore.materialise(m) as unknown as KartaRecord) : null;
   }
 
   /**
@@ -501,16 +565,64 @@ export class JazzStore implements Store {
 
     const since = opts?.since?.getTime();
     const out: FieldEdit[] = [];
-    for (const field of m.keys()) {
-      if (BOOKKEEPING.has(field)) continue;
-      for (const edit of m.editsAt(field) ?? []) {
-        const at = edit.at instanceof Date ? edit.at : new Date(edit.at as never);
-        if (since !== undefined && at.getTime() <= since) continue;
-        out.push({ field, value: edit.value, by: String(edit.by), at });
+
+    // A counter's per-session subtotals and a set's per-element keys are not fields — they are how
+    // ONE field survives two people — so their raw edits are nobody's idea of activity. Reported
+    // straight, they read as `tagsurgent` changing to `1`. Grouped here and replayed below,
+    // they read as what the field actually held at that moment, which is what a person asked.
+    const derived = new Map<string, { kind: "set" | "counter"; keys: string[] }>();
+    const group = (field: string, kind: "set" | "counter", key: string): void => {
+      const g = derived.get(field) ?? { kind, keys: [] };
+      g.keys.push(key);
+      derived.set(field, g);
+    };
+
+    for (const key of m.keys()) {
+      const asSet = parseSetKey(key);
+      if (asSet) {
+        group(asSet.field, "set", key);
+        continue;
+      }
+      const asCounter = JazzStore.parseCounterKey(key);
+      if (asCounter) {
+        group(asCounter.field, "counter", key);
+        continue;
+      }
+      if (BOOKKEEPING.has(key)) continue;
+      // A plain field. Its own key may ALSO be the base of a derived one, so it is grouped rather
+      // than emitted whenever element or subtotal keys exist beside it.
+      for (const edit of m.editsAt(key) ?? []) {
+        out.push({ field: key, value: edit.value, by: String(edit.by), at: asDate(edit.at) });
       }
     }
+
+    for (const [field, { kind, keys }] of derived) {
+      // The base is the plain value written before anyone merged into it — already emitted above as
+      // an ordinary field. Fold it in here instead, and drop the raw version, so the field has one
+      // timeline rather than two that disagree.
+      const base = out.filter((e) => e.field === field);
+      for (let i = out.length - 1; i >= 0; i--) if (out[i]!.field === field) out.splice(i, 1);
+
+      const events = [
+        ...base.map((e) => ({ part: null, value: e.value, by: e.by, at: e.at })),
+        ...keys.flatMap((key) => {
+          const part = kind === "set" ? parseSetKey(key)!.element : JazzStore.parseCounterKey(key)!.session;
+          return [...(m.editsAt!(key) ?? [])].map((e) => ({
+            part,
+            value: e.value,
+            by: String(e.by),
+            at: asDate(e.at),
+          }));
+        }),
+      ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
+      for (const step of replayDerived(kind, events)) out.push({ field, ...step });
+    }
+
     // One record's edits across all its fields, in the order they happened.
-    return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+    return out
+      .filter((e) => since === undefined || e.at.getTime() > since)
+      .sort((a, b) => a.at.getTime() - b.at.getTime());
   }
 
   async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
@@ -545,16 +657,40 @@ export class JazzStore implements Store {
     // Set only the changed keys. Writing the whole record back would make every field a write and
     // clobber a concurrent peer's edit to a field this caller never touched — throwing away the
     // per-key merge that is the entire reason for this store.
+    //
+    // A SET field goes one level further, for the same reason one level down (KA-38). `tags` arrives
+    // as a whole array — `[...row.tags, "urgent"]` is the only way an app can express "add one" —
+    // and writing that array back re-asserts every element in it, including elements a peer removed
+    // and excluding elements a peer added that this caller never saw. So the array is diffed against
+    // what is actually there and only the elements that CHANGED are written, each under its own key.
+    const sets = this.setFields.get(entity);
+    const current = sets?.size ? (JazzStore.materialise(m) as Record<string, unknown>) : null;
     this.local(() => {
       for (const [k, v] of Object.entries(toJsonValue(patch))) {
         if (k === "id" || k === "createdAt") continue; // immutable
+        // `isScalarSet` is the honest guard, not a formality: element-wise merge needs elements that
+        // can be keys. Anything else (a list of rows, a null, a media ref) is written whole, which is
+        // what this store did for everything until now.
+        if (current && sets?.has(k)) {
+          if (isScalarSet(v)) {
+            const before = current[k];
+            for (const [element, present] of setWrites(isScalarSet(before) ? before : [], v)) {
+              m.set(setKey(k, element), present ? 1 : 0);
+            }
+            continue;
+          }
+          // Written whole (a `null` that clears it, or a shape elements cannot be made from). The
+          // per-element keys have to go with it — left behind, they would fold straight back on top
+          // of the new value and the field would refuse to be cleared.
+          for (const key of m.keys()) if (parseSetKey(key)?.field === k) m.delete(key);
+        }
         m.set(k, v);
       }
       m.set("updatedAt", nowIso());
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return JazzStore.withCounters(m) as unknown as KartaRecord;
+    return JazzStore.materialise(m) as unknown as KartaRecord;
   }
 
   /**
@@ -599,6 +735,13 @@ export class JazzStore implements Store {
     return `${field}\u0001${session}`;
   }
 
+  /** `\u0001` again: `null` when the key is an ordinary field rather than one session's subtotal. */
+  private static parseCounterKey(key: string): { field: string; session: string } | null {
+    const at = key.indexOf("\u0001");
+    if (at <= 0) return null;
+    return { field: key.slice(0, at), session: key.slice(at + 1) };
+  }
+
   /** The plain value, plus every session's subtotal. */
   private static counterTotal(m: RawMapLike, field: string): number {
     const prefix = `${field}\u0001`;
@@ -613,12 +756,21 @@ export class JazzStore implements Store {
   }
 
   /**
-   * Fold counter subtotals back into plain fields, and hide the per-session keys.
+   * Turn what is stored into what the app asked for.
    *
-   * Everything that reads a record goes through here, so app code, views and exports all see one
-   * number and never learn that it is a sum. That is the point of putting this at the store seam:
-   * the app keeps saying `record.bought` and simply stops losing presses.
+   * Two mergeable shapes live inside the record CoMap — a counter's per-session subtotals (KA-38,
+   * `increment`) and a set's per-element keys (`set-field.ts`) — and neither is anything an app
+   * should ever see. Everything that reads a record comes through here, so app code, views and
+   * exports get one number and one array and never learn how either survived two people.
+   *
+   * That is the whole argument for doing this at the store seam: the app keeps saying
+   * `record.bought` and `record.tags`, and simply stops losing other people's work.
    */
+  private static materialise(m: RawMapLike): Record<string, unknown> {
+    return foldSetFields(JazzStore.withCounters(m));
+  }
+
+  /** Counter subtotals folded back into plain fields, with the per-session keys hidden. */
   private static withCounters(m: RawMapLike): Record<string, unknown> {
     const raw = m.toJSON() as Record<string, unknown>;
     const fields = new Set<string>();
@@ -665,8 +817,17 @@ export class JazzStore implements Store {
         }
         for (const row of rows) {
           const m = await this.recordMap(entity, row.id);
-          if (m) for (const [k, v] of Object.entries(row)) m.set(k, v as unknown);
-          else {
+          if (m) {
+            // The snapshot holds MATERIALISED values — one number for a counter, one array for a set
+            // — so restoring it has to clear the contributions those values were folded from. Left
+            // in place, they fold straight back on top of what was just restored and the record ends
+            // up at neither the old value nor the new one. (True of counters since they landed; a
+            // rollback silently doubled them.)
+            for (const key of m.keys()) {
+              if (parseSetKey(key) ?? JazzStore.parseCounterKey(key)) m.delete(key);
+            }
+            for (const [k, v] of Object.entries(row)) m.set(k, v as unknown);
+          } else {
             const created = this.group.createMap<RawMapLike>(row as unknown as Record<string, unknown>);
             index.set(row.id, created.id);
           }
