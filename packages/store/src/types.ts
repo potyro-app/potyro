@@ -38,6 +38,23 @@ export interface Store {
   insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord>;
   update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord>;
   delete(entity: string, id: Id): Promise<void>;
+
+  /**
+   * Add to a number, safely, when two people may add at the same moment (KA-38).
+   *
+   * `update(id, { n: row.n + 1 })` is the shape every counter button has, and it is a read on one
+   * device and a write on another: both read 0, both write 1, and one press is gone with nothing to
+   * show for it. That is not a defect in the merge — last-write-wins is exactly what a single value
+   * can promise — it is the wrong thing to store. A count is not a value, it is the sum of what
+   * everybody added.
+   *
+   * So this takes the DELTA, never the result. A store that keeps each contributor's total apart can
+   * add them up; one that is handed an answer can only keep the newest.
+   *
+   * Optional because only a CRDT store can honour it. Callers must check: a store without it should
+   * fall back to read-modify-write and accept the risk, rather than silently doing nothing.
+   */
+  increment?(entity: string, id: Id, field: string, delta: number): Promise<number>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries

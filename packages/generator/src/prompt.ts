@@ -149,8 +149,15 @@ There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and ar
 - \`await ctx.create(entity, data)\` → Resolved                                    (NOT \`ctx.data.create\`)
 - \`await ctx.patch(entity, id, data)\` → Resolved   — this is how you UPDATE      (NOT \`ctx.update\`,
   NOT \`ctx.data.update\`)
+- \`await ctx.increment(entity, id, field, delta)\` → Resolved — **use this for anything people COUNT.**
+  Never \`ctx.patch(id, { n: record.n + 1 })\`: that reads on one device and writes on another, so when
+  two people press at the same moment both read the old value, both write the same new one, and one
+  press is silently lost. Say the CHANGE (\`+1\`, \`-1\`) and the store adds them up. The field is still
+  an ordinary number to read.
 - \`await ctx.delete(entity, id)\`
-- \`await ctx.transaction(async (tx) => { ... })\`
+- \`await ctx.transaction(async (tx) => { ... })\` — NOT atomic across devices. Two records that must
+  agree (a swap, a transfer, a running total) can still be left inconsistent when two people act at
+  once. Prefer recording what HAPPENED and deriving the total, over writing the total.
 - \`ctx.now()\` → Date, \`ctx.today()\` → Date          (sync; NOT \`ctx.data.now\`)
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)

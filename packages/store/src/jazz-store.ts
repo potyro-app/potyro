@@ -77,6 +77,8 @@ interface RawGroupLike {
 interface NodeLike {
   /** Async because a CoValue restored from storage is not in memory until it is loaded. */
   load(id: string): Promise<unknown>;
+  /** This device+tab's session. Two of them never share a counter key — see `increment`. */
+  currentSessionID?: string;
 }
 
 export interface JazzStoreDeps {
@@ -204,7 +206,7 @@ export class JazzStore implements Store {
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push((await this.loadMap(refId)).toJSON() as unknown as KartaRecord);
+      rows.push(JazzStore.withCounters(await this.loadMap(refId)) as unknown as KartaRecord);
     }
     return rows.sort((a, b) =>
       a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -315,7 +317,7 @@ export class JazzStore implements Store {
 
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? (m.toJSON() as unknown as KartaRecord) : null;
+    return m ? (JazzStore.withCounters(m) as unknown as KartaRecord) : null;
   }
 
   /**
@@ -552,7 +554,83 @@ export class JazzStore implements Store {
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return m.toJSON() as unknown as KartaRecord;
+    return JazzStore.withCounters(m) as unknown as KartaRecord;
+  }
+
+  /**
+   * A counter that survives two people adding at once (KA-38).
+   *
+   * ## Why not just add to the field
+   *
+   * `update(id, { n: n + 1 })` reads on one device and writes on another. Both read 0, both write 1,
+   * and a press disappears. Last-write-wins is doing exactly what it promises; the mistake is asking
+   * a single value to hold a total that several people contribute to.
+   *
+   * ## The shape
+   *
+   * Each session keeps ITS OWN subtotal, under its own key: `n\u0001<sessionID>`. The value anyone
+   * reads is the sum. Because no two sessions ever write the same key, per-key merge — the thing this
+   * store is built on — makes concurrent increments simply add up. That is a G/PN-counter assembled
+   * out of the CoMap we already have, rather than a new CoValue type and a new shape to migrate.
+   *
+   * ## Living beside a plain value
+   *
+   * A field may already hold an ordinary number, written before anyone incremented it. That is the
+   * base: the total is `base + Σ(session subtotals)`. So turning a `patch`-written field into a
+   * counter needs no migration, and reading it through `all()`/`get()` gives one number either way.
+   */
+  async increment(entity: string, id: Id, field: string, delta: number): Promise<number> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`increment: ${entity}/${id} not found`);
+    const session = this.node.currentSessionID ?? "local";
+    const key = JazzStore.counterKey(field, session);
+    const mine = Number(m.get(key) ?? 0);
+    this.local(() => {
+      m.set(key, mine + delta);
+      m.set("updatedAt", nowIso());
+    });
+    this.emit(entity);
+    await this.whenDurable?.();
+    return JazzStore.counterTotal(m, field);
+  }
+
+  /** `\u0001` cannot appear in a field name, so a counter key can never collide with a real field. */
+  private static counterKey(field: string, session: string): string {
+    return `${field}\u0001${session}`;
+  }
+
+  /** The plain value, plus every session's subtotal. */
+  private static counterTotal(m: RawMapLike, field: string): number {
+    const prefix = `${field}\u0001`;
+    let total = Number(m.get(field) ?? 0);
+    if (!Number.isFinite(total)) total = 0;
+    for (const k of m.keys()) {
+      if (!k.startsWith(prefix)) continue;
+      const v = Number(m.get(k));
+      if (Number.isFinite(v)) total += v;
+    }
+    return total;
+  }
+
+  /**
+   * Fold counter subtotals back into plain fields, and hide the per-session keys.
+   *
+   * Everything that reads a record goes through here, so app code, views and exports all see one
+   * number and never learn that it is a sum. That is the point of putting this at the store seam:
+   * the app keeps saying `record.bought` and simply stops losing presses.
+   */
+  private static withCounters(m: RawMapLike): Record<string, unknown> {
+    const raw = m.toJSON() as Record<string, unknown>;
+    const fields = new Set<string>();
+    for (const k of Object.keys(raw)) {
+      const at = k.indexOf("\u0001");
+      if (at > 0) fields.add(k.slice(0, at));
+    }
+    if (!fields.size) return raw;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) if (!k.includes("\u0001")) out[k] = v;
+    for (const f of fields) out[f] = JazzStore.counterTotal(m, f);
+    return out;
   }
 
   async delete(entity: string, id: Id): Promise<void> {
