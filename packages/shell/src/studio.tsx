@@ -19,6 +19,7 @@ import {
   buildRepairMessage,
   buildModifyMessage,
   extractSource,
+  looksLikeApp,
 } from "@karta/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
@@ -185,10 +186,18 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // `system` is sent SEPARATELY so the dev endpoint passes it via --system-prompt-file, replacing
   // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
   // its tools) active — a different setup from the one the eval harness measures.
-  const runCli = async (prompt: string): Promise<string> =>
-    extractSource(
+  const runCli = async (prompt: string): Promise<string> => {
+    const source = extractSource(
       await generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Generating… ${secs}s`) }),
     );
+    // A reply that is not an app must say so here. Passing prose to the bundler reports a syntax
+    // error in the middle of an English sentence, which reads as a broken tool rather than a model
+    // that answered in the wrong shape.
+    if (!looksLikeApp(source)) {
+      throw new Error("the model replied with an explanation instead of an app. Try again, or rephrase.");
+    }
+    return source;
+  };
 
   const generateCli = (): Promise<void> => {
     setEngine("cli");
