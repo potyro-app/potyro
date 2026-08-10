@@ -136,21 +136,48 @@ export async function concurrencySmoke(
   app: AppDefinition & { id: string },
   seed: (runtime: KartaRuntime) => Promise<Record<string, string[]>>,
 ): Promise<ConcurrencyResult> {
-  const hazards: Hazard[] = [];
-  const errors: string[] = [];
-  const ran = { entities: 0, actions: 0, pairs: 0 };
-
   let pair: PeerPair | null = null;
   try {
     pair = await createPeerPair(app.id);
   } catch (e) {
-    return { hazards, ran, errors: [`could not start two peers: ${message(e)}`] };
+    return { hazards: [], ran: { entities: 0, actions: 0, pairs: 0 }, errors: [`could not start two peers: ${message(e)}`] };
   }
-  ran.pairs = 1;
-
   try {
-    const runA = await runtimeFor(app, pair.a);
-    const runB = await runtimeFor(app, pair.b);
+    return await concurrencyChecks({
+      app,
+      pair,
+      runA: await runtimeFor(app, pair.a),
+      runB: await runtimeFor(app, pair.b),
+      seed,
+    });
+  } catch (e) {
+    return { hazards: [], ran: { entities: 0, actions: 0, pairs: 1 }, errors: [message(e)] };
+  } finally {
+    await pair.close().catch(() => {});
+  }
+}
+
+export interface ConcurrencyDeps {
+  app: AppDefinition & { id: string };
+  pair: PeerPair;
+  runA: KartaRuntime;
+  runB: KartaRuntime;
+  seed: (runtime: KartaRuntime) => Promise<Record<string, string[]>>;
+}
+
+/**
+ * The checks themselves, over two runtimes someone else composed.
+ *
+ * Split out because the shell runs these in a BROWSER against its own composition root, and the
+ * alternative — rebuilding the host wiring here for a second time — is how two code paths end up
+ * testing subtly different things.
+ */
+export async function concurrencyChecks({ app, pair, runA, runB, seed }: ConcurrencyDeps): Promise<ConcurrencyResult> {
+  const hazards: Hazard[] = [];
+  const errors: string[] = [];
+  const ran = { entities: 0, actions: 0, pairs: 1 };
+
+  {
     const created = await seed(runA);
     await pair.settle();
 
@@ -272,10 +299,6 @@ export async function concurrencySmoke(
         });
       }
     }
-  } catch (e) {
-    errors.push(message(e));
-  } finally {
-    await pair?.close().catch(() => {});
   }
 
   return { hazards, ran, errors };
