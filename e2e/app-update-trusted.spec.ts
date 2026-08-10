@@ -1,0 +1,103 @@
+import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
+
+// Adopting a collaborator's edit — and the WHITE PAGE that used to be.
+//
+// When someone you share an app with edits it, boot asks whether to take the update. That question
+// goes through `shellDialogs.confirm`, whose promise settles only when a mounted `<Dialogs>` host
+// renders the request and somebody answers. `bootUserApp` awaited it seventy lines before it mounted
+// anything — so on a device with an update waiting, boot stopped at that await and the page stayed
+// blank. Forever: the same update was still pending on the next reload.
+//
+// It needs TWO devices and an edit on one of them, which is why it survived nearly fifty commits.
+// Every other spec that shared an app either never edited it afterwards or never reopened the other
+// device. Nothing short of this shape can catch it: with one device there is no update to adopt, and
+// a unit test cannot see whether a React tree exists to answer the question.
+
+const STARTER = `import { defineApp } from "karta";
+
+export default defineApp({
+  id: "shared-todo",
+  name: "Shared Todo",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    item: { label: "Item", icon: "✅", displayField: "title", fields: { title: { type: "text", required: true } } },
+  },
+  pages: [{ id: "all", title: "Notes", view: { type: "list", entity: "item", display: { primary: "title" } } }],
+});
+`;
+
+async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript(
+    ([source, seedApp]) => {
+      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem(
+        "karta:user-apps",
+        JSON.stringify([{ id: "shared-todo", name: "Shared Todo", source, trusted: true, updatedAt: new Date().toISOString() }]),
+      );
+    },
+    [STARTER, opts?.app ?? false] as const,
+  );
+  return context.newPage();
+}
+
+test("a collaborator's edit is offered, not a blank page", async ({ browser }) => {
+  test.slow();
+
+  const ctxA = await browser.newContext();
+  const a = await device(ctxA, { app: true });
+  await a.goto("/?user=shared-todo");
+  await expect(a.locator("h1").first()).toHaveText("Shared Todo", { timeout: 30_000 });
+
+  await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+  await a.getByRole("button", { name: "Share Shared Todo" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(a, "Ana");
+  const linkField = a.locator(".k-dialog input");
+  await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
+  const link = await linkField.inputValue();
+  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await expect(a.locator(".k-dialog")).toContainText("more than one place", { timeout: 30_000 });
+  await a.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
+  await a.goto("/?user=shared-todo");
+  await expect(a.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });
+
+  // B joins.
+  const ctxB = await browser.newContext();
+  const b = await device(ctxB);
+  await b.goto(link);
+  await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await answerNamePrompt(b, "Bo");
+  await expect(b.locator("h1").first()).toHaveText("Shared Todo", { timeout: 60_000 });
+
+  // A edits the app — the thing the owner did (adding buttons to the list).
+  await a.getByRole("button", { name: "Studio" }).click();
+  const studio = a.locator(".k-studio");
+  await studio.getByRole("button", { name: "Shared Todo", exact: true }).click();
+  await studio.getByRole("tab", { name: "Source" }).click();
+  const source = studio.getByRole("textbox", { name: "App source" });
+  await expect(source).toContainText('title: "Notes"', { timeout: 30_000 });
+  await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
+  await studio.getByRole("button", { name: "Save changes" }).click();
+  await a.waitForTimeout(2000);
+  await a.goto("/?user=shared-todo"); // publishes the newer source into the space
+  await expect(a.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });
+  await a.waitForTimeout(2000);
+
+  // ---- THE CLAIM: B reloads and gets a usable page. ----
+  await b.goto("/?user=shared-todo");
+  // The update prompt must be VISIBLE. `shellDialogs.confirm` only settles when <Dialogs> renders
+  // it, and boot awaits this one long before anything is mounted — so an unmounted prompt is a
+  // promise that never resolves, i.e. a permanently blank page.
+  await expect(b.locator(".k-dialog")).toBeVisible({ timeout: 30_000 });
+  await expect(b.locator(".k-dialog")).toContainText("updated");
+  await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await expect(b.locator("h1").first()).toHaveText("Shared Todo", { timeout: 60_000 });
+  // And the app really did update — the renamed page is the one visible change.
+  await expect(b.locator(".k-tab", { hasText: "Journal" })).toBeVisible({ timeout: 30_000 });
+
+  await ctxA.close();
+  await ctxB.close();
+});
