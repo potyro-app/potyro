@@ -37,6 +37,8 @@ import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
 
 import { canGenerate, generateViaCli } from "./generate-client.js";
+import { checkConcurrency, describeHazards } from "./check-concurrency.js";
+import { shellDialogs } from "./dialog.js";
 
 interface EditorState {
   entity: string;
@@ -463,12 +465,29 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       let next = reply.source;
       const issues = await buildAndValidate(next);
       if (issues.length) next = await runRepair(next, issues);
+
+      // Will two people survive this edit? An AI edit rewrites the whole module, and the way this
+      // breaks is silent: the app still parses, still validates, still works alone (KA-38). This is
+      // the only gate that can see it. Reported, never blocking — plenty of apps are never shared,
+      // and an unsafe reorder is still fine for one person.
+      setModifyProgress("Checking it still works for two people…");
+      const risk = await checkConcurrency(next, appId);
+      const hazards = describeHazards(risk);
+
       // Awaited, not fired-and-forgotten: the reload below would otherwise race the history write
       // and lose the very version you'd want to roll back to.
       await saveUserApp(
         { id: appId, name: app.name, source: next, origin: "edited", note: instruction, rationale: reply.rationale },
         new Date().toISOString(),
       );
+      if (hazards.length) {
+        // Before the reload, or it is never seen. Saved either way — this says what was saved.
+        await shellDialogs.confirm(
+          `Saved — but this change is not safe to share yet:\n\n• ${hazards.join("\n• ")}\n\n` +
+            `On your own it works fine. With someone else, changes made at the same moment can be ` +
+            `silently lost. History has the previous version.`,
+        );
+      }
       location.reload(); // re-run the app with the edited source (its data persists in user:<id>)
     } catch (e) {
       setModifyError(e instanceof Error ? e.message : String(e));
