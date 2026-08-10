@@ -1,5 +1,6 @@
 // @karta/store — persistence seam.
-export type { Store, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
+export type { Store, StoreSchema, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
+export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
 export { ROOM_THREAD, recordThread } from "./types.js";
 export { MemoryStore } from "./memory-store.js";
 export { LocalStore, type StorageLike } from "./local-store.js";
