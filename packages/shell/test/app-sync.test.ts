@@ -32,6 +32,22 @@ describe("publishing", () => {
     expect((await readPublishedApp(s))?.source).toBe("v2");
   });
 
+  it("carries WHY the source changed, not just the source", async () => {
+    // Without this, an update adopted from someone else landed in History as "updated by a
+    // collaborator" and nothing else: the app changed under you, and the record of what was asked
+    // for existed only on the device that asked. History exists to answer exactly that question.
+    const s = await store();
+    await publishAppSource(s, {
+      ...NEW,
+      note: "add +1 / −1 buttons and show the count",
+      rationale: "Two numeric fields on `item`, plus buttons inside the existing render.",
+    });
+
+    const read = await readPublishedApp(s);
+    expect(read?.note).toBe("add +1 / −1 buttons and show the count");
+    expect(read?.rationale).toContain("Two numeric fields");
+  });
+
   it("REFUSES to publish an older copy over a newer one", async () => {
     // The data-loss case: a guest who declined an update must not push their stale source back
     // over the author's. Declining has to be a no-op, not a rollback for everyone.

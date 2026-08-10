@@ -358,11 +358,20 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let store = rawStore;
   if (saved.sync) {
     const appSync = await import("./app-sync.js");
+    // The newest version's own record of WHY this source looks like this, so it travels with it.
+    // Read from history rather than kept on `UserApp`: history is already the one place that answers
+    // "what was asked for", and duplicating it onto the app record would give it two answers to
+    // disagree about.
+    const { listVersions } = await import("./app-history.js");
+    const latest = (await listVersions(id))[0];
     const mine = {
       source: saved.source,
       name: saved.name,
       updatedAt: saved.updatedAt,
       schemaVersion: appSync.schemaVersionOf(saved.source),
+      // Only when they describe THIS source. A stale note from an older version would be worse than
+      // none: it would explain a change that is not the one you are looking at.
+      ...(latest?.source === saved.source ? { note: latest.note, rationale: latest.rationale } : {}),
     };
     const update = await appSync.pendingAppUpdate(store, mine);
     // A newer SCHEMA is not merely a nicer version — writing with the old one puts records into the
@@ -377,7 +386,16 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       if (take) {
         const { saveUserApp } = await import("./user-apps.js");
         await saveUserApp(
-          { id, name: update.name, source: update.source, origin: "imported", note: "updated by a collaborator" },
+          {
+            id,
+            name: update.name,
+            source: update.source,
+            origin: "imported",
+            // What they asked for, when they published it. The bare "updated by a collaborator" is
+            // the fallback for a copy published before notes travelled, not the normal case.
+            note: update.note ? `${update.note} — from a collaborator` : "updated by a collaborator",
+            ...(update.rationale ? { rationale: update.rationale } : {}),
+          },
           new Date().toISOString(),
         );
         location.reload();
