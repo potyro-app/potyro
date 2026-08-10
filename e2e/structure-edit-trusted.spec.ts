@@ -99,10 +99,15 @@ test("renaming a field label edits the source surgically and lands in History", 
   expect(after).toMatch(/\/\/ how many of them there are\s*\n\s*quantity:/);
 
   await page.getByRole("button", { name: "History" }).click();
-  const newest = page.locator(".k-history-item").first();
+  const newest = page.locator(".k-timeline-entry").first();
   // `adjusted`, not `edit`: you changed this, the agent didn't rewrite the file.
   await expect(newest.locator(".k-history-origin")).toHaveText("adjusted");
-  await expect(newest.locator(".k-history-note")).toContainText("quantity");
+  // The prompt is the headline of the timeline row — you should not have to open anything to see
+  // what a version was for.
+  await expect(newest.locator(".k-timeline-note")).toContainText("quantity");
+  // The diff is what you open a version FOR, so it is not there until you ask.
+  await expect(page.locator(".k-diff-line")).toHaveCount(0);
+  await newest.getByRole("button").first().click();
   await expect(page.locator(".k-diff-line")).not.toHaveCount(0);
 });
 
