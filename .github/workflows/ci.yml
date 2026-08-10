@@ -32,7 +32,11 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # Firefox too: the `trusted-firefox` project exists because the geo picker rendered fine in
+      # Chromium and blank in Firefox, and a Chrome-only install makes that project fail to launch
+      # rather than run. It has never actually executed here — the suite has died at collection
+      # since the project was added.
+      - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm e2e
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
