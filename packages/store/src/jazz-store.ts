@@ -16,7 +16,7 @@
 //        ├─ "kv"       -> CoMap<string, string>        (ctx.storage)
 //        ├─ "blobs"    -> CoMap<key, {mime, base64}>   (see "Blobs" below)
 //        ├─ "meta"     -> CoMap<string, JsonValue>     (schemaVersion, appVersion)
-//        └─ "chat"     -> CoMap<"<thread>\u0000<ulid>", text>   ← messages (KA-35)
+//        └─ "chat"     -> CoMap<"<thread>\u0000<ulid>", {t,c}>  ← messages (KA-35); `c` is an HLC stamp
 //
 // Chat sits BESIDE the entity tree, not inside it. It is in the space, so it syncs and is encrypted
 // to the members, but it is not app data: an app shared with you is untrusted code by someone else,
@@ -47,6 +47,7 @@ import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe 
 import { recordThread } from "./types.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
+import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -364,12 +365,50 @@ export class JazzStore implements Store {
     return `${JazzStore.threadPrefix(thread)}${id}`;
   }
 
+  /**
+   * This device's hybrid clock — what makes a conversation read in the right order (see `hlc.ts`).
+   *
+   * Rebuilt from what is read: every `messages()` folds in every stamp it sees, so a freshly opened
+   * page has caught up with the thread before it can post into it.
+   */
+  private readonly clock = new HybridClock();
+
+  /**
+   * What is stored for one message.
+   *
+   * Was a bare string. The stamp had to go somewhere, and it cannot come from the transaction the
+   * way `by` and `at` do — a CRDT records WHEN A DEVICE CLAIMS it wrote, which is exactly the number
+   * that could not be trusted to order anything. A legacy bare string is still read; it simply has
+   * no stamp and falls back to transaction time.
+   */
+  private static encodeMessage(text: string, stamp: string): string {
+    return JSON.stringify({ t: text, c: stamp });
+  }
+
+  private static decodeMessage(raw: unknown): { text: string; stamp: string | null } | null {
+    if (typeof raw !== "string") return null;
+    // Written before stamps existed: no clock, and the leading `{` is what tells them apart.
+    if (!raw.startsWith("{")) return { text: raw, stamp: null };
+    try {
+      const parsed = JSON.parse(raw) as { t?: unknown; c?: unknown };
+      if (typeof parsed?.t !== "string") return null;
+      return { text: parsed.t, stamp: typeof parsed.c === "string" && parseHlc(parsed.c) ? parsed.c : null };
+    } catch {
+      // A message that will not parse must not take the conversation down with it.
+      return null;
+    }
+  }
+
   async postMessage(thread: string, text: string): Promise<ChatMessage> {
     const trimmed = text.trim();
     if (!trimmed) throw new Error("An empty message has nothing to say.");
     const map = await this.chat();
+    // Catch up on the thread BEFORE stamping. Posting without having folded in what is already there
+    // is how a reply gets a stamp lower than the message it answers.
+    await this.messages(thread);
     const id = ulid();
-    map.set(JazzStore.threadKey(thread, id), trimmed);
+    const stamp = formatHlc(this.clock.issue());
+    map.set(JazzStore.threadKey(thread, id), JazzStore.encodeMessage(trimmed, stamp));
     await this.whenDurable?.();
 
     const posted = (await this.messages(thread)).find((m) => m.id === id);
@@ -385,21 +424,43 @@ export class JazzStore implements Store {
 
     for (const key of map.keys()) {
       if (!key.startsWith(prefix)) continue;
-      const text = map.get(key);
-      if (typeof text !== "string") continue;
+      const decoded = JazzStore.decodeMessage(map.get(key));
+      if (!decoded) continue;
+      // Fold every stamp we see into this device's clock, whether or not it is returned below — that
+      // is what makes the NEXT thing posted here sort after everything already said.
+      this.clock.observe(decoded.stamp);
       // The FIRST edit of the key is the post. A later one would be an edit, which nothing offers.
       const first = map.editsAt?.(key)?.[Symbol.iterator]().next().value as
         | { by: string; at: Date | number }
         | undefined;
       const at = first ? (first.at instanceof Date ? first.at : new Date(first.at)) : new Date(0);
       if (since !== undefined && at.getTime() <= since) continue;
-      out.push({ id: key.slice(prefix.length), text, by: String(first?.by ?? ""), at });
+      out.push({
+        id: key.slice(prefix.length),
+        text: decoded.text,
+        by: String(first?.by ?? ""),
+        at,
+        ...(decoded.stamp ? { stamp: decoded.stamp } : {}),
+      });
     }
 
-    // Oldest first, as a conversation reads. ULIDs are time-ordered, so they break a tie between two
-    // messages sharing a millisecond deterministically — every peer sorts the same way, which
-    // wall-clock alone cannot promise across devices.
-    out.sort((a, b) => a.at.getTime() - b.at.getTime() || (a.id < b.id ? -1 : 1));
+    // Oldest first, as a conversation reads — by the HYBRID CLOCK, not by anyone's wall clock.
+    //
+    // Sorting on `at` (the time the sending device claimed) meant a device five minutes fast put its
+    // messages five minutes into everyone's future, and a reply written on a correct clock sorted
+    // BEFORE the message it answered. Every peer agreed on that order, which is what made it look
+    // deliberate rather than broken.
+    //
+    // A message with no stamp predates stamping, so it falls back to `at` — and sorts first, which
+    // is where it belongs. The ULID breaks a remaining tie so peers still agree exactly.
+    const rank = (m: ChatMessage): string =>
+      m.stamp ?? `0000000000000.00000#${String(m.at.getTime()).padStart(13, "0")}`;
+    out.sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra < rb ? -1 : 1;
+      return a.id < b.id ? -1 : 1;
+    });
     return opts?.limit ? out.slice(-opts.limit) : out;
   }
 

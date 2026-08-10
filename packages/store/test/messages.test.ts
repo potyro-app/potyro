@@ -105,6 +105,32 @@ describe("posting and reading", () => {
     expect((await store.messages(ROOM_THREAD)).map((m) => m.text)).toEqual(["unrelated"]);
   });
 
+  it("stores a clock stamp, not just the text", async () => {
+    const { store } = await solo();
+    await store.postMessage(ROOM_THREAD, "one");
+    await store.postMessage(ROOM_THREAD, "two");
+    const [a, b] = await store.messages(ROOM_THREAD);
+    expect(a!.stamp).toMatch(/^\d{13}\.\d{5}$/);
+    // Strictly increasing on one device, even within a millisecond.
+    expect(b!.stamp! > a!.stamp!).toBe(true);
+  });
+
+  it("still reads messages written before stamping existed", async () => {
+    // The stored shape changed from a bare string to JSON. Anything already in a real space predates
+    // that, and must not vanish from the conversation.
+    const { store } = await solo();
+    await store.postMessage(ROOM_THREAD, "new one");
+    // Reach past the API to write the old shape, exactly as an older build did.
+    const raw = (store as unknown as { chat(): Promise<{ set(k: string, v: unknown): void }> });
+    (await raw.chat()).set(`${ROOM_THREAD}\u0000${"0".repeat(26)}`, "an old message");
+
+    const texts = (await store.messages(ROOM_THREAD)).map((m) => m.text);
+    expect(texts).toContain("an old message");
+    expect(texts).toContain("new one");
+    // Unstamped sorts first: it is from before, and that is where it belongs.
+    expect(texts[0]).toBe("an old message");
+  });
+
   it("never leaks into the app's data", async () => {
     // Chat sits beside the entity tree. If it showed up as records, an untrusted app could read it
     // through `ctx.query`, which is the one thing this placement exists to prevent.
@@ -183,6 +209,41 @@ describe("two people talking", () => {
     expect((await brunoStore.messages(ROOM_THREAD)).map((m) => m.id)).toEqual(
       (await anaStore.messages(ROOM_THREAD)).map((m) => m.id),
     );
+  });
+
+  it("A REPLY NEVER SORTS BEFORE THE MESSAGE IT ANSWERS, even with a wrong clock", async () => {
+    // The whole reason the hybrid clock exists. Ana's device is five minutes fast, so the CRDT
+    // records her message as five minutes in the future. Bruno reads it and replies on a correct
+    // clock; ordering by wall time puts his reply BEFORE the message he is answering, and both
+    // devices agree on that wrong order — which is what made it look intentional.
+    const { anaStore, brunoStore } = await pair();
+
+    const realNow = Date.now;
+    const SKEW = 5 * 60 * 1000;
+    try {
+      Date.now = () => realNow() + SKEW;
+      await anaStore.postMessage(ROOM_THREAD, "there is no milk");
+    } finally {
+      Date.now = realNow;
+    }
+    await settle();
+
+    // Bruno reads (which is when he folds in Ana's stamp) and replies, on a correct clock.
+    await brunoStore.messages(ROOM_THREAD);
+    await brunoStore.postMessage(ROOM_THREAD, "getting some on the way home");
+    await settle();
+
+    for (const [who, store] of [["Ana", anaStore], ["Bruno", brunoStore]] as const) {
+      const seen = await store.messages(ROOM_THREAD);
+      expect(seen.map((m) => m.text), `as ${who} sees it`).toEqual([
+        "there is no milk",
+        "getting some on the way home",
+      ]);
+    }
+
+    // And the wall clocks really were the wrong way round — otherwise this test proves nothing.
+    const [first, second] = await anaStore.messages(ROOM_THREAD);
+    expect(second!.at.getTime()).toBeLessThan(first!.at.getTime());
   });
 
   it("notifies a subscriber when the other person posts", async () => {
