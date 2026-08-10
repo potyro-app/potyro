@@ -89,10 +89,19 @@ export default defineConfig({
     },
     // Claims that are only true of a DEPLOYED build. Kept a separate project so the ordinary suite
     // does not pay for a production build on every run.
-    {
-      name: "prod",
-      testMatch: /.*prod\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PROD_PORT}` },
-    },
+    //
+    // Gated on the SAME env var as its webServer above. Without this the project ran on every
+    // invocation while the server it needs was never started, so `pnpm e2e` reported four
+    // connection-refused failures that said nothing about the code — and would have kept CI red
+    // even once everything genuinely broken was fixed. Use `pnpm test:e2e:prod`.
+    ...(process.env.KARTA_PROD
+      ? [
+          {
+            name: "prod",
+            testMatch: /.*prod\.spec\.ts/,
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PROD_PORT}` },
+          },
+        ]
+      : []),
   ],
 });
