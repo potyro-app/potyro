@@ -101,7 +101,20 @@ export interface ChatMessage {
   id: string;
   text: string;
   by: string;
+  /**
+   * When the SENDING DEVICE says it wrote this — read off the transaction, so unforgeable, but only
+   * as accurate as that device's clock. Fine to display; do not order by it. See `stamp`.
+   */
   at: Date;
+  /**
+   * Hybrid-logical-clock stamp, and the thing the conversation is actually ordered by.
+   *
+   * Wall clocks do not order anything across devices: one running five minutes fast puts its
+   * messages five minutes into everyone's future, so a reply sorts before the message it answers.
+   * The stamp folds in every message the sender had already seen, so causality survives whatever
+   * the clocks say. Absent on messages written before stamping existed — those fall back to `at`.
+   */
+  stamp?: string;
 }
 
 /**
