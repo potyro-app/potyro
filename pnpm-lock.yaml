@@ -14,12 +14,15 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.43
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
       concurrently:
         specifier: ^10.0.4
         version: 10.0.4
       jazz-run:
         specifier: 0.20.19
-        version: 0.20.19(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+        version: 0.20.19(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -115,7 +118,7 @@ importers:
         version: 1.6.0
       cojson:
         specifier: ^0.20.19
-        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
 
   packages/native:
     dependencies:
@@ -278,10 +281,10 @@ importers:
         version: 3.53.0-build1
       cojson:
         specifier: 0.20.19
-        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       cojson-transport-ws:
         specifier: 0.20.19
-        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -3931,12 +3934,14 @@ snapshots:
 
   '@react-native/normalize-colors@0.86.2': {}
 
-  '@react-native/virtualized-lists@0.86.2(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)':
+  '@react-native/virtualized-lists@0.86.2(@types/react@18.3.31)(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)':
     dependencies:
       invariant: 2.2.4
       nullthrows: 1.1.1
       react: 18.3.1
-      react-native: 0.86.2(@babel/core@7.29.7)(react@18.3.1)
+      react-native: 0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.31
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
@@ -4406,44 +4411,44 @@ snapshots:
       cojson-core-napi-linux-x64-gnu: 0.20.19
       cojson-core-napi-linux-x64-musl: 0.20.19
 
-  cojson-core-rn@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  cojson-core-rn@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       react: 18.3.1
-      react-native: 0.86.2(@babel/core@7.29.7)(react@18.3.1)
+      react-native: 0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1)
       uniffi-bindgen-react-native: 0.29.3-1
 
   cojson-core-wasm@0.20.19: {}
 
-  cojson-storage-indexeddb@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  cojson-storage-indexeddb@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
     transitivePeerDependencies:
       - react
       - react-native
 
-  cojson-storage-sqlite@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  cojson-storage-sqlite@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       better-sqlite3: 12.11.1
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
     transitivePeerDependencies:
       - react
       - react-native
 
-  cojson-transport-ws@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  cojson-transport-ws@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       '@opentelemetry/api': 1.9.1
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
     transitivePeerDependencies:
       - react
       - react-native
 
-  cojson@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  cojson@0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       '@noble/hashes': 1.8.0
       '@opentelemetry/api': 1.9.1
       '@scure/base': 1.2.1
       cojson-core-napi: 0.20.19
-      cojson-core-rn: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson-core-rn: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       cojson-core-wasm: 0.20.19
       unicode-segmenter: 0.12.0
     transitivePeerDependencies:
@@ -4830,7 +4835,7 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  jazz-run@0.20.19(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  jazz-run@0.20.19(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       '@effect/cli': 0.41.5(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(@effect/printer-ansi@0.34.8(@effect/typeclass@0.25.8(effect@3.22.1))(effect@3.22.1))(@effect/printer@0.34.8(@effect/typeclass@0.25.8(effect@3.22.1))(effect@3.22.1))(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1)
       '@effect/platform-node': 0.57.5(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(effect@3.22.1)
@@ -4838,12 +4843,12 @@ snapshots:
       '@effect/printer-ansi': 0.34.8(@effect/typeclass@0.25.8(effect@3.22.1))(effect@3.22.1)
       '@effect/schema': 0.71.4(effect@3.22.1)
       '@effect/typeclass': 0.25.8(effect@3.22.1)
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-storage-sqlite: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-storage-sqlite: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       effect: 3.22.1
-      jazz-tools: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      jazz-webhook: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      jazz-tools: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      jazz-webhook: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       ws: 8.21.1
     transitivePeerDependencies:
       - '@bam.tech/react-native-image-resizer'
@@ -4868,16 +4873,16 @@ snapshots:
       - svelte
       - utf-8-validate
 
-  jazz-tools@0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  jazz-tools@0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
       '@scure/base': 1.2.1
       '@scure/bip39': 1.6.0
       '@tiptap/core': 3.29.2(@tiptap/pm@3.29.2)
       '@tiptap/pm': 3.29.2
       clsx: 2.1.1
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-storage-indexeddb: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-storage-indexeddb: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       fast-myers-diff: 3.2.0
       goober: 2.1.19(csstype@3.2.3)
       prosemirror-example-setup: 1.2.3
@@ -4891,16 +4896,16 @@ snapshots:
     optionalDependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      react-native: 0.86.2(@babel/core@7.29.7)(react@18.3.1)
+      react-native: 0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1)
     transitivePeerDependencies:
       - csstype
 
-  jazz-webhook@0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1):
+  jazz-webhook@0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
-      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-storage-sqlite: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
-      jazz-tools: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      cojson: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-storage-sqlite: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-transport-ws: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      jazz-tools: 0.20.19(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
     transitivePeerDependencies:
       - '@bam.tech/react-native-image-resizer'
       - '@op-engineering/op-sqlite'
@@ -5594,7 +5599,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1):
+  react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1):
     dependencies:
       '@react-native/assets-registry': 0.86.2
       '@react-native/codegen': 0.86.2(@babel/core@7.29.7)
@@ -5602,7 +5607,7 @@ snapshots:
       '@react-native/gradle-plugin': 0.86.2
       '@react-native/js-polyfills': 0.86.2
       '@react-native/normalize-colors': 0.86.2
-      '@react-native/virtualized-lists': 0.86.2(react-native@0.86.2(@babel/core@7.29.7)(react@18.3.1))(react@18.3.1)
+      '@react-native/virtualized-lists': 0.86.2(@types/react@18.3.31)(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       abort-controller: 3.0.0
       anser: 1.4.10
       ansi-regex: 5.0.1
@@ -5629,6 +5634,8 @@ snapshots:
       whatwg-fetch: 3.6.20
       ws: 7.5.13
       yargs: 17.7.3
+    optionalDependencies:
+      '@types/react': 18.3.31
     transitivePeerDependencies:
       - '@babel/core'
       - '@react-native-community/cli'
