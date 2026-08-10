@@ -159,6 +159,22 @@ There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and ar
   agree (a swap, a transfer, a running total) can still be left inconsistent when two people act at
   once. Prefer recording what HAPPENED and deriving the total, over writing the total.
 - \`ctx.now()\` → Date, \`ctx.today()\` → Date          (sync; NOT \`ctx.data.now\`)
+
+## CHANGING AN APP THAT ALREADY HAS DATA
+
+When you MODIFY an app, records already exist. Adding, removing or renaming a field, or adding a
+required relation, leaves every existing record in the old shape — and a required field they do not
+have makes them vanish from the app. That reads to the user as "you deleted my data".
+
+So whenever you change \`entities\`:
+
+1. Increase \`schemaVersion\` by one. Nothing migrates without it.
+2. Add a \`migrations\` entry \`{ from: "1", to: "2", steps: [...] }\` covering what you changed. Steps:
+   \`addField\` (with \`default\`), \`dropField\`, \`renameField\`, \`changeType\` (with \`via\`),
+   \`renameEntity\`, \`setDefaultForExisting\`, \`addRelation\`, or \`{ transform }\` for anything else.
+3. Do not make a new relation \`required\` unless the migration gives every existing record a value.
+4. Keep a way to SEE the existing records. Moving every item inside a new grouping page hides every
+   record that has no group yet.
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
 - \`ctx.caps\` — native capabilities. EVERY ONE IS OPTIONAL and may be undefined when not granted, so
@@ -363,12 +379,13 @@ export function parseModifyReply(reply: string): ModifyReply {
     return { kind: "diagnosis", text };
   }
 
-  const fence = /```(?:ts|typescript)?[ \t]*\r?\n([\s\S]*?)```/.exec(reply);
-  if (fence) {
-    const source = fence[1]!.trim();
-    const rationale = reply.slice(0, fence.index).trim();
+  // Any language tag, not just `ts` — see `fencedBlocks`. A ```tsx reply used to fall through to
+  // the branch below and hand the model's prose to the bundler.
+  const block = pickAppBlock(fencedBlocks(reply));
+  if (block) {
+    const rationale = reply.slice(0, block.index).trim();
     // Reasoning belongs in the version's rationale, not in source comments (docs/04).
-    return rationale ? { kind: "source", source, rationale } : { kind: "source", source };
+    return rationale ? { kind: "source", source: block.code, rationale } : { kind: "source", source: block.code };
   }
   return { kind: "source", source: reply.trim() };
 }
@@ -378,12 +395,48 @@ export function buildRepairMessage(errors: string[]): string {
     "The app you produced failed these checks:",
     ...errors.map((e) => `- ${e}`),
     "",
-    "Return a corrected, complete .app.ts (the whole file, not a diff) in one ```ts block.",
+    "Return a corrected, complete .app.ts (the whole file, not a diff) in one code block.",
   ].join("\n");
 }
 
 /** Pull the app source out of a model reply — strips a ```ts / ``` code fence if present. */
+/**
+ * Every fenced block in a reply, with where it started.
+ *
+ * The language tag is captured and IGNORED. The previous version accepted only `ts` and
+ * `typescript`, so a reply fenced ```` ```tsx ```` — which is what a model reaches for the moment an
+ * app has a custom view, and what the bundler itself calls the file — matched nothing. The whole
+ * reply, prose and fence markers included, then went to esbuild, which reported a syntax error in
+ * the middle of an English sentence: `Expected ";" but found ":"`. Unreadable, and nothing about it
+ * suggested the real problem.
+ *
+ * The closing fence is optional so a truncated reply still yields the code it managed to produce.
+ */
+function fencedBlocks(text: string): Array<{ code: string; index: number }> {
+  const out: Array<{ code: string; index: number }> = [];
+  const re = /```([A-Za-z0-9_+.-]*)[ \t]*\r?\n([\s\S]*?)(?:```|$)/g;
+  for (const m of text.matchAll(re)) out.push({ code: m[2]!.trim(), index: m.index ?? 0 });
+  return out;
+}
+
+/**
+ * The block that is actually the app module.
+ *
+ * A reply may contain several: a snippet illustrating the change, then the whole file. Preferring
+ * blocks that contain `defineApp(` picks the file rather than the illustration, and the longest of
+ * those settles it when a model shows the app twice.
+ */
+function pickAppBlock(blocks: Array<{ code: string; index: number }>): { code: string; index: number } | null {
+  const real = blocks.filter((b) => /defineApp\s*\(/.test(b.code));
+  const pool = real.length ? real : blocks;
+  return pool.length ? pool.reduce((a, b) => (b.code.length > a.code.length ? b : a)) : null;
+}
+
+/** Does this look like an app module at all, or did the model just talk? */
+export function looksLikeApp(source: string): boolean {
+  return /defineApp\s*\(/.test(source);
+}
+
 export function extractSource(text: string): string {
-  const fence = text.match(/```(?:ts|typescript)?\s*\n([\s\S]*?)```/);
-  return (fence ? fence[1]! : text).trim();
+  return (pickAppBlock(fencedBlocks(text))?.code ?? text).trim();
 }

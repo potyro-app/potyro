@@ -21,6 +21,7 @@ import {
   buildModifyMessage,
   buildRepairMessage,
   extractSource,
+  looksLikeApp,
   parseModifyReply,
   type ModifyContext,
   type ModifyReply,
@@ -38,6 +39,7 @@ import type { NavHost } from "./nav-host.js";
 
 import { canGenerate, generateViaCli } from "./generate-client.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
+import { describeDrift, schemaDrift } from "./schema-drift.js";
 import { shellDialogs } from "./dialog.js";
 
 interface EditorState {
@@ -463,6 +465,17 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
       // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
       let next = reply.source;
+      // Say what went wrong in words. When extraction fails, `next` is the model's prose, and
+      // bundling it produces a syntax error partway through an English sentence — which tells the
+      // person nothing and sent one real user round in circles.
+      if (!looksLikeApp(next)) {
+        setModifyError(
+          "The agent replied with an explanation instead of an app, so nothing was changed. Try asking again, more specifically.",
+        );
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
       const issues = await buildAndValidate(next);
       if (issues.length) next = await runRepair(next, issues);
 
@@ -474,14 +487,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       const risk = await checkConcurrency(next, appId);
       const hazards = describeHazards(risk);
 
+      // And whether it quietly changed how data is stored. An app with no records behaves perfectly
+      // after a change like that; it is only wrong in the presence of data that already exists,
+      // which is the one thing none of the other gates has.
+      const drift = describeDrift(await schemaDrift(app.source, next));
+
       // Awaited, not fired-and-forgotten: the reload below would otherwise race the history write
       // and lose the very version you'd want to roll back to.
       await saveUserApp(
         { id: appId, name: app.name, source: next, origin: "edited", note: instruction, rationale: reply.rationale },
         new Date().toISOString(),
       );
+      // Before the reload, or neither is ever seen. Saved either way — these say what was saved.
+      if (drift) await shellDialogs.confirm(`Saved — ${drift}`);
       if (hazards.length) {
-        // Before the reload, or it is never seen. Saved either way — this says what was saved.
         await shellDialogs.confirm(
           `Saved — but this change is not safe to share yet:\n\n• ${hazards.join("\n• ")}\n\n` +
             `On your own it works fine. With someone else, changes made at the same moment can be ` +
