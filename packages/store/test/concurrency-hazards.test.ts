@@ -64,4 +64,39 @@ describe("read-modify-write is not safe across devices", () => {
     // Both devices agree on the wrong answer, which is why nothing looks broken.
     expect(Number((await b.get("item", rec.id))!.bought)).toBe(final);
   });
+
+  it("BUT `increment` keeps both — the same two presses give +2", async () => {
+    // The fix, and the whole thesis of the remap: app code stops computing the answer and states the
+    // CHANGE, and the store — which is the only party that can see both devices — adds them up.
+    // Nothing about the app's shape changes; `record.bought` is still one number.
+    const { a, b } = await pair();
+    const rec = await a.insert("item", { title: "eggs", bought: 0, qty: 10 });
+    await settle();
+
+    await Promise.all([a.increment!("item", rec.id, "bought", 1), b.increment!("item", rec.id, "bought", 1)]);
+    await settle(600);
+
+    expect(Number((await a.get("item", rec.id))!.bought)).toBe(2);
+    expect(Number((await b.get("item", rec.id))!.bought)).toBe(2);
+  });
+
+  it("counts up from a value that was written as a plain number", async () => {
+    // No migration: a field that already holds an ordinary number is the base, and increments add to
+    // it. Otherwise adopting the counter would silently reset every existing count to zero.
+    const { a } = await pair();
+    const rec = await a.insert("item", { title: "flour", bought: 7 });
+    await a.increment!("item", rec.id, "bought", 2);
+    expect(Number((await a.get("item", rec.id))!.bought)).toBe(9);
+  });
+
+  it("keeps the per-session bookkeeping out of the record", async () => {
+    // Subtotals are an implementation detail. If they leaked, every export, every form and every
+    // custom view would have to know about them.
+    const { a } = await pair();
+    const rec = await a.insert("item", { title: "sugar", bought: 0 });
+    await a.increment!("item", rec.id, "bought", 3);
+    const row = (await a.get("item", rec.id))!;
+    expect(Object.keys(row).filter((k) => k.includes("\u0001"))).toEqual([]);
+    expect(row.bought).toBe(3);
+  });
 });

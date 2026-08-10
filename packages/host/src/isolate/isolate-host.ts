@@ -106,6 +106,26 @@ class IsolateLoadedApp implements LoadedApp {
         const row = await this.store.update(op.entity as string, op.id as string, op.data as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
+      // A shared app runs HERE, so this is the surface that decides whether counting is safe for the
+      // people it was shared with. Same fallback as the direct path: a store that cannot add deltas
+      // is single-writer, where read-modify-write has nothing to race with.
+      case "data.increment": {
+        const entity = op.entity as string;
+        const id = op.id as string;
+        const field = op.field as string;
+        const delta = Number(op.delta);
+        if (!Number.isFinite(delta)) throw new Error("ctx.increment: delta must be a number");
+        if (this.store.increment) {
+          await this.store.increment(entity, id, field, delta);
+        } else {
+          const current = await this.store.get(entity, id);
+          const base = Number((current as Record<string, unknown> | null)?.[field] ?? 0);
+          await this.store.update(entity, id, { [field]: base + delta } as Partial<KartaRecord>);
+        }
+        const row = await this.store.get(entity, id);
+        if (!row) throw new Error(`increment: ${entity}/${id} not found`);
+        return serialize(await resolveRecord(this.resolveDeps, entity, row, false));
+      }
       case "data.delete":
         await this.store.delete(op.entity as string, op.id as string);
         return nul;

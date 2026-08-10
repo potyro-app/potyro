@@ -90,6 +90,27 @@ const seed =
   async (runtime: unknown): Promise<Record<string, string[]>> =>
     (await seedRecords(app, runtime as never)).created;
 
+const COUNTED = defineApp({
+  id: "counted-list",
+  name: "Counted List",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    item: {
+      label: "Item",
+      displayField: "title",
+      fields: { title: { type: "text", required: true }, bought: { type: "number" } },
+      actions: {
+        // The same button as UNSAFE, written the safe way: state the CHANGE, not the result.
+        bump: async (record, ctx) => {
+          await ctx.increment("item", record.id as string, "bought", 1);
+        },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }],
+});
+
 describe("the concurrency gate", () => {
   it("catches a counter that loses one of two simultaneous presses", async () => {
     const r = await concurrencySmoke(UNSAFE as never, seed(UNSAFE as never));
@@ -110,6 +131,16 @@ describe("the concurrency gate", () => {
     const fused = r.hazards.filter((h) => h.kind === "fused-key");
     expect(fused.length, JSON.stringify(r.hazards, null, 1)).toBeGreaterThan(0);
     expect(fused[0]!.field).toBe("order");
+  }, 60_000);
+
+  it("goes quiet once the same button uses ctx.increment", async () => {
+    // The whole thesis of the remap, closed end to end: the app's shape is unchanged, `bought` is
+    // still one number, and the gate that condemned the `patch` version has nothing to report.
+    const r = await concurrencySmoke(COUNTED as never, seed(COUNTED as never));
+    expect(r.errors, `setup failed: ${r.errors.join("; ")}`).toEqual([]);
+    expect(r.ran.actions).toBeGreaterThan(0);
+    expect(r.hazards, JSON.stringify(r.hazards, null, 1)).toEqual([]);
+    expect(concurrencyPassed(r)).toBe(true);
   }, 60_000);
 
   it("does NOT flag an action that legitimately sets an absolute value", async () => {
