@@ -8,6 +8,26 @@
 const POLL_MS = 1_500;
 const TIMEOUT_MS = 300_000;
 
+/**
+ * Can this build reach a model at all?
+ *
+ * `/__generate` is a **Vite dev-server middleware**, so it exists only while `pnpm dev` is running.
+ * A deployed build has no such route — and every AI surface still offered itself, failed on the
+ * fetch, and showed a stranger the words "Is `pnpm dev` still running?".
+ *
+ * So the Studio and the agent half of Edit mode are hidden unless a model is actually reachable.
+ * `VITE_KARTA_GENERATOR` is the switch for a deployment that stands one up (a server route holding a
+ * key, or an in-browser backend); until something does, a production build says nothing about
+ * generating apps rather than offering a button that cannot work.
+ *
+ * Structural editing and History are NOT gated on this. Neither calls a model — reordering a field
+ * and rolling back a version work perfectly well on a deployment with no generator, and removing
+ * them would be a bigger loss than the one this is fixing.
+ */
+export function canGenerate(): boolean {
+  return Boolean(import.meta.env?.DEV || import.meta.env?.VITE_KARTA_GENERATOR);
+}
+
 export interface GenerateOptions {
   /** The contract. Sent separately so the server passes it via --system-prompt-file. */
   system: string;

@@ -18,7 +18,8 @@
     "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0",
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @karta/shell dev",
-    "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json"
+    "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json",
+    "test:e2e:prod": "KARTA_PROD=1 playwright test --project=prod"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",

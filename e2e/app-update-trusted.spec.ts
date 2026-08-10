@@ -81,10 +81,27 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
   await expect(source).toContainText('title: "Notes"', { timeout: 30_000 });
   await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
   await studio.getByRole("button", { name: "Save changes" }).click();
-  await a.waitForTimeout(2000);
-  await a.goto("/?user=shared-todo"); // publishes the newer source into the space
+  // Wait on the SAVE, not on a clock. A fixed sleep here reloaded mid-write under a loaded parallel
+  // run, so the newer source never reached the space and the whole spec failed downstream.
+  await expect
+    .poll(
+      async () =>
+        a
+          .evaluate(() => {
+            const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; source: string }[];
+            return apps.find((x) => x.id === "shared-todo")?.source ?? "";
+          })
+          .catch(() => ""),
+      { timeout: 30_000 },
+    )
+    .toContain('title: "Journal"');
+
+  await a.goto("/?user=shared-todo"); // publishing happens on open, once the space is up
   await expect(a.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });
-  await a.waitForTimeout(2000);
+  // A settle, and an honest one: publishing happens during A's boot and there is no page-visible
+  // signal for "the space now holds the new source". If it has not landed when B loads, B simply
+  // gets no update prompt and the assertion below fails loudly rather than silently passing.
+  await a.waitForTimeout(1500);
 
   // ---- THE CLAIM: B reloads and gets a usable page. ----
   await b.goto("/?user=shared-todo");
