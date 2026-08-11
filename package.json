@@ -19,7 +19,8 @@
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @karta/shell dev",
     "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json",
-    "test:e2e:prod": "KARTA_PROD=1 playwright test --project=prod"
+    "test:e2e:prod": "KARTA_PROD=1 playwright test --project=prod",
+    "test:e2e:firefox": "KARTA_FIREFOX=1 playwright test --project=trusted-firefox"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
