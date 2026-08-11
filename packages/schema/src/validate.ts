@@ -429,6 +429,19 @@ const migrationStepSchema = z.any().superRefine((v, ctx) => {
     }
     return;
   }
+  // `type` instead of `op`, observed from a real edit. Understandable: every FIELD in this schema is
+  // keyed by `type`, and a migration step is the one place that word is wrong. Saying so beats
+  // reporting a missing `op` and leaving the reader to spot that the value they wrote is sitting
+  // under the wrong key — which is the difference between a one-word fix and another round trip.
+  const step = v as { op?: unknown; type?: unknown } | null;
+  if (step && typeof step === "object" && step.op === undefined && typeof step.type === "string") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["op"],
+      message: `a migration step names its operation with \`op\`, not \`type\` — write { op: "${step.type}", ... }`,
+    });
+    return;
+  }
   const parsed = migrationOpSchema.safeParse(v);
   if (!parsed.success) for (const issue of parsed.error.issues) ctx.addIssue({ ...issue, path: issue.path });
 });
