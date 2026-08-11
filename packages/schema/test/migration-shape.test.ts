@@ -82,4 +82,15 @@ describe("a step that is wrong says what the steps ARE", () => {
     const issues = issuesFor([{ from: "1.0.0", to: "1.1.0", steps: [{ transform: "nope" }] }]);
     expect(issues.join(" ")).toContain("transform must be a function");
   });
+
+  it("names the mix-up when a step says `type` instead of `op`", () => {
+    // Straight from a second real report, on the same prompt: the model wrote
+    // `{ type: "addField", entity: "item", field: "done" }`. Every field in this schema is keyed by
+    // `type`, so it is the obvious guess and the one place it is wrong.
+    const issues = issuesFor([
+      { from: "1.0.0", to: "1.1.0", steps: [{ type: "addField", entity: "item", field: "done", default: false }] },
+    ]);
+    expect(issues.join(" ")).toContain("`op`, not `type`");
+    expect(issues.join(" "), "and it repeats the value back so the fix is one word").toContain('op: "addField"');
+  });
 });

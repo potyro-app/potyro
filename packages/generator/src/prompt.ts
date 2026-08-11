@@ -203,7 +203,8 @@ migrations: [
 ],
 \`\`\`
 
-3. The steps, with their EXACT keys. There is no other op:
+3. The steps, with their EXACT keys. A step names its operation with \`op\` — NOT \`type\`, which is
+   the key every FIELD uses and is wrong here. There is no other op:
    - \`{ op: "addField", entity, field, default? }\`
    - \`{ op: "dropField", entity, field }\`
    - \`{ op: "renameField", entity, from, to }\`
