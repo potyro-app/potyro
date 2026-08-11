@@ -38,6 +38,22 @@ export interface SmokeResult {
   /** Counts, so a vacuous pass (nothing to run) is distinguishable from a real one. */
   ran: { entities: number; records: number; pages: number; computed: number; actions: number; reminders: number; customViews: number };
   errors: string[];
+  /**
+   * Pages that filtered EVERY seeded record away.
+   *
+   * Not errors — a page can legitimately come up empty on synthetic data ("Overdue" when every
+   * seeded date is in the future). Warnings, because the far more common cause is a filter that can
+   * never match anything, and that failure has no other symptom: the app compiles, validates,
+   * renders, and shows a blank list forever.
+   *
+   * The case that motivated it: asked to group todos into lists, a model wrote
+   * `filter: (t) => t.list === ctx.params.listId`. A `relation` resolves to the RELATED RECORD, so
+   * that compares an object with a string. Always false. The per-list page showed nothing and the
+   * "open/total" counter read 0/0 — with no error, anywhere, for anyone to see. Seeding assigns a
+   * relation to every record, so a filter of that shape is visible here as a page that threw
+   * everything away.
+   */
+  emptyPages: string[];
 }
 
 const UI: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
@@ -97,6 +113,7 @@ function seedValue(field: Field, i: number, key: string): unknown {
 export async function smokeApp(app: AppDefinition & { id: string }): Promise<SmokeResult> {
   const errors: string[] = [];
   const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0, customViews: 0 };
+  const emptyPages: string[] = [];
   let seeded = false;
   let computedOk = true;
   let bindingsOk = true;
@@ -145,6 +162,12 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
     try {
       const { rows, ctx } = await runtime.queryPage(page.id, params);
       ran.pages++;
+      // Everything filtered away, on data seeded so that it should not be. See `emptyPages`.
+      // Detail pages are excluded: one record is the whole point, and an unresolvable id is
+      // already reported elsewhere.
+      const seededForEntity = view?.entity ? (created[view.entity]?.length ?? 0) : 0;
+      const isDetail = (page.view as { type?: string } | undefined)?.type === "detail";
+      if (!isDetail && seededForEntity > 0 && rows.length === 0) emptyPages.push(page.id);
       // Bindings are addressed by REF (kind/page/path), not by value. Paths absent from this view
       // resolve to null rather than throwing, so probing the full set is safe.
       for (const path of VIEW_BINDING_PATHS) {
@@ -221,7 +244,7 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
     }
   }
 
-  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors };
+  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors, emptyPages };
 }
 
 /** True when the app not only validates but actually executed its own logic without throwing. */

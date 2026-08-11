@@ -394,7 +394,22 @@ const reminderSchema = z.object({
   body: zBinding.optional(),
 });
 
-const migrationStepSchema = z.union([
+const SEMVER = /^\d+\.\d+\.\d+(?:[-+].+)?$/;
+
+/**
+ * The ops, discriminated on `op` so a wrong one says WHICH ones exist.
+ *
+ * A plain `z.union` reported every malformed step as `Invalid input` and nothing else — no path, no
+ * hint, nothing to act on. That message reached a real user as
+ * `migrations.0.steps.0: Invalid input`, and it also reached the repair model, which had no more to
+ * go on than they did. A discriminated union answers with
+ * `op: Invalid discriminator value. Expected 'addField' | 'dropField' | ...`, which is the whole
+ * list of what is allowed — and for a recognised op it points at the missing key by name.
+ *
+ * Note there is no `addEntity`, and there does not need to be: a new entity has no records yet.
+ * Models invent one anyway, which is exactly the case the message above now answers.
+ */
+const migrationOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("addField"), entity: z.string(), field: z.string(), default: z.any().optional() }),
   z.object({ op: z.literal("dropField"), entity: z.string(), field: z.string() }),
   z.object({ op: z.literal("renameField"), entity: z.string(), from: z.string(), to: z.string() }),
@@ -402,12 +417,43 @@ const migrationStepSchema = z.union([
   z.object({ op: z.literal("renameEntity"), from: z.string(), to: z.string() }),
   z.object({ op: z.literal("setDefaultForExisting"), entity: z.string(), field: z.string(), value: z.any() }),
   z.object({ op: z.literal("addRelation"), entity: z.string(), field: z.string(), to: z.string(), many: z.boolean().optional() }),
-  z.object({ transform: zFn }),
 ]);
 
+// Wrapping the discriminated union in a `z.union` with the `{ transform }` branch would throw its
+// message away again — a union reports its own failure, not its members'. So the branch is chosen
+// here, by hand, and the good message is passed through.
+const migrationStepSchema = z.any().superRefine((v, ctx) => {
+  if (v && typeof v === "object" && !Array.isArray(v) && "transform" in (v as object)) {
+    if (typeof (v as { transform: unknown }).transform !== "function") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "transform must be a function" });
+    }
+    return;
+  }
+  // `type` instead of `op`, observed from a real edit. Understandable: every FIELD in this schema is
+  // keyed by `type`, and a migration step is the one place that word is wrong. Saying so beats
+  // reporting a missing `op` and leaving the reader to spot that the value they wrote is sitting
+  // under the wrong key — which is the difference between a one-word fix and another round trip.
+  const step = v as { op?: unknown; type?: unknown } | null;
+  if (step && typeof step === "object" && step.op === undefined && typeof step.type === "string") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["op"],
+      message: `a migration step names its operation with \`op\`, not \`type\` — write { op: "${step.type}", ... }`,
+    });
+    return;
+  }
+  const parsed = migrationOpSchema.safeParse(v);
+  if (!parsed.success) for (const issue of parsed.error.issues) ctx.addIssue({ ...issue, path: issue.path });
+});
+
 const migrationSchema = z.object({
-  from: z.string(),
-  to: z.string(),
+  // The APP VERSION this migration moves data between — the `version` field, semver, not
+  // `schemaVersion`. `migrateOnLoad` walks the chain by matching `from` against the version the
+  // stored data was written under, so `{ from: "1", to: "2" }` is not merely the wrong style: it
+  // matches nothing, runs never, and leaves the records it was written to rescue exactly as they
+  // were. Silently. Requiring semver here turns that into an error someone can see.
+  from: z.string().regex(SEMVER, "migration `from` must be the app version it migrates from (semver, e.g. 1.0.0)"),
+  to: z.string().regex(SEMVER, "migration `to` must be the app version it migrates to (semver, e.g. 1.1.0)"),
   steps: z.array(migrationStepSchema),
 });
 
@@ -424,7 +470,6 @@ const permissionSchema = z.object({
   network: networkPermissionSchema.optional(),
 });
 
-const SEMVER = /^\d+\.\d+\.\d+(?:[-+].+)?$/;
 
 export const structureSchema = z.object({
   id: z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/, "id must be a lowercase slug"),

@@ -135,6 +135,18 @@ CONTRACT
 - Structure (entities/fields/view layout) is plain data. All LOGIC — computed, filters, sorts, actions,
   display bindings — is ordinary TypeScript functions that receive the record (and \`ctx\`). There is NO
   expression language; write real functions.
+- HOW A RECORD READS INSIDE YOUR FUNCTIONS. Filters, sorts, computed and actions receive a RESOLVED
+  record, not the raw stored row. This is the single most common way a generated app validates,
+  renders, and then does nothing:
+    - \`relation\` -> the RELATED RECORD, an object. Compare ids: \`todo.list?.id === list.id\`.
+      \`todo.list === list.id\` compares an object with a string, is always false, and produces an
+      empty page or a count stuck at 0 with no error anywhere.
+    - \`relation\` with \`many: true\` -> an ARRAY of records: \`todo.tags?.some((t) => t.id === x)\`.
+    - \`member\` -> a \`Person\` (\`{ id, name }\`), so compare \`row.addedBy?.id === ctx.me.id\`.
+    - \`datetime\` -> a real \`Date\` (call \`.getTime()\`, never compare strings).
+    - \`media\` -> a \`MediaRef\`; render it through a media binding, do not read it as a URL.
+    - text/number/boolean/enum/tags/geo/list read as written.
+  When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
   \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
@@ -168,13 +180,45 @@ have makes them vanish from the app. That reads to the user as "you deleted my d
 
 So whenever you change \`entities\`:
 
-1. Increase \`schemaVersion\` by one. Nothing migrates without it.
-2. Add a \`migrations\` entry \`{ from: "1", to: "2", steps: [...] }\` covering what you changed. Steps:
-   \`addField\` (with \`default\`), \`dropField\`, \`renameField\`, \`changeType\` (with \`via\`),
-   \`renameEntity\`, \`setDefaultForExisting\`, \`addRelation\`, or \`{ transform }\` for anything else.
-3. Do not make a new relation \`required\` unless the migration gives every existing record a value.
-4. Keep a way to SEE the existing records. Moving every item inside a new grouping page hides every
-   record that has no group yet.
+1. Bump BOTH versions. \`version\` is semver and moves e.g. "1.0.0" -> "1.1.0"; \`schemaVersion\` is an
+   integer and goes up by one. Migrations are keyed off \`version\`, so leaving it alone means nothing
+   runs.
+2. Add a \`migrations\` entry whose \`from\` is the \`version\` THIS FILE HAD before your edit and whose
+   \`to\` is the \`version\` you just wrote. Both are semver strings — NOT \`schemaVersion\`, NOT "1"/"2".
+   A migration whose \`from\` does not equal the previous \`version\` never runs, and nothing tells
+   anyone: the records simply stay in the old shape.
+
+\`\`\`ts
+version: "1.1.0",        // was "1.0.0"
+schemaVersion: 2,        // was 1
+migrations: [
+  {
+    from: "1.0.0",
+    to: "1.1.0",
+    steps: [
+      { op: "addRelation", entity: "todo", field: "list", to: "list" },
+      { op: "setDefaultForExisting", entity: "todo", field: "done", value: false },
+    ],
+  },
+],
+\`\`\`
+
+3. The steps, with their EXACT keys. A step names its operation with \`op\` — NOT \`type\`, which is
+   the key every FIELD uses and is wrong here. There is no other op:
+   - \`{ op: "addField", entity, field, default? }\`
+   - \`{ op: "dropField", entity, field }\`
+   - \`{ op: "renameField", entity, from, to }\`
+   - \`{ op: "changeType", entity, field, to, via: (value) => newValue }\`
+   - \`{ op: "renameEntity", from, to }\`
+   - \`{ op: "setDefaultForExisting", entity, field, value }\`
+   - \`{ op: "addRelation", entity, field, to, many? }\`
+   - \`{ transform: (record, ctx) => record }\` for anything the ops above cannot express
+4. A NEW entity needs NO step. It has no records yet. What needs a step is a change to an entity
+   that already exists — a new field or relation on it, or a rename.
+5. Do not make a new relation \`required\` unless the migration gives every existing record a value.
+6. Keep a way to SEE the existing records. Moving every item inside a new grouping page hides every
+   record that has no group yet. If you add grouping, either give existing records a default group in
+   the migration, or keep a page that lists everything ungrouped.
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
 - \`ctx.caps\` — native capabilities. EVERY ONE IS OPTIONAL and may be undefined when not granted, so
