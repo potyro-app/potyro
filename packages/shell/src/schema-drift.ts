@@ -20,6 +20,7 @@
 
 import { inspect } from "./app-source.js";
 import { schemaVersionOf } from "./app-sync.js";
+import { migrationChain } from "./migrate-on-load.js";
 
 export interface SchemaDrift {
   /** Entities present after but not before. Their records do not exist yet — harmless on its own. */
@@ -32,7 +33,20 @@ export interface SchemaDrift {
   removedFields: string[];
   /** Did the app declare a new `schemaVersion`? Without one, no migration can run. */
   versionBumped: boolean;
-  /** Did the app ship any migration at all? */
+  /**
+   * Does a migration exist that will ACTUALLY RUN — one whose `from` is the version the old source
+   * declared, reaching the version the new one declares?
+   *
+   * This used to be `/\bmigrations\s*:/.test(after)` — the word appearing anywhere in the file. So
+   * `migrations: []` counted, and so did a migration keyed on the wrong thing. `migrateOnLoad`
+   * walks the chain by matching `from` against the app version the stored data was written under,
+   * which means `{ from: "1", to: "2" }` matches nothing on an app whose `version` is "1.0.0": it
+   * parses, it validates, it silences this warning, and it never runs.
+   *
+   * That is not hypothetical. The generator's own contract told the model to write exactly that,
+   * and the test that was supposed to prove this check worked used it as its example of an app
+   * doing the right thing. Both are fixed; this is the part that cannot be talked out of it.
+   */
   hasMigrations: boolean;
 }
 
@@ -62,8 +76,53 @@ export async function schemaDrift(before: string, after: string): Promise<Schema
     addedFields: missing(to.fields, from.fields).filter((f) => !to.entities.has(f.split(".")[0]!) || from.entities.has(f.split(".")[0]!)),
     removedFields: missing(from.fields, to.fields).filter((f) => from.entities.has(f.split(".")[0]!) && to.entities.has(f.split(".")[0]!)),
     versionBumped: (schemaVersionOf(after) ?? 0) > (schemaVersionOf(before) ?? 0),
-    hasMigrations: /\bmigrations\s*:/.test(after),
+    hasMigrations: migrationReaches(before, after),
   };
+}
+
+const SEMVER_IN_SOURCE = /\d+\.\d+\.\d+(?:[-+][^"']+)?/;
+
+/** The app's declared `version`, as written in the source. */
+export function appVersionOf(source: string): string | null {
+  const m = new RegExp(`\\bversion\\s*:\\s*["'](${SEMVER_IN_SOURCE.source})["']`).exec(source);
+  return m ? m[1]! : null;
+}
+
+/**
+ * The `from` -> `to` hops the source declares, as versions.
+ *
+ * Read with a regex rather than a parser, matching how the rest of this module works — and narrowed
+ * to SEMVER pairs on purpose, because `renameField` and `renameEntity` steps also carry `from`/`to`.
+ * A field is not called `1.2.0`, so requiring both halves to look like versions keeps the step keys
+ * out without needing to understand the surrounding structure.
+ */
+function migrationEdges(source: string): { from: string; to: string; steps: [] }[] {
+  const pair = new RegExp(
+    `\\bfrom\\s*:\\s*["'](${SEMVER_IN_SOURCE.source})["'][\\s\\S]{0,120}?\\bto\\s*:\\s*["'](${SEMVER_IN_SOURCE.source})["']`,
+    "g",
+  );
+  const edges: { from: string; to: string; steps: [] }[] = [];
+  for (const m of source.matchAll(pair)) edges.push({ from: m[1]!, to: m[2]!, steps: [] });
+  return edges;
+}
+
+/**
+ * Will a migration actually carry this app's existing data from the old version to the new one?
+ *
+ * Walked with `migrationChain` — the SAME function `migrateOnLoad` uses at runtime — so this cannot
+ * drift into approving a chain the real thing would reject. Answering "is the word `migrations` in
+ * the file" (which is what this used to do) approved an empty array and a chain keyed on numbers.
+ *
+ * Unknown versions answer `true`: this feeds a warning, and warning someone about an app whose
+ * version could not be read would fire on apps that are perfectly fine.
+ */
+function migrationReaches(before: string, after: string): boolean {
+  const was = appVersionOf(before);
+  const now = appVersionOf(after);
+  if (!was || !now) return true;
+  if (was === now) return false; // version never moved: nothing can be keyed off it
+  const chain = migrationChain(migrationEdges(after), was);
+  return chain.length > 0 && chain[chain.length - 1]!.to === now;
 }
 
 /**
@@ -84,9 +143,12 @@ export function describeDrift(drift: SchemaDrift | null): string | null {
   if (drift.removedFields.length) parts.push(`removed ${drift.removedFields.join(", ")}`);
   if (drift.removedEntities.length) parts.push(`removed the ${drift.removedEntities.join(", ")} type`);
 
+  // "that will run" is doing real work in this sentence. A migration can be present, valid, and
+  // still inert — keyed to a version the stored data was never written under — and the previous
+  // wording would have called that "includes a migration" and said nothing.
   return (
     `This change alters how your data is stored — it ${parts.join("; ")} — but does not ` +
-    `${drift.versionBumped ? "include a migration" : "bump schemaVersion or include a migration"}. ` +
+    `${drift.versionBumped ? "include a migration that will run" : "bump schemaVersion or include a migration that will run"}. ` +
     `Records you already have will not be updated to match, so some of them may stop appearing. ` +
     `Your previous version is in History.`
   );
