@@ -3,7 +3,7 @@
 // with optional cheap narrowing, plus writes, reactivity, blobs, kv, and migrations. A CRDT
 // store later implements the same interface.
 
-import type { Id, KartaRecord, MediaRef, Migration, Value } from "karta";
+import type { Field, Id, KartaRecord, MediaRef, Migration, Value } from "karta";
 
 export type Unsubscribe = () => void;
 
@@ -23,9 +23,32 @@ export interface MigrationPlan {
   migrations: Migration[];
 }
 
+/**
+ * The app's declared shape, for a store that can act on it (KA-38). Entity key -> field key -> field.
+ *
+ * Only the DECLARED parts — the fields, which are plain data. Computed and actions are functions and
+ * have no business crossing this seam; a store that could see them would be a store that could be
+ * tempted to run them.
+ */
+export type StoreSchema = Record<string, Record<string, Field>>;
+
 export interface Store {
   open(appId: string): Promise<void>;
   close(): Promise<void>;
+
+  /**
+   * Tell the store what the app declared (KA-38).
+   *
+   * `open` takes an id and nothing else, so until now the store held records without knowing that
+   * `tags` is a set, `notes` is prose or `n` is a count. It stored what it was handed. That is
+   * exactly why a CRDT store could not merge the things the schema had already named: the mapping
+   * from a declared type to the right merge behaviour existed on paper and nowhere in the code.
+   *
+   * Optional, and never required to be called: a store that ignores it behaves as it always did, and
+   * a set field written by an app that never described itself still READS correctly (the merged
+   * shape is recognisable from the data). Calling it only makes future writes merge better.
+   */
+  describe?(schema: StoreSchema): void;
 
   // reads — return raw records; the runtime resolves relations + computed + JS filters
   all(entity: string, narrow?: Narrow): Promise<KartaRecord[]>;
@@ -38,6 +61,23 @@ export interface Store {
   insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord>;
   update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord>;
   delete(entity: string, id: Id): Promise<void>;
+
+  /**
+   * Add to a number, safely, when two people may add at the same moment (KA-38).
+   *
+   * `update(id, { n: row.n + 1 })` is the shape every counter button has, and it is a read on one
+   * device and a write on another: both read 0, both write 1, and one press is gone with nothing to
+   * show for it. That is not a defect in the merge — last-write-wins is exactly what a single value
+   * can promise — it is the wrong thing to store. A count is not a value, it is the sum of what
+   * everybody added.
+   *
+   * So this takes the DELTA, never the result. A store that keeps each contributor's total apart can
+   * add them up; one that is handed an answer can only keep the newest.
+   *
+   * Optional because only a CRDT store can honour it. Callers must check: a store without it should
+   * fall back to read-modify-write and accept the risk, rather than silently doing nothing.
+   */
+  increment?(entity: string, id: Id, field: string, delta: number): Promise<number>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries
@@ -101,7 +141,20 @@ export interface ChatMessage {
   id: string;
   text: string;
   by: string;
+  /**
+   * When the SENDING DEVICE says it wrote this — read off the transaction, so unforgeable, but only
+   * as accurate as that device's clock. Fine to display; do not order by it. See `stamp`.
+   */
   at: Date;
+  /**
+   * Hybrid-logical-clock stamp, and the thing the conversation is actually ordered by.
+   *
+   * Wall clocks do not order anything across devices: one running five minutes fast puts its
+   * messages five minutes into everyone's future, so a reply sorts before the message it answers.
+   * The stamp folds in every message the sender had already seen, so causality survives whatever
+   * the clocks say. Absent on messages written before stamping existed — those fall back to `at`.
+   */
+  stamp?: string;
 }
 
 /**

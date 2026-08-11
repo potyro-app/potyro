@@ -11,8 +11,9 @@ import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
-import { IdentityPanel, offerBackupOnFirstSync } from "./identity-panel.js";
+import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
+import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 
 export function openBuiltinApp(id: string): void {
@@ -138,6 +139,26 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
         setMyApps(listUserApps());
         setBusy(null);
       }
+      // The moment concurrency stops being hypothetical. Everything up to here, the app has had one
+      // user; from here it has two, and the failures are silent (KA-38). Checked HERE rather than on
+      // every save because this is the only point where the answer changes what a person should do.
+      setBusy(a.id);
+      const risk = await checkConcurrency(a.source, a.id);
+      setBusy(null);
+      const hazards = describeHazards(risk);
+      if (hazards.length) {
+        const go = await shellDialogs.confirm(
+          `Before you share "${a.name}" — two people using it at once can lose each other's work:\n\n` +
+            `• ${hazards.join("\n• ")}\n\n` +
+            `Nothing is wrong with it on your own. Share anyway?`,
+        );
+        if (!go) return;
+      }
+
+      // Before the link, not after: `createShareLink` opens the space and publishes your profile, so
+      // asking afterwards would put you in front of the other person as "Me" until something else
+      // republished it.
+      await askNameIfUnnamed();
       const link = await createShareLink(a.id);
       await navigator.clipboard?.writeText(link).catch(() => {});
       await shellDialogs.prompt("Send this link. Whoever opens it joins your app and its data.", { default: link });

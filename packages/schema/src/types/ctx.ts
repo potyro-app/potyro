@@ -129,6 +129,18 @@ export interface Ctx {
   get(entity: string, id: Id): Promise<Resolved | null>;
   create(entity: string, data: Record<string, unknown>): Promise<Resolved>;
   patch(entity: string, id: Id, data: Record<string, unknown>): Promise<Resolved>;
+  /**
+   * Add to a number — use this instead of `patch` for anything people count.
+   *
+   * `patch(id, { n: record.n + 1 })` reads on one device and writes on another: two people pressing
+   * at the same moment both read 0, both write 1, and one press is gone with nothing to show for it.
+   * Stating the CHANGE rather than the result lets the store add them up, because it is the only
+   * party that can see both devices.
+   *
+   * Nothing else about the field changes — `record.n` is still one number, and a field written with
+   * `patch` before is the starting point rather than something to migrate.
+   */
+  increment(entity: string, id: Id, field: string, delta: number): Promise<Resolved>;
   delete(entity: string, id: Id): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
 

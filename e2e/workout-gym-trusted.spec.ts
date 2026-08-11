@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // The gym flow, in a REAL browser, against the app as actually installed in My Apps.
 //
@@ -11,10 +11,18 @@ import { join } from "node:path";
 //
 //   install → open → Start workout → Load routine / ＋ Exercise → tap a set → End
 
-const SOURCE = readFileSync(
-  join(process.cwd(), "packages/generator/eval-out/migrated/workout-sessions.app.tsx"),
-  "utf8",
-);
+// A COMMITTED fixture, not the generator's output directory.
+//
+// This used to read `packages/generator/eval-out/migrated/`, which is gitignored build output — so
+// the file existed only on the machine that generated it. In a fresh checkout the `readFileSync`
+// threw at collection time and took the WHOLE Playwright run down with it, which is why CI had no
+// browser coverage at all rather than one red spec.
+//
+// It is a generated app on purpose: the point of this test is that something the model wrote
+// survives the real in-browser bundler. Pinning that exact source is what makes the test
+// reproducible — regenerating it would quietly change what is under test. Resolved relative to this
+// file rather than `process.cwd()`, so it does not depend on where the runner was invoked.
+const SOURCE = readFileSync(fileURLToPath(new URL("./fixtures/workout-sessions.app.tsx", import.meta.url)), "utf8");
 
 test.beforeEach(async ({ page }) => {
   // Seed My Apps before any script runs, exactly like the console installer does.

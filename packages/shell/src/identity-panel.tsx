@@ -16,10 +16,61 @@
 
 import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
-import { peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
+import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
+import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
 const OFFERED = "karta:identity:offeredBackup";
+/** Set once the name has been ASKED for. Separate from having a name: declining is an answer. */
+const ASKED_NAME = "karta:identity:askedName";
+
+/**
+ * Ask what to call you, at the first moment somebody else can see it.
+ *
+ * A fresh identity is named "Me" and nothing used to change that, so every member of a space read as
+ * "Me" — on the chat, on the activity feed, on every member chip. Three people sharing a list saw
+ * three lines of "Me" and no way to tell who meant what. `identity.ts` had described this prompt for
+ * a while; it had simply never been built.
+ *
+ * Asked on SHARING and on JOINING — the two moments the name stops being private — and never at
+ * first run, which would be a signup ceremony for a solo app where nobody can see it.
+ *
+ * Asked ONCE. Declining is a real answer and re-asking on every share would be nagging; the control
+ * stays in this panel forever.
+ *
+ * Mints the identity itself rather than assuming one. On the JOINING path there may be none yet —
+ * a device whose first ever act is opening someone's link — and `renameIdentity` throws without one,
+ * so the question would have been skipped for exactly the person it matters most for.
+ *
+ * **`Unnamed` is checked, not just `asked`.** The first version only looked at the flag, so someone
+ * who had already named themselves in this panel — the obvious thing to do before sharing — was
+ * asked again the moment they pressed Share. The question is about the NAME; the flag only records
+ * that we have bothered them once.
+ */
+export async function askNameIfUnnamed(): Promise<void> {
+  if (globalThis.localStorage?.getItem(ASKED_NAME)) return;
+  const me = await ensureIdentity();
+  // Marked before either exit: whether they answered by naming themselves earlier or answer the
+  // prompt below, the question is now settled and nothing asks again.
+  globalThis.localStorage?.setItem(ASKED_NAME, new Date().toISOString());
+
+  // Already answered, by doing rather than by telling.
+  if (me.name && me.name !== DEFAULT_NAME) return;
+
+  const name = await shellDialogs.prompt(
+    "What should the people you share with see you as?\n\n" +
+      "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any " +
+      "time from ⌾ You.",
+    { default: "" },
+  );
+  if (!name?.trim()) return;
+
+  const renamed = renameIdentity(name);
+  // Publish now rather than on the next open: on the sharing path the space is already open, and on
+  // the joining path it is about to be, so waiting would show the invitee as "Me" to everyone.
+  const { republishName } = await import("./open-store.js");
+  await republishName(renamed.name);
+}
 
 /**
  * Offer the recovery words the first time sync is switched on for anything.
@@ -49,7 +100,43 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
       { default: me?.name ?? "" },
     );
     if (!name?.trim()) return;
-    setMe(renameIdentity(name));
+    const renamed = renameIdentity(name);
+    setMe(renamed);
+    // Naming yourself here IS the answer to "what should people see you as?", so the sharing and
+    // joining paths must not ask it again. Without this, doing the obvious thing before sharing —
+    // setting your name first — was rewarded with the same question the moment you pressed Share.
+    globalThis.localStorage?.setItem(ASKED_NAME, new Date().toISOString());
+    // Renaming writes locally; the copy other people read is the account profile, published on every
+    // open. Pushed here too, so the change lands on the people you are sharing with now rather than
+    // whenever you next reload — chat makes a stale name impossible to miss.
+    const { republishName } = await import("./open-store.js");
+    await republishName(renamed.name);
+  };
+
+  /**
+   * Point this device at a different relay.
+   *
+   * A reload, not a re-render: every open store was built around the current relay and its socket,
+   * and re-pointing them in place is far more failure-prone than starting clean — the same call the
+   * passphrase sign-in makes, for the same reason. Blank clears the override and falls back to the
+   * deployment's own default.
+   */
+  const changeRelay = async (): Promise<void> => {
+    const entered = await shellDialogs.prompt(
+      "Which relay should this device use?\n\n" +
+        "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://.\n" +
+        "Leave it blank to use this site's own relay.",
+      { default: globalThis.localStorage?.getItem(RELAY_KEY) ?? "" },
+    );
+    if (entered === null) return; // cancelled — not the same as "clear it"
+    const next = entered.trim();
+    if (next && !/^wss?:\/\//i.test(next)) {
+      await shellDialogs.confirm("That is not a websocket URL. It needs to start with wss:// or ws://.");
+      return;
+    }
+    if (next) globalThis.localStorage?.setItem(RELAY_KEY, next);
+    else globalThis.localStorage?.removeItem(RELAY_KEY);
+    location.reload();
   };
 
   const reveal = async (): Promise<void> => {
@@ -118,6 +205,23 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               Show my words
             </button>
           )}
+        </section>
+
+        {/* KA-28. The relay had no UI at all: a deployed build had none, and the only way to give it
+            one was typing a localStorage key into devtools, on every device. "Bring your own relay"
+            is the self-host promise — it has to be reachable without a rebuild AND without devtools. */}
+        <section aria-labelledby="k-relay-h">
+          <h3 id="k-relay-h">Sync relay</h3>
+          <p className="k-muted">
+            Where synced apps meet the people you share them with. It only ever sees encrypted data —
+            it cannot read your records. Leave it alone unless you run your own.
+          </p>
+          <p className="k-muted k-relay-current">
+            <code>{syncRelayUrl() ?? "none — synced apps stay on this device"}</code>
+          </p>
+          <button type="button" className="k-add" disabled={busy} onClick={() => void changeRelay()}>
+            Change relay
+          </button>
         </section>
 
         <section aria-labelledby="k-signin-h">

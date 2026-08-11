@@ -28,6 +28,19 @@ export interface KartaRuntime extends Runtime {
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
   const core = new RuntimeCore(deps);
 
+  // Tell the store what the app declared (KA-38).
+  //
+  // Here, because this is the only place holding both — `Store.open` takes an id and nothing else,
+  // which is exactly why a CRDT store could not merge the things the schema had already named.
+  // Every composition root goes through `createRuntime`, so there is no second call site to forget,
+  // and a store without `describe` is unaffected.
+  //
+  // Only the FIELDS, which are plain data. Computed and actions are functions, and a seam that
+  // carried them across would be inviting whatever is on the other side to call them.
+  deps.store.describe?.(
+    Object.fromEntries(Object.entries(core.definition.entities).map(([entity, def]) => [entity, def.fields ?? {}])),
+  );
+
   return {
     core,
     get definition(): AppDefinition {

@@ -65,8 +65,13 @@ export function liveSpace(): SpaceShape | undefined {
 /**
  * Start keeping `liveSpace()` up to date for the app just opened.
  *
- * Reads once, then re-reads on every group change. Nothing polls: a group is a CoValue and this is
- * its own subscription.
+ * Reads once, then re-reads on every group change AND on every member rename. Nothing polls: both
+ * are CoValues and these are their own subscriptions.
+ *
+ * TWO subscriptions, because there are two CoValues and watching only one was a bug people saw.
+ * The group fires on a join or a role change; a rename writes to that person's account profile,
+ * which the group does not contain — so a peer who renamed themselves stayed "Me" on your screen
+ * until you reloaded, which is exactly when chat made it obvious.
  */
 export async function watchSpace(): Promise<void> {
   stopWatchingSpace?.();
@@ -76,6 +81,22 @@ export async function watchSpace(): Promise<void> {
   const handle = lastSyncHandle;
   if (!handle) return;
 
+  const { subscribeSpace, subscribeMemberProfiles } = await import("@karta/store");
+
+  let stopProfiles: (() => void) | null = null;
+  /** Whose profiles are currently watched, so the set is only rebuilt when the PEOPLE change. */
+  let watching = "";
+
+  const rewatchProfiles = async (next: { members: Array<{ id: string }> }): Promise<void> => {
+    const ids = next.members.map((m) => m.id).sort().join(",");
+    // Only when the membership itself changed. A rename fires these subscriptions, and tearing them
+    // down and rebuilding them inside their own callback would churn on every keystroke-sized edit.
+    if (ids === watching) return;
+    watching = ids;
+    stopProfiles?.();
+    stopProfiles = await subscribeMemberProfiles(handle, () => void refresh(true));
+  };
+
   const refresh = async (notify: boolean): Promise<void> => {
     const next = await currentSpace().catch(() => null);
     if (!next) return;
@@ -83,12 +104,30 @@ export async function watchSpace(): Promise<void> {
     // re-rendering every view on each of those would be noise dressed as reactivity.
     const changed = JSON.stringify(next.members) !== JSON.stringify(cachedSpace?.members);
     cachedSpace = next;
+    await rewatchProfiles(next);
     if (notify && changed) for (const cb of spaceListeners) cb();
   };
   await refresh(false);
 
-  const { subscribeSpace } = await import("@karta/store");
-  stopWatchingSpace = subscribeSpace(handle, () => void refresh(true));
+  const stopGroup = subscribeSpace(handle, () => void refresh(true));
+  stopWatchingSpace = () => {
+    stopGroup();
+    stopProfiles?.();
+  };
+}
+
+/**
+ * Push a new display name to the app that is open, if one is synced.
+ *
+ * A name is published on every open, so it would reach people eventually — but "eventually" here
+ * means the next reload, and someone who has just renamed themselves is usually looking at a screen
+ * with their old name on it. No-op when nothing is synced: there is nobody to tell.
+ */
+export async function republishName(name: string): Promise<void> {
+  const handle = lastSyncHandle;
+  if (!handle) return;
+  const { publishName } = await import("@karta/store");
+  await publishName(handle, name);
 }
 
 /** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
@@ -113,22 +152,44 @@ export interface OpenStoreOpts {
   sync?: boolean;
 }
 
+/** Where a device's own choice of relay is kept. Exported so the settings UI writes the same key. */
+export const RELAY_KEY = "karta:sync:relay";
+
 /**
- * Sync relay URL, or null for local-only.
+ * Sync relay URL, or undefined for local-only.
  *
- * Read from `localStorage` so a self-hoster can point Karta at their own `jazz-run sync` without a
- * rebuild — the free self-host escape hatch the ethos requires (business plan §8.4). Absent by
- * default: a synced app with no relay is still useful (durable, CRDT, ready for a peer) and opens
- * no socket at all.
+ * Four sources, most specific first (KA-28):
+ *
+ *   1. **This device's setting.** `localStorage`, written by the ⌾ You panel. "Bring your own relay"
+ *      is the free self-host escape hatch the ethos promises (business plan §8.4), and it must not
+ *      require a rebuild.
+ *   2. **A build-time default**, `VITE_KARTA_RELAY`, for a deployment that puts its relay elsewhere.
+ *   3. **`ws://localhost:4201` in dev**, because `pnpm dev` starts one alongside the shell. Without
+ *      it, turning sync on appeared to do nothing until you knew to set a key by hand.
+ *   4. **Same origin, `/sync`.** A deployment that terminates TLS and proxies that path gets working
+ *      sync by deploying, with no build flag at all.
+ *
+ * (4) is what made this worth changing. A production build previously returned `undefined` here, so
+ * every deployed app was local-only and the only way to say otherwise was typing a `localStorage`
+ * key into devtools — on every device, for every person. Sync could not be tried on a domain at all.
+ *
+ * An unreachable relay is not a failure: `JazzStore` is durable on its own, the socket retries, and
+ * the app works throughout. So defaulting to a URL that might not answer is safe in a way that
+ * defaulting to "no sync" was not.
  */
 export function syncRelayUrl(): string | undefined {
-  const configured = globalThis.localStorage?.getItem("karta:sync:relay");
+  const configured = globalThis.localStorage?.getItem(RELAY_KEY);
   if (configured) return configured;
-  // `pnpm dev` starts a relay alongside the shell, so sync works with ZERO configuration while
-  // developing. Without this default, turning sync on appeared to do nothing until you knew to
-  // set a URL by hand — which is not a feature anyone can test.
+
+  const built = (import.meta.env?.VITE_KARTA_RELAY as string | undefined)?.trim();
+  if (built) return built;
+
   if (import.meta.env?.DEV) return "ws://localhost:4201";
-  return undefined;
+
+  const loc = globalThis.location;
+  // `file:` and any other non-http origin have no host to derive one from.
+  if (!loc?.host || !/^https?:$/.test(loc.protocol)) return undefined;
+  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/sync`;
 }
 
 /**
@@ -163,9 +224,12 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       import("@karta/store"),
       import("@karta/identity"),
     ]);
+    // Awaited before the name is read, not inline: `identityAccount()` mints the identity on a
+    // device that has never had one, and `peekIdentity()` answers null until it has.
+    const account = await identity.identityAccount();
     const handle = await openJazzStore(namespace, {
       relay: syncRelayUrl(),
-      account: await identity.identityAccount(),
+      account,
       // Your display name, so peers see a person rather than a truncated account id. Passed on
       // EVERY open, because renaming yourself must reach people you already share with.
       profileName: identity.peekIdentity()?.name,

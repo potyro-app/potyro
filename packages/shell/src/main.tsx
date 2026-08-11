@@ -278,6 +278,13 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
       "\n\nYou can change this later from the app header.",
   );
 
+  // Asked after trust and before joining. After, because "do you trust this app?" is the question
+  // the user opened the link to answer and nothing should come between them and it. Before, because
+  // joining is what materialises your account for the people already in the space — answer later and
+  // the person who invited you watches "Me" arrive.
+  const { askNameIfUnnamed } = await import("./identity-panel.js");
+  await askNameIfUnnamed();
+
   try {
     const id = await acceptInvite(invite, trust);
     // Drop the fragment so a reload does not re-accept, and so the secret stops sitting in the bar.
@@ -312,6 +319,28 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     mount(root, <Home />); // deleted out from under us → home
     return;
   }
+
+  // Mount BEFORE anything that can ask a question. This is load-bearing, not cosmetic.
+  //
+  // `shellDialogs.confirm` returns a promise that settles only when a `<Dialogs>` host renders the
+  // request and someone answers it. Boot awaits one of those — "this app was updated by someone you
+  // share it with" — seventy lines before the app was mounted, so on a device that had an update
+  // waiting the promise could never settle: boot stopped there and the page stayed WHITE. Forever,
+  // through every reload, because the same update was still pending on the next boot.
+  //
+  // It needed two devices and an edit on one of them to happen at all, which is why it survived: the
+  // update path has no unit coverage that can see a React tree, and every browser spec that shared
+  // an app either never edited it afterwards or never reopened the other device.
+  //
+  // `mount` brings the dialog host with it, so mounting anything is enough. A line of text is also
+  // the honest thing to show while a CRDT store, an identity and a space are being opened.
+  mount(
+    root,
+    <div className="k-joining">
+      <p>Opening “{saved.name}”…</p>
+    </div>,
+  );
+
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
   // exactly the previous SqliteStore/LocalStore path.
   const rawStore = await openStore(`user:${id}`, { sync: saved.sync });
@@ -351,11 +380,20 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let store = rawStore;
   if (saved.sync) {
     const appSync = await import("./app-sync.js");
+    // The newest version's own record of WHY this source looks like this, so it travels with it.
+    // Read from history rather than kept on `UserApp`: history is already the one place that answers
+    // "what was asked for", and duplicating it onto the app record would give it two answers to
+    // disagree about.
+    const { listVersions } = await import("./app-history.js");
+    const latest = (await listVersions(id))[0];
     const mine = {
       source: saved.source,
       name: saved.name,
       updatedAt: saved.updatedAt,
       schemaVersion: appSync.schemaVersionOf(saved.source),
+      // Only when they describe THIS source. A stale note from an older version would be worse than
+      // none: it would explain a change that is not the one you are looking at.
+      ...(latest?.source === saved.source ? { note: latest.note, rationale: latest.rationale } : {}),
     };
     const update = await appSync.pendingAppUpdate(store, mine);
     // A newer SCHEMA is not merely a nicer version — writing with the old one puts records into the
@@ -370,7 +408,16 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       if (take) {
         const { saveUserApp } = await import("./user-apps.js");
         await saveUserApp(
-          { id, name: update.name, source: update.source, origin: "imported", note: "updated by a collaborator" },
+          {
+            id,
+            name: update.name,
+            source: update.source,
+            origin: "imported",
+            // What they asked for, when they published it. The bare "updated by a collaborator" is
+            // the fallback for a copy published before notes travelled, not the normal case.
+            note: update.note ? `${update.note} — from a collaborator` : "updated by a collaborator",
+            ...(update.rationale ? { rationale: update.rationale } : {}),
+          },
           new Date().toISOString(),
         );
         location.reload();

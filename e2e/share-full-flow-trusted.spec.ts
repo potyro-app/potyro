@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { answerNamePrompt } from "./name-prompt.js";
 
 // THE WHOLE SHARING FLOW, end to end, in two browser contexts.
 //
@@ -79,6 +80,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
 
   await pressShare(a);
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turns sync on
+  await answerNamePrompt(a);
 
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
@@ -97,6 +99,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
   const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // trust prompt
+  await answerNamePrompt(b);
   await expect(b.locator("h1").first()).toHaveText("Share Flow", { timeout: 60_000 });
   await expect(b.locator(".k-list-row", { hasText: "Miradouro" })).toBeVisible({ timeout: 60_000 });
 
