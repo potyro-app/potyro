@@ -13,12 +13,15 @@ import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
+import { ChatPanel, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
+import { ROOM_THREAD } from "@karta/store";
 import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
   SYSTEM_PROMPT,
   buildModifyMessage,
   buildRepairMessage,
   extractSource,
+  looksLikeApp,
   parseModifyReply,
   type ModifyContext,
   type ModifyReply,
@@ -34,7 +37,10 @@ import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
 
-import { generateViaCli } from "./generate-client.js";
+import { canGenerate, generateViaCli } from "./generate-client.js";
+import { checkConcurrency, describeHazards } from "./check-concurrency.js";
+import { describeDrift, schemaDrift } from "./schema-drift.js";
+import { shellDialogs } from "./dialog.js";
 
 interface EditorState {
   entity: string;
@@ -147,6 +153,17 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
 
   const params = paramsByPage[pageId] ?? {};
+  // Which record the page in front of you is about, or null if it is not a record page. Read from
+  // the declared view rather than tracked separately, so it stays right however the page was
+  // reached — a nav action, a list tap, or a link opened cold.
+  const detailTarget = ((): { entity: string; id: string } | null => {
+    const view = def.pages.find((p) => p.id === pageId)?.view as
+      | { type?: string; entity?: string; param?: string }
+      | undefined;
+    if (view?.type !== "detail" || !view.entity) return null;
+    const id = String(params[view.param ?? "id"] ?? "");
+    return id ? { entity: view.entity, id } : null;
+  })();
   const setParam = (key: string, value: unknown): void =>
     setParamsByPage((prev) => ({ ...prev, [pageId]: { ...(prev[pageId] ?? {}), [key]: value } }));
 
@@ -266,6 +283,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // ⑤ Edit mode → agent: point at a piece of UI and describe a change; the target + your text go to
   // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
   const canEdit = Boolean(generator && currentKind === "user" && appId);
+  // Whether a MODEL can be reached, which is a different question from whether this is the full
+  // shell. A deployed build has no `/__generate` route, so every AI surface offered itself and then
+  // failed with "Is `pnpm dev` still running?" — see `canGenerate`. Structural editing and History
+  // stay available either way; neither calls a model.
+  const canAskAgent = canGenerate();
   const [editMode, setEditMode] = useState(false);
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -274,6 +296,14 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // happened.
   const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  // Talking to the people you share with (KA-35). Only a CRDT store can carry it, and only a synced
+  // app has a CRDT store — so on a local-only app the control is absent rather than present and
+  // pointing at nobody. The room is loaded whether or not the panel is open, because the unread
+  // badge is the whole reason to notice a message at all.
+  const canChat = chatSupported(runtime.core.store);
+  const [chatOpen, setChatOpen] = useState(false);
+  const room = useThread(runtime, canChat ? ROOM_THREAD : null);
+  const roomUnread = appId ? unreadCount(room.messages, appId, ROOM_THREAD, runtime.ctx.me?.id) : 0;
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
@@ -435,14 +465,48 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
       // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
       let next = reply.source;
+      // Say what went wrong in words. When extraction fails, `next` is the model's prose, and
+      // bundling it produces a syntax error partway through an English sentence — which tells the
+      // person nothing and sent one real user round in circles.
+      if (!looksLikeApp(next)) {
+        setModifyError(
+          "The agent replied with an explanation instead of an app, so nothing was changed. Try asking again, more specifically.",
+        );
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
       const issues = await buildAndValidate(next);
       if (issues.length) next = await runRepair(next, issues);
+
+      // Will two people survive this edit? An AI edit rewrites the whole module, and the way this
+      // breaks is silent: the app still parses, still validates, still works alone (KA-38). This is
+      // the only gate that can see it. Reported, never blocking — plenty of apps are never shared,
+      // and an unsafe reorder is still fine for one person.
+      setModifyProgress("Checking it still works for two people…");
+      const risk = await checkConcurrency(next, appId);
+      const hazards = describeHazards(risk);
+
+      // And whether it quietly changed how data is stored. An app with no records behaves perfectly
+      // after a change like that; it is only wrong in the presence of data that already exists,
+      // which is the one thing none of the other gates has.
+      const drift = describeDrift(await schemaDrift(app.source, next));
+
       // Awaited, not fired-and-forgotten: the reload below would otherwise race the history write
       // and lose the very version you'd want to roll back to.
       await saveUserApp(
         { id: appId, name: app.name, source: next, origin: "edited", note: instruction, rationale: reply.rationale },
         new Date().toISOString(),
       );
+      // Before the reload, or neither is ever seen. Saved either way — these say what was saved.
+      if (drift) await shellDialogs.confirm(`Saved — ${drift}`);
+      if (hazards.length) {
+        await shellDialogs.confirm(
+          `Saved — but this change is not safe to share yet:\n\n• ${hazards.join("\n• ")}\n\n` +
+            `On your own it works fine. With someone else, changes made at the same moment can be ` +
+            `silently lost. History has the previous version.`,
+        );
+      }
       location.reload(); // re-run the app with the edited source (its data persists in user:<id>)
     } catch (e) {
       setModifyError(e instanceof Error ? e.message : String(e));
@@ -510,7 +574,21 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
             </button>
           ) : null}
-          {generator ? (
+          {canChat ? (
+            <button
+              type="button"
+              // Its own class, not `k-activity-btn`: that one is how the activity spec finds the
+              // Changes button, and sharing it made the selector ambiguous.
+              className="k-add k-chat-btn"
+              aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
+              data-unread={roomUnread || undefined}
+              onClick={() => setChatOpen(true)}
+            >
+              💬 Chat
+              {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
+            </button>
+          ) : null}
+          {generator && canAskAgent ? (
             <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
               Studio
             </button>
@@ -617,6 +695,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               onEdit={onEdit}
               onCreate={onCreate}
             />
+            {/* The record's own conversation, under the record — the half of KA-35 nothing else can
+                do. Rendered by the SHELL and not by the detail view, because `views` is reachable
+                from a page an app declares and messages must stay out of app code's reach entirely
+                (hard rule 3). The shell already knows which record is open: it is the detail page's
+                param. */}
+            {canChat && appId && detailTarget ? (
+              <RecordThread
+                runtime={runtime}
+                appId={appId}
+                entity={detailTarget.entity}
+                recordId={detailTarget.id}
+                label={entityLabel(detailTarget.entity)}
+              />
+            ) : null}
           </main>
         </>
       )}
@@ -707,19 +799,29 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               />
             ) : null}
 
-            <p className="k-muted">
-              {modifySource
-                ? "Anything the controls above can't do — describe it, and the agent edits this app."
-                : "Describe the change — the agent edits this app, keeping the rest."}
-            </p>
-            <textarea
-              className="k-input k-modify-text"
-              aria-label="Describe the change"
-              placeholder='e.g. "make this a grid of icons, and put Start Session first"'
-              rows={4}
-              value={modifyText}
-              onChange={(e) => setModifyText(e.target.value)}
-            />
+            {canAskAgent ? (
+              <>
+                <p className="k-muted">
+                  {modifySource
+                    ? "Anything the controls above can't do — describe it, and the agent edits this app."
+                    : "Describe the change — the agent edits this app, keeping the rest."}
+                </p>
+                <textarea
+                  className="k-input k-modify-text"
+                  aria-label="Describe the change"
+                  placeholder='e.g. "make this a grid of icons, and put Start Session first"'
+                  rows={4}
+                  value={modifyText}
+                  onChange={(e) => setModifyText(e.target.value)}
+                />
+              </>
+            ) : (
+              // Say what this build cannot do, rather than leaving a box that fails on submit. The
+              // controls above still work — they never needed a model.
+              <p className="k-muted">
+                This copy of Karta has no agent, so changes here are the structural ones above.
+              </p>
+            )}
             {modifyProgress && !modifyError ? <p className="k-muted">{modifyProgress}</p> : null}
             {modifyError ? <p className="k-form-error">{modifyError}</p> : null}
             {modifyDiagnosis ? (
@@ -740,7 +842,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               {/* Only offered once there is something to send. Otherwise it is the only button that
                   looks like "save", so a direct edit — which has already been applied — reads as
                   needing a model call it does not need. */}
-              {modifyText.trim().length > 0 || modifyBusy ? (
+              {canAskAgent && (modifyText.trim().length > 0 || modifyBusy) ? (
                 <button type="button" className="k-add k-primary-action" disabled={modifyBusy} onClick={() => void applyModify()}>
                   {modifyBusy ? "Applying…" : "Apply with AI"}
                 </button>
@@ -787,6 +889,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
           }}
         />
       ) : null}
+
+      {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
 

@@ -9,6 +9,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 const TRUSTED_PORT = 4188;
 const SANDBOX_PORT = 4189;
+// A real `vite build` + `vite preview`, because the dev server hides deployment bugs by definition:
+// the relay default, the generator endpoint and the service worker all behave differently there.
+// KA-28 exists because a production build had no relay and nobody had ever run one.
+const PROD_PORT = 4190;
 const shellVite = (extra: string, port: number) =>
   `pnpm --filter @karta/shell exec vite ${extra} --port ${port} --strictPort`;
 
@@ -45,6 +49,24 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    // Only when asked for (`pnpm test:e2e:prod`). Playwright starts every `webServer` on every run
+    // regardless of the project selected, so leaving this in unconditionally made each ordinary run
+    // pay for a full production build — and the CPU it stole made the parallel suite flaky.
+    ...(process.env.KARTA_PROD
+      ? [
+          {
+            // Built with NOTHING configured, on purpose: this is what a self-hoster gets by running
+            // `vite build` and serving `dist`. A deployment default that only works when an env var
+            // is set would pass a test that set one.
+            command:
+              "pnpm --filter @karta/shell exec vite build && " +
+              `pnpm --filter @karta/shell exec vite preview --port ${PROD_PORT} --strictPort`,
+            url: `http://localhost:${PROD_PORT}`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 240_000,
+          },
+        ]
+      : []),
   ],
 
   projects: [
@@ -55,15 +77,44 @@ export default defineConfig({
     },
     // Firefox, for the trusted app surface only. The geo picker rendered fine in Chromium and blank
     // in the user's Firefox — a Chrome-only suite could not see it.
-    {
-      name: "trusted-firefox",
-      testMatch: /.*trusted\.spec\.ts/,
-      use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${TRUSTED_PORT}` },
-    },
+    //
+    // OPT-IN (`pnpm test:e2e:firefox`), and that is a statement about this suite rather than about
+    // Firefox. The project was added on 30 July and has never once run in CI: the suite died at
+    // collection from that day until now, so nobody saw what it does here. Switched on, it fails 11
+    // map specs — not by failing to launch, but by rendering ONE marker where three are expected,
+    // which is the marker-sync race `map-camera-trusted.spec.ts` was written to catch, surfacing on
+    // a slower browser. That is a real finding and it has an issue; it is not something to discover
+    // inside the change that puts CI back on its feet, and turning it on now would leave main red
+    // for a defect nothing on main introduced.
+    ...(process.env.KARTA_FIREFOX
+      ? [
+          {
+            name: "trusted-firefox",
+            testMatch: /.*trusted\.spec\.ts/,
+            use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${TRUSTED_PORT}` },
+          },
+        ]
+      : []),
     {
       name: "sandbox",
       testMatch: /.*sandbox\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}` },
     },
+    // Claims that are only true of a DEPLOYED build. Kept a separate project so the ordinary suite
+    // does not pay for a production build on every run.
+    //
+    // Gated on the SAME env var as its webServer above. Without this the project ran on every
+    // invocation while the server it needs was never started, so `pnpm e2e` reported four
+    // connection-refused failures that said nothing about the code — and would have kept CI red
+    // even once everything genuinely broken was fixed. Use `pnpm test:e2e:prod`.
+    ...(process.env.KARTA_PROD
+      ? [
+          {
+            name: "prod",
+            testMatch: /.*prod\.spec\.ts/,
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PROD_PORT}` },
+          },
+        ]
+      : []),
   ],
 });

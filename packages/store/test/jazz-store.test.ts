@@ -242,6 +242,25 @@ describe("JazzStore — two peers through the Store seam", () => {
     expect(seen?.amountCents).toBe(4200);
   });
 
+  it("either person can edit a record the OTHER one created", async () => {
+    // Reported from the live deployment: a row created by the other member would not move up or
+    // down. Everyone in a space is a writer (KA-21's per-member scoping is not built), so authorship
+    // must not gate editing — and `update` must not treat `createdBy` as immutable in a way that
+    // makes a whole patch fail.
+    const { anaStore, brunoStore } = await pair();
+    const made = await brunoStore.insert("item", { title: "milk", order: 1 });
+    await settle();
+
+    // Ana reorders Bruno's row, exactly as a move-up button would.
+    const updated = await anaStore.update("item", made.id, { order: 5 });
+    expect(updated.order).toBe(5);
+    await settle();
+
+    expect((await brunoStore.get("item", made.id))?.order).toBe(5);
+    // And the row is still Bruno's — editing does not steal authorship.
+    expect((await anaStore.get("item", made.id))?.createdBy).toBe(made.createdBy);
+  });
+
   it("concurrent edits to DIFFERENT fields of one record both survive", async () => {
     const { anaStore, brunoStore, ana, bruno } = await pair();
     const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200, paidBy: "ana" });

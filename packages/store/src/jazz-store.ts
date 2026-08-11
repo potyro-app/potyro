@@ -16,7 +16,7 @@
 //        ├─ "kv"       -> CoMap<string, string>        (ctx.storage)
 //        ├─ "blobs"    -> CoMap<key, {mime, base64}>   (see "Blobs" below)
 //        ├─ "meta"     -> CoMap<string, JsonValue>     (schemaVersion, appVersion)
-//        └─ "chat"     -> CoMap<"<thread>\u0000<ulid>", text>   ← messages (KA-35)
+//        └─ "chat"     -> CoMap<"<thread>\u0000<ulid>", {t,c}>  ← messages (KA-35); `c` is an HLC stamp
 //
 // Chat sits BESIDE the entity tree, not inside it. It is in the space, so it syncs and is encrypted
 // to the members, but it is not app data: an app shared with you is untrusted code by someone else,
@@ -43,9 +43,12 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreSchema, Unsubscribe } from "./types.js";
+import { recordThread } from "./types.js";
+import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
+import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -75,6 +78,8 @@ interface RawGroupLike {
 interface NodeLike {
   /** Async because a CoValue restored from storage is not in memory until it is loaded. */
   load(id: string): Promise<unknown>;
+  /** This device+tab's session. Two of them never share a counter key — see `increment`. */
+  currentSessionID?: string;
 }
 
 export interface JazzStoreDeps {
@@ -117,6 +122,57 @@ function toJsonValue<T>(v: T): T {
   return v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T);
 }
 
+function asDate(v: unknown): Date {
+  return v instanceof Date ? v : new Date(v as never);
+}
+
+/**
+ * Replay one mergeable field's raw key edits into the values that field actually held (KA-36/KA-38).
+ *
+ * A counter and a set are each stored as a base plus a scatter of contributions under their own
+ * keys, precisely so two people never write the same key. That is what makes them merge, and it is
+ * also what makes their history unreadable: the log holds "session 7's subtotal became 2", never
+ * "the count became 5". Folding after every step recovers the second from the first, which is the
+ * only form anyone can be shown.
+ *
+ * `part === null` is the base — the plain value written before anything merged into it. A write to
+ * the base drops the contributions, matching what `update` does to the keys themselves.
+ */
+function replayDerived(
+  kind: "set" | "counter",
+  events: readonly { part: string | null; value: unknown; by: string; at: Date }[],
+): Array<{ value: unknown; by: string; at: Date }> {
+  let base: unknown = kind === "counter" ? 0 : undefined;
+  let parts = new Map<string, unknown>();
+  const out: Array<{ value: unknown; by: string; at: Date }> = [];
+
+  for (const e of events) {
+    if (e.part === null) {
+      base = e.value;
+      parts = new Map();
+    } else {
+      parts.set(e.part, e.value);
+    }
+
+    let value: unknown;
+    if (kind === "set") {
+      const deltas = new Map<string, boolean>();
+      for (const [element, on] of parts) deltas.set(element, Boolean(on));
+      value = foldSet(base, deltas);
+    } else {
+      let total = Number(base ?? 0);
+      if (!Number.isFinite(total)) total = 0;
+      for (const subtotal of parts.values()) {
+        const n = Number(subtotal);
+        if (Number.isFinite(n)) total += n;
+      }
+      value = total;
+    }
+    out.push({ value, by: e.by, at: e.at });
+  }
+  return out;
+}
+
 export class JazzStore implements Store {
   private readonly node: NodeLike;
   private readonly group: RawGroupLike;
@@ -137,6 +193,18 @@ export class JazzStore implements Store {
    * remote changes never arrive while a local mutation is on the stack.
    */
   private localDepth = 0;
+  /** entity -> set-valued field keys, from `describe`. Empty until the app says otherwise. */
+  private setFields = new Map<string, Set<string>>();
+
+  /**
+   * Learn which fields are sets, so writing one merges element by element (KA-38).
+   *
+   * Reading does not need this — `foldSetFields` recognises the shape from the keys — so a store
+   * that is never described stays correct, it just keeps writing whole arrays.
+   */
+  describe(schema: StoreSchema): void {
+    this.setFields = setFieldsOf(schema);
+  }
 
   constructor(deps: JazzStoreDeps) {
     this.node = deps.node;
@@ -202,7 +270,7 @@ export class JazzStore implements Store {
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push((await this.loadMap(refId)).toJSON() as unknown as KartaRecord);
+      rows.push(JazzStore.materialise(await this.loadMap(refId)) as unknown as KartaRecord);
     }
     return rows.sort((a, b) =>
       a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -313,7 +381,7 @@ export class JazzStore implements Store {
 
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? (m.toJSON() as unknown as KartaRecord) : null;
+    return m ? (JazzStore.materialise(m) as unknown as KartaRecord) : null;
   }
 
   /**
@@ -354,16 +422,59 @@ export class JazzStore implements Store {
     return this.child(this.root, ROOT_CHAT);
   }
 
+  /** Everything in one map, so keys carry the thread. `\u0000` cannot occur in a thread key. */
+  private static threadPrefix(thread: string): string {
+    return `${thread}\u0000`;
+  }
+
   private static threadKey(thread: string, id: string): string {
-    return `${thread}\u0000${id}`;
+    return `${JazzStore.threadPrefix(thread)}${id}`;
+  }
+
+  /**
+   * This device's hybrid clock — what makes a conversation read in the right order (see `hlc.ts`).
+   *
+   * Rebuilt from what is read: every `messages()` folds in every stamp it sees, so a freshly opened
+   * page has caught up with the thread before it can post into it.
+   */
+  private readonly clock = new HybridClock();
+
+  /**
+   * What is stored for one message.
+   *
+   * Was a bare string. The stamp had to go somewhere, and it cannot come from the transaction the
+   * way `by` and `at` do — a CRDT records WHEN A DEVICE CLAIMS it wrote, which is exactly the number
+   * that could not be trusted to order anything. A legacy bare string is still read; it simply has
+   * no stamp and falls back to transaction time.
+   */
+  private static encodeMessage(text: string, stamp: string): string {
+    return JSON.stringify({ t: text, c: stamp });
+  }
+
+  private static decodeMessage(raw: unknown): { text: string; stamp: string | null } | null {
+    if (typeof raw !== "string") return null;
+    // Written before stamps existed: no clock, and the leading `{` is what tells them apart.
+    if (!raw.startsWith("{")) return { text: raw, stamp: null };
+    try {
+      const parsed = JSON.parse(raw) as { t?: unknown; c?: unknown };
+      if (typeof parsed?.t !== "string") return null;
+      return { text: parsed.t, stamp: typeof parsed.c === "string" && parseHlc(parsed.c) ? parsed.c : null };
+    } catch {
+      // A message that will not parse must not take the conversation down with it.
+      return null;
+    }
   }
 
   async postMessage(thread: string, text: string): Promise<ChatMessage> {
     const trimmed = text.trim();
     if (!trimmed) throw new Error("An empty message has nothing to say.");
     const map = await this.chat();
+    // Catch up on the thread BEFORE stamping. Posting without having folded in what is already there
+    // is how a reply gets a stamp lower than the message it answers.
+    await this.messages(thread);
     const id = ulid();
-    map.set(JazzStore.threadKey(thread, id), trimmed);
+    const stamp = formatHlc(this.clock.issue());
+    map.set(JazzStore.threadKey(thread, id), JazzStore.encodeMessage(trimmed, stamp));
     await this.whenDurable?.();
 
     const posted = (await this.messages(thread)).find((m) => m.id === id);
@@ -374,27 +485,65 @@ export class JazzStore implements Store {
   async messages(thread: string, opts?: { since?: Date; limit?: number }): Promise<ChatMessage[]> {
     const map = await this.chat();
     const since = opts?.since?.getTime();
-    const prefix = `${thread}\u0000`;
+    const prefix = JazzStore.threadPrefix(thread);
     const out: ChatMessage[] = [];
 
     for (const key of map.keys()) {
       if (!key.startsWith(prefix)) continue;
-      const text = map.get(key);
-      if (typeof text !== "string") continue;
+      const decoded = JazzStore.decodeMessage(map.get(key));
+      if (!decoded) continue;
+      // Fold every stamp we see into this device's clock, whether or not it is returned below — that
+      // is what makes the NEXT thing posted here sort after everything already said.
+      this.clock.observe(decoded.stamp);
       // The FIRST edit of the key is the post. A later one would be an edit, which nothing offers.
       const first = map.editsAt?.(key)?.[Symbol.iterator]().next().value as
         | { by: string; at: Date | number }
         | undefined;
       const at = first ? (first.at instanceof Date ? first.at : new Date(first.at)) : new Date(0);
       if (since !== undefined && at.getTime() <= since) continue;
-      out.push({ id: key.slice(prefix.length), text, by: String(first?.by ?? ""), at });
+      out.push({
+        id: key.slice(prefix.length),
+        text: decoded.text,
+        by: String(first?.by ?? ""),
+        at,
+        ...(decoded.stamp ? { stamp: decoded.stamp } : {}),
+      });
     }
 
-    // Oldest first, as a conversation reads. ULIDs are time-ordered, so they break a tie between two
-    // messages sharing a millisecond deterministically — every peer sorts the same way, which
-    // wall-clock alone cannot promise across devices.
-    out.sort((a, b) => a.at.getTime() - b.at.getTime() || (a.id < b.id ? -1 : 1));
+    // Oldest first, as a conversation reads — by the HYBRID CLOCK, not by anyone's wall clock.
+    //
+    // Sorting on `at` (the time the sending device claimed) meant a device five minutes fast put its
+    // messages five minutes into everyone's future, and a reply written on a correct clock sorted
+    // BEFORE the message it answered. Every peer agreed on that order, which is what made it look
+    // deliberate rather than broken.
+    //
+    // A message with no stamp predates stamping, so it falls back to `at` — and sorts first, which
+    // is where it belongs. The ULID breaks a remaining tie so peers still agree exactly.
+    const rank = (m: ChatMessage): string =>
+      m.stamp ?? `0000000000000.00000#${String(m.at.getTime()).padStart(13, "0")}`;
+    out.sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra < rb ? -1 : 1;
+      return a.id < b.id ? -1 : 1;
+    });
     return opts?.limit ? out.slice(-opts.limit) : out;
+  }
+
+  /**
+   * Stop a thread being readable. Called when the record it hangs off is deleted.
+   *
+   * `delete` on each key, not a container swap: everything lives in ONE map precisely so there is
+   * no container for two peers to race over, and replacing it would reintroduce that. A peer that
+   * posts concurrently with the delete keeps its message — per-key merge, nothing else to decide —
+   * and it is unreachable anyway once the record is gone.
+   */
+  private async dropThread(thread: string): Promise<void> {
+    const map = await this.chat();
+    const prefix = JazzStore.threadPrefix(thread);
+    for (const key of map.keys()) {
+      if (key.startsWith(prefix)) map.delete(key);
+    }
   }
 
   subscribeMessages(thread: string, cb: () => void): Unsubscribe {
@@ -416,16 +565,64 @@ export class JazzStore implements Store {
 
     const since = opts?.since?.getTime();
     const out: FieldEdit[] = [];
-    for (const field of m.keys()) {
-      if (BOOKKEEPING.has(field)) continue;
-      for (const edit of m.editsAt(field) ?? []) {
-        const at = edit.at instanceof Date ? edit.at : new Date(edit.at as never);
-        if (since !== undefined && at.getTime() <= since) continue;
-        out.push({ field, value: edit.value, by: String(edit.by), at });
+
+    // A counter's per-session subtotals and a set's per-element keys are not fields — they are how
+    // ONE field survives two people — so their raw edits are nobody's idea of activity. Reported
+    // straight, they read as `tagsurgent` changing to `1`. Grouped here and replayed below,
+    // they read as what the field actually held at that moment, which is what a person asked.
+    const derived = new Map<string, { kind: "set" | "counter"; keys: string[] }>();
+    const group = (field: string, kind: "set" | "counter", key: string): void => {
+      const g = derived.get(field) ?? { kind, keys: [] };
+      g.keys.push(key);
+      derived.set(field, g);
+    };
+
+    for (const key of m.keys()) {
+      const asSet = parseSetKey(key);
+      if (asSet) {
+        group(asSet.field, "set", key);
+        continue;
+      }
+      const asCounter = JazzStore.parseCounterKey(key);
+      if (asCounter) {
+        group(asCounter.field, "counter", key);
+        continue;
+      }
+      if (BOOKKEEPING.has(key)) continue;
+      // A plain field. Its own key may ALSO be the base of a derived one, so it is grouped rather
+      // than emitted whenever element or subtotal keys exist beside it.
+      for (const edit of m.editsAt(key) ?? []) {
+        out.push({ field: key, value: edit.value, by: String(edit.by), at: asDate(edit.at) });
       }
     }
+
+    for (const [field, { kind, keys }] of derived) {
+      // The base is the plain value written before anyone merged into it — already emitted above as
+      // an ordinary field. Fold it in here instead, and drop the raw version, so the field has one
+      // timeline rather than two that disagree.
+      const base = out.filter((e) => e.field === field);
+      for (let i = out.length - 1; i >= 0; i--) if (out[i]!.field === field) out.splice(i, 1);
+
+      const events = [
+        ...base.map((e) => ({ part: null, value: e.value, by: e.by, at: e.at })),
+        ...keys.flatMap((key) => {
+          const part = kind === "set" ? parseSetKey(key)!.element : JazzStore.parseCounterKey(key)!.session;
+          return [...(m.editsAt!(key) ?? [])].map((e) => ({
+            part,
+            value: e.value,
+            by: String(e.by),
+            at: asDate(e.at),
+          }));
+        }),
+      ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
+      for (const step of replayDerived(kind, events)) out.push({ field, ...step });
+    }
+
     // One record's edits across all its fields, in the order they happened.
-    return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+    return out
+      .filter((e) => since === undefined || e.at.getTime() > since)
+      .sort((a, b) => a.at.getTime() - b.at.getTime());
   }
 
   async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
@@ -460,16 +657,132 @@ export class JazzStore implements Store {
     // Set only the changed keys. Writing the whole record back would make every field a write and
     // clobber a concurrent peer's edit to a field this caller never touched — throwing away the
     // per-key merge that is the entire reason for this store.
+    //
+    // A SET field goes one level further, for the same reason one level down (KA-38). `tags` arrives
+    // as a whole array — `[...row.tags, "urgent"]` is the only way an app can express "add one" —
+    // and writing that array back re-asserts every element in it, including elements a peer removed
+    // and excluding elements a peer added that this caller never saw. So the array is diffed against
+    // what is actually there and only the elements that CHANGED are written, each under its own key.
+    const sets = this.setFields.get(entity);
+    const current = sets?.size ? (JazzStore.materialise(m) as Record<string, unknown>) : null;
     this.local(() => {
       for (const [k, v] of Object.entries(toJsonValue(patch))) {
         if (k === "id" || k === "createdAt") continue; // immutable
+        // `isScalarSet` is the honest guard, not a formality: element-wise merge needs elements that
+        // can be keys. Anything else (a list of rows, a null, a media ref) is written whole, which is
+        // what this store did for everything until now.
+        if (current && sets?.has(k)) {
+          if (isScalarSet(v)) {
+            const before = current[k];
+            for (const [element, present] of setWrites(isScalarSet(before) ? before : [], v)) {
+              m.set(setKey(k, element), present ? 1 : 0);
+            }
+            continue;
+          }
+          // Written whole (a `null` that clears it, or a shape elements cannot be made from). The
+          // per-element keys have to go with it — left behind, they would fold straight back on top
+          // of the new value and the field would refuse to be cleared.
+          for (const key of m.keys()) if (parseSetKey(key)?.field === k) m.delete(key);
+        }
         m.set(k, v);
       }
       m.set("updatedAt", nowIso());
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return m.toJSON() as unknown as KartaRecord;
+    return JazzStore.materialise(m) as unknown as KartaRecord;
+  }
+
+  /**
+   * A counter that survives two people adding at once (KA-38).
+   *
+   * ## Why not just add to the field
+   *
+   * `update(id, { n: n + 1 })` reads on one device and writes on another. Both read 0, both write 1,
+   * and a press disappears. Last-write-wins is doing exactly what it promises; the mistake is asking
+   * a single value to hold a total that several people contribute to.
+   *
+   * ## The shape
+   *
+   * Each session keeps ITS OWN subtotal, under its own key: `n\u0001<sessionID>`. The value anyone
+   * reads is the sum. Because no two sessions ever write the same key, per-key merge — the thing this
+   * store is built on — makes concurrent increments simply add up. That is a G/PN-counter assembled
+   * out of the CoMap we already have, rather than a new CoValue type and a new shape to migrate.
+   *
+   * ## Living beside a plain value
+   *
+   * A field may already hold an ordinary number, written before anyone incremented it. That is the
+   * base: the total is `base + Σ(session subtotals)`. So turning a `patch`-written field into a
+   * counter needs no migration, and reading it through `all()`/`get()` gives one number either way.
+   */
+  async increment(entity: string, id: Id, field: string, delta: number): Promise<number> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`increment: ${entity}/${id} not found`);
+    const session = this.node.currentSessionID ?? "local";
+    const key = JazzStore.counterKey(field, session);
+    const mine = Number(m.get(key) ?? 0);
+    this.local(() => {
+      m.set(key, mine + delta);
+      m.set("updatedAt", nowIso());
+    });
+    this.emit(entity);
+    await this.whenDurable?.();
+    return JazzStore.counterTotal(m, field);
+  }
+
+  /** `\u0001` cannot appear in a field name, so a counter key can never collide with a real field. */
+  private static counterKey(field: string, session: string): string {
+    return `${field}\u0001${session}`;
+  }
+
+  /** `\u0001` again: `null` when the key is an ordinary field rather than one session's subtotal. */
+  private static parseCounterKey(key: string): { field: string; session: string } | null {
+    const at = key.indexOf("\u0001");
+    if (at <= 0) return null;
+    return { field: key.slice(0, at), session: key.slice(at + 1) };
+  }
+
+  /** The plain value, plus every session's subtotal. */
+  private static counterTotal(m: RawMapLike, field: string): number {
+    const prefix = `${field}\u0001`;
+    let total = Number(m.get(field) ?? 0);
+    if (!Number.isFinite(total)) total = 0;
+    for (const k of m.keys()) {
+      if (!k.startsWith(prefix)) continue;
+      const v = Number(m.get(k));
+      if (Number.isFinite(v)) total += v;
+    }
+    return total;
+  }
+
+  /**
+   * Turn what is stored into what the app asked for.
+   *
+   * Two mergeable shapes live inside the record CoMap — a counter's per-session subtotals (KA-38,
+   * `increment`) and a set's per-element keys (`set-field.ts`) — and neither is anything an app
+   * should ever see. Everything that reads a record comes through here, so app code, views and
+   * exports get one number and one array and never learn how either survived two people.
+   *
+   * That is the whole argument for doing this at the store seam: the app keeps saying
+   * `record.bought` and `record.tags`, and simply stops losing other people's work.
+   */
+  private static materialise(m: RawMapLike): Record<string, unknown> {
+    return foldSetFields(JazzStore.withCounters(m));
+  }
+
+  /** Counter subtotals folded back into plain fields, with the per-session keys hidden. */
+  private static withCounters(m: RawMapLike): Record<string, unknown> {
+    const raw = m.toJSON() as Record<string, unknown>;
+    const fields = new Set<string>();
+    for (const k of Object.keys(raw)) {
+      const at = k.indexOf("\u0001");
+      if (at > 0) fields.add(k.slice(0, at));
+    }
+    if (!fields.size) return raw;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) if (!k.includes("\u0001")) out[k] = v;
+    for (const f of fields) out[f] = JazzStore.counterTotal(m, f);
+    return out;
   }
 
   async delete(entity: string, id: Id): Promise<void> {
@@ -478,6 +791,11 @@ export class JazzStore implements Store {
     // Tombstone by dropping the index entry. The record CoMap itself is left addressable so a
     // concurrent peer editing it does not resurrect a half-record through the index.
     this.local(() => index.delete(id));
+    // A record's conversation dies with it (KA-35). Left behind, the messages would be unreachable
+    // — nothing lists a thread whose record is gone — and would come back attached to the wrong
+    // thing if that id were ever reused. The transactions stay in the log, which nothing compacts
+    // (KA-30); what ends here is the thread being readable.
+    await this.dropThread(recordThread(entity, id));
     this.emit(entity);
     await this.whenDurable?.();
   }
@@ -499,8 +817,17 @@ export class JazzStore implements Store {
         }
         for (const row of rows) {
           const m = await this.recordMap(entity, row.id);
-          if (m) for (const [k, v] of Object.entries(row)) m.set(k, v as unknown);
-          else {
+          if (m) {
+            // The snapshot holds MATERIALISED values — one number for a counter, one array for a set
+            // — so restoring it has to clear the contributions those values were folded from. Left
+            // in place, they fold straight back on top of what was just restored and the record ends
+            // up at neither the old value nor the new one. (True of counters since they landed; a
+            // rollback silently doubled them.)
+            for (const key of m.keys()) {
+              if (parseSetKey(key) ?? JazzStore.parseCounterKey(key)) m.delete(key);
+            }
+            for (const [k, v] of Object.entries(row)) m.set(k, v as unknown);
+          } else {
             const created = this.group.createMap<RawMapLike>(row as unknown as Record<string, unknown>);
             index.set(row.id, created.id);
           }

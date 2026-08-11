@@ -104,6 +104,22 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       return resolveRecord(deps, entity, row);
     },
 
+    async increment(entity, id, field, delta) {
+      // Falls back rather than failing: only a CRDT store can add deltas up, and a local-only app is
+      // single-writer anyway, so read-modify-write there is correct and has nothing to race with.
+      if (store.increment) {
+        await store.increment(entity, id, field, delta);
+      } else {
+        const current = await store.get(entity, id);
+        const base = Number((current as Record<string, unknown> | null)?.[field] ?? 0);
+        await store.update(entity, id, { [field]: base + delta } as Partial<KartaRecord>);
+      }
+      deps.memo.clear();
+      const row = await store.get(entity, id);
+      if (!row) throw new Error(`increment: ${entity}/${id} not found`);
+      return resolveRecord(deps, entity, row);
+    },
+
     async delete(entity, id) {
       await store.delete(entity, id);
       deps.memo.clear();

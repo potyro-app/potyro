@@ -2,11 +2,23 @@
 //
 // An AI edit rewrites the whole app module, so "what changed?" is only answerable by diffing against
 // the previous source. This panel lists an app's versions newest-first with the instruction that
-// produced each one, shows the diff of the selected version against its parent (or against what is
-// running now), and restores any of them.
+// produced each one, shows the diff of a version against its parent (or against what is running
+// now), and restores any of them.
 //
 // Restoring APPENDS the old source as a new version rather than truncating the log — so rolling back
 // is itself undoable, and no history is destroyed by a panicked click.
+//
+// ## The TIMELINE is the view; a diff is something you ask for
+//
+// This was a two-pane master/detail that auto-selected the newest version, so opening History put a
+// sixty-line diff on screen before you had asked anything. Below 720px the panes stacked and the
+// diff pushed the list of versions off the top entirely: the question people actually open this to
+// answer — "what has happened to my app?" — was the one thing not visible.
+//
+// So: one list, full width, nothing expanded. The prompt that produced each version is the headline,
+// because that is what a person recognises their own change by; the diff is inside the entry and
+// opens when you click it. An accordion rather than a second pane deliberately — the timeline stays
+// the spine at every width, instead of being a sidebar that a narrow window turns back into a sliver.
 
 import { useEffect, useState } from "react";
 import { diffLines, diffStat, toHunks, type DiffLine } from "./diff.js";
@@ -109,7 +121,8 @@ export function History({ appId, appName, onClose, onRestored }: HistoryProps) {
     void listVersions(appId).then((v) => {
       if (!live) return;
       setVersions(v);
-      setSelected(v[0]?.seq ?? null);
+      // Nothing opened. Auto-selecting the newest was what buried the timeline under a diff nobody
+      // had asked for — see the header.
     });
     void listDiagnoses(appId).then((d) => {
       if (live) setDiagnoses(d);
@@ -186,79 +199,84 @@ export function History({ appId, appName, onClose, onRestored }: HistoryProps) {
             No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here.
           </p>
         ) : (
-          <div className="k-history-body">
-            <ol className="k-history-list" aria-label="Versions">
-              {list.map((v) => (
-                <li key={v.seq}>
+          <ol className="k-timeline" aria-label="Versions">
+            {list.map((v) => {
+              const open = v.seq === selected;
+              return (
+                <li key={v.seq} className="k-timeline-entry" data-open={open || undefined}>
                   <button
                     type="button"
-                    className="k-history-item"
-                    data-active={v.seq === selected}
-                    aria-current={v.seq === selected}
-                    onClick={() => setSelected(v.seq)}
+                    className="k-timeline-row"
+                    aria-expanded={open}
+                    onClick={() => setSelected(open ? null : v.seq)}
                   >
-                    <span className="k-history-meta">
-                      <span className="k-history-seq">v{v.seq}</span>
-                      <span className={`k-history-origin k-history-origin-${v.origin}`}>{ORIGIN_LABEL[v.origin]}</span>
-                      {v.seq === newest?.seq ? <span className="k-history-now">running now</span> : null}
-                    </span>
-                    <span className="k-history-note">{v.note ?? "no description"}</span>
-                    <span className="k-muted k-history-when">{when(v.createdAt)}</span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-
-            <section className="k-history-detail" aria-label="Changes in the selected version">
-              {current ? (
-                <>
-                  <div className="k-history-detailhead">
-                    <div>
-                      <strong>v{current.seq}</strong>{" "}
-                      <span className="k-muted">
-                        {before
-                          ? `vs v${before.seq}${before.seq === newest?.seq ? " (running)" : ""} · +${stat.added} −${stat.removed}`
-                          : "the only version kept — nothing to compare against"}
+                    <span className="k-timeline-dot" aria-hidden />
+                    <span className="k-timeline-main">
+                      {/* The prompt first and largest. It is what someone recognises their own change
+                          by — "v7 · edit · 3h ago" identifies nothing. */}
+                      <span className="k-timeline-note">
+                        {v.note ?? <span className="k-muted">no description recorded</span>}
                       </span>
-                    </div>
-                    <div className="k-history-detailactions">
-                      {canToggle ? (
-                        <button
-                          type="button"
-                          className="k-add"
-                          data-active={against === "current"}
-                          onClick={() => setAgainst(against === "current" ? "parent" : "current")}
-                        >
-                          {against === "current" ? "vs previous" : "vs running"}
-                        </button>
-                      ) : null}
-                      {/* No disabled Restore on the version already running — an amber button you
-                          cannot press reads as a dead control. Say why instead. */}
-                      {current.seq === newest?.seq ? (
-                        <span className="k-muted">this version is running</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="k-add k-primary-action"
-                          disabled={busy}
-                          title={`Roll back to v${current.seq}`}
-                          onClick={() => void restore(current)}
-                        >
-                          {busy ? "Restoring…" : `Restore v${current.seq}`}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {error ? <p className="k-form-error">{error}</p> : null}
-                  {/* The agent's own account of the change. It is kept here rather than as comments
-                      in the source precisely so it informs you without becoming the next edit's
-                      premise — see AppVersion.rationale. */}
-                  {current.rationale ? <p className="k-history-rationale">{current.rationale}</p> : null}
-                  <Diff lines={lines} painted={painted} />
-                </>
-              ) : null}
-            </section>
-          </div>
+                      <span className="k-timeline-meta">
+                        <span className="k-history-seq">v{v.seq}</span>
+                        <span className={`k-history-origin k-history-origin-${v.origin}`}>{ORIGIN_LABEL[v.origin]}</span>
+                        {v.seq === newest?.seq ? <span className="k-history-now">running now</span> : null}
+                        <span className="k-muted k-history-when">{when(v.createdAt)}</span>
+                      </span>
+                    </span>
+                    <span className="k-timeline-chevron" aria-hidden>
+                      {open ? "▾" : "▸"}
+                    </span>
+                  </button>
+
+                  {open && current ? (
+                    <section className="k-history-detail" aria-label={`Changes in version ${current.seq}`}>
+                      {/* The agent's own account of the change. It is kept here rather than as
+                          comments in the source precisely so it informs you without becoming the
+                          next edit's premise — see AppVersion.rationale. */}
+                      {current.rationale ? <p className="k-history-rationale">{current.rationale}</p> : null}
+                      <div className="k-history-detailhead">
+                        <div className="k-muted">
+                          {before
+                            ? `vs v${before.seq}${before.seq === newest?.seq ? " (running)" : ""} · +${stat.added} −${stat.removed}`
+                            : "the only version kept — nothing to compare against"}
+                        </div>
+                        <div className="k-history-detailactions">
+                          {canToggle ? (
+                            <button
+                              type="button"
+                              className="k-add"
+                              data-active={against === "current"}
+                              onClick={() => setAgainst(against === "current" ? "parent" : "current")}
+                            >
+                              {against === "current" ? "vs previous" : "vs running"}
+                            </button>
+                          ) : null}
+                          {/* No disabled Restore on the version already running — an amber button you
+                              cannot press reads as a dead control. Say why instead. */}
+                          {current.seq === newest?.seq ? (
+                            <span className="k-muted">this version is running</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="k-add k-primary-action"
+                              disabled={busy}
+                              title={`Roll back to v${current.seq}`}
+                              onClick={() => void restore(current)}
+                            >
+                              {busy ? "Restoring…" : `Restore v${current.seq}`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {error ? <p className="k-form-error">{error}</p> : null}
+                      <Diff lines={lines} painted={painted} />
+                    </section>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
         )}
 
         {diagnoses.length ? (

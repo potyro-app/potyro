@@ -59,24 +59,36 @@ test("a saved change is diffable and reversible", async ({ page }) => {
   await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
   await studio.getByRole("button", { name: "Save changes" }).click();
 
-  // 2. History shows both versions and the diff between them — the added line and the removed one.
+  // 2. History opens on the TIMELINE, with no diff in sight.
   await studio.getByRole("button", { name: "⟲ History" }).click();
   const history = page.getByRole("dialog", { name: "History of History Target" });
   await expect(history).toBeVisible();
-  const versions = history.locator(".k-history-list");
-  await expect(versions.getByRole("button", { name: /^v2/ })).toBeVisible({ timeout: 30_000 });
-  await expect(versions.getByRole("button", { name: /^v1/ })).toBeVisible();
+  const entry = (seq: string) =>
+    history.locator(".k-timeline-entry").filter({ has: page.locator(".k-history-seq", { hasText: seq }) });
+  await expect(entry("v2")).toBeVisible({ timeout: 30_000 });
+  await expect(entry("v1")).toBeVisible();
 
+  // The whole point of the layout: every version is listed, and NOTHING is expanded. This used to
+  // auto-select the newest, so a diff took the screen before you had asked for one — and on a narrow
+  // window it pushed the list of versions off the top entirely.
   const diff = history.locator(".k-diff");
+  await expect(diff).toHaveCount(0);
+
+  // 3. Clicking a version — and only then — shows what it changed.
+  await entry("v2").getByRole("button").first().click();
   await expect(diff.locator(".k-diff-add")).toContainText('title: "Journal"');
   await expect(diff.locator(".k-diff-del")).toContainText('title: "Notes"');
   // Only the changed line and its context — not the whole file.
   await expect(diff.locator(".k-diff-add")).toHaveCount(1);
   await expect(diff.locator(".k-diff-del")).toHaveCount(1);
 
-  // 3. Roll back to v1. Selecting it shows the diff the other way round — what restoring would undo,
+  // Clicking it again closes it: the timeline is the resting state, not a thing you escape back to.
+  await entry("v2").getByRole("button").first().click();
+  await expect(diff).toHaveCount(0);
+
+  // 4. Roll back to v1. Opening it shows the diff the other way round — what restoring would undo,
   //    which is the question you're actually asking before you press Restore.
-  await versions.getByRole("button", { name: /^v1/ }).click();
+  await entry("v1").getByRole("button").first().click();
   await expect(history.getByText(/vs v2 \(running\)/)).toBeVisible();
   await expect(diff.locator(".k-diff-add")).toContainText('title: "Notes"');
   await expect(diff.locator(".k-diff-del")).toContainText('title: "Journal"');

@@ -16,6 +16,7 @@
 import { humanizeKey } from "karta";
 import type { AppDefinition, Id, Person } from "karta";
 import type { FieldEdit, Store } from "@karta/store";
+import { memberName } from "./people.js";
 
 /** One field of one record changing, ready to show. */
 export interface ActivityItem {
@@ -111,12 +112,7 @@ export async function activitySince(
   if (!store.editHistory) return [];
 
   const cutoff = since?.getTime() ?? 0;
-  const nameOf = (id: string): string => {
-    if (me && id === me.id) return "You";
-    const found = members?.find((m) => m.id === id);
-    // Someone who has left the space still has to render as something a person can read.
-    return found?.name ?? `${id.slice(0, 8)}…`;
-  };
+  const nameOf = (id: string): string => memberName(id, { me, members });
 
   const items: ActivityItem[] = [];
 

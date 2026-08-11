@@ -113,46 +113,12 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
   const entities = Object.entries(app.entities ?? {});
   ran.entities = entities.length;
 
-  // ---- pass 1: create records without relations (avoids ordering/cycle problems) ----
-  const created: Record<string, string[]> = {};
-  try {
-    for (const [name, entity] of entities) {
-      created[name] = [];
-      for (let i = 0; i < SEED_ROWS; i++) {
-        const data: Record<string, unknown> = {};
-        for (const [key, field] of Object.entries(entity.fields ?? {})) {
-          const v = seedValue(field as Field, i, key);
-          if (v !== undefined) data[key] = v;
-        }
-        const rec = await runtime.create(name, data);
-        created[name]!.push(rec.id);
-        ran.records++;
-      }
-    }
-    seeded = true;
-  } catch (e) {
-    errors.push(`seed: ${message(e)}`);
-  }
-
-  // ---- pass 2: fill relation fields now that every target exists ----
-  if (seeded) {
-    for (const [name, entity] of entities) {
-      for (const [key, field] of Object.entries(entity.fields ?? {})) {
-        const f = field as Field & { to?: string; many?: boolean };
-        if (f.type !== "relation" || !f.to) continue;
-        const targets = created[f.to];
-        if (!targets?.length) continue;
-        for (const [i, id] of (created[name] ?? []).entries()) {
-          const pick = targets[i % targets.length]!;
-          try {
-            await runtime.patch(name, id, { [key]: f.many ? [pick] : pick });
-          } catch (e) {
-            errors.push(`relation ${name}.${key}: ${message(e)}`);
-          }
-        }
-      }
-    }
-  }
+  // ---- seed (shared with the concurrency smoke, so both exercise the SAME records) ----
+  const seedOut = await seedRecords(app, runtime);
+  const created = seedOut.created;
+  seeded = seedOut.seeded;
+  ran.records = seedOut.records;
+  errors.push(...seedOut.errors);
 
   // ---- computed: resolving a record runs every computed on it ----
   const samples: Record<string, Resolved[]> = {};
@@ -261,4 +227,62 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
 /** True when the app not only validates but actually executed its own logic without throwing. */
 export function smokePassed(s: SmokeResult): boolean {
   return s.seeded && s.computedOk && s.bindingsOk && s.actionsOk && s.remindersOk && s.customViewsOk;
+}
+
+/**
+ * Create sample records for every entity, in two passes.
+ *
+ * Extracted from `smokeApp` so the concurrency smoke exercises exactly the same records rather than
+ * inventing a second, differently-wrong seeding. Pass 1 creates without relations (which sidesteps
+ * ordering and cycles); pass 2 fills them once every target exists.
+ */
+export async function seedRecords(
+  app: AppDefinition & { id: string },
+  runtime: { create(e: string, d: Record<string, unknown>): Promise<{ id: string }>; patch(e: string, id: string, d: Record<string, unknown>): Promise<void> },
+): Promise<{ created: Record<string, string[]>; seeded: boolean; records: number; errors: string[] }> {
+  const entities = Object.entries(app.entities ?? {});
+  const created: Record<string, string[]> = {};
+  const errors: string[] = [];
+  let records = 0;
+  let seeded = false;
+
+  try {
+    for (const [name, entity] of entities) {
+      created[name] = [];
+      for (let i = 0; i < SEED_ROWS; i++) {
+        const data: Record<string, unknown> = {};
+        for (const [key, field] of Object.entries(entity.fields ?? {})) {
+          const v = seedValue(field as Field, i, key);
+          if (v !== undefined) data[key] = v;
+        }
+        const rec = await runtime.create(name, data);
+        created[name]!.push(rec.id);
+        records++;
+      }
+    }
+    seeded = true;
+  } catch (e) {
+    errors.push(`seed: ${message(e)}`);
+  }
+
+  if (seeded) {
+    for (const [name, entity] of entities) {
+      for (const [key, field] of Object.entries(entity.fields ?? {})) {
+        const f = field as Field & { to?: string; many?: boolean };
+        if (f.type !== "relation" || !f.to) continue;
+        const targets = created[f.to];
+        if (!targets?.length) continue;
+        for (const [i, id] of (created[name] ?? []).entries()) {
+          const pick = targets[i % targets.length]!;
+          try {
+            await runtime.patch(name, id, { [key]: f.many ? [pick] : pick });
+          } catch (e) {
+            errors.push(`relation ${name}.${key}: ${message(e)}`);
+          }
+        }
+      }
+    }
+  }
+
+  return { created, seeded, records, errors };
 }

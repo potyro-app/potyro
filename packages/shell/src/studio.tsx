@@ -19,6 +19,7 @@ import {
   buildRepairMessage,
   buildModifyMessage,
   extractSource,
+  looksLikeApp,
 } from "@karta/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
@@ -78,6 +79,23 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // source survived. They accumulate here and are flushed into the app's history on save, in order.
   const [drafts, setDrafts] = useState<Array<{ source: string; note?: string }>>([]);
   const [tab, setTab] = useState<"preview" | "source">("preview");
+  /**
+   * How many times a PERSON has picked a tab.
+   *
+   * A build ends by showing the preview, which is right when the build is why you are here and
+   * wrong the moment you went to read the code while it ran — `openSaved` fires `buildPreview`
+   * with `void`, so opening an app and immediately clicking Source put you back on Preview a
+   * second later, with nothing to explain it. Comparing this count across the await tells the two
+   * apart: nobody chose, so choose for them; somebody chose, so leave it alone.
+   *
+   * A ref, not state: it must be readable at the far side of an await without re-rendering, and
+   * nothing renders from it.
+   */
+  const tabPicks = useRef(0);
+  const pickTab = (next: "preview" | "source"): void => {
+    tabPicks.current += 1;
+    setTab(next);
+  };
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -102,6 +120,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const buildPreview = async (src: string, storeNamespace: string | null): Promise<string[]> => {
     setBusy(true);
     setError(null);
+    // Read BEFORE the first await — see `tabPicks`. Anything after this point is a race with the
+    // person using the app.
+    const picksBefore = tabPicks.current;
     try {
       const store: Store = storeNamespace ? await openStore(`user:${storeNamespace}`) : await newMemoryStore();
       const toaster = new Toaster();
@@ -135,7 +156,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
       }
       buildRef.current += 1;
       setPreview({ composed, toaster, build: buildRef.current, provenance, picker });
-      setTab("preview");
+      if (tabPicks.current === picksBefore) setTab("preview");
       const issues = validateDefinition(composed.runtime.definition);
       if (issues.length) setError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
       return issues;
@@ -185,10 +206,18 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // `system` is sent SEPARATELY so the dev endpoint passes it via --system-prompt-file, replacing
   // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
   // its tools) active — a different setup from the one the eval harness measures.
-  const runCli = async (prompt: string): Promise<string> =>
-    extractSource(
+  const runCli = async (prompt: string): Promise<string> => {
+    const source = extractSource(
       await generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Generating… ${secs}s`) }),
     );
+    // A reply that is not an app must say so here. Passing prose to the bundler reports a syntax
+    // error in the middle of an English sentence, which reads as a broken tool rather than a model
+    // that answered in the wrong shape.
+    if (!looksLikeApp(source)) {
+      throw new Error("the model replied with an explanation instead of an app. Try again, or rephrase.");
+    }
+    return source;
+  };
 
   const generateCli = (): Promise<void> => {
     setEngine("cli");
@@ -441,10 +470,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
 
         <section className="k-studio-stage">
           <div className="k-studio-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={tab === "preview"} className="k-tab" data-active={tab === "preview"} onClick={() => setTab("preview")}>
+            <button type="button" role="tab" aria-selected={tab === "preview"} className="k-tab" data-active={tab === "preview"} onClick={() => pickTab("preview")}>
               Preview
             </button>
-            <button type="button" role="tab" aria-selected={tab === "source"} className="k-tab" data-active={tab === "source"} onClick={() => setTab("source")}>
+            <button type="button" role="tab" aria-selected={tab === "source"} className="k-tab" data-active={tab === "source"} onClick={() => pickTab("source")}>
               Source
             </button>
             <span className="k-studio-tabs-spacer" />

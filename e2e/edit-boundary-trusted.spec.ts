@@ -147,6 +147,8 @@ test("a real app-level change still applies, and its reasoning is kept out of th
     .toContain('camera: "fit"');
 
   await page.getByRole("button", { name: "History" }).click();
+  // History opens on the timeline; the agent's reasoning is inside the version it explains.
+  await page.locator(".k-timeline-entry").first().getByRole("button").first().click();
   // The prose is recorded beside the version rather than baked into the module: a causal claim in a
   // comment becomes the next edit's premise, which is how one wrong guess survives three rounds.
   await expect(page.locator(".k-history-rationale")).toContainText("always frame the pins");

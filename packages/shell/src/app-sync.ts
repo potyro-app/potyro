@@ -30,6 +30,20 @@ export interface PublishedApp {
   updatedAt: string;
   /** The app's declared `schemaVersion`. Drives the read-only gate (KA-22). */
   schemaVersion?: number;
+  /**
+   * What was ASKED FOR, and what the agent said it did — carried with the source.
+   *
+   * Without these, an update adopted from a collaborator landed in History as the bare string
+   * "updated by a collaborator": the app changed under you and the record of WHY existed only on the
+   * device that made the change. History's whole purpose is answering "what happened to my app", and
+   * on every device but one it could not.
+   *
+   * They describe a change to code that is already shared with these exact people, so nothing
+   * private is newly exposed by sending them — the source itself is the more revealing half, and it
+   * has always crossed.
+   */
+  note?: string;
+  rationale?: string;
 }
 
 /**
