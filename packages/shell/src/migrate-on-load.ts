@@ -17,26 +17,12 @@
 
 import type { AppDefinition, Migration } from "karta";
 import type { Store } from "@karta/store";
+// Re-exported: the walk itself lives beside `MigrationPlan` in @karta/store, so the eval harness
+// and the shell cannot disagree about which migrations run.
+import { migrationChain } from "@karta/store";
+export { migrationChain };
 
 const APP_VERSION_KEY = "__appVersion";
-
-/** The migrations still to run, in order, starting from the version the data was written under. */
-export function migrationChain(migrations: readonly Migration[], from: string | null): Migration[] {
-  if (!from) return []; // fresh data: written by the current version already
-  const chain: Migration[] = [];
-  const seen = new Set<string>();
-  let at = from;
-  for (;;) {
-    const next = migrations.find((m) => m.from === at);
-    // `seen` guards a definition whose migrations loop (1.0 -> 1.1 -> 1.0); without it this spins
-    // forever on app open, which is a far worse failure than an un-migrated field.
-    if (!next || seen.has(next.to)) break;
-    chain.push(next);
-    seen.add(next.to);
-    at = next.to;
-  }
-  return chain;
-}
 
 /**
  * Bring `store`'s data up to `definition`, if it is behind.
