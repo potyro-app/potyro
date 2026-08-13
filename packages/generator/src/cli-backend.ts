@@ -5,10 +5,12 @@
 // The CLI's own agent system prompt is REPLACED (not appended) with SYSTEM_PROMPT so the model is a
 // generator, not a coding agent, and tools are disallowed so it can never wander into the repo.
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessByStdio } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Readable, Writable } from "node:stream";
+import { resolveCli } from "./cli-available.js";
 import type { GenPrompt } from "./backend.js";
 import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
 import { UNKNOWN_USAGE, type CallUsage, type MeteredBackend, type MeteredRequest, type MeteredResult } from "./model-call.js";
@@ -102,6 +104,39 @@ export function parseCliOutput(stdout: string): { text: string; usage: CallUsage
 
 export { claudeCliAvailable } from "./cli-available.js";
 
+/** A `.cmd`/`.bat` shim — the shape an npm install of the CLI leaves on a Windows PATH. */
+const WINDOWS_SHIM = /\.(cmd|bat)$/i;
+
+/**
+ * Start the CLI, whatever shape the machine's PATH left it in.
+ *
+ * Node has refused to `spawn` a `.cmd` directly since the CVE-2024-27980 fix — it fails with
+ * `spawn EINVAL` — so on Windows `claudeCliAvailable` could say yes and every single call still
+ * fail, one EINVAL per paid step, with the preflight check having waved the run through. A shim
+ * therefore goes through a shell.
+ *
+ * Under `shell: true` Node does NOT quote the arguments for you, so they are quoted here. Every one
+ * of them is a literal from this file except the temp path (which can hold a space: `C:\Users\First
+ * Last\…`) and `--model`, which comes from the command line — and a quote or a newline in either is
+ * REFUSED rather than escaped. Guessing at cmd.exe's escaping rules to keep going would be inventing
+ * a shell injection to save a typo.
+ */
+type CliProcess = ChildProcessByStdio<Writable, Readable, Readable>;
+
+function spawnCli(bin: string | undefined, args: string[]): CliProcess {
+  const resolved = resolveCli(bin ?? "claude") ?? bin ?? "claude";
+  if (process.platform !== "win32" || !WINDOWS_SHIM.test(resolved)) {
+    return spawn(resolved, args, { stdio: ["pipe", "pipe", "pipe"] });
+  }
+  const quote = (value: string): string => {
+    if (/["\r\n]/.test(value)) {
+      throw new Error(`refusing to pass ${JSON.stringify(value)} through a Windows shell: it contains a quote or a newline`);
+    }
+    return `"${value}"`;
+  };
+  return spawn([resolved, ...args].map(quote).join(" "), { stdio: ["pipe", "pipe", "pipe"], shell: true });
+}
+
 /** Run `claude -p`, feeding the user message on stdin and the contract as the system prompt. */
 async function runClaude(userMessage: string, opts: CliBackendOptions): Promise<{ text: string; usage: CallUsage }> {
   const dir = mkdtempSync(join(tmpdir(), "karta-cli-"));
@@ -121,7 +156,7 @@ async function runClaude(userMessage: string, opts: CliBackendOptions): Promise<
 
   try {
     const stdout = await new Promise<string>((resolve, reject) => {
-      const child = spawn(opts.bin ?? "claude", args, { stdio: ["pipe", "pipe", "pipe"] });
+      const child = spawnCli(opts.bin, args);
       let stdout = "";
       let stderr = "";
       const timer = setTimeout(() => {
@@ -135,6 +170,13 @@ async function runClaude(userMessage: string, opts: CliBackendOptions): Promise<
         clearTimeout(timer);
         reject(e);
       });
+      // The child can exit before it drains stdin — a flag it does not know, an auth failure, or the
+      // SIGKILL above — and a modify prompt carries the whole app source, so it is well past the
+      // pipe buffer and the write is still in flight when that happens. An unhandled EPIPE here is
+      // an UNCAUGHT EXCEPTION, not a rejected promise: `callModel` cannot catch it, so it takes the
+      // whole run down and `report.json` and `review.md` are never written for the chains that had
+      // already finished and been paid for. The real reason arrives on `close`/`error` regardless.
+      child.stdin.on("error", () => {});
       child.on("close", (code) => {
         clearTimeout(timer);
         if (code !== 0) reject(new Error(`claude -p exited ${code}: ${stderr.slice(0, 500)}`));

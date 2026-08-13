@@ -128,6 +128,74 @@ describe("compareData", () => {
     expect(r.verdict).toBe("review");
   });
 
+  // A chain that renames the table and then changes a field on it under the NEW name. Everything
+  // here is declared, and matching the step's entity against the snapshot's would find nothing —
+  // which reads as loss, and prints `note.body → gone` for a value sitting in `memo.content`. A
+  // false alarm in the review sheet is not a safe direction to be wrong in: it is how the sheet
+  // stops being read.
+  describe("declared steps that follow a renameEntity", () => {
+    const renameThen = (steps: Migration["steps"]): Migration[] => [
+      { from: "1.0.0", to: "1.1.0", steps: [{ op: "renameEntity", from: "note", to: "memo" }] },
+      { from: "1.1.0", to: "1.2.0", steps },
+    ];
+
+    it("explains a dropField declared on the new entity name", () => {
+      const r = compareData({
+        before: BEFORE,
+        after: snap({ memo: { n1: { title: "Groceries" }, n2: { title: "Ideas" } } }),
+        chain: renameThen([{ op: "dropField", entity: "memo", field: "body" }]),
+        beforeDef: NOTE,
+        afterDef: def({ memo: ["title"] }),
+      });
+      expect(r.unexplained).toEqual([]);
+      expect(r.removedFields).toEqual([{ entity: "note", field: "body", explained: "dropField memo.body" }]);
+      expect(r.verdict).toBe("ok");
+    });
+
+    it("follows a renameField declared on the new entity name", () => {
+      const r = compareData({
+        before: BEFORE,
+        after: snap({ memo: { n1: { title: "Groceries", content: "milk, eggs" }, n2: { title: "Ideas", content: "a thing" } } }),
+        chain: renameThen([{ op: "renameField", entity: "memo", from: "body", to: "content" }]),
+        beforeDef: NOTE,
+        afterDef: def({ memo: ["title", "content"] }),
+      });
+      expect(r.unexplained).toEqual([]);
+      expect(r.changedValues).toEqual([]);
+      expect(r.orphanedFields).toEqual([]);
+      expect(r.verdict).toBe("ok");
+    });
+
+    it("still calls it loss when the declared rename did not deliver the value", () => {
+      const r = compareData({
+        before: BEFORE,
+        after: snap({ memo: { n1: { title: "Groceries" }, n2: { title: "Ideas" } } }),
+        chain: renameThen([{ op: "renameField", entity: "memo", from: "body", to: "content" }]),
+        beforeDef: NOTE,
+        afterDef: def({ memo: ["title", "content"] }),
+      });
+      expect(r.unexplained).toHaveLength(2);
+      expect(r.verdict).toBe("review");
+    });
+
+    it("resolves a table renamed twice, not just once", () => {
+      const r = compareData({
+        before: BEFORE,
+        after: snap({ entry: { n1: { title: "Groceries" }, n2: { title: "Ideas" } } }),
+        chain: [
+          { from: "1.0.0", to: "1.1.0", steps: [{ op: "renameEntity", from: "note", to: "memo" }] },
+          { from: "1.1.0", to: "1.2.0", steps: [{ op: "renameEntity", from: "memo", to: "entry" }] },
+          { from: "1.2.0", to: "1.3.0", steps: [{ op: "dropField", entity: "entry", field: "body" }] },
+        ],
+        beforeDef: NOTE,
+        afterDef: def({ entry: ["title"] }),
+      });
+      expect(r.lostRecords).toEqual([]);
+      expect(r.unexplained).toEqual([]);
+      expect(r.verdict).toBe("ok");
+    });
+  });
+
   it("does not call a renamed field orphaned", () => {
     const r = run(
       snap({ note: { n1: { title: "Groceries", content: "milk, eggs" }, n2: { title: "Ideas", content: "a thing" } } }),

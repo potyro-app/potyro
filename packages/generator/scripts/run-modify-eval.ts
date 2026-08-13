@@ -90,10 +90,12 @@ async function main(): Promise<void> {
   const only = arg("only")?.split(",").map((s) => s.trim()).filter(Boolean);
   const outDir = resolve(process.cwd(), arg("out") ?? "eval-out/modify");
 
-  const scenarios = only ? MODIFY_SCENARIOS.filter((s) => only.includes(s.id)) : MODIFY_SCENARIOS;
-  if (!scenarios.length) throw new Error(`no scenarios matched ${only?.join(",")}`);
+  // Named-but-unknown first: when EVERY `--only` id is a typo the generic "nothing matched" is the
+  // less useful of the two messages, and it is the one that fires if this order is reversed.
   const missing = (only ?? []).filter((id) => !MODIFY_SCENARIOS.some((s) => s.id === id));
   if (missing.length) throw new Error(`unknown scenario(s): ${missing.join(", ")}`);
+  const scenarios = only ? MODIFY_SCENARIOS.filter((s) => only.includes(s.id)) : MODIFY_SCENARIOS;
+  if (!scenarios.length) throw new Error(`no scenarios matched ${only?.join(",")}`);
 
   const backend = new ClaudeCliBackend({
     timeoutMs: 300_000,
@@ -117,8 +119,19 @@ async function main(): Promise<void> {
   console.log(`Artifacts: ${outDir}\n`);
 
   const started = Date.now();
-  const runs: ScenarioRun[] = await pool(jobs, concurrency, async ({ s, attempt }) => {
-    const run = await runModifyScenario(backend, s, attempt, budget);
+  const runs: (ScenarioRun | null)[] = await pool(jobs, concurrency, async ({ s, attempt }) => {
+    // A chain that throws outright must not take the report down with it. `runModifyScenario`
+    // handles a failure inside a step, but not one before the first — a store that will not open,
+    // a generated app that cannot be seeded. Losing the whole run's accounting to one of those
+    // would mean the calls already paid for went unreported, which is the one thing this harness
+    // promises never to do.
+    let run: ScenarioRun;
+    try {
+      run = await runModifyScenario(backend, s, attempt, budget);
+    } catch (e) {
+      console.error(`  ${s.id} #${attempt}  HARNESS ERROR: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }
     // Written per chain rather than at the end, so a run killed by a budget stop — or by somebody
     // pressing ctrl-C at the sight of the bill — still leaves everything it learned on disk.
     if (run.generation.source) write(join(outDir, artifactPath(run, "generated")), run.generation.source);
@@ -134,7 +147,7 @@ async function main(): Promise<void> {
     return run;
   });
 
-  const report = summarize(backend.name, runs, budget, started);
+  const report = summarize(backend.name, runs.filter((r): r is ScenarioRun => r !== null), budget, started);
   write(join(outDir, "report.json"), JSON.stringify(report, null, 2));
   const text = formatModifyReport(report);
   write(join(outDir, "report.txt"), text);
