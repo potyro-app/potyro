@@ -19,6 +19,21 @@ const shellVite = (extra: string, port: number) =>
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  // ONE WORKER by default, which is a claim about this suite rather than about Playwright.
+  //
+  // `fullyParallel: false` only serialises tests within a file; separate files still land on
+  // separate workers, and every one of them drives the SAME origin against the SAME dev server.
+  // The durable store is SQLite over OPFS and the sync specs share one relay on 4201, so two
+  // workers are two clients of the same state. Measured, not assumed: at the default worker count
+  // `export-import-trusted.spec.ts` dies on `Boot error: Missing required OPFS APIs.` and
+  // `relay-reconnect` takes its neighbours down with it; at one worker both pass. (That spec also
+  // launches its own browser, for a second reason its own header explains.)
+  //
+  // A default command that fails for reasons that have nothing to do with the code is worse than a
+  // slow one: it teaches everybody to re-run until green, and a suite people re-run until green
+  // cannot report a regression. `KARTA_PARALLEL=4 pnpm e2e` is there for a quick local sweep, with
+  // the understanding that a failure from it needs confirming at one worker before it is believed.
+  workers: process.env.KARTA_PARALLEL ? Number(process.env.KARTA_PARALLEL) : 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],

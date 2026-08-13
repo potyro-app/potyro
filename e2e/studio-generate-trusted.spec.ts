@@ -1,12 +1,22 @@
 import { test, expect } from "@playwright/test";
+import { claudeCliAvailable } from "../packages/generator/src/cli-available.js";
 
 // Generation driven through the ACTUAL browser path, because curl proves only that the endpoint
 // answers — not that the Studio's polling client works. The bug this covers ("claude -p failed:
 // NetworkError") was invisible to curl: the endpoint was fine and the browser lost the response.
 //
 // Runs a real `claude -p`, so it is slow and needs the CLI authenticated. Skipped when CI=1.
+//
+// The determinstic half of this path — Studio generate → save → history → rollback, with the
+// endpoint stubbed — is `create-modify-rollback-trusted.spec.ts`. This one exists for what only a
+// real invocation can show: that the CLI answers at all, in the shape the client expects.
 
 test.skip(!!process.env.CI, "runs a real claude -p; local only");
+// Without this the spec does not fail, it WAITS: no `claude` on PATH means the dev endpoint's spawn
+// errors, the Studio shows the error, and the preview assertion sits out its 330-second timeout
+// before saying something that was knowable in the first millisecond. A machine with no CLI is the
+// ordinary case — CI, a fresh checkout, this repo on Windows today — so it is answered up front.
+test.skip(!claudeCliAvailable(), "`claude` is not on PATH — this spec drives the real CLI");
 test.setTimeout(360_000);
 
 test("the Studio generates an app end to end, surviving a long run", async ({ page }) => {
