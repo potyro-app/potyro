@@ -10,7 +10,7 @@
 // computed evaluation, every page's filter/sort, display bindings, entity actions, and reminder
 // `when`. That is where hallucinated `ctx` APIs and unguarded field access actually surface.
 
-import type { AppDefinition, Field, Resolved } from "karta";
+import type { AppDefinition, Field, Id, Resolved } from "karta";
 import { FakeCapabilities } from "@karta/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@karta/host";
 import { createRuntime } from "@karta/runtime";
@@ -110,6 +110,45 @@ function seedValue(field: Field, i: number, key: string): unknown {
   }
 }
 
+/**
+ * The params a page needs before it can show anything.
+ *
+ * Two ways a page receives them, and only one is declared on the page itself. `view.param` names a
+ * record id directly. The other is navigation: a LIST page says
+ * `onOpen: { page: "list-items", param: { listId: "id" } }`, and the target reads `ctx.params.listId`
+ * without declaring anything at all.
+ *
+ * Supplying only the first kind made the harness report a correct per-group page as matching
+ * nothing — the exact false positive that would train everyone to ignore `emptyPages`. So the
+ * `onOpen` mappings are resolved too, taking a real record from the SOURCE page's entity.
+ */
+export function paramsForPage(
+  app: AppDefinition,
+  pageId: string,
+  created: Record<string, Id[]>,
+  rowsOf: (entity: string) => Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const page = (app.pages ?? []).find((p) => p.id === pageId);
+  const view = page?.view as { param?: string; entity?: string } | undefined;
+  const params: Record<string, unknown> = {};
+  if (view?.param && view.entity) {
+    const first = created[view.entity]?.[0];
+    if (first) params[view.param] = first;
+  }
+
+  for (const other of app.pages ?? []) {
+    const ov = other.view as { entity?: string; onOpen?: { page?: string; param?: Record<string, string> } } | undefined;
+    if (ov?.onOpen?.page !== pageId || !ov.onOpen.param || !ov.entity) continue;
+    const source = rowsOf(ov.entity);
+    if (!source) continue;
+    for (const [target, sourceField] of Object.entries(ov.onOpen.param)) {
+      const value = source[sourceField];
+      if (value !== undefined) params[target] = value;
+    }
+  }
+  return params;
+}
+
 export async function smokeApp(app: AppDefinition & { id: string }): Promise<SmokeResult> {
   const errors: string[] = [];
   const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0, customViews: 0 };
@@ -153,12 +192,9 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
   // ---- pages: filters, sorts, and display bindings ----
   for (const page of app.pages ?? []) {
     const view = page.view as { param?: string; entity?: string } | undefined;
-    // A detail page needs its record id, else it legitimately resolves nothing.
-    const params: Record<string, unknown> = {};
-    if (view?.param && view.entity) {
-      const first = created[view.entity]?.[0];
-      if (first) params[view.param] = first;
-    }
+    // A page needs its params before it can resolve anything — both the declared kind and the kind
+    // that arrives through navigation. See `paramsForPage`.
+    const params = paramsForPage(app, page.id, created, (entity) => samples[entity]?.[0] as Record<string, unknown> | undefined);
     try {
       const { rows, ctx } = await runtime.queryPage(page.id, params);
       ran.pages++;

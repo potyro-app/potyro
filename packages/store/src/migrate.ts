@@ -3,7 +3,7 @@
 // it to their live maps; SqliteStore loads rows, applies it, and writes back. Keeping this in one
 // place means the existing MemoryStore test suite also validates the logic SqliteStore relies on.
 
-import type { Id, KartaRecord, MigrationStep } from "karta";
+import type { Id, KartaRecord, Migration, MigrationStep } from "karta";
 
 /** Records grouped by entity, preserving per-entity creation (insertion) order. */
 export type EntityRecords = Map<string, Map<Id, KartaRecord>>;
@@ -86,4 +86,32 @@ export function applyMigrationStep(step: MigrationStep, records: EntityRecords, 
   }
 
   return affected;
+}
+
+/**
+ * The migrations still to run, in order, starting from the version the data was written under.
+ *
+ * Lives here rather than in the shell because it is pure, it belongs beside `MigrationPlan`, and
+ * two callers outside the shell now need it: the eval harness, which measures whether a modified
+ * app still carries its data, and the shell itself. A second copy would be a second set of rules
+ * for which migrations run, which is exactly the kind of drift this file exists to prevent.
+ *
+ * Matching on `from` rather than comparing versions avoids a semver parser and, more importantly,
+ * cannot skip a step. `from` is the app VERSION the data was written under, not `schemaVersion`.
+ */
+export function migrationChain(migrations: readonly Migration[], from: string | null): Migration[] {
+  if (!from) return []; // fresh data: written by the current version already
+  const chain: Migration[] = [];
+  const seen = new Set<string>();
+  let at = from;
+  for (;;) {
+    const next = migrations.find((m) => m.from === at);
+    // `seen` guards a definition whose migrations loop (1.0 -> 1.1 -> 1.0); without it this spins
+    // forever on app open, which is a far worse failure than an un-migrated field.
+    if (!next || seen.has(next.to)) break;
+    chain.push(next);
+    seen.add(next.to);
+    at = next.to;
+  }
+  return chain;
 }

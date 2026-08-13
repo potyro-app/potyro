@@ -16,7 +16,7 @@ export {
   openOpfsDb,
   type SqliteStoreFactoryResult,
 } from "./sqlite-backend.js";
-export { applyMigrationStep, type EntityRecords } from "./migrate.js";
+export { applyMigrationStep, migrationChain, type EntityRecords } from "./migrate.js";
 export { copyStoreData, type CopyStoreResult } from "./copy-store.js";
 export {
   packBundle,
