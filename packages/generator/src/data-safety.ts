@@ -146,15 +146,51 @@ interface Declared {
   renamedFields: { entity: string; from: string; to: string }[];
   renamedEntities: { from: string; to: string }[];
   opaqueTransform: boolean;
+  /** One entity, one key, whatever it was called at the step doing the talking. See `resolverFor`. */
+  resolve: (entity: string) => string;
+}
+
+/**
+ * Follow every `renameEntity` in the chain, so an entity has ONE name here.
+ *
+ * Without this the index and the lookup disagree the moment a table is renamed: a step says
+ * `dropField` on `memo` while the snapshot being compared still calls it `note`, nothing matches,
+ * and a change the app declared in as many words is reported as unexplained. The review sheet then
+ * prints `note.body → **gone**` for a value sitting safely in `memo.content` — a false loss claim in
+ * the one artifact whose whole job is to be believed.
+ *
+ * Renames are applied IN ORDER, so `A→B→C` resolves `A`, `B` and `C` all to `C`. A chain that
+ * renames in a circle stops at the first repeat rather than spinning.
+ */
+function resolverFor(chain: readonly Migration[]): (entity: string) => string {
+  const renames: { from: string; to: string }[] = [];
+  for (const migration of chain) {
+    for (const step of migration.steps) {
+      if (!("transform" in step) && step.op === "renameEntity") renames.push({ from: step.from, to: step.to });
+    }
+  }
+  if (!renames.length) return (entity) => entity;
+  return (entity) => {
+    let at = entity;
+    const seen = new Set([at]);
+    for (const r of renames) {
+      if (r.from !== at || seen.has(r.to)) continue;
+      at = r.to;
+      seen.add(at);
+    }
+    return at;
+  };
 }
 
 function declaredBy(chain: readonly Migration[]): Declared {
+  const resolve = resolverFor(chain);
   const d: Declared = {
     droppedFields: new Map(),
     changedFields: new Map(),
     renamedFields: [],
     renamedEntities: [],
     opaqueTransform: false,
+    resolve,
   };
   const add = (m: Map<string, Set<string>>, entity: string, field: string): void => {
     let set = m.get(entity);
@@ -170,16 +206,16 @@ function declaredBy(chain: readonly Migration[]): Declared {
       }
       switch (step.op) {
         case "dropField":
-          add(d.droppedFields, step.entity, step.field);
+          add(d.droppedFields, resolve(step.entity), step.field);
           break;
         // Deliberately NOT also recorded as a drop of `from`. A declared rename says where the
         // value should end up; if it does not arrive, that is loss, and letting the rename double
         // as a drop would explain away the exact failure this is here to catch.
         case "renameField":
-          d.renamedFields.push({ entity: step.entity, from: step.from, to: step.to });
+          d.renamedFields.push({ entity: resolve(step.entity), from: step.from, to: step.to });
           break;
         case "changeType":
-          add(d.changedFields, step.entity, step.field);
+          add(d.changedFields, resolve(step.entity), step.field);
           break;
         // Steps that only ADD — a new field, a relation, a default for rows that lacked one. They
         // cannot lose anything that was there, so nothing here needs to know about them.
@@ -213,17 +249,18 @@ function findOrphanedFields(
   declared: Declared,
 ): DataSafetyReport["orphanedFields"] {
   const renamed = new Set(declared.renamedFields.map((r) => `${r.entity}.${r.from}`));
-  const entityNow = new Map(declared.renamedEntities.map((r) => [r.from, r.to]));
   const out: DataSafetyReport["orphanedFields"] = [];
 
   for (const [entity, def] of Object.entries(beforeDef.entities ?? {})) {
-    const nowCalled = entityNow.get(entity) ?? entity;
+    // The whole chain, not one hop: `A→B→C` left the rows under `C`, and looking under `B` would
+    // find nothing and report the entity as holding no values at all.
+    const nowCalled = declared.resolve(entity);
     const stillDeclared = afterDef.entities?.[nowCalled]?.fields ?? {};
     const rows = after.get(nowCalled);
     if (!rows?.size) continue;
 
     for (const field of Object.keys(def.fields ?? {})) {
-      if (field in stillDeclared || renamed.has(`${entity}.${field}`)) continue;
+      if (field in stillDeclared || renamed.has(`${nowCalled}.${field}`)) continue;
       const records = [...rows.values()].filter((r) => r[field] !== undefined).length;
       if (records) out.push({ entity: nowCalled, field, records });
     }
@@ -282,6 +319,9 @@ export function compareData(input: {
   };
 
   for (const [entity, byId] of before) {
+    // What the migration steps call this entity, which is not what the snapshot calls it once a
+    // `renameEntity` has run. Every declared step is indexed under this name — see `resolverFor`.
+    const declaredAs = declared.resolve(entity);
     // A field counts as surviving if ANY record still carries it; a per-record disappearance is
     // already reported as a value change, and "the whole field is gone" is a different finding.
     const survivingFields = new Set<string>();
@@ -295,7 +335,7 @@ export function compareData(input: {
         continue;
       }
       for (const [field, value] of Object.entries(fields)) {
-        const renamedTo = renameFrom.get(`${entity}.${field}`);
+        const renamedTo = renameFrom.get(`${declaredAs}.${field}`);
         const nextKey = renamedTo ?? field;
         const next = found.fields[nextKey];
         if (next !== undefined) survivingFields.add(field);
@@ -307,23 +347,23 @@ export function compareData(input: {
           field,
           before: value,
           ...(next === undefined ? {} : { after: next }),
-          explained: explain(entity, field, nextKey, next),
+          explained: explain(declaredAs, field, nextKey, next),
         });
       }
     }
 
     for (const field of priorFields) {
       if (survivingFields.has(field)) continue;
-      const renamedTo = renameFrom.get(`${entity}.${field}`);
+      const renamedTo = renameFrom.get(`${declaredAs}.${field}`);
       removedFields.push({
         entity,
         field,
         // The FIELD going away is explained by a declared rename even when the value failed to
         // arrive; that loss is reported on its own, above, and is not softened by this.
         explained: renamedTo
-          ? `renameField ${entity}.${field}→${renamedTo}`
-          : declared.droppedFields.get(entity)?.has(field)
-            ? `dropField ${entity}.${field}`
+          ? `renameField ${declaredAs}.${field}→${renamedTo}`
+          : declared.droppedFields.get(declaredAs)?.has(field)
+            ? `dropField ${declaredAs}.${field}`
             : null,
       });
     }

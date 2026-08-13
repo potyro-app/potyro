@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { parseCliOutput } from "../src/cli-backend.js";
+import { ClaudeCliBackend, parseCliOutput } from "../src/cli-backend.js";
 import { claudeCliAvailable } from "../src/cli-available.js";
 
 // Reading the cost off `claude -p`.
@@ -56,6 +57,27 @@ describe("parseCliOutput", () => {
       /Credit balance is too low/,
     );
   });
+});
+
+describe("a CLI that exits before it reads the prompt", () => {
+  // The prompt for a modification carries the whole app source, so it is well past the 64 KB pipe
+  // buffer and the write is still in flight when a CLI that rejects a flag — or fails to auth —
+  // exits. An unhandled EPIPE on `child.stdin` is an UNCAUGHT EXCEPTION rather than a rejected
+  // promise: nothing up the stack can catch it, so it takes the whole run down and the report is
+  // never written for the chains already finished and already paid for.
+  //
+  // Without the `stdin` error handler this test does not fail, it KILLS the vitest worker.
+  it.runIf(existsSync("/bin/false"))("fails the call instead of crashing the process", async () => {
+    const backend = new ClaudeCliBackend({ bin: "/bin/false", timeoutMs: 20_000 });
+    await expect(
+      backend.meteredCall({
+        kind: "modify",
+        source: "x".repeat(2 * 1024 * 1024),
+        instruction: "add a tag",
+        prompt: { id: "notes", description: "Somewhere to keep notes." },
+      }),
+    ).rejects.toThrow(/exited 1/);
+  }, 30_000);
 });
 
 describe("claudeCliAvailable", () => {

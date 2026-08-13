@@ -16,6 +16,17 @@ const PROD_PORT = 4190;
 const shellVite = (extra: string, port: number) =>
   `pnpm --filter @karta/shell exec vite ${extra} --port ${port} --strictPort`;
 
+/** `KARTA_PARALLEL`, or the one worker this suite defaults to. See `workers` below. */
+function workerCount(): number {
+  const raw = process.env.KARTA_PARALLEL;
+  if (raw === undefined || raw === "") return 1;
+  const n = Number(raw);
+  // `Number("0")` is 0 and `Number("some")` is NaN, and a non-empty string is truthy either way —
+  // so without this a typo silently configures a suite that never runs a test.
+  if (!Number.isInteger(n) || n < 1) throw new Error(`KARTA_PARALLEL must be a positive integer, got "${raw}"`);
+  return n;
+}
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -33,7 +44,9 @@ export default defineConfig({
   // slow one: it teaches everybody to re-run until green, and a suite people re-run until green
   // cannot report a regression. `KARTA_PARALLEL=4 pnpm e2e` is there for a quick local sweep, with
   // the understanding that a failure from it needs confirming at one worker before it is believed.
-  workers: process.env.KARTA_PARALLEL ? Number(process.env.KARTA_PARALLEL) : 1,
+  // A bad value is refused rather than quietly becoming `NaN` or `0` workers, either of which turns
+  // a typo into a suite that does not run and does not say why.
+  workers: workerCount(),
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
