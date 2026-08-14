@@ -10,10 +10,10 @@ import { createWebCapabilities } from "@karta/capabilities";
 import { validateDefinition } from "./validate-app.js";
 import {
   createClaudeBackend,
+  createOpenRouterBackend,
   createWebLLMBackend,
   createGeminiNanoBackend,
   hasBuiltInAI,
-  WEBLLM_MODELS,
   SYSTEM_PROMPT,
   buildUserMessage,
   buildRepairMessage,
@@ -32,6 +32,8 @@ import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
 import { History } from "./history.js";
+import { EngineSettings } from "./engine-settings.js";
+import { DEFAULT_ENGINE_CONFIG, engineLabel, engineReady, type EngineConfig } from "./engines.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
@@ -78,7 +80,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // there is no app id to hang history on — so the steps were simply dropped and only the final
   // source survived. They accumulate here and are flushed into the app's history on save, in order.
   const [drafts, setDrafts] = useState<Array<{ source: string; note?: string }>>([]);
-  const [tab, setTab] = useState<"preview" | "source">("preview");
+  const [tab, setTab] = useState<"preview" | "source" | "history">("preview");
   /**
    * How many times a PERSON has picked a tab.
    *
@@ -92,7 +94,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
    * nothing renders from it.
    */
   const tabPicks = useRef(0);
-  const pickTab = (next: "preview" | "source"): void => {
+  const pickTab = (next: "preview" | "source" | "history"): void => {
     tabPicks.current += 1;
     setTab(next);
   };
@@ -100,17 +102,30 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [description, setDescription] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  // Which model answers, and everything it needs, as ONE value (engines.ts). Keys live here in
+  // memory for the tab's lifetime and are never persisted — they are the user's own.
+  const [engineCfg, setEngineCfg] = useState<EngineConfig>(DEFAULT_ENGINE_CONFIG);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
-  const [model, setModel] = useState("Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC");
   const [savedApps, setSavedApps] = useState<UserApp[]>(() => listUserApps());
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const [engine, setEngine] = useState<"cli" | "edge" | "builtin" | "cloud">("cli");
   const buildRef = useRef(0);
 
   const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
   const hasBuiltIn = hasBuiltInAI();
+  const engine = engineCfg.engine;
+  /** Named in the UI and in every progress line, so a request is never anonymous. */
+  const label = engineLabel(engineCfg);
+  const ready = engineReady(engineCfg);
+  /**
+   * Is there an app to modify, as opposed to an empty page to fill?
+   *
+   * Derived, not tracked: `currentId` means one was opened from My Apps, and a source that has moved
+   * off STARTER means one was generated or hand-written. New draft restores both, so the single
+   * action goes back to "Create" exactly when the page is genuinely empty again.
+   */
+  const hasApp = currentId !== null || source !== STARTER;
   const canDescribe = description.trim().length > 0 && !genBusy;
   const appName = preview?.composed.runtime.definition.name;
 
@@ -206,9 +221,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // `system` is sent SEPARATELY so the dev endpoint passes it via --system-prompt-file, replacing
   // Claude Code's own agent prompt. Folding the contract into the user text left that prompt (and
   // its tools) active — a different setup from the one the eval harness measures.
-  const runCli = async (prompt: string): Promise<string> => {
+  const runCli = async (prompt: string, verb = "Generating"): Promise<string> => {
     const source = extractSource(
-      await generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Generating… ${secs}s`) }),
+      await generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`${verb} via ${label}… ${secs}s`) }),
     );
     // A reply that is not an app must say so here. Passing prose to the bundler reports a syntax
     // error in the middle of an English sentence, which reads as a broken tool rather than a model
@@ -219,58 +234,97 @@ export function Studio({ onClose }: { onClose: () => void }) {
     return source;
   };
 
-  const generateCli = (): Promise<void> => {
-    setEngine("cli");
-    return withGen("claude -p", () => runCli(buildUserMessage({ id: "studio", description })), true, description.trim() || undefined);
-  };
-
   // 2) On-device via WebLLM (WebGPU) — offline once the model is cached.
   const edgeBackend = () =>
-    createWebLLMBackend({ model, initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…") });
-  const generateEdge = (): Promise<void> => {
-    setEngine("edge");
-    return withGen("On-device", async () => (await edgeBackend()).generate({ id: "studio", description }), true, description.trim() || undefined);
-  };
-
-  // 2b) Chrome built-in AI (Gemini Nano) — on-device, no download.
-  const generateBuiltIn = (): Promise<void> => {
-    setEngine("builtin");
-    return withGen("Built-in", async () => {
-      setProgress("Preparing Chrome built-in model…");
-      return (await createGeminiNanoBackend()).generate({ id: "studio", description });
+    createWebLLMBackend({
+      model: engineCfg.edgeModel,
+      initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
     });
+
+  // 3) Cloud with the user's own API key (in memory only): Anthropic direct, or any model OpenRouter
+  // serves. Both speak the same ModelBackend contract and get the same generator prompt, so changing
+  // engine changes the model and nothing else.
+  const cloudBackend = () =>
+    engineCfg.engine === "openrouter"
+      ? createOpenRouterBackend({ apiKey: engineCfg.openrouterKey, model: engineCfg.openrouterModel })
+      : createClaudeBackend({ apiKey: engineCfg.anthropicKey, dangerouslyAllowBrowser: true });
+
+  /**
+   * A cloud generation is one long POST that produces nothing until it is done — and OpenRouter
+   * holds the connection open meanwhile, padding it with whitespace. With no visible clock that is
+   * indistinguishable from a hang, which is exactly how the first OpenRouter runs read: a request
+   * receiving "endless empty data" for a minute. The `claude -p` path already ticks; this gives the
+   * cloud path the same heartbeat.
+   */
+  const ticking = async <T,>(text: string, work: () => Promise<T>): Promise<T> => {
+    const started = Date.now();
+    setProgress(`${text}… 0s`);
+    const timer = setInterval(() => setProgress(`${text}… ${Math.round((Date.now() - started) / 1000)}s`), 1000);
+    try {
+      return await work();
+    } finally {
+      clearInterval(timer);
+    }
   };
 
-  // 3) Cloud with the user's own API key (in-memory only).
-  const generateCloud = (): Promise<void> => {
-    setEngine("cloud");
-    return withGen("Cloud", async () => (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).generate({ id: "studio", description }), true, description.trim() || undefined);
-  };
+  /** Tick the clock ourselves — unless the engine already reports its own elapsed time (claude -p). */
+  const withTick = <T,>(verb: string, work: () => Promise<T>): Promise<T> =>
+    engine === "cli" ? work() : ticking(`${verb} via ${label}`, work);
+
+  /**
+   * ONE create path. Which model answers is `engineCfg`, chosen in the settings modal — it is no
+   * longer implied by which of four buttons you pressed, which is what made an edit reach a
+   * different engine than the one on screen.
+   */
+  const create = (): Promise<void> =>
+    withGen(
+      label,
+      () =>
+        withTick("Generating", async () => {
+          if (engine === "cli") return runCli(buildUserMessage({ id: "studio", description }));
+          if (engine === "edge") return (await edgeBackend()).generate({ id: "studio", description });
+          if (engine === "builtin") return (await createGeminiNanoBackend()).generate({ id: "studio", description });
+          return (await cloudBackend()).generate({ id: "studio", description });
+        }),
+      true,
+      description.trim() || undefined,
+    );
 
   // Repair a source given a list of problems (validator issues or an error), via the current engine.
-  const repairSource = async (src: string, issues: string[]): Promise<string> => {
-    const p = { id: "studio", description };
-    if (engine === "cloud") return (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).repair(src, issues, p);
-    if (engine === "edge") return (await edgeBackend()).repair(src, issues, p);
-    if (engine === "builtin") return (await createGeminiNanoBackend()).repair(src, issues, p);
-    const prompt = [SYSTEM_PROMPT, "", buildUserMessage(p), "", "The previous attempt:", "```ts", src, "```", "", buildRepairMessage(issues)].join("\n");
-    return runCli(prompt);
-  };
+  const repairSource = (src: string, issues: string[]): Promise<string> =>
+    withTick("Fixing", async () => {
+      const p = { id: "studio", description };
+      if (engine === "edge") return (await edgeBackend()).repair(src, issues, p);
+      if (engine === "builtin") return (await createGeminiNanoBackend()).repair(src, issues, p);
+      if (engine === "cli") {
+        const prompt = [SYSTEM_PROMPT, "", buildUserMessage(p), "", "The previous attempt:", "```ts", src, "```", "", buildRepairMessage(issues)].join("\n");
+        return runCli(prompt, "Fixing");
+      }
+      return (await cloudBackend()).repair(src, issues, p);
+    });
 
   // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
-  // apply, and the model returns the whole updated file — keeping the rest intact. Uses the same
-  // engine you last generated with (defaults to claude -p).
+  // apply, and the model returns the whole updated file — keeping the rest intact. Same engine as
+  // create, because there is now only one.
   const modify = (): Promise<void> => {
     const instruction = description.trim();
     if (!instruction || !preview) return Promise.resolve();
     const p = { id: "studio", description: instruction };
-    return withGen("Modify", async () => {
-      if (engine === "cloud") return (await createClaudeBackend({ apiKey, dangerouslyAllowBrowser: true })).modify(source, instruction, p);
-      if (engine === "edge") return (await edgeBackend()).modify(source, instruction, p);
-      if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instruction, p);
-      const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instruction)].join("\n");
-      return runCli(prompt);
-    }, true, instruction);
+    return withGen(
+      label,
+      () =>
+        withTick("Modifying", async () => {
+          if (engine === "edge") return (await edgeBackend()).modify(source, instruction, p);
+          if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instruction, p);
+          if (engine === "cli") {
+            const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instruction)].join("\n");
+            return runCli(prompt, "Modifying");
+          }
+          return (await cloudBackend()).modify(source, instruction, p);
+        }),
+      true,
+      instruction,
+    );
   };
 
   const fixWithAI = (): Promise<void> => {
@@ -340,9 +394,25 @@ export function Studio({ onClose }: { onClose: () => void }) {
     void buildPreview(restored, app.id);
   };
 
-  const newDraft = (): void => {
+  /**
+   * Start over. This throws away the current app AND the session's edit chain, and a draft that was
+   * never saved cannot be recovered from history — so it asks first. Nothing to lose (an untouched
+   * starter) means nothing to confirm.
+   */
+  const newDraft = async (): Promise<void> => {
+    if (
+      hasApp &&
+      !(await shellDialogs.confirm(
+        currentId
+          ? "Start a new draft?\n\nThe Studio goes back to the starter app. Saved changes stay in My Apps, but anything unsaved here is lost."
+          : "Start a new draft?\n\nThis app has never been saved — starting over discards it, and it cannot be recovered.",
+      ))
+    ) {
+      return;
+    }
     setCurrentId(null);
     setDescription("");
+    setDrafts([]);
     setSource(STARTER);
     void buildPreview(STARTER, null);
   };
@@ -372,64 +442,37 @@ export function Studio({ onClose }: { onClose: () => void }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <div className="k-gen-sources">
-            <button type="button" className="k-add k-primary-action" disabled={!canDescribe} onClick={() => void generateCli()}>
-              {genBusy ? "Generating…" : "Generate (claude -p)"}
+          <div className="k-gen-run">
+            {/* ONE action. Which model answers lives behind the engine button, not in this row —
+                four generate buttons meant the engine was whatever you last pressed, which is how
+                an edit could reach a different model than the one on screen. */}
+            <button
+              type="button"
+              className="k-add k-primary-action k-gen-go"
+              disabled={!canDescribe || !ready}
+              title={
+                ready
+                  ? `${hasApp ? "Send the whole current source and your change" : "Write a new app"} to ${label}.`
+                  : `${label} needs an API key — open Model settings.`
+              }
+              onClick={() => void (hasApp ? modify() : create())}
+            >
+              {genBusy ? "Working…" : hasApp ? "✎ Modify the app" : "✨ Create the app"}
             </button>
-            <span className="k-gen-edge">
-              <button
-                type="button"
-                className="k-add"
-                disabled={!canDescribe || !hasWebGPU}
-                title={hasWebGPU ? "Runs a small model on-device (WebGPU)" : "Needs a WebGPU browser"}
-                onClick={() => void generateEdge()}
-              >
-                On-device
-              </button>
-              <select
-                className="k-input k-gen-model"
-                aria-label="On-device model"
-                value={model}
-                disabled={!hasWebGPU || genBusy}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {WEBLLM_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>{m.label} · {m.download}</option>
-                ))}
-              </select>
-            </span>
-            {hasBuiltIn ? (
-              <button type="button" className="k-add" disabled={!canDescribe} title="Chrome's built-in Gemini Nano — on-device, no download" onClick={() => void generateBuiltIn()}>
-                Built-in (Chrome)
-              </button>
-            ) : null}
-          </div>
-          <div className="k-gen-cloud">
-            <input
-              className="k-input"
-              aria-label="Anthropic API key"
-              type="password"
-              placeholder="or paste sk-ant-… for cloud"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-            <button type="button" className="k-add" disabled={!canDescribe || !apiKey} onClick={() => void generateCloud()}>
-              Cloud
+            <button
+              type="button"
+              className="k-add k-gen-engine"
+              aria-label="Model settings"
+              title="Choose which model writes and edits your app"
+              onClick={() => setSettingsOpen(true)}
+            >
+              ⚙ {label}
             </button>
           </div>
-          {preview ? (
-            <div className="k-gen-modify">
-              <button
-                type="button"
-                className="k-add k-primary-action"
-                disabled={!canDescribe}
-                title="Adapt the current app with the agent (keeps the rest; uses the engine you last generated with)"
-                onClick={() => void modify()}
-              >
-                {genBusy ? "Working…" : "✎ Modify this app"}
-              </button>
-              <span className="k-muted">edits the running app</span>
-            </div>
+          {!ready ? (
+            <p className="k-muted">
+              {label} needs an API key — set one in <strong>Model settings</strong>.
+            </p>
           ) : null}
           {progress ? <p className="k-muted k-studio-progress">{progress}</p> : null}
 
@@ -437,17 +480,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
             <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void save()}>
               {currentId ? "Save changes" : "Save to My Apps"}
             </button>
-            <button type="button" className="k-add" onClick={newDraft}>New draft</button>
-            {currentId ? (
-              <button
-                type="button"
-                className="k-add"
-                title="History — review and roll back saved changes"
-                onClick={() => setHistoryFor(savedApps.find((a) => a.id === currentId) ?? null)}
-              >
-                ⟲ History
-              </button>
-            ) : null}
+            <button type="button" className="k-add" onClick={() => void newDraft()}>New draft</button>
           </div>
 
           <h4 className="k-myapps-title">My Apps</h4>
@@ -476,14 +509,28 @@ export function Studio({ onClose }: { onClose: () => void }) {
             <button type="button" role="tab" aria-selected={tab === "source"} className="k-tab" data-active={tab === "source"} onClick={() => pickTab("source")}>
               Source
             </button>
+            {/* History at the same altitude as the app itself. It used to be a button in the save
+                bar that only appeared for an app already saved — so the record of what you had just
+                asked for was unreachable precisely while you were still asking. */}
+            <button type="button" role="tab" aria-selected={tab === "history"} className="k-tab" data-active={tab === "history"} onClick={() => pickTab("history")}>
+              History
+            </button>
             <span className="k-studio-tabs-spacer" />
             {tab === "source" ? (
               <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void buildPreview(source, currentId)}>
                 {busy ? "Building…" : "Run ▶"}
               </button>
             ) : null}
-            {error && (apiKey || true) ? (
-              <button type="button" className="k-add" disabled={genBusy} onClick={() => void fixWithAI()}>
+            {/* `error && (apiKey || true)` — the second half was always true, a leftover from when
+                this needed a cloud key. The real condition is whether the chosen engine can run. */}
+            {error ? (
+              <button
+                type="button"
+                className="k-add"
+                disabled={genBusy || !ready}
+                title={ready ? `Ask ${label} to fix this` : `${label} needs an API key — open Model settings`}
+                onClick={() => void fixWithAI()}
+              >
                 {genBusy ? "Fixing…" : "Fix with AI"}
               </button>
             ) : null}
@@ -499,14 +546,72 @@ export function Studio({ onClose }: { onClose: () => void }) {
                 <App key={preview.build} runtime={preview.composed.runtime} provenance={preview.provenance} toaster={preview.toaster} picker={preview.picker} />
               ) : null}
             </div>
-          ) : (
+          ) : tab === "source" ? (
             <CodeEditor className="k-studio-source" label="App source" value={source} onChange={setSource} />
+          ) : (
+            <div className="k-studio-history" aria-label="App history">
+              {/* This session first. Until an app is saved it has no version log, so the prompts you
+                  just typed lived only in `drafts` and were invisible — the record started existing
+                  at exactly the moment you no longer needed it most. */}
+              {drafts.length ? (
+                <section className="k-session">
+                  <h3 className="k-field-label">This session · not saved yet</h3>
+                  <ol className="k-session-list">
+                    {[...drafts].reverse().map((d, i) => (
+                      <li key={drafts.length - i}>
+                        <span className="k-history-note">{d.note ?? "(no prompt recorded)"}</span>
+                        <button
+                          type="button"
+                          className="k-add"
+                          title="Put this version back in the editor"
+                          onClick={() => {
+                            setSource(d.source);
+                            void buildPreview(d.source, currentId);
+                            pickTab("preview");
+                          }}
+                        >
+                          Restore
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ) : null}
+              {currentId ? (
+                <History
+                  appId={currentId}
+                  appName={appName ?? "this app"}
+                  embedded
+                  onClose={() => pickTab("preview")}
+                  onRestored={(restored) => {
+                    setSource(restored);
+                    setSavedApps(listUserApps());
+                    void buildPreview(restored, currentId);
+                    pickTab("preview");
+                  }}
+                />
+              ) : drafts.length ? null : (
+                <p className="k-muted">
+                  Nothing yet. Create or modify an app and every step shows up here — the prompt you
+                  typed, and the way back to it.
+                </p>
+              )}
+            </div>
           )}
         </section>
       </div>
 
       {historyFor ? (
         <History appId={historyFor.id} appName={historyFor.name} onClose={() => setHistoryFor(null)} onRestored={onRestored} />
+      ) : null}
+      {settingsOpen ? (
+        <EngineSettings
+          config={engineCfg}
+          onChange={setEngineCfg}
+          onClose={() => setSettingsOpen(false)}
+          hasWebGPU={hasWebGPU}
+          hasBuiltIn={hasBuiltIn}
+        />
       ) : null}
     </div>
   );

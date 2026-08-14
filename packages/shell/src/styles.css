@@ -1119,20 +1119,32 @@ button {
   resize: vertical;
   line-height: 1.5;
 }
-.k-gen-sources {
+/* One action, one engine. The primary button carries the weight; the engine sits beside it as a
+   quieter chip that still always names the model — an anonymous request is what made "is this even
+   using OpenRouter?" unanswerable. */
+.k-gen-run {
   display: flex;
   gap: 0.5rem;
+  align-items: stretch;
   flex-wrap: wrap;
-  align-items: center;
 }
-.k-gen-cloud {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+.k-gen-go {
+  flex: 1 1 12rem;
+  font-weight: 600;
 }
-.k-gen-cloud .k-input {
-  flex: 1 1 auto;
+.k-gen-engine {
+  flex: 0 1 auto;
+  max-width: 100%;
+  font-size: 0.8rem;
+  color: var(--muted, #6b6b6b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.k-gen-engine:hover {
+  color: inherit;
+}
+
 .k-gen-modify {
   display: flex;
   align-items: center;
@@ -2368,4 +2380,110 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* --- Model settings ------------------------------------------------------------------------- */
+.k-engines {
+  max-width: 34rem;
+  width: 100%;
+  /* The list grows with the number of engines; the modal must not grow past the viewport and clip
+     its own footer — so the list scrolls and the head/foot stay put. */
+  max-height: min(85vh, 48rem);
+  display: flex;
+  flex-direction: column;
+}
+.k-engines .k-engine-list {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.k-modal-head,
+.k-modal-foot {
+  flex: 0 0 auto;
+}
+.k-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.k-modal-title {
+  margin: 0 0 0.15rem;
+  font-size: 1.05rem;
+}
+.k-modal-foot {
+  border-top: 1px dashed var(--line);
+  padding-top: 0.6rem;
+  margin-top: 0.4rem;
+}
+.k-engine-group {
+  margin-top: 0.9rem;
+}
+.k-engine-row {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  margin-top: 0.4rem;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.k-engine-row[data-active="true"] {
+  border-color: currentColor;
+  background: color-mix(in oklab, var(--paper) 92%, currentColor);
+}
+.k-engine-pick {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  align-items: baseline;
+  cursor: pointer;
+}
+.k-engine-pick input {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.k-engine-name {
+  font-weight: 600;
+}
+.k-engine-why {
+  font-size: 0.75rem;
+}
+.k-engine-blurb {
+  grid-column: 2;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.k-engine-row .k-input,
+.k-engine-fields {
+  margin-top: 0.5rem;
+}
+.k-engine-fields {
+  display: grid;
+  gap: 0.4rem;
+}
+.k-engine-fields .k-input {
+  margin-top: 0;
+}
+
+/* --- History tab ---------------------------------------------------------------------------- */
+.k-studio-history {
+  overflow: auto;
+  padding: 1rem 1.25rem;
+}
+.k-history-embedded {
+  padding: 0;
+}
+.k-session-list {
+  list-style: none;
+  margin: 0.4rem 0 1.2rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-session-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-left: 2px solid var(--line);
+  padding: 0.3rem 0 0.3rem 0.7rem;
 }
