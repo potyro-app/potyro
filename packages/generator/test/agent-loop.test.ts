@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAgentLoop, type LoopDeps } from "../src/agent/loop.js";
+import { runAgentLoop, type LoopDeps, type LoopStep } from "../src/agent/loop.js";
 import type { AgentTool } from "../src/agent/tools.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
@@ -126,6 +126,26 @@ describe("runAgentLoop", () => {
 
     expect(out.kind).toBe("exhausted");
     expect((out as { reason: string }).reason).toMatch(/3 steps/);
+  });
+
+  // Honest reporting is the whole point of this loop; "gave up" alone hides WHICH of three very
+  // different failures happened. A watcher must be able to tell them apart.
+  it("breaks down why it gave up: candidates that failed replay vs replies that were not an app", async () => {
+    const notAppTurn = { content: "I dunno, seems fine to me." };
+    const candidateTurn = { content: "```ts\n" + APP + "\n```" };
+    const { engine } = scripted([notAppTurn, notAppTurn, candidateTurn]);
+    const verify = vi.fn(async () => ({ passed: false, detail: "still broken" }));
+    const steps: LoopStep[] = [];
+
+    const out = await runAgentLoop(base({ engine, verify, maxSteps: 3, onStep: (s) => steps.push(s) }));
+
+    expect(out.kind).toBe("exhausted");
+    const reason = (out as { reason: string }).reason;
+    expect(reason).toMatch(/3 steps/);
+    expect(reason).toContain("1 candidate");
+    expect(reason).toContain("2 replies");
+    // A person watching `onStep` sees the unusable replies flagged as such, not just "thinking".
+    expect(steps.filter((s) => s.kind === "unusable")).toHaveLength(2);
   });
 
   it("stops between steps when the signal aborts, and says it was stopped", async () => {

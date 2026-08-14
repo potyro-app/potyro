@@ -33,7 +33,8 @@ export type LoopOutcome =
 export type LoopStep =
   | { kind: "thinking" }
   | { kind: "tool"; name: string; ok: boolean; detail: string }
-  | { kind: "candidate"; passed: boolean; detail: string };
+  | { kind: "candidate"; passed: boolean; detail: string }
+  | { kind: "unusable"; detail: string };
 
 export interface LoopDeps {
   engine: ChatEngine;
@@ -68,6 +69,11 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     { role: "user", content: deps.task },
   ];
   let lastAttempt: string | undefined;
+  // Counted so `exhausted.reason` can say WHAT went wrong, not just that it did — a watcher on
+  // `onStep` otherwise sees only "thinking" repeated and a person debugging the agent (not the
+  // app) has nothing to go on.
+  let failedCandidates = 0;
+  let unusableReplies = 0;
 
   const stopped = (): LoopOutcome => ({ kind: "stopped", ...(lastAttempt ? { lastAttempt } : {}) });
 
@@ -119,6 +125,8 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
 
     const candidate = extractSource(text);
     if (!looksLikeApp(candidate)) {
+      unusableReplies += 1;
+      deps.onStep?.({ kind: "unusable", detail: text.trim() || "(empty reply)" });
       messages.push({ role: "assistant", content: text });
       messages.push({
         role: "user",
@@ -135,6 +143,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
       // is reachable only after `deps.verify` — the user's own recorded case, replayed — passed.
       return { kind: "fix", source: candidate, rationale: text.split("```")[0]!.trim() };
     }
+    failedCandidates += 1;
     // The one sentence the model never hears today.
     messages.push({ role: "assistant", content: text });
     messages.push({
@@ -147,5 +156,9 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   // right as the budget runs out) must still read as "stopped", not "exhausted" — a late stop is
   // exactly when a user is most likely to hit the button.
   if (deps.signal?.aborted) return stopped();
-  return { kind: "exhausted", reason: `gave up after ${maxSteps} steps`, ...(lastAttempt ? { lastAttempt } : {}) };
+  return {
+    kind: "exhausted",
+    reason: `gave up after ${maxSteps} steps (${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} all failed replay, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not an app)`,
+    ...(lastAttempt ? { lastAttempt } : {}),
+  };
 }
