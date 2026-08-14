@@ -3,7 +3,7 @@
 // Storage mirrors app-history.ts exactly — its own durable Store namespace, opened lazily, with a
 // failed handle dropped rather than cached so a store that was unavailable at boot is retried on the
 // next save. localStorage is already carrying every app's current source and must not carry this
-// too: there is one case per bug anyone ever reports, kept forever.
+// too: there is one case per bug anyone ever reports.
 
 import { openStore } from "./open-store.js";
 import type { Store } from "@karta/store";
@@ -11,6 +11,12 @@ import type { Case, CaseStep } from "@karta/runtime";
 
 const NAMESPACE = "app-cases";
 const ENTITY = "case";
+
+/** A ceiling, not a target — mirrors app-diagnoses.ts's MAX_DIAGNOSES: a case is filed at roughly
+ *  the same cadence as a diagnosis (once per report), not the much higher rate app-history sees
+ *  from routine edits, so it gets the same cap rather than app-history's larger one. Oldest go
+ *  first. */
+const MAX_CASES = 50;
 
 let handle: Promise<Store> | null = null;
 
@@ -74,9 +80,38 @@ function toCase(record: Record<string, unknown>): Case | null {
   return { id, appId, title: title ?? "", steps, createdAt: createdAt ?? new Date(0).toISOString() };
 }
 
-/** Save a case. Store record id is the case's own id, so a re-save overwrites rather than duplicates. */
+/**
+ * Whether a case captured anything replay can act on. A case built from nothing but `expect`
+ * notes (or with no steps at all) has no `open`/`action` step, so `replayCase` produces an empty
+ * outcomes list — and an empty list is vacuously "everything passed" (see replay.ts's
+ * `replayPassed`). Saving a case like that would persist a report that reads clean forever despite
+ * nothing ever having been recorded. Callers use this to decide whether a stopped recording is
+ * worth keeping at all.
+ */
+export function hasRecordedActivity(c: Case): boolean {
+  return c.steps.some((s) => s.kind === "open" || s.kind === "action");
+}
+
+/**
+ * Save a case. Store record id is the case's own id, so a re-save overwrites rather than
+ * duplicates. Never throws — mirrors `recordVersion` (app-history.ts): losing the case must not
+ * cost the user the recording they just captured. The report shown right after stopping is built
+ * from the in-memory `Case`, not read back from the store, so it is unaffected either way; only
+ * the case's presence in History later is at risk, and that is a warning, not a thrown error.
+ */
 export async function saveCase(c: Case): Promise<void> {
-  await (await store()).insert(ENTITY, { ...c });
+  try {
+    const s = await store();
+    await s.insert(ENTITY, { ...c });
+
+    const forApp = (await s.all(ENTITY))
+      .map((r) => toCase(r as Record<string, unknown>))
+      .filter((x): x is Case => x !== null && x.appId === c.appId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
+    for (const stale of forApp.slice(MAX_CASES)) await s.delete(ENTITY, stale.id);
+  } catch (e) {
+    console.warn("[karta] could not save case:", e);
+  }
 }
 
 /** Every case recorded against one app, newest first. Empty when the store is unavailable. */
@@ -105,5 +140,21 @@ export async function deleteCase(appId: string, id: string): Promise<void> {
   for (const r of await s.all(ENTITY)) {
     const c = toCase(r as Record<string, unknown>);
     if (c && c.appId === appId && c.id === id) await s.delete(ENTITY, (r as { id: string }).id);
+  }
+}
+
+/** Forget an app's cases — called when the app itself is deleted, alongside clearHistory and
+ *  clearDiagnoses (user-apps.ts's `removeUserApp`). App ids are name slugs, so a deleted app's id
+ *  can be reused by an unrelated app created later; without this, that new app would inherit the
+ *  dead app's reported cases. */
+export async function clearCases(appId: string): Promise<void> {
+  try {
+    const s = await store();
+    for (const r of await s.all(ENTITY)) {
+      const c = toCase(r as Record<string, unknown>);
+      if (c && c.appId === appId) await s.delete(ENTITY, (r as { id: string }).id);
+    }
+  } catch (e) {
+    console.warn("[karta] could not clear app cases:", e);
   }
 }
