@@ -7,6 +7,9 @@
 import { useEffect, useRef, useState } from "react";
 import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
+import { replayCase, type Case, type CaseStep, type ReplayReport, type ReplayTarget } from "@karta/runtime";
+import { listCases } from "./app-cases.js";
+import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
 import {
   createClaudeBackend,
@@ -111,6 +114,24 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const [savedApps, setSavedApps] = useState<UserApp[]>(() => listUserApps());
   const [currentId, setCurrentId] = useState<string | null>(null);
   const buildRef = useRef(0);
+
+  // Cases reported against the currently open saved app — reloaded whenever it changes, since the
+  // whole point is to see what someone reported without leaving the Studio to go look for it.
+  const [cases, setCases] = useState<Case[]>([]);
+  const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
+  useEffect(() => {
+    if (!currentId) {
+      setCases([]);
+      return;
+    }
+    let alive = true;
+    void listCases(currentId).then((c) => {
+      if (alive) setCases(c);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [currentId]);
 
   const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
   const hasBuiltIn = hasBuiltInAI();
@@ -381,6 +402,28 @@ export function Studio({ onClose }: { onClose: () => void }) {
     if (currentId === app.id) setCurrentId(null);
   };
 
+  /** What a case reads as in a one-line list: its own title, else the note the person wrote. */
+  const caseLabel = (c: Case): string => {
+    if (c.title) return c.title;
+    const note = c.steps.find((s): s is Extract<CaseStep, { kind: "expect" }> => s.kind === "expect")?.note;
+    return note ?? c.id;
+  };
+
+  /**
+   * Replay against the OPEN preview's runtime — the same live data the case's steps refer to, read
+   * only (no `runAction`): see App.tsx's `onStopRecording` for why replaying an action step must
+   * never be wired to data someone is actively looking at.
+   */
+  const replayStudioCase = async (c: Case): Promise<void> => {
+    if (!preview) return;
+    const runtime = preview.composed.runtime;
+    const target: ReplayTarget = {
+      definition: runtime.definition,
+      query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,
+    };
+    setCaseReport(await replayCase(target, c));
+  };
+
   // Reviewing / rolling back a saved app's versions from the Studio. A restore lands in the editor
   // and re-runs the preview, so you can keep working from the version you just brought back.
   const [historyFor, setHistoryFor] = useState<UserApp | null>(null);
@@ -550,6 +593,29 @@ export function Studio({ onClose }: { onClose: () => void }) {
             <CodeEditor className="k-studio-source" label="App source" value={source} onChange={setSource} />
           ) : (
             <div className="k-studio-history" aria-label="App history">
+              {/* What people reported, above the session's own log — a case is evidence someone
+                  handed you, not a step you took, so it reads first. */}
+              {currentId && cases.length ? (
+                <section className="k-cases-section">
+                  <h3 className="k-field-label">Reported problems</h3>
+                  <ul className="k-cases">
+                    {cases.map((c) => (
+                      <li key={c.id}>
+                        <span className="k-case-title">{caseLabel(c)}</span>
+                        <button
+                          type="button"
+                          className="k-add"
+                          disabled={!preview}
+                          title={preview ? "Replay this path against the running preview" : "Open the preview first"}
+                          onClick={() => void replayStudioCase(c)}
+                        >
+                          Replay
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {/* This session first. Until an app is saved it has no version log, so the prompts you
                   just typed lived only in `drafts` and were invisible — the record started existing
                   at exactly the moment you no longer needed it most. */}
@@ -604,6 +670,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
       {historyFor ? (
         <History appId={historyFor.id} appName={historyFor.name} onClose={() => setHistoryFor(null)} onRestored={onRestored} />
       ) : null}
+      {caseReport ? <CaseReport report={caseReport} onClose={() => setCaseReport(null)} /> : null}
       {settingsOpen ? (
         <EngineSettings
           config={engineCfg}

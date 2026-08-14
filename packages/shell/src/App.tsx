@@ -3,12 +3,15 @@
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { ActivityItem, KartaRuntime } from "@karta/runtime";
+import { replayCase, type ActivityItem, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
+import { CaseRecorder } from "./case-recorder.js";
+import { saveCase } from "./app-cases.js";
+import { CaseReport } from "./case-report.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
@@ -167,16 +170,65 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const setParam = (key: string, value: unknown): void =>
     setParamsByPage((prev) => ({ ...prev, [pageId]: { ...(prev[pageId] ?? {}), [key]: value } }));
 
-  const navigate = (target: string, param?: Record<string, string>): void => {
+  // Holds the case being recorded, if any. One per mounted app instance — see case-recorder.ts for
+  // why `navigate` below, and not `createNavBridge`, is where it has to be wrapped.
+  const recorder = useRef(new CaseRecorder());
+  // Mirrors `recorder.current.recording` in React state: the recorder is a plain class field, so
+  // mutating it alone (start/stop) would never trigger a re-render — the "Something's wrong" button
+  // would keep showing after a click until some unrelated state change happened to repaint it.
+  const [recording, setRecording] = useState(false);
+  const [noting, setNoting] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
+
+  const navigateRaw = (target: string, param?: Record<string, string>): void => {
     setPageId(target);
     if (param) setParamsByPage((prev) => ({ ...prev, [target]: { ...(prev[target] ?? {}), ...param } }));
   };
+  // Both a tap (passed to views as `navigate`) and `ctx.navigate` (via navHost) come through here,
+  // so this is the only place that sees everything a person actually did.
+  const navigate = recorder.current.wrapNav(navigateRaw);
 
   // `ctx.navigate` from an action lands here. Bound through a ref so the binding survives re-renders
   // without re-registering on every one.
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   useEffect(() => navHost?.bind((page, param) => navigateRef.current(page, param)), [navHost]);
+
+  const startRecording = (): void => {
+    // Recording is keyed by appId (app-cases.ts filters on it), so there is nothing meaningful to
+    // record without one — the button is hidden in that case (see the header below).
+    if (!appId) return;
+    recorder.current.start(appId, "");
+    setRecording(true);
+  };
+
+  const saveNote = (): void => {
+    recorder.current.note(noteText);
+    setNoteText("");
+    setNoting(false);
+  };
+
+  /**
+   * Stop, save the case, then replay it against THIS runtime's real data and show what happened.
+   *
+   * Replay only ever reads (`query`), never `runAction` — an action step would otherwise mutate the
+   * very records the report is about, corrupting the evidence the user just handed over. Cases with
+   * an action step report "cannot run action — no action runner" rather than touching live data.
+   */
+  const onStopRecording = async (): Promise<void> => {
+    const c = recorder.current.stop();
+    setRecording(false);
+    if (!c) return;
+    await saveCase(c);
+    const target: ReplayTarget = {
+      definition: runtime.definition,
+      // `queryPage` (not `ctx.query`) so replay sees what the person actually saw — the page's own
+      // filter, sort and display bindings — not an unfiltered dump of the entity.
+      query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,
+    };
+    setCaseReport(await replayCase(target, c));
+  };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
   // Placing a point on the map opens the create form already carrying it.
@@ -550,6 +602,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
           )}
           <SyncStatus sync={sync} />
+          {appId ? (
+            <div className="k-case-controls">
+              {recording ? (
+                <>
+                  <button type="button" className="k-add" onClick={() => void onStopRecording()}>Stop recording</button>
+                  <button type="button" className="k-add" onClick={() => setNoting(true)}>Add a note</button>
+                </>
+              ) : (
+                <button type="button" className="k-add" onClick={startRecording}>
+                  Something&apos;s wrong
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="k-header-actions">
           {generator ? (
@@ -893,6 +959,28 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
+
+      {noting ? (
+        <div className="k-modal-scrim" onClick={() => setNoting(false)}>
+          <div className="k-modal k-case-note" onClick={(e) => e.stopPropagation()}>
+            <h3>What did you expect?</h3>
+            <textarea
+              className="k-input"
+              aria-label="What did you expect?"
+              rows={3}
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+            />
+            <div className="k-form-actions">
+              <button type="button" className="k-add" onClick={() => setNoting(false)}>Cancel</button>
+              <button type="button" className="k-add k-primary-action" onClick={saveNote}>Save note</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {caseReport ? <CaseReport report={caseReport} onClose={() => setCaseReport(null)} /> : null}
 
       {picker ? <Picker host={picker} /> : null}
       <Toasts toaster={toaster} />
