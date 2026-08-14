@@ -7,7 +7,7 @@
 
 import { openStore } from "./open-store.js";
 import type { Store } from "@karta/store";
-import type { Case } from "@karta/runtime";
+import type { Case, CaseStep } from "@karta/runtime";
 
 const NAMESPACE = "app-cases";
 const ENTITY = "case";
@@ -29,9 +29,39 @@ export function resetCasesStore(): void {
   handle = null;
 }
 
+/**
+ * Validate that a value matches the CaseStep union.
+ *
+ * A half-valid case is worse than no case, because replay will report a corrupt recording
+ * as a real failure of the user's app instead of detecting the corruption at load time.
+ * Every step must validate strictly: kind must be one of the three variants, and all
+ * required fields for that variant must be present and the correct type.
+ */
+function isStep(v: unknown): v is CaseStep {
+  if (typeof v !== "object" || v === null) return false;
+  const obj = v as Record<string, unknown>;
+  const kind = obj.kind;
+
+  if (kind === "open") {
+    return typeof obj.page === "string" && (obj.params === undefined || (typeof obj.params === "object" && obj.params !== null));
+  }
+  if (kind === "action") {
+    return typeof obj.entity === "string" && typeof obj.action === "string" && typeof obj.recordId === "string";
+  }
+  if (kind === "expect") {
+    return typeof obj.note === "string";
+  }
+
+  return false;
+}
+
 function toCase(record: Record<string, unknown>): Case | null {
   const { id, appId, title, steps, createdAt } = record as Partial<Case>;
   if (typeof id !== "string" || typeof appId !== "string" || !Array.isArray(steps)) return null;
+
+  // Validate every step; reject the entire case if any step is malformed
+  if (!steps.every(isStep)) return null;
+
   return { id, appId, title: title ?? "", steps, createdAt: createdAt ?? new Date(0).toISOString() };
 }
 
@@ -48,7 +78,8 @@ export async function listCases(appId: string): Promise<Case[]> {
       .map((r) => toCase(r as Record<string, unknown>))
       .filter((c): c is Case => c !== null && c.appId === appId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  } catch {
+  } catch (e) {
+    console.warn("[karta] app cases unavailable:", e);
     return [];
   }
 }
