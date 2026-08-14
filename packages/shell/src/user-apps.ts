@@ -11,6 +11,7 @@
 
 import { clearHistory, recordVersion, type VersionOrigin } from "./app-history.js";
 import { clearDiagnoses } from "./app-diagnoses.js";
+import { clearCases } from "./app-cases.js";
 
 const KEY = "karta:user-apps";
 
@@ -116,6 +117,9 @@ export async function removeUserApp(id: string): Promise<void> {
   write(read().filter((a) => a.id !== id));
   await clearHistory(id);
   await clearDiagnoses(id);
+  // Ids are name slugs (see `slug` above), so a deleted app's id can be reused by an unrelated app
+  // created later. Without this, that new app would silently inherit the dead app's cases.
+  await clearCases(id);
 }
 
 /** Promote/demote a saved app's trust. Trusted apps run directly (not in the isolate). */
