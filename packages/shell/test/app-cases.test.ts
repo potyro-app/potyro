@@ -7,23 +7,33 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryStore } from "@karta/store";
-import { newCase, addStep } from "@karta/runtime";
+import { newCase, addStep, type Case } from "@karta/runtime";
+
+// A switch the tests can flip, so the "store is unavailable" path is genuinely exercised rather
+// than asserted against a store that happens to be empty (mirrors app-diagnoses.test.ts).
+const stores = vi.hoisted(() => ({ unavailable: false }));
 
 // `openStore` is the one thing that can't run headlessly — swap in the in-memory Store the shell
 // itself falls back to in browsers without OPFS.
 vi.mock("../src/open-store.js", () => ({
   openStore: async (namespace: string) => {
+    if (stores.unavailable) throw new Error("OPFS unavailable");
     const store = new MemoryStore();
     await store.open(namespace);
     return store;
   },
 }));
 
-const { saveCase, listCases, deleteCase, resetCasesStore } = await import("../src/app-cases.js");
+const { saveCase, listCases, deleteCase, clearCases, hasRecordedActivity, resetCasesStore } = await import(
+  "../src/app-cases.js"
+);
+
+// Applies to every test in this file, not just "app cases" — each `it` gets a fresh MemoryStore
+// (the mock above hands out a new one per `openStore` call), so state must not leak across
+// `describe` blocks either.
+beforeEach(() => resetCasesStore());
 
 describe("app cases", () => {
-  beforeEach(() => resetCasesStore());
-
   it("round-trips a case for one app", async () => {
     const c = addStep(newCase("city-maps", "clicking a city"), { kind: "open", page: "all" });
     await saveCase(c);
@@ -179,5 +189,108 @@ describe("app cases", () => {
     const cases = await listCases("test-app");
     expect(cases).toHaveLength(1);
     expect(cases[0]!.id).toBe("case-valid");
+  });
+
+  it("never throws when the store is unavailable — a recording must not be lost to a broken save", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stores.unavailable = true;
+    try {
+      await expect(saveCase(newCase("city-maps", "x"))).resolves.toBeUndefined();
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      stores.unavailable = false;
+      resetCasesStore();
+      warn.mockRestore();
+    }
+  });
+
+  it("recovers once the store comes back — a boot-time failure is not permanent", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stores.unavailable = true;
+    await saveCase(newCase("city-maps", "lost", "case-lost"));
+    stores.unavailable = false;
+    warn.mockRestore();
+
+    await saveCase(newCase("city-maps", "kept", "case-kept"));
+    expect((await listCases("city-maps")).map((c) => c.id)).toEqual(["case-kept"]);
+  });
+
+  it("caps an app's cases, dropping the oldest first", async () => {
+    // MAX_CASES is 50 (mirrors app-diagnoses.ts's MAX_DIAGNOSES) — save one over the cap and check
+    // the single oldest one is the one gone, newest kept.
+    const at = (n: number): string => new Date(Date.UTC(2026, 0, 1, 0, 0, n)).toISOString();
+    for (let i = 0; i < 51; i++) {
+      await saveCase({ ...newCase("city-maps", `case ${i}`, `case-${i}`), createdAt: at(i) });
+    }
+
+    const left = await listCases("city-maps");
+    expect(left).toHaveLength(50);
+    expect(left.map((c) => c.id)).not.toContain("case-0");
+    expect(left.map((c) => c.id)).toContain("case-50");
+  });
+
+  it("does not let one app's cases push another app's cases out of its own cap", async () => {
+    const at = (n: number): string => new Date(Date.UTC(2026, 0, 1, 0, 0, n)).toISOString();
+    await saveCase({ ...newCase("recipes", "keep me", "recipe-case"), createdAt: at(0) });
+    for (let i = 0; i < 51; i++) {
+      await saveCase({ ...newCase("city-maps", `case ${i}`, `city-case-${i}`), createdAt: at(i + 1) });
+    }
+
+    expect(await listCases("recipes")).toHaveLength(1);
+    expect((await listCases("city-maps")).length).toBe(50);
+  });
+});
+
+describe("clearCases", () => {
+  it("removes only the named app's cases", async () => {
+    await saveCase(newCase("city-maps", "a", "case-a"));
+    await saveCase(newCase("recipes", "b", "case-b"));
+
+    await clearCases("city-maps");
+
+    expect(await listCases("city-maps")).toEqual([]);
+    expect(await listCases("recipes")).toHaveLength(1);
+  });
+
+  it("never throws when the store is unavailable", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stores.unavailable = true;
+    try {
+      await expect(clearCases("city-maps")).resolves.toBeUndefined();
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      stores.unavailable = false;
+      resetCasesStore();
+      warn.mockRestore();
+    }
+  });
+});
+
+describe("hasRecordedActivity", () => {
+  // Gates whether App.tsx's onStopRecording bothers saving a case at all: replayPassed treats an
+  // empty outcomes list as a pass ([].every() is vacuously true), so a case that could only ever
+  // produce an empty outcomes list must never be saved as if it were a real recording.
+  it("is false for a case with no steps at all", () => {
+    expect(hasRecordedActivity(newCase("city-maps", "x"))).toBe(false);
+  });
+
+  it("is false for a case with only expect notes — nothing for replay to run", () => {
+    const c = addStep(newCase("city-maps", "x"), { kind: "expect", note: "I expected X" });
+    expect(hasRecordedActivity(c)).toBe(false);
+  });
+
+  it("is true once an open step was recorded", () => {
+    const c = addStep(newCase("city-maps", "x"), { kind: "open", page: "all" });
+    expect(hasRecordedActivity(c)).toBe(true);
+  });
+
+  it("is true once an action step was recorded", () => {
+    const c: Case = addStep(newCase("city-maps", "x"), {
+      kind: "action",
+      entity: "item",
+      action: "complete",
+      recordId: "r1",
+    });
+    expect(hasRecordedActivity(c)).toBe(true);
   });
 });
