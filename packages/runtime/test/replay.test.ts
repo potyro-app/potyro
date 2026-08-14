@@ -98,4 +98,16 @@ describe("replayCase", () => {
     expect(replayPassed(r)).toBe(false);
     expect(r.outcomes[0]!.detail).toContain("ctx.increment is not a function");
   });
+
+  it("does not pass a case with no outcomes — [].every() is vacuously true, and nothing ran", async () => {
+    // A case with only `expect` steps (or none at all) never reaches replayCase in the shell —
+    // app-cases.ts's hasRecordedActivity is meant to stop it — but replayPassed must not rely on
+    // every caller remembering that; an empty outcomes list is the one input .every() gets wrong.
+    const c = newCase("city-maps", "nothing recorded");
+
+    const r = await replayCase(target(["all"]), c);
+
+    expect(r.outcomes).toHaveLength(0);
+    expect(replayPassed(r)).toBe(false);
+  });
 });
