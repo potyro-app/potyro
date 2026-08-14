@@ -40,13 +40,35 @@ describe("CaseRecorder", () => {
     expect(r.stop()?.steps[1]).toEqual({ kind: "expect", note: "here I expected the map to open" });
   });
 
-  it("returns null and records nothing after stop", () => {
+  it("returns null and still navigates after stop", () => {
+    const nav = vi.fn();
     const r = new CaseRecorder();
-    const wrapped = r.wrapNav(() => {});
+    const wrapped = r.wrapNav(nav);
     r.start("city-maps", "x");
     r.stop();
     wrapped("all");
 
     expect(r.stop()).toBeNull();
+    expect(nav).toHaveBeenCalledWith("all", undefined);
+  });
+
+  it("navigates in all states—not recording, recording, and stopped", () => {
+    const nav = vi.fn();
+    const r = new CaseRecorder();
+    const wrapped = r.wrapNav(nav);
+
+    // Not recording: nav is called.
+    wrapped("detail", { cityId: "c1" });
+    expect(nav).toHaveBeenNthCalledWith(1, "detail", { cityId: "c1" });
+
+    // Recording: nav is called.
+    r.start("city-maps", "test");
+    wrapped("all");
+    expect(nav).toHaveBeenNthCalledWith(2, "all", undefined);
+
+    // Stopped: nav is still called (try/catch ensures recording failure never blocks navigation).
+    r.stop();
+    wrapped("back");
+    expect(nav).toHaveBeenNthCalledWith(3, "back", undefined);
   });
 });

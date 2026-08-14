@@ -32,8 +32,15 @@ export class CaseRecorder {
 
   wrapNav(nav: Nav): Nav {
     return (page, params) => {
-      if (this.current) {
-        this.current = addStep(this.current, params ? { kind: "open", page, params } : { kind: "open", page });
+      // Recording is best-effort. A bug in the recorder or a corruption of the current case
+      // must never stop someone from navigating their app—swallow recording errors and let
+      // navigation proceed unconditionally.
+      try {
+        if (this.current) {
+          this.current = addStep(this.current, params ? { kind: "open", page, params } : { kind: "open", page });
+        }
+      } catch (error) {
+        // Recording failed, but the app must still navigate.
       }
       nav(page, params);
     };
