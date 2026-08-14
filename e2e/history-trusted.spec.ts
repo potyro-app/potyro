@@ -59,9 +59,10 @@ test("a saved change is diffable and reversible", async ({ page }) => {
   await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
   await studio.getByRole("button", { name: "Save changes" }).click();
 
-  // 2. History opens on the TIMELINE, with no diff in sight.
-  await studio.getByRole("button", { name: "⟲ History" }).click();
-  const history = page.getByRole("dialog", { name: "History of History Target" });
+  // 2. History is a TAB beside Preview and Source — one click, at the same altitude as the app — and
+  //    it opens on the timeline with no diff in sight.
+  await studio.getByRole("tab", { name: "History" }).click();
+  const history = studio.locator(".k-studio-history");
   await expect(history).toBeVisible();
   const entry = (seq: string) =>
     history.locator(".k-timeline-entry").filter({ has: page.locator(".k-history-seq", { hasText: seq }) });
