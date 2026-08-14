@@ -12,7 +12,14 @@ export interface ReplayTarget {
   definition: { pages: Array<{ id: string; title?: string; view: { type: string; entity?: string } }> };
   /** Runs a page's real query — filters, sorts and display bindings included. */
   query: (entity: string, pageId: string) => Promise<unknown[]>;
-  /** Optional: run an entity action. Cases without action steps do not need it. */
+  /**
+   * Optional: run an entity action. Cases without action steps do not need it.
+   *
+   * ⚠️ SAFETY CRITICAL: An action mutates data. Replaying an action step against the user's
+   * live store would *change the very records they are reporting a bug about*, destroying
+   * the evidence and corrupting their workflow. ALWAYS wire this only to a seeded in-memory
+   * store constructed for replay, never to production data.
+   */
   runAction?: (entity: string, action: string, recordId: string) => Promise<void>;
 }
 

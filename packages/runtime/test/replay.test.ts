@@ -61,4 +61,41 @@ describe("replayCase", () => {
     expect(replayPassed(r)).toBe(false);
     expect(r.outcomes[0]!.detail).toContain("r.list is not a function");
   });
+
+  it("reports an action step it has no way to run", async () => {
+    let c = newCase("city-maps", "logging a visit");
+    c = addStep(c, { kind: "action", entity: "city", action: "visit", recordId: "c1" });
+
+    const r = await replayCase(target(["all"]), c); // no runAction configured
+
+    expect(replayPassed(r)).toBe(false);
+    expect(r.outcomes[0]!.detail).toMatch(/visit/);
+  });
+
+  it("runs an action step and reports it", async () => {
+    const ran: string[] = [];
+    let c = newCase("city-maps", "logging a visit");
+    c = addStep(c, { kind: "action", entity: "city", action: "visit", recordId: "c1" });
+
+    const r = await replayCase(
+      { ...target(["all"]), runAction: async (e, a, id) => { ran.push(`${e}.${a}(${id})`); } },
+      c,
+    );
+
+    expect(replayPassed(r)).toBe(true);
+    expect(ran).toEqual(["city.visit(c1)"]);
+  });
+
+  it("reports the real error when an action throws", async () => {
+    let c = newCase("city-maps", "logging a visit");
+    c = addStep(c, { kind: "action", entity: "city", action: "visit", recordId: "c1" });
+
+    const r = await replayCase(
+      { ...target(["all"]), runAction: async () => { throw new Error("ctx.increment is not a function"); } },
+      c,
+    );
+
+    expect(replayPassed(r)).toBe(false);
+    expect(r.outcomes[0]!.detail).toContain("ctx.increment is not a function");
+  });
 });
