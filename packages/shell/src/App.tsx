@@ -10,7 +10,7 @@ import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
 import { CaseRecorder } from "./case-recorder.js";
-import { saveCase } from "./app-cases.js";
+import { saveCase, hasRecordedActivity } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
@@ -179,7 +179,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const [recording, setRecording] = useState(false);
   const [noting, setNoting] = useState(false);
   const [noteText, setNoteText] = useState("");
-  const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
+  const [caseReport, setCaseReport] = useState<{ report: ReplayReport; lostSteps: number } | null>(null);
 
   const navigateRaw = (target: string, param?: Record<string, string>): void => {
     setPageId(target);
@@ -215,11 +215,26 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
    * Replay only ever reads (`query`), never `runAction` — an action step would otherwise mutate the
    * very records the report is about, corrupting the evidence the user just handed over. Cases with
    * an action step report "cannot run action — no action runner" rather than touching live data.
+   *
+   * The report is computed and shown REGARDLESS of whether `saveCase` persisted anything — replay
+   * runs against the in-memory `Case` the recorder just handed back, not the store, so a save
+   * failure (network hiccup, quota, OPFS not ready) must not cost the user the report they are
+   * about to see. `saveCase` itself never throws (see app-cases.ts), but the ordering here doesn't
+   * depend on that fact holding forever.
    */
   const onStopRecording = async (): Promise<void> => {
     const c = recorder.current.stop();
+    const lostSteps = recorder.current.lost;
     setRecording(false);
     if (!c) return;
+    // A case with nothing but `expect` notes has no step replay can act on — its outcomes list
+    // would be empty, and an empty list reads as a pass forever (replayPassed's own guard exists
+    // because of exactly this). Saving it would leave a case that reports success with nothing
+    // ever having been recorded, which is worse than not saving at all.
+    if (!hasRecordedActivity(c)) {
+      toaster.push("Nothing was recorded — navigate the app or run an action before stopping.");
+      return;
+    }
     await saveCase(c);
     const target: ReplayTarget = {
       definition: runtime.definition,
@@ -227,7 +242,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // filter, sort and display bindings — not an unfiltered dump of the entity.
       query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,
     };
-    setCaseReport(await replayCase(target, c));
+    setCaseReport({ report: await replayCase(target, c), lostSteps });
   };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
@@ -980,7 +995,9 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
         </div>
       ) : null}
 
-      {caseReport ? <CaseReport report={caseReport} onClose={() => setCaseReport(null)} /> : null}
+      {caseReport ? (
+        <CaseReport report={caseReport.report} lostSteps={caseReport.lostSteps} onClose={() => setCaseReport(null)} />
+      ) : null}
 
       {picker ? <Picker host={picker} /> : null}
       <Toasts toaster={toaster} />
