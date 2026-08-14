@@ -64,9 +64,19 @@ describe("verifyCandidate", () => {
     expect(v.detail).toContain("city-detail");
   });
 
-  it("passes once the candidate has the page", async () => {
-    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase() });
+  it("passes once the candidate has the page, and reports the real record count", async () => {
+    // Finding 5 (security review, KA-38 follow-on): this test was meant to cover a shape bug where
+    // `runtime.queryPage()` returns `{ rows, ctx }` rather than a bare array — verify-candidate.ts's
+    // `query` unwraps `.rows` deliberately. But an empty, unseeded store made that bug invisible:
+    // `rows.length` on the wrong shape is `undefined`, not a throw, so `replayCase` still reports
+    // `ok: true` with "undefined records" and `passed` stays `true` either way. Seeding a record and
+    // asserting the real count in `detail` is what makes wiring `query` to the wrong shape fail here.
+    const store = new MemoryStore();
+    await store.open("city-maps-verify");
+    await store.insert("city", { name: "Springfield" });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), store });
     expect(v.passed).toBe(true);
+    expect(v.detail).toContain("1 records");
   });
 
   it("fails a candidate that does not compile, without throwing", async () => {
@@ -83,7 +93,20 @@ export default defineApp({
   entities: { city: { label: "City", displayField: "name", fields: { name: { type: "text", required: true } } } },
   pages: [${LIST}],
 });`;
+    const start = Date.now();
     const v = await verifyCandidate({ source: runaway, theCase: theCase() });
+    const elapsedMs = Date.now() - start;
     expect(v.passed).toBe(false);
+    // Finding 6 (security review, KA-38 follow-on): `passed === false` alone would also be green if
+    // the runaway simply stopped compiling — that is a different failure mode this test is not
+    // about, and the earlier "does not compile" test already covers it. Rule that out explicitly...
+    expect(v.detail).not.toMatch(/could not compile/i);
+    // ...and bound the elapsed time to roughly the verification budget window (VERIFY_TIMEOUT_MS =
+    // 5s): under ~8s catches a hang that would otherwise only be caught by this test's own 10s
+    // timeout (reading as a flaky timeout, not a clear assertion failure), and over ~1s catches an
+    // instant failure — e.g. a candidate rejected for some unrelated reason before the interrupt
+    // handler ever got a chance to trip — which would otherwise read as "the timeout worked".
+    expect(elapsedMs).toBeGreaterThan(1_000);
+    expect(elapsedMs).toBeLessThan(8_000);
   }, 10_000);
 });
