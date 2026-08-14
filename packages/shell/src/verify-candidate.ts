@@ -17,7 +17,7 @@ import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/r
 import { createWebCapabilities } from "@karta/capabilities";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
-import { compose } from "./compose.js";
+import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
 import { Toaster } from "./toaster.js";
@@ -45,9 +45,10 @@ export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ pass
     return { passed: false, detail: `could not compile the candidate: ${e instanceof Error ? e.message : String(e)}` };
   }
 
+  let composed: Composed | undefined;
   try {
     const toaster = new Toaster();
-    const composed = await compose({
+    composed = await compose({
       provenance: "untrusted",
       bundleCode,
       store,
@@ -57,13 +58,20 @@ export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ pass
       loadIsolated: await createSandboxLoader(store, {
         timeoutMs: VERIFY_TIMEOUT_MS,
         memoryLimitBytes: VERIFY_MEMORY_BYTES,
+        // No loadTimeoutMs override: createSandboxLoader (isolate-bridge.ts) does not plumb one
+        // through, and out of this feature's four files that stays true. The module top-level runs
+        // during the LOAD, before any per-call budget applies (host finding 3) — a candidate whose
+        // body loops forever (the case this feature exists to catch outright, per the file header)
+        // is still bounded, by createIsolateLoader's own DEFAULT_LOAD_TIMEOUT (5s), which the test
+        // below exercises. That happens to equal VERIFY_TIMEOUT_MS today; if the two drift, widen
+        // createSandboxLoader's options to take loadTimeoutMs and pass VERIFY_TIMEOUT_MS explicitly.
       }),
     });
 
     const target: ReplayTarget = {
       definition: composed.runtime.definition,
       // `queryPage` returns `{ rows, ctx }` (not a bare array) — replay only needs the rows.
-      query: async (_entity, pageId) => (await composed.runtime.queryPage(pageId)).rows,
+      query: async (_entity, pageId) => (await composed!.runtime.queryPage(pageId)).rows,
       // runAction is deliberately absent — replaying an action would mutate records.
     };
     const report = await replayCase(target, deps.theCase);
@@ -71,6 +79,12 @@ export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ pass
     return { passed: replayPassed(report), detail };
   } catch (e) {
     return { passed: false, detail: `the candidate could not run: ${e instanceof Error ? e.message : String(e)}` };
+  } finally {
+    // `verifyCandidate` is designed to be called in a loop (up to 8 candidates per reported bug) —
+    // each call loads its own isolate, and `LoadedApp.dispose()` is the only thing that frees it.
+    // Runs whether replay passed, failed, or threw; `composed` is undefined only if `compose()`
+    // itself never returned, in which case there is nothing to dispose.
+    composed?.loaded.dispose();
   }
 }
 
