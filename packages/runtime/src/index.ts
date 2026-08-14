@@ -10,3 +10,12 @@ export type { Unsubscribe } from "./watch.js";
 // Activity — what changed, by whom, since you last looked (KA-36).
 export { activitySince, activitySupported, type ActivityItem, type ActivityDeps } from "./activity.js";
 export { memberName, personHue, personInitials } from "./people.js";
+
+export { newCase, addStep, annotate, type Case, type CaseStep } from "./case.js";
+export {
+  replayCase,
+  replayPassed,
+  type ReplayTarget,
+  type ReplayReport,
+  type StepOutcome,
+} from "./replay.js";
