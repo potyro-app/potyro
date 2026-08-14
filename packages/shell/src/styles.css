@@ -2524,6 +2524,14 @@ button {
   color: var(--ink-soft);
   font-style: italic;
 }
+.k-case-lost {
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: oklch(60% 0.18 30 / 12%);
+  color: oklch(45% 0.16 30);
+  font-size: 0.85rem;
+}
 .k-case-report ol {
   list-style: none;
   margin: 0 0 0.9rem;
