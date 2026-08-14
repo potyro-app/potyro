@@ -30,6 +30,15 @@ export function resetCasesStore(): void {
 }
 
 /**
+ * Validate that a value is a Record<string, string> with no arrays or nested objects.
+ * Used by isStep to check the open variant's params field.
+ */
+function isParams(v: unknown): v is Record<string, string> {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  return Object.values(v as Record<string, unknown>).every((x) => typeof x === "string");
+}
+
+/**
  * Validate that a value matches the CaseStep union.
  *
  * A half-valid case is worse than no case, because replay will report a corrupt recording
@@ -43,7 +52,7 @@ function isStep(v: unknown): v is CaseStep {
   const kind = obj.kind;
 
   if (kind === "open") {
-    return typeof obj.page === "string" && (obj.params === undefined || (typeof obj.params === "object" && obj.params !== null));
+    return typeof obj.page === "string" && (obj.params === undefined || isParams(obj.params));
   }
   if (kind === "action") {
     return typeof obj.entity === "string" && typeof obj.action === "string" && typeof obj.recordId === "string";
@@ -75,7 +84,14 @@ export async function listCases(appId: string): Promise<Case[]> {
   try {
     const rows = await (await store()).all(ENTITY);
     return rows
-      .map((r) => toCase(r as Record<string, unknown>))
+      .map((r) => {
+        const record = r as Record<string, unknown>;
+        const c = toCase(record);
+        if (c === null && typeof record.id === "string" && record.appId === appId) {
+          console.warn("[karta] discarding a corrupt case:", record.id);
+        }
+        return c;
+      })
       .filter((c): c is Case => c !== null && c.appId === appId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   } catch (e) {

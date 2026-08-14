@@ -96,4 +96,88 @@ describe("app cases", () => {
     expect(recipeAfter).toHaveLength(1);
     expect(recipeAfter[0]!.appId).toBe("recipes");
   });
+
+  it("rejects an open step with params as array", async () => {
+    // Save a valid case
+    const valid = newCase("test-app", "valid", "case-valid");
+    await saveCase(valid);
+
+    // Save a malformed case with params as array
+    const malformed = {
+      id: "case-array-params",
+      appId: "test-app",
+      title: "array params",
+      steps: [{ kind: "open", page: "home", params: ["a", "b"] }],
+      createdAt: new Date().toISOString(),
+    };
+    await saveCase(malformed as unknown as typeof valid);
+
+    // Only the valid case should be returned
+    const cases = await listCases("test-app");
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.id).toBe("case-valid");
+  });
+
+  it("rejects an open step with non-string param value", async () => {
+    // Save a valid case
+    const valid = newCase("test-app", "valid", "case-valid");
+    await saveCase(valid);
+
+    // Save a malformed case with non-string param value
+    const malformed = {
+      id: "case-bad-param-value",
+      appId: "test-app",
+      title: "bad param value",
+      steps: [{ kind: "open", page: "home", params: { count: 42 } }],
+      createdAt: new Date().toISOString(),
+    };
+    await saveCase(malformed as unknown as typeof valid);
+
+    // Only the valid case should be returned
+    const cases = await listCases("test-app");
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.id).toBe("case-valid");
+  });
+
+  it("rejects an action step missing recordId", async () => {
+    // Save a valid case
+    const valid = newCase("test-app", "valid", "case-valid");
+    await saveCase(valid);
+
+    // Save a malformed case with missing recordId
+    const malformed = {
+      id: "case-no-record-id",
+      appId: "test-app",
+      title: "missing recordId",
+      steps: [{ kind: "action", entity: "task", action: "complete" }],
+      createdAt: new Date().toISOString(),
+    };
+    await saveCase(malformed as unknown as typeof valid);
+
+    // Only the valid case should be returned
+    const cases = await listCases("test-app");
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.id).toBe("case-valid");
+  });
+
+  it("rejects an expect step with non-string note", async () => {
+    // Save a valid case
+    const valid = newCase("test-app", "valid", "case-valid");
+    await saveCase(valid);
+
+    // Save a malformed case with non-string note
+    const malformed = {
+      id: "case-bad-note",
+      appId: "test-app",
+      title: "bad note",
+      steps: [{ kind: "expect", note: 123 }],
+      createdAt: new Date().toISOString(),
+    };
+    await saveCase(malformed as unknown as typeof valid);
+
+    // Only the valid case should be returned
+    const cases = await listCases("test-app");
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.id).toBe("case-valid");
+  });
 });
