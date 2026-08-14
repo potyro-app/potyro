@@ -53,4 +53,47 @@ describe("app cases", () => {
     expect(left).toHaveLength(1);
     expect(left[0]!.id).toBe("case-keep");
   });
+
+  it("rejects a case with a malformed step", async () => {
+    // Save a valid case first
+    const valid = newCase("city-maps", "valid", "case-valid");
+    await saveCase(valid);
+
+    // Try to save a deliberately malformed case by casting it through unknown
+    // This simulates data corruption or format drift
+    const malformed = {
+      id: "case-malformed",
+      appId: "city-maps",
+      title: "malformed",
+      steps: [{ foo: "bar" }], // Invalid: missing 'kind' field
+      createdAt: new Date().toISOString(),
+    };
+    await saveCase(malformed as unknown as typeof valid);
+
+    // When we list cases, the malformed one should be filtered out (after fix)
+    // Before fix, it would be accepted and cause problems in replay
+    const cases = await listCases("city-maps");
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.id).toBe("case-valid");
+  });
+
+  it("protects cases by app boundary when deleting", async () => {
+    // Create cases with the same ID in different apps
+    const cityCase = newCase("city-maps", "city bug", "shared-id-123");
+    const recipeCase = newCase("recipes", "recipe bug", "shared-id-123");
+
+    await saveCase(cityCase);
+    await saveCase(recipeCase);
+
+    // Delete the city case
+    await deleteCase("city-maps", "shared-id-123");
+
+    // The recipe case should still exist
+    const cityAfter = await listCases("city-maps");
+    const recipeAfter = await listCases("recipes");
+
+    expect(cityAfter).toHaveLength(0);
+    expect(recipeAfter).toHaveLength(1);
+    expect(recipeAfter[0]!.appId).toBe("recipes");
+  });
 });
