@@ -27,6 +27,7 @@ vi.mock("../src/open-store.js", () => ({
 const { saveCase, listCases, deleteCase, clearCases, hasRecordedActivity, resetCasesStore } = await import(
   "../src/app-cases.js"
 );
+const { saveUserApp, removeUserApp } = await import("../src/user-apps.js");
 
 // Applies to every test in this file, not just "app cases" — each `it` gets a fresh MemoryStore
 // (the mock above hands out a new one per `openStore` call), so state must not leak across
@@ -263,6 +264,21 @@ describe("clearCases", () => {
       resetCasesStore();
       warn.mockRestore();
     }
+  });
+});
+
+describe("deleting an app", () => {
+  // Ids are name slugs (user-apps.ts's `slug`), so a deleted app's id can be reused by a later,
+  // unrelated app — removeUserApp must forget its cases the same way it already forgets history
+  // and diagnoses, or the new app inherits the dead app's reported problems.
+  it("forgets its cases too", async () => {
+    const at = new Date(Date.UTC(2026, 0, 1)).toISOString();
+    await saveUserApp({ id: "places", name: "Places", source: "v1" }, at);
+    await saveCase(newCase("places", "a bug", "case-a"));
+
+    await removeUserApp("places");
+
+    expect(await listCases("places")).toEqual([]);
   });
 });
 
