@@ -8,7 +8,14 @@
 // testable without a key: inject a `ChatEngine` to check prompt assembly, inject a `fetch` to check
 // the wire format and the failure modes.
 
-import { ChatBackend, firstContent, type ChatEngine, type ChatMessage, type ChatRequest } from "./chat-backend.js";
+import {
+  ChatBackend,
+  firstContent,
+  type ChatEngine,
+  type ChatMessage,
+  type ChatRequest,
+  type ToolCallOnMessage,
+} from "./chat-backend.js";
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -148,6 +155,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
         max_tokens: req.max_tokens ?? opts.maxTokens ?? DEFAULT_MAX_TOKENS,
         reasoning: opts.reasoning ?? DEFAULT_REASONING,
         provider: opts.provider ?? DEFAULT_PROVIDER,
+        ...(req.tools ? { tools: req.tools, tool_choice: req.tool_choice ?? "auto" } : {}),
       }),
       ...(typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
         ? { signal: AbortSignal.timeout(timeoutMs) }
@@ -169,20 +177,37 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     const upstream = errorMessage(body);
     if (upstream) throw new Error(`OpenRouter: ${upstream}`);
 
-    const choices = (body as { choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }> })?.choices;
-    const content = choices?.[0]?.message?.content;
-    if (!content) {
+    const choices = (
+      body as {
+        choices?: Array<{
+          message?: { content?: string | null; tool_calls?: ToolCallOnMessage[] };
+          finish_reason?: string;
+        }>;
+      }
+    )?.choices;
+    const choice = choices?.[0];
+    const content = choice?.message?.content;
+    const toolCalls = choice?.message?.tool_calls;
+    // A tool call IS an answer — it just isn't prose. Only an empty reply with neither is a failure.
+    if (!content && !toolCalls?.length) {
       // "length" with no content means the thinking ate the budget — a settings problem, not a
       // model that can't write the app. Say so, or the next hour goes into the wrong question.
       const why =
-        choices?.[0]?.finish_reason === "length"
+        choice?.finish_reason === "length"
           ? " — it hit max_tokens before writing any code. Raise maxTokens, or lower the reasoning effort."
-          : choices?.[0]?.finish_reason
-            ? ` (finish_reason: ${choices[0]!.finish_reason})`
+          : choice?.finish_reason
+            ? ` (finish_reason: ${choice.finish_reason})`
             : " — the model replied with no content.";
       throw new Error(`OpenRouter returned no completion${why}`);
     }
-    return { choices: [{ message: { content } }] };
+    return {
+      choices: [
+        {
+          message: { content: content ?? "", ...(toolCalls ? { tool_calls: toolCalls } : {}) },
+          ...(choice?.finish_reason ? { finish_reason: choice.finish_reason } : {}),
+        },
+      ],
+    };
   };
 
   return { chat: { completions: { create } } };
