@@ -47,6 +47,32 @@ describe("runAgentLoop", () => {
     const toolMsg = seen[1]!.messages.find((m) => m.role === "tool");
     expect(toolMsg?.content).toContain('no page "city-detail"');
     expect(toolMsg?.tool_call_id).toBe("t1");
+    // The assistant turn that REQUESTED the call must precede its result — a provider rejects a
+    // transcript where a `tool` message has no preceding assistant turn carrying its id.
+    const i = seen[1]!.messages.findIndex((m) => m.role === "tool");
+    expect(seen[1]!.messages[i - 1]).toMatchObject({ role: "assistant", tool_calls: [{ id: "t1" }] });
+  });
+
+  it("pairs multiple tool calls from one turn with their results, in order", async () => {
+    const twoToolsTurn = {
+      content: "",
+      tool_calls: [
+        { id: "a1", type: "function" as const, function: { name: "replay_case", arguments: "{}" } },
+        { id: "a2", type: "function" as const, function: { name: "replay_case", arguments: "{}" } },
+      ],
+    };
+    const { engine, seen } = scripted([twoToolsTurn, { content: "```ts\n" + APP + "\n```" }]);
+
+    await runAgentLoop(base({ engine }));
+
+    const msgs = seen[1]!.messages;
+    const assistantIdx = msgs.findIndex((m) => m.role === "assistant" && m.tool_calls);
+    expect(msgs[assistantIdx]).toMatchObject({ role: "assistant", tool_calls: [{ id: "a1" }, { id: "a2" }] });
+    const toolMsgs = msgs.filter((m) => m.role === "tool");
+    // Both results, in the order the calls were made, and both after the turn that requested them.
+    expect(toolMsgs.map((m) => m.tool_call_id)).toEqual(["a1", "a2"]);
+    expect(msgs.indexOf(toolMsgs[0]!)).toBeGreaterThan(assistantIdx);
+    expect(msgs.indexOf(toolMsgs[1]!)).toBeGreaterThan(assistantIdx);
   });
 
   // THE RULE. A proposed fix that does not survive replay is not a fix.
