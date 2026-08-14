@@ -42,11 +42,23 @@ export interface IsolateLoaderOptions {
   /** Factory for a fresh async context (injectable for tests). */
   newContext: () => Promise<QuickJSAsyncContextLike>;
   memoryLimitBytes?: number;
+  /** Budget for each `invoke()` — one computed/action/filter/etc. call. See `loadTimeoutMs` for the load budget, which is a separate, larger number. */
   timeoutMs?: number;
+  /**
+   * Budget for `loadIsolated` itself — running the bundle's top-level module body, stringifying
+   * the definition, and evaluating the harness. This is deliberately independent of `timeoutMs`:
+   * a load does strictly more work than a single call (a large bundle, on a slow device, or a
+   * deadline crossed while the tab is backgrounded can legitimately take longer than one call is
+   * allowed), so reusing the call budget for it made ordinary loads fail, not just runaway ones.
+   * Defaults generous so callers that pass no override (real user paths — opening a shared app,
+   * Studio validation) do not regress.
+   */
+  loadTimeoutMs?: number;
 }
 
 const DEFAULT_MEMORY = 64 * 1024 * 1024; // 64 MB
-const DEFAULT_TIMEOUT = 1000; // ms per call
+const DEFAULT_TIMEOUT = 1000; // ms per invoke() call — NOT the load; see DEFAULT_LOAD_TIMEOUT
+const DEFAULT_LOAD_TIMEOUT = 5000; // ms for loadIsolated (parse + eval bundle + harness install)
 
 class IsolateLoadedApp implements LoadedApp {
   readonly definition: AppDefinition;
@@ -302,6 +314,7 @@ class IsolateLoadedApp implements LoadedApp {
 export function createIsolateLoader(opts: IsolateLoaderOptions) {
   const memory = opts.memoryLimitBytes ?? DEFAULT_MEMORY;
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT;
+  const loadTimeout = opts.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT;
 
   return async function loadIsolated(args: { code: string; provenance: Provenance }): Promise<LoadedApp> {
     const vm = await opts.newContext();
@@ -312,9 +325,10 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
     // installed yet. Without a deadline here too, a bundle whose TOP LEVEL never returns (e.g.
     // `while (true) {}` outside any function) would hang forever with no budget applied at all: the
     // isolate is untrusted precisely because its code has not been reviewed, so "no deadline yet" is
-    // not a safe state for even one eval. Cover the whole load with the same budget `invoke()` uses
-    // for every call after it.
-    const deadline = Date.now() + timeout;
+    // not a safe state for even one eval. Cover the whole load with its own budget (`loadTimeout`),
+    // independent of the per-call budget `invoke()` uses later — see `loadTimeoutMs` on
+    // `IsolateLoaderOptions` for why they must differ.
+    const deadline = Date.now() + loadTimeout;
     vm.runtime.setInterruptHandler(() => Date.now() > deadline);
     try {
       // 1) Run the app bundle: it must set globalThis.__kartaApp to the app definition.
@@ -335,9 +349,22 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
       const harnessRes = vm.evalCode(HARNESS_SOURCE);
       vm.unwrapResult(harnessRes).dispose();
 
-      return app;
-    } finally {
+      // Success: `app` now owns `vm` and disposes it via `app.dispose()`. Only the interrupt
+      // handler — a property of this load, not of the VM's lifetime — needs clearing here.
       vm.runtime.removeInterruptHandler?.();
+      return app;
+    } catch (e) {
+      // A failed load is now the COMMON case, not the rare one (the deadline above is what makes
+      // it fail instead of hang). Nothing else holds a handle to `vm` on this path — `IsolateLoadedApp`
+      // was never constructed, or was abandoned before being returned — so without disposing here,
+      // every killed runaway, OOM, or syntax error strands its whole QuickJS runtime (64 MB budget)
+      // for the page's lifetime. That used to be a rare event; an agent loop retrying up to 8
+      // candidates per bug, each calling `verifyCandidate`, makes it routine. Clear the interrupt
+      // handler before disposing (disposing first would free the runtime pointer it needs), then
+      // rethrow so the caller still sees the original failure.
+      vm.runtime.removeInterruptHandler?.();
+      vm.dispose();
+      throw e;
     }
   };
 }
