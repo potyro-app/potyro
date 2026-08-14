@@ -27,6 +27,15 @@ describe("CaseRecorder", () => {
       { kind: "open", page: "all" },
       { kind: "open", page: "city-detail", params: { cityId: "c1" } },
     ]);
+    // A clean recording lost nothing — see case-recorder-failure.test.ts for the case where it did.
+    expect(r.lost).toBe(0);
+  });
+
+  it("resets the lost count when a new recording starts", () => {
+    const r = new CaseRecorder();
+    r.start("city-maps", "a");
+    r.start("city-maps", "b"); // starting again abandons the first recording, cleanly
+    expect(r.lost).toBe(0);
   });
 
   it("anchors a note between the steps it was written between", () => {
