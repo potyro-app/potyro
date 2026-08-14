@@ -16,7 +16,7 @@ export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
  */
 export async function createSandboxLoader(
   store: Store,
-  opts?: { timeoutMs?: number; memoryLimitBytes?: number },
+  opts?: { timeoutMs?: number; memoryLimitBytes?: number; loadTimeoutMs?: number },
 ): Promise<LoadIsolated> {
   const [{ createIsolateLoader }, quickjs] = await Promise.all([
     import("@karta/host/isolate"),

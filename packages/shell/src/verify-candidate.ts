@@ -58,13 +58,9 @@ export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ pass
       loadIsolated: await createSandboxLoader(store, {
         timeoutMs: VERIFY_TIMEOUT_MS,
         memoryLimitBytes: VERIFY_MEMORY_BYTES,
-        // No loadTimeoutMs override: createSandboxLoader (isolate-bridge.ts) does not plumb one
-        // through, and out of this feature's four files that stays true. The module top-level runs
-        // during the LOAD, before any per-call budget applies (host finding 3) — a candidate whose
-        // body loops forever (the case this feature exists to catch outright, per the file header)
-        // is still bounded, by createIsolateLoader's own DEFAULT_LOAD_TIMEOUT (5s), which the test
-        // below exercises. That happens to equal VERIFY_TIMEOUT_MS today; if the two drift, widen
-        // createSandboxLoader's options to take loadTimeoutMs and pass VERIFY_TIMEOUT_MS explicitly.
+        // The load budget (module body) and per-call budget are separate. Passing loadTimeoutMs
+        // explicitly makes the budget that kills a runaway module body visible and stable.
+        loadTimeoutMs: VERIFY_TIMEOUT_MS,
       }),
     });
 
