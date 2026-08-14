@@ -158,7 +158,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   if (deps.signal?.aborted) return stopped();
   return {
     kind: "exhausted",
-    reason: `gave up after ${maxSteps} steps (${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} all failed replay, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not an app)`,
+    reason: `gave up after ${maxSteps} steps (${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed replay, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not an app)`,
     ...(lastAttempt ? { lastAttempt } : {}),
   };
 }

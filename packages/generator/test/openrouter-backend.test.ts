@@ -57,7 +57,7 @@ describe("OpenRouterBackend prompt assembly", () => {
     expect(reqs[0]!.messages[0]).toMatchObject({ role: "system", content: SYSTEM_PROMPT });
     expect(reqs[0]!.messages[1]!.content).toContain("a simple todo list");
     expect(reqs[0]!.model).toBe("deepseek/deepseek-v4-flash-0731");
-    expect(backend.name).toBe("openrouter:deepseek/deepseek-v4-flash-0731");
+    expect(backend.name).toBe("openrouter:deepseek/deepseek-v4-flash-0731+reasoning=none");
   });
 
   it("repair feeds back the prior source and the errors", async () => {
@@ -102,7 +102,9 @@ describe("OpenRouterBackend prompt assembly", () => {
   });
 
   it("defaults to a model that is actually served by OpenRouter", () => {
-    expect(OPENROUTER_MODELS.some((m) => m.id === new OpenRouterBackend(fakeEngine(() => "").engine).name.slice("openrouter:".length))).toBe(true);
+    const name = new OpenRouterBackend(fakeEngine(() => "").engine).name;
+    const modelId = name.slice("openrouter:".length).split("+reasoning=")[0];
+    expect(OPENROUTER_MODELS.some((m) => m.id === modelId)).toBe(true);
   });
 });
 
@@ -168,7 +170,9 @@ describe("createOpenRouterEngine (the HTTP adapter)", () => {
     expect(new OpenRouterBackend(fakeEngine(() => "").engine, "m", { reasoning: { effort: "high" } }).name).toBe(
       "openrouter:m+reasoning=high",
     );
-    expect(new OpenRouterBackend(fakeEngine(() => "").engine, "m").name).toBe("openrouter:m");
+    // A default run has reasoning OFF — the name must say so too, or its report.json cannot be
+    // told apart from a run made with some other effort.
+    expect(new OpenRouterBackend(fakeEngine(() => "").engine, "m").name).toBe("openrouter:m+reasoning=none");
   });
 
   it("blames the budget, not the model, when thinking consumed the whole reply", async () => {

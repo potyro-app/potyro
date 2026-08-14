@@ -7,8 +7,10 @@
 //     --backend openrouter --model deepseek/deepseek-v4-flash-0731 --corpus wild
 //
 // Flags: --backend claude-cli|openrouter  --model <alias|openrouter model id>
-//        --reasoning none|minimal|low|medium|high   (openrouter; default low — reasoning tokens
-//                                                    come out of the same budget as the answer)
+//        --reasoning none|minimal|low|medium|high   (openrouter; default none — reasoning tokens
+//                                                    come out of the same budget as the answer and
+//                                                    their size is wildly unpredictable, see
+//                                                    DEFAULT_REASONING in openrouter-backend.ts)
 //        --corpus wild|core|both  --limit N  --concurrency N  --repairs N
 //        --only id1,id2           --out <dir>
 //

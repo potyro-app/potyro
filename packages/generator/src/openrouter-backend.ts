@@ -225,9 +225,10 @@ export class OpenRouterBackend extends ChatBackend {
     super();
     this.maxTokens = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
     // The reasoning effort changes both the cost and the quality of a run, so a report that does not
-    // name it cannot be compared with another.
-    const effort = opts.reasoning?.effort;
-    this.name = `openrouter:${model}${effort ? `+reasoning=${effort}` : ""}`;
+    // name it cannot be compared with another — including a default run, where reasoning is OFF.
+    // Naming only an explicitly-passed effort silently dropped that fact from report.json.
+    const effort = opts.reasoning?.effort ?? DEFAULT_REASONING.effort;
+    this.name = `openrouter:${model}+reasoning=${effort}`;
   }
 
   protected async ask(messages: ChatMessage[], temperature: number): Promise<string> {
