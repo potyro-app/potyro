@@ -21,6 +21,54 @@ export interface InvestigationDeps {
 
 const NO_ARGS = { type: "object", properties: {} } as const;
 
+/** Overall size ceiling for the raw-mode payload, comparable to the old 4000-char slice. */
+const RAW_SIZE_CEILING = 4000;
+
+// The tool's description is sent to the model in the tool schema, up front, before any call
+// happens — the model reads it once and treats it as a standing promise about what this tool
+// can and cannot return. If the text says "counts only" while allowRawRecords is true, the
+// model is told its input is pre-sanitized and will happily echo raw personal data into a
+// summary or a log, believing it safe. So the description MUST be derived from the same flag
+// that decides the actual behavior below, never hardcoded independently of it.
+function queryDataDescription(allowRawRecords: boolean): string {
+  if (allowRawRecords) {
+    return (
+      "How many records an entity has and how many have each field filled in. A page that opens but " +
+      "shows nothing is usually a data problem, not a code problem. Raw access is granted for this app: " +
+      "this tool returns the user's ACTUAL records, not just shapes and counts. That output is personal " +
+      "data — the user's real medications, finances, or locations — handle it accordingly."
+    );
+  }
+  return (
+    "How many records an entity has and how many have each field filled in. A page that opens but " +
+    "shows nothing is usually a data problem, not a code problem. Returns counts only, never the user's " +
+    "own values."
+  );
+}
+
+/**
+ * Serialize rows as JSON, keeping only as many whole rows as fit under the size ceiling. Never
+ * cuts a row in half — a character-offset slice can sever a value mid-string and leave the model
+ * unable to tell "all records" from "a fragment of the last one". Always reports totals so the
+ * model can trust what it has, including the case where nothing was dropped.
+ */
+function truncatedRawRecords(rows: unknown[]): string {
+  const kept: unknown[] = [];
+  let size = 2; // "[" + "]"
+  for (const row of rows) {
+    const encoded = JSON.stringify(row);
+    // +2 accounts for the ", " (or the wrapping) between/around entries.
+    if (kept.length > 0 && size + encoded.length + 2 > RAW_SIZE_CEILING) break;
+    kept.push(row);
+    size += encoded.length + 2;
+  }
+  const totals =
+    kept.length === rows.length
+      ? `showing ${kept.length} of ${rows.length} records — nothing dropped`
+      : `showing ${kept.length} of ${rows.length} records`;
+  return [totals, JSON.stringify(kept, null, 2)].join("\n");
+}
+
 function shapeOf(rows: unknown[]): string {
   if (!rows.length) return "0 records";
   const keys = new Set<string>();
@@ -63,13 +111,12 @@ export function buildAppTools(deps: InvestigationDeps): AgentTool[] {
     },
     {
       name: "query_data",
-      description:
-        "How many records an entity has and how many have each field filled in. A page that opens but shows nothing is usually a data problem, not a code problem. Returns counts only, never the user's own values.",
+      description: queryDataDescription(deps.allowRawRecords),
       parameters: { type: "object", properties: { entity: { type: "string" } }, required: ["entity"] },
       run: async (args) => {
         const entity = String(args.entity ?? "");
         const rows = await deps.records(entity);
-        if (deps.allowRawRecords) return { ok: true, detail: JSON.stringify(rows, null, 2).slice(0, 4000) };
+        if (deps.allowRawRecords) return { ok: true, detail: truncatedRawRecords(rows) };
         return { ok: true, detail: shapeOf(rows) };
       },
     },
