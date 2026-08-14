@@ -105,11 +105,17 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
       continue;
     }
 
-    const asked = new RegExp(`^${ASK}`, "m").exec(text);
-    if (asked) return { kind: "question", text: text.slice(asked.index + ASK.length).split(/^```/m)[0]!.trim() };
-
-    const notOurs = new RegExp(`^${NOT_IN_APP}`, "m").exec(text);
-    if (notOurs) return { kind: "diagnosis", text: text.slice(notOurs.index + NOT_IN_APP.length).split(/^```/m)[0]!.trim() };
+    // A marker only counts when it OPENS the reply — matching `^` mid-text let a stray line like
+    // `NOT-IN-APP: ...` inside an explanation that precedes a genuine candidate throw the candidate
+    // away and report an unverified "diagnosis". Requiring it at the head is unambiguous: the model
+    // either leads with the marker, or it didn't send one.
+    const head = text.trimStart();
+    if (head.startsWith(ASK)) {
+      return { kind: "question", text: head.slice(ASK.length).split(/^```/m)[0]!.trim() };
+    }
+    if (head.startsWith(NOT_IN_APP)) {
+      return { kind: "diagnosis", text: head.slice(NOT_IN_APP.length).split(/^```/m)[0]!.trim() };
+    }
 
     const candidate = extractSource(text);
     if (!looksLikeApp(candidate)) {

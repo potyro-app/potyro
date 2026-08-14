@@ -97,6 +97,24 @@ describe("runAgentLoop", () => {
     expect(out).toEqual({ kind: "question", text: "which city did you tap?" });
   });
 
+  // A marker only counts when it opens the reply. A `NOT-IN-APP:`-prefixed line buried in an
+  // explanation must not throw away a genuine, working candidate that follows it.
+  it("treats a NOT-IN-APP line mid-reply as prose, not a diagnosis, when a real app follows", async () => {
+    const reply =
+      "Something else looked suspicious at first.\n" +
+      "NOT-IN-APP: the host map view seemed to ignore the pin, but the app itself was the bug:\n" +
+      "```ts\n" +
+      APP +
+      "\n```";
+    const { engine } = scripted([{ content: reply }]);
+    const verify = vi.fn(async () => ({ passed: true, detail: "replay passed" }));
+
+    const out = await runAgentLoop(base({ engine, verify }));
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(out.kind).toBe("fix");
+  });
+
   it("stops at the step budget rather than looping forever", async () => {
     const turn = {
       content: "",
