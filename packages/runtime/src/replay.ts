@@ -81,5 +81,10 @@ export async function replayCase(target: ReplayTarget, c: Case): Promise<ReplayR
 }
 
 export function replayPassed(r: ReplayReport): boolean {
+  // `[].every()` is vacuously true — a case with no outcomes (nothing ever ran) must not read as
+  // "everything passed". A case reaches this state only when a caller saves one with no `open` or
+  // `action` steps; the outcome-less case itself is guarded against upstream (app-cases.ts's
+  // `hasRecordedActivity`), but `replayPassed` must not depend on every caller remembering that.
+  if (r.outcomes.length === 0) return false;
   return r.outcomes.every((o) => o.ok);
 }
