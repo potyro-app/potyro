@@ -2487,3 +2487,80 @@ button {
   border-left: 2px solid var(--line);
   padding: 0.3rem 0 0.3rem 0.7rem;
 }
+
+/* --- "Something's wrong" recording control (beside the provenance badge) ------------------- */
+.k-case-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.k-case-note textarea {
+  resize: vertical;
+}
+
+/* --- Replay report: what actually happened, read against what the person expected ---------- */
+.k-case-report {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  z-index: 45;
+  animation: modal-in 200ms var(--ease);
+}
+.k-case-report h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-case-expect {
+  margin: 0 0 0.75rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.k-case-report ol {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.k-case-step {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  border-left: 2px solid var(--line);
+  padding: 0.25rem 0 0.25rem 0.6rem;
+}
+.k-case-step[data-ok="false"] {
+  border-left-color: oklch(60% 0.18 30);
+  color: oklch(45% 0.16 30);
+}
+
+/* --- Cases list (Studio, History tab) -------------------------------------------------------- */
+.k-cases {
+  list-style: none;
+  margin: 0.4rem 0 1.2rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-cases li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-left: 2px solid var(--line);
+  padding: 0.3rem 0 0.3rem 0.7rem;
+}
+.k-case-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

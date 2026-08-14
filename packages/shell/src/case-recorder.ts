@@ -1,9 +1,13 @@
 // Records what someone did in their own app, by observing the ONE place navigation goes through.
 //
-// `createNavBridge` is the choke point for every built-in view and every custom view alike, so a
-// recorder wrapped around it needs no per-view instrumentation and picks up view types that do not
-// exist yet. It OBSERVES: the app navigates exactly as it would have, recording or not — a recorder
-// that changed behaviour would be recording a different app than the one that misbehaved.
+// `App.tsx`'s `navigate` (not `createNavBridge`) is the choke point: a tap on a list row or a map
+// pin is passed the `navigate` prop directly and never touches the bridge, while `ctx.navigate`
+// from app code goes through `createNavBridge` → `navHost` → `navigate` via a ref. Wrapping the
+// bridge would see only the second path and miss every human interaction — a recording that looked
+// plausible while capturing nothing a person actually did. Wrapping `navigate` itself is the only
+// point both paths funnel through. It OBSERVES: the app navigates exactly as it would have,
+// recording or not — a recorder that changed behaviour would be recording a different app than the
+// one that misbehaved.
 
 import { addStep, newCase, type Case } from "@karta/runtime";
 
