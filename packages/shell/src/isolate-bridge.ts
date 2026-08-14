@@ -10,9 +10,14 @@ export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
 /**
  * Build the untrusted loader for a given app Store. Used by `pnpm dev:sandbox`, and by
- * verification (verify-candidate.ts), which passes its own, larger budget: `dev:sandbox`'s
- * defaults (1000 ms / 64 MB, from createIsolateLoader) suit an interactive render, but a
- * candidate replay runs a handful of queries back to back and would false-fail under that.
+ * verification (verify-candidate.ts), which passes its own explicit budgets.
+ *
+ * `createIsolateLoader`'s defaults are two separate numbers: 5000 ms to load the module (parse +
+ * eval the bundle + install the harness — DEFAULT_LOAD_TIMEOUT in isolate-host.ts) and 1000 ms per
+ * `invoke()` call, i.e. each computed/action/filter call the app makes afterward (DEFAULT_TIMEOUT).
+ * Both default to 64 MB of memory. `dev:sandbox` takes those defaults for an interactive render; a
+ * candidate replay runs a handful of queries back to back and passes its own `timeoutMs` /
+ * `loadTimeoutMs` so a slow-but-correct app isn't false-failed by the interactive budget.
  */
 export async function createSandboxLoader(
   store: Store,
