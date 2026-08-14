@@ -174,6 +174,31 @@ describe("IsolateHost — resource limits", () => {
     await expect(loaded.callComputed("x", "spin", record, ctx)).rejects.toThrow();
     loaded.dispose();
   }, 10000);
+
+  // Finding 4 (security review, KA-38 follow-on): the ORIGINAL hole this whole suite exists to
+  // close was a top-level runaway, not a runaway reached through `invoke()` (the test above). Every
+  // other test here loads a bundle whose body returns immediately, so nothing in this file failed
+  // when the load-time interrupt handler was missing — only the shell suite noticed, by timing out.
+  // This test loads a bundle whose TOP LEVEL never returns, with a small `loadTimeoutMs`, and
+  // requires the load itself to reject within a bounded time. Revert the load-time interrupt
+  // handler in isolate-host.ts and this hangs instead of failing cleanly.
+  it("aborts a bundle whose top-level module body loops forever, via the load-time interrupt", async () => {
+    const runaway = `
+      while (true) {}
+      globalThis.__kartaApp = {
+        id: "loop-load", name: "LoopLoad", version: "1.0.0", schemaVersion: 1, permissions: {},
+        entities: {}, pages: [], reminders: []
+      };
+    `;
+    const store = new MemoryStore();
+    await store.open("loop-load");
+    const loadIsolated = createIsolateLoader({ store, newContext, loadTimeoutMs: 100 });
+    const start = Date.now();
+    await expect(loadIsolated({ code: runaway, provenance: "untrusted" })).rejects.toThrow();
+    // Bounded, not merely "eventually resolves" — a hung load would blow past the test's own
+    // timeout below and fail as a timeout, not a clean assertion, but this keeps the intent explicit.
+    expect(Date.now() - start).toBeLessThan(5000);
+  }, 10000);
 });
 
 describe("IsolateHost — mediated caps", () => {
