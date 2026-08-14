@@ -18,8 +18,17 @@ export type LoopOutcome =
   | { kind: "fix"; source: string; rationale: string }
   | { kind: "question"; text: string }
   | { kind: "diagnosis"; text: string }
-  | { kind: "exhausted"; reason: string; lastAttempt?: string }
-  | { kind: "stopped"; lastAttempt?: string };
+  | {
+      kind: "exhausted";
+      reason: string;
+      /** The last candidate tried. It FAILED replay — show it, never apply it. */
+      lastAttempt?: string;
+    }
+  | {
+      kind: "stopped";
+      /** The last candidate tried. It FAILED replay — show it, never apply it. */
+      lastAttempt?: string;
+    };
 
 export type LoopStep =
   | { kind: "thinking" }
@@ -128,5 +137,9 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     });
   }
 
+  // A stop that lands on the loop's LAST step (model reply arrives after abort, or fails verify
+  // right as the budget runs out) must still read as "stopped", not "exhausted" — a late stop is
+  // exactly when a user is most likely to hit the button.
+  if (deps.signal?.aborted) return stopped();
   return { kind: "exhausted", reason: `gave up after ${maxSteps} steps`, ...(lastAttempt ? { lastAttempt } : {}) };
 }

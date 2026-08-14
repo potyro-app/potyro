@@ -104,6 +104,40 @@ describe("runAgentLoop", () => {
     expect(out.kind).toBe("stopped");
   });
 
+  // A stop that lands on the FINAL step — after the last model reply comes back — must still read
+  // as "stopped". Only the tool-call shape was covered before; a fix that fails replay, or a final
+  // reply that isn't an app, fell through to "exhausted" with no abort check on the way out.
+  it("reports a late stop as stopped, not exhausted, when the final candidate fails verify", async () => {
+    const controller = new AbortController();
+    const { engine } = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+    const verify = vi.fn(async () => {
+      controller.abort(); // simulates the user pressing stop while verify (the last thing) ran
+      return { passed: false, detail: "still broken" };
+    });
+
+    const out = await runAgentLoop(base({ engine, verify, maxSteps: 1, signal: controller.signal }));
+
+    expect(out.kind).toBe("stopped");
+  });
+
+  it("reports a late stop as stopped, not exhausted, when the final reply is not an app", async () => {
+    const controller = new AbortController();
+    const engine: ChatEngine = {
+      chat: {
+        completions: {
+          create: async () => {
+            controller.abort(); // simulates the user pressing stop while this (final) reply was in flight
+            return { choices: [{ message: { content: "not an app at all" } }] };
+          },
+        },
+      },
+    };
+
+    const out = await runAgentLoop(base({ engine, maxSteps: 1, signal: controller.signal }));
+
+    expect(out.kind).toBe("stopped");
+  });
+
   it("reports every step so a person can watch and stop it", async () => {
     const { engine } = scripted([
       { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "replay_case", arguments: "{}" } }] },
