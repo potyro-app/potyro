@@ -5,24 +5,11 @@
 // the real runtime. Karta is an unusually good target for a weak model: the output is small,
 // validator-gated, and safe-when-wrong (untrusted → isolate).
 
-import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { ChatBackend, firstContent, type ChatEngine, type ChatMessage } from "./chat-backend.js";
 
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-export interface ChatRequest {
-  messages: ChatMessage[];
-  temperature?: number;
-  max_tokens?: number;
-}
-export interface ChatResponse {
-  choices: Array<{ message: { content: string } }>;
-}
-export interface ChatEngine {
-  chat: { completions: { create(req: ChatRequest): Promise<ChatResponse> } };
-}
+// The chat shape lives in chat-backend.ts, shared with the cloud backends that speak it. Re-exported
+// here so existing importers (and the eval tests) keep working.
+export type { ChatEngine, ChatMessage, ChatRequest, ChatResponse } from "./chat-backend.js";
 
 /**
  * Curated on-device models for the picker. All coder-tuned (the output is a structured `.app.ts`,
@@ -46,55 +33,17 @@ export const WEBLLM_MODELS: readonly WebLLMModel[] = [
 const DEFAULT_MODEL = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
 const MAX_TOKENS = 2048;
 
-function firstContent(res: ChatResponse): string {
-  return res.choices[0]?.message.content ?? "";
-}
-
-export class WebLLMBackend implements ModelBackend {
+export class WebLLMBackend extends ChatBackend {
   readonly name: string;
 
   constructor(private readonly engine: ChatEngine, model: string = DEFAULT_MODEL) {
+    super();
     this.name = `webllm:${model}`;
   }
 
-  async generate(prompt: GenPrompt): Promise<string> {
-    const res = await this.engine.chat.completions.create({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserMessage(prompt) },
-      ],
-      temperature: 0.2,
-      max_tokens: MAX_TOKENS,
-    });
-    return extractSource(firstContent(res));
-  }
-
-  async repair(source: string, errors: string[], prompt: GenPrompt): Promise<string> {
-    const res = await this.engine.chat.completions.create({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserMessage(prompt) },
-        { role: "assistant", content: "```ts\n" + source + "\n```" },
-        { role: "user", content: buildRepairMessage(errors) },
-      ],
-      temperature: 0.1,
-      max_tokens: MAX_TOKENS,
-    });
-    return extractSource(firstContent(res));
-  }
-
-  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
-    const res = await this.engine.chat.completions.create({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserMessage(prompt) },
-        { role: "assistant", content: "```ts\n" + source + "\n```" },
-        { role: "user", content: buildModifyMessage(instruction) },
-      ],
-      temperature: 0.1,
-      max_tokens: MAX_TOKENS,
-    });
-    return extractSource(firstContent(res));
+  // No `model` on the request: the MLC engine is loaded for one model and is already bound to it.
+  protected async ask(messages: ChatMessage[], temperature: number): Promise<string> {
+    return firstContent(await this.engine.chat.completions.create({ messages, temperature, max_tokens: MAX_TOKENS }));
   }
 }
 

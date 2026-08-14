@@ -319,6 +319,21 @@ export function buildUserMessage(prompt: GenPrompt): string {
 }
 
 /**
+ * Opens a modify exchange, in place of the generate turn's "Create a Karta app for this request".
+ *
+ * The app being edited is not an answer to the edit being asked for. Opening with the generate
+ * framing says the app to write is the one described BY the change, which makes the real source in
+ * the next turn read as a wrong answer to be replaced — and a model that follows instructions
+ * literally does exactly that, returning a brand-new app instead of an edited one.
+ */
+export function buildModifyOpener(): string {
+  return [
+    "Here is the current Karta app. It is the app the user already has and wants to keep.",
+    "You will be asked to change it — edit this source, do not replace it with a different app.",
+  ].join("\n");
+}
+
+/**
  * The marker a reply uses to say the request is not the app module's to fix.
  *
  * Only counts at the start of a line, so prose that merely mentions it ("I considered whether this
