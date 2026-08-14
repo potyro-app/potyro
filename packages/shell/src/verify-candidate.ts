@@ -80,7 +80,18 @@ export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ pass
     // each call loads its own isolate, and `LoadedApp.dispose()` is the only thing that frees it.
     // Runs whether replay passed, failed, or threw; `composed` is undefined only if `compose()`
     // itself never returned, in which case there is nothing to dispose.
-    composed?.loaded.dispose();
+    //
+    // Guarded: this function never throws today, but a `finally` that did would replace whatever
+    // `return`/`throw` the try block just produced — silently swapping a verdict for a disposal
+    // error. `loop.ts` awaits `deps.verify()` with no try/catch on the strength of a never-throw
+    // contract; a caller that cannot get a verdict here falls back to guessing, which is the exact
+    // failure this whole gate exists to prevent. The verdict outranks cleanup, so a failed dispose
+    // is swallowed (and logged) rather than allowed to propagate.
+    try {
+      composed?.loaded.dispose();
+    } catch (e) {
+      console.warn("verifyCandidate: failed to dispose the isolate", e);
+    }
   }
 }
 
