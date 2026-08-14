@@ -307,24 +307,37 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
     const vm = await opts.newContext();
     vm.runtime.setMemoryLimit(memory);
 
-    // 1) Run the app bundle: it must set globalThis.__kartaApp to the app definition.
-    const appRes = vm.evalCode(args.code);
-    vm.unwrapResult(appRes).dispose();
+    // The candidate's module body runs in step 1 below (`evalCode(args.code)`) — before any
+    // `call()` has happened, so `invoke()`'s per-call interrupt handler (further down) has not been
+    // installed yet. Without a deadline here too, a bundle whose TOP LEVEL never returns (e.g.
+    // `while (true) {}` outside any function) would hang forever with no budget applied at all: the
+    // isolate is untrusted precisely because its code has not been reviewed, so "no deadline yet" is
+    // not a safe state for even one eval. Cover the whole load with the same budget `invoke()` uses
+    // for every call after it.
+    const deadline = Date.now() + timeout;
+    vm.runtime.setInterruptHandler(() => Date.now() > deadline);
+    try {
+      // 1) Run the app bundle: it must set globalThis.__kartaApp to the app definition.
+      const appRes = vm.evalCode(args.code);
+      vm.unwrapResult(appRes).dispose();
 
-    // 2) Read the declarative definition out (structure only; functions stay in the VM).
-    const defRes = vm.evalCode(
-      "JSON.stringify(globalThis.__kartaApp, (k, v) => (typeof v === 'function' ? '__karta_fn__' : v))",
-    );
-    const defHandle = vm.unwrapResult(defRes);
-    const definition = deserialize<AppDefinition>(vm.getString(defHandle));
-    defHandle.dispose();
+      // 2) Read the declarative definition out (structure only; functions stay in the VM).
+      const defRes = vm.evalCode(
+        "JSON.stringify(globalThis.__kartaApp, (k, v) => (typeof v === 'function' ? '__karta_fn__' : v))",
+      );
+      const defHandle = vm.unwrapResult(defRes);
+      const definition = deserialize<AppDefinition>(vm.getString(defHandle));
+      defHandle.dispose();
 
-    // 3) Install the harness (ctx bridge + __karta.call).
-    const app = new IsolateLoadedApp(vm, definition, opts.store, timeout);
-    app.installBridge();
-    const harnessRes = vm.evalCode(HARNESS_SOURCE);
-    vm.unwrapResult(harnessRes).dispose();
+      // 3) Install the harness (ctx bridge + __karta.call).
+      const app = new IsolateLoadedApp(vm, definition, opts.store, timeout);
+      app.installBridge();
+      const harnessRes = vm.evalCode(HARNESS_SOURCE);
+      vm.unwrapResult(harnessRes).dispose();
 
-    return app;
+      return app;
+    } finally {
+      vm.runtime.removeInterruptHandler?.();
+    }
   };
 }
