@@ -8,8 +8,16 @@ import type { Store } from "@karta/store";
 
 export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
-/** Build the untrusted loader for a given app Store. Used by `pnpm dev:sandbox`. */
-export async function createSandboxLoader(store: Store): Promise<LoadIsolated> {
+/**
+ * Build the untrusted loader for a given app Store. Used by `pnpm dev:sandbox`, and by
+ * verification (verify-candidate.ts), which passes its own, larger budget: `dev:sandbox`'s
+ * defaults (1000 ms / 64 MB, from createIsolateLoader) suit an interactive render, but a
+ * candidate replay runs a handful of queries back to back and would false-fail under that.
+ */
+export async function createSandboxLoader(
+  store: Store,
+  opts?: { timeoutMs?: number; memoryLimitBytes?: number },
+): Promise<LoadIsolated> {
   const [{ createIsolateLoader }, quickjs] = await Promise.all([
     import("@karta/host/isolate"),
     import("quickjs-emscripten"),
@@ -17,5 +25,6 @@ export async function createSandboxLoader(store: Store): Promise<LoadIsolated> {
   return createIsolateLoader({
     store,
     newContext: () => quickjs.newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>,
+    ...opts,
   });
 }
