@@ -17,9 +17,19 @@ import {
   extractSource,
 } from "./prompt.js";
 
+export interface ToolCallOnMessage {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  /** Set on a `tool` message: which call this is the result of. */
+  tool_call_id?: string;
+  /** Set on an `assistant` message that asked for tools, when replaying the transcript back. */
+  tool_calls?: ToolCallOnMessage[];
 }
 export interface ChatRequest {
   /** Cloud engines route on this; on-device engines are constructed per-model and ignore it. */
@@ -27,9 +37,12 @@ export interface ChatRequest {
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
+  /** Omitted entirely when absent — an on-device engine must see the request it saw before. */
+  tools?: Array<{ type: "function"; function: { name: string; description: string; parameters: Record<string, unknown> } }>;
+  tool_choice?: "auto" | "none";
 }
 export interface ChatResponse {
-  choices: Array<{ message: { content: string } }>;
+  choices: Array<{ message: { content: string; tool_calls?: ToolCallOnMessage[] }; finish_reason?: string }>;
 }
 export interface ChatEngine {
   chat: { completions: { create(req: ChatRequest): Promise<ChatResponse> } };
