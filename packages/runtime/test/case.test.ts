@@ -28,4 +28,13 @@ describe("case model", () => {
 
     expect(c.steps[1]).toEqual({ kind: "expect", note: "here I expected the map to open" });
   });
+
+  it("keeps a recorded step even if the caller reuses the object it passed", () => {
+    const params = { cityId: "c1" };
+    const c = addStep(newCase("city-maps", "x"), { kind: "open", page: "detail", params });
+
+    params.cityId = "MUTATED";
+
+    expect(c.steps[0]).toEqual({ kind: "open", page: "detail", params: { cityId: "c1" } });
+  });
 });

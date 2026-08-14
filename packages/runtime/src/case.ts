@@ -25,7 +25,29 @@ export function newCase(appId: string, title: string, id = `case-${appId}-${Date
 }
 
 export function addStep(c: Case, step: CaseStep): Case {
-  return { ...c, steps: [...c.steps, step] };
+  // Copy the step to avoid mutations of the recorded path. A case is a record of what happened;
+  // if a caller mutates their original params object after calling addStep, the recording must remain unchanged.
+  let copiedStep: CaseStep;
+  if (step.kind === "open") {
+    copiedStep = {
+      kind: "open",
+      page: step.page,
+      params: step.params ? { ...step.params } : undefined,
+    };
+  } else if (step.kind === "action") {
+    copiedStep = {
+      kind: "action",
+      entity: step.entity,
+      action: step.action,
+      recordId: step.recordId,
+    };
+  } else {
+    copiedStep = {
+      kind: "expect",
+      note: step.note,
+    };
+  }
+  return { ...c, steps: [...c.steps, copiedStep] };
 }
 
 export function annotate(c: Case, note: string): Case {
