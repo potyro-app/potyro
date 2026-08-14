@@ -10,6 +10,17 @@ export type { ModifyContext, ModifyReply } from "./prompt.js";
 export { ClaudeBackend, createClaudeBackend, type MessagesClient } from "./claude-backend.js";
 export { WebLLMBackend, createWebLLMBackend, WEBLLM_MODELS, type ChatEngine, type WebLLMModel } from "./webllm-backend.js";
 export {
+  OpenRouterBackend,
+  createOpenRouterBackend,
+  createOpenRouterEngine,
+  OPENROUTER_MODELS,
+  type OpenRouterModel,
+  type OpenRouterOptions,
+  type ProviderOptions,
+  type ReasoningEffort,
+  type ReasoningOptions,
+} from "./openrouter-backend.js";
+export {
   GeminiNanoBackend,
   createGeminiNanoBackend,
   hasBuiltInAI,
