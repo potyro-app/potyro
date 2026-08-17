@@ -5,7 +5,8 @@
   "description": "AI generator eval harness (KA-06): score generated .app.ts sources (compile/validate/render) against a prompt corpus and a pluggable model backend. The measurable base for KA-05/KA-07.",
   "exports": {
     ".": "./src/index.ts",
-    "./backends": "./src/backends.ts"
+    "./backends": "./src/backends.ts",
+    "./agent": "./src/agent/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
