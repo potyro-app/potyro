@@ -198,6 +198,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const [fixSteps, setFixSteps] = useState<LoopStep[]>([]);
   const [fixOutcome, setFixOutcome] = useState<LoopOutcome | undefined>(undefined);
   const fixAbort = useRef<AbortController | null>(null);
+  // Bumped by `openFix` (and on unmount, below). `runFix` captures the value current at call time and
+  // every write it schedules — `onStep` and the `.then(setFixOutcome)` — compares against it first.
+  // Without this, closing (or Stop) only REQUESTS an abort; the in-flight `startFix` promise keeps
+  // running, and an impatient second "Fix this" click starts a new run before the old one lands. The
+  // old run's closures are still bound to `setFixOutcome`/`setFixSteps` and would otherwise overwrite
+  // the new run's outcome and splice a stray step into its feed — same shape of bug `loadActivity`'s
+  // `alive` flag guards against above, generalized to a counter because more than one stale run can
+  // be superseded in sequence.
+  const fixRunId = useRef(0);
 
   /** Only apps you can actually change afterwards — the same requirement Edit mode already has
    *  (`canEdit` below): a builtin example has no source in "My Apps" to edit or re-save. */
@@ -212,6 +221,9 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     if (!source) return;
     const controller = new AbortController();
     fixAbort.current = controller;
+    // Captured now, not read fresh later: this is what lets a superseded run's own callbacks tell
+    // themselves apart from the run that's current by the time they actually fire.
+    const runId = fixRunId.current;
     setFixOutcome(undefined);
     void startFix({
       source,
@@ -219,13 +231,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       runtime,
       store: runtime.core.store,
       engine: engineCfg,
-      onStep: (step) => setFixSteps((prev) => [...prev, step]),
+      onStep: (step) => {
+        if (fixRunId.current !== runId) return; // a superseded run's step; the panel moved on
+        setFixSteps((prev) => [...prev, step]);
+      },
       signal: controller.signal,
       resumeFrom,
-    }).then(setFixOutcome);
+    }).then((outcome) => {
+      if (fixRunId.current !== runId) return; // a superseded run's outcome; do not overwrite the current one
+      setFixOutcome(outcome);
+    });
   };
 
   const openFix = (): void => {
+    fixRunId.current += 1;
     setFixSteps([]);
     setFixOpen(true);
     runFix();
@@ -260,6 +279,21 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     setFixSteps([]);
     setFixOutcome(undefined);
   };
+
+  // Defensive, not live: today `App` is mounted exactly once by `main.tsx`'s `boot()`, page-to-page
+  // navigation is a full reload rather than a client-side unmount, and Studio's `<App key=
+  // {preview.build}>` remount never receives an `appId` (so "Fix this" can't even appear there) — so
+  // this cleanup can't currently run while a fix is in flight. It stays anyway, matching the
+  // `loadActivity` `alive`-flag idiom above, so a future mount-topology change (SPA routing, or the
+  // Studio preview one day getting an `appId`) doesn't reopen this as a live leak: bump the run id so
+  // any settling `startFix` promise is ignored by the guards in `runFix`, and abort so the loop
+  // actually stops instead of running to completion for nobody.
+  useEffect(() => {
+    return () => {
+      fixRunId.current += 1;
+      fixAbort.current?.abort();
+    };
+  }, []);
 
   const navigateRaw = (target: string, param?: Record<string, string>): void => {
     setPageId(target);
