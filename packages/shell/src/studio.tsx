@@ -36,7 +36,8 @@ import { openStore } from "./open-store.js";
 import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
 import { History } from "./history.js";
 import { EngineSettings } from "./engine-settings.js";
-import { DEFAULT_ENGINE_CONFIG, engineLabel, engineReady, type EngineConfig } from "./engines.js";
+import { engineLabel, engineReady } from "./engines.js";
+import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
@@ -105,9 +106,11 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [description, setDescription] = useState("");
-  // Which model answers, and everything it needs, as ONE value (engines.ts). Keys live here in
-  // memory for the tab's lifetime and are never persisted — they are the user's own.
-  const [engineCfg, setEngineCfg] = useState<EngineConfig>(DEFAULT_ENGINE_CONFIG);
+  // Which model answers, and everything it needs, as ONE value (engines.ts) — held in the module-
+  // level store (engine-store.ts), not local state, so App.tsx can read the same choice to gate
+  // "Fix this". Keys live in memory for the tab's lifetime and are never persisted — they are the
+  // user's own.
+  const [engineCfg, setEngineCfg] = useEngineConfig();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
