@@ -156,6 +156,28 @@ describe("investigation tools", () => {
     expect(r.detail).toMatch(/0 records/);
   });
 
+  // Finding 2: a store error can quote a row's own value in its message (a failed constraint, a
+  // serialization error naming the offending value). That must not reach the model just because it
+  // arrived via an exception instead of a normal return — the shapes-only default exists precisely
+  // to keep values like these off this path, cloud or not.
+  it("query_data does not leak a record value carried in a thrown store error", async () => {
+    const r = await runTool(
+      buildAppTools(
+        deps({
+          records: async () => {
+            throw new Error('constraint failed on row {"name":"Lisbon","ssn":"123-45-6789"}');
+          },
+        }),
+      ),
+      call("query_data", { entity: "city" }),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.detail).not.toContain("Lisbon");
+    expect(r.detail).not.toContain("123-45-6789");
+    expect(r.detail).not.toContain("constraint failed");
+    expect(r.detail).toMatch(/could not read/i);
+  });
+
   // Finding 2: a character-offset slice can sever a JSON value mid-string, and the model has no
   // way to tell "all records" from "a fragment of the last one". Truncation must land on a row
   // boundary and must always state totals, so the model can trust what it has.

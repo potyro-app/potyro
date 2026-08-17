@@ -145,7 +145,21 @@ export function buildAppTools(deps: InvestigationDeps): AgentTool[] {
       parameters: { type: "object", properties: { entity: { type: "string" } }, required: ["entity"] },
       run: async (args) => {
         const entity = String(args.entity ?? "");
-        const rows = await deps.records(entity);
+        let rows: unknown[];
+        try {
+          rows = await deps.records(entity);
+        } catch {
+          // `runTool`'s generic catch (tools.ts) passes a thrown error's `.message` straight
+          // through, and that is correct for it — most tools throw over things that aren't the
+          // user's data. This one is different: `deps.records` talks to the real store, and a
+          // store error can quote a row's own values in its message (a failed constraint, a
+          // serialization error naming the offending value). Letting that reach the model — cloud
+          // or not — would leak exactly the data this tool's shapes-only default exists to
+          // withhold. So the boundary is enforced HERE, at the one tool that touches user data,
+          // rather than by weakening `runTool`'s catch for every tool including ones (like
+          // `inspect_app`) whose raw error text is genuinely useful and not personal.
+          return { ok: false, detail: `could not read "${entity}" — the store reported a failure` };
+        }
         if (allowRawRecords) return { ok: true, detail: truncatedRawRecords(rows) };
         return { ok: true, detail: shapeOf(rows) };
       },
