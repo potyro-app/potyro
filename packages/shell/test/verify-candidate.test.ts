@@ -74,7 +74,7 @@ describe("verifyCandidate", () => {
     const store = new MemoryStore();
     await store.open("city-maps-verify");
     await store.insert("city", { name: "Springfield" });
-    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), store });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), storeForTests: store });
     expect(v.passed).toBe(true);
     expect(v.detail).toContain("1 records");
   });
@@ -137,7 +137,7 @@ export default defineApp({
     await store.insert("city", { name: "Springfield" });
 
     const start = Date.now();
-    const v = await verifyCandidate({ source: APP(HANGING_FILTER), theCase: c, store });
+    const v = await verifyCandidate({ source: APP(HANGING_FILTER), theCase: c, storeForTests: store });
     const elapsedMs = Date.now() - start;
 
     expect(v.passed).toBe(false);

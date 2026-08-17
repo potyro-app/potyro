@@ -19,6 +19,7 @@ import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { readOnlyStore } from "./read-only-store.js";
 import { Toaster } from "./toaster.js";
 
 // Exported (not just internal) so tests can state their own time bounds as multiples of the real
@@ -40,8 +41,14 @@ export const VERIFY_WALL_CLOCK_MS = VERIFY_TIMEOUT_MS * 2;
 export interface VerifyCandidateDeps {
   source: string;
   theCase: Case;
-  /** Overridable for tests; defaults to a throwaway in-memory store. */
-  store?: Store;
+  /**
+   * Test seam ONLY — never a real user store. `verifyCandidate` loads unverified, model-written
+   * code UNTRUSTED and lets it run `ctx.create`/`patch`/`delete` through the isolate bridge during
+   * `queryPage`. The agent loop calls this up to 8 times per reported bug; a caller that passed the
+   * user's real store here would let a REJECTED candidate destroy the very records the bug report
+   * is about, that many times over. Defaults to a throwaway in-memory store, exactly as before.
+   */
+  storeForTests?: Store;
 }
 
 export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ passed: boolean; detail: string }> {
@@ -65,7 +72,13 @@ function timeoutVerdict(): Promise<{ passed: boolean; detail: string }> {
 
 async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boolean; detail: string }> {
   // A fresh MemoryStore, never the user's: verification must not read or write real records.
-  const store = deps.store ?? (await freshStore());
+  const rawStore = deps.storeForTests ?? (await freshStore());
+  // Defense in depth beyond the `storeForTests` contract above: `queryPage` runs the candidate's
+  // filters and computed fields, and nothing stops one of them from reaching ctx.create/patch/
+  // delete through the isolate bridge. Wrapping in `readOnlyStore` means a write attempt — from a
+  // buggy candidate, or from a caller who ignored the "test seam only" warning — throws instead of
+  // mutating whatever store was actually supplied.
+  const store = readOnlyStore(rawStore, "verifyCandidate runs a candidate read-only; writes are refused");
   let bundleCode: string;
   try {
     const bundle = await createAppBundler();
