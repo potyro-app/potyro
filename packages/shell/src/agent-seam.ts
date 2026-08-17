@@ -4,7 +4,7 @@
 // connection at the type level only: no runtime behaviour, just a function that WOULD satisfy
 // `LoopDeps["verify"]` if it existed, checked by the compiler on every typecheck.
 //
-// `verifyCandidate` takes one argument (`{ source, theCase, storeForTests? }`), while
+// `verifyCandidate` takes one argument (`{ source, theCase, appStore?, storeForTests? }`), while
 // `LoopDeps["verify"]` takes one string (`candidate`). Those are genuinely different shapes — the
 // real caller closes over the user's recorded `Case` up front and hands the loop a `(source) =>
 // verifyCandidate({ source, theCase })` closure. `makeVerify` below is exactly that closure-maker,
