@@ -3,9 +3,13 @@
 // The generator's SYSTEM_PROMPT teaches how to WRITE a Karta app and nothing else — it predates
 // tools entirely. An agent given tools and no explanation of them wastes its budget rediscovering
 // what it can do, and (measured in review) will re-run `replay_case` after proposing a fix expecting
-// to see its own change, which cannot happen. So this prompt adds exactly the three things the loop
-// depends on it knowing: what the tools are, what the three legal replies are, and that its
-// candidate is checked for it.
+// to see its own change, which cannot happen. So this prompt adds what the loop depends on it
+// knowing: what the tools are, what the three legal replies are, that a verdict marker has to OPEN
+// the reply because that is literally how loop.ts tells a verdict from a candidate (`startsWith` on
+// the trimmed text — see `loop.ts`'s ASK/NOT_IN_APP checks), that its candidate is checked for it
+// automatically, and — because the embedded SYSTEM_PROMPT ends by demanding no prose at all — that
+// this context is the one exception, since loop.ts reads the prose before the fence as the fix's
+// rationale and shows it to the person.
 
 import { SYSTEM_PROMPT } from "../prompt.js";
 
@@ -24,10 +28,11 @@ INVESTIGATE FIRST. You have tools:
   is not someone's description of it.
 - \`inspect_app\` — the pages the app really has, with each page's view type and entity. Use it when
   a step reports that a page does not exist.
-- \`query_data\` — how many records an entity has and how many have each field filled in. Counts and
-  shapes only; it cannot show you the person's records, and asking again will not change that. A
-  page that opens and shows nothing is very often a data problem rather than a code one, and this
-  is how you tell.
+- \`query_data\` — use this when a page opens but shows nothing, or a list looks emptier than it
+  should: that is very often a data problem rather than a code one, and this tool is how you tell
+  the two apart before you start editing. (What exactly it returns is described in the tool's own
+  schema, not here — that description is generated from the same access grant that governs its
+  actual behavior, so it is the one place this cannot drift out of date.)
 
 THEN REPLY WITH EXACTLY ONE OF:
 1. The complete updated \`.app.ts\` in one \`\`\`ts block. Send the whole file, not a diff.
@@ -36,6 +41,18 @@ THEN REPLY WITH EXACTLY ONE OF:
    because nobody can tell it from a fix until they try it.
 3. \`NOT-IN-APP: <what is wrong outside the app, and what would have to change there>\` — when the
    app is not at fault. Say this when it is true; it is a real answer.
+
+THE MARKER MUST BE THE VERY FIRST THING IN YOUR REPLY when you use (2) or (3) — nothing before it,
+not even a sentence of lead-in. That is literally how the loop running you tells a verdict (ASK or
+NOT-IN-APP) apart from a proposed app: it checks whether the reply STARTS WITH the marker, not
+whether the marker appears anywhere in it. A marker that shows up mid-explanation is read as prose
+inside a candidate, not as the verdict you meant.
+
+OVERRIDING THE OUTPUT SECTION ABOVE, FOR THIS CONTEXT ONLY: "No prose before or after" is correct
+when writing an app from scratch, where there is no one to read the prose. Here there is — put your
+reasoning BEFORE the \`\`\`ts block when you send a fix. That text becomes the rationale shown to the
+person as the explanation of what changed and why; if you omit it, they see a diff with no reason
+attached to it.
 
 WHAT HAPPENS TO YOUR CANDIDATE. When you send an app, the person's own recording is replayed
 against it automatically. You do not need to call \`replay_case\` again to check your own work — it
