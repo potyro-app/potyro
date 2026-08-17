@@ -249,6 +249,38 @@ button {
   right: 0.35rem;
   z-index: 5;
 }
+
+/* --- ViewErrorBoundary fallback: the current page crashed, the shell around it did not ---------
+   Genuinely a failure (unlike `.k-diagnosis`/`.k-fix-exhausted`'s neutral cousins above) — same red
+   family as `.k-case-lost` and `.k-fix-exhausted` elsewhere in this file, so "something broke" reads
+   consistently everywhere it can happen. Sits where the view itself would have rendered, so the
+   header, nav, quick actions and the "Something's wrong" recorder stay exactly where they were. */
+.k-view-crash {
+  border: 1px solid color-mix(in oklab, oklch(60% 0.18 30) 35%, var(--line));
+  background: color-mix(in oklab, oklch(60% 0.18 30) 6%, transparent);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.k-view-crash-head {
+  margin: 0;
+  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+.k-view-crash-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: oklch(45% 0.16 30);
+  font-family: var(--font-mono, monospace);
+  word-break: break-word;
+}
+.k-view-crash button {
+  align-self: flex-start;
+}
 .k-modifydialog {
   width: min(520px, 94vw);
   display: flex;
