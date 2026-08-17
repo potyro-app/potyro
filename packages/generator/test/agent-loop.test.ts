@@ -30,10 +30,28 @@ const base = (over: Partial<LoopDeps>): LoopDeps => ({
   system: "contract",
   task: "clicking a city does nothing",
   verify: async () => ({ passed: true, detail: "replay passed" }),
+  // Failing by default so every existing test below is still allowed to start the loop. Only the
+  // dedicated no-repro test overrides this to `passed: true`.
+  baseline: { passed: false, detail: 'replay FAILED before any fix: no page "city-detail"' },
   ...over,
 });
 
 describe("runAgentLoop", () => {
+  // PART 1 of the branch-review fix: a case that already passes against the app as it is proves
+  // nothing when replayed again after a "fix" — so the loop must refuse to even start, and must not
+  // spend a single model call getting there.
+  it("returns no-repro without calling the engine at all when the baseline already passed", async () => {
+    const { engine, seen } = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+
+    const out = await runAgentLoop(
+      base({ engine, baseline: { passed: true, detail: "opened city-detail fine, 0 records" } }),
+    );
+
+    expect(out).toEqual({ kind: "no-repro", detail: "opened city-detail fine, 0 records" });
+    // The engine was never called — not even once — to get here.
+    expect(seen).toHaveLength(0);
+  });
+
   it("feeds a tool result back and lets the model act on it", async () => {
     const { engine, seen } = scripted([
       { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "replay_case", arguments: "{}" } }] },

@@ -9,6 +9,11 @@
 //
 // Every other exit is honest about itself: a question, a diagnosis that the fault is not the app's,
 // exhaustion, or a user stop. None of them claim success.
+//
+// One more exit, checked before anything else runs: `kind: "no-repro"`. The user's own case is
+// replayed once, up front, against the app AS IT IS — the `baseline` in `LoopDeps`. If that already
+// passes, no candidate can prove more than the baseline already did, so the loop refuses to start
+// and says so. This is not a failure of the agent and not a fix; a UI must render it as neither.
 
 import { extractSource, looksLikeApp } from "../prompt.js";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
@@ -28,6 +33,16 @@ export type LoopOutcome =
       kind: "stopped";
       /** The last candidate tried. It FAILED replay — show it, never apply it. */
       lastAttempt?: string;
+    }
+  | {
+      // NOT a failure of the agent, and not a fix either: the user's own recorded case already
+      // succeeds against the app AS IT IS, before any candidate is even proposed. The honest
+      // statement is "I cannot reproduce what you reported" — a legitimate answer this system could
+      // not previously give. A UI must render this as neither success nor failure; it's a third
+      // thing.
+      kind: "no-repro";
+      /** What replaying the case against the app as-is actually showed (from `deps.baseline`). */
+      detail: string;
     };
 
 export type LoopStep =
@@ -45,6 +60,16 @@ export interface LoopDeps {
   task: string;
   /** Compile + replay the candidate. The loop cannot succeed without this passing. */
   verify: (candidate: string) => Promise<{ passed: boolean; detail: string }>;
+  /**
+   * The user's own case, replayed against the app AS IT IS — before any candidate exists. Required,
+   * because the loop cannot tell "no repro" from "found it" without knowing where it started: a
+   * large share of real reports ("the page opens but shows nothing") replay-PASS today even though
+   * the app is broken, since the page exists and the query runs — it just returns no rows. Left
+   * unchecked, the first candidate that merely compiles replays to the same passing verdict the
+   * baseline already had, and `kind: "fix"` comes back having proven nothing. See the check at the
+   * top of `runAgentLoop` for what this gates.
+   */
+  baseline: { passed: boolean; detail: string };
   maxSteps?: number;
   /** Called as work happens, so a person can watch. */
   onStep?: (step: LoopStep) => void;
@@ -63,6 +88,17 @@ const ASK = "ASK:";
 const NOT_IN_APP = "NOT-IN-APP:";
 
 export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
+  // WHY THIS COMES FIRST: verifying a candidate against a check that was already green proves
+  // nothing. If the user's recorded case already passes against the app as it is — no candidate,
+  // no edit, nothing changed — then replaying it again after a "fix" can only pass for the same
+  // reason it passed just now, which is not evidence of anything. Rather than spend a model call
+  // chasing a candidate whose success is guaranteed by the baseline it's compared against, the loop
+  // says so plainly: it cannot reproduce what was reported. That's not the agent failing; it's the
+  // agent being honest before it has spent anything at all.
+  if (deps.baseline.passed) {
+    return { kind: "no-repro", detail: deps.baseline.detail };
+  }
+
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
   const messages: ChatMessage[] = [
     { role: "system", content: deps.system },
