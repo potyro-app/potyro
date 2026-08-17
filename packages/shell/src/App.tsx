@@ -3,7 +3,7 @@
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { replayCase, type ActivityItem, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
+import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
@@ -12,6 +12,11 @@ import { Studio } from "./studio.js";
 import { CaseRecorder } from "./case-recorder.js";
 import { saveCase, hasRecordedActivity } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
+import { FixPanel } from "./fix-panel.js";
+import { startFix } from "./start-fix.js";
+import { canInvestigate, engineLabel } from "./engines.js";
+import { useEngineConfig } from "./engine-store.js";
+import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
@@ -179,7 +184,82 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const [recording, setRecording] = useState(false);
   const [noting, setNoting] = useState(false);
   const [noteText, setNoteText] = useState("");
-  const [caseReport, setCaseReport] = useState<{ report: ReplayReport; lostSteps: number } | null>(null);
+  // `theCase` rides along with its own report so "Fix this" has the actual recording to hand
+  // `startFix` — the report alone (what replay found) isn't enough; the loop needs the steps
+  // themselves to replay again against a candidate.
+  const [caseReport, setCaseReport] = useState<{ report: ReplayReport; lostSteps: number; theCase: Case } | null>(null);
+
+  // --- Fix this: investigate a reported case with the agent, and watch it work (start-fix.ts) ----
+  // Which engine answers is read from the SAME store Studio's Model settings write to (engine-
+  // store.ts) — there is exactly one picker for "which model am I using", and this is the second
+  // reader of it, not a second one.
+  const [engineCfg] = useEngineConfig();
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixSteps, setFixSteps] = useState<LoopStep[]>([]);
+  const [fixOutcome, setFixOutcome] = useState<LoopOutcome | undefined>(undefined);
+  const fixAbort = useRef<AbortController | null>(null);
+
+  /** Only apps you can actually change afterwards — the same requirement Edit mode already has
+   *  (`canEdit` below): a builtin example has no source in "My Apps" to edit or re-save. */
+  const canFix = Boolean(appId && currentKind === "user");
+
+  /** One run of the loop, optionally resuming a `question` with the transcript it handed back plus
+   *  the person's answer appended (see `LoopDeps.resumeFrom`'s own doc comment for why that seeds
+   *  `messages` instead of starting over). */
+  const runFix = (resumeFrom?: LoopDeps["resumeFrom"]): void => {
+    if (!appId || !caseReport) return;
+    const source = getUserApp(appId)?.source;
+    if (!source) return;
+    const controller = new AbortController();
+    fixAbort.current = controller;
+    setFixOutcome(undefined);
+    void startFix({
+      source,
+      theCase: caseReport.theCase,
+      runtime,
+      store: runtime.core.store,
+      engine: engineCfg,
+      onStep: (step) => setFixSteps((prev) => [...prev, step]),
+      signal: controller.signal,
+      resumeFrom,
+    }).then(setFixOutcome);
+  };
+
+  const openFix = (): void => {
+    setFixSteps([]);
+    setFixOpen(true);
+    runFix();
+  };
+
+  const answerFix = (text: string): void => {
+    if (!fixOutcome || fixOutcome.kind !== "question") return;
+    runFix([...fixOutcome.transcript, { role: "user", content: text }]);
+  };
+
+  /**
+   * Apply the ONE thing this whole feature exists to make safe to apply: `fix.source`, the
+   * candidate that replayed the user's own recorded case and passed (loop.ts's THE RULE). Saved the
+   * same way an AI edit is (`origin: "edited"`), with the loop's own `rationale` riding along so
+   * History reads the same as any other agent change — see `applyModify` above for the sibling path.
+   */
+  const applyFix = (source: string): void => {
+    if (!appId) return;
+    const app = getUserApp(appId);
+    if (!app) return;
+    const rationale = fixOutcome?.kind === "fix" ? fixOutcome.rationale : undefined;
+    void saveUserApp(
+      { id: appId, name: app.name, source, origin: "edited", note: "Fixed a reported case", rationale },
+      new Date().toISOString(),
+    ).then(() => location.reload());
+  };
+
+  const closeFix = (): void => {
+    fixAbort.current?.abort();
+    fixAbort.current = null;
+    setFixOpen(false);
+    setFixSteps([]);
+    setFixOutcome(undefined);
+  };
 
   const navigateRaw = (target: string, param?: Record<string, string>): void => {
     setPageId(target);
@@ -242,7 +322,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // filter, sort and display bindings — not an unfiltered dump of the entity.
       query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,
     };
-    setCaseReport({ report: await replayCase(target, c), lostSteps });
+    setCaseReport({ report: await replayCase(target, c), lostSteps, theCase: c });
   };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
@@ -996,7 +1076,29 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       ) : null}
 
       {caseReport ? (
-        <CaseReport report={caseReport.report} lostSteps={caseReport.lostSteps} onClose={() => setCaseReport(null)} />
+        <div className="k-case-and-fix">
+          <CaseReport report={caseReport.report} lostSteps={caseReport.lostSteps} onClose={() => setCaseReport(null)} />
+          {canFix ? (
+            <div className="k-fix-entry">
+              {canInvestigate(engineCfg.engine) ? (
+                <button type="button" className="k-add k-primary-action" disabled={fixOpen} onClick={openFix}>
+                  Fix this
+                </button>
+              ) : (
+                // The friendlier half of the same fact `startFix` itself refuses on: a dead button
+                // would say nothing about WHY, and this is the reason before you've spent a click.
+                <p className="k-muted k-fix-entry-reason">
+                  {engineLabel(engineCfg)} can&rsquo;t investigate this step by step — pick a cloud
+                  engine, like OpenRouter, in the Studio&rsquo;s Model settings to use Fix this.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {fixOpen ? (
+        <FixPanel outcome={fixOutcome} steps={fixSteps} onApply={applyFix} onAnswer={answerFix} onStop={() => fixAbort.current?.abort()} onClose={closeFix} />
       ) : null}
 
       {picker ? <Picker host={picker} /> : null}
