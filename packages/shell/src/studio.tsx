@@ -7,8 +7,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
-import { replayCase, type Case, type CaseStep, type ReplayReport, type ReplayTarget } from "@karta/runtime";
-import { listCases } from "./app-cases.js";
+import { replayCase, type Case, type ReplayReport, type ReplayTarget } from "@karta/runtime";
+import { caseLabel, listCases } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
 import {
@@ -403,13 +403,6 @@ export function Studio({ onClose }: { onClose: () => void }) {
     await removeUserApp(app.id);
     setSavedApps(listUserApps());
     if (currentId === app.id) setCurrentId(null);
-  };
-
-  /** What a case reads as in a one-line list: its own title, else the note the person wrote. */
-  const caseLabel = (c: Case): string => {
-    if (c.title) return c.title;
-    const note = c.steps.find((s): s is Extract<CaseStep, { kind: "expect" }> => s.kind === "expect")?.note;
-    return note ?? c.id;
   };
 
   /**

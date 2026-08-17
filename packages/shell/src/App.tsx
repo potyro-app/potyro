@@ -10,7 +10,7 @@ import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
 import { CaseRecorder } from "./case-recorder.js";
-import { saveCase, hasRecordedActivity } from "./app-cases.js";
+import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { FixPanel } from "./fix-panel.js";
 import { startFix } from "./start-fix.js";
@@ -260,14 +260,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
    * candidate that replayed the user's own recorded case and passed (loop.ts's THE RULE). Saved the
    * same way an AI edit is (`origin: "edited"`), with the loop's own `rationale` riding along so
    * History reads the same as any other agent change — see `applyModify` above for the sibling path.
+   *
+   * `note` is `caseLabel(theCase)` — the case's own title, else the person's own recorded
+   * expectation, else its id (app-cases.ts, shared with Studio's case list so the two surfaces agree
+   * on what "this case" is called). NOT a description of what the agent did — that is `rationale`.
+   * History's whole point is legibility later: "Fixed a reported case" would read the same on every
+   * row forever, telling a future you nothing about which report this was answering.
    */
   const applyFix = (source: string): void => {
-    if (!appId) return;
+    if (!appId || !caseReport) return;
     const app = getUserApp(appId);
     if (!app) return;
     const rationale = fixOutcome?.kind === "fix" ? fixOutcome.rationale : undefined;
     void saveUserApp(
-      { id: appId, name: app.name, source, origin: "edited", note: "Fixed a reported case", rationale },
+      { id: appId, name: app.name, source, origin: "edited", note: caseLabel(caseReport.theCase), rationale },
       new Date().toISOString(),
     ).then(() => location.reload());
   };

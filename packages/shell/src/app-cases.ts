@@ -143,6 +143,16 @@ export async function deleteCase(appId: string, id: string): Promise<void> {
   }
 }
 
+/** What a case reads as in one line: its own title, else the note the person wrote when they
+ *  stopped recording ("what did you expect?"), else its id as a last resort. This is the ONE
+ *  place that fallback order lives — Studio's case list and a version's history `note` (App.tsx's
+ *  `applyFix`) both need "the person's own words for this case" and must agree on what that means. */
+export function caseLabel(c: Case): string {
+  if (c.title) return c.title;
+  const note = c.steps.find((s): s is Extract<CaseStep, { kind: "expect" }> => s.kind === "expect")?.note;
+  return note ?? c.id;
+}
+
 /** Forget an app's cases — called when the app itself is deleted, alongside clearHistory and
  *  clearDiagnoses (user-apps.ts's `removeUserApp`). App ids are name slugs, so a deleted app's id
  *  can be reused by an unrelated app created later; without this, that new app would inherit the
