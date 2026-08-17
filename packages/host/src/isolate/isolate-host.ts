@@ -163,6 +163,15 @@ class IsolateLoadedApp implements LoadedApp {
         return serialize((await this.ctxHost?.ui.confirm(op.msg as string)) ?? false);
       case "ui.prompt":
         return serialize((await this.ctxHost?.ui.prompt(op.msg as string, op.opts as { default?: string })) ?? null);
+      case "ui.pick":
+        // `UiBridge.pick`'s `opts.label` is a function `(t: T) => string` (types.ts) — a function
+        // cannot cross the isolate boundary, so `harness.ts` never sends it, only `{multi}`. An
+        // untrusted app's picker therefore renders with the host's default item labelling, not the
+        // app-chosen label a trusted app could supply directly. This is a real, deliberate gap
+        // between the trusted and untrusted paths, not an oversight — do not "fix" it by trying to
+        // marshal a function across. `?? null` matches the bridge's own cancel contract (`ui-bridge.ts`'s
+        // headless fallback also resolves to `null`).
+        return serialize((await this.ctxHost?.ui.pick(op.items as unknown[], op.opts as { multi?: boolean })) ?? null);
       case "nav":
         this.ctxHost?.navigate(op.page as string, op.params as Record<string, string>);
         return nul;

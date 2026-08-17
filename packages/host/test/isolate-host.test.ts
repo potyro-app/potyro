@@ -240,6 +240,58 @@ describe("IsolateHost — mediated caps", () => {
   });
 });
 
+// ── ctx.ui.pick across the isolate ───────────────────────────────────────────────────────────
+//
+// generator/src/prompt.ts:232 tells every generated app it can `await ctx.ui.pick(items, opts)`.
+// harness.ts bridges it (`{op:"ui.pick", items, opts:{multi}}`), but until now `handleOp` had no
+// `case "ui.pick"`, so the op fell through to the unknown-op path and rejected for every untrusted
+// app that used the picker the contract promised it — provenance is not an edge case here (CLAUDE.md
+// rule 3: a shared/imported app ALWAYS runs here), so this was a real break, not a theoretical one.
+const PICK_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "picker-app", name: "PickerApp", version: "1.0.0", schemaVersion: 1, permissions: {},
+  entities: { t: { fields: { n: { type: "number" } }, actions: {
+    choose: async function(r, ctx){
+      var chosen = await ctx.ui.pick(["a", "b", "c"], { multi: false });
+      ctx.ui.toast("picked:" + JSON.stringify(chosen));
+    }
+  } } },
+  pages: [], reminders: []
+};
+`;
+
+describe("IsolateHost — ctx.ui.pick", () => {
+  it("returns the host's selection to an untrusted app", async () => {
+    const toasts: string[] = [];
+    const ui: UiBridge = {
+      toast: (m) => void toasts.push(m),
+      confirm: async () => true,
+      prompt: async () => null,
+      pick: async <T>(items: T[]) => items[1] ?? null,
+    };
+    const { loaded, ctx, store } = await setup(PICK_BUNDLE, {}, { ui });
+    const rec = await store.insert("t", { n: 1 });
+    await loaded.callAction("t", "choose", { ...rec } as never, ctx);
+    expect(toasts).toEqual(['picked:"b"']);
+    loaded.dispose();
+  });
+
+  it("returns null to an untrusted app when the pick is cancelled", async () => {
+    const toasts: string[] = [];
+    const ui: UiBridge = {
+      toast: (m) => void toasts.push(m),
+      confirm: async () => true,
+      prompt: async () => null,
+      pick: async () => null,
+    };
+    const { loaded, ctx, store } = await setup(PICK_BUNDLE, {}, { ui });
+    const rec = await store.insert("t", { n: 1 });
+    await loaded.callAction("t", "choose", { ...rec } as never, ctx);
+    expect(toasts).toEqual(["picked:null"]);
+    loaded.dispose();
+  });
+});
+
 // ── Page summary aggregates across the isolate (KA-24) ──────────────────────────────────────
 //
 // `computed` is per-record, so an aggregate over the WHOLE set lives in `page.summary`. For an
