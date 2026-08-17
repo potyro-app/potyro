@@ -105,8 +105,20 @@ export function buildAppTools(deps: InvestigationDeps): AgentTool[] {
   return [
     {
       name: "replay_case",
+      // Like `query_data`'s description above, this text is a standing promise the model reasons
+      // from before it calls anything, not after. The old wording said "...and again after any
+      // change, to see whether the reported problem is real and whether it is fixed" — but this
+      // tool is bound to `deps.target`, the app AS THE USER CURRENTLY HAS IT. A candidate the model
+      // proposes never reaches it. A model that follows that instruction re-runs this tool after
+      // proposing a fix, sees the identical failure, and concludes its own patch failed — then
+      // burns its remaining budget chasing a phantom. The candidate IS checked, automatically, the
+      // moment the model sends one (see `runAgentLoop`'s call to `deps.verify` in loop.ts), so the
+      // description must say that instead of claiming this tool can do it.
       description:
-        "Replay what the user did, step by step, and report what actually happened. Use this FIRST, and again after any change, to see whether the reported problem is real and whether it is fixed.",
+        "Replay what the user did, step by step, against the app as the user currently has it, and " +
+        "report what actually happened. Use this FIRST to see whether the reported problem is real. " +
+        "When you reply with a complete replacement app, that candidate is automatically replayed the " +
+        "same way to check whether it fixes the problem — you do not need to call this tool again for that.",
       parameters: NO_ARGS,
       run: async () => {
         const report = await replayCase(deps.target, deps.theCase);
