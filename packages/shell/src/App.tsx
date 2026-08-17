@@ -44,6 +44,7 @@ import { buildAndValidate } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
+import { ViewErrorBoundary } from "./view-error-boundary.js";
 
 import { canGenerate, generateViaCli } from "./generate-client.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
@@ -142,13 +143,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // Nav model: a grid "home" of object types, or a tab bar. Default: grid for many objects, tabs few.
   const navMode: "grid" | "tabs" = (def as { nav?: "grid" | "tabs" }).nav ?? (baseEntities.length >= 3 ? "grid" : "tabs");
 
+  // The same "first tab, or home" landing spot used to pick an opening page, reused as the crash
+  // boundary's escape hatch (ViewErrorBoundary below) — a page guaranteed to be real, since it comes
+  // from the app's own declared pages rather than wherever `navigate` was just headed.
+  const landingPage = (): string => (navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id));
+
   const [pageId, setPageId] = useState<string>(() => {
     // READ ONLY. Clearing it here would make this initialiser impure, and StrictMode double-invokes
     // initialisers on purpose — the second call would find nothing and fall back to the first tab,
     // which is exactly how "come back to the page you were on" silently did nothing.
     const returning = globalThis.sessionStorage?.getItem(RETURN_TO_PAGE);
     if (returning && (returning === HOME || def.pages.some((p) => p.id === returning))) return returning;
-    return navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id);
+    return landingPage();
   });
   // Consumed once, after mount, so it can't affect a later boot.
   useEffect(() => {
@@ -882,7 +888,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
           </div>
         </main>
       ) : (
-        <>
+        // `key={pageId}`: a fresh boundary per page, not a stuck one — navigating away from a page
+        // that crashed (the fallback's own "Back to a working page" button, or any other nav) mounts
+        // a clean boundary for wherever you land, instead of carrying yesterday's error state into a
+        // page that never had a problem.
+        <ViewErrorBoundary key={pageId} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
           <main className="k-main">
@@ -911,7 +921,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               />
             ) : null}
           </main>
-        </>
+        </ViewErrorBoundary>
       )}
 
       {editor ? (
