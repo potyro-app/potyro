@@ -6,7 +6,7 @@
 
 import { useEffect, useRef } from "react";
 import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@karta/generator/backends";
-import { ENGINES, engineLabel, type Engine, type EngineConfig } from "./engines.js";
+import { ENGINES, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 
 interface EngineSettingsProps {
   config: EngineConfig;
@@ -70,6 +70,13 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                       <span className="k-engine-name">{e.label}</span>
                       {why ? <span className="k-muted k-engine-why">{why}</span> : null}
                       <span className="k-muted k-engine-blurb">{e.blurb}</span>
+                      {/* Honest about the one thing this engine can't do yet — not alarming, since
+                          every engine here still writes and edits apps fine; see engines.ts. */}
+                      {canInvestigate(e.id) ? null : (
+                        <span className="k-muted k-engine-note">
+                          Writes and edits apps; cannot investigate a reported problem step by step.
+                        </span>
+                      )}
                     </label>
 
                     {/* Settings belong to their engine, and appear only when it is the one selected. */}
