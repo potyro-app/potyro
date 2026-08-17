@@ -34,6 +34,18 @@ describe("investigation tools", () => {
     expect(r.detail).toContain("here I expected the map to open");
   });
 
+  // Finding 1: replay_case is bound to `deps.target` — the app as the user currently has it. A
+  // candidate the model proposes never reaches it, so the description must not promise this tool
+  // can tell the model whether ITS OWN fix worked. If this regresses, a model that reruns the tool
+  // after proposing a patch sees the identical failure and concludes its fix failed, then burns its
+  // remaining budget chasing a phantom.
+  it("replay_case's description does not claim it can verify a proposed fix", () => {
+    const tools = buildAppTools(deps());
+    const spec = tools.find((t) => t.name === "replay_case")!;
+    expect(spec.description).not.toMatch(/whether it is fixed/i);
+    expect(spec.description).toMatch(/FIRST/);
+  });
+
   it("inspect_app lists the pages that actually exist", async () => {
     const r = await runTool(buildAppTools(deps()), call("inspect_app"));
     expect(r.ok).toBe(true);
