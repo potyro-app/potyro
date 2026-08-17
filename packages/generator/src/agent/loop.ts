@@ -29,6 +29,8 @@ export type LoopOutcome =
        * tool call and result, every rejected candidate — so an answer can be handed back in via
        * `LoopDeps.resumeFrom` and reach an agent that remembers why it asked, instead of restarting
        * from nothing. Includes the assistant turn that asked the question itself.
+       *
+       * Rejected candidates embedded in assistant messages here FAILED replay — show them, never apply them.
        */
       transcript: ChatMessage[];
     }
