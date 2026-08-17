@@ -2,7 +2,17 @@
 //
 // This is the gate the whole agent loop hangs on: an edit that compiles, validates and renders is
 // exactly what gets reported as a fix today while the app is still broken. The only answer that
-// counts is replaying the user's own recorded path against the candidate.
+// counts is replaying the user's own recorded path against the candidate — but what that replay can
+// prove depends entirely on what data it runs against, which is why `appStore` below matters.
+//
+// With `appStore` supplied (the normal case once a real caller wires this up), replay reads the
+// user's own records, read-only, so `passed: true` means the candidate handled the ACTUAL data
+// behind the bug report: a page that opens but returns zero rows against real data still fails here,
+// which is exactly the "the page opens but shows nothing" class of report a fresh empty store is
+// structurally blind to. Without `appStore` (tests, or a caller with no store to offer), replay runs
+// against a fresh empty MemoryStore: `passed: true` proves only that the candidate compiles and the
+// recorded steps execute without throwing against zero rows — it cannot see a bug that only shows up
+// with real records. Know which verdict you're getting.
 //
 // It runs UNTRUSTED. The Studio's preview runs trusted on purpose (custom views cannot render in
 // the isolate), and that is why a generated app with a runaway loop once froze the tab outright.
@@ -11,6 +21,15 @@
 // instead of a dead browser. The budget is deliberately larger than the render default: a
 // verification runs a handful of queries back to back, and killing a slow-but-correct app would
 // report a false failure, which is the failure mode this whole feature exists to remove.
+//
+// Reading the user's real records into an UNVERIFIED, model-written candidate is safe for two
+// independent reasons, not one: the isolate's `network.fetch` throws outright (host/isolate policy,
+// unconditional), so a candidate under verification cannot exfiltrate anything it reads no matter
+// what it tries; and it is the user's own data in their own browser, so reading it is exactly what
+// happens the moment they open the app themselves. The remaining risk isn't leakage, it's a
+// REJECTED candidate mutating the very records the bug report is about — and that is removed below
+// by wrapping whichever store is chosen in `readOnlyStore`, so a write attempt throws instead of
+// landing.
 
 import { MemoryStore, type Store } from "@karta/store";
 import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/runtime";
@@ -42,11 +61,35 @@ export interface VerifyCandidateDeps {
   source: string;
   theCase: Case;
   /**
-   * Test seam ONLY — never a real user store. `verifyCandidate` loads unverified, model-written
-   * code UNTRUSTED and lets it run `ctx.create`/`patch`/`delete` through the isolate bridge during
-   * `queryPage`. The agent loop calls this up to 8 times per reported bug; a caller that passed the
-   * user's real store here would let a REJECTED candidate destroy the very records the bug report
-   * is about, that many times over. Defaults to a throwaway in-memory store, exactly as before.
+   * The app's real store. Replay reads through this — via the `readOnlyStore` wrap below, so it is
+   * never written — which is what makes the verdict actually mean something: a candidate is judged
+   * against the data the bug report is actually about, not an empty store where "the page opens but
+   * returns nothing" is indistinguishable from "the page opens and works". Safe to pass despite the
+   * candidate being unverified, model-written, UNTRUSTED code, for two reasons that hold regardless
+   * of what the candidate tries: the isolate's `network.fetch` throws outright, so nothing read here
+   * can leave the device; and `readOnlyStore` turns any `ctx.create`/`patch`/`delete` the candidate's
+   * filters or computed fields attempt during `queryPage` into a rejected promise instead of a
+   * mutation, so even a REJECTED candidate cannot touch the real records.
+   *
+   * Omitting this produces a WEAKER verdict, not a wrong one: verification falls back to a fresh
+   * empty store, which can confirm a candidate compiles and its recorded steps run without throwing,
+   * but is structurally blind to any bug that only shows up against real data (see the file header).
+   * Every real caller should supply this; only tests reasonably omit it.
+   */
+  appStore?: Store;
+  /**
+   * Test seam ONLY — never a real user store. Exists so a test can seed and inspect an exact,
+   * disposable set of records without going through `appStore`'s "this is real user data" contract.
+   * `verifyCandidate` loads unverified, model-written code UNTRUSTED and lets it run
+   * `ctx.create`/`patch`/`delete` through the isolate bridge during `queryPage`; both this and
+   * `appStore` are wrapped in the same `readOnlyStore` below, so either is safe from a REJECTED
+   * candidate's writes the same way.
+   *
+   * Precedence when both are supplied: `storeForTests` wins. A test that reaches for it wants exact
+   * control over what the candidate sees; letting an incidental `appStore` silently override that
+   * would make the test's own setup a lie. Real callers only ever supply `appStore`, so this
+   * ordering never matters outside test code. Defaults (when neither is supplied) to a throwaway
+   * in-memory store, exactly as before `appStore` existed.
    */
   storeForTests?: Store;
 }
@@ -71,13 +114,20 @@ function timeoutVerdict(): Promise<{ passed: boolean; detail: string }> {
 }
 
 async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boolean; detail: string }> {
-  // A fresh MemoryStore, never the user's: verification must not read or write real records.
-  const rawStore = deps.storeForTests ?? (await freshStore());
-  // Defense in depth beyond the `storeForTests` contract above: `queryPage` runs the candidate's
-  // filters and computed fields, and nothing stops one of them from reaching ctx.create/patch/
-  // delete through the isolate bridge. Wrapping in `readOnlyStore` means a write attempt — from a
-  // buggy candidate, or from a caller who ignored the "test seam only" warning — throws instead of
-  // mutating whatever store was actually supplied.
+  // Precedence (documented on VerifyCandidateDeps above): `storeForTests`, then `appStore`, then a
+  // fresh empty store as the last resort. Whichever is chosen is read the SAME way below — wrapped
+  // read-only — so picking `appStore` here is what lets the verdict see real data without letting a
+  // candidate touch it.
+  const rawStore = deps.storeForTests ?? deps.appStore ?? (await freshStore());
+  // `readOnlyStore` is what makes it SAFE to have just reached for the user's real store above:
+  // `queryPage` runs the candidate's filters and computed fields, and nothing stops one of them from
+  // reaching ctx.create/patch/delete through the isolate bridge (confirmed directly: filters get the
+  // exact same live-write `ctx` actions do — nothing upstream of this file gates that). Wrapping in
+  // `readOnlyStore` means a write attempt — from a buggy or actively malicious candidate — throws
+  // instead of mutating whatever store was actually supplied, whether that's `appStore`,
+  // `storeForTests`, or (defense in depth even here) a caller who ignored the "test seam only"
+  // warning on `storeForTests`. Combined with the isolate's `network.fetch` throwing outright, a
+  // candidate under verification can neither exfiltrate nor mutate what it reads.
   const store = readOnlyStore(rawStore, "verifyCandidate runs a candidate read-only; writes are refused");
   let bundleCode: string;
   try {

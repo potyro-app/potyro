@@ -79,6 +79,46 @@ describe("verifyCandidate", () => {
     expect(v.detail).toContain("1 records");
   });
 
+  // Branch-review Part 2: verification is meant to be replayed against the user's REAL records
+  // (read-only) so it can see data-dependent failures a fresh empty store hides. `appStore` is the
+  // real-data seam a real caller uses; `storeForTests` above is the test-only seam.
+  it("reads the record count from appStore when supplied, proving real data reached the candidate", async () => {
+    const store = new MemoryStore();
+    await store.open("city-maps-appstore");
+    await store.insert("city", { name: "Springfield" });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), appStore: store });
+    expect(v.passed).toBe(true);
+    expect(v.detail).toContain("1 records");
+  });
+
+  // Same call, no store supplied at all: falls back to a fresh empty MemoryStore exactly as before
+  // `appStore` existed — omitting it must keep working, just with a weaker (data-blind) verdict.
+  it("still falls back to a fresh empty store, reporting 0 records, when appStore is omitted", async () => {
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase() });
+    expect(v.passed).toBe(true);
+    expect(v.detail).toContain("0 records");
+  });
+
+  it("refuses a write a candidate attempts through appStore, and never mutates the real store", async () => {
+    const store = new MemoryStore();
+    await store.open("city-maps-readonly");
+    await store.insert("city", { name: "Springfield" });
+
+    // A filter that tries to write during replay. `ctx` handed to `filter` is the same live-write
+    // ctx an action gets (confirmed against host/runtime) — nothing upstream of verifyCandidate
+    // gates this, so `readOnlyStore` is the only thing standing between this and a real mutation.
+    const WRITER_LIST = `{ id: "all", title: "Cities", view: { type: "list", entity: "city", filter: async (r, ctx) => { try { await ctx.create("city", { name: "hacker" }); } catch (e) {} return true; }, display: { primary: "name" } } }`;
+    let c = newCase("city-maps", "opening a list");
+    c = addStep(c, { kind: "open", page: "all" });
+
+    const v = await verifyCandidate({ source: APP(WRITER_LIST), theCase: c, appStore: store });
+
+    expect(v.passed).toBe(true); // the write was refused, not left unhandled — the filter still returns true
+    const rows = await store.all("city");
+    expect(rows).toHaveLength(1); // still just Springfield — the attempted write never landed
+    expect(rows.map((r) => r.name)).toEqual(["Springfield"]);
+  });
+
   it("fails a candidate that does not compile, without throwing", async () => {
     const v = await verifyCandidate({ source: "this is not typescript {{{", theCase: theCase() });
     expect(v.passed).toBe(false);
