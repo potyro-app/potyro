@@ -38,7 +38,7 @@ vi.mock("../src/app-bundler.js", async (importOriginal) => {
   };
 });
 
-const { verifyCandidate } = await import("../src/verify-candidate.js");
+const { verifyCandidate, VERIFY_TIMEOUT_MS } = await import("../src/verify-candidate.js");
 
 const APP = (pages: string) => `import { defineApp } from "karta";
 export default defineApp({
@@ -109,4 +109,45 @@ export default defineApp({
     expect(elapsedMs).toBeGreaterThan(1_000);
     expect(elapsedMs).toBeLessThan(8_000);
   }, 10_000);
+
+  it("fails (rather than hangs) when a candidate's filter awaits something verification can never answer", async () => {
+    // Finding 1 (security review, KA-38 follow-on): the isolate's own interrupt handler bounds CPU
+    // running INSIDE QuickJS — module load, each invoke() call — but cannot bound a host promise the
+    // isolate is merely AWAITING. ctx.ui.pick() is the realistic way a candidate hits this class:
+    // verify-candidate.ts now supplies no PickerHost (see the "No picker" comment there), so
+    // ctx.ui.pick() resolves to `null` immediately via ui-bridge.ts's headless fallback — safe. This
+    // candidate calls ctx.ui.pick() anyway, so the test exercises the real call site, but @karta/host's
+    // isolate bridge does not implement a `ui.pick` host op today (a separate gap in the host package,
+    // out of scope for this shell-only fix) — so that call currently rejects fast rather than hanging.
+    // The `await new Promise(() => {})` after it reproduces the hazard directly instead: from the
+    // isolate's point of view, a promise that genuinely never settles is indistinguishable from a
+    // `PickerHost.pick()` that nobody ever mounted a React tree to resolve — either way QuickJS sits
+    // idle waiting on a host promise, so its CPU-bound interrupt handler never gets a chance to fire.
+    // Verified directly against @karta/host's real isolate during development: without a wall clock
+    // around the whole verification, this hangs indefinitely (still unsettled 6s in, on a 2s per-call
+    // budget) — proving the per-call `timeoutMs` alone does not save `verifyCandidate` here.
+    // The filter only runs per resolved row — an unseeded store would let this "pass" instantly with
+    // zero records and the filter never even called, which would prove nothing. Seed one, as the
+    // "reports the real record count" test above does for the same reason.
+    const HANGING_FILTER = `{ id: "all", title: "Cities", view: { type: "list", entity: "city", filter: async (r, ctx) => { try { await ctx.ui.pick(["a", "b"]); } catch (e) {} await new Promise(() => {}); return true; }, display: { primary: "name" } } }`;
+    let c = newCase("city-maps", "opening a list whose filter never returns");
+    c = addStep(c, { kind: "open", page: "all" });
+    const store = new MemoryStore();
+    await store.open("city-maps-hang");
+    await store.insert("city", { name: "Springfield" });
+
+    const start = Date.now();
+    const v = await verifyCandidate({ source: APP(HANGING_FILTER), theCase: c, store });
+    const elapsedMs = Date.now() - start;
+
+    expect(v.passed).toBe(false);
+    expect(v.detail).toMatch(/timed out/i);
+    // Bounded by the wall clock (VERIFY_WALL_CLOCK_MS = VERIFY_TIMEOUT_MS * 2 in verify-candidate.ts),
+    // not by the isolate's own per-call budget: this candidate's promise never settles on its own, so
+    // an elapsed time near VERIFY_TIMEOUT_MS alone would prove nothing about the OUTER race this test
+    // exists to cover — remove that race and this assertion (and the "not hang" premise) both fail,
+    // this time by the test's own 15s timeout instead of a clean, fast, readable assertion failure.
+    expect(elapsedMs).toBeGreaterThan(VERIFY_TIMEOUT_MS);
+    expect(elapsedMs).toBeLessThan(VERIFY_TIMEOUT_MS * 2 + 2_000);
+  }, 15_000);
 });
