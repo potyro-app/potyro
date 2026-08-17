@@ -21,7 +21,17 @@ import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 
 export type LoopOutcome =
   | { kind: "fix"; source: string; rationale: string }
-  | { kind: "question"; text: string }
+  | {
+      kind: "question";
+      text: string;
+      /**
+       * Everything the agent had established before it asked — the opening system/task pair, every
+       * tool call and result, every rejected candidate — so an answer can be handed back in via
+       * `LoopDeps.resumeFrom` and reach an agent that remembers why it asked, instead of restarting
+       * from nothing. Includes the assistant turn that asked the question itself.
+       */
+      transcript: ChatMessage[];
+    }
   | { kind: "diagnosis"; text: string }
   | {
       kind: "exhausted";
@@ -70,6 +80,19 @@ export interface LoopDeps {
    * top of `runAgentLoop` for what this gates.
    */
   baseline: { passed: boolean; detail: string };
+  /**
+   * Resume a loop that previously exited with `kind: "question"`: pass its `transcript` back with
+   * the person's answer appended. When present, this SEEDS `messages` in place of the opening
+   * system/task pair, so tool results and rejected candidates from before the question survive into
+   * this run.
+   *
+   * This must never become a way to skip what makes this loop trustworthy: the no-repro guard above
+   * still runs first regardless of `resumeFrom` (a resumed loop is not exempt from "does this even
+   * reproduce"), and THE RULE is untouched — `kind: "fix"` still comes only from the one `return`
+   * guarded by an awaited, passing `deps.verify(candidate)`. Resuming changes what the model sees;
+   * it does not change what it takes to be believed.
+   */
+  resumeFrom?: ChatMessage[];
   maxSteps?: number;
   /** Called as work happens, so a person can watch. */
   onStep?: (step: LoopStep) => void;
@@ -100,10 +123,15 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   }
 
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
-  const messages: ChatMessage[] = [
-    { role: "system", content: deps.system },
-    { role: "user", content: deps.task },
-  ];
+  // A resumed loop starts from what the earlier run had already established — not from a fresh
+  // system/task pair, which would be exactly the amnesia this task exists to end. Copied, not
+  // aliased: this function only ever appends to `messages`, never back into the caller's array.
+  const messages: ChatMessage[] = deps.resumeFrom
+    ? [...deps.resumeFrom]
+    : [
+        { role: "system", content: deps.system },
+        { role: "user", content: deps.task },
+      ];
   let lastAttempt: string | undefined;
   // Counted so `exhausted.reason` can say WHAT went wrong, not just that it did — a watcher on
   // `onStep` otherwise sees only "thinking" repeated and a person debugging the agent (not the
@@ -153,7 +181,14 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     // either leads with the marker, or it didn't send one.
     const head = text.trimStart();
     if (head.startsWith(ASK)) {
-      return { kind: "question", text: head.slice(ASK.length).split(/^```/m)[0]!.trim() };
+      // The assistant turn that asked must be in the transcript handed back — otherwise a resumed
+      // loop's first request would show the model an answer with no question in sight.
+      messages.push({ role: "assistant", content: text });
+      return {
+        kind: "question",
+        text: head.slice(ASK.length).split(/^```/m)[0]!.trim(),
+        transcript: [...messages],
+      };
     }
     if (head.startsWith(NOT_IN_APP)) {
       return { kind: "diagnosis", text: head.slice(NOT_IN_APP.length).split(/^```/m)[0]!.trim() };

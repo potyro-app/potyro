@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runAgentLoop, type LoopDeps, type LoopStep } from "../src/agent/loop.js";
 import type { AgentTool } from "../src/agent/tools.js";
-import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
+import type { ChatEngine, ChatMessage, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
 const APP = 'import { defineApp } from "karta";\nexport default defineApp({ id: "x" });';
 
@@ -112,7 +112,57 @@ describe("runAgentLoop", () => {
   it("returns a question instead of guessing", async () => {
     const { engine } = scripted([{ content: "ASK: which city did you tap?" }]);
     const out = await runAgentLoop(base({ engine }));
-    expect(out).toEqual({ kind: "question", text: "which city did you tap?" });
+    // `toMatchObject` rather than `toEqual`: the outcome also carries a `transcript`, exercised by
+    // the resume tests below — this test only cares about `kind` and `text`.
+    expect(out).toMatchObject({ kind: "question", text: "which city did you tap?" });
+  });
+
+  // Today a question returns and the transcript is discarded — the person answers, the loop
+  // restarts from scratch, and the agent has no memory of why it asked. `transcript` on the
+  // `question` outcome plus `resumeFrom` on `LoopDeps` close that gap.
+  it("carries its transcript out with a question, and resumes from it", async () => {
+    const first = scripted([{ content: "ASK: which city did you tap?" }]);
+    const out = await runAgentLoop(base({ engine: first.engine }));
+
+    expect(out.kind).toBe("question");
+    const transcript = (out as { transcript: ChatMessage[] }).transcript;
+    // Everything it had established before asking must survive.
+    expect(transcript.some((m) => m.role === "system")).toBe(true);
+    expect(transcript.some((m) => m.content.includes("clicking a city"))).toBe(true);
+
+    // Resuming appends the answer to that transcript rather than starting over.
+    const second = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+    const resumed = await runAgentLoop(
+      base({ engine: second.engine, resumeFrom: [...transcript, { role: "user", content: "Lisbon" }] }),
+    );
+
+    expect(resumed.kind).toBe("fix");
+    const sent = second.seen[0]!.messages;
+    expect(sent.some((m) => m.content === "Lisbon")).toBe(true);
+    expect(sent.some((m) => m.content.includes("which city did you tap?"))).toBe(true);
+  });
+
+  // THE RULE, again, on the path this task adds: resuming from a prior transcript must not become
+  // a back door around `verify`. A resumed loop that gets a candidate which fails replay must not
+  // return `fix` — it has to behave exactly like a fresh loop that failed the same way.
+  it("still cannot return fix on a resumed loop without a passing verify", async () => {
+    const { engine } = scripted([
+      { content: "```ts\n" + APP + "\n```" },
+      { content: "NOT-IN-APP: the host map view ignores the pin" },
+    ]);
+    const verify = vi.fn(async () => ({ passed: false, detail: 'still FAILED: no page "city-detail"' }));
+    const resumeFrom: ChatMessage[] = [
+      { role: "system", content: "contract" },
+      { role: "user", content: "clicking a city does nothing" },
+      { role: "assistant", content: "ASK: which city did you tap?" },
+      { role: "user", content: "Lisbon" },
+    ];
+
+    const out = await runAgentLoop(base({ engine, verify, resumeFrom }));
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(out.kind).not.toBe("fix");
+    expect(out.kind).toBe("diagnosis"); // it moved on, same as a fresh loop would after a rejected candidate
   });
 
   // A marker only counts when it opens the reply. A `NOT-IN-APP:`-prefixed line buried in an
