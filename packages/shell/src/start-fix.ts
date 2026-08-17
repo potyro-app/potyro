@@ -98,6 +98,24 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     .filter((s): s is string => Boolean(s && s.trim()))
     .join("\n\n");
 
+  // Refuse — as an outcome, same as `refusal()` above — rather than spend a real model call on
+  // zero signal. This is not hypothetical: `App.tsx` calls `recorder.start(appId, "")`, so a case's
+  // title is ALWAYS "", and the "What did you expect?" note is optional (`hasRecordedActivity` only
+  // requires an open/action step to save a recording). A recording with activity and no note yields
+  // exactly this: `task === ""`, which would otherwise become `{ role: "user", content: "" }`. Runs
+  // AFTER the baseline replay (local, free, and where `expectation` comes from) but BEFORE
+  // `runAgentLoop` (the paid part). Never synthesize filler text here — declining to run IS the
+  // point; inventing a problem statement would violate "the person's own words, unedited" above.
+  if (!task.trim()) {
+    return {
+      kind: "diagnosis",
+      text:
+        "There's nothing to investigate: this recording has no title and no note about what you " +
+        'expected. Add a note when you record the case — "What did you expect?" — or give the case ' +
+        "a title, and try again.",
+    };
+  }
+
   const tools = buildAppTools({
     source: opts.source,
     target,
@@ -108,6 +126,27 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     records: (entity) => opts.runtime.ctx.query(entity),
     access: { locality: "cloud" },
   });
+
+  // `refusal()` above checks THAT the engine can investigate and THAT a cloud key exists — never
+  // WHICH cloud engine. Below this line the ONLY client this function knows how to build is
+  // OpenRouter's. `canInvestigate` and "there is a client for this engine" are two separate facts
+  // today (see engines.ts): if a future engine (say, "anthropic") flips `canInvestigate: true`,
+  // `refusal()` would wave it through — `isCloud` is still true and `keyFor` still returns a real
+  // key — straight into `createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, ... })` with an
+  // EMPTY `openrouterKey`. That function's own fallback is `apiKey ?? readEnv(...) ?? ""`, and `??`
+  // does not catch an empty string, so it would send `Authorization: Bearer ` to OpenRouter — an
+  // unhandled rejection escaping `runAgentLoop`, and therefore this function's never-throw contract.
+  // (Or, with a stale `openrouterKey` lying around, it would succeed SILENTLY against a provider and
+  // model the person never chose.) This guard is the one line that keeps those two facts from
+  // silently disagreeing.
+  if (opts.engine.engine !== "openrouter") {
+    return {
+      kind: "diagnosis",
+      text:
+        `${opts.engine.engine} claims it can investigate this, but startFix has no client wired for ` +
+        `it — only OpenRouter does today. This is a configuration bug, not a problem with your app.`,
+    };
+  }
 
   return runAgentLoop({
     engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
