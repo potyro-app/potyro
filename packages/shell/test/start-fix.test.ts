@@ -69,6 +69,11 @@ const runtime = {
 } as never;
 
 describe("startFix", () => {
+  beforeEach(() => {
+    mocks.buildAppTools.mockClear();
+    mocks.chatCreate.mockReset();
+  });
+
   // The engine picker offers five engines; only one can drive a tool loop. Discovering that at
   // runtime, mid-loop, would be the worst place to find out.
   it("refuses an engine that cannot investigate, before spending anything", async () => {
@@ -95,6 +100,23 @@ describe("startFix", () => {
 
     expect(out.kind).toBe("diagnosis");
     expect((out as { text: string }).text).toMatch(/key/i);
+  });
+
+  it("refuses when the case has no title and no expectation, before spending anything", async () => {
+    const emptyCase = addStep(newCase("city-maps", ""), { kind: "open", page: "all" });
+    const cloudEngine = { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter" as const, openrouterKey: "test-key" };
+    const out = await startFix({
+      source: "x",
+      theCase: emptyCase,
+      runtime,
+      store: null as never,
+      engine: cloudEngine,
+    });
+
+    expect(out.kind).toBe("diagnosis");
+    expect((out as { text: string }).text).toMatch(/nothing to investigate|note|expected/i);
+    expect(mocks.buildAppTools).not.toHaveBeenCalled();
+    expect(mocks.chatCreate).not.toHaveBeenCalled();
   });
 });
 
