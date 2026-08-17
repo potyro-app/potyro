@@ -26,7 +26,32 @@ describe("the agent's system prompt", () => {
     expect(AGENT_SYSTEM_PROMPT).toMatch(/did NOT fix|rejected|told/i);
   });
 
-  it("tells it the data tool cannot show records, so it does not keep asking", () => {
-    expect(AGENT_SYSTEM_PROMPT).toMatch(/counts|shapes/i);
+  // FINDING 3: query_data's description is DERIVED in app-tools.ts from `allowsRawRecords`, so it
+  // is accurate by construction. Hardcoding the same claim ("counts only") one layer up in this
+  // prompt reintroduces the drift that design removed — if raw access is ever granted, the tool
+  // schema and this prompt would disagree, and the model reasons from both. So the prompt must say
+  // WHEN to use the tool, and leave WHAT it returns to the tool's own schema.
+  it("does not hardcode a return-shape claim for query_data, leaving that to the tool's own schema", () => {
+    // "query_data" is still named — covered by the "names every tool" test above — but this prompt
+    // must not itself assert what the tool returns.
+    expect(AGENT_SYSTEM_PROMPT).not.toMatch(/counts and shapes only/i);
+    expect(AGENT_SYSTEM_PROMPT).not.toMatch(/returns counts only/i);
+  });
+
+  // FINDING 1: loop.ts detects ASK: / NOT-IN-APP: with `startsWith` on the TRIMMED reply — a marker
+  // that shows up after some lead-in prose is not recognized as a verdict at all, and falls through
+  // to the candidate branch instead. The prompt must say the marker has to OPEN the reply, and why.
+  it("says the ASK/NOT-IN-APP marker must be the first thing in the reply, and why", () => {
+    expect(AGENT_SYSTEM_PROMPT).toMatch(/first thing in your reply/i);
+    expect(AGENT_SYSTEM_PROMPT).toMatch(/starts with the marker|STARTS WITH the marker/i);
+  });
+
+  // FINDING 2: the embedded SYSTEM_PROMPT ends by demanding "No prose before or after", but loop.ts
+  // takes the text before the fence as the fix's `rationale` and shows it to the person. Without an
+  // explicit override, the composed prompt tells the model both to omit prose and to provide it.
+  it("overrides the embedded prompt's no-prose rule for this context, and says why", () => {
+    expect(AGENT_SYSTEM_PROMPT).toMatch(/overriding the output section/i);
+    expect(AGENT_SYSTEM_PROMPT).toMatch(/reasoning BEFORE the.*```ts block/i);
+    expect(AGENT_SYSTEM_PROMPT).toMatch(/rationale/i);
   });
 });
