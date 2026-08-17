@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addStep, annotate, newCase } from "@karta/runtime";
-import { buildAppTools, type InvestigationDeps } from "../src/agent/app-tools.js";
+import { buildAppTools, type DataAccess, type InvestigationDeps } from "../src/agent/app-tools.js";
 import { runTool } from "../src/agent/tools.js";
 
 function deps(over: Partial<InvestigationDeps> = {}): InvestigationDeps {
@@ -19,7 +19,7 @@ function deps(over: Partial<InvestigationDeps> = {}): InvestigationDeps {
       { id: "c1", name: "Lisbon", location: null },
       { id: "c2", name: "Porto", location: { lat: 41, lng: -8 } },
     ],
-    allowRawRecords: false,
+    access: { locality: "cloud" },
     ...over,
   };
 }
@@ -53,26 +53,52 @@ describe("investigation tools", () => {
   });
 
   it("query_data returns values only when raw access was explicitly granted", async () => {
-    const r = await runTool(buildAppTools(deps({ allowRawRecords: true })), call("query_data", { entity: "city" }));
+    const r = await runTool(
+      buildAppTools(deps({ access: { locality: "local", rawGranted: true } })),
+      call("query_data", { entity: "city" }),
+    );
     expect(r.detail).toContain("Lisbon");
   });
 
+  // The granted-but-not-really case: local execution alone is not enough, the user must also have
+  // said yes. If this regresses to "local implies raw", an on-device app with no grant would leak.
+  it("query_data returns shapes, not values, when local but not granted", async () => {
+    const r = await runTool(
+      buildAppTools(deps({ access: { locality: "local", rawGranted: false } })),
+      call("query_data", { entity: "city" }),
+    );
+    expect(r.detail).toMatch(/2 records/);
+    expect(r.detail).not.toContain("Lisbon");
+    expect(r.detail).not.toContain("Porto");
+  });
+
   // Finding 1: the tool schema is sent to the model up front, before any call happens. If it says
-  // "counts only" while allowRawRecords is true, the model is told its input is pre-sanitized and
-  // will treat raw personal data as safe to echo — the privacy boundary failing in the worst direction.
+  // "counts only" while raw records are actually returned, the model is told its input is
+  // pre-sanitized and will treat raw personal data as safe to echo — the privacy boundary failing
+  // in the worst direction.
   it("query_data's description promises counts-only when raw access is off", () => {
-    const tools = buildAppTools(deps({ allowRawRecords: false }));
+    const tools = buildAppTools(deps({ access: { locality: "cloud" } }));
     const spec = tools.find((t) => t.name === "query_data")!;
     expect(spec.description).toMatch(/counts only|never.*values/i);
     expect(spec.description).not.toMatch(/actual records|real records/i);
   });
 
   it("query_data's description admits real records are returned when raw access is on", () => {
-    const tools = buildAppTools(deps({ allowRawRecords: true }));
+    const tools = buildAppTools(deps({ access: { locality: "local", rawGranted: true } }));
     const spec = tools.find((t) => t.name === "query_data")!;
     expect(spec.description).not.toMatch(/counts only|never.*values/i);
     expect(spec.description).toMatch(/actual|real/i);
     expect(spec.description).toMatch(/personal/i);
+  });
+
+  // The invariant this whole module exists to enforce: "cloud + raw" is not a value that can be
+  // constructed. If this line ever compiles, DataAccess has regressed to something that lets a
+  // wiring commit send someone's medications or finances to a third-party model in one bad word.
+  it("cannot express raw access for a cloud engine", () => {
+    // @ts-expect-error — "cloud + raw" is the combination this union exists to forbid. If this line
+    // ever compiles, the invariant has been lost and someone's records can reach a third-party model.
+    const _forbidden: DataAccess = { locality: "cloud", rawGranted: true };
+    void _forbidden;
   });
 
   // Finding 3: shapeOf must treat `false` and `0` as SET, not empty. A naive `!v` check would
@@ -129,7 +155,7 @@ describe("investigation tools", () => {
 
     it("returns valid, parseable JSON even when truncated", async () => {
       const r = await runTool(
-        buildAppTools(deps({ allowRawRecords: true, records: async () => manyRows })),
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => manyRows })),
         call("query_data", { entity: "widget" }),
       );
       expect(r.ok).toBe(true);
@@ -140,7 +166,7 @@ describe("investigation tools", () => {
 
     it("states totals when rows were dropped", async () => {
       const r = await runTool(
-        buildAppTools(deps({ allowRawRecords: true, records: async () => manyRows })),
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => manyRows })),
         call("query_data", { entity: "widget" }),
       );
       expect(r.detail).toMatch(/showing \d+ of 200/);
@@ -149,7 +175,7 @@ describe("investigation tools", () => {
     it("states nothing was dropped when everything fits", async () => {
       const smallRows = [{ id: "r1", name: "Lisbon" }, { id: "r2", name: "Porto" }];
       const r = await runTool(
-        buildAppTools(deps({ allowRawRecords: true, records: async () => smallRows })),
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => smallRows })),
         call("query_data", { entity: "widget" }),
       );
       expect(r.detail).toMatch(/showing 2 of 2/);

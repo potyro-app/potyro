@@ -10,13 +10,27 @@
 import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/runtime";
 import type { AgentTool } from "./tools.js";
 
+/**
+ * Who will see the answer, and whether the user granted raw access.
+ *
+ * A union rather than a boolean because the rule — raw records only ever reach a model running on
+ * this device — is one a wiring commit can otherwise break in a single word, silently, with no test
+ * and no type error to catch it. "cloud + raw" is not expressible here at all.
+ */
+export type DataAccess = { locality: "cloud" } | { locality: "local"; rawGranted: boolean };
+
+/** Raw values require BOTH conditions; this is the only place that conjunction is computed. */
+export function allowsRawRecords(access: DataAccess): boolean {
+  return access.locality === "local" && access.rawGranted;
+}
+
 export interface InvestigationDeps {
   source: string;
   target: ReplayTarget;
   theCase: Case;
   records: (entity: string) => Promise<unknown[]>;
-  /** True only when the user granted it AND the engine runs on-device. Decided by the caller. */
-  allowRawRecords: boolean;
+  /** Where this call runs and, if local, whether the user granted raw access. See {@link DataAccess}. */
+  access: DataAccess;
 }
 
 const NO_ARGS = { type: "object", properties: {} } as const;
@@ -26,8 +40,8 @@ const RAW_SIZE_CEILING = 4000;
 
 // The tool's description is sent to the model in the tool schema, up front, before any call
 // happens — the model reads it once and treats it as a standing promise about what this tool
-// can and cannot return. If the text says "counts only" while allowRawRecords is true, the
-// model is told its input is pre-sanitized and will happily echo raw personal data into a
+// can and cannot return. If the text says "counts only" while raw records are actually returned,
+// the model is told its input is pre-sanitized and will happily echo raw personal data into a
 // summary or a log, believing it safe. So the description MUST be derived from the same flag
 // that decides the actual behavior below, never hardcoded independently of it.
 function queryDataDescription(allowRawRecords: boolean): string {
@@ -84,6 +98,10 @@ function shapeOf(rows: unknown[]): string {
 }
 
 export function buildAppTools(deps: InvestigationDeps): AgentTool[] {
+  // Computed once: the description and the actual behavior below MUST stay tied to this single
+  // value, since a description that promises privacy the tool isn't giving is the defect this
+  // file already fixed once.
+  const allowRawRecords = allowsRawRecords(deps.access);
   return [
     {
       name: "replay_case",
@@ -111,12 +129,12 @@ export function buildAppTools(deps: InvestigationDeps): AgentTool[] {
     },
     {
       name: "query_data",
-      description: queryDataDescription(deps.allowRawRecords),
+      description: queryDataDescription(allowRawRecords),
       parameters: { type: "object", properties: { entity: { type: "string" } }, required: ["entity"] },
       run: async (args) => {
         const entity = String(args.entity ?? "");
         const rows = await deps.records(entity);
-        if (deps.allowRawRecords) return { ok: true, detail: truncatedRawRecords(rows) };
+        if (allowRawRecords) return { ok: true, detail: truncatedRawRecords(rows) };
         return { ok: true, detail: shapeOf(rows) };
       },
     },
