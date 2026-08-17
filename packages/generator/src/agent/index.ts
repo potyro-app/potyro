@@ -11,5 +11,6 @@
 // only) or `react` — nothing here imports esbuild, node:fs, or any other Node-only module.
 
 export { runAgentLoop, type LoopOutcome, type LoopStep, type LoopDeps } from "./loop.js";
+export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
