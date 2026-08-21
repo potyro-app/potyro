@@ -45,7 +45,7 @@ export interface StartFixOpts {
 function refusal(cfg: EngineConfig): LoopOutcome | undefined {
   if (!canInvestigate(cfg.engine)) {
     return {
-      kind: "diagnosis",
+      kind: "refused",
       text:
         `${cfg.engine} cannot investigate this — it has no transcript to hang a multi-step tool ` +
         `loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, ` +
@@ -54,7 +54,7 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
   }
   if (isCloud(cfg.engine) && !keyFor(cfg)) {
     return {
-      kind: "diagnosis",
+      kind: "refused",
       text: `${cfg.engine} needs your own API key to investigate — add one in Engine Settings.`,
     };
   }
@@ -108,7 +108,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   // point; inventing a problem statement would violate "the person's own words, unedited" above.
   if (!task.trim()) {
     return {
-      kind: "diagnosis",
+      kind: "refused",
       text:
         "There's nothing to investigate: this recording has no title and no note about what you " +
         'expected. Add a note when you record the case — "What did you expect?" — or give the case ' +
@@ -141,7 +141,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   // silently disagreeing.
   if (opts.engine.engine !== "openrouter") {
     return {
-      kind: "diagnosis",
+      kind: "refused",
       text:
         `${opts.engine.engine} claims it can investigate this, but startFix has no client wired for ` +
         `it — only OpenRouter does today. This is a configuration bug, not a problem with your app.`,

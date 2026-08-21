@@ -189,6 +189,12 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // would keep showing after a click until some unrelated state change happened to repaint it.
   const [recording, setRecording] = useState(false);
   const [noting, setNoting] = useState(false);
+  /** Whether this recording has an expectation yet — the only thing that ever says what the person
+   *  expected, since a case's title is always "". Gates Stop; see `onStopRecording`. */
+  const [noted, setNoted] = useState(false);
+  /** Set when Stop opened the note prompt, so saving the note finishes the stop the person asked
+   *  for instead of silently dropping it. */
+  const stopAfterNote = useRef(false);
   const [noteText, setNoteText] = useState("");
   // `theCase` rides along with its own report so "Fix this" has the actual recording to hand
   // `startFix` — the report alone (what replay found) isn't enough; the loop needs the steps
@@ -327,12 +333,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     if (!appId) return;
     recorder.current.start(appId, "");
     setRecording(true);
+    setNoted(false);
   };
 
   const saveNote = (): void => {
     recorder.current.note(noteText);
     setNoteText("");
     setNoting(false);
+    setNoted(true);
+    // Stop was what asked for this note — finish the stop the person already requested rather than
+    // making them press it a second time.
+    if (stopAfterNote.current) {
+      stopAfterNote.current = false;
+      void finishStop();
+    }
   };
 
   /**
@@ -349,6 +363,21 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
    * depend on that fact holding forever.
    */
   const onStopRecording = async (): Promise<void> => {
+    // ASK FOR THE NOTE HERE, not after the fact. A case's title is always "" (startRecording above),
+    // so the note is the ONLY thing that ever says what the person expected — and without it there
+    // is literally nothing for an agent to investigate. Letting the recording be saved anyway
+    // produced the worst possible sequence: record, get a report, press "Fix this", and only THEN
+    // be told the recording was useless, with the work already done and the moment passed. The
+    // person is here now; ask now.
+    if (!noted) {
+      stopAfterNote.current = true;
+      setNoting(true);
+      return;
+    }
+    await finishStop();
+  };
+
+  const finishStop = async (): Promise<void> => {
     const c = recorder.current.stop();
     const lostSteps = recorder.current.lost;
     setRecording(false);
@@ -1106,7 +1135,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
 
       {noting ? (
-        <div className="k-modal-scrim" onClick={() => setNoting(false)}>
+        <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
           <div className="k-modal k-case-note" onClick={(e) => e.stopPropagation()}>
             <h3>What did you expect?</h3>
             <textarea
@@ -1118,7 +1147,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               onChange={(e) => setNoteText(e.target.value)}
             />
             <div className="k-form-actions">
-              <button type="button" className="k-add" onClick={() => setNoting(false)}>Cancel</button>
+              <button type="button" className="k-add" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>Cancel</button>
               <button type="button" className="k-add k-primary-action" onClick={saveNote}>Save note</button>
             </div>
           </div>

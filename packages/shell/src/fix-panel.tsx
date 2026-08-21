@@ -119,6 +119,19 @@ function FixOutcome({
     );
   }
 
+  if (outcome.kind === "refused") {
+    // Nothing was investigated, and it is not a statement about the app — a missing key, an engine
+    // that cannot drive a tool loop, a recording with nothing to work from. This MUST NOT wear the
+    // `diagnosis` heading: "This one isn't in your app" told someone their app was fine when the
+    // real answer was "you never wrote down what you expected".
+    return (
+      <div className="k-fix-outcome k-fix-refused" data-kind="refused" role="note">
+        <p className="k-fix-outcome-head">Nothing to investigate yet</p>
+        <p>{outcome.text}</p>
+      </div>
+    );
+  }
+
   if (outcome.kind === "diagnosis") {
     // Deliberately not styled as an error — nothing failed, the fault is just outside the app.
     return (

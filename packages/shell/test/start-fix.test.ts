@@ -85,7 +85,7 @@ describe("startFix", () => {
       engine: { ...DEFAULT_ENGINE_CONFIG, engine: "cli" },
     });
 
-    expect(out.kind).toBe("diagnosis");
+    expect(out.kind).toBe("refused");
     expect((out as { text: string }).text).toMatch(/claude -p|cannot investigate/i);
   });
 
@@ -98,7 +98,7 @@ describe("startFix", () => {
       engine: { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter", openrouterKey: "" },
     });
 
-    expect(out.kind).toBe("diagnosis");
+    expect(out.kind).toBe("refused");
     expect((out as { text: string }).text).toMatch(/key/i);
   });
 
@@ -113,7 +113,7 @@ describe("startFix", () => {
       engine: cloudEngine,
     });
 
-    expect(out.kind).toBe("diagnosis");
+    expect(out.kind).toBe("refused");
     expect((out as { text: string }).text).toMatch(/nothing to investigate|note|expected/i);
     expect(mocks.buildAppTools).not.toHaveBeenCalled();
     expect(mocks.chatCreate).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe("startFix — engine/client mismatch (FINDING 1)", () => {
       engine: { ...DEFAULT_ENGINE_CONFIG, engine: "anthropic", anthropicKey: "sk-real-anthropic-key" },
     });
 
-    expect(out.kind).toBe("diagnosis");
+    expect(out.kind).toBe("refused");
     expect((out as { text: string }).text).toMatch(/anthropic/i);
     expect((out as { text: string }).text).toMatch(/no client|not wired/i);
     // The never-throw guarantee this finding is about: no attempt was made to build the (wrong)
