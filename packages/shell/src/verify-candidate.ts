@@ -35,6 +35,7 @@ import { MemoryStore, type Store } from "@karta/store";
 import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/runtime";
 import { createWebCapabilities } from "@karta/capabilities";
 import { createAppBundler } from "./app-bundler.js";
+import { observeRender } from "./observe-render.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -207,6 +208,11 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
       definition: composed.runtime.definition,
       // `queryPage` returns `{ rows, ctx }` (not a bare array) — replay only needs the rows.
       query: async (_entity, pageId) => (await composed!.runtime.queryPage(pageId)).rows,
+      // LOOK AT THE CANDIDATE, don't re-read the recording. A recorded `saw.loading` describes the
+      // app as it WAS; consulting it while judging a candidate fails the step whatever the candidate
+      // does, which is precisely how the first real attempt burned all 8 steps and gave up with no
+      // possible fix able to pass. This renders the candidate's own page and reports what IT shows.
+      observe: (pageId, params) => observeRender(composed!.runtime, pageId, params),
       // runAction is deliberately absent — replaying an action would mutate records.
     };
     const report = await replayCase(target, deps.theCase);
