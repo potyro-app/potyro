@@ -2772,3 +2772,11 @@ button {
   opacity: 0.8;
   margin: 0.4rem 0 0.6rem;
 }
+
+/* A rewritten app previews perfectly — it is just not yours. This has to be louder than a
+   validation error, which announces itself the moment you look at the preview. */
+.k-modify-loss {
+  border-left: 3px solid var(--k-danger, #c0392b);
+  padding-left: 0.6rem;
+  font-weight: 500;
+}
