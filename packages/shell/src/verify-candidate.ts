@@ -57,9 +57,38 @@ const VERIFY_MEMORY_BYTES = 64 * 1024 * 1024;
 // single call without becoming another false-failure source for a slow-but-correct app.
 export const VERIFY_WALL_CLOCK_MS = VERIFY_TIMEOUT_MS * 2;
 
+/** The shape both the original app and a candidate expose that we compare — structural, so this
+ *  needs no runtime and no schema import. */
+export interface AppShape {
+  pages: Array<{ id: string; view: { type: string; entity?: string } }>;
+}
+
+/**
+ * What the candidate DESTROYED, or null if it destroyed nothing.
+ *
+ * Only removals and substitutions count. Adding a page is how a genuine fix for "tapping a city
+ * should open a map" looks, so additions are free; dropping the map, or turning it into a form, is
+ * the failure mode this exists to stop.
+ */
+export function structuralLoss(before: AppShape, after: AppShape): string | null {
+  for (const page of before.pages) {
+    const now = after.pages.find((p) => p.id === page.id);
+    if (!now) {
+      return `this removes the "${page.id}" page (${page.view.type}) instead of fixing it — a fix may add pages, never drop one the app already had`;
+    }
+    if (now.view.type !== page.view.type) {
+      return `this changes the "${page.id}" page from a ${page.view.type} to a ${now.view.type} — that replaces the feature rather than fixing it`;
+    }
+  }
+  return null;
+}
+
 export interface VerifyCandidateDeps {
   source: string;
   theCase: Case;
+  /** The app as it is NOW, to compare the candidate against — so a "fix" cannot pass by deleting
+   *  the feature it was supposed to repair. */
+  original: AppShape;
   /**
    * The app's real store. Replay reads through this — via the `readOnlyStore` wrap below, so it is
    * never written — which is what makes the verdict actually mean something: a candidate is judged
@@ -162,6 +191,17 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
         loadTimeoutMs: VERIFY_TIMEOUT_MS,
       }),
     });
+
+    // DID IT FIX THE APP, OR DELETE THE PROBLEM? Replay asks "did the page resolve, did its query
+    // run, did the screen settle" — and a form satisfies all three. So replacing a broken map with
+    // a detail form PASSES, and the first real use of this feature produced exactly that: the map
+    // gone, the case green, the person's feature destroyed. A metric that can be satisfied by
+    // removing the thing being measured is not a gate.
+    //
+    // So: a fix may ADD pages, but it may not drop one that was there or quietly change what a page
+    // IS. That is not a fix, whatever replay says about it afterwards.
+    const regression = structuralLoss(deps.original, composed.runtime.definition);
+    if (regression) return { passed: false, detail: regression };
 
     const target: ReplayTarget = {
       definition: composed.runtime.definition,

@@ -47,6 +47,8 @@ export default defineApp({
   pages: [${pages}],
 });`;
 
+const ORIGINAL = { pages: [{ id: "all", view: { type: "list", entity: "city" } }] };
+
 const LIST = `{ id: "all", title: "Cities", view: { type: "list", entity: "city", display: { primary: "name" } } }`;
 const DETAIL = `{ id: "city-detail", title: "City", hidden: true, view: { type: "detail", entity: "city", param: "cityId", sections: [{ fields: ["name"] }] } }`;
 
@@ -58,8 +60,49 @@ const theCase = () => {
 };
 
 describe("verifyCandidate", () => {
+  // THE FIRST REAL USE OF THIS FEATURE PRODUCED EXACTLY THIS. Asked to fix a map that never
+  // finished loading, the agent deleted the map and replaced it with a detail form — and the gate
+  // PASSED it, because replay asks "did the page resolve, did its query run, did the screen settle"
+  // and a form satisfies all three. The person's feature was gone and the case was green. A metric
+  // that can be satisfied by removing the thing being measured is not a gate.
+  it("refuses a candidate that replaces a page's view instead of fixing it", async () => {
+    const wasAMap = { pages: [{ id: "all", view: { type: "map", entity: "city" } }] };
+
+    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase(), original: wasAMap });
+
+    expect(v.passed).toBe(false);
+    expect(v.detail).toMatch(/replaces the feature/i);
+    expect(v.detail).toContain("map");
+  });
+
+  it("refuses a candidate that drops a page the app had", async () => {
+    const hadTwo = {
+      pages: [
+        { id: "all", view: { type: "list", entity: "city" } },
+        { id: "map", view: { type: "map", entity: "city" } },
+      ],
+    };
+
+    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase(), original: hadTwo });
+
+    expect(v.passed).toBe(false);
+    expect(v.detail).toMatch(/removes the "map" page/i);
+  });
+
+  // Adding is how a genuine fix for "tapping a city should open a map" looks — it must stay free.
+  it("allows a candidate that ADDS a page", async () => {
+    const v = await verifyCandidate({
+      source: APP(`${LIST}, ${DETAIL}`),
+      theCase: theCase(),
+      original: { pages: [{ id: "all", view: { type: "list", entity: "city" } }] },
+    });
+
+    expect(v.passed).toBe(true);
+  });
+
+
   it("fails a candidate that still lacks the page the user tapped through to", async () => {
-    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase() });
+    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase() , original: ORIGINAL});
     expect(v.passed).toBe(false);
     expect(v.detail).toContain("city-detail");
   });
@@ -74,7 +117,7 @@ describe("verifyCandidate", () => {
     const store = new MemoryStore();
     await store.open("city-maps-verify");
     await store.insert("city", { name: "Springfield" });
-    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), storeForTests: store });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), original: ORIGINAL, storeForTests: store });
     expect(v.passed).toBe(true);
     expect(v.detail).toContain("1 records");
   });
@@ -86,7 +129,7 @@ describe("verifyCandidate", () => {
     const store = new MemoryStore();
     await store.open("city-maps-appstore");
     await store.insert("city", { name: "Springfield" });
-    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), appStore: store });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), original: ORIGINAL, appStore: store });
     expect(v.passed).toBe(true);
     expect(v.detail).toContain("1 records");
   });
@@ -94,7 +137,7 @@ describe("verifyCandidate", () => {
   // Same call, no store supplied at all: falls back to a fresh empty MemoryStore exactly as before
   // `appStore` existed — omitting it must keep working, just with a weaker (data-blind) verdict.
   it("still falls back to a fresh empty store, reporting 0 records, when appStore is omitted", async () => {
-    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase() });
+    const v = await verifyCandidate({ source: APP(`${LIST}, ${DETAIL}`), theCase: theCase(), original: ORIGINAL });
     expect(v.passed).toBe(true);
     expect(v.detail).toContain("0 records");
   });
@@ -111,7 +154,7 @@ describe("verifyCandidate", () => {
     let c = newCase("city-maps", "opening a list");
     c = addStep(c, { kind: "open", page: "all" });
 
-    const v = await verifyCandidate({ source: APP(WRITER_LIST), theCase: c, appStore: store });
+    const v = await verifyCandidate({ source: APP(WRITER_LIST), theCase: c, original: ORIGINAL, appStore: store });
 
     expect(v.passed).toBe(true); // the write was refused, not left unhandled — the filter still returns true
     const rows = await store.all("city");
@@ -120,7 +163,7 @@ describe("verifyCandidate", () => {
   });
 
   it("fails a candidate that does not compile, without throwing", async () => {
-    const v = await verifyCandidate({ source: "this is not typescript {{{", theCase: theCase() });
+    const v = await verifyCandidate({ source: "this is not typescript {{{", theCase: theCase() , original: ORIGINAL});
     expect(v.passed).toBe(false);
     expect(v.detail).toMatch(/could not|compile|parse/i);
   });
@@ -134,7 +177,7 @@ export default defineApp({
   pages: [${LIST}],
 });`;
     const start = Date.now();
-    const v = await verifyCandidate({ source: runaway, theCase: theCase() });
+    const v = await verifyCandidate({ source: runaway, theCase: theCase() , original: ORIGINAL});
     const elapsedMs = Date.now() - start;
     expect(v.passed).toBe(false);
     // Finding 6 (security review, KA-38 follow-on): `passed === false` alone would also be green if
@@ -177,7 +220,7 @@ export default defineApp({
     await store.insert("city", { name: "Springfield" });
 
     const start = Date.now();
-    const v = await verifyCandidate({ source: APP(HANGING_FILTER), theCase: c, storeForTests: store });
+    const v = await verifyCandidate({ source: APP(HANGING_FILTER), theCase: c, original: ORIGINAL, storeForTests: store });
     const elapsedMs = Date.now() - start;
 
     expect(v.passed).toBe(false);
