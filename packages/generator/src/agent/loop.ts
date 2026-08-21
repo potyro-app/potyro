@@ -36,6 +36,15 @@ export type LoopOutcome =
     }
   | { kind: "diagnosis"; text: string }
   | {
+      // Nothing was investigated, and the reason is on OUR side of the line: no engine that can
+      // drive a tool loop, no key for it, nothing recorded to work from. Distinct from `diagnosis`
+      // because that one is a claim ABOUT THE APP ("this isn't in your app") — and a UI that
+      // renders the two the same tells someone their app is fine when what actually happened is
+      // that they forgot a key or a note. Nothing here was looked at, so nothing here is a verdict.
+      kind: "refused";
+      text: string;
+    }
+  | {
       kind: "exhausted";
       reason: string;
       /** The last candidate tried. It FAILED replay — show it, never apply it. */
