@@ -37,19 +37,38 @@ const base = (over: Partial<LoopDeps>): LoopDeps => ({
 });
 
 describe("runAgentLoop", () => {
-  // PART 1 of the branch-review fix: a case that already passes against the app as it is proves
-  // nothing when replayed again after a "fix" — so the loop must refuse to even start, and must not
-  // spend a single model call getting there.
-  it("returns no-repro without calling the engine at all when the baseline already passed", async () => {
-    const { engine, seen } = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+  // A PASSING BASELINE USED TO REFUSE TO START, returning `no-repro`. That was wrong, and a person
+  // found it in ten minutes: replay checks that a page resolved and its query ran, and knows
+  // NOTHING about what rendered. A map stuck on "Loading…" forever replays perfectly clean — so the
+  // gate fired hardest on exactly the bugs most likely to be reported and least visible to replay,
+  // and told the person their app was fine while they were looking at it broken.
+  //
+  // So it investigates. What it must not do is call the result proven: with a green baseline, a
+  // passing verify is guaranteed and means nothing, so the candidate comes back honestly labelled.
+  it("investigates a passing baseline anyway, but will not call the result a fix", async () => {
+    const { engine, seen } = scripted([{ content: "Added a loading guard.\n```ts\n" + APP + "\n```" }]);
 
     const out = await runAgentLoop(
-      base({ engine, baseline: { passed: true, detail: "opened city-detail fine, 0 records" } }),
+      base({ engine, baseline: { passed: true, detail: 'opened "city-map" — 1 records' } }),
     );
 
-    expect(out).toEqual({ kind: "no-repro", detail: "opened city-detail fine, 0 records" });
-    // The engine was never called — not even once — to get here.
-    expect(seen).toHaveLength(0);
+    // It ran — the whole complaint was that nothing happened.
+    expect(seen).toHaveLength(1);
+    expect(out.kind).toBe("unverified-fix");
+    const proposal = out as { source: string; rationale: string; why: string };
+    expect(proposal.source).toContain("defineApp");
+    expect(proposal.rationale).toContain("loading guard");
+    // And it says WHY it could not be proven, in terms of what replay can actually see.
+    expect(proposal.why).toMatch(/rendered/i);
+    expect(proposal.why).toContain('opened "city-map" — 1 records');
+  });
+
+  // THE RULE is untouched: a real `fix` still requires a baseline that FAILED and a verify that
+  // passed. Only that combination is evidence of anything.
+  it("still returns a plain fix when the baseline failed and the candidate passed", async () => {
+    const { engine } = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+    const out = await runAgentLoop(base({ engine }));
+    expect(out.kind).toBe("fix");
   });
 
   it("feeds a tool result back and lets the model act on it", async () => {
