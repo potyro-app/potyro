@@ -41,6 +41,7 @@ import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
+import { structuralLoss, type AppShape } from "./verify-candidate.js";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
@@ -156,6 +157,22 @@ export function Studio({ onClose }: { onClose: () => void }) {
   // Build (or rebuild) the live app from `source` and VALIDATE its structure. Returns the validation
   // issues (empty = valid). Drafts use an ephemeral MemoryStore; a saved app (storeNamespace) uses its
   // durable store so its data persists across opens. Runs untrusted in the isolate.
+  /**
+   * The app's shape as it stood when a MODIFY was requested, and what that modify destroyed.
+   *
+   * "Fix this" has a verification gate; "Modify the app" had none — and the same failure landed
+   * here on the first real use: a change request ("when the map is open and I tap New Place, let me
+   * pick a point") came back as a brand new app with the person's entities and pages gone. The
+   * prompt already says "edit this source, do not replace it with a different app"; a fast model
+   * ignored it, and nothing checked. Instructions are not a gate.
+   *
+   * This does not block — the result still lands in the editor where it can be inspected, and
+   * nothing is saved until the person presses Save. It makes the loss VISIBLE, which is what was
+   * missing: a rewritten app looks fine in a preview until you notice half your app is gone.
+   */
+  const modifyShapeRef = useRef<AppShape | null>(null);
+  const [modifyLoss, setModifyLoss] = useState<string | null>(null);
+
   const buildPreview = async (src: string, storeNamespace: string | null): Promise<string[]> => {
     setBusy(true);
     setError(null);
@@ -194,6 +211,11 @@ export function Studio({ onClose }: { onClose: () => void }) {
         });
       }
       buildRef.current += 1;
+      // Compare against the shape captured when the modify was requested, then clear it — a later
+      // preview build (a manual edit, a restore) is not that modify's doing.
+      const was = modifyShapeRef.current;
+      modifyShapeRef.current = null;
+      setModifyLoss(was ? structuralLoss(was, composed.runtime.definition) : null);
       setPreview({ composed, toaster, build: buildRef.current, provenance, picker });
       if (tabPicks.current === picksBefore) setTab("preview");
       const issues = validateDefinition(composed.runtime.definition);
@@ -334,6 +356,8 @@ export function Studio({ onClose }: { onClose: () => void }) {
     const instruction = description.trim();
     if (!instruction || !preview) return Promise.resolve();
     const p = { id: "studio", description: instruction };
+    // What the app looks like BEFORE the change, so the rebuild can say what the change destroyed.
+    modifyShapeRef.current = { pages: preview.composed.runtime.definition.pages };
     return withGen(
       label,
       () =>
@@ -575,6 +599,15 @@ export function Studio({ onClose }: { onClose: () => void }) {
             ) : null}
           </div>
 
+          {modifyLoss ? (
+            // Louder than a validation error on purpose: an invalid app announces itself the moment
+            // you look at the preview, whereas a REWRITTEN app previews perfectly — it is simply
+            // somebody else's app. Nothing is saved yet; this is the moment to notice.
+            <p className="k-form-error k-studio-error k-modify-loss">
+              This change rewrote your app rather than editing it — {modifyLoss}. Nothing has been
+              saved: use History, or reopen the app from My Apps, to get back to what you had.
+            </p>
+          ) : null}
           {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
 
           {tab === "preview" ? (

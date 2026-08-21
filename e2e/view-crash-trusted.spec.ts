@@ -96,6 +96,13 @@ test("navigating to a missing page crashes only the view — the shell and the r
   await page.getByRole("button", { name: "Something's wrong" }).click();
   await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
   await page.getByRole("button", { name: "Stop recording" }).click();
+  // Stopping now ASKS for the expectation first (App.tsx's `onStopRecording`): a case whose title is
+  // always "" has nothing for an agent to work from without a note, so it is collected at the
+  // moment the person is still here rather than refused later. Seeing that prompt is itself proof
+  // the recorder is alive on the page that just crashed, which is all this test needs — there is
+  // nothing to replay, since the crash happened before recording began. Cancel abandons the stop.
+  await expect(page.getByRole("textbox", { name: /what did you expect/i })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
 
   // Recovery: the fallback's own button gets you back to a page that actually works, no reload
   // required — the list view renders again, with the record created earlier still there.
