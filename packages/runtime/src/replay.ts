@@ -5,7 +5,7 @@
 // nothing when tapped. Replaying the user's own path is the only check that speaks to what they
 // reported, and it is what an agent must satisfy before it may claim a fix.
 
-import type { Case, CaseStep } from "./case.js";
+import type { Case, CaseStep, ScreenState } from "./case.js";
 
 /** The slice of a composed runtime replay needs. Structural, so tests need no real app. */
 export interface ReplayTarget {
@@ -21,6 +21,19 @@ export interface ReplayTarget {
    * store constructed for replay, never to production data.
    */
   runAction?: (entity: string, action: string, recordId: string) => Promise<void>;
+  /**
+   * Render the page NOW and report what it shows — supplied when replaying against a CANDIDATE.
+   *
+   * Without this, a step's recorded `saw` is all replay has, and that is a fact about the app as it
+   * WAS. Re-reading it while judging a candidate fails the step no matter what the candidate does,
+   * which made the gate unwinnable: the first real attempt burned every step it had and gave up,
+   * and no possible fix could have passed. When this is present the recorded observation is
+   * evidence of the ORIGINAL problem only, and the candidate is judged on what IT renders.
+   *
+   * Returning `null` means "could not look" (no DOM) — replay must then fall back to structure and
+   * say so, never silently treat it as fine.
+   */
+  observe?: (pageId: string, params: Record<string, unknown>) => Promise<ScreenState | null>;
 }
 
 export interface StepOutcome {
@@ -63,14 +76,20 @@ async function runStep(target: ReplayTarget, step: CaseStep): Promise<StepOutcom
     // bug that made this check look useless: every line below reported "ok" while someone was
     // staring at a hung view, and the loop then announced it could not reproduce the problem. If the
     // recording says the page never finished rendering, the step failed, whatever the query did.
-    if (step.saw?.loading) {
+    // A fresh look beats the recorded one. `step.saw` says what the ORIGINAL app did; when a
+    // candidate is being judged, `target.observe` renders it and reports what THIS app does. Only
+    // when nobody can look do we fall back to the recording.
+    const now = target.observe ? await target.observe(page.id, step.params ?? {}) : null;
+    const saw = now ?? step.saw;
+    if (saw?.loading) {
+      const which = now ? "still never finishes loading" : "opened but never finished loading";
       return {
         step,
         ok: false,
-        detail: `"${page.id}" opened but never finished loading — the screen still showed: ${sample(step.saw.text)}`,
+        detail: `"${page.id}" ${which} — the screen showed: ${sample(saw.text)}`,
       };
     }
-    const seen = step.saw ? ` — on screen: ${sample(step.saw.text)}` : "";
+    const seen = saw ? ` — on screen: ${sample(saw.text)}` : "";
     const entity = page.view.entity;
     if (!entity) return { step, ok: true, detail: `opened "${page.id}"${seen}` };
     try {
