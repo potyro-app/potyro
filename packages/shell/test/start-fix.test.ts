@@ -189,13 +189,17 @@ describe("startFix — wiring (FINDING 3)", () => {
     expect(deps.task).toBe("Search stays empty\n\nit should list the matching cities");
   });
 
-  it("returns no-repro and never calls the model when the baseline already passes", async () => {
-    // Regression this catches: a `runAgentLoop` (or a caller) that spent a model call anyway on a
-    // baseline that already passes — the whole reason `LoopDeps.baseline` exists (loop.ts).
+  // This used to assert the opposite — that a passing baseline refused to start and spent no model
+  // call. That behaviour shipped and a person hit it in ten minutes: replay sees navigation and
+  // data, never what RENDERED, so a page stuck on "Loading…" forever replays clean and the tool
+  // insisted it could not reproduce a bug the person was staring at. It investigates now; what it
+  // must never do is call the result proven.
+  it("investigates a passing baseline instead of refusing, and does not call it a fix", async () => {
     const out = await startFix({ source: "x", theCase: noReproCase(), runtime, store: null as never, engine: cloudEngine });
 
-    expect(out.kind).toBe("no-repro");
-    expect(mocks.chatCreate).not.toHaveBeenCalled();
+    expect(mocks.chatCreate).toHaveBeenCalled(); // it actually ran
+    expect(out.kind).not.toBe("no-repro");
+    expect(out.kind).not.toBe("fix"); // a green baseline cannot prove a fix
   });
 });
 

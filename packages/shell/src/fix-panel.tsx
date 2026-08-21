@@ -95,6 +95,22 @@ function FixOutcome({
     );
   }
 
+  if (outcome.kind === "unverified-fix") {
+    // Applyable, but never dressed as a fix. `fix` above means "your own steps failed and now they
+    // pass". This means "here is a change based on what you told me, and I could not check it" —
+    // which the person needs stated plainly BEFORE they decide, not buried after they applied it.
+    return (
+      <div className="k-fix-outcome k-fix-unverified" data-kind="unverified-fix">
+        <p className="k-fix-outcome-head">A suggestion — not verified</p>
+        <p className="k-fix-rationale">{outcome.rationale}</p>
+        <p className="k-fix-why">{outcome.why}</p>
+        <button type="button" className="k-add" onClick={() => onApply(outcome.source)}>
+          Apply anyway
+        </button>
+      </div>
+    );
+  }
+
   if (outcome.kind === "question") {
     return (
       <div className="k-fix-outcome k-fix-question" data-kind="question">

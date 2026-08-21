@@ -22,6 +22,18 @@ import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 export type LoopOutcome =
   | { kind: "fix"; source: string; rationale: string }
   | {
+      // A real proposal that could NOT be proven, because the user's recorded case already passed
+      // before any change — so replaying it after one proves nothing. Distinct from `fix` on
+      // purpose: `fix` means "your own steps failed, and now they pass". This means "here is a
+      // change based on what you described, and I could not check it". Applying it is a judgement
+      // call the person makes with that stated, not a guarantee anyone is making.
+      kind: "unverified-fix";
+      source: string;
+      rationale: string;
+      /** Why it could not be proven, in terms of what replay can and cannot see. */
+      why: string;
+    }
+  | {
       kind: "question";
       text: string;
       /**
@@ -129,9 +141,18 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   // chasing a candidate whose success is guaranteed by the baseline it's compared against, the loop
   // says so plainly: it cannot reproduce what was reported. That's not the agent failing; it's the
   // agent being honest before it has spent anything at all.
-  if (deps.baseline.passed) {
-    return { kind: "no-repro", detail: deps.baseline.detail };
-  }
+  // A PASSING BASELINE IS NOT "NOTHING IS WRONG". This used to return `no-repro` and refuse to
+  // start, on the reasoning that verifying against an already-green check proves nothing. The
+  // reasoning is sound and the behaviour was wrong, because of what replay can actually SEE: it
+  // checks that a page resolved and its query ran. It has no idea what rendered. A map stuck on
+  // "Loading…" forever, a blank list, a wrong label — every one of those replays perfectly clean.
+  // So the gate fired hardest on exactly the bugs a person is most likely to report and replay is
+  // least able to detect, and told them their app was fine while they were looking at it broken.
+  //
+  // So: investigate anyway, using their own words as the problem statement. What we must NOT do is
+  // then call the result a fix — with a green baseline, a passing verify is guaranteed and means
+  // nothing. Those come back as `unverified-fix`, which says plainly that it could not be proven.
+  const unprovable = deps.baseline.passed;
 
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
   // A resumed loop starts from what the earlier run had already established — not from a fresh
@@ -221,9 +242,21 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     const verdict = await deps.verify(candidate);
     deps.onStep?.({ kind: "candidate", passed: verdict.passed, detail: verdict.detail });
     if (verdict.passed) {
-      // THE RULE: this is the only path in the entire function that returns `kind: "fix"`, and it
-      // is reachable only after `deps.verify` — the user's own recorded case, replayed — passed.
-      return { kind: "fix", source: candidate, rationale: text.split("```")[0]!.trim() };
+      const rationale = text.split("```")[0]!.trim();
+      // THE RULE, unchanged: `kind: "fix"` is reachable ONLY after `deps.verify` — the user's own
+      // recorded case, replayed — passed AND the baseline had failed, so that pass means something.
+      // When the baseline was already green, the same pass is guaranteed and proves nothing, so the
+      // candidate goes back as `unverified-fix`: a real proposal, honestly labelled as unproven.
+      // Calling it a fix would be the exact claim-without-evidence this whole loop exists to stop.
+      if (unprovable) {
+        return {
+          kind: "unverified-fix",
+          source: candidate,
+          rationale,
+          why: `Replaying your recorded steps showed no failure, so there was nothing for a fix to prove itself against — replay follows navigation and data, not what actually rendered. This change is a proposal based on what you described: ${deps.baseline.detail}`,
+        };
+      }
+      return { kind: "fix", source: candidate, rationale };
     }
     failedCandidates += 1;
     // The one sentence the model never hears today.

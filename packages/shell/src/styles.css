@@ -2760,3 +2760,15 @@ button {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* An unverified proposal must not read like a verified fix. Neutral, not the green of `k-fix-fix`,
+   with the reason it could not be proven given its own line rather than folded into the rationale. */
+.k-fix-unverified {
+  border-left: 3px solid var(--k-muted, #999);
+  background: color-mix(in srgb, var(--k-muted, #999) 6%, transparent);
+}
+.k-fix-why {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.4rem 0 0.6rem;
+}
