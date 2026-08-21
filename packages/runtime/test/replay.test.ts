@@ -12,6 +12,38 @@ const target = (pageIds: string[]): ReplayTarget => ({
 });
 
 describe("replayCase", () => {
+  // THE BUG THAT MADE THIS WHOLE CHECK LOOK USELESS. A page can resolve, its query can return rows,
+  // and the screen can still have been stuck on "Loading…" forever — a map that never rendered. With
+  // only structure to go on, every line reported ok, the baseline passed, and the loop announced it
+  // could not reproduce a problem the person was staring at. What they SAW has to outrank that.
+  it("fails a step whose page opened but never finished rendering", async () => {
+    let c = newCase("city-maps", "the map never loads");
+    c = addStep(c, {
+      kind: "open",
+      page: "all",
+      saw: { loading: true, text: "Loading…" },
+    });
+
+    const r = await replayCase(target(["all"]), c);
+
+    expect(replayPassed(r)).toBe(false);
+    expect(r.outcomes[0]!.detail).toMatch(/never finished loading/i);
+    expect(r.outcomes[0]!.detail).toContain("Loading");
+  });
+
+  // The other half: a page that DID settle must not be dragged down by having been observed. A
+  // recording that captures a healthy screen still passes, and says what was on it.
+  it("passes a step that settled, and reports what was on screen", async () => {
+    let c = newCase("city-maps", "looks fine");
+    c = addStep(c, { kind: "open", page: "all", saw: { loading: false, text: "Lisbon Porto" } });
+
+    const r = await replayCase(target(["all"]), c);
+
+    expect(replayPassed(r)).toBe(true);
+    expect(r.outcomes[0]!.detail).toContain("on screen: Lisbon Porto");
+  });
+
+
   it("fails the step that opens a page the app does not have", async () => {
     let c = newCase("city-maps", "clicking a city");
     c = addStep(c, { kind: "open", page: "all" });

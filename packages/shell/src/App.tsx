@@ -188,6 +188,33 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // mutating it alone (start/stop) would never trigger a re-render — the "Something's wrong" button
   // would keep showing after a click until some unrelated state change happened to repaint it.
   const [recording, setRecording] = useState(false);
+
+  /**
+   * While recording, look at what the page ACTUALLY RENDERED once it has had time to settle, and
+   * attach it to the step that navigated here.
+   *
+   * This exists because the first person to use this feature hit a map stuck on "Loading…" forever,
+   * and the whole system told them it could not reproduce the problem. It could not: replay checked
+   * that the page resolved and its query ran, and had no idea what was on screen. Everything
+   * reported ok while they were looking at a hung view.
+   *
+   * SETTLE_MS is the entire subtlety. Observe immediately and every page is mid-render, so all of
+   * them look broken; observe never and a hung view is indistinguishable from a working one. Waiting
+   * first makes `loading: true` mean "it never finished", which is the fact worth recording.
+   */
+  useEffect(() => {
+    if (!recording) return;
+    const SETTLE_MS = 1200;
+    const t = setTimeout(() => {
+      const main = document.querySelector(".k-main");
+      if (!main) return;
+      recorder.current.observe({
+        loading: Boolean(main.querySelector(".k-loading")),
+        text: (main.textContent ?? "").trim(),
+      });
+    }, SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [recording, pageId, params]);
   const [noting, setNoting] = useState(false);
   /** Whether this recording has an expectation yet — the only thing that ever says what the person
    *  expected, since a case's title is always "". Gates Stop; see `onStopRecording`. */
@@ -877,9 +904,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       ) : null}
 
       <nav className="k-nav" aria-label="Pages">
+        {/* THROUGH `navigate`, NOT `setPageId`. These are the app's own chrome, and they were
+            calling setPageId directly — so the recorder, which taps `navigate`, never saw a tab
+            click. Clicking a tab is the most ordinary way anyone moves around an app, so most
+            recordings captured nothing at all and reported "nothing was recorded". Same mistake as
+            wrapping the nav bridge instead of `navigate`: the choke point is only a choke point if
+            EVERY path actually goes through it. */}
         {editMark("the navigation / tabs", "nav")}
         {navMode === "grid" ? (
-          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => setPageId(HOME)}>
+          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => navigate(HOME)}>
             ⊞ Home
           </button>
         ) : null}
@@ -889,7 +922,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             type="button"
             className="k-tab"
             data-active={p.id === pageId}
-            onClick={() => setPageId(p.id)}
+            onClick={() => navigate(p.id)}
           >
             {p.title}
           </button>
@@ -910,7 +943,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
                   pageId={lp.id}
                   label={entityLabel(e)}
                   icon={def.entities[e]?.icon ?? "◇"}
-                  onOpen={() => setPageId(lp.id)}
+                  onOpen={() => navigate(lp.id)}
                 />
               );
             })}
