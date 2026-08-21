@@ -9,7 +9,7 @@
 // recording or not — a recorder that changed behaviour would be recording a different app than the
 // one that misbehaved.
 
-import { addStep, newCase, type Case } from "@karta/runtime";
+import { addStep, newCase, observe, type Case, type ScreenState } from "@karta/runtime";
 
 type Nav = (page: string, params?: Record<string, string>) => void;
 
@@ -46,6 +46,18 @@ export class CaseRecorder {
 
   note(text: string): void {
     if (this.current) this.current = addStep(this.current, { kind: "expect", note: text });
+  }
+
+  /**
+   * Record what the screen showed once the page just navigated to had time to settle.
+   *
+   * Deliberately NOT folded into `wrapNav`: at navigation time every page is mid-render, so
+   * observing there would record them all as unfinished. The distinction that matters — "briefly
+   * loading" versus "never finished" — only exists after a delay, so the caller (which owns the DOM
+   * and the clock) decides when to look, and this only stores what it found.
+   */
+  observe(saw: ScreenState): void {
+    if (this.current) this.current = observe(this.current, saw);
   }
 
   wrapNav(nav: Nav): Nav {

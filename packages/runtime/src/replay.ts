@@ -38,6 +38,13 @@ export interface ReplayReport {
   outcomes: StepOutcome[];
 }
 
+/** Screen text goes into a report a person reads and into a model's context; a whole page of it
+ *  helps neither. One line is enough to recognise "Loading…" or an error. */
+function sample(text: string): string {
+  const one = text.replace(/\s+/g, " ").trim();
+  return one.length > 120 ? `${one.slice(0, 120)}…` : one || "(nothing)";
+}
+
 async function runStep(target: ReplayTarget, step: CaseStep): Promise<StepOutcome> {
   if (step.kind === "expect") return { step, ok: true, detail: step.note };
 
@@ -51,11 +58,24 @@ async function runStep(target: ReplayTarget, step: CaseStep): Promise<StepOutcom
         detail: `no page "${step.page}" in this app — it has: ${known}. Tapping here goes nowhere.`,
       };
     }
+    // WHAT THE PERSON ACTUALLY SAW OUTRANKS what the structure says. A page can resolve, its query
+    // can return rows, and the screen can still have been stuck on "Loading…" — which is exactly the
+    // bug that made this check look useless: every line below reported "ok" while someone was
+    // staring at a hung view, and the loop then announced it could not reproduce the problem. If the
+    // recording says the page never finished rendering, the step failed, whatever the query did.
+    if (step.saw?.loading) {
+      return {
+        step,
+        ok: false,
+        detail: `"${page.id}" opened but never finished loading — the screen still showed: ${sample(step.saw.text)}`,
+      };
+    }
+    const seen = step.saw ? ` — on screen: ${sample(step.saw.text)}` : "";
     const entity = page.view.entity;
-    if (!entity) return { step, ok: true, detail: `opened "${page.id}"` };
+    if (!entity) return { step, ok: true, detail: `opened "${page.id}"${seen}` };
     try {
       const rows = await target.query(entity, page.id);
-      return { step, ok: true, detail: `opened "${page.id}" — ${rows.length} records` };
+      return { step, ok: true, detail: `opened "${page.id}" — ${rows.length} records${seen}` };
     } catch (e) {
       return { step, ok: false, detail: `"${page.id}" threw: ${e instanceof Error ? e.message : String(e)}` };
     }
