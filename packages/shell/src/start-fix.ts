@@ -155,7 +155,14 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     system: AGENT_SYSTEM_PROMPT,
     task,
     // Closed over the case and the real store — never the candidate's own claim about itself.
-    verify: (source) => verifyCandidate({ source, theCase: opts.theCase, appStore: opts.store }),
+    verify: (source) =>
+      verifyCandidate({
+        source,
+        theCase: opts.theCase,
+        appStore: opts.store,
+        // The app AS IT IS, so a candidate cannot pass by deleting the feature it was meant to fix.
+        original: opts.runtime.definition,
+      }),
     baseline,
     onStep: opts.onStep,
     signal: opts.signal,
