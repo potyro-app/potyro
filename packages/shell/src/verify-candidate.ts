@@ -73,15 +73,35 @@ export interface AppShape {
  */
 export function structuralLoss(before: AppShape, after: AppShape): string | null {
   for (const page of before.pages) {
-    const now = after.pages.find((p) => p.id === page.id);
-    if (!now) {
+    if (!after.pages.some((p) => p.id === page.id)) {
       return `this removes the "${page.id}" page (${page.view.type}) instead of fixing it — a fix may add pages, never drop one the app already had`;
-    }
-    if (now.view.type !== page.view.type) {
-      return `this changes the "${page.id}" page from a ${page.view.type} to a ${now.view.type} — that replaces the feature rather than fixing it`;
     }
   }
   return null;
+}
+
+/**
+ * View-type substitutions the candidate makes — reported, NOT blocked.
+ *
+ * This used to fail the verdict, and it was wrong within one attempt. The rule came from a real
+ * incident (a broken map replaced by a plain list — the feature deleted to make the case pass) and I
+ * generalised it to "any view type change is a regression". The very next candidate changed a
+ * hand-written `custom` view that hung into the built-in `map` view, which is exactly the right
+ * repair, and the guard rejected it. Ranking view types by capability is not something this code can
+ * do: `map → list` is a gutting and `custom → map` is a fix, and they are the same shape.
+ *
+ * So the render decides whether it WORKS (that is what `observe` is for), and the person decides
+ * whether the substitution is what they wanted — which they can only do if they are told it happened.
+ */
+export function viewSubstitutions(before: AppShape, after: AppShape): string[] {
+  const out: string[] = [];
+  for (const page of before.pages) {
+    const now = after.pages.find((p) => p.id === page.id);
+    if (now && now.view.type !== page.view.type) {
+      out.push(`the "${page.id}" page changes from a ${page.view.type} view to a ${now.view.type} view`);
+    }
+  }
+  return out;
 }
 
 export interface VerifyCandidateDeps {
@@ -203,6 +223,9 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
     // IS. That is not a fix, whatever replay says about it afterwards.
     const regression = structuralLoss(deps.original, composed.runtime.definition);
     if (regression) return { passed: false, detail: regression };
+    // Not a failure — something the person has to be TOLD, because they are the only one who can
+    // judge whether the substitution is the fix they wanted or a feature quietly swapped out.
+    const swaps = viewSubstitutions(deps.original, composed.runtime.definition);
 
     const target: ReplayTarget = {
       definition: composed.runtime.definition,
@@ -216,7 +239,10 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
       // runAction is deliberately absent — replaying an action would mutate records.
     };
     const report = await replayCase(target, deps.theCase);
-    const detail = report.outcomes.map((o) => `${o.ok ? "ok" : "FAILED"}: ${o.detail}`).join("\n");
+    const lines = report.outcomes.map((o) => `${o.ok ? "ok" : "FAILED"}: ${o.detail}`);
+    // Lead with the substitution when there is one: a person skimming a passing verdict needs to see
+    // "this swapped your custom view for the built-in map" BEFORE they press Apply, not after.
+    const detail = [...swaps.map((s) => `NOTE: ${s}`), ...lines].join("\n");
     return { passed: replayPassed(report), detail };
   } catch (e) {
     return { passed: false, detail: `the candidate could not run: ${e instanceof Error ? e.message : String(e)}` };

@@ -65,14 +65,21 @@ describe("verifyCandidate", () => {
   // PASSED it, because replay asks "did the page resolve, did its query run, did the screen settle"
   // and a form satisfies all three. The person's feature was gone and the case was green. A metric
   // that can be satisfied by removing the thing being measured is not a gate.
-  it("refuses a candidate that replaces a page's view instead of fixing it", async () => {
-    const wasAMap = { pages: [{ id: "all", view: { type: "map", entity: "city" } }] };
+  // This used to FAIL, and blocking it was wrong. The rule came from a real gutting (a broken map
+  // replaced by a plain list) and I generalised it to "any view type change is a regression" — then
+  // the very next candidate changed a hand-written `custom` view that HUNG into the built-in `map`
+  // view, which is the correct repair, and the guard rejected it. `map → list` and `custom → map`
+  // are the same shape to this code; only the render can say which one works, and only the person
+  // can say which one they wanted. So it is reported, not blocked.
+  it("allows a view-type substitution but says so in the verdict", async () => {
+    const wasCustom = { pages: [{ id: "all", view: { type: "custom", entity: "city" } }] };
 
-    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase(), original: wasAMap });
+    const v = await verifyCandidate({ source: APP(LIST), theCase: theCase(), original: wasCustom });
 
-    expect(v.passed).toBe(false);
-    expect(v.detail).toMatch(/replaces the feature/i);
-    expect(v.detail).toContain("map");
+    expect(v.detail).toMatch(/NOTE: the "all" page changes from a custom view to a list view/);
+    // Not blocked by the substitution itself — this case fails only because the recorded path opens
+    // a page this candidate does not have, which is a real failure and a different one.
+    expect(v.detail).toMatch(/no page "city-detail"/);
   });
 
   it("refuses a candidate that drops a page the app had", async () => {
