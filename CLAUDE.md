@@ -82,9 +82,20 @@ pnpm -r test
 pnpm --filter host test
 pnpm dev            # shell loads examples/*.app.ts (trusted, direct) in the browser
 pnpm dev:sandbox    # loads an example as UNTRUSTED to exercise the isolate + prompts
+pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playwright.config.ts)
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
+
+# does changing an app that holds records keep the records? (docs/12 §8)
+pnpm --filter @karta/generator eval:modify:fixture   # no model, no money — sample review sheet
+pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
 ```
+
+**On Windows** call `pnpm.cmd`: PowerShell blocks `pnpm.ps1` under the default execution policy and
+a spawned process will not find a bare `pnpm`. Never change the execution policy to make a command
+work — fix the caller.
+
+**Never start a paid eval run without being asked to.** `eval:modify` spends real money per call.
 
 ## M1 definition-of-done
 
