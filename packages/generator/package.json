@@ -12,7 +12,9 @@
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "eval:cli": "vite-node scripts/run-cli-eval.ts --"
+    "eval:cli": "vite-node scripts/run-cli-eval.ts --",
+    "eval:modify": "vite-node scripts/run-modify-eval.ts --",
+    "eval:modify:fixture": "vite-node scripts/fixture-review-sheet.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

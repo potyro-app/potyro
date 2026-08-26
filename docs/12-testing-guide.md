@@ -21,6 +21,66 @@ any app, the **⊞ Apps** button slides the launcher in to switch. Deep links st
 > lack the sync-access-handle API and silently fall back to `localStorage` — data still persists per
 > browser, just not as a real SQLite file. Chrome/Edge desktop have full OPFS.
 
+## Run the checks
+
+```bash
+pnpm i
+pnpm -r test        # unit suites, every package
+pnpm typecheck      # every package, plus the docs spikes
+pnpm e2e            # the browser suite (Playwright starts the servers it needs)
+```
+
+### On Windows, say `pnpm.cmd`
+
+PowerShell refuses to run `pnpm.ps1` under the default execution policy, and a *spawned* process
+does not find a bare `pnpm` on PATH either — the shim is `pnpm.cmd`.
+
+```powershell
+pnpm.cmd -r test
+pnpm.cmd typecheck
+pnpm.cmd exec playwright test --project=trusted
+```
+
+Do **not** change the machine's execution policy to make a command work. Anything in this repo that
+spawns the package manager names the extension itself (`relay-reconnect-trusted.spec.ts`), and a
+suite that only runs on a machine somebody reconfigured is not a suite anybody can trust.
+
+### The browser suite runs one spec at a time
+
+`pnpm e2e` uses a single worker on purpose. Every spec drives the same origin against the same dev
+server, the durable store is OPFS and the sync specs share one relay — so parallel workers are
+parallel clients of the same state. At the default worker count `export-import-trusted.spec.ts`
+dies on `Boot error: Missing required OPFS APIs.`; at one worker it passes.
+
+`KARTA_PARALLEL=4 pnpm e2e` is available for a quick local sweep; confirm anything it reports at one
+worker before believing it.
+
+### Known intermittent: `export-import-trusted.spec.ts`
+
+It still fails occasionally at one worker, and it is **not a test-isolation problem** — running it
+alone, six times, passes every time in about a second. It fails at the assertion *after* the
+import, and the page under it reads `Boot error: Missing required OPFS APIs.`
+
+That points at product code, not at the suite. The ordinary open path degrades: `openStore` catches
+a failed `createSqliteStore` and falls back to `localStorage`, with a comment saying that is
+expected on browsers without OPFS. The **import** path does not — `bootBuiltin` calls
+`importSqliteStore` unguarded (`packages/shell/src/main.tsx`), so the same condition that is a
+graceful fallback on open is a dead white page on import. Importing is also the one flow that opens
+the SAH pool for a name the *previous document* had open moments earlier, which is a plausible
+reason it is the only spec that sees it.
+
+Not fixed here: the cause is understood but not confirmed, and guessing at a durability fallback
+under time pressure is how an import silently stops being durable. It wants its own change.
+
+### Specs that skip themselves, and say why
+
+- `studio-generate-trusted.spec.ts` drives a **real** `claude -p`. With no `claude` on PATH it skips
+  immediately rather than waiting out a 330-second timeout for something knowable up front. The
+  deterministic cover for the same path — Studio → save → History → rollback, with the generator
+  endpoint stubbed — is `create-modify-rollback-trusted.spec.ts`, which needs no CLI and no money.
+- `deployment-prod.spec.ts` needs a production build: `pnpm test:e2e:prod`.
+- The Firefox project is opt-in: `pnpm test:e2e:firefox`.
+
 ---
 
 ## 1. Recipes (`?app=recipes`) — the M1 core
@@ -122,6 +182,75 @@ pnpm dev:sandbox
 Every example now runs **untrusted in the isolate**. Look for the **untrusted** badge in the header.
 Everything (lists, computed, filters, calendar, map) should still work — the app's functions run inside
 QuickJS-WASM with mediated capabilities, not directly.
+
+---
+
+## 8. The modification eval — is *changing* an app safe?
+
+The browser suite proves the mechanism works. This measures the thing the mechanism is for: give a
+model an app that **already holds records**, ask for three changes in a row, and see what survives.
+Each modification is applied to whatever the last one produced, mistakes included — because that is
+what happens to somebody who did not notice the first one.
+
+```bash
+# No model, no money. Writes a sample review sheet so the FORMAT can be argued about first.
+pnpm --filter @karta/generator eval:modify:fixture
+
+# The real thing. It spends money, so every default is the cautious one.
+pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+```
+
+Windows: `pnpm.cmd --filter @karta/generator eval:modify -- …`.
+
+Every check is mechanical. Nothing here asks a model whether a model did well.
+
+| Check | What it means |
+|---|---|
+| **valid** | compiles and validates (the old bar, and the weakest) |
+| **works** | every computed, filter, action, binding and custom view runs without throwing |
+| **records survived** | every record that existed before is still **stored**. The gate that stops a chain |
+| **values survived** | every stored field value is unchanged, or a migration step declared the change |
+| **still reachable** | every surviving record can still be got to from some page |
+| **nothing emptied** | no page filtered every record away |
+| **feature works** | a behavioural assertion, on the scenarios that carry one |
+
+The value check is the one worth having. A record can sit on the list screen with its title intact
+and the paragraph you wrote gone — reachability calls that a pass. It also catches the tidy version:
+the app stops declaring a field, every mention of it disappears with it, the app validates and
+renders, and the values sit in the store where nothing will ever show them again.
+
+Where nothing can be decided mechanically (a migration that ran a `transform`, an unattributable
+value change) the verdict is **review**, not pass, and a person fills in the score.
+
+### Cost controls
+
+| Flag | Default | |
+|---|---|---|
+| `--only a,b` | whole corpus | run named scenarios |
+| `--attempts N` | 1 | model output varies; each attempt costs again |
+| `--concurrency N` | 1 | one chain at a time, so a failure and a charge are attributable |
+| `--max-calls N` | none | hard stop, failures included |
+| `--max-cost N` | none | hard stop on **reported** spend, in USD |
+| `--allow-unmetered` | off | continue under `--max-cost` when the backend reports no cost |
+| `--no-metering` | off | plain text out of the CLI: no tokens, no cost |
+
+`claude -p` only reports spend under `--output-format json`, which is what the harness asks for. If
+a call comes back with no cost anyway, the run **stops** rather than continuing under a ceiling that
+was never going to fire; `--allow-unmetered` is how a person says they know it is unmetered. The
+report then says so in as many words and gives call count and duration instead. **Call count is not
+cost** and is never printed as though it were.
+
+Reaching a limit is a graceful stop: the partial report and every source generated so far are
+written, and the process exits non-zero so nothing mistakes a partial run for a passing one.
+
+### Output
+
+`eval-out/modify/` (git-ignored) holds every generated source, `report.json`, and `review.md` — the
+sheet that links each step to the source it produced, with a blank human score beside it. Read the
+sheet; open the failures.
+
+Unit tests never call a model. The whole chain — migrations, repair, accounting, budget — is
+exercised against canned sources in `packages/generator/test/modify-eval.test.ts`.
 
 ---
 

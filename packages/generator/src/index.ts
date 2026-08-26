@@ -31,3 +31,37 @@ export {
   type PromptSession,
 } from "./gemini-nano-backend.js";
 export { HybridBackend } from "./hybrid-backend.js";
+export { claudeCliAvailable } from "./cli-available.js";
+export {
+  CallBudget,
+  callModel,
+  isMetered,
+  UNKNOWN_USAGE,
+  type BudgetLimits,
+  type CallKind,
+  type CallUsage,
+  type MeteredBackend,
+  type MeteredRequest,
+  type MeteredResult,
+  type ModelCall,
+} from "./model-call.js";
+export {
+  compareData,
+  entitiesToRead,
+  snapshotData,
+  type DataSafetyReport,
+  type DataSnapshot,
+  type FieldChange,
+} from "./data-safety.js";
+export {
+  runModifyEval,
+  runModifyScenario,
+  summarize,
+  type ModifyReport,
+  type ScenarioRun,
+  type StepResult,
+  type StepVerdict,
+  type HumanReview,
+} from "./modify-eval.js";
+export { formatModifyReport, reviewSheet, artifactPath, rejectedPath } from "./modify-report.js";
+export { MODIFY_SCENARIOS, type ModifyScenario, type Modification, type AssertContext } from "./modify-scenarios.js";
