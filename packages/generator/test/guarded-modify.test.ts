@@ -56,6 +56,8 @@ describe("readModifyReply", () => {
 
 describe("guardedModify", () => {
   const base = { shapeOf: shapes({}), before: BEFORE, instruction: "change the id", source: SOURCE };
+  const LOSSY = 'export default defineApp({ id: "lossy" });';
+  const BROKEN = 'export default defineApp({ BROKEN {{{';
 
   it("applies a good edit reply on the first call", async () => {
     const attempt = vi.fn(async () => editReply('  id: "x",', '  id: "y",'));
@@ -89,7 +91,6 @@ describe("guardedModify", () => {
   // THE OLD GATE, still here. An edit can delete a page on purpose; a whole-file reply can drop one
   // by accident. Either way the loss is named and the model gets one more try.
   it("retries once with the loss named when the result drops a page, whichever shape it came in", async () => {
-    const LOSSY = "LOSSY";
     const attempt = vi
       .fn<(i: string) => Promise<string>>()
       .mockResolvedValueOnce(fileReply(LOSSY))
@@ -104,7 +105,6 @@ describe("guardedModify", () => {
   });
 
   it("hands back the lossy result WITH its loss when the loss retry does not help", async () => {
-    const LOSSY = "LOSSY";
     const attempt = vi.fn(async () => fileReply(LOSSY));
     const out = await guardedModify({ ...base, attempt, shapeOf: shapes({ [LOSSY]: { entities: { city: {} }, pages: [] } }) });
     expect(out).toMatchObject({ kind: "source", via: "whole-file", source: LOSSY, trace: { attempts: 2, lossRetry: true } });
@@ -112,7 +112,6 @@ describe("guardedModify", () => {
   });
 
   it("hands back the lossy result when the loss retry is unusable, rather than nothing", async () => {
-    const LOSSY = "LOSSY";
     const attempt = vi.fn<(i: string) => Promise<string>>().mockResolvedValueOnce(fileReply(LOSSY)).mockResolvedValueOnce("I give up.");
     const out = await guardedModify({ ...base, attempt, shapeOf: shapes({ [LOSSY]: { entities: { city: {} }, pages: [] } }) });
     expect(out).toMatchObject({ kind: "source", source: LOSSY });
@@ -126,9 +125,9 @@ describe("guardedModify", () => {
   });
 
   it("does not retry a candidate that cannot be judged because it does not load", async () => {
-    const attempt = vi.fn(async () => fileReply("BROKEN {{{"));
+    const attempt = vi.fn(async () => fileReply(BROKEN));
     const out = await guardedModify({ ...base, attempt, shapeOf: shapes({}, null) });
-    expect(out).toMatchObject({ kind: "source", via: "whole-file", source: "BROKEN {{{", loss: null, trace: { attempts: 1 } });
+    expect(out).toMatchObject({ kind: "source", via: "whole-file", source: BROKEN, loss: null, trace: { attempts: 1 } });
   });
 
   it("keeps the original instruction intact in both retry texts", () => {
