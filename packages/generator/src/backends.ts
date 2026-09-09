@@ -45,4 +45,14 @@ export {
 export { seedRecords } from "./smoke.js";
 
 
-export { guardedModify, retryInstruction, type GuardedModifyDeps, type GuardedModifyResult } from "./guarded-modify.js";
+export {
+  guardedModify,
+  readModifyReply,
+  retryInstruction,
+  noMatchInstruction,
+  type GuardedModifyDeps,
+  type GuardedModifyResult,
+  type ModifyTrace,
+  type ReadReply,
+} from "./guarded-modify.js";
+export { parseEdits, applyEdits, describeEditFailures, EDIT_FORMAT, type SearchReplace, type EditFailure, type ApplyResult } from "./edits.js";
