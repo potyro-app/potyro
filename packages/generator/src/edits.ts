@@ -83,16 +83,52 @@ export type ApplyResult = { ok: true; source: string; applied: number } | { ok: 
 
 const indentOf = (line: string): string => /^[ \t]*/.exec(line)![0];
 
-/** Shift every non-blank line of `text` from `from` indentation to `to`. */
-function reindent(text: string, from: string, to: string): string {
-  if (from === to) return text;
-  return text
-    .split("\n")
-    .map((l) => {
-      if (l.trim() === "") return l;
-      return l.startsWith(from) ? to + l.slice(from.length) : l;
-    })
-    .join("\n");
+/**
+ * Whether `search` sits at `lines[at..]` with one consistent indentation shift throughout: every
+ * non-blank search line's indentation extends the first non-blank line's the same way the matching
+ * file line's indentation extends the file line's. Anchoring on a single line (the old bug) let a
+ * window through when the model got that one line's depth right and flattened everything under it
+ * — `from === to` there, so nothing moved, and the edit still reported `ok: true`. Requiring every
+ * line to shift together catches that: it returns `null` rather than a `{ from, to }` pair, and the
+ * caller treats the window as no match at all.
+ */
+function uniformShift(lines: string[], at: number, search: string[]): { from: string; to: string } | null {
+  const base = search.findIndex((l) => l.trim() !== "");
+  if (base === -1) return null;
+  const from = indentOf(search[base]!);
+  const to = indentOf(lines[at + base]!);
+  for (let k = 0; k < search.length; k += 1) {
+    if (search[k]!.trim() === "") continue;
+    if (!indentOf(search[k]!).startsWith(from)) return null;
+    if (!indentOf(lines[at + k]!).startsWith(to)) return null;
+  }
+  return { from, to };
+}
+
+/**
+ * Re-indent `replacement` onto the file at the position where `search` matched. A replacement line
+ * at the same indentation as one of the search lines takes that search line's real file indentation
+ * exactly — this is correct whatever characters the model's copy used, tabs included, because it
+ * never does arithmetic on them. A line at a depth the search window never showed (new lines the
+ * model added) falls back to the uniform `from`/`to` shift; failing that — it does not even start
+ * with the window's own base indentation — falls back further to the file's base indentation with
+ * the line's own leading whitespace stripped, the best guess left once nothing else lines up.
+ */
+function reindentToFile(replacement: string[], search: string[], lines: string[], at: number, from: string, to: string): string[] {
+  const byIndent = new Map<string, string>();
+  search.forEach((line, k) => {
+    if (line.trim() === "") return;
+    const indent = indentOf(line);
+    if (!byIndent.has(indent)) byIndent.set(indent, indentOf(lines[at + k]!));
+  });
+  return replacement.map((line) => {
+    if (line.trim() === "") return line;
+    const own = indentOf(line);
+    const known = byIndent.get(own);
+    if (known !== undefined) return known + line.slice(own.length);
+    if (own.startsWith(from)) return to + line.slice(from.length);
+    return to + line.trimStart();
+  });
 }
 
 /**
@@ -122,10 +158,12 @@ function bodyLines(text: string): string[] {
  *   1. exact;
  *   2. ignoring trailing whitespace;
  *   3. ignoring indentation — the file's indentation wins, and every replacement line is shifted by
- *      the same difference so the block lands at the file's depth with its structure intact.
- * A tier that finds several places is ambiguous, and stops there: leniency must never pick one of
- * two places on the model's behalf. Fragments of a line never match: substituting inside a line
- * would put the replacement's other lines at the wrong depth, silently.
+ *      the same difference so the block lands at the file's depth with its structure intact. A
+ *      window only counts here when the whole block shares one shift (`uniformShift`); a window
+ *      where only some lines shifted is not a genuine indentation-only difference.
+ * A tier that finds several (uniform, for tier 3) places is ambiguous, and stops there: leniency
+ * must never pick one of two places on the model's behalf. Fragments of a line never match:
+ * substituting inside a line would put the replacement's other lines at the wrong depth, silently.
  */
 function applyOne(source: string, edit: SearchReplace): { source: string } | { reason: EditFailureReason; count: number } {
   const search = bodyLines(edit.search);
@@ -133,37 +171,46 @@ function applyOne(source: string, edit: SearchReplace): { source: string } | { r
   const replacement = bodyLines(edit.replace);
   const lines = source.split("\n");
 
-  const tiers: Array<{ norm: (l: string) => string; shift: boolean }> = [
-    { norm: (l) => l, shift: false },
-    { norm: (l) => l.trimEnd(), shift: false },
-    { norm: (l) => l.trim(), shift: true },
-  ];
-  for (const tier of tiers) {
-    const hits = findWindows(lines, search, tier.norm);
+  const looseTiers: Array<(l: string) => string> = [(l) => l, (l) => l.trimEnd()];
+  for (const norm of looseTiers) {
+    const hits = findWindows(lines, search, norm);
     if (hits.length > 1) return { reason: "ambiguous", count: hits.length };
     if (hits.length === 1) {
       const at = hits[0]!;
-      const body = tier.shift ? bodyLines(reindent(replacement.join("\n"), indentOf(search[0]!), indentOf(lines[at]!))) : replacement;
-      return { source: [...lines.slice(0, at), ...body, ...lines.slice(at + search.length)].join("\n") };
+      return { source: [...lines.slice(0, at), ...replacement, ...lines.slice(at + search.length)].join("\n") };
     }
+  }
+
+  const shifted = findWindows(lines, search, (l) => l.trim())
+    .map((at) => ({ at, shift: uniformShift(lines, at, search) }))
+    .filter((hit): hit is { at: number; shift: { from: string; to: string } } => hit.shift !== null);
+  if (shifted.length > 1) return { reason: "ambiguous", count: shifted.length };
+  if (shifted.length === 1) {
+    const { at, shift } = shifted[0]!;
+    const body = reindentToFile(replacement, search, lines, at, shift.from, shift.to);
+    return { source: [...lines.slice(0, at), ...body, ...lines.slice(at + search.length)].join("\n") };
   }
   return { reason: "not-found", count: 0 };
 }
 
 /**
- * Apply every edit, in order, each to the result of the one before. All-or-nothing: a reply with
- * one edit that does not match is a reply the model got wrong, and applying the rest would leave
- * the file in a state nobody asked for.
+ * Apply every edit, in order, each to the result of the one before, stopping at the first one that
+ * does not match. Edits chain, so once one fails every later edit is being checked against a file
+ * state that will never exist — evaluating them anyway produces failures that are noise at best
+ * (they report matching text as "not found" because an earlier edit never actually landed) and
+ * misleading at worst. Reporting just the first failure tells the model exactly which edit to fix.
  */
 export function applyEdits(source: string, edits: SearchReplace[]): ApplyResult {
   let current = source;
-  const failures: EditFailure[] = [];
-  edits.forEach((edit, index) => {
+  for (let index = 0; index < edits.length; index += 1) {
+    const edit = edits[index]!;
     const r = applyOne(current, edit);
-    if ("source" in r) current = r.source;
-    else failures.push({ index, reason: r.reason, search: edit.search, count: r.count });
-  });
-  if (failures.length) return { ok: false, failures };
+    if ("source" in r) {
+      current = r.source;
+      continue;
+    }
+    return { ok: false, failures: [{ index, reason: r.reason, search: edit.search, count: r.count }] };
+  }
   return { ok: true, source: current, applied: edits.length };
 }
 

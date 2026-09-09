@@ -157,6 +157,75 @@ describe("applyEdits", () => {
     ]);
     expect(r.ok).toBe(false);
   });
+
+  // Finding 1: the old tier-3 shift was anchored on the first SEARCH line only. When that line's
+  // indentation already happens to match the file (the model got the entity's own line right but
+  // flattened everything under it), `from === to` and the shift became a no-op — the replacement
+  // landed at the model's (wrong) indentation while the edit still reported `ok: true`. The window
+  // must count as a match only when the whole block shifts by the same amount.
+  test("re-indents to the file when the first search line already matches but the body was flattened", () => {
+    const r = applyEdits(FILE, [
+      {
+        search: '    city: {\nfields: {\nname: { type: "text", required: true },',
+        replace: '    city: {\nfields: {\nname: { type: "text", required: true },\nnotes: { type: "text" },',
+      },
+    ]);
+    expect(r).toEqual({
+      ok: false,
+      failures: [
+        {
+          index: 0,
+          reason: "not-found",
+          search: '    city: {\nfields: {\nname: { type: "text", required: true },',
+          count: 0,
+        },
+      ],
+    });
+  });
+
+  test("re-indents by the uniform shift taken from the first non-blank line", () => {
+    const WITH_BLANK = FILE.replace("    city: {", "\n    city: {");
+    const r = applyEdits(WITH_BLANK, [
+      {
+        search: '\n  city: {\n    fields: {\n      name: { type: "text", required: true },',
+        replace: '\n  city: {\n    fields: {\n      name: { type: "text", required: true },\n      notes: { type: "text" },',
+      },
+    ]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.source).toContain(
+      '    city: {\n      fields: {\n        name: { type: "text", required: true },\n        notes: { type: "text" },',
+    );
+  });
+
+  // Finding 2: edits chain, each applied to the result of the one before, so once one fails every
+  // later edit is checked against a file state that will never exist — reporting those as failures
+  // too is just noise (and can wrongly tell the model a correct edit "was not found").
+  test("reports only the first failure when edits chain", () => {
+    const r = applyEdits(FILE, [
+      { search: '  id: "nope",', replace: '  id: "y",' },
+      { search: '  id: "y",', replace: '  id: "z",' },
+    ]);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.failures).toHaveLength(1);
+    expect(r.failures[0]!.index).toBe(0);
+  });
+
+  test("tab-indented search against a space-indented file re-indents cleanly", () => {
+    const r = applyEdits(FILE, [
+      {
+        search: '\tcity: {\n\t\tfields: {\n\t\t\tname: { type: "text", required: true },',
+        replace: '\tcity: {\n\t\tfields: {\n\t\t\tname: { type: "text", required: true },\n\t\t\tnotes: { type: "text" },',
+      },
+    ]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.source).toContain(
+      '    city: {\n      fields: {\n        name: { type: "text", required: true },\n        notes: { type: "text" },',
+    );
+    expect(r.source).not.toContain("\t");
+  });
 });
 
 describe("describeEditFailures", () => {
