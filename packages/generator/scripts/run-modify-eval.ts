@@ -24,6 +24,7 @@ import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter
 import { guardedModify } from "../src/guarded-modify.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { loadApp, scoreSource } from "../src/score.js";
+import { NOT_IN_APP } from "../src/prompt.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@karta/runtime";
 
@@ -38,6 +39,10 @@ interface Outcome {
   /** null = the case has no structural predicate (keep-only); it is excluded from the landed rate. */
   landed: boolean | null;
   validates: boolean;
+  /** The model answered NOT-IN-APP instead of source: it judged the request not to be the app's to
+   *  fulfil. A legitimate outcome, scored on its own - NOT as "invalid", which is what it looked
+   *  like on the first real run (a 3-second "app" that was actually one line of prose). */
+  declined: boolean;
   ms: number;
   crashed?: string;
 }
@@ -115,9 +120,17 @@ async function shapeOf(source: string, resolveDir: string): Promise<AppShape & D
   return { entities: app.entities, pages: app.pages as AppShape["pages"] & DefinitionShape["pages"] };
 }
 
-async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string): Promise<Outcome> {
+async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string, outDir: string): Promise<Outcome> {
   const started = Date.now();
   const source = readFileSync(join(examplesDir, `${c.app}.app.ts`), "utf8");
+  // Every reply the model gives is written out, or a failed case cannot be diagnosed - the first
+  // real run left two "did not land" and two "invalid" rows with nothing to look at.
+  let turn = 0;
+  const keep = (text: string): string => {
+    turn += 1;
+    writeFileSync(join(outDir, `${c.id}.attempt-${turn}.app.ts`), text);
+    return text;
+  };
   const p: GenPrompt = { id: c.id, description: c.instruction };
   try {
     if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
@@ -131,14 +144,15 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
     const result = await guardedModify({
-      attempt: (instr) => backend.modify!(source, instr, p),
+      attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
       shapeOf: (src) => shapeOf(src, examplesDir),
       before,
       instruction: c.instruction,
     });
+    const declined = result.source.trimStart().startsWith(NOT_IN_APP);
     let landed: boolean | null = c.landed ? false : null;
     let validates = false;
-    try {
+    if (!declined) try {
       const final = await shapeOf(result.source, examplesDir);
       if (c.landed) landed = c.landed(final);
       validates = (await scoreSource(result.source, examplesDir)).validates;
@@ -151,13 +165,14 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       rewroteFirst: result.retried,
       rewroteFinal: result.loss !== null,
       loss: result.loss,
-      landed,
+      landed: declined ? null : landed,
       validates,
+      declined,
       ms: Date.now() - started,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { id: c.id, app: c.app, rewroteFirst: false, rewroteFinal: false, loss: null, landed: false, validates: false, ms: Date.now() - started, crashed: msg };
+    return { id: c.id, app: c.app, rewroteFirst: false, rewroteFinal: false, loss: null, landed: false, validates: false, declined: false, ms: Date.now() - started, crashed: msg };
   }
 }
 
@@ -174,10 +189,10 @@ async function main(): Promise<void> {
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await runCase(backend, c, examplesDir);
-    const mark = o.crashed ? "!" : o.rewroteFinal ? "✗" : o.landed ? "✓" : "~";
+    const o = await runCase(backend, c, examplesDir, outDir);
+    const mark = o.crashed ? "!" : o.rewroteFinal ? "✗" : o.declined ? "∅" : o.landed ? "✓" : "~";
     const note = o.crashed ? ` CRASHED: ${o.crashed.slice(0, 80)}` : o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : "";
-    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s)${o.landed === false ? " — did not land" : ""}${note}`);
+    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s)${o.declined ? " — declined (NOT-IN-APP)" : o.landed === false ? " — did not land" : ""}${note}`);
     return o;
   });
 
@@ -192,6 +207,7 @@ async function main(): Promise<void> {
     landed: count((o) => o.landed === true),
     landable: count((o) => o.landed !== null),
     validates: count((o) => o.validates),
+    declined: count((o) => o.declined),
     crashed: count((o) => Boolean(o.crashed)),
   };
   const lines = [
@@ -202,6 +218,7 @@ async function main(): Promise<void> {
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
     `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
     `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
+    summary.declined ? `  declined (NOT-IN-APP):    ${summary.declined}/${n}   ← judged not the app's to change; excluded from landed` : "",
     summary.crashed ? `  crashed:                  ${summary.crashed}/${n}` : "",
     "=".repeat(60),
   ].filter((l) => l !== "");
