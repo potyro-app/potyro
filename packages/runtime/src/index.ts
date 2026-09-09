@@ -12,6 +12,7 @@ export { activitySince, activitySupported, type ActivityItem, type ActivityDeps 
 export { memberName, personHue, personInitials } from "./people.js";
 
 export { newCase, addStep, annotate, observe, type Case, type CaseStep, type ScreenState } from "./case.js";
+export { structuralLoss, viewSubstitutions, type AppShape } from "./shape.js";
 export {
   replayCase,
   replayPassed,

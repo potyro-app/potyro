@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { guardedModify, retryInstruction } from "../src/guarded-modify.js";
-import type { AppShape } from "../src/verify-candidate.js";
+import type { AppShape } from "@karta/runtime";
 
 // The app as the person has it: two entities, two pages. A rewrite typically keeps one and drops the
 // rest — that is the shape the first real modify came back in.

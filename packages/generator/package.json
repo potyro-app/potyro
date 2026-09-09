@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "eval:cli": "vite-node scripts/run-cli-eval.ts --",
-    "eval:openrouter": "vite-node scripts/run-cli-eval.ts -- --backend openrouter"
+    "eval:openrouter": "vite-node scripts/run-cli-eval.ts -- --backend openrouter",
+    "eval:modify": "vite-node scripts/run-modify-eval.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

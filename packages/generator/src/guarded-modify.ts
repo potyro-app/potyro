@@ -14,7 +14,7 @@
 // again the result is still returned, with the loss attached, so the caller can say so loudly — it
 // is never silent, and it never burns a third call.
 
-import { structuralLoss, type AppShape } from "./verify-candidate.js";
+import { structuralLoss, type AppShape } from "@karta/runtime";
 
 export interface GuardedModifyDeps {
   /** One model turn: the instruction in, the whole updated source out. */

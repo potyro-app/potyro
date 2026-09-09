@@ -41,7 +41,7 @@ import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
-import { guardedModify } from "./guarded-modify.js";
+import { guardedModify } from "@karta/generator/backends";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap

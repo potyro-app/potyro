@@ -44,3 +44,5 @@ export {
 } from "./concurrency-smoke.js";
 export { seedRecords } from "./smoke.js";
 
+
+export { guardedModify, retryInstruction, type GuardedModifyDeps, type GuardedModifyResult } from "./guarded-modify.js";
