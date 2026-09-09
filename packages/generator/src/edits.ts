@@ -84,25 +84,44 @@ export type ApplyResult = { ok: true; source: string; applied: number } | { ok: 
 const indentOf = (line: string): string => /^[ \t]*/.exec(line)![0];
 
 /**
- * Whether `search` sits at `lines[at..]` with one consistent indentation shift throughout: every
- * non-blank search line's indentation extends the first non-blank line's the same way the matching
- * file line's indentation extends the file line's. Anchoring on a single line (the old bug) let a
- * window through when the model got that one line's depth right and flattened everything under it
- * — `from === to` there, so nothing moved, and the edit still reported `ok: true`. Requiring every
- * line to shift together catches that: it returns `null` rather than a `{ from, to }` pair, and the
- * caller treats the window as no match at all.
+ * Whether `search` sits at `lines[at..]` with one consistent indent MAPPING throughout, not just a
+ * shared prefix. Build `search indent -> file indent` from every non-blank line and require it to
+ * be: (1) consistent — a search indent seen twice must map to the same file indent both times,
+ * which is what rejects two search lines at one depth whose file lines actually differ; (2)
+ * injective — two different search indents must never collapse onto the same file indent, which is
+ * what rejects a body the model flattened onto its anchor's own level while the file still nests it
+ * deeper (every search indent in the flattened block is identical, so this is really rule 1 firing
+ * on the block's own repeated indent against the file's several distinct ones); (3) order-preserving
+ * — a shorter search indent must map to a shorter file indent, which is what rejects a body
+ * flattened to column zero under a real anchor, and any window where nesting comes out inverted. A
+ * uniform shift that merely changes the unit — one tab per level in the model's copy against two
+ * spaces per level in the file, say — satisfies all three and still matches: the map is consistent,
+ * injective, and depth-ordered even though no single arithmetic delta explains it.
  */
 function uniformShift(lines: string[], at: number, search: string[]): { from: string; to: string } | null {
-  const base = search.findIndex((l) => l.trim() !== "");
-  if (base === -1) return null;
-  const from = indentOf(search[base]!);
-  const to = indentOf(lines[at + base]!);
+  const map = new Map<string, string>();
   for (let k = 0; k < search.length; k += 1) {
     if (search[k]!.trim() === "") continue;
-    if (!indentOf(search[k]!).startsWith(from)) return null;
-    if (!indentOf(lines[at + k]!).startsWith(to)) return null;
+    const s = indentOf(search[k]!);
+    const f = indentOf(lines[at + k]!);
+    const known = map.get(s);
+    if (known === undefined) map.set(s, f);
+    else if (known !== f) return null; // consistent: same search indent, different file indents
   }
-  return { from, to };
+  const entries = [...map.entries()];
+  const seenFileIndents = new Set(entries.map(([, f]) => f));
+  if (seenFileIndents.size !== entries.length) return null; // injective: two indents, one file depth
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const [s1, f1] = entries[i]!;
+      const [s2, f2] = entries[j]!;
+      const shorter = s1.length < s2.length ? [f1, f2] : s2.length < s1.length ? [f2, f1] : null;
+      if (shorter && !(shorter[0]!.length < shorter[1]!.length)) return null; // order-preserving
+    }
+  }
+  const base = search.findIndex((l) => l.trim() !== "");
+  if (base === -1) return null;
+  return { from: indentOf(search[base]!), to: indentOf(lines[at + base]!) };
 }
 
 /**
@@ -119,6 +138,10 @@ function reindentToFile(replacement: string[], search: string[], lines: string[]
   search.forEach((line, k) => {
     if (line.trim() === "") return;
     const indent = indentOf(line);
+    // First-wins here would be a collision if two search lines at the same indent mapped to
+    // different file indents, but `uniformShift` already rejected any window where that could
+    // happen — its consistency check requires a given search indent to map to exactly one file
+    // indent throughout the window. The map can't disagree with itself.
     if (!byIndent.has(indent)) byIndent.set(indent, indentOf(lines[at + k]!));
   });
   return replacement.map((line) => {
