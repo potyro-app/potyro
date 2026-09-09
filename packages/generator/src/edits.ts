@@ -253,3 +253,30 @@ export function describeEditFailures(failures: EditFailure[]): string {
     })
     .join("\n");
 }
+
+/** The format, as the model is told it. One worked example; models copy shapes better than rules. */
+export const EDIT_FORMAT = [
+  "<<<<<<< SEARCH",
+  "<consecutive lines copied from the app above, exactly as they are there>",
+  "=======",
+  "<what those lines become>",
+  ">>>>>>> REPLACE",
+  "",
+  "For example, to add a field after `name`:",
+  "<<<<<<< SEARCH",
+  '        name: { type: "text", required: true },',
+  "      },",
+  "=======",
+  '        name: { type: "text", required: true },',
+  '        rating: { type: "number" },',
+  "      },",
+  ">>>>>>> REPLACE",
+  "",
+  "- SEARCH must be an exact copy of consecutive lines from the app above: same characters, same",
+  "  indentation, comments included. Do not retype it from memory and do not tidy it up.",
+  "- Make SEARCH just long enough to match one place: the lines you change plus a line or two around them.",
+  "- To add something, SEARCH the line it goes after and REPLACE with that line followed by the new lines.",
+  "  To remove something, leave REPLACE empty.",
+  "- One block per place you change; several blocks are fine. They are applied in order.",
+  "- Do not send the whole file. Every line you do not mention stays exactly as it is.",
+].join("\n");
