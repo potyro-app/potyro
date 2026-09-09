@@ -62,6 +62,8 @@ export const VERIFY_WALL_CLOCK_MS = VERIFY_TIMEOUT_MS * 2;
  *  needs no runtime and no schema import. */
 export interface AppShape {
   pages: Array<{ id: string; view: { type: string; entity?: string } }>;
+  /** Optional so the pages-only checks in tests keep compiling; every real definition has it. */
+  entities?: Record<string, unknown>;
 }
 
 /**
@@ -72,9 +74,17 @@ export interface AppShape {
  * the failure mode this exists to stop.
  */
 export function structuralLoss(before: AppShape, after: AppShape): string | null {
+  // Entities first: "it deleted my app" is usually the DATA model gone, with the pages that showed
+  // it following. Naming the entity is more useful to a person (and to a retry prompt) than naming
+  // the pages that depended on it.
+  const lostEntities = Object.keys(before.entities ?? {}).filter((e) => !(after.entities && e in after.entities));
+  if (lostEntities.length) {
+    const list = lostEntities.map((e) => `"${e}"`).join(", ");
+    return `removes the ${list} ${lostEntities.length === 1 ? "entity" : "entities"} the app already had — a change may add to the data model, never drop part of it`;
+  }
   for (const page of before.pages) {
     if (!after.pages.some((p) => p.id === page.id)) {
-      return `this removes the "${page.id}" page (${page.view.type}) instead of fixing it — a fix may add pages, never drop one the app already had`;
+      return `removes the "${page.id}" page (${page.view.type}) instead of fixing it — a change may add pages, never drop one the app already had`;
     }
   }
   return null;
