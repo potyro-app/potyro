@@ -3,6 +3,7 @@
 // Kept pure + exported so the assembly is unit-testable without any model call.
 
 import type { GenPrompt } from "./backend.js";
+import { EDIT_FORMAT } from "./edits.js";
 
 export const EXAMPLE_TODO = `import { defineApp } from "karta";
 
@@ -408,15 +409,19 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
 
   lines.push(
     "Reply with exactly one of:",
-    "1. The complete updated .app.ts (the whole file, not a diff) in one ```ts block.",
+    "1. SEARCH/REPLACE edits to the app above, in one ```ts block:",
+    "",
+    EDIT_FORMAT,
+    "",
     `2. \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to change there>\` - and no code.`,
     "",
     "Answering (2) when it is true is cheap. A plausible edit that cannot possibly work is the more damaging mistake,",
     "because it is indistinguishable from a fix until someone tries it.",
     "",
-    "Put your reasoning in the prose before the block. Do NOT write comments that assert a cause",
-    '("// the map ignores this") - a causal claim in a comment is unverifiable and the next edit',
-    "reads it as fact.",
+    "The OUTPUT rule in the system prompt (the whole file, no prose) does not apply to this reply: it is for",
+    "creating an app. Here, send edits, and put your reasoning in the prose before the block. Do NOT write",
+    'comments that assert a cause ("// the map ignores this") - a causal claim in a comment is unverifiable and',
+    "the next edit reads it as fact.",
   );
 
   return lines.join("\n");

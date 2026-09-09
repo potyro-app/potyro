@@ -42,6 +42,23 @@ describe("buildModifyMessage", () => {
     expect(msg).not.toContain("did NOT work");
     expect(msg).not.toContain("Already reported as host-side");
   });
+
+  // The whole-file ask was the defect: reproducing 200 lines to change 3 is where pages got renamed
+  // and colons doubled. The prompt now asks for the changed lines only.
+  test("asks for SEARCH/REPLACE edits, never the whole file", () => {
+    const msg = buildModifyMessage("add a rating field");
+    expect(msg).toContain("<<<<<<< SEARCH");
+    expect(msg).toContain(">>>>>>> REPLACE");
+    expect(msg).toMatch(/do not send the whole file/i);
+    expect(msg).not.toMatch(/the whole file, not a diff/i);
+  });
+
+  // The system prompt's OUTPUT rule ("only the source, no prose") is for CREATING an app. Left
+  // implicit, it contradicts "put your reasoning in the prose before the block", and a model
+  // resolving the contradiction picks the system prompt. Say which rule applies here.
+  test("overrides the system prompt's whole-file OUTPUT rule explicitly", () => {
+    expect(buildModifyMessage("x")).toMatch(/OUTPUT rule .*does not apply/i);
+  });
 });
 
 describe("parseModifyReply", () => {
