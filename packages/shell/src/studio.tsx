@@ -171,6 +171,8 @@ export function Studio({ onClose }: { onClose: () => void }) {
    * missing: a rewritten app looks fine in a preview until you notice half your app is gone.
    */
   const [modifyLoss, setModifyLoss] = useState<string | null>(null);
+  /** How the last change arrived — "Applied 3 edits", or that the model sent the whole file. */
+  const [modifyNote, setModifyNote] = useState<string | null>(null);
 
   const buildPreview = async (src: string, storeNamespace: string | null): Promise<string[]> => {
     setBusy(true);
@@ -230,11 +232,14 @@ export function Studio({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const withGen = async (label: string, run: () => Promise<string>, autoRepair = true, note?: string): Promise<void> => {
+  // `run` returns the next source, or null when it already reported its outcome (a NOT-IN-APP
+  // verdict is not a failure to generate; it is an answer, shown as one).
+  const withGen = async (label: string, run: () => Promise<string | null>, autoRepair = true, note?: string): Promise<void> => {
     setGenBusy(true);
     setError(null);
     try {
       const next = await run();
+      if (next === null) return;
       setSource(next);
       let issues = await buildPreview(next, currentId);
       // The model sometimes emits a structurally-invalid app (e.g. a wrong list shape). Feed the
@@ -344,31 +349,33 @@ export function Studio({ onClose }: { onClose: () => void }) {
     });
 
   // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
-  // apply, and the model returns the whole updated file — keeping the rest intact. Same engine as
-  // create, because there is now only one.
+  // apply, and the model sends SEARCH/REPLACE edits which `guardedModify` applies — so the lines it
+  // does not mention cannot be damaged. Same engine as create, because there is now only one.
   const modify = (): Promise<void> => {
     const instruction = description.trim();
     if (!instruction || !preview) return Promise.resolve();
     const p = { id: "studio", description: instruction };
-    // One model turn, for whichever engine is chosen. `guardedModify` may call it twice.
+    // One model turn, returning the model's REPLY (not source): `guardedModify` reads it, and may
+    // call this up to three times (a no-match retry, then a loss retry).
     const attempt = async (instr: string): Promise<string> => {
       if (engine === "edge") return (await edgeBackend()).modify(source, instr, p);
       if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instr, p);
       if (engine === "cli") {
-        const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instr)].join("\n");
-        return runCli(prompt, "Modifying");
+        const prompt = ["The current app:", "```ts", source, "```", "", buildModifyMessage(instr)].join("\n");
+        return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Modifying via ${label}… ${secs}s`) });
       }
       return (await cloudBackend()).modify(source, instr, p);
     };
     const def = preview.composed.runtime.definition;
     setModifyLoss(null);
+    setModifyNote(null);
     return withGen(
       label,
       () =>
         withTick("Modifying", async () => {
-          // THE GATE. A result that dropped entities or pages is sent straight back with the loss
-          // named, before a person sees it; only if the retry ALSO drops something is it shown —
-          // and then `modifyLoss` says so loudly (below), never silently. See guarded-modify.ts.
+          // THE GATE. Edits that do not match go back once with the failure named; a result that
+          // dropped entities or pages goes back once with the loss named. Only if a retry ALSO fails
+          // is it shown — and then `modifyLoss` says so loudly (below), never silently.
           const result = await guardedModify({
             attempt,
             shapeOf: async (src) => {
@@ -377,8 +384,22 @@ export function Studio({ onClose }: { onClose: () => void }) {
             },
             before: { pages: def.pages, entities: def.entities },
             instruction,
+            source,
           });
+          if (result.kind === "diagnosis") {
+            setError(`Not changed — the model says this is not the app's to change: ${result.text}`);
+            return null;
+          }
+          if (result.kind === "failed") {
+            setError(`Not changed — ${result.reason}`);
+            return null;
+          }
           setModifyLoss(result.loss);
+          setModifyNote(
+            result.via === "edits"
+              ? `Applied ${result.applied} edit${result.applied === 1 ? "" : "s"}.`
+              : "The model sent the whole file back instead of edits. Check that nothing else changed.",
+          );
           return result.source;
         }),
       true,
@@ -621,6 +642,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
               you had — or try a smaller, more specific change.
             </p>
           ) : null}
+          {modifyNote ? <p className="k-muted k-modify-note">{modifyNote}</p> : null}
           {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
 
           {tab === "preview" ? (
