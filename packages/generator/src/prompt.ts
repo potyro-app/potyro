@@ -430,11 +430,16 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
  * precisely the failure this contract exists to prevent.
  */
 export function parseModifyReply(reply: string): ModifyReply {
-  const marker = new RegExp(`^${NOT_IN_APP}`, "m").exec(reply);
+  // The marker may arrive dressed up: a model that has just written three paragraphs of reasoning
+  // tends to present its verdict as `` `NOT-IN-APP: …` `` or **NOT-IN-APP: …**. A measured DeepSeek
+  // reply did exactly that, and a strict line-start match handed the whole essay to the bundler as
+  // source. Tolerate leading backticks/asterisks (and drop a matching trailing one), but still
+  // require the marker to open its line, so prose that merely mentions it is not a verdict.
+  const marker = new RegExp(`^[\`*\\s]*${NOT_IN_APP}`, "m").exec(reply);
   if (marker) {
-    const after = reply.slice(marker.index + NOT_IN_APP.length);
+    const after = reply.slice(marker.index + marker[0].length);
     // Stop at any code fence, so a disowned patch never leaks into the explanation.
-    const text = after.split(/^```/m)[0]!.trim();
+    const text = after.split(/^```/m)[0]!.trim().replace(/[\`*]+$/, "").trim();
     return { kind: "diagnosis", text };
   }
 
