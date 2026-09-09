@@ -85,3 +85,34 @@ describe("parseModifyReply", () => {
     expect(parseModifyReply("  const a = 1;  ")).toEqual({ kind: "source", source: "const a = 1;" });
   });
 });
+
+// A measured DeepSeek reply: three paragraphs of reasoning, then the verdict wrapped in backticks on
+// its own line. The strict line-start match missed it, and the whole essay went to the bundler as
+// source - in the eval that scored a correct refusal as "invalid", and in the Studio it would have
+// landed as a broken app. The marker still has to OPEN its line, so a mid-prose mention stays prose.
+describe("parseModifyReply tolerates a dressed-up marker", () => {
+  test("finds NOT-IN-APP wrapped in backticks at the end of an explanation", () => {
+    const reply = [
+      "This change is **not achievable within the app source**. The map's tap-to-create flow is",
+      "handled by the host shell; the app cannot intercept it.",
+      "",
+      "So the answer is:",
+      "",
+      "`NOT-IN-APP: The map's create-tap flow is a host-shell behaviour the app cannot sequence.`",
+    ].join("\n");
+    const r = parseModifyReply(reply);
+    expect(r.kind).toBe("diagnosis");
+    expect((r as { text: string }).text).toBe("The map's create-tap flow is a host-shell behaviour the app cannot sequence.");
+  });
+
+  test("finds NOT-IN-APP wrapped in bold", () => {
+    const r = parseModifyReply("Reasoning first.\n\n**NOT-IN-APP: the host owns this.**");
+    expect(r.kind).toBe("diagnosis");
+    expect((r as { text: string }).text).toBe("the host owns this.");
+  });
+
+  test("still ignores a mention that does not open its line", () => {
+    const r = parseModifyReply("I considered whether this was NOT-IN-APP: it is not.\n```ts\nconst x = 1;\n```");
+    expect(r.kind).toBe("source");
+  });
+});

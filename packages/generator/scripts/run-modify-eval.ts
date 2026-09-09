@@ -17,14 +17,14 @@
 // plus LANDED (the change is present) and VALIDATES (the result is a well-formed app), so a model
 // that keeps the app by ignoring the request does not score as a win.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
 import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { guardedModify } from "../src/guarded-modify.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { loadApp, scoreSource } from "../src/score.js";
-import { NOT_IN_APP } from "../src/prompt.js";
+import { parseModifyReply } from "../src/prompt.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@karta/runtime";
 
@@ -122,7 +122,11 @@ async function shapeOf(source: string, resolveDir: string): Promise<AppShape & D
 
 async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string, outDir: string): Promise<Outcome> {
   const started = Date.now();
-  const source = readFileSync(join(examplesDir, `${c.app}.app.ts`), "utf8");
+  // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
+  // use) lives beside this harness, so the product's fixtures stay the product's.
+  const fixturesDir = resolve(process.cwd(), "fixtures");
+  const sourceDir = existsSync(join(examplesDir, `${c.app}.app.ts`)) ? examplesDir : fixturesDir;
+  const source = readFileSync(join(sourceDir, `${c.app}.app.ts`), "utf8");
   // Every reply the model gives is written out, or a failed case cannot be diagnosed - the first
   // real run left two "did not land" and two "invalid" rows with nothing to look at.
   let turn = 0;
@@ -140,7 +144,7 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
     // A predicate that is already true on the UNMODIFIED app proves nothing about the change - it
     // would score "landed" for a model that ignored the request. The scripted run caught five of
     // these on the first draft of the corpus. Refuse the case rather than report a number that lies.
-    if (c.landed && c.landed(before)) {
+    if (c.landed && c.landed(before, before)) {
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
     const result = await guardedModify({
@@ -149,13 +153,15 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       before,
       instruction: c.instruction,
     });
-    const declined = result.source.trimStart().startsWith(NOT_IN_APP);
+    // The same parser Edit mode uses, so the eval and the product agree on what a refusal looks
+    // like - including one wrapped in backticks at the end of an explanation.
+    const declined = parseModifyReply(result.source).kind === "diagnosis";
     let landed: boolean | null = c.landed ? false : null;
     let validates = false;
     if (!declined) try {
-      const final = await shapeOf(result.source, examplesDir);
-      if (c.landed) landed = c.landed(final);
-      validates = (await scoreSource(result.source, examplesDir)).validates;
+      const final = await shapeOf(result.source, sourceDir);
+      if (c.landed) landed = c.landed(final, before);
+      validates = (await scoreSource(result.source, sourceDir)).validates;
     } catch {
       // Does not load: neither landed nor valid, and `loss` is whatever the guard could tell.
     }

@@ -22,13 +22,15 @@ export interface DefinitionShape {
 
 export interface ModifyCase {
   id: string;
-  /** Which example app under examples/ the instruction is applied to. */
-  app: "recipes" | "plants" | "places" | "workout";
+  /** Which app the instruction is applied to: an example under examples/, or an eval fixture under
+   *  packages/generator/fixtures/ - `city-guide` is a REAL model-generated app a person was using
+   *  when a modify rewrote it, added verbatim. The curated examples never triggered a rewrite. */
+  app: "recipes" | "plants" | "places" | "workout" | "city-guide";
   instruction: string;
   /** Did the requested change land? Structural and coarse on purpose - see the header. Absent for
    *  a keep-only case whose change is behaviour structure cannot see; such a case measures only
    *  whether the app survived, and is left out of the landed rate rather than counted as a pass. */
-  landed?: (def: DefinitionShape) => boolean;
+  landed?: (after: DefinitionShape, before: DefinitionShape) => boolean;
   /** What `landed` checks, in words, for the report. */
   expects: string;
 }
@@ -36,7 +38,11 @@ export interface ModifyCase {
 const hasField = (entity: string, field: string) => (d: DefinitionShape): boolean =>
   Boolean(d.entities[entity]?.fields && field in (d.entities[entity]!.fields as Record<string, unknown>));
 
-const addedPage = (originalCount: number) => (d: DefinitionShape): boolean => d.pages.length > originalCount;
+// Against the LOADED original, never a hardcoded count: the first draft said "plants had 4 pages"
+// from a grep that counted a quick action's `id:` as a page. The app has 3, the model added one,
+// and the case scored "did not land" for a change that landed. Structure that can be read must
+// never be assumed.
+const addedPage = (after: DefinitionShape, before: DefinitionShape): boolean => after.pages.length > before.pages.length;
 
 const hasPageOfType = (type: string) => (d: DefinitionShape): boolean => d.pages.some((p) => p.view.type === type);
 
@@ -83,15 +89,15 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     id: "recipes-favourites-page",
     app: "recipes",
     instruction: "Add a page that lists only the recipes I have marked as a favourite.",
-    landed: addedPage(10),
-    expects: "a page was added (recipes had 10)",
+    landed: addedPage,
+    expects: "a page was added",
   },
   {
     id: "plants-today-page",
     app: "plants",
     instruction: "Add a page showing just the plants that need watering today.",
-    landed: addedPage(4),
-    expects: "a page was added (plants had 4)",
+    landed: addedPage,
+    expects: "a page was added",
   },
   {
     id: "workout-map-page",
@@ -129,7 +135,25 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     id: "workout-two-things",
     app: "workout",
     instruction: "Add a notes field to exercises, and a page listing exercises I have not done in the last 30 days.",
-    landed: (d) => Object.keys(d.entities.exercise?.fields ?? {}).some((f) => /note/i.test(f)) && d.pages.length > 5,
-    expects: "exercise gains a notes-like field AND a page was added (workout had 5)",
+    landed: (d, o) => Object.keys(d.entities.exercise?.fields ?? {}).some((f) => /note/i.test(f)) && addedPage(d, o),
+    expects: "exercise gains a notes-like field AND a page was added",
+  },
+
+  // --- the real app that was rewritten, with the real request --------------------------------
+  {
+    id: "city-guide-pick-on-map",
+    app: "city-guide",
+    instruction:
+      "I want that when I am with the map open and click in New Place, it asks me to click a place in the map, and then the form to add details of the place will open with place coordinates from the place I clicked.",
+    // Keep-only for the same reason as places-pick-on-map. This is the exact app and exact words
+    // that came back as a different app; on the curated examples the same request never did.
+    expects: "keep-only: the request that rewrote this app in use",
+  },
+  {
+    id: "city-guide-opening-hours",
+    app: "city-guide",
+    instruction: "Add opening hours to each place, as free text.",
+    landed: (d) => Object.keys(d.entities.place?.fields ?? {}).some((f) => /hour|open/i.test(f)),
+    expects: "place gains an opening-hours-like field",
   },
 ];
