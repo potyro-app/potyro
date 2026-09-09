@@ -163,7 +163,7 @@ describe("applyEdits", () => {
   // flattened everything under it), `from === to` and the shift became a no-op — the replacement
   // landed at the model's (wrong) indentation while the edit still reported `ok: true`. The window
   // must count as a match only when the whole block shifts by the same amount.
-  test("re-indents to the file when the first search line already matches but the body was flattened", () => {
+  test("does not match when the first line lines up but the body was flattened", () => {
     const r = applyEdits(FILE, [
       {
         search: '    city: {\nfields: {\nname: { type: "text", required: true },',
@@ -177,6 +177,70 @@ describe("applyEdits", () => {
           index: 0,
           reason: "not-found",
           search: '    city: {\nfields: {\nname: { type: "text", required: true },',
+          count: 0,
+        },
+      ],
+    });
+  });
+
+  // A block re-emitted flattened to one level — every line at column 0, or every line at the
+  // anchor's own indent — is not a genuine uniform shift: only the first line's depth happens to
+  // line up (or none do), and everything under it lost its nesting. Neither is a match.
+  test("a block flattened to one level is not a match, whatever level that is", () => {
+    const flatAtZero = applyEdits(FILE, [
+      {
+        search: 'city: {\nfields: {\nname: { type: "text", required: true },\n},\n},',
+        replace: 'city: {\nfields: {\nname: { type: "text", required: true },\nnotes: { type: "text" },\n},\n},',
+      },
+    ]);
+    expect(flatAtZero).toEqual({
+      ok: false,
+      failures: [
+        {
+          index: 0,
+          reason: "not-found",
+          search: 'city: {\nfields: {\nname: { type: "text", required: true },\n},\n},',
+          count: 0,
+        },
+      ],
+    });
+
+    const flatAtAnchor = applyEdits(FILE, [
+      {
+        search: '    city: {\n    fields: {\n    name: { type: "text", required: true },\n    },\n    },',
+        replace: '    city: {\n    fields: {\n    name: { type: "text", required: true },\n    notes: { type: "text" },\n    },\n    },',
+      },
+    ]);
+    expect(flatAtAnchor).toEqual({
+      ok: false,
+      failures: [
+        {
+          index: 0,
+          reason: "not-found",
+          search: '    city: {\n    fields: {\n    name: { type: "text", required: true },\n    },\n    },',
+          count: 0,
+        },
+      ],
+    });
+  });
+
+  // Two search lines at the same indent must map to the same file indent. Here `fields` and `name`
+  // are both written at 6 spaces, but the file has them at 6 and 8 — one search depth splitting
+  // into two real depths, so the mapping disagrees with itself and this is not a match.
+  test("two search lines at one depth whose file lines differ is not a match", () => {
+    const r = applyEdits(FILE, [
+      {
+        search: '    city: {\n      fields: {\n      name: { type: "text", required: true },',
+        replace: '    city: {\n      fields: {\n      name: { type: "text", required: true },\n      notes: { type: "text" },',
+      },
+    ]);
+    expect(r).toEqual({
+      ok: false,
+      failures: [
+        {
+          index: 0,
+          reason: "not-found",
+          search: '    city: {\n      fields: {\n      name: { type: "text", required: true },',
           count: 0,
         },
       ],
