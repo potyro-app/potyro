@@ -4,6 +4,7 @@
 // the Studio (generate/preview/save) and by in-app Edit-mode (quick modify) so both catch + repair.
 
 import { structureSchema, checkReferences } from "karta";
+import type { AppShape } from "@karta/runtime";
 import { MemoryStore } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
 import { createAppBundler } from "./app-bundler.js";
@@ -33,9 +34,10 @@ export function validateDefinition(def: unknown): string[] {
   return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
 }
 
-/** Bundle a source, run it untrusted with a throwaway store, and return its structure issues. Throws
- *  if the source fails to compile/bundle (that surfaces to the caller as a hard error). */
-export async function buildAndValidate(source: string): Promise<string[]> {
+/** Compose a source UNTRUSTED (in the isolate, throwaway store) and return its runtime definition.
+ *  Throws if the source fails to compile/bundle. Never runs the source directly: Edit mode edits
+ *  imported apps too, and their code must not get ambient authority just to be inspected. */
+async function composeUntrusted(source: string): Promise<{ definition: unknown }> {
   const bundle = await createAppBundler();
   const bundleCode = await bundle(source);
   const store = new MemoryStore();
@@ -49,5 +51,17 @@ export async function buildAndValidate(source: string): Promise<string[]> {
     nav: createNavBridge(() => {}),
     loadIsolated: await createSandboxLoader(store),
   });
-  return validateDefinition(composed.runtime.definition);
+  return { definition: composed.runtime.definition };
+}
+
+/** Bundle a source, run it untrusted with a throwaway store, and return its structure issues. Throws
+ *  if the source fails to compile/bundle (that surfaces to the caller as a hard error). */
+export async function buildAndValidate(source: string): Promise<string[]> {
+  return validateDefinition((await composeUntrusted(source)).definition);
+}
+
+/** The shape `guardedModify` compares: pages and entities of a source, loaded in the isolate. */
+export async function loadDefinition(source: string): Promise<{ pages: AppShape["pages"]; entities: AppShape["entities"] }> {
+  const def = (await composeUntrusted(source)).definition as { pages: AppShape["pages"]; entities?: AppShape["entities"] };
+  return { pages: def.pages, entities: def.entities };
 }
