@@ -77,7 +77,7 @@ export class GeminiNanoBackend implements ModelBackend {
       buildModifyMessage(instruction),
     ].join("\n");
     const session = await this.newSession();
-    return once(session, async (s) => extractSource(await s.prompt(message)));
+    return once(session, (s) => s.prompt(message));
   }
 }
 

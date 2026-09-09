@@ -109,6 +109,6 @@ export class ClaudeCliBackend implements ModelBackend {
       "",
       buildModifyMessage(instruction),
     ].join("\n");
-    return extractSource(await runClaude(msg, this.opts));
+    return runClaude(msg, this.opts);
   }
 }

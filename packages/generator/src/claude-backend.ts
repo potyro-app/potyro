@@ -86,7 +86,7 @@ export class ClaudeBackend implements ModelBackend {
         { role: "user", content: buildModifyMessage(instruction) },
       ],
     });
-    return extractSource(joinText(res));
+    return joinText(res);
   }
 }
 

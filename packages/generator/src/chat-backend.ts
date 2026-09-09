@@ -96,17 +96,16 @@ export abstract class ChatBackend implements ModelBackend {
   // `prompt` is deliberately unused: in a modify the caller passes the CHANGE as the description,
   // and opening with it ("create an app for: add a rating field") is what made models replace the
   // app wholesale. The app describes itself — it is right there in the next turn.
+  // The reply is returned as text, not extracted: it holds edits, and `guardedModify` applies them.
   async modify(source: string, instruction: string, _prompt: GenPrompt): Promise<string> {
-    return extractSource(
-      await this.ask(
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildModifyOpener() },
-          priorTurn(source),
-          { role: "user", content: buildModifyMessage(instruction) },
-        ],
-        EDIT_TEMPERATURE,
-      ),
+    return this.ask(
+      [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildModifyOpener() },
+        priorTurn(source),
+        { role: "user", content: buildModifyMessage(instruction) },
+      ],
+      EDIT_TEMPERATURE,
     );
   }
 }
