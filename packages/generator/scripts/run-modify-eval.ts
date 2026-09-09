@@ -24,7 +24,7 @@ import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter
 import { guardedModify } from "../src/guarded-modify.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { loadApp, scoreSource } from "../src/score.js";
-import { parseModifyReply } from "../src/prompt.js";
+import { looksLikeApp, parseModifyReply } from "../src/prompt.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@karta/runtime";
 
@@ -81,14 +81,13 @@ function scriptedBackend(): ModelBackend {
     async generate() {
       throw new Error("scripted backend only modifies");
     },
-    async modify(source: string, instruction: string) {
-      // The retry carries a DIFFERENT instruction (the loss is appended after a blank line), so key
-      // on the original request - the text before that blank line - plus the source, not on the
-      // full instruction. Keying on the full text made the fake rewrite twice and looked, correctly,
-      // like "retry did not help" - a harness bug the scripted run exists to catch.
-      const key = `${source.length}:${instruction.split("\n\n")[0]}`;
-      const n = (calls.get(key) ?? 0) + 1;
-      calls.set(key, n);
+    async modify(source: string, _instruction: string, prompt: GenPrompt) {
+      // Key on the case id the runner passes as `prompt.id` - with `--runs`, that id carries a
+      // per-sample suffix, so each sample rewrites once and restores on its retry. Keying on
+      // source+instruction (an earlier draft) leaked across samples: run #2 of a case saw the
+      // counter already spent and never rewrote, and the --runs proof read 2/4 instead of 4/4.
+      const n = (calls.get(prompt.id) ?? 0) + 1;
+      calls.set(prompt.id, n);
       if (n > 1) return source;
       // A different, smaller app: one entity, one page. Exactly what a rewrite looks like.
       return `import { defineApp } from "karta";
@@ -154,8 +153,12 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       instruction: c.instruction,
     });
     // The same parser Edit mode uses, so the eval and the product agree on what a refusal looks
-    // like - including one wrapped in backticks at the end of an explanation.
-    const declined = parseModifyReply(result.source).kind === "diagnosis";
+    // like - including one wrapped in backticks at the end of an explanation. AND a reply with no
+    // app in it at all: a measured reply was `/* NO CODE - not expressible in the app file. */`,
+    // a refusal that ignored the marker. Scoring that as "invalid" would say the model produced a
+    // broken app when it produced no app; the contract violation is real but it is a different
+    // finding from a half-edit, and conflating them hides both.
+    const declined = parseModifyReply(result.source).kind === "diagnosis" || !looksLikeApp(result.source);
     let landed: boolean | null = c.landed ? false : null;
     let validates = false;
     if (!declined) try {
@@ -185,13 +188,18 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
 async function main(): Promise<void> {
   const only = arg("only")?.split(",").map((s) => s.trim());
   const concurrency = Number(arg("concurrency", "3"));
+  // One sample per case at temperature 0.1 is noise: two cases flipped between consecutive runs
+  // with nothing changed, and a 0/12 cannot rule out a rewrite rate of 20%. N samples per case
+  // turn "it did not happen this time" into a rate with a denominator worth reading.
+  const runs = Math.max(1, Number(arg("runs", "1")));
   const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `modify-${Date.now()}`))!);
   const examplesDir = resolve(process.cwd(), "..", "..", "examples");
-  const cases = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
+  const selected = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
+  const cases = selected.flatMap((c) => Array.from({ length: runs }, (_, i) => (runs > 1 ? { ...c, id: `${c.id}#${i + 1}` } : c)));
 
   mkdirSync(outDir, { recursive: true });
   const backend = await makeBackend(arg("backend", "openrouter") ?? "openrouter", arg("model"), arg("reasoning"));
-  console.log(`backend=${backend.name} cases=${cases.length} concurrency=${concurrency}\nout=${outDir}\n`);
+  console.log(`backend=${backend.name} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
@@ -219,7 +227,7 @@ async function main(): Promise<void> {
   const lines = [
     "",
     "=".repeat(60),
-    `MODIFY — ${backend.name} (n=${n})`,
+    `MODIFY — ${backend.name} (n=${n}${runs > 1 ? ` = ${selected.length} cases × ${runs} runs` : ""})`,
     `  rewrote on 1st attempt:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← raw model behaviour`,
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
     `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
