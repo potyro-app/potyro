@@ -41,7 +41,7 @@ import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
-import { structuralLoss, type AppShape } from "./verify-candidate.js";
+import { guardedModify } from "./guarded-modify.js";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
@@ -170,7 +170,6 @@ export function Studio({ onClose }: { onClose: () => void }) {
    * nothing is saved until the person presses Save. It makes the loss VISIBLE, which is what was
    * missing: a rewritten app looks fine in a preview until you notice half your app is gone.
    */
-  const modifyShapeRef = useRef<AppShape | null>(null);
   const [modifyLoss, setModifyLoss] = useState<string | null>(null);
 
   const buildPreview = async (src: string, storeNamespace: string | null): Promise<string[]> => {
@@ -211,11 +210,6 @@ export function Studio({ onClose }: { onClose: () => void }) {
         });
       }
       buildRef.current += 1;
-      // Compare against the shape captured when the modify was requested, then clear it — a later
-      // preview build (a manual edit, a restore) is not that modify's doing.
-      const was = modifyShapeRef.current;
-      modifyShapeRef.current = null;
-      setModifyLoss(was ? structuralLoss(was, composed.runtime.definition) : null);
       setPreview({ composed, toaster, build: buildRef.current, provenance, picker });
       if (tabPicks.current === picksBefore) setTab("preview");
       const issues = validateDefinition(composed.runtime.definition);
@@ -356,19 +350,36 @@ export function Studio({ onClose }: { onClose: () => void }) {
     const instruction = description.trim();
     if (!instruction || !preview) return Promise.resolve();
     const p = { id: "studio", description: instruction };
-    // What the app looks like BEFORE the change, so the rebuild can say what the change destroyed.
-    modifyShapeRef.current = { pages: preview.composed.runtime.definition.pages };
+    // One model turn, for whichever engine is chosen. `guardedModify` may call it twice.
+    const attempt = async (instr: string): Promise<string> => {
+      if (engine === "edge") return (await edgeBackend()).modify(source, instr, p);
+      if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instr, p);
+      if (engine === "cli") {
+        const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instr)].join("\n");
+        return runCli(prompt, "Modifying");
+      }
+      return (await cloudBackend()).modify(source, instr, p);
+    };
+    const def = preview.composed.runtime.definition;
+    setModifyLoss(null);
     return withGen(
       label,
       () =>
         withTick("Modifying", async () => {
-          if (engine === "edge") return (await edgeBackend()).modify(source, instruction, p);
-          if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instruction, p);
-          if (engine === "cli") {
-            const prompt = [SYSTEM_PROMPT, "", "The current app:", "```ts", source, "```", "", buildModifyMessage(instruction)].join("\n");
-            return runCli(prompt, "Modifying");
-          }
-          return (await cloudBackend()).modify(source, instruction, p);
+          // THE GATE. A result that dropped entities or pages is sent straight back with the loss
+          // named, before a person sees it; only if the retry ALSO drops something is it shown —
+          // and then `modifyLoss` says so loudly (below), never silently. See guarded-modify.ts.
+          const result = await guardedModify({
+            attempt,
+            shapeOf: async (src) => {
+              const app = await loadTrustedModule(src);
+              return { pages: app.pages, entities: app.entities };
+            },
+            before: { pages: def.pages, entities: def.entities },
+            instruction,
+          });
+          setModifyLoss(result.loss);
+          return result.source;
         }),
       true,
       instruction,
@@ -604,8 +615,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
             // you look at the preview, whereas a REWRITTEN app previews perfectly — it is simply
             // somebody else's app. Nothing is saved yet; this is the moment to notice.
             <p className="k-form-error k-studio-error k-modify-loss">
-              This change rewrote your app rather than editing it — {modifyLoss}. Nothing has been
-              saved: use History, or reopen the app from My Apps, to get back to what you had.
+              This change rewrote your app rather than editing it — it {modifyLoss}. It was sent back
+              once with that named and did it again, so this is what the model gives for this request.
+              Nothing has been saved: use History, or reopen the app from My Apps, to get back to what
+              you had — or try a smaller, more specific change.
             </p>
           ) : null}
           {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
