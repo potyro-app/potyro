@@ -4,12 +4,13 @@
 //   pnpm --filter @karta/generator eval:modify -- --backend openrouter --model deepseek/deepseek-v4-pro-0813
 //   pnpm --filter @karta/generator eval:modify -- --backend scripted        # no key: proves the harness
 //
-// Flags: --backend openrouter|claude-cli|scripted  --model <id>  --reasoning <effort>
+// Flags: --backend openrouter|claude-cli|scripted|scripted-edits  --model <id>  --reasoning <effort>
 //        --only id1,id2  --concurrency N  --out <dir>
 //
-// Every case runs through the SAME guard the Studio uses (`guardedModify`): one attempt, and if it
-// dropped an entity or page, one retry with the loss named. So the numbers here are the numbers a
-// person sees, and the two rates that matter fall straight out:
+// Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
+// read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
+// loss retry) before giving up. So the numbers here are the numbers a person sees, and the two rates
+// that matter fall straight out:
 //
 //   rewrote (1st)   how often the model's first reply replaced the app  - the raw model behaviour
 //   rewrote (final) how often it STILL had after the retry              - what reaches the editor
@@ -24,24 +25,29 @@ import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter
 import { guardedModify } from "../src/guarded-modify.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { loadApp, scoreSource } from "../src/score.js";
-import { looksLikeApp, parseModifyReply } from "../src/prompt.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@karta/runtime";
 
 interface Outcome {
   id: string;
   app: string;
-  /** The first reply dropped an entity or a page - the raw behaviour this eval exists to count. */
+  /** How the change arrived: edits (the contract), the whole file (accepted fallback), a NOT-IN-APP
+   *  verdict, or nothing usable. The first number to read: it says whether the model follows the
+   *  format at all. */
+  via: "edits" | "whole-file" | "declined" | "failed";
+  /** Edit blocks applied (0 unless via=edits). */
+  applied: number;
+  /** The first reply's SEARCH did not match and the model was asked again. Format reliability. */
+  noMatchRetry: boolean;
+  /** The first usable reply dropped an entity or a page - the raw behaviour the loss gate counts. */
   rewroteFirst: boolean;
   /** What reached the editor still drops something, even after the retry. */
   rewroteFinal: boolean;
   loss: string | null;
-  /** null = the case has no structural predicate (keep-only); it is excluded from the landed rate. */
+  /** null = the case has no structural predicate (keep-only), or nothing landed to check. */
   landed: boolean | null;
   validates: boolean;
-  /** The model answered NOT-IN-APP instead of source: it judged the request not to be the app's to
-   *  fulfil. A legitimate outcome, scored on its own - NOT as "invalid", which is what it looked
-   *  like on the first real run (a 3-second "app" that was actually one line of prose). */
+  /** Kept for report readers: same as via === "declined". */
   declined: boolean;
   ms: number;
   crashed?: string;
@@ -69,39 +75,51 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T, i: number) =>
 }
 
 /**
- * A backend with no model behind it, whose first modify REPLACES the app and whose retry hands the
- * original back untouched. It exists so the harness can be proven end to end without a key: it
- * must report rewroteFirst=true, rewroteFinal=false, landed=false for every case. If it does not,
- * the harness is broken, not the model.
+ * Backends with no model behind them, so the harness can be proven end to end without a key.
+ *
+ * `scripted`: the first reply REPLACES the app with a smaller one (as a whole-file reply), the retry
+ * hands the original back. Must report via=whole-file, rewroteFirst=true, rewroteFinal=false,
+ * landed=false for every case.
+ *
+ * `scripted-edits`: the first reply is an edit whose SEARCH is not in any file; the retry edits the
+ * one line every corpus app has. Must report via=edits, noMatchRetry=true, applied=1, rewroteFirst=
+ * false, validates=true for every case. If either proof fails, the harness is broken, not the model.
  */
-function scriptedBackend(): ModelBackend {
+const editBlock = (search: string, replace: string) =>
+  "```ts\n<<<<<<< SEARCH\n" + search + "\n=======\n" + replace + "\n>>>>>>> REPLACE\n```\n";
+
+function scriptedBackend(kind: "scripted" | "scripted-edits"): ModelBackend {
   const calls = new Map<string, number>();
   return {
-    name: "scripted:rewrite-then-restore",
+    name: kind === "scripted" ? "scripted:rewrite-then-restore" : "scripted:nomatch-then-edit",
     async generate() {
       throw new Error("scripted backend only modifies");
     },
     async modify(source: string, _instruction: string, prompt: GenPrompt) {
       // Key on the case id the runner passes as `prompt.id` - with `--runs`, that id carries a
-      // per-sample suffix, so each sample rewrites once and restores on its retry. Keying on
-      // source+instruction (an earlier draft) leaked across samples: run #2 of a case saw the
-      // counter already spent and never rewrote, and the --runs proof read 2/4 instead of 4/4.
+      // per-sample suffix, so each sample fails once and recovers on its retry.
       const n = (calls.get(prompt.id) ?? 0) + 1;
       calls.set(prompt.id, n);
-      if (n > 1) return source;
+      if (kind === "scripted-edits") {
+        if (n === 1) return editBlock("THIS LINE IS IN NO APP", "// never applied");
+        return editBlock("export default defineApp({", "// edited by the eval\nexport default defineApp({");
+      }
+      if (n > 1) return "```ts\n" + source + "\n```";
       // A different, smaller app: one entity, one page. Exactly what a rewrite looks like.
-      return `import { defineApp } from "karta";
+      return `\`\`\`ts
+import { defineApp } from "karta";
 export default defineApp({
   id: "rewritten", name: "Rewritten", version: "1.0.0", schemaVersion: 1,
   entities: { thing: { label: "Thing", displayField: "name", fields: { name: { type: "text", required: true } } } },
   pages: [{ id: "all", title: "Things", view: { type: "list", entity: "thing", display: { primary: "name" } } }],
-});`;
+});
+\`\`\``;
     },
   };
 }
 
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
-  if (kind === "scripted") return scriptedBackend();
+  if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
   if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
   if (kind === "openrouter") {
     return createOpenRouterBackend({
@@ -109,7 +127,7 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
       ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
     });
   }
-  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli or scripted)`);
+  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted or scripted-edits)`);
 }
 
 /** The shape the guard compares, from a loaded app. Throws when the source does not load, which
@@ -126,23 +144,22 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
   const fixturesDir = resolve(process.cwd(), "fixtures");
   const sourceDir = existsSync(join(examplesDir, `${c.app}.app.ts`)) ? examplesDir : fixturesDir;
   const source = readFileSync(join(sourceDir, `${c.app}.app.ts`), "utf8");
-  // Every reply the model gives is written out, or a failed case cannot be diagnosed - the first
-  // real run left two "did not land" and two "invalid" rows with nothing to look at.
   let turn = 0;
+  // Every reply is written out as the model sent it (edits or a file), or a failed case cannot be
+  // diagnosed. The applied result is written separately, so it can be diffed against the original.
   const keep = (text: string): string => {
     turn += 1;
-    writeFileSync(join(outDir, `${c.id}.attempt-${turn}.app.ts`), text);
+    writeFileSync(join(outDir, `${c.id}.attempt-${turn}.reply.md`), text);
     return text;
   };
   const p: GenPrompt = { id: c.id, description: c.instruction };
+  const crashed = (msg: string): Outcome => ({
+    id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false,
+    loss: null, landed: false, validates: false, declined: false, ms: Date.now() - started, crashed: msg,
+  });
   try {
     if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
-    // Bundle from the examples dir so an app's own `./views/…` imports resolve - the examples are
-    // real apps with real custom views, which is exactly why they are worth measuring against.
     const before = await shapeOf(source, examplesDir);
-    // A predicate that is already true on the UNMODIFIED app proves nothing about the change - it
-    // would score "landed" for a model that ignored the request. The scripted run caught five of
-    // these on the first draft of the corpus. Refuse the case rather than report a number that lies.
     if (c.landed && c.landed(before, before)) {
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
@@ -151,17 +168,19 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       shapeOf: (src) => shapeOf(src, examplesDir),
       before,
       instruction: c.instruction,
+      source,
     });
-    // The same parser Edit mode uses, so the eval and the product agree on what a refusal looks
-    // like - including one wrapped in backticks at the end of an explanation. AND a reply with no
-    // app in it at all: a measured reply was `/* NO CODE - not expressible in the app file. */`,
-    // a refusal that ignored the marker. Scoring that as "invalid" would say the model produced a
-    // broken app when it produced no app; the contract violation is real but it is a different
-    // finding from a half-edit, and conflating them hides both.
-    const declined = parseModifyReply(result.source).kind === "diagnosis" || !looksLikeApp(result.source);
+    const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry, ms: 0 };
+    if (result.kind === "diagnosis") {
+      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, ms: Date.now() - started };
+    }
+    if (result.kind === "failed") {
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, ms: Date.now() - started };
+    }
+    writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     let landed: boolean | null = c.landed ? false : null;
     let validates = false;
-    if (!declined) try {
+    try {
       const final = await shapeOf(result.source, sourceDir);
       if (c.landed) landed = c.landed(final, before);
       validates = (await scoreSource(result.source, sourceDir)).validates;
@@ -169,19 +188,18 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       // Does not load: neither landed nor valid, and `loss` is whatever the guard could tell.
     }
     return {
-      id: c.id,
-      app: c.app,
-      rewroteFirst: result.retried,
+      ...common,
+      via: result.via,
+      applied: result.applied,
       rewroteFinal: result.loss !== null,
       loss: result.loss,
-      landed: declined ? null : landed,
+      landed,
       validates,
-      declined,
+      declined: false,
       ms: Date.now() - started,
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { id: c.id, app: c.app, rewroteFirst: false, rewroteFinal: false, loss: null, landed: false, validates: false, declined: false, ms: Date.now() - started, crashed: msg };
+    return crashed(e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -204,9 +222,12 @@ async function main(): Promise<void> {
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
     const o = await runCase(backend, c, examplesDir, outDir);
-    const mark = o.crashed ? "!" : o.rewroteFinal ? "✗" : o.declined ? "∅" : o.landed ? "✓" : "~";
-    const note = o.crashed ? ` CRASHED: ${o.crashed.slice(0, 80)}` : o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : "";
-    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s)${o.declined ? " — declined (NOT-IN-APP)" : o.landed === false ? " — did not land" : ""}${note}`);
+    const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
+    const how = o.via === "edits" ? `${o.applied} edit${o.applied === 1 ? "" : "s"}` : o.via === "whole-file" ? "WHOLE FILE" : o.via;
+    const note = o.crashed
+      ? ` CRASHED: ${o.crashed.slice(0, 80)}`
+      : [o.noMatchRetry ? " SEARCH missed once" : "", o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : ""].join("");
+    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s) via ${how}${o.landed === false ? " — did not land" : ""}${note}`);
     return o;
   });
 
@@ -216,6 +237,10 @@ async function main(): Promise<void> {
   const summary = {
     backend: backend.name,
     n,
+    viaEdits: count((o) => o.via === "edits"),
+    viaWholeFile: count((o) => o.via === "whole-file"),
+    noMatchRetry: count((o) => o.noMatchRetry),
+    failed: count((o) => o.via === "failed" && !o.crashed),
     rewroteFirst: count((o) => o.rewroteFirst),
     rewroteFinal: count((o) => o.rewroteFinal),
     landed: count((o) => o.landed === true),
@@ -228,6 +253,10 @@ async function main(): Promise<void> {
     "",
     "=".repeat(60),
     `MODIFY — ${backend.name} (n=${n}${runs > 1 ? ` = ${selected.length} cases × ${runs} runs` : ""})`,
+    `  replied with edits:       ${summary.viaEdits}/${n} (${pct(summary.viaEdits)})   ← the contract`,
+    `  sent the whole file:      ${summary.viaWholeFile}/${n} (${pct(summary.viaWholeFile)})   ← accepted, but retyped`,
+    summary.noMatchRetry ? `  SEARCH missed, retried:   ${summary.noMatchRetry}/${n}` : "",
+    summary.failed ? `  nothing usable:           ${summary.failed}/${n}` : "",
     `  rewrote on 1st attempt:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← raw model behaviour`,
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
     `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
