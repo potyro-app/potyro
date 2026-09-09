@@ -29,10 +29,8 @@ import {
   buildModifyMessage,
   buildRepairMessage,
   extractSource,
-  looksLikeApp,
-  parseModifyReply,
+  guardedModify,
   type ModifyContext,
-  type ModifyReply,
 } from "@karta/generator/backends";
 import { VIEW_FIELDS, PAGE_FIELDS } from "karta";
 import { listVersions } from "./app-history.js";
@@ -40,7 +38,7 @@ import { listDiagnoses, recordDiagnosis } from "./app-diagnoses.js";
 import { StructurePanel } from "./structure-panel.js";
 import type { Edit } from "./app-source.js";
 import type { StructureTarget } from "./structure-panel.js";
-import { buildAndValidate } from "./validate-app.js";
+import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
@@ -628,9 +626,16 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       onProgress: (s) => setModifyProgress(`Working… ${s}s`),
     });
 
-  /** An edit round, which may legitimately come back as "this isn't the app's to fix". */
-  const runModify = async (currentSource: string, instruction: string, ctx: ModifyContext): Promise<ModifyReply> =>
-    parseModifyReply(await askAgent(currentSource, buildModifyMessage(instruction, ctx)));
+  /** An edit round: the model sends SEARCH/REPLACE edits, `guardedModify` applies them, and it may
+   *  legitimately come back as "this isn't the app's to fix". */
+  const runModify = (currentSource: string, instruction: string, ctx: ModifyContext) =>
+    guardedModify({
+      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr, ctx)),
+      shapeOf: loadDefinition,
+      before: { pages: def.pages, entities: def.entities },
+      instruction,
+      source: currentSource,
+    });
 
   /** A repair round answers "your output didn't compile" — a diagnosis is not a legal reply here. */
   const runRepair = async (currentSource: string, issues: string[]): Promise<string> =>
@@ -710,21 +715,26 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
         setModifyProgress(null);
         return;
       }
-
-      // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
-      // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
-      let next = reply.source;
-      // Say what went wrong in words. When extraction fails, `next` is the model's prose, and
-      // bundling it produces a syntax error partway through an English sentence — which tells the
-      // person nothing and sent one real user round in circles.
-      if (!looksLikeApp(next)) {
-        setModifyError(
-          "The agent replied with an explanation instead of an app, so nothing was changed. Try asking again, more specifically.",
-        );
+      // Say what went wrong in words: an edit that did not match twice, or prose instead of a change.
+      if (reply.kind === "failed") {
+        setModifyError(`Nothing was changed — ${reply.reason}`);
         setModifyBusy(false);
         setModifyProgress(null);
         return;
       }
+      // Edit mode SAVES on success, so a result that still drops part of the app after the retry
+      // must not get that far. The Studio can show such a result because nothing is saved until
+      // the person clicks Save; here the person would find out from a missing page.
+      if (reply.loss !== null) {
+        setModifyError(`Nothing was saved — this change rewrote the app rather than editing it: it ${reply.loss}. Try a smaller, more specific change.`);
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
+
+      // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
+      // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
+      let next = reply.source;
       const issues = await buildAndValidate(next);
       if (issues.length) next = await runRepair(next, issues);
 
