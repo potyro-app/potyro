@@ -27,48 +27,91 @@ const SEARCH_MARK = /^<{5,9} SEARCH\s*$/;
 const DIVIDER_MARK = /^={5,9}\s*$/;
 const REPLACE_MARK = /^>{5,9} REPLACE\s*$/;
 
+/** Why one SEARCH/REPLACE block in a reply could not be read as a well-formed edit. */
+export interface MalformedBlock {
+  /** Position of the block counting every block opened (well-formed or not) from 0. */
+  index: number;
+  reason: string;
+}
+
 /**
- * Every complete SEARCH/REPLACE block in a reply, in order. Bodies are verbatim: the search text is
- * matched against the file, so a parser that "tidied" it would break the match it exists to make.
- * An unterminated block is dropped — a half-read edit applied to a file is worse than no edit.
+ * Every complete SEARCH/REPLACE block in a reply, in order, plus every block that was NOT
+ * well-formed and why. Bodies are verbatim: the search text is matched against the file, so a
+ * parser that "tidied" it would break the match it exists to make.
+ *
+ * Two ways a block goes wrong, both reported rather than silently guessed at: a second `=======`
+ * line while still reading the replacement (the model split REPLACE in two), and a new
+ * `<<<<<<< SEARCH` opening before the previous block closed — including one still open when the
+ * reply ends. Either way the block is dropped from `edits`, never half-applied: a half-read edit
+ * written into a file is worse than no edit.
  */
-export function parseEdits(reply: string): SearchReplace[] {
+export function parseEditsStrict(reply: string): { edits: SearchReplace[]; malformed: MalformedBlock[] } {
   const lines = reply.replace(/\r\n?/g, "\n").split("\n");
-  const out: SearchReplace[] = [];
+  const edits: SearchReplace[] = [];
+  const malformed: MalformedBlock[] = [];
   let state: "outside" | "search" | "replace" = "outside";
   let search: string[] = [];
   let replace: string[] = [];
+  let blockIndex = -1;
+  let nextIndex = 0;
+  let reported = false; // whether the currently open block already has a malformed entry
+
+  // Returns "search" so callers assign it directly (`state = openBlock()`): an assignment at the
+  // call site narrows normally, where a bare call to a closure that assigns `state` internally does
+  // not — TS invalidates narrowing of a `let` written inside any function it can't see through.
+  const openBlock = (): "search" => {
+    search = [];
+    replace = [];
+    blockIndex = nextIndex;
+    nextIndex += 1;
+    reported = false;
+    return "search";
+  };
+  const reportUnclosed = () => {
+    if (!reported) malformed.push({ index: blockIndex, reason: "was never closed with >>>>>>> REPLACE" });
+    reported = true;
+  };
+
   for (const line of lines) {
     if (state === "outside") {
-      if (SEARCH_MARK.test(line)) {
-        state = "search";
-        search = [];
-        replace = [];
-      }
+      if (SEARCH_MARK.test(line)) state = openBlock();
       continue;
     }
     if (state === "search") {
       if (DIVIDER_MARK.test(line)) state = "replace";
-      else if (SEARCH_MARK.test(line)) search = []; // a restarted block: keep the later one
-      else search.push(line);
+      else if (SEARCH_MARK.test(line)) {
+        reportUnclosed(); // a block opened before this one closed
+        state = openBlock();
+      } else search.push(line);
       continue;
     }
+    // state === "replace"
     if (REPLACE_MARK.test(line)) {
-      out.push({ search: search.join("\n"), replace: replace.join("\n") });
+      if (!reported) edits.push({ search: search.join("\n"), replace: replace.join("\n") });
       state = "outside";
+    } else if (DIVIDER_MARK.test(line)) {
+      if (!reported) malformed.push({ index: blockIndex, reason: "has more than one ======= line" });
+      reported = true; // keep reading to the eventual REPLACE mark, but never as a real edit
     } else if (SEARCH_MARK.test(line)) {
-      // A new block opened before this one closed: the open one was never terminated. Drop it.
-      state = "search";
-      search = [];
-      replace = [];
+      reportUnclosed(); // a block opened before this one closed
+      state = openBlock();
     } else {
       replace.push(line);
     }
   }
-  return out;
+  if (state !== "outside") reportUnclosed();
+  return { edits, malformed };
 }
 
-export type EditFailureReason = "not-found" | "ambiguous" | "empty-search";
+/**
+ * Every complete SEARCH/REPLACE block in a reply, in order. See `parseEditsStrict` for how a
+ * malformed block is detected and reported; this is the shape most callers want.
+ */
+export function parseEdits(reply: string): SearchReplace[] {
+  return parseEditsStrict(reply).edits;
+}
+
+export type EditFailureReason = "not-found" | "ambiguous" | "empty-search" | "malformed";
 
 export interface EditFailure {
   /** Zero-based position of the edit in the reply. `describeEditFailures` shows it one-based. */
@@ -77,6 +120,8 @@ export interface EditFailure {
   search: string;
   /** How many places matched — 0 for not-found, >1 for ambiguous. */
   count: number;
+  /** Set for `reason: "malformed"`: the `MalformedBlock.reason` text, e.g. "has more than one ======= line". */
+  detail?: string;
 }
 
 export type ApplyResult = { ok: true; source: string; applied: number } | { ok: false; failures: EditFailure[] };
@@ -242,6 +287,12 @@ export function describeEditFailures(failures: EditFailure[]): string {
   return failures
     .map((f) => {
       const n = f.index + 1;
+      if (f.reason === "malformed") {
+        return (
+          `Edit ${n} is malformed: it ${f.detail}. Each edit is exactly one <<<<<<< SEARCH line, the lines to find, ` +
+          "one ======= line, the replacement lines, and one >>>>>>> REPLACE line."
+        );
+      }
       if (f.reason === "empty-search") return `Edit ${n} has an empty SEARCH. Every edit must SEARCH for lines that exist in the file.`;
       if (f.reason === "ambiguous") {
         return `Edit ${n}'s SEARCH text appears in ${f.count} places. Include more of the surrounding lines so it matches exactly one place.`;

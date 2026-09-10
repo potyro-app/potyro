@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseEdits, applyEdits, describeEditFailures } from "../src/edits.js";
+import { parseEdits, parseEditsStrict, applyEdits, describeEditFailures } from "../src/edits.js";
 
 // The reply shape a modify turn asks for. A block is three marker lines around two bodies; the
 // parser must read them wherever they sit — inside a ```ts fence, outside one, several in a row —
@@ -44,6 +44,21 @@ describe("parseEdits", () => {
   test("an unterminated block is dropped rather than half-read", () => {
     const reply = block("a", "b") + "\n<<<<<<< SEARCH\nstray\n=======\nnever closed";
     expect(parseEdits(reply)).toEqual([{ search: "a", replace: "b" }]);
+  });
+
+  test("a block with two ======= lines is malformed and dropped, and parseEditsStrict names it", () => {
+    const twoDividers = "<<<<<<< SEARCH\nc\n=======\nd\n=======\ne\n>>>>>>> REPLACE";
+    const reply = [block("a", "b"), block("p", "q"), twoDividers].join("\n");
+    expect(parseEdits(reply)).toEqual([
+      { search: "a", replace: "b" },
+      { search: "p", replace: "q" },
+    ]);
+    expect(parseEditsStrict(reply).malformed).toEqual([{ index: 2, reason: "has more than one ======= line" }]);
+  });
+
+  test("an unterminated block is reported by parseEditsStrict", () => {
+    const reply = block("a", "b") + "\n<<<<<<< SEARCH\nstray\n=======\nnever closed";
+    expect(parseEditsStrict(reply).malformed).toEqual([{ index: 1, reason: "was never closed with >>>>>>> REPLACE" }]);
   });
 });
 
@@ -298,10 +313,12 @@ describe("describeEditFailures", () => {
       { index: 1, reason: "not-found", search: "abc", count: 0 },
       { index: 2, reason: "ambiguous", search: "},", count: 4 },
       { index: 0, reason: "empty-search", search: "", count: 0 },
+      { index: 2, reason: "malformed", search: "", count: 0, detail: "has more than one ======= line" },
     ]);
     expect(text).toMatch(/edit 2.*not found/i);
     expect(text).toMatch(/exactly as .*appear/i);
     expect(text).toMatch(/edit 3.*4 places/i);
     expect(text).toMatch(/edit 1.*empty/i);
+    expect(text).toMatch(/edit 3 is malformed.*more than one =======/i);
   });
 });

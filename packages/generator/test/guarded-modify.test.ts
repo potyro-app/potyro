@@ -52,6 +52,18 @@ describe("readModifyReply", () => {
   it("prose with neither edits nor an app is unusable", () => {
     expect(readModifyReply(SOURCE, "I would add a field.")).toEqual({ kind: "unusable", text: "I would add a field." });
   });
+
+  // A block with a second ======= is the model splitting REPLACE in two — the divider line ends up
+  // written into the file as text. Applying the good edit alongside it would be a silent partial
+  // change, so nothing applies: the whole reply is reported as a no-match and retried.
+  it("a reply with a malformed block applies nothing and reports it", () => {
+    const good = `<<<<<<< SEARCH\n  id: "x",\n=======\n  id: "y",\n>>>>>>> REPLACE`;
+    const brokenSecondDivider = `<<<<<<< SEARCH\nentities: { city: {}, place: {} },\n=======\nentities: { city: {} },\n=======\nplace: {},\n>>>>>>> REPLACE`;
+    const reply = `${good}\n${brokenSecondDivider}\n`;
+    const r = readModifyReply(SOURCE, reply);
+    expect(r.kind).toBe("no-match");
+    expect(r.kind === "no-match" && r.failures[0]!.reason).toBe("malformed");
+  });
 });
 
 describe("guardedModify", () => {
