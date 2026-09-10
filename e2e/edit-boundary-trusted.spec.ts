@@ -124,6 +124,48 @@ test("the diagnosis is remembered, and the next attempt is told about it", async
   expect(prompts[1]).toContain("built-in map view");
 });
 
+// The same real app-level change, arriving in the shape the contract asks for: prose plus ONE
+// SEARCH/REPLACE block. Edit mode has to apply it to the FILE — substituting the lines the model
+// named and leaving every other line exactly as it was, which is the whole point of edits.
+test("an edit-block reply is applied to the file, not the whole file", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  const PLACE_LINE = APP_SOURCE.split("\n")[8]!;
+  expect(PAGES_LINE).toContain('title: "Map"'); // the fixture still looks the way this edit expects
+  expect(PLACE_LINE).toContain("place: {");
+  await stubAgent(
+    page,
+    [
+      "I renamed the page.",
+      "```ts",
+      "<<<<<<< SEARCH",
+      PAGES_LINE,
+      "=======",
+      PAGES_LINE.replace('title: "Map"', 'title: "Where I have been"'),
+      ">>>>>>> REPLACE",
+      "```",
+    ].join("\n"),
+  );
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "call the page Where I have been");
+
+  // Same route as the whole-file test below: Edit mode reloads once the version is saved.
+  const savedSource = () =>
+    page
+      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
+      .catch(() => "");
+  await expect.poll(savedSource, { timeout: 30_000 }).toContain('title: "Where I have been"');
+
+  const saved = await savedSource();
+  // The proof that this was an EDIT and not a rewrite: the untouched lines are byte-identical, and
+  // only the one line the model named differs.
+  expect(saved).toContain(PLACE_LINE);
+  expect(saved).not.toContain('title: "Map"');
+  expect(saved).toBe(APP_SOURCE.replace('title: "Map"', 'title: "Where I have been"'));
+});
+
 test("a real app-level change still applies, and its reasoning is kept out of the source", async ({ page }) => {
   await seedApp(page);
   const edited = APP_SOURCE.replace('title: "name"', 'title: "name", camera: "fit"');

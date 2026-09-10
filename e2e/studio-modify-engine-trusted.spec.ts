@@ -66,6 +66,76 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
 });
 
+// The edit contract, end to end in the Studio. The model's reply is prose plus ONE SEARCH/REPLACE
+// block, and what has to hold is that the block landed and NOTHING ELSE MOVED — the whole reason
+// edits replaced whole-file replies is that retyping the untouched lines damaged them.
+test("an edit-block reply changes only the lines it names, and the Studio says how many", async ({ page }) => {
+  const CREATED = [
+    'import { defineApp } from "karta";',
+    "export default defineApp({",
+    '  id: "reader",',
+    '  name: "Reader",',
+    '  version: "1.0.0",',
+    "  schemaVersion: 1,",
+    '  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },',
+    '  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],',
+    "});",
+  ].join("\n");
+  const PAGES_LINE = CREATED.split("\n")[7]!;
+  const ENTITIES_LINE = CREATED.split("\n")[6]!;
+  // One line, one change: the page's title. The entity line beside it must come back byte-identical.
+  const EDIT_REPLY = [
+    "Renaming the page.",
+    "```ts",
+    "<<<<<<< SEARCH",
+    PAGES_LINE,
+    "=======",
+    PAGES_LINE.replace('title: "Books"', 'title: "Every book"'),
+    ">>>>>>> REPLACE",
+    "```",
+  ].join("\n");
+
+  let turn = 0;
+  await page.route("**/openrouter.ai/**", async (route) => {
+    turn += 1;
+    const content = turn === 1 ? "```ts\n" + CREATED + "\n```" : EDIT_REPLY;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ choices: [{ message: { content } }] }),
+    });
+  });
+
+  await page.goto("/?app=recipes");
+  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  const studio = page.locator(".k-studio");
+  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+
+  await studio.getByRole("button", { name: "Model settings" }).click();
+  const modal = page.getByRole("dialog", { name: "Model settings" });
+  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
+  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
+  await modal.getByRole("button", { name: "Close model settings" }).click();
+
+  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
+  await studio.getByRole("button", { name: /Create the app/ }).click();
+  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+
+  await studio.getByRole("textbox", { name: "Describe the app" }).fill("call the page Every book");
+  await studio.getByRole("button", { name: /Modify the app/ }).click();
+
+  // How the change arrived, in the neutral note rather than as an error.
+  await expect(studio.locator(".k-modify-note")).toHaveText("Applied 1 edit.", { timeout: 60_000 });
+  await expect(studio.locator(".k-modify-loss")).toHaveCount(0);
+
+  await studio.getByRole("tab", { name: "Source" }).click();
+  const after = await studio.getByRole("textbox", { name: "App source" }).inputValue();
+  expect(after).toContain('title: "Every book"'); // the edit landed
+  expect(after).not.toContain('title: "Books"');
+  expect(after).toContain(ENTITIES_LINE); // and the line next to it was never retyped
+  expect(after).toContain('id: "reader"');
+});
+
 test("the History tab shows this session before anything is saved, and New draft asks first", async ({ page }) => {
   await page.route("**/openrouter.ai/**", (route) =>
     route.fulfill({
