@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { NOT_IN_APP, buildModifyMessage, parseModifyReply } from "../src/prompt.js";
+import { NOT_IN_APP, buildModifyMessage, parseModifyReply, buildRepairInstruction } from "../src/prompt.js";
 
 // The Edit-mode contract. Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer:
 // when the only legal reply is updated source, a request the module cannot express comes back as a
@@ -132,5 +132,19 @@ describe("parseModifyReply tolerates a dressed-up marker", () => {
   test("still ignores a mention that does not open its line", () => {
     const r = parseModifyReply("I considered whether this was NOT-IN-APP: it is not.\n```ts\nconst x = 1;\n```");
     expect(r.kind).toBe("source");
+  });
+});
+
+describe("buildRepairInstruction", () => {
+  // A repair is a modify whose instruction is the validator's own words. It must name every issue,
+  // and it must scope the change to those issues — a repair that "improves" other things is how a
+  // second, unrelated regression arrives.
+  test("lists every issue and scopes the change to them", () => {
+    const text = buildRepairInstruction(['pages.2: Unrecognized key(s) in object: "onLoad"', 'page "detail" references unknown field "servings"']);
+    expect(text).toContain('pages.2: Unrecognized key(s) in object: "onLoad"');
+    expect(text).toContain('unknown field "servings"');
+    expect(text).toMatch(/fix exactly these problems/i);
+    expect(text).toMatch(/nothing else/i);
+    expect(text).not.toMatch(/whole file/i);
   });
 });
