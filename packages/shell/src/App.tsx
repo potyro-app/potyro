@@ -709,7 +709,11 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // would be recording an edit that was deliberately not made, and would feed the next prompt a
       // source change that never happened.
       if (reply.kind === "diagnosis") {
-        await recordDiagnosis(appId, { complaint: instruction, text: reply.text, target: modifyTarget }, new Date().toISOString());
+        // Only an unprompted verdict is recorded: one reached after "your previous attempt removed X"
+        // is a retreat under pressure, and recording it would feed it to every later prompt as fact.
+        if (!reply.trace.noMatchRetry && !reply.trace.lossRetry) {
+          await recordDiagnosis(appId, { complaint: instruction, text: reply.text, target: modifyTarget }, new Date().toISOString());
+        }
         setModifyDiagnosis(reply.text);
         setModifyBusy(false);
         setModifyProgress(null);
