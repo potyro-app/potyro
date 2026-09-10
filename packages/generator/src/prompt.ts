@@ -468,6 +468,21 @@ export function buildRepairMessage(errors: string[]): string {
   ].join("\n");
 }
 
+/**
+ * The instruction a REPAIR round hands to `guardedModify`, so a repair is a modify: same edit
+ * format, same no-match and loss retries, same gate. `buildRepairMessage` above is the older
+ * whole-file contract and is kept only for `ModelBackend.repair()` in the generate harness, where a
+ * freshly generated app has no person's file to protect.
+ */
+export function buildRepairInstruction(issues: string[]): string {
+  return [
+    "The app failed these checks:",
+    ...issues.map((i) => `- ${i}`),
+    "",
+    "Fix exactly these problems and nothing else. Do not change behaviour the checks did not mention.",
+  ].join("\n");
+}
+
 /** Pull the app source out of a model reply — strips a ```ts / ``` code fence if present. */
 /**
  * Every fenced block in a reply, with where it started.
