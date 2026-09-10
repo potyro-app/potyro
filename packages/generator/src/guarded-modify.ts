@@ -18,7 +18,7 @@
 // It is never silent, and it never burns a fourth call.
 
 import { structuralLoss, type AppShape } from "@karta/runtime";
-import { applyEdits, describeEditFailures, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, type EditFailure } from "./edits.js";
+import { applyEdits, describeEditFailures, EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, type EditFailure } from "./edits.js";
 import { extractSource, looksLikeApp, parseModifyReply } from "./prompt.js";
 
 export type ReadReply =
@@ -28,25 +28,77 @@ export type ReadReply =
   | { kind: "no-match"; failures: EditFailure[] }
   | { kind: "unusable"; text: string };
 
+// Mirrors edits.ts's own marker regexes (kept private there, so duplicated here rather than
+// exported purely for this). Any drift between the two would show up as parseEditsStrict
+// disagreeing with what this pass thought was a block, which the tests would catch.
+const SEARCH_MARK = /^<{5,9} SEARCH\s*$/;
+const DIVIDER_MARK = /^={5,9}\s*$/;
+const REPLACE_MARK = /^>{5,9} REPLACE\s*$/;
+
 const FENCE = /```[A-Za-z0-9_+.-]*[ \t]*\r?\n[\s\S]*?(?:```|$)/g;
 
 /**
- * Drop fenced blocks whose only content is the format's own placeholder edit — a model echoing the
- * template beside a real answer. Applied before anything else reads the reply: left in, the
- * placeholder SEARCH matches nothing (turning a real edit into a no-match) and, for a whole-file
- * reply, its literal template text reads as the model's rationale. A block that mixes the
- * placeholder with real content is left alone; only edit-parsing below drops the placeholder edit
- * itself in that case.
+ * Remove each complete `<<<<<<< SEARCH … >>>>>>> REPLACE` block whose SEARCH body is the format's
+ * own placeholder line, or whose REPLACE body is the format's own placeholder line — a model
+ * echoing the template beside a real answer.
+ *
+ * Line-wise, not fence-wise: a placeholder block can share ONE fence with a real answer (a real
+ * edit, or a whole file pasted right after it) and dropping the whole fence would take the real
+ * answer down with it — exactly the failure this exists to prevent, not reproduce. A block that is
+ * not cleanly closed with its own REPLACE marker (an unterminated block, or one reopened before it
+ * closed) is left exactly as it is; `parseEditsStrict`, run afterward on the cleaned text, is what
+ * reports a malformed block for real.
  */
+function dropPlaceholderLines(reply: string): string {
+  const lines = reply.replace(/\r\n?/g, "\n").split("\n");
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (!SEARCH_MARK.test(line)) {
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    let divider = -1;
+    let replace = -1;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (SEARCH_MARK.test(lines[j]!)) break; // reopened before this one closed: not a clean block
+      if (divider === -1 && DIVIDER_MARK.test(lines[j]!)) {
+        divider = j;
+        continue;
+      }
+      if (REPLACE_MARK.test(lines[j]!)) {
+        replace = j;
+        break;
+      }
+    }
+    if (divider === -1 || replace === -1) {
+      // Not a clean, closed block — pass just this line through and let the normal walk (and,
+      // later, parseEditsStrict) deal with the rest of it.
+      out.push(line);
+      i += 1;
+      continue;
+    }
+    const search = lines.slice(i + 1, divider).join("\n").trim();
+    const replaceBody = lines.slice(divider + 1, replace).join("\n").trim();
+    if (search !== EDIT_PLACEHOLDER_SEARCH && replaceBody !== EDIT_PLACEHOLDER_REPLACE) out.push(...lines.slice(i, replace + 1));
+    i = replace + 1;
+  }
+  return out.join("\n");
+}
+
+/** A fence left with nothing but whitespace once its placeholder block was dropped is dropped too — an empty
+ *  ```` ```ts\n``` ```` shell is not prose, and leaving it in would still read as rationale. */
+function dropEmptyFences(text: string): string {
+  return text.replace(FENCE, (block) => {
+    const inner = block.replace(/^```[A-Za-z0-9_+.-]*[ \t]*\r?\n/, "").replace(/```\s*$/, "");
+    return inner.trim() === "" ? "" : block;
+  });
+}
+
 function dropPlaceholderBlocks(reply: string): string {
-  return reply
-    .replace(FENCE, (block) => {
-      const inner = block.replace(/^```[A-Za-z0-9_+.-]*[ \t]*\r?\n/, "").replace(/```\s*$/, "");
-      const { edits, malformed } = parseEditsStrict(inner);
-      const placeholderOnly = malformed.length === 0 && edits.length > 0 && edits.every((e) => e.search.trim() === EDIT_PLACEHOLDER_SEARCH);
-      return placeholderOnly ? "" : block;
-    })
-    .trim();
+  return dropEmptyFences(dropPlaceholderLines(reply)).trim();
 }
 
 /**
@@ -67,8 +119,9 @@ export function readEditsOrFile(source: string, reply: string): Exclude<ReadRepl
     const failures: EditFailure[] = strict.malformed.map((m) => ({ index: m.index, reason: "malformed", search: "", count: 0, detail: m.reason }));
     return { kind: "no-match", failures };
   }
-  // A block that mixed the placeholder with real edits kept its placeholder edit through the drop
-  // above (only whole placeholder-only blocks are removed there); filter it out here too.
+  // Second line of defence: `dropPlaceholderBlocks` above already removes every clean placeholder
+  // block by its own SEARCH/REPLACE markers, so this should normally find nothing left to filter —
+  // but a placeholder edit that slipped through must still never be applied as if it were real.
   const edits = strict.edits.filter((e) => e.search.trim() !== EDIT_PLACEHOLDER_SEARCH);
   if (edits.length) {
     const applied = applyEdits(source, edits);
@@ -111,9 +164,9 @@ export interface GuardedModifyDeps {
 }
 
 export interface ModifyTrace {
-  attempts: number;
-  noMatchRetry: boolean;
-  lossRetry: boolean;
+  readonly attempts: number;
+  readonly noMatchRetry: boolean;
+  readonly lossRetry: boolean;
 }
 
 export type GuardedModifyResult =
