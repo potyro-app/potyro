@@ -84,8 +84,29 @@ describe("guardedModify", () => {
     const attempt = vi.fn(async () => editReply("nope", "x"));
     const out = await guardedModify({ ...base, attempt });
     expect(out.kind).toBe("failed");
-    expect(out.kind === "failed" && out.reason).toMatch(/not found/i);
+    // The reason a person reads, not the instruction the model was given.
+    expect(out.kind === "failed" && out.reason).toMatch(/could not point at the lines/i);
     expect(attempt).toHaveBeenCalledTimes(2);
+  });
+
+  // The retry budget, both retries spent: a no-match, then an edit that costs the app an entity, then
+  // a loss retry that does not apply. Three calls, never a fourth, and the lossy result comes back
+  // WITH its loss rather than as nothing.
+  it("never makes a fourth call: no-match, then a lossy edit, then a loss retry that misses", async () => {
+    const LOSSY_SOURCE = SOURCE.replace('"x"', '"lossy"');
+    const attempt = vi
+      .fn<(i: string) => Promise<string>>()
+      .mockResolvedValueOnce(editReply("nope", "x"))
+      .mockResolvedValueOnce(editReply('  id: "x",', '  id: "lossy",'))
+      .mockResolvedValueOnce(editReply("nope again", "x"));
+    const out = await guardedModify({
+      ...base,
+      attempt,
+      shapeOf: shapes({ [LOSSY_SOURCE]: { entities: { city: {} }, pages: [] } }),
+    });
+    expect(out).toMatchObject({ kind: "source", via: "edits", trace: { attempts: 3, noMatchRetry: true, lossRetry: true } });
+    expect(out.kind === "source" && out.loss).toMatch(/removes the "place" entity/);
+    expect(attempt).toHaveBeenCalledTimes(3);
   });
 
   // THE OLD GATE, still here. An edit can delete a page on purpose; a whole-file reply can drop one
@@ -131,7 +152,11 @@ describe("guardedModify", () => {
   });
 
   it("keeps the original instruction intact in both retry texts", () => {
-    expect(retryInstruction("add a rating field", 'removes the "place" entity').startsWith("add a rating field")).toBe(true);
+    const rt = retryInstruction("add a rating field", 'removes the "place" entity');
+    expect(rt.startsWith("add a rating field")).toBe(true);
+    // And it asks for the change as edits — telling the model to reproduce the app is the defect the
+    // edit contract exists to remove.
+    expect(rt).toMatch(/SEARCH\/REPLACE/);
     const nm = noMatchInstruction("add a rating field", [{ index: 0, reason: "not-found", search: "x", count: 0 }]);
     expect(nm.startsWith("add a rating field")).toBe(true);
     expect(nm).toMatch(/could not be applied/i);
