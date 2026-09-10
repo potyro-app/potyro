@@ -18,7 +18,7 @@
 // It is never silent, and it never burns a fourth call.
 
 import { structuralLoss, type AppShape } from "@karta/runtime";
-import { applyEdits, describeEditFailures, parseEditsStrict, type EditFailure } from "./edits.js";
+import { applyEdits, describeEditFailures, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, type EditFailure } from "./edits.js";
 import { extractSource, looksLikeApp, parseModifyReply } from "./prompt.js";
 
 export type ReadReply =
@@ -28,39 +28,70 @@ export type ReadReply =
   | { kind: "no-match"; failures: EditFailure[] }
   | { kind: "unusable"; text: string };
 
-/**
- * What a reply IS, applied to `source` where it is edits.
- *
- * A diagnosis wins over anything else in the reply, as it always has: acting on code the model has
- * just disowned is the failure the marker exists to prevent. Edits come before a whole file, so a
- * reply that edits the `defineApp({` line is not mistaken for a file.
- */
-export function readModifyReply(source: string, reply: string): ReadReply {
-  const parsed = parseModifyReply(reply);
-  if (parsed.kind === "diagnosis") return { kind: "diagnosis", text: parsed.text };
+const FENCE = /```[A-Za-z0-9_+.-]*[ \t]*\r?\n[\s\S]*?(?:```|$)/g;
 
-  const { edits, malformed } = parseEditsStrict(reply);
+/**
+ * Drop fenced blocks whose only content is the format's own placeholder edit — a model echoing the
+ * template beside a real answer. Applied before anything else reads the reply: left in, the
+ * placeholder SEARCH matches nothing (turning a real edit into a no-match) and, for a whole-file
+ * reply, its literal template text reads as the model's rationale. A block that mixes the
+ * placeholder with real content is left alone; only edit-parsing below drops the placeholder edit
+ * itself in that case.
+ */
+function dropPlaceholderBlocks(reply: string): string {
+  return reply
+    .replace(FENCE, (block) => {
+      const inner = block.replace(/^```[A-Za-z0-9_+.-]*[ \t]*\r?\n/, "").replace(/```\s*$/, "");
+      const { edits, malformed } = parseEditsStrict(inner);
+      const placeholderOnly = malformed.length === 0 && edits.length > 0 && edits.every((e) => e.search.trim() === EDIT_PLACEHOLDER_SEARCH);
+      return placeholderOnly ? "" : block;
+    })
+    .trim();
+}
+
+/**
+ * Edits, a whole file, or nothing usable — WITHOUT the diagnosis rule. The fix loop uses this
+ * directly because its contract is that a verdict marker counts only when it OPENS the reply
+ * (loop.ts checks that first); a `NOT-IN-APP:` line mid-reply followed by a real edit is prose.
+ *
+ * Blocks whose SEARCH is the format's own placeholder are dropped first: a model that echoes the
+ * template beside a real answer used to turn that answer into a no-match, twice, then "failed".
+ */
+export function readEditsOrFile(source: string, reply: string): Exclude<ReadReply, { kind: "diagnosis" }> {
+  const cleaned = dropPlaceholderBlocks(reply);
+  const strict = parseEditsStrict(cleaned);
   // Any malformed block means nothing is applied — including the blocks that WERE well-formed.
   // Applying those while dropping the broken one is the silent-partial-change defect this guards
   // against; the retry (noMatchInstruction) tells the model which block broke and asks again.
-  if (malformed.length) {
-    const failures: EditFailure[] = malformed.map((m) => ({ index: m.index, reason: "malformed", search: "", count: 0, detail: m.reason }));
+  if (strict.malformed.length) {
+    const failures: EditFailure[] = strict.malformed.map((m) => ({ index: m.index, reason: "malformed", search: "", count: 0, detail: m.reason }));
     return { kind: "no-match", failures };
   }
+  // A block that mixed the placeholder with real edits kept its placeholder edit through the drop
+  // above (only whole placeholder-only blocks are removed there); filter it out here too.
+  const edits = strict.edits.filter((e) => e.search.trim() !== EDIT_PLACEHOLDER_SEARCH);
   if (edits.length) {
     const applied = applyEdits(source, edits);
     if (!applied.ok) return { kind: "no-match", failures: applied.failures };
     // Prose before the first block is the rationale; an opening fence right before it is not.
-    const firstBlock = /^<{5,9} SEARCH/m.exec(reply)?.index ?? 0;
-    const rationale = reply.slice(0, firstBlock).replace(/```[A-Za-z]*\s*$/, "").trim();
+    const firstBlock = /^<{5,9} SEARCH/m.exec(cleaned)?.index ?? 0;
+    const rationale = cleaned.slice(0, firstBlock).replace(/```[A-Za-z]*\s*$/, "").trim();
     return rationale ? { kind: "edits", source: applied.source, applied: applied.applied, rationale } : { kind: "edits", source: applied.source, applied: applied.applied };
   }
-
-  const whole = extractSource(reply);
+  const whole = extractSource(cleaned);
   if (looksLikeApp(whole)) {
-    return parsed.rationale ? { kind: "whole-file", source: whole, rationale: parsed.rationale } : { kind: "whole-file", source: whole };
+    const parsed = parseModifyReply(cleaned);
+    const rationale = parsed.kind === "source" ? parsed.rationale : undefined;
+    return rationale ? { kind: "whole-file", source: whole, rationale } : { kind: "whole-file", source: whole };
   }
-  return { kind: "unusable", text: reply.trim() };
+  return { kind: "unusable", text: cleaned };
+}
+
+/** The modify reader: a `NOT-IN-APP:` verdict wins over anything else in the reply, then the rest. */
+export function readModifyReply(source: string, reply: string): ReadReply {
+  const parsed = parseModifyReply(reply);
+  if (parsed.kind === "diagnosis") return { kind: "diagnosis", text: parsed.text };
+  return readEditsOrFile(source, reply);
 }
 
 export interface GuardedModifyDeps {
@@ -124,37 +155,42 @@ export function noMatchInstruction(instruction: string, failures: EditFailure[])
 }
 
 export async function guardedModify(deps: GuardedModifyDeps): Promise<GuardedModifyResult> {
-  const trace: ModifyTrace = { attempts: 0, noMatchRetry: false, lossRetry: false };
+  let attempts = 0;
+  let noMatchRetry = false;
+  let lossRetry = false;
+  // A snapshot, not a shared reference: each result captures the trace as it stood at that point,
+  // so a result returned before the loss retry can never end up reporting the retry that came after.
+  const snap = (): ModifyTrace => Object.freeze({ attempts, noMatchRetry, lossRetry });
   const ask = async (instruction: string): Promise<ReadReply> => {
-    trace.attempts += 1;
+    attempts += 1;
     return readModifyReply(deps.source, await deps.attempt(instruction));
   };
 
   let reply = await ask(deps.instruction);
   if (reply.kind === "no-match") {
-    trace.noMatchRetry = true;
+    noMatchRetry = true;
     reply = await ask(noMatchInstruction(deps.instruction, reply.failures));
     // `describeEditFailures` is addressed to the model ("copy the lines exactly as they appear") and
     // belongs in `noMatchInstruction`, not in a sentence a person reads.
     if (reply.kind === "no-match") {
-      return { kind: "failed", reason: "the model could not point at the lines it meant to change, even after being told which edit missed", trace };
+      return { kind: "failed", reason: "the model could not point at the lines it meant to change, even after being told which edit missed", trace: snap() };
     }
   }
-  if (reply.kind === "diagnosis") return { kind: "diagnosis", text: reply.text, trace };
+  if (reply.kind === "diagnosis") return { kind: "diagnosis", text: reply.text, trace: snap() };
   if (reply.kind === "unusable") {
-    return { kind: "failed", reason: "the model replied with an explanation instead of a change", trace };
+    return { kind: "failed", reason: "the model replied with an explanation instead of a change", trace: snap() };
   }
 
-  const first = toResult(reply, await judge(deps, reply.source), trace);
+  const first = toResult(reply, await judge(deps, reply.source), snap());
   if (first.loss === null) return first;
 
   // The shape gate. One retry with the loss named; if the retry gives nothing usable, the lossy
   // result goes back WITH its loss so the caller can say so loudly — never silently, never nothing.
-  trace.lossRetry = true;
+  lossRetry = true;
   const again = await ask(retryInstruction(deps.instruction, first.loss));
-  if (again.kind === "diagnosis") return { kind: "diagnosis", text: again.text, trace };
-  if (again.kind !== "edits" && again.kind !== "whole-file") return { ...first, trace };
-  return toResult(again, await judge(deps, again.source), trace);
+  if (again.kind === "diagnosis") return { kind: "diagnosis", text: again.text, trace: snap() };
+  if (again.kind !== "edits" && again.kind !== "whole-file") return { ...first, trace: snap() };
+  return toResult(again, await judge(deps, again.source), snap());
 }
 
 function toResult(

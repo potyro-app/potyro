@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { guardedModify, noMatchInstruction, readModifyReply, retryInstruction } from "../src/guarded-modify.js";
+import { guardedModify, noMatchInstruction, readEditsOrFile, readModifyReply, retryInstruction } from "../src/guarded-modify.js";
 import type { AppShape } from "@karta/runtime";
 
 // The app as the person has it: two entities, two pages. A rewrite typically keeps one and drops the
@@ -63,6 +63,32 @@ describe("readModifyReply", () => {
     const r = readModifyReply(SOURCE, reply);
     expect(r.kind).toBe("no-match");
     expect(r.kind === "no-match" && r.failures[0]!.reason).toBe("malformed");
+  });
+
+  // A model that echoes the format template next to a real answer used to fail: the placeholder
+  // SEARCH matched nothing, so the whole reply was a no-match and a perfectly good file was thrown
+  // away — twice, then "failed". The template's own placeholder lines are never a real edit.
+  it("ignores an echoed template block and applies the real edit beside it", () => {
+    const echoed =
+      "```ts\n<<<<<<< SEARCH\n<consecutive lines copied from the app above, exactly as they are there>\n=======\n<what those lines become>\n>>>>>>> REPLACE\n```\n" +
+      editReply('  id: "x",', '  id: "y",', "");
+    const r = readModifyReply(SOURCE, echoed);
+    expect(r).toMatchObject({ kind: "edits", applied: 1 });
+    expect(r.kind === "edits" && r.source).toContain('"y"');
+  });
+
+  it("falls back to a whole file when the only edit blocks are echoed template", () => {
+    const echoed =
+      "```ts\n<<<<<<< SEARCH\n<consecutive lines copied from the app above, exactly as they are there>\n=======\n<what those lines become>\n>>>>>>> REPLACE\n```\n" +
+      fileReply(SOURCE);
+    expect(readModifyReply(SOURCE, echoed)).toEqual({ kind: "whole-file", source: SOURCE });
+  });
+
+  // The fix loop's contract is head-only markers; a NOT-IN-APP line mid-reply followed by a real
+  // edit is prose there. `readEditsOrFile` is the reader without the diagnosis rule.
+  it("readEditsOrFile never returns a diagnosis", () => {
+    const r = readEditsOrFile(SOURCE, "NOT-IN-APP: the map owns taps.\n" + editReply('  id: "x",', '  id: "y",', ""));
+    expect(r.kind).toBe("edits");
   });
 });
 
@@ -172,5 +198,15 @@ describe("guardedModify", () => {
     const nm = noMatchInstruction("add a rating field", [{ index: 0, reason: "not-found", search: "x", count: 0 }]);
     expect(nm.startsWith("add a rating field")).toBe(true);
     expect(nm).toMatch(/could not be applied/i);
+  });
+
+  // The trace on an early result must be a snapshot: a shared, mutated object would make a result
+  // captured before the loss retry report attempts:3 afterwards.
+  it("gives each result its own trace snapshot", async () => {
+    const LOSSY = 'export default defineApp({ id: "lossy" });';
+    const attempt = vi.fn<(i: string) => Promise<string>>().mockResolvedValueOnce(fileReply(LOSSY)).mockResolvedValueOnce("I give up.");
+    const out = await guardedModify({ ...base, attempt, shapeOf: shapes({ [LOSSY]: { entities: { city: {} }, pages: [] } }) });
+    expect(out.trace).toEqual({ attempts: 2, noMatchRetry: false, lossRetry: true });
+    expect(Object.isFrozen(out.trace)).toBe(true);
   });
 });
