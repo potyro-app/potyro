@@ -214,20 +214,29 @@ export class ClaudeCliBackend implements MeteredBackend {
     ].join("\n");
   }
 
+  /**
+   * The model's REPLY, verbatim, and what the call cost.
+   *
+   * Verbatim because the three kinds do not agree on what a reply is: `generate` and `repair` answer
+   * with a source, `modify` answers with SEARCH/REPLACE edits, a whole file, or a `NOT-IN-APP:`
+   * verdict (see `ModelBackend.modify`). Extracting a source here would throw away the edits before
+   * anything could apply them, so reading the reply is left to the caller — `callModel` for the
+   * harness, `guardedModify` for the product.
+   */
   async meteredCall(req: MeteredRequest): Promise<MeteredResult> {
-    const { text, usage } = await runClaude(this.message(req), this.opts);
-    return { source: extractSource(text), usage };
+    return runClaude(this.message(req), this.opts);
   }
 
   async generate(prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "generate", prompt })).source;
+    return extractSource((await this.meteredCall({ kind: "generate", prompt })).text);
   }
 
   async repair(source: string, errors: string[], prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "repair", source, errors, prompt })).source;
+    return extractSource((await this.meteredCall({ kind: "repair", source, errors, prompt })).text);
   }
 
+  // Raw, per the `modify` contract: the reply is read by `guardedModify`, which applies its edits.
   async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).source;
+    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).text;
   }
 }

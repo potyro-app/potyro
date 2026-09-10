@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { NOT_IN_APP, buildModifyMessage, parseModifyReply } from "../src/prompt.js";
+import { NOT_IN_APP, buildModifyMessage, parseModifyReply, buildRepairInstruction } from "../src/prompt.js";
 
 // The Edit-mode contract. Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer:
 // when the only legal reply is updated source, a request the module cannot express comes back as a
@@ -42,6 +42,27 @@ describe("buildModifyMessage", () => {
     expect(msg).not.toContain("did NOT work");
     expect(msg).not.toContain("Already reported as host-side");
   });
+
+  // The whole-file ask was the defect: reproducing 200 lines to change 3 is where pages got renamed
+  // and colons doubled. The prompt now asks for the changed lines only.
+  test("asks for SEARCH/REPLACE edits, never the whole file", () => {
+    const msg = buildModifyMessage("add a rating field");
+    expect(msg).toContain("<<<<<<< SEARCH");
+    // Measured (2026-09-10, 36 samples): every SEARCH miss came from two edits touching the same
+    // lines, the later one still describing the text the earlier one had changed.
+    expect(msg).toMatch(/never send two edits that touch the same lines/i);
+    expect(msg).toContain(">>>>>>> REPLACE");
+    expect(msg).toMatch(/do not send the whole file/i);
+    expect(msg).not.toMatch(/the whole file, not a diff/i);
+    expect(msg).toMatch(/any SEARCH line you do not repeat in REPLACE is deleted/i);
+  });
+
+  // The system prompt's OUTPUT rule ("only the source, no prose") is for CREATING an app. Left
+  // implicit, it contradicts "put your reasoning in the prose before the block", and a model
+  // resolving the contradiction picks the system prompt. Say which rule applies here.
+  test("overrides the system prompt's whole-file OUTPUT rule explicitly", () => {
+    expect(buildModifyMessage("x")).toMatch(/OUTPUT rule .*does not apply/i);
+  });
 });
 
 describe("parseModifyReply", () => {
@@ -83,5 +104,50 @@ describe("parseModifyReply", () => {
 
   test("bare source with no fence still parses", () => {
     expect(parseModifyReply("  const a = 1;  ")).toEqual({ kind: "source", source: "const a = 1;" });
+  });
+});
+
+// A measured DeepSeek reply: three paragraphs of reasoning, then the verdict wrapped in backticks on
+// its own line. The strict line-start match missed it, and the whole essay went to the bundler as
+// source - in the eval that scored a correct refusal as "invalid", and in the Studio it would have
+// landed as a broken app. The marker still has to OPEN its line, so a mid-prose mention stays prose.
+describe("parseModifyReply tolerates a dressed-up marker", () => {
+  test("finds NOT-IN-APP wrapped in backticks at the end of an explanation", () => {
+    const reply = [
+      "This change is **not achievable within the app source**. The map's tap-to-create flow is",
+      "handled by the host shell; the app cannot intercept it.",
+      "",
+      "So the answer is:",
+      "",
+      "`NOT-IN-APP: The map's create-tap flow is a host-shell behaviour the app cannot sequence.`",
+    ].join("\n");
+    const r = parseModifyReply(reply);
+    expect(r.kind).toBe("diagnosis");
+    expect((r as { text: string }).text).toBe("The map's create-tap flow is a host-shell behaviour the app cannot sequence.");
+  });
+
+  test("finds NOT-IN-APP wrapped in bold", () => {
+    const r = parseModifyReply("Reasoning first.\n\n**NOT-IN-APP: the host owns this.**");
+    expect(r.kind).toBe("diagnosis");
+    expect((r as { text: string }).text).toBe("the host owns this.");
+  });
+
+  test("still ignores a mention that does not open its line", () => {
+    const r = parseModifyReply("I considered whether this was NOT-IN-APP: it is not.\n```ts\nconst x = 1;\n```");
+    expect(r.kind).toBe("source");
+  });
+});
+
+describe("buildRepairInstruction", () => {
+  // A repair is a modify whose instruction is the validator's own words. It must name every issue,
+  // and it must scope the change to those issues — a repair that "improves" other things is how a
+  // second, unrelated regression arrives.
+  test("lists every issue and scopes the change to them", () => {
+    const text = buildRepairInstruction(['pages.2: Unrecognized key(s) in object: "onLoad"', 'page "detail" references unknown field "servings"']);
+    expect(text).toContain('pages.2: Unrecognized key(s) in object: "onLoad"');
+    expect(text).toContain('unknown field "servings"');
+    expect(text).toMatch(/fix exactly these problems/i);
+    expect(text).toMatch(/nothing else/i);
+    expect(text).not.toMatch(/whole file/i);
   });
 });

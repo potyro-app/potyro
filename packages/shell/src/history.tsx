@@ -1,7 +1,8 @@
 // History panel — what the agent changed, and the way back.
 //
-// An AI edit rewrites the whole app module, so "what changed?" is only answerable by diffing against
-// the previous source. This panel lists an app's versions newest-first with the instruction that
+// An AI edit can touch any part of the app module, and the instruction that asked for it says what
+// was wanted rather than what arrived — so "what changed?" is only answerable by diffing against the
+// previous source. This panel lists an app's versions newest-first with the instruction that
 // produced each one, shows the diff of a version against its parent (or against what is running
 // now), and restores any of them.
 //
@@ -104,9 +105,11 @@ interface HistoryProps {
   /** Called after a successful restore with the source now saved — the caller decides how to re-run
    *  the app (a reload in the shell; a rebuilt preview in the Studio). */
   onRestored?: (source: string) => void;
+  /** Render as a plain block for the Studio's History tab instead of as a modal over the app. */
+  embedded?: boolean;
 }
 
-export function History({ appId, appName, onClose, onRestored }: HistoryProps) {
+export function History({ appId, appName, onClose, onRestored, embedded }: HistoryProps) {
   const [versions, setVersions] = useState<AppVersion[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [against, setAgainst] = useState<"parent" | "current">("parent");
@@ -181,15 +184,16 @@ export function History({ appId, appName, onClose, onRestored }: HistoryProps) {
     }
   };
 
-  return (
-    <div className="k-modal-scrim" onClick={() => (busy ? undefined : onClose())}>
-      <div className="k-modal k-history" role="dialog" aria-label={`History of ${appName}`} onClick={(e) => e.stopPropagation()}>
+  const body = (
+    <>
         <header className="k-history-head">
           <div>
             <h3>History</h3>
             <p className="k-muted">Every version of <strong>{appName}</strong> — review a change, or roll back to it.</p>
           </div>
-          <button type="button" className="k-add" aria-label="Close history" onClick={onClose}>Close ✕</button>
+          {embedded ? null : (
+            <button type="button" className="k-add" aria-label="Close history" onClick={onClose}>Close ✕</button>
+          )}
         </header>
 
         {versions === null ? (
@@ -297,6 +301,16 @@ export function History({ appId, appName, onClose, onRestored }: HistoryProps) {
             </ul>
           </section>
         ) : null}
+    </>
+  );
+
+  // Embedded: the Studio's History tab, where the timeline IS the view and there is nothing to
+  // dismiss. Modal: opened over an app from My Apps, where it is.
+  if (embedded) return <div className="k-history k-history-embedded">{body}</div>;
+  return (
+    <div className="k-modal-scrim" onClick={() => (busy ? undefined : onClose())}>
+      <div className="k-modal k-history" role="dialog" aria-label={`History of ${appName}`} onClick={(e) => e.stopPropagation()}>
+        {body}
       </div>
     </div>
   );

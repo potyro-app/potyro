@@ -72,7 +72,9 @@ describe("ClaudeBackend prompt assembly", () => {
 
     const src = await backend.modify("CURRENT SOURCE", "add a 5-star rating field", { id: "t", description: "books" });
 
-    expect(src).toBe(GOOD);
+    // The reply comes back untouched: `guardedModify` reads it (edits, a whole file, or a verdict),
+    // so a backend that extracted source here would throw the edits away.
+    expect(src).toBe("```ts\n" + GOOD + "\n```");
     const msgs = calls[0]!.messages;
     expect(msgs).toHaveLength(3);
     expect(msgs[1]).toMatchObject({ role: "assistant" });

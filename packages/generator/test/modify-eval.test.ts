@@ -37,8 +37,9 @@ ${opts.fields.map((f) => `        ${f}: { type: "text" },`).join("\n")}
   pages: [
     { id: "all", title: "Notes", view: { type: "list", entity: "note", display: { primary: "title" } } },
   ],${opts.migrations ? `\n  migrations: ${opts.migrations},` : ""}
-});
-`;
+});`;
+// No trailing newline: a reply is read with `extractSource`, which trims, so a source that has been
+// through the harness never has one. A fixture that did would compare unequal to itself.
 
 const V1 = app({ version: "1.0.0", fields: ["body"] });
 /** Adds a field, declared. The well-behaved change. */
@@ -55,9 +56,27 @@ const V3_DECLARED = app({
 });
 /** Removes `body` from the app and says nothing. Every record keeps its value where nobody can see it. */
 const V3_SILENT = app({ version: "1.1.0", fields: ["summary"] });
-const BROKEN = `export default { not: "a karta app" };`;
+/**
+ * A whole-file reply that is app-SHAPED and does not validate — what the one repair exists for.
+ *
+ * It has to MENTION `defineApp(` to be read as a whole file at all. A modify reply carrying neither
+ * edits nor an app is not a broken app, it is prose, and `callModel` reports it as a call that
+ * produced nothing rather than handing the harness something to score — so a fixture that wanted to
+ * exercise the REPAIR loop has to be the other failure: a file that looks like an app and whose
+ * default export is not one.
+ */
+const BROKEN = `import { defineApp } from "karta";
 
-/** A backend that reads from a script instead of a model, and reports whatever usage it is given. */
+export const nope = () => defineApp({});
+export default { not: "a karta app" };`;
+
+/**
+ * A backend that reads from a script instead of a model, and reports whatever usage it is given.
+ *
+ * The script holds REPLIES, not sources: what the model said. For `generate` and `repair` those look
+ * the same, and for `modify` a whole app source is one of the two replies the contract accepts (the
+ * other being SEARCH/REPLACE edits), so the fixtures below read as whole-file modifications.
+ */
 class ScriptedBackend implements MeteredBackend {
   readonly name = "scripted";
   readonly seen: MeteredRequest[] = [];
@@ -74,19 +93,19 @@ class ScriptedBackend implements MeteredBackend {
   async meteredCall(req: MeteredRequest): Promise<MeteredResult> {
     this.seen.push(req);
     const queue = this.script[req.kind];
-    const source = queue?.shift();
-    if (source === undefined) throw new Error(`the script has no ${req.kind} left`);
-    return { source, usage: this.usage };
+    const text = queue?.shift();
+    if (text === undefined) throw new Error(`the script has no ${req.kind} left`);
+    return { text, usage: this.usage };
   }
 
   async generate(prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "generate", prompt })).source;
+    return (await this.meteredCall({ kind: "generate", prompt })).text;
   }
   async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).source;
+    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).text;
   }
   async repair(source: string, errors: string[], prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "repair", source, errors, prompt })).source;
+    return (await this.meteredCall({ kind: "repair", source, errors, prompt })).text;
   }
 }
 

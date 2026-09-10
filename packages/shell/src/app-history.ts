@@ -1,7 +1,7 @@
 // App history — every source an app has ever had, so an AI edit is inspectable and reversible.
 //
-// Editing an app with the agent rewrites the whole file (the modify prompt asks for the complete
-// updated module, never a patch). Without a record of the previous source you cannot see what the
+// Editing an app with the agent applies the model's SEARCH/REPLACE edits to the file (a whole-file
+// reply is accepted as a fallback). Without a record of the previous source you cannot see what the
 // model changed, and a bad edit is unrecoverable. Every write that changes an app's source appends a
 // version here — see `saveUserApp`, the one write path — and the History panel diffs and restores
 // them.

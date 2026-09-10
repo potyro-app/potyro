@@ -20,28 +20,40 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(preview.locator("h1")).toHaveText("My App", { timeout: 30_000 });
   await expect(preview.locator(".k-prov")).toContainText("trusted"); // the user's own app runs direct
 
-  // Generation sources, each gated (no live model call in the test):
+  // ONE action, and one engine chosen in one place. The starter is an empty page, so the action is
+  // "Create"; it becomes "Modify" once there is a real app.
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await expect(studio.getByRole("button", { name: /claude -p/ })).toBeEnabled(); // no key needed
-  await expect(studio.getByRole("button", { name: "On-device" })).toBeVisible(); // gated on WebGPU
-  const modelPicker = studio.getByRole("combobox", { name: "On-device model" });
-  await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-1.5B/); // recommended default
-  // The on-device engine needs WebGPU, which Firefox does not ship — the control is correctly
-  // disabled there, so only exercise it where the capability exists.
-  const hasWebGPU = await page.evaluate(() => "gpu" in navigator);
-  if (hasWebGPU) {
-    await modelPicker.selectOption("Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC");
-    await expect(modelPicker).toHaveValue(/Qwen2.5-Coder-0.5B/);
-  } else {
-    await expect(modelPicker).toBeDisabled();
-  }
-  const cloud = studio.getByRole("button", { name: "Cloud", exact: true });
-  await expect(cloud).toBeDisabled(); // needs a key
-  await studio.getByLabel("Anthropic API key").fill("sk-ant-example");
-  await expect(cloud).toBeEnabled();
+  const go = studio.getByRole("button", { name: /Create the app|Modify the app/ });
+  await expect(go).toHaveText(/Create the app/);
+  await expect(go).toBeEnabled(); // claude -p needs no key
 
-  // With an app previewed, "Modify this app" adapts the current app (no live model call here).
-  await expect(studio.getByRole("button", { name: /Modify this app/ })).toBeEnabled();
+  const settings = studio.getByRole("button", { name: "Model settings" });
+  await expect(settings).toContainText("claude -p");
+  await settings.click();
+  const models = page.getByRole("dialog", { name: "Model settings" });
+  // A cloud engine cannot run without the user's own key, so the action is gated until there is one.
+  await models.getByRole("radio", { name: /Anthropic/ }).check();
+  await models.getByRole("button", { name: "Close model settings" }).click();
+  await expect(settings).toContainText("Anthropic");
+  await expect(go).toBeDisabled();
+  await settings.click();
+  await models.getByLabel("Anthropic API key").fill("sk-ant-example");
+  await models.getByRole("button", { name: "Close model settings" }).click();
+  await expect(go).toBeEnabled();
+
+  // The on-device engine needs WebGPU, which Firefox does not ship — it is offered but disabled
+  // there, with the reason, rather than silently missing.
+  const hasWebGPU = await page.evaluate(() => "gpu" in navigator);
+  await settings.click();
+  const onDevice = models.getByRole("radio", { name: /^On-device/ });
+  if (hasWebGPU) {
+    await onDevice.check();
+    await expect(models.getByRole("combobox", { name: "On-device model" })).toHaveValue(/Qwen2.5-Coder/);
+  } else {
+    await expect(onDevice).toBeDisabled();
+  }
+  await models.getByRole("button", { name: "Close model settings" }).click();
+
 
   // Source is behind a toggle, not the default view.
   await studio.getByRole("tab", { name: "Source" }).click();

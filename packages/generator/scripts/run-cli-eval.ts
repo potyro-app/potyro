@@ -1,20 +1,31 @@
-// Run a prompt corpus through `claude -p` and score every result, writing artifacts for BOTH
+// Run a prompt corpus through a model and score every result, writing artifacts for BOTH
 // judgements: the automated gates (compiles/validates/renders) and a human review sheet, because
 // the harness cannot tell whether the app is the app the person asked for.
 //
 //   pnpm --filter @karta/generator eval:cli -- --corpus wild --concurrency 4
+//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @karta/generator eval:cli -- \
+//     --backend openrouter --model deepseek/deepseek-v4-flash-0731 --corpus wild
 //
-// Flags: --corpus wild|core|both  --limit N  --concurrency N  --repairs N  --model <alias>
+// Flags: --backend claude-cli|openrouter  --model <alias|openrouter model id>
+//        --reasoning none|minimal|low|medium|high   (openrouter; default none — reasoning tokens
+//                                                    come out of the same budget as the answer and
+//                                                    their size is wildly unpredictable, see
+//                                                    DEFAULT_REASONING in openrouter-backend.ts)
+//        --corpus wild|core|both  --limit N  --concurrency N  --repairs N
 //        --only id1,id2           --out <dir>
+//
+// Every backend is handed the same contract and the same turns (prompt.ts / chat-backend.ts), so
+// one run's report.json is directly comparable to another's.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
+import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { PROMPTS } from "../src/prompts.js";
 import { WILD_PROMPTS, type WildPrompt } from "../src/wild-prompts.js";
 import { loadApp, scoreSource, type ScoreResult } from "../src/score.js";
 import { smokeApp, smokePassed, type SmokeResult } from "../src/smoke.js";
-import type { GenPrompt } from "../src/backend.js";
+import type { GenPrompt, ModelBackend } from "../src/backend.js";
 
 interface Outcome {
   prompt: GenPrompt;
@@ -52,6 +63,19 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T, i: number) =>
   return out;
 }
 
+/** Which model answers the corpus. Everything downstream reads only the `ModelBackend` contract. */
+async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
+  if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
+  // Throws up-front on a missing OPENROUTER_API_KEY rather than 401-ing partway through the corpus.
+  if (kind === "openrouter") {
+    return createOpenRouterBackend({
+      ...(model ? { model } : {}),
+      ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
+    });
+  }
+  throw new Error(`unknown --backend "${kind}" (expected claude-cli or openrouter)`);
+}
+
 async function main(): Promise<void> {
   const corpus = (arg("corpus", "wild") ?? "wild") as "wild" | "core" | "both";
   const limit = Number(arg("limit", "0"));
@@ -69,7 +93,7 @@ async function main(): Promise<void> {
   if (limit > 0) selected = selected.slice(0, limit);
 
   mkdirSync(outDir, { recursive: true });
-  const backend = new ClaudeCliBackend({ ...(model ? { model } : {}) });
+  const backend = await makeBackend(arg("backend", "claude-cli") ?? "claude-cli", model, arg("reasoning"));
   console.log(`backend=${backend.name} corpus=${corpus} n=${selected.length} concurrency=${concurrency} repairs=${maxRepairs}`);
   console.log(`out=${outDir}\n`);
 
@@ -82,7 +106,7 @@ async function main(): Promise<void> {
       const singlePass = await scoreSource(source);
       let final = singlePass;
       let repairsUsed = 0;
-      while (!final.validates && repairsUsed < maxRepairs) {
+      while (!final.validates && repairsUsed < maxRepairs && backend.repair) {
         source = await backend.repair(source, final.errors, prompt);
         repairsUsed += 1;
         final = await scoreSource(source);

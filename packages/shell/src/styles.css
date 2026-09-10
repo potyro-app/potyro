@@ -249,6 +249,38 @@ button {
   right: 0.35rem;
   z-index: 5;
 }
+
+/* --- ViewErrorBoundary fallback: the current page crashed, the shell around it did not ---------
+   Genuinely a failure (unlike `.k-diagnosis`/`.k-fix-exhausted`'s neutral cousins above) — same red
+   family as `.k-case-lost` and `.k-fix-exhausted` elsewhere in this file, so "something broke" reads
+   consistently everywhere it can happen. Sits where the view itself would have rendered, so the
+   header, nav, quick actions and the "Something's wrong" recorder stay exactly where they were. */
+.k-view-crash {
+  border: 1px solid color-mix(in oklab, oklch(60% 0.18 30) 35%, var(--line));
+  background: color-mix(in oklab, oklch(60% 0.18 30) 6%, transparent);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.k-view-crash-head {
+  margin: 0;
+  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+.k-view-crash-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: oklch(45% 0.16 30);
+  font-family: var(--font-mono, monospace);
+  word-break: break-word;
+}
+.k-view-crash button {
+  align-self: flex-start;
+}
 .k-modifydialog {
   width: min(520px, 94vw);
   display: flex;
@@ -1119,20 +1151,32 @@ button {
   resize: vertical;
   line-height: 1.5;
 }
-.k-gen-sources {
+/* One action, one engine. The primary button carries the weight; the engine sits beside it as a
+   quieter chip that still always names the model — an anonymous request is what made "is this even
+   using OpenRouter?" unanswerable. */
+.k-gen-run {
   display: flex;
   gap: 0.5rem;
+  align-items: stretch;
   flex-wrap: wrap;
-  align-items: center;
 }
-.k-gen-cloud {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+.k-gen-go {
+  flex: 1 1 12rem;
+  font-weight: 600;
 }
-.k-gen-cloud .k-input {
-  flex: 1 1 auto;
+.k-gen-engine {
+  flex: 0 1 auto;
+  max-width: 100%;
+  font-size: 0.8rem;
+  color: var(--muted, #6b6b6b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.k-gen-engine:hover {
+  color: inherit;
+}
+
 .k-gen-modify {
   display: flex;
   align-items: center;
@@ -2368,4 +2412,371 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* --- Model settings ------------------------------------------------------------------------- */
+.k-engines {
+  max-width: 34rem;
+  width: 100%;
+  /* The list grows with the number of engines; the modal must not grow past the viewport and clip
+     its own footer — so the list scrolls and the head/foot stay put. */
+  max-height: min(85vh, 48rem);
+  display: flex;
+  flex-direction: column;
+}
+.k-engines .k-engine-list {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.k-modal-head,
+.k-modal-foot {
+  flex: 0 0 auto;
+}
+.k-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.k-modal-title {
+  margin: 0 0 0.15rem;
+  font-size: 1.05rem;
+}
+.k-modal-foot {
+  border-top: 1px dashed var(--line);
+  padding-top: 0.6rem;
+  margin-top: 0.4rem;
+}
+.k-engine-group {
+  margin-top: 0.9rem;
+}
+.k-engine-row {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  margin-top: 0.4rem;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.k-engine-row[data-active="true"] {
+  border-color: currentColor;
+  background: color-mix(in oklab, var(--paper) 92%, currentColor);
+}
+.k-engine-pick {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  align-items: baseline;
+  cursor: pointer;
+}
+.k-engine-pick input {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.k-engine-name {
+  font-weight: 600;
+}
+.k-engine-why {
+  font-size: 0.75rem;
+}
+.k-engine-blurb {
+  grid-column: 2;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.k-engine-note {
+  grid-column: 2;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.k-engine-row .k-input,
+.k-engine-fields {
+  margin-top: 0.5rem;
+}
+.k-engine-fields {
+  display: grid;
+  gap: 0.4rem;
+}
+.k-engine-fields .k-input {
+  margin-top: 0;
+}
+
+/* --- History tab ---------------------------------------------------------------------------- */
+.k-studio-history {
+  overflow: auto;
+  padding: 1rem 1.25rem;
+}
+.k-history-embedded {
+  padding: 0;
+}
+.k-session-list {
+  list-style: none;
+  margin: 0.4rem 0 1.2rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-session-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-left: 2px solid var(--line);
+  padding: 0.3rem 0 0.3rem 0.7rem;
+}
+
+/* --- "Something's wrong" recording control (beside the provenance badge) ------------------- */
+.k-case-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.k-case-note textarea {
+  resize: vertical;
+}
+
+/* --- Replay report: what actually happened, read against what the person expected ---------- */
+.k-case-report {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  z-index: 45;
+  animation: modal-in 200ms var(--ease);
+}
+.k-case-report h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-case-expect {
+  margin: 0 0 0.75rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.k-case-lost {
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: oklch(60% 0.18 30 / 12%);
+  color: oklch(45% 0.16 30);
+  font-size: 0.85rem;
+}
+.k-case-report ol {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.k-case-step {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  border-left: 2px solid var(--line);
+  padding: 0.25rem 0 0.25rem 0.6rem;
+}
+.k-case-step[data-ok="false"] {
+  border-left-color: oklch(60% 0.18 30);
+  color: oklch(45% 0.16 30);
+}
+
+/* --- Cases list (Studio, History tab) -------------------------------------------------------- */
+.k-cases {
+  list-style: none;
+  margin: 0.4rem 0 1.2rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-cases li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-left: 2px solid var(--line);
+  padding: 0.3rem 0 0.3rem 0.7rem;
+}
+.k-case-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The entry point, stacked with the case report it's about, in ONE fixed column instead of two
+   independently-positioned fixed boxes fighting over the same corner. `.k-case-report` keeps its own
+   class and every rule above unchanged (fix-panel.tsx never touches case-report.tsx) — this wrapper
+   just takes over its positioning while it's nested here. */
+.k-case-and-fix {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  width: min(420px, calc(100vw - 2rem));
+}
+.k-case-and-fix > .k-case-report {
+  position: static;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+}
+.k-fix-entry {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.6rem 0.8rem;
+}
+.k-fix-entry-reason {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* --- FixPanel: watch the agent investigate a reported case, and stop it (fix-panel.tsx) ---------
+   Same floating-panel shape as `.k-case-report` (fixed, bottom right, its own surface) rather than
+   a `.k-modal-scrim` overlay — this runs alongside the app you're reporting on, not instead of it,
+   and a scrim would block the very thing the agent is investigating. Taller, because the step feed
+   grows as the loop runs. */
+.k-fix-panel {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  width: min(460px, calc(100vw - 2rem));
+  max-height: min(80vh, 720px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  z-index: 46; /* above .k-case-report (45) — a fix flow started from a report sits on top of it */
+  animation: modal-in 200ms var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.k-fix-panel h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.k-fix-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-fix-step {
+  font-size: 0.85rem;
+  border-left: 2px solid var(--line);
+  padding: 0.2rem 0 0.2rem 0.6rem;
+  color: var(--ink-soft);
+}
+.k-fix-step[data-kind="thinking"] {
+  font-style: italic;
+}
+.k-fix-step[data-ok="false"] {
+  border-left-color: oklch(60% 0.18 30);
+  color: oklch(45% 0.16 30);
+}
+.k-fix-step[data-ok="true"] {
+  border-left-color: oklch(60% 0.15 145);
+}
+.k-fix-step[data-kind="unusable"] {
+  border-left-color: oklch(65% 0.15 80);
+}
+
+/* The outcome — six shapes, and they must not look alike. `.k-fix-fix` is the only one styled as a
+   positive result (the only one with an Apply button); everything else is neutral or a plain note,
+   same as `.k-diagnosis` elsewhere in this file: nothing about "stopped" or "no-repro" should read
+   as a failure the person did something wrong to cause. */
+.k-fix-outcome {
+  border-radius: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+}
+.k-fix-outcome-head {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.k-fix-outcome p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.k-fix-fix {
+  border-color: color-mix(in oklab, oklch(60% 0.15 145) 45%, var(--line));
+  background: color-mix(in oklab, oklch(60% 0.15 145) 8%, transparent);
+}
+.k-fix-question {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  background: color-mix(in oklab, var(--accent) 7%, transparent);
+}
+.k-fix-question textarea {
+  resize: vertical;
+}
+.k-fix-diagnosis,
+.k-fix-norepro,
+.k-fix-stopped {
+  background: color-mix(in oklab, var(--ink) 4%, transparent);
+}
+.k-fix-exhausted {
+  border-color: color-mix(in oklab, oklch(60% 0.18 30) 35%, var(--line));
+  background: color-mix(in oklab, oklch(60% 0.18 30) 6%, transparent);
+}
+
+/* An unverified last attempt: shown for reference on `stopped`/`exhausted`, deliberately with no
+   button anywhere near it — see the file header in fix-panel.tsx for why. */
+.k-fix-lastattempt {
+  font-size: 0.8rem;
+}
+.k-fix-lastattempt summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.k-fix-lastattempt pre {
+  margin: 0.4rem 0 0;
+  padding: 0.6rem;
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
+  border-radius: calc(var(--radius) - 6px);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* An unverified proposal must not read like a verified fix. Neutral, not the green of `k-fix-fix`,
+   with the reason it could not be proven given its own line rather than folded into the rationale. */
+.k-fix-unverified {
+  border-left: 3px solid var(--k-muted, #999);
+  background: color-mix(in srgb, var(--k-muted, #999) 6%, transparent);
+}
+.k-fix-why {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.4rem 0 0.6rem;
+}
+
+/* A rewritten app previews perfectly — it is just not yours. This has to be louder than a
+   validation error, which announces itself the moment you look at the preview. */
+.k-modify-loss {
+  border-left: 3px solid var(--k-danger, #c0392b);
+  padding-left: 0.6rem;
+  font-weight: 500;
 }

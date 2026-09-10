@@ -36,12 +36,18 @@ export interface LoadedKartaApp {
   __kartaApp?: boolean;
 }
 
-async function bundle(source: string): Promise<string> {
+/**
+ * `resolveDir` is where a relative import in `source` is resolved from. The default (RESOLVE_DIR)
+ * serves generated apps, which import only `karta`. The examples under examples/ also import their
+ * own custom views and helpers (`./views/CookAlong`), so an eval that feeds THOSE through here has to
+ * say where they live or the bundle fails before the app is ever judged.
+ */
+async function bundle(source: string, resolveDir: string = RESOLVE_DIR): Promise<string> {
   const res = await build({
     // `tsx` + automatic runtime: custom views are React components, so app source may contain JSX.
     // Must match the shell's bundler (packages/shell/src/app-bundler.ts) or the eval scores a
     // different language than the product runs.
-    stdin: { contents: source, resolveDir: RESOLVE_DIR, loader: "tsx", sourcefile: "gen.app.tsx" },
+    stdin: { contents: source, resolveDir, loader: "tsx", sourcefile: "gen.app.tsx" },
     jsx: "automatic",
     bundle: true,
     write: false,
@@ -74,19 +80,19 @@ async function importModule(code: string): Promise<{ default?: unknown }> {
 
 /** Bundle + import a generated source, returning the validated app. Throws on compile/validate
  *  failure — `scoreSource` reports those as gates; `smoke.ts` needs the app itself. */
-export async function loadApp(source: string): Promise<LoadedKartaApp> {
-  const mod = await importModule(await bundle(source));
+export async function loadApp(source: string, resolveDir?: string): Promise<LoadedKartaApp> {
+  const mod = await importModule(await bundle(source, resolveDir));
   const candidate = mod.default as LoadedKartaApp | undefined;
   if (!candidate?.__kartaApp) throw new Error("default export is not a validated KartaApp");
   return candidate;
 }
 
-export async function scoreSource(source: string): Promise<ScoreResult> {
+export async function scoreSource(source: string, resolveDir?: string): Promise<ScoreResult> {
   const errors: string[] = [];
 
   let bundled: string;
   try {
-    bundled = await bundle(source);
+    bundled = await bundle(source, resolveDir);
   } catch (e) {
     errors.push(`compile: ${message(e)}`);
     return { compiles: false, validates: false, renders: false, errors };
