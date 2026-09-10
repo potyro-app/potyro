@@ -639,16 +639,27 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   /** A repair round, through the same gate as the edit. A diagnosis or a failure here is an error
    *  (there is nothing to save), never a version. */
   const runRepair = async (currentSource: string, issues: string[]): Promise<string> => {
+    // Judged against the source being REPAIRED, not the app as it was before the modify. `def` is the
+    // running app — pre-modify — so a repair that deletes a page the modify had just added would
+    // compare clean against it, report no loss, and get saved. The Studio's `shapeOrEmpty` does the
+    // same thing for the same reason; a source that does not load has no shape to lose, so an empty
+    // shape stands in rather than failing the whole repair.
+    const before = await loadDefinition(currentSource).then(
+      (d) => ({ pages: d.pages, entities: d.entities }),
+      () => ({ pages: [], entities: {} }),
+    );
     const result = await guardedModify({
       attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr)),
       shapeOf: loadDefinition,
-      before: { pages: def.pages, entities: def.entities },
+      before,
       instruction: buildRepairInstruction(issues),
       source: currentSource,
     });
-    if (result.kind === "diagnosis") throw new Error(`the repair was declined: ${result.text}`);
-    if (result.kind === "failed") throw new Error(`the repair could not be applied: ${result.reason}`);
-    if (result.loss !== null) throw new Error(`the repair rewrote the app rather than editing it: it ${result.loss}`);
+    if (result.kind === "diagnosis") throw new Error(`Nothing was saved — the repair was declined: ${result.text}`);
+    if (result.kind === "failed") throw new Error(`Nothing was saved — the repair could not be applied: ${result.reason}`);
+    if (result.loss !== null) {
+      throw new Error(`Nothing was saved — the repair rewrote the app rather than editing it: it ${result.loss}`);
+    }
     return result.source;
   };
 
