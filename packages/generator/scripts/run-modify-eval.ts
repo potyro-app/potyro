@@ -179,7 +179,9 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
   const p: GenPrompt = { id: c.id, description: c.instruction };
   const crashed = (msg: string): Outcome => ({
     id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false,
-    loss: null, landed: false, validates: false, declined: false, repair: null, ms: Date.now() - started, crashed: msg,
+    // A crash is not a case that failed to land; it is a case that did not run - so it leaves the
+    // `landable` denominator rather than counting against it.
+    loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started, crashed: msg,
   });
   try {
     if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
@@ -194,7 +196,7 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       instruction: c.instruction,
       source,
     });
-    const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry, ms: 0 };
+    const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry };
     if (result.kind === "diagnosis") {
       return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ms: Date.now() - started };
     }
@@ -264,6 +266,8 @@ async function main(): Promise<void> {
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
     const o = await runCase(backend, c, examplesDir, outDir);
+    // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
+    //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
     const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
     const how = o.via === "edits" ? `${o.applied} edit${o.applied === 1 ? "" : "s"}` : o.via === "whole-file" ? "WHOLE FILE" : o.via;
     const note = o.crashed
@@ -301,7 +305,7 @@ async function main(): Promise<void> {
     `  sent the whole file:      ${summary.viaWholeFile}/${n} (${pct(summary.viaWholeFile)})   ← accepted, but retyped`,
     summary.noMatchRetry ? `  SEARCH missed, retried:   ${summary.noMatchRetry}/${n}` : "",
     summary.failed ? `  nothing usable:           ${summary.failed}/${n}` : "",
-    `  rewrote on 1st attempt:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← raw model behaviour`,
+    `  dropped entities/pages:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← a reply lost structure; the loss retry fired`,
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
     `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
     `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
