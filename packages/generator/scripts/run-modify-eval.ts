@@ -53,7 +53,7 @@ interface Outcome {
   /** Only set when --repair is given and the first result did not validate: the repair round's
    *  outcome. null when repair was not requested, not needed (validates already true), or the
    *  case never reached a `kind: "source"` result to repair. */
-  repair: { via: "edits" | "whole-file"; validates: boolean } | null;
+  repair: { via: "edits" | "whole-file" | "declined" | "failed"; validates: boolean } | null;
   ms: number;
   crashed?: string;
 }
@@ -161,7 +161,13 @@ async function shapeOf(source: string, resolveDir: string): Promise<AppShape & D
   return { entities: app.entities, pages: app.pages as AppShape["pages"] & DefinitionShape["pages"] };
 }
 
-async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string, outDir: string): Promise<Outcome> {
+async function runCase(
+  backend: ModelBackend,
+  c: ModifyCase,
+  examplesDir: string,
+  outDir: string,
+  withRepair: boolean,
+): Promise<Outcome> {
   const started = Date.now();
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
   // use) lives beside this harness, so the product's fixtures stay the product's.
@@ -204,30 +210,37 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
+    // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
+    // prompt's `errors` — so a case paid for two bundle+validate passes and the two could in
+    // principle disagree about the same source. `scoreSource` reports failures as `errors` rather
+    // than throwing, so it sits outside the try that guards `shapeOf`.
+    const score = await scoreSource(result.source, sourceDir);
+    const validates = score.validates;
     let landed: boolean | null = c.landed ? false : null;
-    let validates = false;
     try {
       const final = await shapeOf(result.source, sourceDir);
       if (c.landed) landed = c.landed(final, before);
-      validates = (await scoreSource(result.source, sourceDir)).validates;
     } catch {
-      // Does not load: neither landed nor valid, and `loss` is whatever the guard could tell.
+      // Does not load: nothing landed, and `loss` is whatever the guard could tell.
     }
     let repair: Outcome["repair"] = null;
-    if (process.argv.includes("--repair") && !validates) {
-      const { errors } = await scoreSource(result.source, sourceDir);
+    if (withRepair && !validates) {
       const repaired = await guardedModify({
         attempt: async (instr) => keep(await backend.modify!(result.source, instr, p)),
         shapeOf: (src) => shapeOf(src, examplesDir),
         before,
-        instruction: buildRepairInstruction(errors),
+        instruction: buildRepairInstruction(score.errors),
         source: result.source,
       });
       if (repaired.kind === "source") {
         writeFileSync(join(outDir, `${c.id}.repaired.app.ts`), repaired.source);
         repair = { via: repaired.via, validates: (await scoreSource(repaired.source, sourceDir)).validates };
       } else {
-        repair = { via: "edits", validates: false };
+        // A repair that declined (NOT-IN-APP) or produced nothing usable is not an edit round that
+        // failed to validate — recording both as `via: "edits"` made three different endings
+        // indistinguishable in the report. Named with `Outcome.via`'s own vocabulary, so a reader
+        // does not have to learn a second one: a `diagnosis` is `declined` there too.
+        repair = { via: repaired.kind === "diagnosis" ? "declined" : "failed", validates: false };
       }
     }
     return {
@@ -254,6 +267,10 @@ async function main(): Promise<void> {
   // with nothing changed, and a 0/12 cannot rule out a rewrite rate of 20%. N samples per case
   // turn "it did not happen this time" into a rate with a denominator worth reading.
   const runs = Math.max(1, Number(arg("runs", "1")));
+  // Read once, here, and passed down. `runCase` used to re-read `process.argv` per case, which put
+  // the flag's meaning in two places and made the runner impossible to drive from anything but a
+  // command line.
+  const repairRequested = process.argv.includes("--repair");
   const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `modify-${Date.now()}`))!);
   const examplesDir = resolve(process.cwd(), "..", "..", "examples");
   const selected = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
@@ -265,7 +282,7 @@ async function main(): Promise<void> {
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await runCase(backend, c, examplesDir, outDir);
+    const o = await runCase(backend, c, examplesDir, outDir, repairRequested);
     // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
     //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
     const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
@@ -296,7 +313,6 @@ async function main(): Promise<void> {
     declined: count((o) => o.declined),
     crashed: count((o) => Boolean(o.crashed)),
   };
-  const repairRequested = process.argv.includes("--repair");
   const lines = [
     "",
     "=".repeat(60),
