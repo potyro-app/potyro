@@ -62,7 +62,14 @@ async function stubAgentSequence(page: Page, replies: string[]): Promise<string[
     }
     const id = new URL(req.url()).searchParams.get("id") ?? "";
     const index = Number(id.replace("job-", "")) - 1;
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "done", text: replies[index] ?? "" }) });
+    if (index >= replies.length) {
+      // A call the test didn't script — fail loudly rather than serving stale/empty text, so an
+      // unexpected extra model call (a regression that retries when it shouldn't) is diagnosable
+      // instead of masquerading as some other assertion failing downstream.
+      await route.fulfill({ status: 500, contentType: "text/plain", body: "stub ran out of scripted replies" });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "done", text: replies[index] }) });
   });
   return prompts;
 }
@@ -271,7 +278,7 @@ test("a repair that still does not validate saves nothing", async ({ page }) => 
   // The repair changes something real, but never touches the typo it was asked to fix.
   const STILL_BROKEN_LINE = BROKEN_LINE.replace('title: "Map"', 'title: "Somewhere"');
 
-  await stubAgentSequence(page, [
+  const prompts = await stubAgentSequence(page, [
     ["I set the view type.", "```ts", "<<<<<<< SEARCH", PAGES_LINE, "=======", BROKEN_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
     ["I renamed the page instead.", "```ts", "<<<<<<< SEARCH", BROKEN_LINE, "=======", STILL_BROKEN_LINE, ">>>>>>> REPLACE", "```"].join(
       "\n",
@@ -285,6 +292,11 @@ test("a repair that still does not validate saves nothing", async ({ page }) => 
   const error = page.locator(".k-form-error");
   await expect(error).toBeVisible({ timeout: 30_000 });
   await expect(error).toContainText(/^Nothing was saved/);
+
+  // The repair round actually ran — not skipped, with some other look-alike "Nothing was saved"
+  // error standing in for it undetected.
+  expect(prompts).toHaveLength(2);
+  expect(prompts[1]).toContain("Fix exactly these problems");
 
   // Still on the broken-attempt app: no version was appended…
   await page.getByRole("button", { name: "Cancel" }).click();
