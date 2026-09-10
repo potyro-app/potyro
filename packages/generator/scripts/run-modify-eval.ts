@@ -4,8 +4,8 @@
 //   pnpm --filter @karta/generator eval:modify -- --backend openrouter --model deepseek/deepseek-v4-pro-0813
 //   pnpm --filter @karta/generator eval:modify -- --backend scripted        # no key: proves the harness
 //
-// Flags: --backend openrouter|claude-cli|scripted|scripted-edits  --model <id>  --reasoning <effort>
-//        --only id1,id2  --concurrency N  --out <dir>
+// Flags: --backend openrouter|claude-cli|scripted|scripted-edits|scripted-repair  --model <id>
+//        --reasoning <effort>  --only id1,id2  --concurrency N  --out <dir>  --repair
 //
 // Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
 // read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
@@ -24,6 +24,7 @@ import { ClaudeCliBackend } from "../src/cli-backend.js";
 import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { guardedModify } from "../src/guarded-modify.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
+import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@karta/runtime";
@@ -49,6 +50,10 @@ interface Outcome {
   validates: boolean;
   /** Kept for report readers: same as via === "declined". */
   declined: boolean;
+  /** Only set when --repair is given and the first result did not validate: the repair round's
+   *  outcome. null when repair was not requested, not needed (validates already true), or the
+   *  case never reached a `kind: "source"` result to repair. */
+  repair: { via: "edits" | "whole-file"; validates: boolean } | null;
   ms: number;
   crashed?: string;
 }
@@ -118,8 +123,27 @@ export default defineApp({
   };
 }
 
+/** First modify reply breaks `schemaVersion` (compiles, fails validation); the repair reply restores it.
+ *  Must report validates 0/12 before repair and 12/12 after. */
+function scriptedRepairBackend(): ModelBackend {
+  const calls = new Map<string, number>();
+  return {
+    name: "scripted:break-then-repair",
+    async generate() {
+      throw new Error("scripted backend only modifies");
+    },
+    async modify(_source: string, _instruction: string, prompt: GenPrompt) {
+      const n = (calls.get(prompt.id) ?? 0) + 1;
+      calls.set(prompt.id, n);
+      if (n === 1) return editBlock("  schemaVersion: 1,", '  schemaVersion: "one",');
+      return editBlock('  schemaVersion: "one",', "  schemaVersion: 1,");
+    },
+  };
+}
+
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
   if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
+  if (kind === "scripted-repair") return scriptedRepairBackend();
   if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
   if (kind === "openrouter") {
     return createOpenRouterBackend({
@@ -127,7 +151,7 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
       ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
     });
   }
-  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted or scripted-edits)`);
+  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits or scripted-repair)`);
 }
 
 /** The shape the guard compares, from a loaded app. Throws when the source does not load, which
@@ -155,7 +179,7 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
   const p: GenPrompt = { id: c.id, description: c.instruction };
   const crashed = (msg: string): Outcome => ({
     id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false,
-    loss: null, landed: false, validates: false, declined: false, ms: Date.now() - started, crashed: msg,
+    loss: null, landed: false, validates: false, declined: false, repair: null, ms: Date.now() - started, crashed: msg,
   });
   try {
     if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
@@ -172,10 +196,10 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
     });
     const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry, ms: 0 };
     if (result.kind === "diagnosis") {
-      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, ms: Date.now() - started };
+      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ms: Date.now() - started };
     }
     if (result.kind === "failed") {
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, ms: Date.now() - started };
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     let landed: boolean | null = c.landed ? false : null;
@@ -187,6 +211,23 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
     } catch {
       // Does not load: neither landed nor valid, and `loss` is whatever the guard could tell.
     }
+    let repair: Outcome["repair"] = null;
+    if (process.argv.includes("--repair") && !validates) {
+      const { errors } = await scoreSource(result.source, sourceDir);
+      const repaired = await guardedModify({
+        attempt: async (instr) => keep(await backend.modify!(result.source, instr, p)),
+        shapeOf: (src) => shapeOf(src, examplesDir),
+        before,
+        instruction: buildRepairInstruction(errors),
+        source: result.source,
+      });
+      if (repaired.kind === "source") {
+        writeFileSync(join(outDir, `${c.id}.repaired.app.ts`), repaired.source);
+        repair = { via: repaired.via, validates: (await scoreSource(repaired.source, sourceDir)).validates };
+      } else {
+        repair = { via: "edits", validates: false };
+      }
+    }
     return {
       ...common,
       via: result.via,
@@ -196,6 +237,7 @@ async function runCase(backend: ModelBackend, c: ModifyCase, examplesDir: string
       landed,
       validates,
       declined: false,
+      repair,
       ms: Date.now() - started,
     };
   } catch (e) {
@@ -246,9 +288,11 @@ async function main(): Promise<void> {
     landed: count((o) => o.landed === true),
     landable: count((o) => o.landed !== null),
     validates: count((o) => o.validates),
+    validatesAfterRepair: count((o) => o.validates || o.repair?.validates === true),
     declined: count((o) => o.declined),
     crashed: count((o) => Boolean(o.crashed)),
   };
+  const repairRequested = process.argv.includes("--repair");
   const lines = [
     "",
     "=".repeat(60),
@@ -261,6 +305,7 @@ async function main(): Promise<void> {
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
     `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
     `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
+    repairRequested ? `  validates after repair:   ${summary.validatesAfterRepair}/${n} (${pct(summary.validatesAfterRepair)})` : "",
     summary.declined ? `  declined (NOT-IN-APP):    ${summary.declined}/${n}   ← judged not the app's to change; excluded from landed` : "",
     summary.crashed ? `  crashed:                  ${summary.crashed}/${n}` : "",
     "=".repeat(60),
