@@ -100,8 +100,8 @@ export function retryInstruction(instruction: string, loss: string): string {
     instruction,
     "",
     `Your previous attempt ${loss}.`,
-    "That is not the change that was asked for. Apply ONLY the change above. Every entity and every page the app",
-    "already has must still be there, unchanged, in your reply.",
+    "That is not the change that was asked for. Apply ONLY the change above, as SEARCH/REPLACE edits that make",
+    "that change and nothing else. Do not remove any entity or page the app already has.",
   ].join("\n");
 }
 
@@ -127,7 +127,11 @@ export async function guardedModify(deps: GuardedModifyDeps): Promise<GuardedMod
   if (reply.kind === "no-match") {
     trace.noMatchRetry = true;
     reply = await ask(noMatchInstruction(deps.instruction, reply.failures));
-    if (reply.kind === "no-match") return { kind: "failed", reason: describeEditFailures(reply.failures), trace };
+    // `describeEditFailures` is addressed to the model ("copy the lines exactly as they appear") and
+    // belongs in `noMatchInstruction`, not in a sentence a person reads.
+    if (reply.kind === "no-match") {
+      return { kind: "failed", reason: "the model could not point at the lines it meant to change, even after being told which edit missed", trace };
+    }
   }
   if (reply.kind === "diagnosis") return { kind: "diagnosis", text: reply.text, trace };
   if (reply.kind === "unusable") {
