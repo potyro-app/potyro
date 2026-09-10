@@ -646,8 +646,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
    *
    * It is still validated and still written as a version — a change you made by hand deserves the
    * same audit trail and the same way back as one the agent made. It is recorded as `adjusted`
-   * rather than `edited` so History can tell them apart: an agent edit is a whole-file rewrite,
-   * this one only touched declarative data.
+   * rather than `edited` so History can tell them apart: an agent edit goes through the model and
+   * may touch functions, this one only touched declarative data.
    */
   const applyStructuralEdit = async (_edit: Edit, next: string, note: string): Promise<void> => {
     setModifyApplied(note);
@@ -742,7 +742,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       const issues = await buildAndValidate(next);
       if (issues.length) next = await runRepair(next, issues);
 
-      // Will two people survive this edit? An AI edit rewrites the whole module, and the way this
+      // Will two people survive this edit? An AI edit can change any function in the module, and the way this
       // breaks is silent: the app still parses, still validates, still works alone (KA-38). This is
       // the only gate that can see it. Reported, never blocking — plenty of apps are never shared,
       // and an unsafe reorder is still fine for one person.
