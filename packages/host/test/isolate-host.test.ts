@@ -174,6 +174,31 @@ describe("IsolateHost — resource limits", () => {
     await expect(loaded.callComputed("x", "spin", record, ctx)).rejects.toThrow();
     loaded.dispose();
   }, 10000);
+
+  // Finding 4 (security review, KA-38 follow-on): the ORIGINAL hole this whole suite exists to
+  // close was a top-level runaway, not a runaway reached through `invoke()` (the test above). Every
+  // other test here loads a bundle whose body returns immediately, so nothing in this file failed
+  // when the load-time interrupt handler was missing — only the shell suite noticed, by timing out.
+  // This test loads a bundle whose TOP LEVEL never returns, with a small `loadTimeoutMs`, and
+  // requires the load itself to reject within a bounded time. Revert the load-time interrupt
+  // handler in isolate-host.ts and this hangs instead of failing cleanly.
+  it("aborts a bundle whose top-level module body loops forever, via the load-time interrupt", async () => {
+    const runaway = `
+      while (true) {}
+      globalThis.__kartaApp = {
+        id: "loop-load", name: "LoopLoad", version: "1.0.0", schemaVersion: 1, permissions: {},
+        entities: {}, pages: [], reminders: []
+      };
+    `;
+    const store = new MemoryStore();
+    await store.open("loop-load");
+    const loadIsolated = createIsolateLoader({ store, newContext, loadTimeoutMs: 100 });
+    const start = Date.now();
+    await expect(loadIsolated({ code: runaway, provenance: "untrusted" })).rejects.toThrow();
+    // Bounded, not merely "eventually resolves" — a hung load would blow past the test's own
+    // timeout below and fail as a timeout, not a clean assertion, but this keeps the intent explicit.
+    expect(Date.now() - start).toBeLessThan(5000);
+  }, 10000);
 });
 
 describe("IsolateHost — mediated caps", () => {
@@ -211,6 +236,58 @@ describe("IsolateHost — mediated caps", () => {
     const rec = await store.insert("t", { n: 1 });
     await loaded.callAction("t", "go", { ...rec } as never, ctx);
     expect(caps.vibrations).toEqual([[0, 200, 100, 200]]);
+    loaded.dispose();
+  });
+});
+
+// ── ctx.ui.pick across the isolate ───────────────────────────────────────────────────────────
+//
+// generator/src/prompt.ts:232 tells every generated app it can `await ctx.ui.pick(items, opts)`.
+// harness.ts bridges it (`{op:"ui.pick", items, opts:{multi}}`), but until now `handleOp` had no
+// `case "ui.pick"`, so the op fell through to the unknown-op path and rejected for every untrusted
+// app that used the picker the contract promised it — provenance is not an edge case here (CLAUDE.md
+// rule 3: a shared/imported app ALWAYS runs here), so this was a real break, not a theoretical one.
+const PICK_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "picker-app", name: "PickerApp", version: "1.0.0", schemaVersion: 1, permissions: {},
+  entities: { t: { fields: { n: { type: "number" } }, actions: {
+    choose: async function(r, ctx){
+      var chosen = await ctx.ui.pick(["a", "b", "c"], { multi: false });
+      ctx.ui.toast("picked:" + JSON.stringify(chosen));
+    }
+  } } },
+  pages: [], reminders: []
+};
+`;
+
+describe("IsolateHost — ctx.ui.pick", () => {
+  it("returns the host's selection to an untrusted app", async () => {
+    const toasts: string[] = [];
+    const ui: UiBridge = {
+      toast: (m) => void toasts.push(m),
+      confirm: async () => true,
+      prompt: async () => null,
+      pick: async <T>(items: T[]) => items[1] ?? null,
+    };
+    const { loaded, ctx, store } = await setup(PICK_BUNDLE, {}, { ui });
+    const rec = await store.insert("t", { n: 1 });
+    await loaded.callAction("t", "choose", { ...rec } as never, ctx);
+    expect(toasts).toEqual(['picked:"b"']);
+    loaded.dispose();
+  });
+
+  it("returns null to an untrusted app when the pick is cancelled", async () => {
+    const toasts: string[] = [];
+    const ui: UiBridge = {
+      toast: (m) => void toasts.push(m),
+      confirm: async () => true,
+      prompt: async () => null,
+      pick: async () => null,
+    };
+    const { loaded, ctx, store } = await setup(PICK_BUNDLE, {}, { ui });
+    const rec = await store.insert("t", { n: 1 });
+    await loaded.callAction("t", "choose", { ...rec } as never, ctx);
+    expect(toasts).toEqual(["picked:null"]);
     loaded.dispose();
   });
 });

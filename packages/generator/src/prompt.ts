@@ -3,6 +3,7 @@
 // Kept pure + exported so the assembly is unit-testable without any model call.
 
 import type { GenPrompt } from "./backend.js";
+import { EDIT_FORMAT } from "./edits.js";
 
 export const EXAMPLE_TODO = `import { defineApp } from "karta";
 
@@ -319,6 +320,21 @@ export function buildUserMessage(prompt: GenPrompt): string {
 }
 
 /**
+ * Opens a modify exchange, in place of the generate turn's "Create a Karta app for this request".
+ *
+ * The app being edited is not an answer to the edit being asked for. Opening with the generate
+ * framing says the app to write is the one described BY the change, which makes the real source in
+ * the next turn read as a wrong answer to be replaced — and a model that follows instructions
+ * literally does exactly that, returning a brand-new app instead of an edited one.
+ */
+export function buildModifyOpener(): string {
+  return [
+    "Here is the current Karta app. It is the app the user already has and wants to keep.",
+    "You will be asked to change it — edit this source, do not replace it with a different app.",
+  ].join("\n");
+}
+
+/**
  * The marker a reply uses to say the request is not the app module's to fix.
  *
  * Only counts at the start of a line, so prose that merely mentions it ("I considered whether this
@@ -393,15 +409,19 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
 
   lines.push(
     "Reply with exactly one of:",
-    "1. The complete updated .app.ts (the whole file, not a diff) in one ```ts block.",
+    "1. SEARCH/REPLACE edits to the app above, in one ```ts block:",
+    "",
+    EDIT_FORMAT,
+    "",
     `2. \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to change there>\` - and no code.`,
     "",
     "Answering (2) when it is true is cheap. A plausible edit that cannot possibly work is the more damaging mistake,",
     "because it is indistinguishable from a fix until someone tries it.",
     "",
-    "Put your reasoning in the prose before the block. Do NOT write comments that assert a cause",
-    '("// the map ignores this") - a causal claim in a comment is unverifiable and the next edit',
-    "reads it as fact.",
+    "The OUTPUT rule in the system prompt (the whole file, no prose) does not apply to this reply: it is for",
+    "creating an app. Here, send edits, and put your reasoning in the prose before the block. Do NOT write",
+    'comments that assert a cause ("// the map ignores this") - a causal claim in a comment is unverifiable and',
+    "the next edit reads it as fact.",
   );
 
   return lines.join("\n");
@@ -415,11 +435,16 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
  * precisely the failure this contract exists to prevent.
  */
 export function parseModifyReply(reply: string): ModifyReply {
-  const marker = new RegExp(`^${NOT_IN_APP}`, "m").exec(reply);
+  // The marker may arrive dressed up: a model that has just written three paragraphs of reasoning
+  // tends to present its verdict as `` `NOT-IN-APP: …` `` or **NOT-IN-APP: …**. A measured DeepSeek
+  // reply did exactly that, and a strict line-start match handed the whole essay to the bundler as
+  // source. Tolerate leading backticks/asterisks (and drop a matching trailing one), but still
+  // require the marker to open its line, so prose that merely mentions it is not a verdict.
+  const marker = new RegExp(`^[\`*\\s]*${NOT_IN_APP}`, "m").exec(reply);
   if (marker) {
-    const after = reply.slice(marker.index + NOT_IN_APP.length);
+    const after = reply.slice(marker.index + marker[0].length);
     // Stop at any code fence, so a disowned patch never leaks into the explanation.
-    const text = after.split(/^```/m)[0]!.trim();
+    const text = after.split(/^```/m)[0]!.trim().replace(/[\`*]+$/, "").trim();
     return { kind: "diagnosis", text };
   }
 
@@ -440,6 +465,21 @@ export function buildRepairMessage(errors: string[]): string {
     ...errors.map((e) => `- ${e}`),
     "",
     "Return a corrected, complete .app.ts (the whole file, not a diff) in one code block.",
+  ].join("\n");
+}
+
+/**
+ * The instruction a REPAIR round hands to `guardedModify`, so a repair is a modify: same edit
+ * format, same no-match and loss retries, same gate. `buildRepairMessage` above is the older
+ * whole-file contract and is kept only for `ModelBackend.repair()` in the generate harness, where a
+ * freshly generated app has no person's file to protect.
+ */
+export function buildRepairInstruction(issues: string[]): string {
+  return [
+    "The app failed these checks:",
+    ...issues.map((i) => `- ${i}`),
+    "",
+    "Fix exactly these problems and nothing else. Do not change behaviour the checks did not mention.",
   ].join("\n");
 }
 

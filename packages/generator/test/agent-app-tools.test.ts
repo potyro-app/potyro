@@ -1,0 +1,218 @@
+import { describe, expect, it } from "vitest";
+import { addStep, annotate, newCase } from "@karta/runtime";
+import { buildAppTools, type DataAccess, type InvestigationDeps } from "../src/agent/app-tools.js";
+import { runTool } from "../src/agent/tools.js";
+
+function deps(over: Partial<InvestigationDeps> = {}): InvestigationDeps {
+  let c = newCase("city-maps", "clicking a city");
+  c = addStep(c, { kind: "open", page: "all" });
+  c = annotate(c, "here I expected the map to open");
+  c = addStep(c, { kind: "open", page: "city-detail" });
+  return {
+    source: 'import { defineApp } from "karta";\nexport default defineApp({ id: "city-maps" });',
+    theCase: c,
+    target: {
+      definition: { pages: [{ id: "all", title: "Cities", view: { type: "list", entity: "city" } }] },
+      query: async () => [{ id: "c1", name: "Lisbon", location: null }],
+    },
+    records: async () => [
+      { id: "c1", name: "Lisbon", location: null },
+      { id: "c2", name: "Porto", location: { lat: 41, lng: -8 } },
+    ],
+    access: { locality: "cloud" },
+    ...over,
+  };
+}
+
+const call = (name: string, args: Record<string, unknown> = {}) => ({ id: "x", name, args });
+
+describe("investigation tools", () => {
+  it("replay_case reports the step that goes nowhere", async () => {
+    const r = await runTool(buildAppTools(deps()), call("replay_case"));
+    expect(r.ok).toBe(false); // the replay did not pass
+    expect(r.detail).toContain('no page "city-detail"');
+    expect(r.detail).toContain("here I expected the map to open");
+  });
+
+  // Finding 1: replay_case is bound to `deps.target` — the app as the user currently has it. A
+  // candidate the model proposes never reaches it, so the description must not promise this tool
+  // can tell the model whether ITS OWN fix worked. If this regresses, a model that reruns the tool
+  // after proposing a patch sees the identical failure and concludes its fix failed, then burns its
+  // remaining budget chasing a phantom.
+  it("replay_case's description does not claim it can verify a proposed fix", () => {
+    const tools = buildAppTools(deps());
+    const spec = tools.find((t) => t.name === "replay_case")!;
+    expect(spec.description).not.toMatch(/whether it is fixed/i);
+    expect(spec.description).toMatch(/FIRST/);
+  });
+
+  it("inspect_app lists the pages that actually exist", async () => {
+    const r = await runTool(buildAppTools(deps()), call("inspect_app"));
+    expect(r.ok).toBe(true);
+    expect(r.detail).toContain("all");
+    expect(r.detail).toContain("list");
+  });
+
+  // Privacy: the point of this tool is "42 cities, 0 with a location", not the user's data.
+  it("query_data returns shapes and counts, never the records themselves", async () => {
+    const r = await runTool(buildAppTools(deps()), call("query_data", { entity: "city" }));
+    expect(r.ok).toBe(true);
+    expect(r.detail).toMatch(/2 records/);
+    expect(r.detail).toMatch(/location/);
+    expect(r.detail).toMatch(/1 empty/); // Lisbon has no location — the likely cause of an empty map
+    expect(r.detail).not.toContain("Lisbon");
+    expect(r.detail).not.toContain("Porto");
+  });
+
+  it("query_data returns values only when raw access was explicitly granted", async () => {
+    const r = await runTool(
+      buildAppTools(deps({ access: { locality: "local", rawGranted: true } })),
+      call("query_data", { entity: "city" }),
+    );
+    expect(r.detail).toContain("Lisbon");
+  });
+
+  // The granted-but-not-really case: local execution alone is not enough, the user must also have
+  // said yes. If this regresses to "local implies raw", an on-device app with no grant would leak.
+  it("query_data returns shapes, not values, when local but not granted", async () => {
+    const r = await runTool(
+      buildAppTools(deps({ access: { locality: "local", rawGranted: false } })),
+      call("query_data", { entity: "city" }),
+    );
+    expect(r.detail).toMatch(/2 records/);
+    expect(r.detail).not.toContain("Lisbon");
+    expect(r.detail).not.toContain("Porto");
+  });
+
+  // Finding 1: the tool schema is sent to the model up front, before any call happens. If it says
+  // "counts only" while raw records are actually returned, the model is told its input is
+  // pre-sanitized and will treat raw personal data as safe to echo — the privacy boundary failing
+  // in the worst direction.
+  it("query_data's description promises counts-only when raw access is off", () => {
+    const tools = buildAppTools(deps({ access: { locality: "cloud" } }));
+    const spec = tools.find((t) => t.name === "query_data")!;
+    expect(spec.description).toMatch(/counts only|never.*values/i);
+    expect(spec.description).not.toMatch(/actual records|real records/i);
+  });
+
+  it("query_data's description admits real records are returned when raw access is on", () => {
+    const tools = buildAppTools(deps({ access: { locality: "local", rawGranted: true } }));
+    const spec = tools.find((t) => t.name === "query_data")!;
+    expect(spec.description).not.toMatch(/counts only|never.*values/i);
+    expect(spec.description).toMatch(/actual|real/i);
+    expect(spec.description).toMatch(/personal/i);
+  });
+
+  // The invariant this whole module exists to enforce: "cloud + raw" is not a value that can be
+  // constructed. If this line ever compiles, DataAccess has regressed to something that lets a
+  // wiring commit send someone's medications or finances to a third-party model in one bad word.
+  it("cannot express raw access for a cloud engine", () => {
+    // @ts-expect-error — "cloud + raw" is the combination this union exists to forbid. If this line
+    // ever compiles, the invariant has been lost and someone's records can reach a third-party model.
+    const _forbidden: DataAccess = { locality: "cloud", rawGranted: true };
+    void _forbidden;
+  });
+
+  // Finding 3: shapeOf must treat `false` and `0` as SET, not empty. A naive `!v` check would
+  // report both as empty, sending the agent chasing a data problem that does not exist. This is
+  // the test that a regression from `v === null || v === undefined || v === ""` to `!v` would fail:
+  // `!false` and `!0` are both true, so a `!v`-based shapeOf would count these as empty.
+  it("query_data counts false and 0 as set, not empty (guards against a naive falsy check)", async () => {
+    const r = await runTool(
+      buildAppTools(
+        deps({
+          records: async () => [
+            { id: "r1", active: false, count: 0 },
+            { id: "r2", active: true, count: 5 },
+          ],
+        }),
+      ),
+      call("query_data", { entity: "widget" }),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.detail).toMatch(/active: 2 set, 0 empty/);
+    expect(r.detail).toMatch(/count: 2 set, 0 empty/);
+  });
+
+  it("query_data counts a key present on only some rows correctly", async () => {
+    const r = await runTool(
+      buildAppTools(
+        deps({
+          records: async () => [
+            { id: "r1", name: "only-in-first" },
+            { id: "r2" },
+          ],
+        }),
+      ),
+      call("query_data", { entity: "widget" }),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.detail).toMatch(/name: 1 set, 1 empty/);
+  });
+
+  it("query_data reports 0 records for an entity with no records at all", async () => {
+    const r = await runTool(buildAppTools(deps({ records: async () => [] })), call("query_data", { entity: "widget" }));
+    expect(r.ok).toBe(true);
+    expect(r.detail).toMatch(/0 records/);
+  });
+
+  // Finding 2: a store error can quote a row's own value in its message (a failed constraint, a
+  // serialization error naming the offending value). That must not reach the model just because it
+  // arrived via an exception instead of a normal return — the shapes-only default exists precisely
+  // to keep values like these off this path, cloud or not.
+  it("query_data does not leak a record value carried in a thrown store error", async () => {
+    const r = await runTool(
+      buildAppTools(
+        deps({
+          records: async () => {
+            throw new Error('constraint failed on row {"name":"Lisbon","ssn":"123-45-6789"}');
+          },
+        }),
+      ),
+      call("query_data", { entity: "city" }),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.detail).not.toContain("Lisbon");
+    expect(r.detail).not.toContain("123-45-6789");
+    expect(r.detail).not.toContain("constraint failed");
+    expect(r.detail).toMatch(/could not read/i);
+  });
+
+  // Finding 2: a character-offset slice can sever a JSON value mid-string, and the model has no
+  // way to tell "all records" from "a fragment of the last one". Truncation must land on a row
+  // boundary and must always state totals, so the model can trust what it has.
+  describe("raw mode truncation", () => {
+    const manyRows = Array.from({ length: 200 }, (_, i) => ({
+      id: `r${i}`,
+      note: "x".repeat(200),
+    }));
+
+    it("returns valid, parseable JSON even when truncated", async () => {
+      const r = await runTool(
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => manyRows })),
+        call("query_data", { entity: "widget" }),
+      );
+      expect(r.ok).toBe(true);
+      const jsonMatch = r.detail.match(/\[[\s\S]*\]/);
+      expect(jsonMatch).not.toBeNull();
+      expect(() => JSON.parse(jsonMatch![0])).not.toThrow();
+    });
+
+    it("states totals when rows were dropped", async () => {
+      const r = await runTool(
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => manyRows })),
+        call("query_data", { entity: "widget" }),
+      );
+      expect(r.detail).toMatch(/showing \d+ of 200/);
+    });
+
+    it("states nothing was dropped when everything fits", async () => {
+      const smallRows = [{ id: "r1", name: "Lisbon" }, { id: "r2", name: "Porto" }];
+      const r = await runTool(
+        buildAppTools(deps({ access: { locality: "local", rawGranted: true }, records: async () => smallRows })),
+        call("query_data", { entity: "widget" }),
+      );
+      expect(r.detail).toMatch(/showing 2 of 2/);
+    });
+  });
+});

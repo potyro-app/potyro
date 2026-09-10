@@ -3,12 +3,20 @@
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { ActivityItem, KartaRuntime } from "@karta/runtime";
+import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
 import { RecordForm, ViewHost, createDefaults } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
+import { CaseRecorder } from "./case-recorder.js";
+import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
+import { CaseReport } from "./case-report.js";
+import { FixPanel } from "./fix-panel.js";
+import { startFix } from "./start-fix.js";
+import { canInvestigate, engineLabel } from "./engines.js";
+import { useEngineConfig } from "./engine-store.js";
+import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
 import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
@@ -19,12 +27,9 @@ import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user
 import {
   SYSTEM_PROMPT,
   buildModifyMessage,
-  buildRepairMessage,
-  extractSource,
-  looksLikeApp,
-  parseModifyReply,
+  buildRepairInstruction,
+  guardedModify,
   type ModifyContext,
-  type ModifyReply,
 } from "@karta/generator/backends";
 import { VIEW_FIELDS, PAGE_FIELDS } from "karta";
 import { listVersions } from "./app-history.js";
@@ -32,10 +37,11 @@ import { listDiagnoses, recordDiagnosis } from "./app-diagnoses.js";
 import { StructurePanel } from "./structure-panel.js";
 import type { Edit } from "./app-source.js";
 import type { StructureTarget } from "./structure-panel.js";
-import { buildAndValidate } from "./validate-app.js";
+import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import type { NavHost } from "./nav-host.js";
+import { ViewErrorBoundary } from "./view-error-boundary.js";
 
 import { canGenerate, generateViaCli } from "./generate-client.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
@@ -134,13 +140,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   // Nav model: a grid "home" of object types, or a tab bar. Default: grid for many objects, tabs few.
   const navMode: "grid" | "tabs" = (def as { nav?: "grid" | "tabs" }).nav ?? (baseEntities.length >= 3 ? "grid" : "tabs");
 
+  // The same "first tab, or home" landing spot used to pick an opening page, reused as the crash
+  // boundary's escape hatch (ViewErrorBoundary below) — a page guaranteed to be real, since it comes
+  // from the app's own declared pages rather than wherever `navigate` was just headed.
+  const landingPage = (): string => (navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id));
+
   const [pageId, setPageId] = useState<string>(() => {
     // READ ONLY. Clearing it here would make this initialiser impure, and StrictMode double-invokes
     // initialisers on purpose — the second call would find nothing and fall back to the first tab,
     // which is exactly how "come back to the page you were on" silently did nothing.
     const returning = globalThis.sessionStorage?.getItem(RETURN_TO_PAGE);
     if (returning && (returning === HOME || def.pages.some((p) => p.id === returning))) return returning;
-    return navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id);
+    return landingPage();
   });
   // Consumed once, after mount, so it can't affect a later boot.
   useEffect(() => {
@@ -167,16 +178,251 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   const setParam = (key: string, value: unknown): void =>
     setParamsByPage((prev) => ({ ...prev, [pageId]: { ...(prev[pageId] ?? {}), [key]: value } }));
 
-  const navigate = (target: string, param?: Record<string, string>): void => {
+  // Holds the case being recorded, if any. One per mounted app instance — see case-recorder.ts for
+  // why `navigate` below, and not `createNavBridge`, is where it has to be wrapped.
+  const recorder = useRef(new CaseRecorder());
+  // Mirrors `recorder.current.recording` in React state: the recorder is a plain class field, so
+  // mutating it alone (start/stop) would never trigger a re-render — the "Something's wrong" button
+  // would keep showing after a click until some unrelated state change happened to repaint it.
+  const [recording, setRecording] = useState(false);
+
+  /**
+   * While recording, look at what the page ACTUALLY RENDERED once it has had time to settle, and
+   * attach it to the step that navigated here.
+   *
+   * This exists because the first person to use this feature hit a map stuck on "Loading…" forever,
+   * and the whole system told them it could not reproduce the problem. It could not: replay checked
+   * that the page resolved and its query ran, and had no idea what was on screen. Everything
+   * reported ok while they were looking at a hung view.
+   *
+   * SETTLE_MS is the entire subtlety. Observe immediately and every page is mid-render, so all of
+   * them look broken; observe never and a hung view is indistinguishable from a working one. Waiting
+   * first makes `loading: true` mean "it never finished", which is the fact worth recording.
+   */
+  useEffect(() => {
+    if (!recording) return;
+    const SETTLE_MS = 1200;
+    const t = setTimeout(() => {
+      const main = document.querySelector(".k-main");
+      if (!main) return;
+      recorder.current.observe({
+        loading: Boolean(main.querySelector(".k-loading")),
+        text: (main.textContent ?? "").trim(),
+      });
+    }, SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [recording, pageId, params]);
+  const [noting, setNoting] = useState(false);
+  /** Whether this recording has an expectation yet — the only thing that ever says what the person
+   *  expected, since a case's title is always "". Gates Stop; see `onStopRecording`. */
+  const [noted, setNoted] = useState(false);
+  /** Set when Stop opened the note prompt, so saving the note finishes the stop the person asked
+   *  for instead of silently dropping it. */
+  const stopAfterNote = useRef(false);
+  const [noteText, setNoteText] = useState("");
+  // `theCase` rides along with its own report so "Fix this" has the actual recording to hand
+  // `startFix` — the report alone (what replay found) isn't enough; the loop needs the steps
+  // themselves to replay again against a candidate.
+  const [caseReport, setCaseReport] = useState<{ report: ReplayReport; lostSteps: number; theCase: Case } | null>(null);
+
+  // --- Fix this: investigate a reported case with the agent, and watch it work (start-fix.ts) ----
+  // Which engine answers is read from the SAME store Studio's Model settings write to (engine-
+  // store.ts) — there is exactly one picker for "which model am I using", and this is the second
+  // reader of it, not a second one.
+  const [engineCfg] = useEngineConfig();
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixSteps, setFixSteps] = useState<LoopStep[]>([]);
+  const [fixOutcome, setFixOutcome] = useState<LoopOutcome | undefined>(undefined);
+  const fixAbort = useRef<AbortController | null>(null);
+  // Bumped by `openFix` (and on unmount, below). `runFix` captures the value current at call time and
+  // every write it schedules — `onStep` and the `.then(setFixOutcome)` — compares against it first.
+  // Without this, closing (or Stop) only REQUESTS an abort; the in-flight `startFix` promise keeps
+  // running, and an impatient second "Fix this" click starts a new run before the old one lands. The
+  // old run's closures are still bound to `setFixOutcome`/`setFixSteps` and would otherwise overwrite
+  // the new run's outcome and splice a stray step into its feed — same shape of bug `loadActivity`'s
+  // `alive` flag guards against above, generalized to a counter because more than one stale run can
+  // be superseded in sequence.
+  const fixRunId = useRef(0);
+
+  /** Only apps you can actually change afterwards — the same requirement Edit mode already has
+   *  (`canEdit` below): a builtin example has no source in "My Apps" to edit or re-save. */
+  const canFix = Boolean(appId && currentKind === "user");
+
+  /** One run of the loop, optionally resuming a `question` with the transcript it handed back plus
+   *  the person's answer appended (see `LoopDeps.resumeFrom`'s own doc comment for why that seeds
+   *  `messages` instead of starting over). */
+  const runFix = (resumeFrom?: LoopDeps["resumeFrom"]): void => {
+    if (!appId || !caseReport) return;
+    const source = getUserApp(appId)?.source;
+    if (!source) return;
+    const controller = new AbortController();
+    fixAbort.current = controller;
+    // Captured now, not read fresh later: this is what lets a superseded run's own callbacks tell
+    // themselves apart from the run that's current by the time they actually fire.
+    const runId = fixRunId.current;
+    setFixOutcome(undefined);
+    void startFix({
+      source,
+      theCase: caseReport.theCase,
+      runtime,
+      store: runtime.core.store,
+      engine: engineCfg,
+      onStep: (step) => {
+        if (fixRunId.current !== runId) return; // a superseded run's step; the panel moved on
+        setFixSteps((prev) => [...prev, step]);
+      },
+      signal: controller.signal,
+      resumeFrom,
+    }).then((outcome) => {
+      if (fixRunId.current !== runId) return; // a superseded run's outcome; do not overwrite the current one
+      setFixOutcome(outcome);
+    });
+  };
+
+  const openFix = (): void => {
+    fixRunId.current += 1;
+    setFixSteps([]);
+    setFixOpen(true);
+    runFix();
+  };
+
+  const answerFix = (text: string): void => {
+    if (!fixOutcome || fixOutcome.kind !== "question") return;
+    runFix([...fixOutcome.transcript, { role: "user", content: text }]);
+  };
+
+  /**
+   * Apply the ONE thing this whole feature exists to make safe to apply: `fix.source`, the
+   * candidate that replayed the user's own recorded case and passed (loop.ts's THE RULE). Saved the
+   * same way an AI edit is (`origin: "edited"`), with the loop's own `rationale` riding along so
+   * History reads the same as any other agent change — see `applyModify` above for the sibling path.
+   *
+   * `note` is `caseLabel(theCase)` — the case's own title, else the person's own recorded
+   * expectation, else its id (app-cases.ts, shared with Studio's case list so the two surfaces agree
+   * on what "this case" is called). NOT a description of what the agent did — that is `rationale`.
+   * History's whole point is legibility later: "Fixed a reported case" would read the same on every
+   * row forever, telling a future you nothing about which report this was answering.
+   */
+  const applyFix = (source: string): void => {
+    if (!appId || !caseReport) return;
+    const app = getUserApp(appId);
+    if (!app) return;
+    const rationale = fixOutcome?.kind === "fix" ? fixOutcome.rationale : undefined;
+    void saveUserApp(
+      { id: appId, name: app.name, source, origin: "edited", note: caseLabel(caseReport.theCase), rationale },
+      new Date().toISOString(),
+    ).then(() => location.reload());
+  };
+
+  const closeFix = (): void => {
+    fixAbort.current?.abort();
+    fixAbort.current = null;
+    setFixOpen(false);
+    setFixSteps([]);
+    setFixOutcome(undefined);
+  };
+
+  // Defensive, not live: today `App` is mounted exactly once by `main.tsx`'s `boot()`, page-to-page
+  // navigation is a full reload rather than a client-side unmount, and Studio's `<App key=
+  // {preview.build}>` remount never receives an `appId` (so "Fix this" can't even appear there) — so
+  // this cleanup can't currently run while a fix is in flight. It stays anyway, matching the
+  // `loadActivity` `alive`-flag idiom above, so a future mount-topology change (SPA routing, or the
+  // Studio preview one day getting an `appId`) doesn't reopen this as a live leak: bump the run id so
+  // any settling `startFix` promise is ignored by the guards in `runFix`, and abort so the loop
+  // actually stops instead of running to completion for nobody.
+  useEffect(() => {
+    return () => {
+      fixRunId.current += 1;
+      fixAbort.current?.abort();
+    };
+  }, []);
+
+  const navigateRaw = (target: string, param?: Record<string, string>): void => {
     setPageId(target);
     if (param) setParamsByPage((prev) => ({ ...prev, [target]: { ...(prev[target] ?? {}), ...param } }));
   };
+  // Both a tap (passed to views as `navigate`) and `ctx.navigate` (via navHost) come through here,
+  // so this is the only place that sees everything a person actually did.
+  const navigate = recorder.current.wrapNav(navigateRaw);
 
   // `ctx.navigate` from an action lands here. Bound through a ref so the binding survives re-renders
   // without re-registering on every one.
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   useEffect(() => navHost?.bind((page, param) => navigateRef.current(page, param)), [navHost]);
+
+  const startRecording = (): void => {
+    // Recording is keyed by appId (app-cases.ts filters on it), so there is nothing meaningful to
+    // record without one — the button is hidden in that case (see the header below).
+    if (!appId) return;
+    recorder.current.start(appId, "");
+    setRecording(true);
+    setNoted(false);
+  };
+
+  const saveNote = (): void => {
+    recorder.current.note(noteText);
+    setNoteText("");
+    setNoting(false);
+    setNoted(true);
+    // Stop was what asked for this note — finish the stop the person already requested rather than
+    // making them press it a second time.
+    if (stopAfterNote.current) {
+      stopAfterNote.current = false;
+      void finishStop();
+    }
+  };
+
+  /**
+   * Stop, save the case, then replay it against THIS runtime's real data and show what happened.
+   *
+   * Replay only ever reads (`query`), never `runAction` — an action step would otherwise mutate the
+   * very records the report is about, corrupting the evidence the user just handed over. Cases with
+   * an action step report "cannot run action — no action runner" rather than touching live data.
+   *
+   * The report is computed and shown REGARDLESS of whether `saveCase` persisted anything — replay
+   * runs against the in-memory `Case` the recorder just handed back, not the store, so a save
+   * failure (network hiccup, quota, OPFS not ready) must not cost the user the report they are
+   * about to see. `saveCase` itself never throws (see app-cases.ts), but the ordering here doesn't
+   * depend on that fact holding forever.
+   */
+  const onStopRecording = async (): Promise<void> => {
+    // ASK FOR THE NOTE HERE, not after the fact. A case's title is always "" (startRecording above),
+    // so the note is the ONLY thing that ever says what the person expected — and without it there
+    // is literally nothing for an agent to investigate. Letting the recording be saved anyway
+    // produced the worst possible sequence: record, get a report, press "Fix this", and only THEN
+    // be told the recording was useless, with the work already done and the moment passed. The
+    // person is here now; ask now.
+    if (!noted) {
+      stopAfterNote.current = true;
+      setNoting(true);
+      return;
+    }
+    await finishStop();
+  };
+
+  const finishStop = async (): Promise<void> => {
+    const c = recorder.current.stop();
+    const lostSteps = recorder.current.lost;
+    setRecording(false);
+    if (!c) return;
+    // A case with nothing but `expect` notes has no step replay can act on — its outcomes list
+    // would be empty, and an empty list reads as a pass forever (replayPassed's own guard exists
+    // because of exactly this). Saving it would leave a case that reports success with nothing
+    // ever having been recorded, which is worse than not saving at all.
+    if (!hasRecordedActivity(c)) {
+      toaster.push("Nothing was recorded — navigate the app or run an action before stopping.");
+      return;
+    }
+    await saveCase(c);
+    const target: ReplayTarget = {
+      definition: runtime.definition,
+      // `queryPage` (not `ctx.query`) so replay sees what the person actually saw — the page's own
+      // filter, sort and display bindings — not an unfiltered dump of the entity.
+      query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,
+    };
+    setCaseReport({ report: await replayCase(target, c), lostSteps, theCase: c });
+  };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
   // Placing a point on the map opens the create form already carrying it.
@@ -379,21 +625,51 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       onProgress: (s) => setModifyProgress(`Working… ${s}s`),
     });
 
-  /** An edit round, which may legitimately come back as "this isn't the app's to fix". */
-  const runModify = async (currentSource: string, instruction: string, ctx: ModifyContext): Promise<ModifyReply> =>
-    parseModifyReply(await askAgent(currentSource, buildModifyMessage(instruction, ctx)));
+  /** An edit round: the model sends SEARCH/REPLACE edits, `guardedModify` applies them, and it may
+   *  legitimately come back as "this isn't the app's to fix". */
+  const runModify = (currentSource: string, instruction: string, ctx: ModifyContext) =>
+    guardedModify({
+      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr, ctx)),
+      shapeOf: loadDefinition,
+      before: { pages: def.pages, entities: def.entities },
+      instruction,
+      source: currentSource,
+    });
 
-  /** A repair round answers "your output didn't compile" — a diagnosis is not a legal reply here. */
-  const runRepair = async (currentSource: string, issues: string[]): Promise<string> =>
-    extractSource(await askAgent(currentSource, buildRepairMessage(issues)));
+  /** A repair round, through the same gate as the edit. A diagnosis or a failure here is an error
+   *  (there is nothing to save), never a version. */
+  const runRepair = async (currentSource: string, issues: string[]): Promise<string> => {
+    // Judged against the source being REPAIRED, not the app as it was before the modify. `def` is the
+    // running app — pre-modify — so a repair that deletes a page the modify had just added would
+    // compare clean against it, report no loss, and get saved. The Studio's `shapeOrEmpty` does the
+    // same thing for the same reason; a source that does not load has no shape to lose, so an empty
+    // shape stands in rather than failing the whole repair.
+    const before = await loadDefinition(currentSource).then(
+      (d) => ({ pages: d.pages, entities: d.entities }),
+      () => ({ pages: [], entities: {} }),
+    );
+    const result = await guardedModify({
+      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr)),
+      shapeOf: loadDefinition,
+      before,
+      instruction: buildRepairInstruction(issues),
+      source: currentSource,
+    });
+    if (result.kind === "diagnosis") throw new Error(`Nothing was saved — the repair was declined: ${result.text}`);
+    if (result.kind === "failed") throw new Error(`Nothing was saved — the repair could not be applied: ${result.reason}`);
+    if (result.loss !== null) {
+      throw new Error(`Nothing was saved — the repair rewrote the app rather than editing it: it ${result.loss}`);
+    }
+    return result.source;
+  };
 
   /**
    * Save a direct structural edit. No model, no repair round.
    *
    * It is still validated and still written as a version — a change you made by hand deserves the
    * same audit trail and the same way back as one the agent made. It is recorded as `adjusted`
-   * rather than `edited` so History can tell them apart: an agent edit is a whole-file rewrite,
-   * this one only touched declarative data.
+   * rather than `edited` so History can tell them apart: an agent edit goes through the model and
+   * may touch functions, this one only touched declarative data.
    */
   const applyStructuralEdit = async (_edit: Edit, next: string, note: string): Promise<void> => {
     setModifyApplied(note);
@@ -455,8 +731,28 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // would be recording an edit that was deliberately not made, and would feed the next prompt a
       // source change that never happened.
       if (reply.kind === "diagnosis") {
-        await recordDiagnosis(appId, { complaint: instruction, text: reply.text, target: modifyTarget }, new Date().toISOString());
+        // Only an unprompted verdict is recorded: one reached after "your previous attempt removed X"
+        // is a retreat under pressure, and recording it would feed it to every later prompt as fact.
+        if (!reply.trace.noMatchRetry && !reply.trace.lossRetry) {
+          await recordDiagnosis(appId, { complaint: instruction, text: reply.text, target: modifyTarget }, new Date().toISOString());
+        }
         setModifyDiagnosis(reply.text);
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
+      // Say what went wrong in words: an edit that did not match twice, or prose instead of a change.
+      if (reply.kind === "failed") {
+        setModifyError(`Nothing was changed — ${reply.reason}`);
+        setModifyBusy(false);
+        setModifyProgress(null);
+        return;
+      }
+      // Edit mode SAVES on success, so a result that still drops part of the app after the retry
+      // must not get that far. The Studio can show such a result because nothing is saved until
+      // the person clicks Save; here the person would find out from a missing page.
+      if (reply.loss !== null) {
+        setModifyError(`Nothing was saved — this change rewrote the app rather than editing it: it ${reply.loss}. Try a smaller, more specific change.`);
         setModifyBusy(false);
         setModifyProgress(null);
         return;
@@ -465,21 +761,22 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // Validate the edited app the same way the Studio does; auto-repair once so Edit mode can't
       // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
       let next = reply.source;
-      // Say what went wrong in words. When extraction fails, `next` is the model's prose, and
-      // bundling it produces a syntax error partway through an English sentence — which tells the
-      // person nothing and sent one real user round in circles.
-      if (!looksLikeApp(next)) {
-        setModifyError(
-          "The agent replied with an explanation instead of an app, so nothing was changed. Try asking again, more specifically.",
-        );
-        setModifyBusy(false);
-        setModifyProgress(null);
-        return;
-      }
       const issues = await buildAndValidate(next);
-      if (issues.length) next = await runRepair(next, issues);
+      if (issues.length) {
+        setModifyProgress("Fixing structure… (one more round, up to three calls)");
+        next = await runRepair(next, issues);
+        // Re-validate. Before this, whatever the repair returned was saved — a second slip reached
+        // the person as broken UI with a History entry that looked like a successful edit.
+        const still = await buildAndValidate(next);
+        if (still.length) {
+          setModifyError(`Nothing was saved — the change did not validate even after a repair: ${still[0]}`);
+          setModifyBusy(false);
+          setModifyProgress(null);
+          return;
+        }
+      }
 
-      // Will two people survive this edit? An AI edit rewrites the whole module, and the way this
+      // Will two people survive this edit? An AI edit can change any function in the module, and the way this
       // breaks is silent: the app still parses, still validates, still works alone (KA-38). This is
       // the only gate that can see it. Reported, never blocking — plenty of apps are never shared,
       // and an unsafe reorder is still fine for one person.
@@ -550,6 +847,20 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
           )}
           <SyncStatus sync={sync} />
+          {appId ? (
+            <div className="k-case-controls">
+              {recording ? (
+                <>
+                  <button type="button" className="k-add" onClick={() => void onStopRecording()}>Stop recording</button>
+                  <button type="button" className="k-add" onClick={() => setNoting(true)}>Add a note</button>
+                </>
+              ) : (
+                <button type="button" className="k-add" onClick={startRecording}>
+                  Something&apos;s wrong
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="k-header-actions">
           {generator ? (
@@ -641,9 +952,15 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       ) : null}
 
       <nav className="k-nav" aria-label="Pages">
+        {/* THROUGH `navigate`, NOT `setPageId`. These are the app's own chrome, and they were
+            calling setPageId directly — so the recorder, which taps `navigate`, never saw a tab
+            click. Clicking a tab is the most ordinary way anyone moves around an app, so most
+            recordings captured nothing at all and reported "nothing was recorded". Same mistake as
+            wrapping the nav bridge instead of `navigate`: the choke point is only a choke point if
+            EVERY path actually goes through it. */}
         {editMark("the navigation / tabs", "nav")}
         {navMode === "grid" ? (
-          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => setPageId(HOME)}>
+          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => navigate(HOME)}>
             ⊞ Home
           </button>
         ) : null}
@@ -653,7 +970,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             type="button"
             className="k-tab"
             data-active={p.id === pageId}
-            onClick={() => setPageId(p.id)}
+            onClick={() => navigate(p.id)}
           >
             {p.title}
           </button>
@@ -674,14 +991,18 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
                   pageId={lp.id}
                   label={entityLabel(e)}
                   icon={def.entities[e]?.icon ?? "◇"}
-                  onOpen={() => setPageId(lp.id)}
+                  onOpen={() => navigate(lp.id)}
                 />
               );
             })}
           </div>
         </main>
       ) : (
-        <>
+        // `key={pageId}`: a fresh boundary per page, not a stuck one — navigating away from a page
+        // that crashed (the fallback's own "Back to a working page" button, or any other nav) mounts
+        // a clean boundary for wherever you land, instead of carrying yesterday's error state into a
+        // page that never had a problem.
+        <ViewErrorBoundary key={pageId} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
           <main className="k-main">
@@ -710,7 +1031,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               />
             ) : null}
           </main>
-        </>
+        </ViewErrorBoundary>
       )}
 
       {editor ? (
@@ -788,8 +1109,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             <h3>Change {modifyTarget}</h3>
 
             {/* Direct controls first, the agent second. A label, a field's order and whether a field
-                shows in the form are declarative data — they need no model, and asking one to change
-                a string means it rewrites the whole file, functions included. */}
+                shows in the form are declarative data — they need no model, and a model round trip for a
+                string is slower and can still go wrong. */}
             {modifySource ? (
               <StructurePanel
                 source={modifySource}
@@ -893,6 +1214,52 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
       {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
+
+      {noting ? (
+        <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
+          <div className="k-modal k-case-note" onClick={(e) => e.stopPropagation()}>
+            <h3>What did you expect?</h3>
+            <textarea
+              className="k-input"
+              aria-label="What did you expect?"
+              rows={3}
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+            />
+            <div className="k-form-actions">
+              <button type="button" className="k-add" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>Cancel</button>
+              <button type="button" className="k-add k-primary-action" onClick={saveNote}>Save note</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {caseReport ? (
+        <div className="k-case-and-fix">
+          <CaseReport report={caseReport.report} lostSteps={caseReport.lostSteps} onClose={() => setCaseReport(null)} />
+          {canFix ? (
+            <div className="k-fix-entry">
+              {canInvestigate(engineCfg.engine) ? (
+                <button type="button" className="k-add k-primary-action" disabled={fixOpen} onClick={openFix}>
+                  Fix this
+                </button>
+              ) : (
+                // The friendlier half of the same fact `startFix` itself refuses on: a dead button
+                // would say nothing about WHY, and this is the reason before you've spent a click.
+                <p className="k-muted k-fix-entry-reason">
+                  {engineLabel(engineCfg)} can&rsquo;t investigate this step by step — pick a cloud
+                  engine, like OpenRouter, in the Studio&rsquo;s Model settings to use Fix this.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {fixOpen ? (
+        <FixPanel outcome={fixOutcome} steps={fixSteps} onApply={applyFix} onAnswer={answerFix} onStop={() => fixAbort.current?.abort()} onClose={closeFix} />
+      ) : null}
 
       {picker ? <Picker host={picker} /> : null}
       <Toasts toaster={toaster} />

@@ -14,14 +14,25 @@ export {
   type MessageResponse,
 } from "./claude-backend.js";
 export {
-  WebLLMBackend,
-  createWebLLMBackend,
-  WEBLLM_MODELS,
+  ChatBackend,
   type ChatEngine,
+  type ChatMessage,
   type ChatRequest,
   type ChatResponse,
-  type WebLLMModel,
-} from "./webllm-backend.js";
+} from "./chat-backend.js";
+export { WebLLMBackend, createWebLLMBackend, WEBLLM_MODELS, type WebLLMModel } from "./webllm-backend.js";
+export {
+  OpenRouterBackend,
+  createOpenRouterBackend,
+  createOpenRouterEngine,
+  OPENROUTER_MODELS,
+  type FetchLike,
+  type OpenRouterModel,
+  type OpenRouterOptions,
+  type ProviderOptions,
+  type ReasoningEffort,
+  type ReasoningOptions,
+} from "./openrouter-backend.js";
 export {
   GeminiNanoBackend,
   createGeminiNanoBackend,

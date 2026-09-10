@@ -43,10 +43,10 @@ test("the Studio generates an app end to end, surviving a long run", async ({ pa
     .getByRole("textbox", { name: "Describe the app" })
     .fill("a list of places I like in a city, shown on a map, each with a type and tags");
 
-  await studio.getByRole("button", { name: /claude -p/ }).click();
+  await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
 
   // Progress must appear — a silent multi-minute wait is what made this feel broken.
-  await expect(studio.getByText(/Generating…/)).toBeVisible({ timeout: 30_000 });
+  await expect(studio.getByText(/Generating via claude -p… \d+s/)).toBeVisible({ timeout: 30_000 });
 
   // The generated app replaces the starter in the live preview.
   const preview = studio.locator(".k-studio-preview");

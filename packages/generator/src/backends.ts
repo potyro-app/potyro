@@ -5,10 +5,21 @@
 
 export type { GenPrompt, ModelBackend } from "./backend.js";
 export { FixtureBackend } from "./backend.js";
-export { SYSTEM_PROMPT, buildUserMessage, buildRepairMessage, buildModifyMessage, extractSource, looksLikeApp, parseModifyReply, NOT_IN_APP } from "./prompt.js";
+export { SYSTEM_PROMPT, buildUserMessage, buildRepairMessage, buildRepairInstruction, buildModifyMessage, extractSource, looksLikeApp, parseModifyReply, NOT_IN_APP } from "./prompt.js";
 export type { ModifyContext, ModifyReply } from "./prompt.js";
 export { ClaudeBackend, createClaudeBackend, type MessagesClient } from "./claude-backend.js";
 export { WebLLMBackend, createWebLLMBackend, WEBLLM_MODELS, type ChatEngine, type WebLLMModel } from "./webllm-backend.js";
+export {
+  OpenRouterBackend,
+  createOpenRouterBackend,
+  createOpenRouterEngine,
+  OPENROUTER_MODELS,
+  type OpenRouterModel,
+  type OpenRouterOptions,
+  type ProviderOptions,
+  type ReasoningEffort,
+  type ReasoningOptions,
+} from "./openrouter-backend.js";
 export {
   GeminiNanoBackend,
   createGeminiNanoBackend,
@@ -33,3 +44,26 @@ export {
 } from "./concurrency-smoke.js";
 export { seedRecords } from "./smoke.js";
 
+
+export {
+  guardedModify,
+  readModifyReply,
+  readEditsOrFile,
+  retryInstruction,
+  noMatchInstruction,
+  type GuardedModifyDeps,
+  type GuardedModifyResult,
+  type ModifyTrace,
+  type ReadReply,
+} from "./guarded-modify.js";
+export {
+  parseEdits,
+  applyEdits,
+  describeEditFailures,
+  EDIT_FORMAT,
+  EDIT_PLACEHOLDER_SEARCH,
+  EDIT_PLACEHOLDER_REPLACE,
+  type SearchReplace,
+  type EditFailure,
+  type ApplyResult,
+} from "./edits.js";

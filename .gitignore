@@ -23,3 +23,4 @@ packages/generator/eval-out/
 
 # local sync relay database
 .karta-relay.sqlite*
+packages/generator/.karta-eval-*/

@@ -47,6 +47,33 @@ async function stubAgent(page: Page, reply: string): Promise<string[]> {
   return prompts;
 }
 
+/** Like `stubAgent`, but hands back each scripted reply in the order its generation was
+ *  requested — for a flow that makes more than one agent call (an edit, then its repair). Each
+ *  POST gets its own job id, and the GET that polls that id is answered from `replies` by index,
+ *  so a repair's reply can never be served to the edit that came before it. */
+async function stubAgentSequence(page: Page, replies: string[]): Promise<string[]> {
+  const prompts: string[] = [];
+  await page.route("**/__generate**", async (route) => {
+    const req = route.request();
+    if (req.method() === "POST") {
+      prompts.push((req.postDataJSON() as { prompt: string }).prompt);
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: `job-${prompts.length}` }) });
+      return;
+    }
+    const id = new URL(req.url()).searchParams.get("id") ?? "";
+    const index = Number(id.replace("job-", "")) - 1;
+    if (index >= replies.length) {
+      // A call the test didn't script — fail loudly rather than serving stale/empty text, so an
+      // unexpected extra model call (a regression that retries when it shouldn't) is diagnosable
+      // instead of masquerading as some other assertion failing downstream.
+      await route.fulfill({ status: 500, contentType: "text/plain", body: "stub ran out of scripted replies" });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "done", text: replies[index] }) });
+  });
+  return prompts;
+}
+
 async function seedApp(page: Page): Promise<void> {
   // Seed once, not on every navigation: Edit mode reloads the page after saving, and re-seeding
   // there would overwrite the very edit under test with the original source.
@@ -124,6 +151,58 @@ test("the diagnosis is remembered, and the next attempt is told about it", async
   expect(prompts[1]).toContain("built-in map view");
 });
 
+// The same real app-level change, arriving in the shape the contract asks for: prose plus ONE
+// SEARCH/REPLACE block. Edit mode has to apply it to the FILE — substituting the lines the model
+// named and leaving every other line exactly as it was, which is the whole point of edits.
+test("an edit-block reply is applied to the file, not the whole file", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  const PLACE_LINE = APP_SOURCE.split("\n")[8]!;
+  expect(PAGES_LINE).toContain('title: "Map"'); // the fixture still looks the way this edit expects
+  expect(PLACE_LINE).toContain("place: {");
+  await stubAgent(
+    page,
+    [
+      "I renamed the page.",
+      "```ts",
+      "<<<<<<< SEARCH",
+      PAGES_LINE,
+      "=======",
+      PAGES_LINE.replace('title: "Map"', 'title: "Where I have been"'),
+      ">>>>>>> REPLACE",
+      "```",
+    ].join("\n"),
+  );
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "call the page Where I have been");
+
+  // Same route as the whole-file test below: Edit mode reloads once the version is saved.
+  const savedSource = () =>
+    page
+      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
+      .catch(() => "");
+  await expect.poll(savedSource, { timeout: 30_000 }).toContain('title: "Where I have been"');
+
+  // Then wait for the reload to land before reading once, unguarded. The poll above is satisfied the
+  // instant `saveUserApp` writes localStorage — which `applyModify` does just BEFORE calling
+  // `location.reload()` — so a plain read straight after it lands inside the reload window, and
+  // `page.evaluate` throws there. `savedSource`'s `.catch(() => "")` is right for a poll (an empty
+  // result just retries) and wrong for a one-shot read: it turned that navigation race into `""`,
+  // failing the line below with a whole-source diff against an empty string. That is the flake seen
+  // once under a loaded full-suite run and never when this spec ran alone.
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0, { timeout: 30_000 });
+  const saved = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
+  // The proof that this was an EDIT and not a rewrite: the untouched lines are byte-identical, and
+  // only the one line the model named differs.
+  expect(saved).toContain(PLACE_LINE);
+  expect(saved).not.toContain('title: "Map"');
+  expect(saved).toBe(APP_SOURCE.replace('title: "Map"', 'title: "Where I have been"'));
+});
+
 test("a real app-level change still applies, and its reasoning is kept out of the source", async ({ page }) => {
   await seedApp(page);
   const edited = APP_SOURCE.replace('title: "name"', 'title: "name", camera: "fit"');
@@ -156,4 +235,93 @@ test("a real app-level change still applies, and its reasoning is kept out of th
     () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
   );
   expect(saved).not.toContain("always frame the pins");
+});
+
+// Edit mode's repair round now goes through the SAME gate as the edit itself (guardedModify), not a
+// second whole-file round trip — see runRepair in App.tsx. What has to hold:
+//
+//   - a repair that fixes the structure is applied and saved, same as any other edit
+//   - a repair that DOESN'T fix it saves nothing — never a broken app with a History entry that
+//     looks like a successful one
+test("an edit that does not validate is repaired with a second edit, then saved", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  expect(PAGES_LINE).toContain('type: "map"'); // the fixture still looks the way this edit expects
+  const BROKEN_LINE = PAGES_LINE.replace('type: "map"', 'type: "lisst"');
+
+  const prompts = await stubAgentSequence(page, [
+    // The edit: a typo'd view type — this is what makes the app fail structure validation.
+    ["I set the view type.", "```ts", "<<<<<<< SEARCH", PAGES_LINE, "=======", BROKEN_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+    // The repair: the exact inverse edit, so the saved app comes back byte-identical to the original.
+    ["Fixing the typo.", "```ts", "<<<<<<< SEARCH", BROKEN_LINE, "=======", PAGES_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+  ]);
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "change the view type");
+
+  // Wait on the things that only happen once the repaired app is SAVED: the dialog goes away with
+  // the reload Edit mode does after saving, and a version appears in History. The byte-equality
+  // check cannot stand in for that wait — the seed IS `APP_SOURCE`, so a poll for it is satisfied
+  // before the edit has even been requested, and the test would pass with the repair round broken.
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0, { timeout: 30_000 });
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".k-timeline-entry")).not.toHaveCount(0, { timeout: 30_000 });
+  await page.getByRole("button", { name: "Close history" }).click();
+
+  // Only now is the stored source worth reading: the two edits cancel, so what got saved is exactly
+  // what was there before either one ran — read fresh, the way the "saves nothing" test does.
+  const stored = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
+  expect(stored).toBe(APP_SOURCE);
+
+  // Two agent calls happened — the edit, then the repair — and the repair prompt is the validator's
+  // own words, not a rewritten whole-file request.
+  expect(prompts).toHaveLength(2);
+  expect(prompts[1]).toContain("Fix exactly these problems");
+  // The validator's message names the PATH, not the bad value (`pages.N.view.type: Invalid
+  // discriminator value. Expected …`) — so this checks for the path segment, not the literal "lisst".
+  expect(prompts[1]).toContain("view.type");
+});
+
+test("a repair that still does not validate saves nothing", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  expect(PAGES_LINE).toContain('type: "map"');
+  const BROKEN_LINE = PAGES_LINE.replace('type: "map"', 'type: "lisst"');
+  // The repair changes something real, but never touches the typo it was asked to fix.
+  const STILL_BROKEN_LINE = BROKEN_LINE.replace('title: "Map"', 'title: "Somewhere"');
+
+  const prompts = await stubAgentSequence(page, [
+    ["I set the view type.", "```ts", "<<<<<<< SEARCH", PAGES_LINE, "=======", BROKEN_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+    ["I renamed the page instead.", "```ts", "<<<<<<< SEARCH", BROKEN_LINE, "=======", STILL_BROKEN_LINE, ">>>>>>> REPLACE", "```"].join(
+      "\n",
+    ),
+  ]);
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "change the view type");
+
+  const error = page.locator(".k-form-error");
+  await expect(error).toBeVisible({ timeout: 30_000 });
+  await expect(error).toContainText(/^Nothing was saved/);
+
+  // The repair round actually ran — not skipped, with some other look-alike "Nothing was saved"
+  // error standing in for it undetected.
+  expect(prompts).toHaveLength(2);
+  expect(prompts[1]).toContain("Fix exactly these problems");
+
+  // Still on the broken-attempt app: no version was appended…
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".k-timeline-entry")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close history" }).click();
+
+  // …and the source on disk is untouched, byte for byte.
+  const stored = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
+  expect(stored).toBe(APP_SOURCE);
 });
