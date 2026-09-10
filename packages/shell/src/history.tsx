@@ -1,7 +1,8 @@
 // History panel — what the agent changed, and the way back.
 //
-// An AI edit rewrites the whole app module, so "what changed?" is only answerable by diffing against
-// the previous source. This panel lists an app's versions newest-first with the instruction that
+// An AI edit can touch any part of the app module, and the instruction that asked for it says what
+// was wanted rather than what arrived — so "what changed?" is only answerable by diffing against the
+// previous source. This panel lists an app's versions newest-first with the instruction that
 // produced each one, shows the diff of a version against its parent (or against what is running
 // now), and restores any of them.
 //
