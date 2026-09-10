@@ -117,6 +117,10 @@ export interface LoopDeps {
    * reproduce"), and THE RULE is untouched — `kind: "fix"` still comes only from the one `return`
    * guarded by an awaited, passing `deps.verify(candidate)`. Resuming changes what the model sees;
    * it does not change what it takes to be believed.
+   *
+   * A transcript passed here must carry the app in its opening user turn (this loop always writes
+   * it there); edits are applied to `source`, so a synthesized transcript that never showed the
+   * model the app gives it a file it has not seen.
    */
   resumeFrom?: ChatMessage[];
   maxSteps?: number;
@@ -251,7 +255,10 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     const verdict = await deps.verify(candidate);
     deps.onStep?.({ kind: "candidate", passed: verdict.passed, detail: verdict.detail });
     if (verdict.passed) {
-      const rationale = text.split("```")[0]!.trim();
+      // An unfenced edits reply (no lead-in prose split cleanly by a ```) must not leak raw
+      // SEARCH/REPLACE markers into the rationale a person reads — the reader already extracted
+      // the real prose (if any) for an `edits` reply, so use that instead of re-deriving it here.
+      const rationale = read.kind === "edits" ? (read.rationale ?? "") : text.split("```")[0]!.trim();
       // THE RULE, unchanged: `kind: "fix"` is reachable ONLY after `deps.verify` — the user's own
       // recorded case, replayed — passed AND the baseline had failed, so that pass means something.
       // When the baseline was already green, the same pass is guaranteed and proves nothing, so the
@@ -272,7 +279,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     messages.push({ role: "assistant", content: text });
     messages.push({
       role: "user",
-      content: `Your change did NOT fix it. Replaying what the user did still gives:\n${verdict.detail}\nDo not send the same edit again. Investigate with the tools, then either fix it, ask, or say it is not the app's fault.`,
+      content: `Your change did NOT fix it. Replaying what the user did still gives:\n${verdict.detail}\nYour edits were applied to the app exactly as shown in the first message, not to your previous attempt — that change is not in the app. Send the complete set of edits you want against the app as first shown. Do not send the same edit again; investigate with the tools, then either fix it, ask, or say it is not the app's fault.`,
     });
   }
 
