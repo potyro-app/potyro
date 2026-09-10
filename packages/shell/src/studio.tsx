@@ -237,6 +237,13 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const withGen = async (label: string, run: () => Promise<string | null>, autoRepair = true, note?: string): Promise<void> => {
     setGenBusy(true);
     setError(null);
+    // Every generating path funnels through here, so this is the one place that can guarantee the
+    // modify notes describe THIS generation. They used to survive a create and a New draft, so a
+    // "Applied 3 edits" — or worse, a loss warning about an app that is no longer on screen — stayed
+    // pinned under a freshly generated app it had nothing to do with. Cleared before `run`, so
+    // anything the run itself reports (below, and in `repairSource`) still stands.
+    setModifyLoss(null);
+    setModifyNote(null);
     try {
       const next = await run();
       if (next === null) return;
@@ -387,8 +394,8 @@ export function Studio({ onClose }: { onClose: () => void }) {
     // call this up to three times (a no-match retry, then a loss retry).
     const attempt = (instr: string): Promise<string> => modifyAttempt(source, instr);
     const def = preview.composed.runtime.definition;
-    setModifyLoss(null);
-    setModifyNote(null);
+    // No clearing here: `withGen` clears both before it calls `run`, and this modify's own note is
+    // set inside that run.
     return withGen(
       label,
       () =>
@@ -434,7 +441,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
     if (!lastError) return Promise.resolve();
     // Split a multi-issue validation message back into individual problems for the repair prompt.
     const issues = lastError.replace(/^Invalid app structure:\n?/, "").split("\n- ").map((s) => s.replace(/^- /, "").trim()).filter(Boolean);
-    return withGen("Fix", () => repairSource(source, issues.length ? issues : [lastError]));
+    // `autoRepair: false` — `repairSource` IS the repair round. Left on, a still-invalid result sent
+    // it straight into a SECOND `repairSource`: up to six model calls behind progress text promising
+    // three, and a doubled "Repaired with N edits. Repaired with M edits." note.
+    return withGen("Fix", () => repairSource(source, issues.length ? issues : [lastError]), false);
   };
 
   // --- My Apps ----------------------------------------------------------------------------------
@@ -530,6 +540,10 @@ export function Studio({ onClose }: { onClose: () => void }) {
     setCurrentId(null);
     setDescription("");
     setDrafts([]);
+    // Starting over does not go through `withGen`, so it has to clear these itself — otherwise the
+    // discarded app's "Applied 3 edits" (or its loss warning) sits under the starter.
+    setModifyLoss(null);
+    setModifyNote(null);
     setSource(STARTER);
     void buildPreview(STARTER, null);
   };
