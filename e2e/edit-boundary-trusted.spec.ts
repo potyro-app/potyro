@@ -47,6 +47,26 @@ async function stubAgent(page: Page, reply: string): Promise<string[]> {
   return prompts;
 }
 
+/** Like `stubAgent`, but hands back each scripted reply in the order its generation was
+ *  requested — for a flow that makes more than one agent call (an edit, then its repair). Each
+ *  POST gets its own job id, and the GET that polls that id is answered from `replies` by index,
+ *  so a repair's reply can never be served to the edit that came before it. */
+async function stubAgentSequence(page: Page, replies: string[]): Promise<string[]> {
+  const prompts: string[] = [];
+  await page.route("**/__generate**", async (route) => {
+    const req = route.request();
+    if (req.method() === "POST") {
+      prompts.push((req.postDataJSON() as { prompt: string }).prompt);
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: `job-${prompts.length}` }) });
+      return;
+    }
+    const id = new URL(req.url()).searchParams.get("id") ?? "";
+    const index = Number(id.replace("job-", "")) - 1;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "done", text: replies[index] ?? "" }) });
+  });
+  return prompts;
+}
+
 async function seedApp(page: Page): Promise<void> {
   // Seed once, not on every navigation: Edit mode reloads the page after saving, and re-seeding
   // there would overwrite the very edit under test with the original source.
@@ -198,4 +218,83 @@ test("a real app-level change still applies, and its reasoning is kept out of th
     () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
   );
   expect(saved).not.toContain("always frame the pins");
+});
+
+// Edit mode's repair round now goes through the SAME gate as the edit itself (guardedModify), not a
+// second whole-file round trip — see runRepair in App.tsx. What has to hold:
+//
+//   - a repair that fixes the structure is applied and saved, same as any other edit
+//   - a repair that DOESN'T fix it saves nothing — never a broken app with a History entry that
+//     looks like a successful one
+test("an edit that does not validate is repaired with a second edit, then saved", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  expect(PAGES_LINE).toContain('type: "map"'); // the fixture still looks the way this edit expects
+  const BROKEN_LINE = PAGES_LINE.replace('type: "map"', 'type: "lisst"');
+
+  const prompts = await stubAgentSequence(page, [
+    // The edit: a typo'd view type — this is what makes the app fail structure validation.
+    ["I set the view type.", "```ts", "<<<<<<< SEARCH", PAGES_LINE, "=======", BROKEN_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+    // The repair: the exact inverse edit, so the saved app comes back byte-identical to the original.
+    ["Fixing the typo.", "```ts", "<<<<<<< SEARCH", BROKEN_LINE, "=======", PAGES_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+  ]);
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "change the view type");
+
+  const savedSource = () =>
+    page
+      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
+      .catch(() => "");
+  // The two edits cancel: what gets saved is exactly what was there before either one ran.
+  await expect.poll(savedSource, { timeout: 30_000 }).toBe(APP_SOURCE);
+
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".k-timeline-entry")).not.toHaveCount(0);
+  await page.getByRole("button", { name: "Close history" }).click();
+
+  // Two agent calls happened — the edit, then the repair — and the repair prompt is the validator's
+  // own words, not a rewritten whole-file request.
+  expect(prompts).toHaveLength(2);
+  expect(prompts[1]).toContain("Fix exactly these problems");
+  // The validator's message names the PATH, not the bad value (`pages.N.view.type: Invalid
+  // discriminator value. Expected …`) — so this checks for the path segment, not the literal "lisst".
+  expect(prompts[1]).toContain("view.type");
+});
+
+test("a repair that still does not validate saves nothing", async ({ page }) => {
+  await seedApp(page);
+  const PAGES_LINE = APP_SOURCE.split("\n")[10]!;
+  expect(PAGES_LINE).toContain('type: "map"');
+  const BROKEN_LINE = PAGES_LINE.replace('type: "map"', 'type: "lisst"');
+  // The repair changes something real, but never touches the typo it was asked to fix.
+  const STILL_BROKEN_LINE = BROKEN_LINE.replace('title: "Map"', 'title: "Somewhere"');
+
+  await stubAgentSequence(page, [
+    ["I set the view type.", "```ts", "<<<<<<< SEARCH", PAGES_LINE, "=======", BROKEN_LINE, ">>>>>>> REPLACE", "```"].join("\n"),
+    ["I renamed the page instead.", "```ts", "<<<<<<< SEARCH", BROKEN_LINE, "=======", STILL_BROKEN_LINE, ">>>>>>> REPLACE", "```"].join(
+      "\n",
+    ),
+  ]);
+  await page.goto("/?user=pins");
+  await expect(page.locator("h1")).toHaveText("Pins");
+
+  await askToChangeTheMap(page, "change the view type");
+
+  const error = page.locator(".k-form-error");
+  await expect(error).toBeVisible({ timeout: 30_000 });
+  await expect(error).toContainText(/^Nothing was saved/);
+
+  // Still on the broken-attempt app: no version was appended…
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".k-timeline-entry")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close history" }).click();
+
+  // …and the source on disk is untouched, byte for byte.
+  const stored = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
+  expect(stored).toBe(APP_SOURCE);
 });

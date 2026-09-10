@@ -27,8 +27,7 @@ import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user
 import {
   SYSTEM_PROMPT,
   buildModifyMessage,
-  buildRepairMessage,
-  extractSource,
+  buildRepairInstruction,
   guardedModify,
   type ModifyContext,
 } from "@karta/generator/backends";
@@ -637,9 +636,21 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       source: currentSource,
     });
 
-  /** A repair round answers "your output didn't compile" — a diagnosis is not a legal reply here. */
-  const runRepair = async (currentSource: string, issues: string[]): Promise<string> =>
-    extractSource(await askAgent(currentSource, buildRepairMessage(issues)));
+  /** A repair round, through the same gate as the edit. A diagnosis or a failure here is an error
+   *  (there is nothing to save), never a version. */
+  const runRepair = async (currentSource: string, issues: string[]): Promise<string> => {
+    const result = await guardedModify({
+      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr)),
+      shapeOf: loadDefinition,
+      before: { pages: def.pages, entities: def.entities },
+      instruction: buildRepairInstruction(issues),
+      source: currentSource,
+    });
+    if (result.kind === "diagnosis") throw new Error(`the repair was declined: ${result.text}`);
+    if (result.kind === "failed") throw new Error(`the repair could not be applied: ${result.reason}`);
+    if (result.loss !== null) throw new Error(`the repair rewrote the app rather than editing it: it ${result.loss}`);
+    return result.source;
+  };
 
   /**
    * Save a direct structural edit. No model, no repair round.
@@ -740,7 +751,19 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       // save broken structure (e.g. a malformed list) that would reach the user as broken UI.
       let next = reply.source;
       const issues = await buildAndValidate(next);
-      if (issues.length) next = await runRepair(next, issues);
+      if (issues.length) {
+        setModifyProgress("Fixing structure… (one more round, up to three calls)");
+        next = await runRepair(next, issues);
+        // Re-validate. Before this, whatever the repair returned was saved — a second slip reached
+        // the person as broken UI with a History entry that looked like a successful edit.
+        const still = await buildAndValidate(next);
+        if (still.length) {
+          setModifyError(`Nothing was saved — the change did not validate even after a repair: ${still[0]}`);
+          setModifyBusy(false);
+          setModifyProgress(null);
+          return;
+        }
+      }
 
       // Will two people survive this edit? An AI edit can change any function in the module, and the way this
       // breaks is silent: the app still parses, still validates, still works alone (KA-38). This is
