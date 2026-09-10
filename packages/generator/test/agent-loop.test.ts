@@ -236,6 +236,18 @@ describe("runAgentLoop", () => {
     expect(steps.filter((s) => s.kind === "unusable")).toHaveLength(2);
   });
 
+  // A no-match edit is a distinct failure from "not an app at all" — the model DID try to change
+  // the app, it just could not point at real lines — so the exhausted reason must say so separately.
+  it("counts edits that did not match separately in the exhausted reason", async () => {
+    const miss = "```ts\n<<<<<<< SEARCH\nnot in the file\n=======\nx\n>>>>>>> REPLACE\n```";
+    const { engine } = scripted([{ content: miss }]);
+
+    const out = await runAgentLoop(base({ engine, maxSteps: 1 }));
+
+    expect(out.kind).toBe("exhausted");
+    expect((out as { reason: string }).reason).toContain("had edits that did not match");
+  });
+
   it("stops between steps when the signal aborts, and says it was stopped", async () => {
     const controller = new AbortController();
     const turn = {

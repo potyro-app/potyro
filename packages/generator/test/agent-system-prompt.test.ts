@@ -19,6 +19,13 @@ describe("the agent's system prompt", () => {
     expect(AGENT_SYSTEM_PROMPT).toMatch(/```ts/);
   });
 
+  // The contract changed from "send the complete updated file" to "send SEARCH/REPLACE edits" —
+  // pin both halves of that, not just the presence of the new format.
+  it("asks for SEARCH/REPLACE edits, not the whole file", () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain("<<<<<<< SEARCH");
+    expect(AGENT_SYSTEM_PROMPT).not.toMatch(/whole file, not a diff/i);
+  });
+
   // The single most useful thing it can know: it does not have to re-check its own work, and a
   // rejection is information rather than a dead end.
   it("says a candidate is verified automatically, and what happens when it fails", () => {
