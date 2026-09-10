@@ -305,10 +305,14 @@ export function describeEditFailures(failures: EditFailure[]): string {
     .join("\n");
 }
 
+/** The placeholder SEARCH line in the format shown to the model. A model that echoes the template
+ *  sends this literally; it is never a real edit and must not fail the reply. */
+export const EDIT_PLACEHOLDER_SEARCH = "<consecutive lines copied from the app above, exactly as they are there>";
+
 /** The format, as the model is told it. One worked example; models copy shapes better than rules. */
 export const EDIT_FORMAT = [
   "<<<<<<< SEARCH",
-  "<consecutive lines copied from the app above, exactly as they are there>",
+  EDIT_PLACEHOLDER_SEARCH,
   "=======",
   "<what those lines become>",
   ">>>>>>> REPLACE",
