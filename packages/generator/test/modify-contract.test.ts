@@ -51,6 +51,7 @@ describe("buildModifyMessage", () => {
     expect(msg).toContain(">>>>>>> REPLACE");
     expect(msg).toMatch(/do not send the whole file/i);
     expect(msg).not.toMatch(/the whole file, not a diff/i);
+    expect(msg).toMatch(/any SEARCH line you do not repeat in REPLACE is deleted/i);
   });
 
   // The system prompt's OUTPUT rule ("only the source, no prose") is for CREATING an app. Left

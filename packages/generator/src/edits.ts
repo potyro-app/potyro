@@ -330,6 +330,7 @@ export const EDIT_FORMAT = [
   "- Make SEARCH match exactly one place: start it at a line that names what you are editing (the entity",
   "  or page it belongs to) and include the lines down to the one you change.",
   "- To add something, SEARCH the line it goes after and REPLACE with that line followed by the new lines.",
+  "  REPLACE stands in for the whole SEARCH block: any SEARCH line you do not repeat in REPLACE is deleted.",
   "  To remove something, leave REPLACE empty.",
   "- One block per place you change; several blocks are fine. They are applied in order.",
   "- Do not send the whole file. Every line you do not mention stays exactly as it is.",
