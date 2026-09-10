@@ -189,6 +189,27 @@ describe("startFix — wiring (FINDING 3)", () => {
     expect(deps.task).toBe("Search stays empty\n\nit should list the matching cities");
   });
 
+  it("shows the model the app source it was handed, in the very first request", async () => {
+    // Regression this catches: `source` reaching `runAgentLoop` as "" (or as some other app's
+    // source) — the loop would still run, still call the model, and every other assertion in this
+    // file would still pass, while the agent diagnosed a bug with no app in front of it. Read from
+    // the REAL request body the engine was called with, and with a marker no other fixture carries,
+    // so a `toContain` cannot be satisfied by coincidence (`source: "x"` elsewhere would be).
+    const APP = [
+      'import { defineApp } from "karta";',
+      "// marker-4f21c8: only this test's source contains this line",
+      'export default defineApp({ id: "city-maps", name: "City maps", version: "1.0.0", schemaVersion: 1 });',
+    ].join("\n");
+
+    await startFix({ source: APP, theCase: buggyCase(), runtime, store: null as never, engine: cloudEngine });
+
+    expect(mocks.chatCreate).toHaveBeenCalled();
+    const body = mocks.chatCreate.mock.calls[0]![0] as { messages: { role: string; content: string }[] };
+    // messages[0] is the system prompt; messages[1] is the opening user turn — the task plus the app.
+    expect(body.messages[1]!.role).toBe("user");
+    expect(body.messages[1]!.content).toContain(APP);
+  });
+
   // This used to assert the opposite — that a passing baseline refused to start and spent no model
   // call. That behaviour shipped and a person hit it in ten minutes: replay sees navigation and
   // data, never what RENDERED, so a page stuck on "Loading…" forever replays clean and the tool
