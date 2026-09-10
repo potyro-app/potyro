@@ -29,6 +29,7 @@ const base = (over: Partial<LoopDeps>): LoopDeps => ({
   tools: [replayTool(false)],
   system: "contract",
   task: "clicking a city does nothing",
+  source: APP,
   verify: async () => ({ passed: true, detail: "replay passed" }),
   // Failing by default so every existing test below is still allowed to start the loop. Only the
   // dedicated no-repro test overrides this to `passed: true`.
@@ -299,5 +300,35 @@ describe("runAgentLoop", () => {
     await runAgentLoop(base({ engine, onStep: (s) => steps.push(s.kind === "tool" ? `tool:${s.name}` : s.kind) }));
 
     expect(steps).toContain("tool:replay_case");
+  });
+
+  // THE MISSING INPUT. The agent was asked for "the complete updated .app.ts" of an app it had
+  // never been shown: the task carried the case, the tools returned pages and counts, and the
+  // candidate came from imagination. With edits that is impossible, so the app is in the opening turn.
+  it("shows the model the app it is fixing, in the opening user turn", async () => {
+    const { engine, seen } = scripted([{ content: "```ts\n" + APP + "\n```" }]);
+    await runAgentLoop(base({ engine }));
+    expect(seen[0]!.messages[1]!.content).toContain(APP);
+    expect(seen[0]!.messages[1]!.content).toContain("clicking a city does nothing");
+  });
+
+  it("applies an edit-block candidate to the app and verifies the result", async () => {
+    const edit = "Guarding the click.\n```ts\n<<<<<<< SEARCH\nexport default defineApp({ id: \"x\" });\n=======\nexport default defineApp({ id: \"y\" });\n>>>>>>> REPLACE\n```";
+    const { engine } = scripted([{ content: edit }]);
+    const verify = vi.fn(async () => ({ passed: true, detail: "replay passed" }));
+    const out = await runAgentLoop(base({ engine, verify }));
+    expect(verify).toHaveBeenCalledWith('import { defineApp } from "karta";\nexport default defineApp({ id: "y" });');
+    expect(out).toMatchObject({ kind: "fix", rationale: "Guarding the click." });
+  });
+
+  it("tells the model which edit did not match and continues", async () => {
+    const miss = "```ts\n<<<<<<< SEARCH\nnot in the file\n=======\nx\n>>>>>>> REPLACE\n```";
+    const { engine, seen } = scripted([{ content: miss }, { content: "```ts\n" + APP + "\n```" }]);
+    const steps: LoopStep[] = [];
+    const out = await runAgentLoop(base({ engine, onStep: (s) => steps.push(s) }));
+    expect(out.kind).toBe("fix");
+    const feedback = seen[1]!.messages.at(-1)!.content;
+    expect(feedback).toMatch(/edit 1.*not found/i);
+    expect(steps.some((s) => s.kind === "unusable")).toBe(true);
   });
 });

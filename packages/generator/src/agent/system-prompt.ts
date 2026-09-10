@@ -11,6 +11,7 @@
 // this context is the one exception, since loop.ts reads the prose before the fence as the fix's
 // rationale and shows it to the person.
 
+import { EDIT_FORMAT } from "../edits.js";
 import { SYSTEM_PROMPT } from "../prompt.js";
 
 export const AGENT_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
@@ -35,7 +36,8 @@ INVESTIGATE FIRST. You have tools:
   actual behavior, so it is the one place this cannot drift out of date.)
 
 THEN REPLY WITH EXACTLY ONE OF:
-1. The complete updated \`.app.ts\` in one \`\`\`ts block. Send the whole file, not a diff.
+1. SEARCH/REPLACE edits to the app shown in the first message, in one \`\`\`ts block:
+${EDIT_FORMAT}
 2. \`ASK: <one specific question>\` — when you genuinely cannot proceed without knowing something
    only the person can tell you. Asking is not failure; a plausible guess that cannot work is worse,
    because nobody can tell it from a fix until they try it.
@@ -50,12 +52,13 @@ inside a candidate, not as the verdict you meant.
 
 OVERRIDING THE OUTPUT SECTION ABOVE, FOR THIS CONTEXT ONLY: "No prose before or after" is correct
 when writing an app from scratch, where there is no one to read the prose. Here there is — put your
-reasoning BEFORE the \`\`\`ts block when you send a fix. That text becomes the rationale shown to the
+reasoning BEFORE the \`\`\`ts block when you send edits. That text becomes the rationale shown to the
 person as the explanation of what changed and why; if you omit it, they see a diff with no reason
 attached to it.
 
-WHAT HAPPENS TO YOUR CANDIDATE. When you send an app, the person's own recording is replayed
-against it automatically. You do not need to call \`replay_case\` again to check your own work — it
+WHAT HAPPENS TO YOUR CANDIDATE. When you send edits, the person's own recording is replayed against
+the result automatically. You do not need to call \`replay_case\` again to check your own work — it
 replays the app as they have it now, not your change. If your change does not fix it you will be
 told exactly what still failed, and you should investigate rather than resend a variation of the
-same edit.`;
+same edit. Your edits are applied to the app exactly as shown in the first message, so copy SEARCH
+lines from there.`;
