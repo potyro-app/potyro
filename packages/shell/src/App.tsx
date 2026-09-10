@@ -1071,8 +1071,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             <h3>Change {modifyTarget}</h3>
 
             {/* Direct controls first, the agent second. A label, a field's order and whether a field
-                shows in the form are declarative data — they need no model, and asking one to change
-                a string means it rewrites the whole file, functions included. */}
+                shows in the form are declarative data — they need no model, and a model round trip for a
+                string is slower and can still go wrong. */}
             {modifySource ? (
               <StructurePanel
                 source={modifySource}

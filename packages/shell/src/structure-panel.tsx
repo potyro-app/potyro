@@ -1,8 +1,8 @@
 // Direct controls for the declarative parts of the page you pointed at.
 //
 // Renaming a label, hiding a field, reordering fields, retitling a page — none of these need a
-// language model, and routing them through one is where the risk/benefit is worst: it rewrites the
-// whole file, including your functions, to change a few characters.
+// language model, and routing them through one is where the risk/benefit is worst: a model round
+// trip to change a few characters is slower and can still go wrong.
 //
 // Every control here is rendered from what `app-source.inspect()` could actually LOCATE in the
 // source, never from the schema. So a control exists only when there is a real byte range behind it,
