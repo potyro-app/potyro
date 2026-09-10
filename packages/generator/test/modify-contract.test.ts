@@ -48,6 +48,9 @@ describe("buildModifyMessage", () => {
   test("asks for SEARCH/REPLACE edits, never the whole file", () => {
     const msg = buildModifyMessage("add a rating field");
     expect(msg).toContain("<<<<<<< SEARCH");
+    // Measured (2026-09-10, 36 samples): every SEARCH miss came from two edits touching the same
+    // lines, the later one still describing the text the earlier one had changed.
+    expect(msg).toMatch(/never send two edits that touch the same lines/i);
     expect(msg).toContain(">>>>>>> REPLACE");
     expect(msg).toMatch(/do not send the whole file/i);
     expect(msg).not.toMatch(/the whole file, not a diff/i);
