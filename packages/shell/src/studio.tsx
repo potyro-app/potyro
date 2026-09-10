@@ -387,7 +387,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
             source,
           });
           if (result.kind === "diagnosis") {
-            setError(`Not changed — the model says this is not the app's to change: ${result.text}`);
+            // An answer, not a failure. Edit mode renders one in neutral style for the same reason:
+            // red reads as "retry me", which is how the same wrong edit gets asked for five times.
+            setModifyNote(`Not changed — the model says this is not the app's to change: ${result.text}`);
             return null;
           }
           if (result.kind === "failed") {
