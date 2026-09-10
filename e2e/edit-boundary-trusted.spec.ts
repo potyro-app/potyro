@@ -185,7 +185,17 @@ test("an edit-block reply is applied to the file, not the whole file", async ({ 
       .catch(() => "");
   await expect.poll(savedSource, { timeout: 30_000 }).toContain('title: "Where I have been"');
 
-  const saved = await savedSource();
+  // Then wait for the reload to land before reading once, unguarded. The poll above is satisfied the
+  // instant `saveUserApp` writes localStorage — which `applyModify` does just BEFORE calling
+  // `location.reload()` — so a plain read straight after it lands inside the reload window, and
+  // `page.evaluate` throws there. `savedSource`'s `.catch(() => "")` is right for a poll (an empty
+  // result just retries) and wrong for a one-shot read: it turned that navigation race into `""`,
+  // failing the line below with a whole-source diff against an empty string. That is the flake seen
+  // once under a loaded full-suite run and never when this spec ran alone.
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0, { timeout: 30_000 });
+  const saved = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
   // The proof that this was an EDIT and not a rewrite: the untouched lines are byte-identical, and
   // only the one line the model named differs.
   expect(saved).toContain(PLACE_LINE);
@@ -250,16 +260,21 @@ test("an edit that does not validate is repaired with a second edit, then saved"
 
   await askToChangeTheMap(page, "change the view type");
 
-  const savedSource = () =>
-    page
-      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
-      .catch(() => "");
-  // The two edits cancel: what gets saved is exactly what was there before either one ran.
-  await expect.poll(savedSource, { timeout: 30_000 }).toBe(APP_SOURCE);
-
+  // Wait on the things that only happen once the repaired app is SAVED: the dialog goes away with
+  // the reload Edit mode does after saving, and a version appears in History. The byte-equality
+  // check cannot stand in for that wait — the seed IS `APP_SOURCE`, so a poll for it is satisfied
+  // before the edit has even been requested, and the test would pass with the repair round broken.
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0, { timeout: 30_000 });
   await page.getByRole("button", { name: "History" }).click();
-  await expect(page.locator(".k-timeline-entry")).not.toHaveCount(0);
+  await expect(page.locator(".k-timeline-entry")).not.toHaveCount(0, { timeout: 30_000 });
   await page.getByRole("button", { name: "Close history" }).click();
+
+  // Only now is the stored source worth reading: the two edits cancel, so what got saved is exactly
+  // what was there before either one ran — read fresh, the way the "saves nothing" test does.
+  const stored = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+  );
+  expect(stored).toBe(APP_SOURCE);
 
   // Two agent calls happened — the edit, then the repair — and the repair prompt is the validator's
   // own words, not a rewritten whole-file request.
