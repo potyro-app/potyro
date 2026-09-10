@@ -8,9 +8,13 @@
 // the KA task report (.superpowers/sdd/agent-seam-report.md) for the full chain. It is a graph, not
 // a line, and both branches have to stay clean:
 //
-//   loop.ts        -> tools.ts -> app-tools.ts -> @karta/runtime
-//   loop.ts        -> ../guarded-modify.js -> ../edits.js, ../prompt.js   (the fix loop reads the
-//                     model's candidates as EDITS, through the same reader the Studio uses)
+//   loop.ts          -> tools.ts                      (tools.ts imports nothing of its own)
+//   loop.ts          -> ../guarded-modify.js -> @karta/runtime, ../edits.js, ../prompt.js
+//   loop.ts          -> ../edits.js                   (describeEditFailures, directly)
+//                       — the fix loop reads the model's candidates as EDITS, through the same
+//                       reader the Studio uses
+//   app-tools.ts     -> @karta/runtime, and `import type` from tools.ts — its own branch, reached
+//                       from this barrel directly, never through loop.ts
 //   system-prompt.ts -> ../edits.js (EDIT_FORMAT), ../prompt.js (SYSTEM_PROMPT)
 //
 // Along every one of those, each cross-package import is either `import type` (erased at build
