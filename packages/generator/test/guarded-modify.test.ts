@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { guardedModify, noMatchInstruction, readEditsOrFile, readModifyReply, retryInstruction } from "../src/guarded-modify.js";
+import { EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH } from "../src/edits.js";
 import type { AppShape } from "@karta/runtime";
 
 // The app as the person has it: two entities, two pages. A rewrite typically keeps one and drops the
@@ -89,6 +90,22 @@ describe("readModifyReply", () => {
   it("readEditsOrFile never returns a diagnosis", () => {
     const r = readEditsOrFile(SOURCE, "NOT-IN-APP: the map owns taps.\n" + editReply('  id: "x",', '  id: "y",', ""));
     expect(r.kind).toBe("edits");
+  });
+
+  // Dropping the echoed placeholder must happen line-wise, not by deleting the fence it sits in: a
+  // model that pastes the template and the whole file inside ONE fence still needs the file kept.
+  it("keeps a whole file that shares a fence with an echoed placeholder block", () => {
+    const reply = `\`\`\`ts\n<<<<<<< SEARCH\n${EDIT_PLACEHOLDER_SEARCH}\n=======\n${EDIT_PLACEHOLDER_REPLACE}\n>>>>>>> REPLACE\n\n${SOURCE}\n\`\`\`\n`;
+    expect(readModifyReply(SOURCE, reply)).toEqual({ kind: "whole-file", source: SOURCE });
+  });
+
+  // The placeholder can echo on either side of the block: a real SEARCH copied correctly, paired
+  // with the template's own REPLACE line, is still the template, not an edit.
+  it("drops a block whose REPLACE is the placeholder", () => {
+    const echoed = `\`\`\`ts\n<<<<<<< SEARCH\n  id: "x",\n=======\n${EDIT_PLACEHOLDER_REPLACE}\n>>>>>>> REPLACE\n\`\`\`\n` + editReply('  id: "x",', '  id: "y",', "");
+    const r = readModifyReply(SOURCE, echoed);
+    expect(r).toMatchObject({ kind: "edits", applied: 1 });
+    expect(r.kind === "edits" && r.source).toContain('"y"');
   });
 });
 

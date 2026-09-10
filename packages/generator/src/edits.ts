@@ -309,23 +309,30 @@ export function describeEditFailures(failures: EditFailure[]): string {
  *  sends this literally; it is never a real edit and must not fail the reply. */
 export const EDIT_PLACEHOLDER_SEARCH = "<consecutive lines copied from the app above, exactly as they are there>";
 
-/** The format, as the model is told it. One worked example; models copy shapes better than rules. */
+/** The placeholder REPLACE line in the format shown to the model. A model that echoes the template
+ *  sends this literally too, on the REPLACE side; it is never a real edit either. */
+export const EDIT_PLACEHOLDER_REPLACE = "<what those lines become>";
+
+/** The format, as the model is told it. One worked example; models copy shapes better than rules.
+ *  The example uses a `sample` entity with a `title` field — never the app's own field/entity
+ *  names — so a model that echoes the whole template against a real app cannot land the example's
+ *  edit onto a same-named entity the app actually has. */
 export const EDIT_FORMAT = [
   "<<<<<<< SEARCH",
   EDIT_PLACEHOLDER_SEARCH,
   "=======",
-  "<what those lines become>",
+  EDIT_PLACEHOLDER_REPLACE,
   ">>>>>>> REPLACE",
   "",
-  "For example, to add a `rating` field to the `place` entity:",
+  "For example, to add a `rating` field to the `sample` entity:",
   "<<<<<<< SEARCH",
-  "    place: {",
+  "    sample: {",
   "      fields: {",
-  '        name: { type: "text", required: true },',
+  '        title: { type: "text", required: true },',
   "=======",
-  "    place: {",
+  "    sample: {",
   "      fields: {",
-  '        name: { type: "text", required: true },',
+  '        title: { type: "text", required: true },',
   '        rating: { type: "number" },',
   ">>>>>>> REPLACE",
   "",

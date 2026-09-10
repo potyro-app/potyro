@@ -62,6 +62,7 @@ export {
   describeEditFailures,
   EDIT_FORMAT,
   EDIT_PLACEHOLDER_SEARCH,
+  EDIT_PLACEHOLDER_REPLACE,
   type SearchReplace,
   type EditFailure,
   type ApplyResult,
