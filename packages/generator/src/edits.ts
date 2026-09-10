@@ -343,6 +343,8 @@ export const EDIT_FORMAT = [
   "- To add something, SEARCH the line it goes after and REPLACE with that line followed by the new lines.",
   "  REPLACE stands in for the whole SEARCH block: any SEARCH line you do not repeat in REPLACE is deleted.",
   "  To remove something, leave REPLACE empty.",
-  "- One block per place you change; several blocks are fine. They are applied in order.",
+  "- One block per place you change; several blocks are fine. They are applied in order, each to the",
+  "  result of the one before, so never send two edits that touch the same lines: a later SEARCH that",
+  "  still describes the old text will not be found. Put every change to one region in one block.",
   "- Do not send the whole file. Every line you do not mention stays exactly as it is.",
 ].join("\n");
