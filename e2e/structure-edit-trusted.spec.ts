@@ -73,6 +73,37 @@ async function openPanel(page: Page): Promise<void> {
   await expect(page.locator(".k-modifydialog")).toBeVisible();
 }
 
+/**
+ * Close the panel, and wait for the app the change produced.
+ *
+ * A structural edit defers its re-run to the moment the panel closes, and the re-run is a
+ * `location.reload()` (`closeModify` in App.tsx). The dialog disappearing says the dialog
+ * unmounted — nothing more. Anything read straight afterwards can be read from the document that is
+ * ABOUT to be replaced, so a form opened here shows the fields as they were BEFORE the edit, and
+ * the assertion fails with the exact symptom of the product bug this spec exists to catch. It was
+ * intermittent for precisely that reason: which document you get is a race with the browser.
+ *
+ * A sentinel on `window` is the honest signal. It cannot survive the navigation, and nothing else
+ * on this page changes — the title is "Kit" either side of the reload, the tab is the same tab.
+ */
+async function closePanelAndAwaitRerun(page: Page): Promise<void> {
+  const MARK = "__karta_pre_reload";
+  await page.evaluate((key: string) => ((globalThis as Record<string, unknown>)[key] = true), MARK);
+  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await expect
+    .poll(
+      () =>
+        page
+          // A read that lands mid-navigation throws; that is "not yet", not a failure.
+          .evaluate((key: string) => (globalThis as Record<string, unknown>)[key] === undefined, MARK)
+          .catch(() => false),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  await expect(page.locator(".k-modifydialog")).toHaveCount(0);
+  await expect(page.locator("h1")).toHaveText("Kit");
+}
+
 test("renaming a field label edits the source surgically and lands in History", async ({ page }) => {
   await seed(page);
   await page.goto("/?user=kit");
@@ -84,9 +115,7 @@ test("renaming a field label edits the source surgically and lands in History", 
   await page.getByLabel("Label for quantity").blur();
 
   await expect.poll(() => storedSource(page)).toContain('label: "How many"');
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
-  // Let the re-run settle before reading again — a read mid-navigation comes back empty.
-  await expect(page.locator("h1")).toHaveText("Kit");
+  await closePanelAndAwaitRerun(page);
   const after = await storedSource(page);
 
   // Surgical: same line count, and exactly one line differs. This is the property that makes a
@@ -124,9 +153,9 @@ test("hiding a field takes it out of the running app's form", async ({ page }) =
   await openPanel(page);
   await page.getByLabel("Hide notes from the form").check();
   await expect.poll(() => storedSource(page)).toContain("hidden: true");
-  // Closing is what re-runs the app now — edits no longer reload on every click.
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
-  await expect(page.locator(".k-modifydialog")).toHaveCount(0);
+  // Closing is what re-runs the app now — edits no longer reload on every click, so the form below
+  // must be opened on the document the re-run produced. See `closePanelAndAwaitRerun`.
+  await closePanelAndAwaitRerun(page);
 
   // The decisive check: gone from the form the user actually sees, not just from the source.
   await openNewItemForm(page);
@@ -143,8 +172,7 @@ test("reordering fields reorders the form", async ({ page }) => {
   await openPanel(page);
   await page.getByLabel("Move notes up").click();
   await expect.poll(() => storedSource(page)).toMatch(/notes:[\s\S]*quantity:/);
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
-  await expect(page.locator(".k-modifydialog")).toHaveCount(0);
+  await closePanelAndAwaitRerun(page);
 
   // Order in the source is the order in the form — `Object.entries(fields)` drives both.
   await openNewItemForm(page);
@@ -179,7 +207,7 @@ test("several reorders in one sitting, without losing the panel or your place", 
   await expect(page.locator(".k-modifydialog")).toBeVisible();
 
   // Closing re-runs the app once — and brings you back to the page you were on.
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await closePanelAndAwaitRerun(page);
   await expect(page.locator(".k-tab[data-active='true']")).toHaveText("Everything");
 
   await expect.poll(() => storedSource(page)).toMatch(/notes:[\s\S]*title:[\s\S]*quantity:/);
@@ -196,7 +224,7 @@ test("renaming a page renames its tab", async ({ page }) => {
   await page.getByLabel("Page name").fill("All of it");
   await page.getByLabel("Page name").blur();
   await expect.poll(() => storedSource(page)).toContain('title: "All of it"');
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Close|Cancel/ }).click();
+  await closePanelAndAwaitRerun(page);
 
   await expect(page.locator(".k-tab", { hasText: "All of it" })).toBeVisible();
   expect(await storedSource(page)).toContain('title: "All of it"');
