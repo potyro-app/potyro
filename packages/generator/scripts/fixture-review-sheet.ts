@@ -74,7 +74,18 @@ const V3_ORPHANS = app({
   fields: [`rating: { type: "number", min: 1, max: 5 }`],
   secondary: "rating",
 });
-const BROKEN = `export default { not: "a karta app" };`;
+/**
+ * A whole-file reply that is app-SHAPED and does not validate — what the one repair exists for.
+ *
+ * It has to MENTION `defineApp(` to be read as a whole file at all: a modify reply with neither
+ * edits nor an app in it is not a broken app, it is prose, and `readModifyReply` says so rather than
+ * handing the harness something to score (see `callModel`). So the fixture is the shape a real bad
+ * reply takes — a file that looks like an app and whose default export is not one.
+ */
+const BROKEN = `import { defineApp } from "karta";
+
+export const nope = () => defineApp({});
+export default { not: "a karta app" };`;
 
 interface Script {
   generate?: string[];
@@ -88,12 +99,12 @@ class ScriptedBackend implements MeteredBackend {
   constructor(private readonly script: Script) {}
 
   async meteredCall(req: MeteredRequest): Promise<MeteredResult> {
-    const source = this.script[req.kind]?.shift();
-    if (source === undefined) throw new Error(`the fixture script has no ${req.kind} left`);
+    const text = this.script[req.kind]?.shift();
+    if (text === undefined) throw new Error(`the fixture script has no ${req.kind} left`);
     this.calls += 1;
     // Plausible-looking numbers, varied so the sheet does not read as a template.
     return {
-      source,
+      text,
       usage: {
         model: "fixture-model",
         inputTokens: 6_000 + this.calls * 900,
@@ -103,13 +114,13 @@ class ScriptedBackend implements MeteredBackend {
     };
   }
   async generate(prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "generate", prompt })).source;
+    return (await this.meteredCall({ kind: "generate", prompt })).text;
   }
   async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).source;
+    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).text;
   }
   async repair(source: string, errors: string[], prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "repair", source, errors, prompt })).source;
+    return (await this.meteredCall({ kind: "repair", source, errors, prompt })).text;
   }
 }
 

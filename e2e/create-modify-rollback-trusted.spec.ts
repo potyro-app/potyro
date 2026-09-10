@@ -130,7 +130,7 @@ async function openStudio(page: Page): Promise<void> {
 async function askFor(page: Page, instruction: string, expectTitle: string): Promise<void> {
   const studio = studioOf(page);
   await studio.getByRole("textbox", { name: "Describe the app" }).fill(instruction);
-  await studio.getByRole("button", { name: "✎ Modify this app" }).click();
+  await studio.getByRole("button", { name: /Modify the app/ }).click();
   await expect(pageTab(studio, expectTitle)).toBeVisible({ timeout: 60_000 });
 }
 
@@ -158,7 +158,15 @@ async function expectNotesIntact(page: Page, pageTitle: string): Promise<void> {
   }
 }
 
-const timeline = (page: Page) => page.getByRole("dialog", { name: "History of Field Notes" });
+/**
+ * The version log, wherever it lives.
+ *
+ * In the Studio it is a TAB beside Preview and Source — the timeline IS the view, so there is
+ * nothing to dismiss and a restore simply drops you back on the preview. The markup underneath is
+ * the same `<History>` the modal renders (see `history-trusted.spec.ts`), so every assertion below
+ * reads identically; only the way in and the way out differ.
+ */
+const timeline = (page: Page) => studioOf(page).locator(".k-studio-history");
 
 /** One line of the open diff. These changes touch several lines, so the line itself is the assertion. */
 const diffLine = (page: Page, kind: "add" | "del", text: string) =>
@@ -167,8 +175,14 @@ const entry = (page: Page, seq: string) =>
   timeline(page).locator(".k-timeline-entry").filter({ has: page.locator(".k-history-seq", { hasText: seq }) });
 
 async function openHistory(page: Page): Promise<void> {
-  await studioOf(page).getByRole("button", { name: "⟲ History" }).click();
+  await studioOf(page).getByRole("tab", { name: "History" }).click();
   await expect(timeline(page)).toBeVisible();
+}
+
+/** Leave the timeline the way a person does: back to the preview. */
+async function closeHistory(page: Page): Promise<void> {
+  await studioOf(page).getByRole("tab", { name: "Preview" }).click();
+  await expect(timeline(page)).toHaveCount(0);
 }
 
 /** Open a saved app in the Studio, so `currentId` is set and History/Save changes apply to it. */
@@ -189,7 +203,9 @@ test.describe("create, change twice, and get back", () => {
     await openStudio(page);
     const studio = studioOf(page);
     await studio.getByRole("textbox", { name: "Describe the app" }).fill("somewhere to keep field notes");
-    await studio.getByRole("button", { name: /claude -p/ }).click();
+    // One action button, not one button per engine: `claude -p` is the default engine and is named
+    // on the Model settings button beside it, so there is nothing to choose here.
+    await studio.getByRole("button", { name: /Create the app/ }).click();
     await expect(studio.locator(".k-studio-preview h1")).toHaveText("Field Notes", { timeout: 60_000 });
     await studio.getByRole("button", { name: "Save to My Apps" }).click();
     await expect(studio.getByRole("button", { name: "Field Notes", exact: true })).toBeVisible();
@@ -247,7 +263,7 @@ test.describe("create, change twice, and get back", () => {
     await expect(entry(page, "v4").locator(".k-history-origin")).toHaveText("restored");
     // Nothing was truncated: the version we rolled back FROM is still there to roll forward to.
     await expect(entry(page, "v3")).toBeVisible();
-    await timeline(page).getByRole("button", { name: "Close history" }).click();
+    await closeHistory(page);
 
     // ---- 7. the notes survived the rollback --------------------------------------------------
     await expectNotesIntact(page, "Notes & tags");
@@ -264,7 +280,7 @@ test.describe("create, change twice, and get back", () => {
     await openHistory(page);
     await expect(entry(page, "v5")).toBeVisible({ timeout: 30_000 });
     await expect(entry(page, "v5").locator(".k-history-origin")).toHaveText("restored");
-    await timeline(page).getByRole("button", { name: "Close history" }).click();
+    await closeHistory(page);
 
     // The re-applied migration runs against data that has already seen it once, and the notes are
     // still the notes.

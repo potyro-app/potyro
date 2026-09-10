@@ -12,8 +12,27 @@
 // average of the other calls, not tokens × a price list. A run that quietly estimated its own cost
 // would be worse than one that admits it cannot measure it — the whole point of the budget is that
 // somebody is deciding whether to spend more money on the strength of it.
+//
+// ## A reply is not a source, and a modify reply least of all
+//
+// A backend hands back what the model SAID. For `generate` and `repair` that is a source in prose,
+// and `extractSource` picks it out. For `modify` it is one of three things — SEARCH/REPLACE edits, a
+// whole file, or a `NOT-IN-APP:` verdict — and only the middle one is a source. So `callModel` reads
+// a modify reply through `readModifyReply`, the same reader the product uses, and returns the source
+// the edits produced. Treating the raw reply as a source here would have scored edit blocks as an
+// app: it compiles nothing, validates nothing, and the report would have been confidently wrong.
+//
+// The product applies edits through that reader inside `guardedModify`, which gets up to two more
+// turns: one when a SEARCH block matches nothing, one when the result drops an entity or a page.
+// This harness deliberately makes ONE call per step, because a step whose cost is the sum of an
+// unknown number of retries cannot be attributed. So it is slightly MORE pessimistic than the
+// product on a SEARCH miss: what the product would recover from with a second turn is recorded here
+// as a step that produced nothing. That is the intended trade — do not add the retries back.
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
+import { readModifyReply } from "./guarded-modify.js";
+import { describeEditFailures } from "./edits.js";
+import { extractSource } from "./prompt.js";
 
 export type CallKind = "generate" | "modify" | "repair";
 
@@ -46,7 +65,14 @@ export type MeteredRequest =
   | { kind: "repair"; source: string; errors: string[]; prompt: GenPrompt };
 
 export interface MeteredResult {
-  source: string;
+  /**
+   * What the model SAID, verbatim — not a source.
+   *
+   * Named `text` because for a `modify` it is usually not source at all but edit blocks, and a field
+   * called `source` invited every caller to score it as one. `callModel` is what turns a reply into
+   * a source, per kind.
+   */
+  text: string;
   usage: CallUsage;
 }
 
@@ -69,7 +95,37 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** Run `req` against an unmetered backend, returning just the source. */
+/** Squash a model's prose onto one line, so a `ModelCall.error` stays a line and not a page. */
+function oneLine(text: string, max = 160): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+}
+
+/**
+ * Turn one reply into the source the caller wanted, or say why there is none.
+ *
+ * `generate` and `repair` answer with a source in prose. `modify` answers with edits, a whole file,
+ * or a refusal — so it goes through `readModifyReply`, and the source is what the edits PRODUCED.
+ * See this file's header for why the harness stops at the first reply where the product retries.
+ */
+function readReply(req: MeteredRequest, text: string): { source: string; error?: undefined } | { source?: undefined; error: string } {
+  if (req.kind !== "modify") return { source: extractSource(text) };
+
+  const reply = readModifyReply(req.source, text);
+  switch (reply.kind) {
+    case "edits":
+    case "whole-file":
+      return { source: reply.source };
+    case "diagnosis":
+      return { error: `the model declined: ${oneLine(reply.text)}` };
+    case "no-match":
+      return { error: `edits did not apply: ${oneLine(describeEditFailures(reply.failures))}` };
+    case "unusable":
+      return { error: `no change in the reply: ${oneLine(reply.text)}` };
+  }
+}
+
+/** Run `req` against an unmetered backend, returning the model's reply verbatim. */
 async function plainCall(backend: ModelBackend, req: MeteredRequest): Promise<string> {
   switch (req.kind) {
     case "generate":
@@ -110,12 +166,16 @@ export async function callModel(
   };
 
   try {
-    if (isMetered(backend)) {
-      const { source, usage } = await backend.meteredCall(req);
-      return { source, call: finish(usage, false) };
-    }
-    const source = await plainCall(backend, req);
-    return { source, call: finish(UNKNOWN_USAGE, false) };
+    const { text, usage } = isMetered(backend)
+      ? await backend.meteredCall(req)
+      : { text: await plainCall(backend, req), usage: UNKNOWN_USAGE };
+    const read = readReply(req, text);
+    // A reply that could not be read is NOT a failed call: it happened, it took time, and it was
+    // billed. `failed` is reserved for a call that threw, so the two stay tellable apart in the
+    // report — "the model answered something unusable" and "the model never answered" are different
+    // problems with different fixes.
+    if (read.error !== undefined) return { source: null, call: finish(usage, false, read.error) };
+    return { source: read.source, call: finish(usage, false) };
   } catch (e) {
     return { source: null, call: finish(UNKNOWN_USAGE, true, message(e)) };
   }
