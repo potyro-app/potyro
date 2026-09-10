@@ -18,7 +18,7 @@
 // It is never silent, and it never burns a fourth call.
 
 import { structuralLoss, type AppShape } from "@karta/runtime";
-import { applyEdits, describeEditFailures, parseEdits, type EditFailure } from "./edits.js";
+import { applyEdits, describeEditFailures, parseEditsStrict, type EditFailure } from "./edits.js";
 import { extractSource, looksLikeApp, parseModifyReply } from "./prompt.js";
 
 export type ReadReply =
@@ -39,7 +39,14 @@ export function readModifyReply(source: string, reply: string): ReadReply {
   const parsed = parseModifyReply(reply);
   if (parsed.kind === "diagnosis") return { kind: "diagnosis", text: parsed.text };
 
-  const edits = parseEdits(reply);
+  const { edits, malformed } = parseEditsStrict(reply);
+  // Any malformed block means nothing is applied — including the blocks that WERE well-formed.
+  // Applying those while dropping the broken one is the silent-partial-change defect this guards
+  // against; the retry (noMatchInstruction) tells the model which block broke and asks again.
+  if (malformed.length) {
+    const failures: EditFailure[] = malformed.map((m) => ({ index: m.index, reason: "malformed", search: "", count: 0, detail: m.reason }));
+    return { kind: "no-match", failures };
+  }
   if (edits.length) {
     const applied = applyEdits(source, edits);
     if (!applied.ok) return { kind: "no-match", failures: applied.failures };
