@@ -154,6 +154,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     tools,
     system: AGENT_SYSTEM_PROMPT,
     task,
+    source: opts.source,
     // Closed over the case and the real store — never the candidate's own claim about itself.
     verify: (source) =>
       verifyCandidate({

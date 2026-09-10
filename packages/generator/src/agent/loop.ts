@@ -15,8 +15,9 @@
 // passes, no candidate can prove more than the baseline already did, so the loop refuses to start
 // and says so. This is not a failure of the agent and not a fix; a UI must render it as neither.
 
-import { extractSource, looksLikeApp } from "../prompt.js";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
+import { describeEditFailures } from "../edits.js";
+import { readEditsOrFile } from "../guarded-modify.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 
 export type LoopOutcome =
@@ -91,6 +92,8 @@ export interface LoopDeps {
   system: string;
   /** What the user reported, in their words. */
   task: string;
+  /** The app as the person has it. Shown to the model in the opening turn; edits are applied to it. */
+  source: string;
   /** Compile + replay the candidate. The loop cannot succeed without this passing. */
   verify: (candidate: string) => Promise<{ passed: boolean; detail: string }>;
   /**
@@ -162,7 +165,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     ? [...deps.resumeFrom]
     : [
         { role: "system", content: deps.system },
-        { role: "user", content: deps.task },
+        { role: "user", content: `${deps.task}\n\nThe app as it is:\n\`\`\`ts\n${deps.source}\n\`\`\`` },
       ];
   let lastAttempt: string | undefined;
   // Counted so `exhausted.reason` can say WHAT went wrong, not just that it did — a watcher on
@@ -170,6 +173,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   // app) has nothing to go on.
   let failedCandidates = 0;
   let unusableReplies = 0;
+  let unmatchedEdits = 0;
 
   const stopped = (): LoopOutcome => ({ kind: "stopped", ...(lastAttempt ? { lastAttempt } : {}) });
 
@@ -226,17 +230,22 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
       return { kind: "diagnosis", text: head.slice(NOT_IN_APP.length).split(/^```/m)[0]!.trim() };
     }
 
-    const candidate = extractSource(text);
-    if (!looksLikeApp(candidate)) {
-      unusableReplies += 1;
-      deps.onStep?.({ kind: "unusable", detail: text.trim() || "(empty reply)" });
+    const read = readEditsOrFile(deps.source, text);
+    if (read.kind === "unusable" || read.kind === "no-match") {
+      if (read.kind === "no-match") unmatchedEdits += 1;
+      else unusableReplies += 1;
+      deps.onStep?.({ kind: "unusable", detail: read.kind === "no-match" ? describeEditFailures(read.failures) : text.trim() || "(empty reply)" });
       messages.push({ role: "assistant", content: text });
       messages.push({
         role: "user",
-        content: `That was not an app. Reply with the complete .app.ts in one \`\`\`ts block, or "${ASK} <question>", or "${NOT_IN_APP} <what is wrong outside the app>".`,
+        content:
+          read.kind === "no-match"
+            ? `Your edits could not be applied:\n${describeEditFailures(read.failures)}\nSend the edits again, copying every SEARCH block from the app exactly as it appears.`
+            : `That was not a change to the app. Reply with SEARCH/REPLACE edits in one \`\`\`ts block, or "${ASK} <question>", or "${NOT_IN_APP} <what is wrong outside the app>".`,
       });
       continue;
     }
+    const candidate = read.source;
 
     lastAttempt = candidate;
     const verdict = await deps.verify(candidate);
@@ -273,7 +282,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   if (deps.signal?.aborted) return stopped();
   return {
     kind: "exhausted",
-    reason: `gave up after ${maxSteps} steps (${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed replay, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not an app)`,
+    reason: `gave up after ${maxSteps} steps (${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed replay, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not an app, ${unmatchedEdits} repl${unmatchedEdits === 1 ? "y" : "ies"} had edits that did not match)`,
     ...(lastAttempt ? { lastAttempt } : {}),
   };
 }
