@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
-import { replayCase, type Case, type ReplayReport, type ReplayTarget } from "@karta/runtime";
+import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@karta/runtime";
 import { caseLabel, listCases } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
@@ -19,7 +19,7 @@ import {
   hasBuiltInAI,
   SYSTEM_PROMPT,
   buildUserMessage,
-  buildRepairMessage,
+  buildRepairInstruction,
   buildModifyMessage,
   extractSource,
   looksLikeApp,
@@ -245,7 +245,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
       // The model sometimes emits a structurally-invalid app (e.g. a wrong list shape). Feed the
       // validator's errors back once and rebuild — so you get a working app, not broken UI.
       if (autoRepair && issues.length) {
-        setProgress("Fixing structure…");
+        setProgress("Fixing structure… (the model gets one more round, up to three calls)");
         const fixed = await repairSource(next, issues);
         setSource(fixed);
         issues = await buildPreview(fixed, currentId);
@@ -316,6 +316,29 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const withTick = <T,>(verb: string, work: () => Promise<T>): Promise<T> =>
     engine === "cli" ? work() : ticking(`${verb} via ${label}`, work);
 
+  // One raw model turn for the current engine, for a modify OR a repair (a repair is a modify whose
+  // instruction is the validator's own words). Returns the model's REPLY: `guardedModify` reads it.
+  const modifyAttempt = async (src: string, instr: string): Promise<string> => {
+    const p = { id: "studio", description: instr };
+    if (engine === "edge") return (await edgeBackend()).modify(src, instr, p);
+    if (engine === "builtin") return (await createGeminiNanoBackend()).modify(src, instr, p);
+    if (engine === "cli") {
+      const prompt = ["The current app:", "```ts", src, "```", "", buildModifyMessage(instr)].join("\n");
+      return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Modifying via ${label}… ${secs}s`) });
+    }
+    return (await cloudBackend()).modify(src, instr, p);
+  };
+
+  /** The shape a repair is judged against. A source that does not load has no shape to lose. */
+  const shapeOrEmpty = async (src: string): Promise<AppShape> => {
+    try {
+      const app = await loadTrustedModule(src);
+      return { pages: app.pages, entities: app.entities };
+    } catch {
+      return { pages: [], entities: {} };
+    }
+  };
+
   /**
    * ONE create path. Which model answers is `engineCfg`, chosen in the settings modal — it is no
    * longer implied by which of four buttons you pressed, which is what made an edit reach a
@@ -335,17 +358,23 @@ export function Studio({ onClose }: { onClose: () => void }) {
       description.trim() || undefined,
     );
 
-  // Repair a source given a list of problems (validator issues or an error), via the current engine.
+  // Repair a source given the validator's issues — through the SAME gate as a modify. Before this,
+  // a repair asked for the whole file again, so a good edit followed by one validation slip
+  // reintroduced the retyping the edit format exists to prevent.
   const repairSource = (src: string, issues: string[]): Promise<string> =>
     withTick("Fixing", async () => {
-      const p = { id: "studio", description };
-      if (engine === "edge") return (await edgeBackend()).repair(src, issues, p);
-      if (engine === "builtin") return (await createGeminiNanoBackend()).repair(src, issues, p);
-      if (engine === "cli") {
-        const prompt = [SYSTEM_PROMPT, "", buildUserMessage(p), "", "The previous attempt:", "```ts", src, "```", "", buildRepairMessage(issues)].join("\n");
-        return runCli(prompt, "Fixing");
-      }
-      return (await cloudBackend()).repair(src, issues, p);
+      const result = await guardedModify({
+        attempt: (instr) => modifyAttempt(src, instr),
+        shapeOf: shapeOrEmpty,
+        before: await shapeOrEmpty(src),
+        instruction: buildRepairInstruction(issues),
+        source: src,
+      });
+      if (result.kind === "diagnosis") throw new Error(`the repair was declined: ${result.text}`);
+      if (result.kind === "failed") throw new Error(`the repair could not be applied: ${result.reason}`);
+      if (result.loss !== null) setModifyLoss(result.loss);
+      setModifyNote((prev) => `${prev ? `${prev} ` : ""}Repaired with ${result.via === "edits" ? `${result.applied} edit${result.applied === 1 ? "" : "s"}` : "the whole file"}.`);
+      return result.source;
     });
 
   // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
@@ -354,18 +383,9 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const modify = (): Promise<void> => {
     const instruction = description.trim();
     if (!instruction || !preview) return Promise.resolve();
-    const p = { id: "studio", description: instruction };
     // One model turn, returning the model's REPLY (not source): `guardedModify` reads it, and may
     // call this up to three times (a no-match retry, then a loss retry).
-    const attempt = async (instr: string): Promise<string> => {
-      if (engine === "edge") return (await edgeBackend()).modify(source, instr, p);
-      if (engine === "builtin") return (await createGeminiNanoBackend()).modify(source, instr, p);
-      if (engine === "cli") {
-        const prompt = ["The current app:", "```ts", source, "```", "", buildModifyMessage(instr)].join("\n");
-        return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Modifying via ${label}… ${secs}s`) });
-      }
-      return (await cloudBackend()).modify(source, instr, p);
-    };
+    const attempt = (instr: string): Promise<string> => modifyAttempt(source, instr);
     const def = preview.composed.runtime.definition;
     setModifyLoss(null);
     setModifyNote(null);
