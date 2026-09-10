@@ -1,69 +1,63 @@
-// Measure how a model behaves when asked to CHANGE an app rather than write one.
+// Run the modify chains through `claude -p` and report what survived, what it cost, and what a
+// person still has to look at.
 //
-//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @karta/generator eval:modify -- --backend openrouter
-//   pnpm --filter @karta/generator eval:modify -- --backend openrouter --model deepseek/deepseek-v4-pro-0813
-//   pnpm --filter @karta/generator eval:modify -- --backend scripted        # no key: proves the harness
+// This spends real money. Every default here is the cautious one — one attempt, one chain at a
+// time, one repair — because the run exists to make a decision about safety, and a run you cannot
+// attribute a charge or a failure to does not help you make it.
 //
-// Flags: --backend openrouter|claude-cli|scripted|scripted-edits|scripted-repair  --model <id>
-//        --reasoning <effort>  --only id1,id2  --concurrency N  --out <dir>  --repair
+//   # the three-scenario pilot: 12 base calls, hard-stopped at 15
+//   pnpm --filter @karta/generator eval:modify -- --only todo-groups,recipes-shopping,expenses-split --max-calls 15 --max-cost 16
 //
-// Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
-// read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
-// loss retry) before giving up. So the numbers here are the numbers a person sees, and the two rates
-// that matter fall straight out:
+//   # Windows (PowerShell blocks pnpm.ps1 under the default execution policy)
+//   pnpm.cmd --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
 //
-//   rewrote (1st)   how often the model's first reply replaced the app  - the raw model behaviour
-//   rewrote (final) how often it STILL had after the retry              - what reaches the editor
+// Flags
+//   --only a,b        run only these scenarios (default: the whole corpus)
+//   --attempts N      how many times to run the corpus (default 1; model output varies, and one run
+//                     of a stochastic system is an anecdote — but each attempt costs again)
+//   --concurrency N   chains in flight at once (default 1, so a failure and a charge are both
+//                     attributable to one chain)
+//   --max-calls N     hard stop on model calls, failures included
+//   --max-cost N      hard stop on reported spend, in USD. Refuses to run unmetered — see below
+//   --allow-unmetered continue under --max-cost even when the backend reports no cost
+//   --no-metering     ask the CLI for plain text instead of the JSON envelope (no usage, no cost)
+//   --model alias     passed to `claude --model`
+//   --out dir         artifact directory (default eval-out/modify)
 //
-// plus LANDED (the change is present) and VALIDATES (the result is a well-formed app), so a model
-// that keeps the app by ignoring the request does not score as a win.
+// ## On --max-cost
+//
+// A ceiling over a backend that cannot report spend is a number in a config file. `claude -p` only
+// reports cost under `--output-format json`, so that is what this asks for; if a call comes back
+// without a cost anyway, the run STOPS rather than continuing under a limit that was never going to
+// fire. `--allow-unmetered` is how a person says "I know it is unmetered, keep going" — and the
+// report then says so in as many words, and reports call count and duration instead. Call count is
+// not cost and is never presented as it.
+//
+// Every source is written to disk. A failure rate is unreadable without the failures.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { ClaudeCliBackend } from "../src/cli-backend.js";
-import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter-backend.js";
-import { guardedModify } from "../src/guarded-modify.js";
-import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
-import { buildRepairInstruction } from "../src/prompt.js";
-import { loadApp, scoreSource } from "../src/score.js";
-import type { GenPrompt, ModelBackend } from "../src/backend.js";
-import type { AppShape } from "@karta/runtime";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { ClaudeCliBackend, claudeCliAvailable } from "../src/cli-backend.js";
+import { MODIFY_SCENARIOS } from "../src/modify-scenarios.js";
+import { runModifyScenario, summarize, type ScenarioRun } from "../src/modify-eval.js";
+import { artifactPath, formatModifyReport, rejectedPath, reviewSheet } from "../src/modify-report.js";
+import { CallBudget } from "../src/model-call.js";
 
-interface Outcome {
-  id: string;
-  app: string;
-  /** How the change arrived: edits (the contract), the whole file (accepted fallback), a NOT-IN-APP
-   *  verdict, or nothing usable. The first number to read: it says whether the model follows the
-   *  format at all. */
-  via: "edits" | "whole-file" | "declined" | "failed";
-  /** Edit blocks applied (0 unless via=edits). */
-  applied: number;
-  /** The first reply's SEARCH did not match and the model was asked again. Format reliability. */
-  noMatchRetry: boolean;
-  /** The first usable reply dropped an entity or a page - the raw behaviour the loss gate counts. */
-  rewroteFirst: boolean;
-  /** What reached the editor still drops something, even after the retry. */
-  rewroteFinal: boolean;
-  loss: string | null;
-  /** null = the case has no structural predicate (keep-only), or nothing landed to check. */
-  landed: boolean | null;
-  validates: boolean;
-  /** Kept for report readers: same as via === "declined". */
-  declined: boolean;
-  /** Only set when --repair is given and the first result did not validate: the repair round's
-   *  outcome. null when repair was not requested, not needed (validates already true), or the
-   *  case never reached a `kind: "source"` result to repair. */
-  repair: { via: "edits" | "whole-file" | "declined" | "failed"; validates: boolean } | null;
-  ms: number;
-  crashed?: string;
-}
-
-function arg(name: string, fallback?: string): string | undefined {
+function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+  const next = i >= 0 ? process.argv[i + 1] : undefined;
+  return next && !next.startsWith("--") ? next : undefined;
+}
+const flag = (name: string): boolean => process.argv.includes(`--${name}`);
+
+function numberArg(name: string): number | undefined {
+  const raw = arg(name);
+  if (raw === undefined) return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`--${name} must be a positive number, got "${raw}"`);
+  return n;
 }
 
-/** Bounded-concurrency map that preserves input order (same shape as run-cli-eval). */
 async function pool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
   let next = 0;
@@ -79,264 +73,93 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T, i: number) =>
   return out;
 }
 
-/**
- * Backends with no model behind them, so the harness can be proven end to end without a key.
- *
- * `scripted`: the first reply REPLACES the app with a smaller one (as a whole-file reply), the retry
- * hands the original back. Must report via=whole-file, rewroteFirst=true, rewroteFinal=false,
- * landed=false for every case.
- *
- * `scripted-edits`: the first reply is an edit whose SEARCH is not in any file; the retry edits the
- * one line every corpus app has. Must report via=edits, noMatchRetry=true, applied=1, rewroteFirst=
- * false, validates=true for every case. If either proof fails, the harness is broken, not the model.
- */
-const editBlock = (search: string, replace: string) =>
-  "```ts\n<<<<<<< SEARCH\n" + search + "\n=======\n" + replace + "\n>>>>>>> REPLACE\n```\n";
-
-function scriptedBackend(kind: "scripted" | "scripted-edits"): ModelBackend {
-  const calls = new Map<string, number>();
-  return {
-    name: kind === "scripted" ? "scripted:rewrite-then-restore" : "scripted:nomatch-then-edit",
-    async generate() {
-      throw new Error("scripted backend only modifies");
-    },
-    async modify(source: string, _instruction: string, prompt: GenPrompt) {
-      // Key on the case id the runner passes as `prompt.id` - with `--runs`, that id carries a
-      // per-sample suffix, so each sample fails once and recovers on its retry.
-      const n = (calls.get(prompt.id) ?? 0) + 1;
-      calls.set(prompt.id, n);
-      if (kind === "scripted-edits") {
-        if (n === 1) return editBlock("THIS LINE IS IN NO APP", "// never applied");
-        return editBlock("export default defineApp({", "// edited by the eval\nexport default defineApp({");
-      }
-      if (n > 1) return "```ts\n" + source + "\n```";
-      // A different, smaller app: one entity, one page. Exactly what a rewrite looks like.
-      return `\`\`\`ts
-import { defineApp } from "karta";
-export default defineApp({
-  id: "rewritten", name: "Rewritten", version: "1.0.0", schemaVersion: 1,
-  entities: { thing: { label: "Thing", displayField: "name", fields: { name: { type: "text", required: true } } } },
-  pages: [{ id: "all", title: "Things", view: { type: "list", entity: "thing", display: { primary: "name" } } }],
-});
-\`\`\``;
-    },
-  };
-}
-
-/** First modify reply breaks `schemaVersion` (compiles, fails validation); the repair reply restores it.
- *  Must report validates 0/12 before repair and 12/12 after. */
-function scriptedRepairBackend(): ModelBackend {
-  const calls = new Map<string, number>();
-  return {
-    name: "scripted:break-then-repair",
-    async generate() {
-      throw new Error("scripted backend only modifies");
-    },
-    async modify(_source: string, _instruction: string, prompt: GenPrompt) {
-      const n = (calls.get(prompt.id) ?? 0) + 1;
-      calls.set(prompt.id, n);
-      if (n === 1) return editBlock("  schemaVersion: 1,", '  schemaVersion: "one",');
-      return editBlock('  schemaVersion: "one",', "  schemaVersion: 1,");
-    },
-  };
-}
-
-async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
-  if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
-  if (kind === "scripted-repair") return scriptedRepairBackend();
-  if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
-  if (kind === "openrouter") {
-    return createOpenRouterBackend({
-      ...(model ? { model } : {}),
-      ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
-    });
-  }
-  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits or scripted-repair)`);
-}
-
-/** The shape the guard compares, from a loaded app. Throws when the source does not load, which
- *  `guardedModify` treats as "cannot judge" rather than a loss. */
-async function shapeOf(source: string, resolveDir: string): Promise<AppShape & DefinitionShape> {
-  const app = (await loadApp(source, resolveDir)) as unknown as DefinitionShape;
-  return { entities: app.entities, pages: app.pages as AppShape["pages"] & DefinitionShape["pages"] };
-}
-
-async function runCase(
-  backend: ModelBackend,
-  c: ModifyCase,
-  examplesDir: string,
-  outDir: string,
-  withRepair: boolean,
-): Promise<Outcome> {
-  const started = Date.now();
-  // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
-  // use) lives beside this harness, so the product's fixtures stay the product's.
-  const fixturesDir = resolve(process.cwd(), "fixtures");
-  const sourceDir = existsSync(join(examplesDir, `${c.app}.app.ts`)) ? examplesDir : fixturesDir;
-  const source = readFileSync(join(sourceDir, `${c.app}.app.ts`), "utf8");
-  let turn = 0;
-  // Every reply is written out as the model sent it (edits or a file), or a failed case cannot be
-  // diagnosed. The applied result is written separately, so it can be diffed against the original.
-  const keep = (text: string): string => {
-    turn += 1;
-    writeFileSync(join(outDir, `${c.id}.attempt-${turn}.reply.md`), text);
-    return text;
-  };
-  const p: GenPrompt = { id: c.id, description: c.instruction };
-  const crashed = (msg: string): Outcome => ({
-    id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false,
-    // A crash is not a case that failed to land; it is a case that did not run - so it leaves the
-    // `landable` denominator rather than counting against it.
-    loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started, crashed: msg,
-  });
-  try {
-    if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
-    const before = await shapeOf(source, examplesDir);
-    if (c.landed && c.landed(before, before)) {
-      throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
-    }
-    const result = await guardedModify({
-      attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
-      shapeOf: (src) => shapeOf(src, examplesDir),
-      before,
-      instruction: c.instruction,
-      source,
-    });
-    const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry };
-    if (result.kind === "diagnosis") {
-      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ms: Date.now() - started };
-    }
-    if (result.kind === "failed") {
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started };
-    }
-    writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
-    // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
-    // prompt's `errors` — so a case paid for two bundle+validate passes and the two could in
-    // principle disagree about the same source. `scoreSource` reports failures as `errors` rather
-    // than throwing, so it sits outside the try that guards `shapeOf`.
-    const score = await scoreSource(result.source, sourceDir);
-    const validates = score.validates;
-    let landed: boolean | null = c.landed ? false : null;
-    try {
-      const final = await shapeOf(result.source, sourceDir);
-      if (c.landed) landed = c.landed(final, before);
-    } catch {
-      // Does not load: nothing landed, and `loss` is whatever the guard could tell.
-    }
-    let repair: Outcome["repair"] = null;
-    if (withRepair && !validates) {
-      const repaired = await guardedModify({
-        attempt: async (instr) => keep(await backend.modify!(result.source, instr, p)),
-        shapeOf: (src) => shapeOf(src, examplesDir),
-        before,
-        instruction: buildRepairInstruction(score.errors),
-        source: result.source,
-      });
-      if (repaired.kind === "source") {
-        writeFileSync(join(outDir, `${c.id}.repaired.app.ts`), repaired.source);
-        repair = { via: repaired.via, validates: (await scoreSource(repaired.source, sourceDir)).validates };
-      } else {
-        // A repair that declined (NOT-IN-APP) or produced nothing usable is not an edit round that
-        // failed to validate — recording both as `via: "edits"` made three different endings
-        // indistinguishable in the report. Named with `Outcome.via`'s own vocabulary, so a reader
-        // does not have to learn a second one: a `diagnosis` is `declined` there too.
-        repair = { via: repaired.kind === "diagnosis" ? "declined" : "failed", validates: false };
-      }
-    }
-    return {
-      ...common,
-      via: result.via,
-      applied: result.applied,
-      rewroteFinal: result.loss !== null,
-      loss: result.loss,
-      landed,
-      validates,
-      declined: false,
-      repair,
-      ms: Date.now() - started,
-    };
-  } catch (e) {
-    return crashed(e instanceof Error ? e.message : String(e));
-  }
+function write(file: string, contents: string): void {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, contents);
 }
 
 async function main(): Promise<void> {
-  const only = arg("only")?.split(",").map((s) => s.trim());
-  const concurrency = Number(arg("concurrency", "3"));
-  // One sample per case at temperature 0.1 is noise: two cases flipped between consecutive runs
-  // with nothing changed, and a 0/12 cannot rule out a rewrite rate of 20%. N samples per case
-  // turn "it did not happen this time" into a rate with a denominator worth reading.
-  const runs = Math.max(1, Number(arg("runs", "1")));
-  // Read once, here, and passed down. `runCase` used to re-read `process.argv` per case, which put
-  // the flag's meaning in two places and made the runner impossible to drive from anything but a
-  // command line.
-  const repairRequested = process.argv.includes("--repair");
-  const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `modify-${Date.now()}`))!);
-  const examplesDir = resolve(process.cwd(), "..", "..", "examples");
-  const selected = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
-  const cases = selected.flatMap((c) => Array.from({ length: runs }, (_, i) => (runs > 1 ? { ...c, id: `${c.id}#${i + 1}` } : c)));
+  if (!claudeCliAvailable()) {
+    throw new Error("`claude` is not on PATH. This run needs the CLI authenticated; nothing was spent.");
+  }
 
-  mkdirSync(outDir, { recursive: true });
-  const backend = await makeBackend(arg("backend", "openrouter") ?? "openrouter", arg("model"), arg("reasoning"));
-  console.log(`backend=${backend.name} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  const attempts = numberArg("attempts") ?? 1;
+  const concurrency = numberArg("concurrency") ?? 1;
+  const maxCalls = numberArg("max-calls");
+  const maxCostUsd = numberArg("max-cost");
+  const only = arg("only")?.split(",").map((s) => s.trim()).filter(Boolean);
+  const outDir = resolve(process.cwd(), arg("out") ?? "eval-out/modify");
 
-  let done = 0;
-  const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await runCase(backend, c, examplesDir, outDir, repairRequested);
-    // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
-    //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
-    const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
-    const how = o.via === "edits" ? `${o.applied} edit${o.applied === 1 ? "" : "s"}` : o.via === "whole-file" ? "WHOLE FILE" : o.via;
-    const note = o.crashed
-      ? ` CRASHED: ${o.crashed.slice(0, 80)}`
-      : [o.noMatchRetry ? " SEARCH missed once" : "", o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : ""].join("");
-    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s) via ${how}${o.landed === false ? " — did not land" : ""}${note}`);
-    return o;
+  // Named-but-unknown first: when EVERY `--only` id is a typo the generic "nothing matched" is the
+  // less useful of the two messages, and it is the one that fires if this order is reversed.
+  const missing = (only ?? []).filter((id) => !MODIFY_SCENARIOS.some((s) => s.id === id));
+  if (missing.length) throw new Error(`unknown scenario(s): ${missing.join(", ")}`);
+  const scenarios = only ? MODIFY_SCENARIOS.filter((s) => only.includes(s.id)) : MODIFY_SCENARIOS;
+  if (!scenarios.length) throw new Error(`no scenarios matched ${only?.join(",")}`);
+
+  const backend = new ClaudeCliBackend({
+    timeoutMs: 300_000,
+    metered: !flag("no-metering"),
+    ...(arg("model") ? { model: arg("model")! } : {}),
+  });
+  const budget = new CallBudget({
+    ...(maxCalls === undefined ? {} : { maxCalls }),
+    ...(maxCostUsd === undefined ? {} : { maxCostUsd }),
+    allowUnmetered: flag("allow-unmetered"),
   });
 
-  const n = outcomes.length;
-  const count = (f: (o: Outcome) => boolean) => outcomes.filter(f).length;
-  const pct = (k: number) => (n ? `${Math.round((k / n) * 100)}%` : "—");
-  const summary = {
-    backend: backend.name,
-    n,
-    viaEdits: count((o) => o.via === "edits"),
-    viaWholeFile: count((o) => o.via === "whole-file"),
-    noMatchRetry: count((o) => o.noMatchRetry),
-    failed: count((o) => o.via === "failed" && !o.crashed),
-    rewroteFirst: count((o) => o.rewroteFirst),
-    rewroteFinal: count((o) => o.rewroteFinal),
-    landed: count((o) => o.landed === true),
-    landable: count((o) => o.landed !== null),
-    validates: count((o) => o.validates),
-    validatesAfterRepair: count((o) => o.validates || o.repair?.validates === true),
-    declined: count((o) => o.declined),
-    crashed: count((o) => Boolean(o.crashed)),
-  };
-  const lines = [
-    "",
-    "=".repeat(60),
-    `MODIFY — ${backend.name} (n=${n}${runs > 1 ? ` = ${selected.length} cases × ${runs} runs` : ""})`,
-    `  replied with edits:       ${summary.viaEdits}/${n} (${pct(summary.viaEdits)})   ← the contract`,
-    `  sent the whole file:      ${summary.viaWholeFile}/${n} (${pct(summary.viaWholeFile)})   ← accepted, but retyped`,
-    summary.noMatchRetry ? `  SEARCH missed, retried:   ${summary.noMatchRetry}/${n}` : "",
-    summary.failed ? `  nothing usable:           ${summary.failed}/${n}` : "",
-    `  dropped entities/pages:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← a reply lost structure; the loss retry fired`,
-    `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
-    `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
-    `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
-    repairRequested ? `  validates after repair:   ${summary.validatesAfterRepair}/${n} (${pct(summary.validatesAfterRepair)})` : "",
-    summary.declined ? `  declined (NOT-IN-APP):    ${summary.declined}/${n}   ← judged not the app's to change; excluded from landed` : "",
-    summary.crashed ? `  crashed:                  ${summary.crashed}/${n}` : "",
-    "=".repeat(60),
-  ].filter((l) => l !== "");
-  console.log(lines.join("\n"));
+  const jobs = Array.from({ length: attempts }, (_, a) => scenarios.map((s) => ({ s, attempt: a + 1 }))).flat();
+  // 1 generate + 3 modify per chain, before any repair. Said out loud because the number of calls
+  // IS the cost when the backend will not name one.
+  const baseCalls = jobs.length * 4;
 
-  writeFileSync(join(outDir, "report.json"), JSON.stringify({ summary, outcomes }, null, 2));
-  console.log(`\nreport: ${join(outDir, "report.json")}`);
+  console.log(`${jobs.length} chains (${scenarios.length} scenarios × ${attempts}), ${concurrency} at a time.`);
+  console.log(`${baseCalls} base model calls before repairs${maxCalls ? `, hard stop at ${maxCalls}` : ", NO --max-calls set"}.`);
+  console.log(maxCostUsd ? `Spend ceiling $${maxCostUsd}.` : "No --max-cost set.");
+  console.log(`Artifacts: ${outDir}\n`);
+
+  const started = Date.now();
+  const runs: (ScenarioRun | null)[] = await pool(jobs, concurrency, async ({ s, attempt }) => {
+    // A chain that throws outright must not take the report down with it. `runModifyScenario`
+    // handles a failure inside a step, but not one before the first — a store that will not open,
+    // a generated app that cannot be seeded. Losing the whole run's accounting to one of those
+    // would mean the calls already paid for went unreported, which is the one thing this harness
+    // promises never to do.
+    let run: ScenarioRun;
+    try {
+      run = await runModifyScenario(backend, s, attempt, budget);
+    } catch (e) {
+      console.error(`  ${s.id} #${attempt}  HARNESS ERROR: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }
+    // Written per chain rather than at the end, so a run killed by a budget stop — or by somebody
+    // pressing ctrl-C at the sight of the bill — still leaves everything it learned on disk.
+    if (run.generation.source) write(join(outDir, artifactPath(run, "generated")), run.generation.source);
+    if (run.generation.rejectedSource) write(join(outDir, rejectedPath(run, "generated")), run.generation.rejectedSource);
+    for (const step of run.steps) {
+      if (step.sourceAfter) write(join(outDir, artifactPath(run, step.index)), step.sourceAfter);
+      if (step.rejectedSource) write(join(outDir, rejectedPath(run, step.index)), step.rejectedSource);
+    }
+    const marks = run.generated
+      ? run.steps.map((st) => `${st.index}:${st.verdict}`).join(" ") || "no steps ran"
+      : "GENERATE FAILED";
+    console.log(`  ${run.scenario} #${attempt}  ${marks}${run.stoppedBecause ? `  — ${run.stoppedBecause}` : ""}`);
+    return run;
+  });
+
+  const report = summarize(backend.name, runs.filter((r): r is ScenarioRun => r !== null), budget, started);
+  write(join(outDir, "report.json"), JSON.stringify(report, null, 2));
+  const text = formatModifyReport(report);
+  write(join(outDir, "report.txt"), text);
+  write(join(outDir, "review.md"), reviewSheet(report));
+
+  console.log(`\n${text}`);
+  console.log(`\n${Math.round(report.durationMs / 1000)}s · review sheet: ${join(outDir, "review.md")}`);
+  // A partial run is not a passing run. Exit non-zero so a wrapper cannot mistake one for the other.
+  if (report.partial) process.exitCode = 2;
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+void main().catch((e: unknown) => {
+  console.error(e instanceof Error ? e.message : String(e));
+  process.exitCode = 1;
 });

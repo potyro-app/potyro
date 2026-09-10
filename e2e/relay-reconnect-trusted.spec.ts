@@ -1,6 +1,6 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { answerNamePrompt } from "./name-prompt.js";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 
 // Sync must survive losing the relay.
@@ -18,6 +18,12 @@ import { createConnection } from "node:net";
 
 const PORT = 4321;
 const RELAY = `ws://localhost:${PORT}`;
+
+// `spawn` on Windows will not find `pnpm` — the shim on PATH is `pnpm.cmd`, and `pnpm.ps1` is the
+// one PowerShell refuses to run under the default execution policy. Naming the extension is the
+// portable fix; changing a machine's execution policy to make a test pass is not.
+const WINDOWS = process.platform === "win32";
+const PNPM = WINDOWS ? "pnpm.cmd" : "pnpm";
 
 test.describe.configure({ mode: "serial" });
 
@@ -52,20 +58,31 @@ const gone = async (timeoutMs = 20_000): Promise<boolean> => {
 };
 
 async function startRelay(): Promise<void> {
-  relay = spawn("pnpm", ["jazz-run", "sync", "--port", String(PORT), "--in-memory"], {
-    stdio: "ignore",
-    detached: true,
-  });
+  const args = ["jazz-run", "sync", "--port", String(PORT), "--in-memory"];
+  relay = WINDOWS
+    ? // Node has refused to `spawn` a `.cmd` directly since the CVE-2024-27980 fix — it fails with
+      // `spawn EINVAL` — so Windows goes through a shell, as one string rather than args (passing
+      // both is deprecated, and concatenating them here is unambiguous: every token is a literal
+      // from this file, none of it from outside).
+      spawn(`${PNPM} ${args.join(" ")}`, { stdio: "ignore", shell: true })
+    : // A process group, so the whole tree can be killed at once. Windows has no equivalent here;
+      // `detached` on a `.cmd` opens a console window instead, and the tree is killed by pid.
+      spawn(PNPM, args, { stdio: "ignore", detached: true });
   expect(await listening(), `relay did not come up on ${PORT}`).toBe(true);
 }
 
 async function stopRelay(): Promise<void> {
   if (!relay?.pid) return;
-  // The whole process group: `pnpm` spawns the real server as a child.
-  try {
-    process.kill(-relay.pid, "SIGKILL");
-  } catch {
-    relay.kill("SIGKILL");
+  // The whole process TREE, not the launcher: `pnpm` spawns the real server as a child, and killing
+  // the shim leaves the port held — which this spec then reads as "the relay survived a kill".
+  if (WINDOWS) {
+    spawnSync("taskkill", ["/pid", String(relay.pid), "/T", "/F"], { stdio: "ignore" });
+  } else {
+    try {
+      process.kill(-relay.pid, "SIGKILL");
+    } catch {
+      relay.kill("SIGKILL");
+    }
   }
   relay = null;
   expect(await gone(), "relay port stayed open after kill").toBe(true);
