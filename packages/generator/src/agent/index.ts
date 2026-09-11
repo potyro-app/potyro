@@ -16,6 +16,11 @@
 //   app-tools.ts     -> @karta/runtime, and `import type` from tools.ts — its own branch, reached
 //                       from this barrel directly, never through loop.ts
 //   system-prompt.ts -> ../edits.js (EDIT_FORMAT), ../prompt.js (SYSTEM_PROMPT)
+//   modify-loop.ts   -> tools.ts, ../guarded-modify.js, ../edits.js, ../prompt.js, @karta/runtime
+//                       (structuralLoss) — the modify loop (#131), same edges as loop.ts
+//   discovery-tools.ts -> ../reference.generated.js (a string), ../prompt.js (the examples), karta
+//                       (VIEW_FIELDS), and `import type` from tools.ts
+//   modify-system-prompt.ts -> ../prompt.js (SYSTEM_PROMPT)
 //
 // Along every one of those, each cross-package import is either `import type` (erased at build
 // time) or a real value import that bottoms out in `karta` (zod only) or `react` — nothing here
@@ -26,3 +31,6 @@ export { runAgentLoop, type LoopOutcome, type LoopStep, type LoopDeps } from "./
 export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
+export { runModifyLoop, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
+export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
+export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";

@@ -54,6 +54,9 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("add a 5-star rating field");
   await go.click();
+  // The h1 already reads "Reader" before the modify, so wait for the modify's own note (the stub
+  // answers with the whole file, which the loop accepts and labels) rather than racing the source.
+  await expect(studio.locator(".k-modify-note")).toHaveText(/whole file|Applied/, { timeout: 60_000 });
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
 
   await studio.getByRole("tab", { name: "Source" }).click();
