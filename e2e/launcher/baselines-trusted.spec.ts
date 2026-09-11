@@ -6,11 +6,17 @@ import { openApp, openHome, openSwitcher, pinFonts, seed } from "./fixture.js";
 // tile menu, at 375 / 768 / 1440, in light and dark. Chromium only, one worker (the suite's rule).
 //
 // A baseline is a claim about the pixels: a change that moves them is a change somebody has to
-// look at. `pnpm e2e:baselines` regenerates them after an intended one. The type is pinned to
-// DejaVu (see `pinFonts`) so the pixels are about the launcher, not about the fonts a machine has.
+// look at. The two themes are identical until #92 lands a dark palette: that is the point of
+// taking them now — #92's PR is the one that changes the dark set, and only the dark set.
 //
-// The two themes are identical until #92 lands a dark palette: that is the point of taking them
-// now — #92's PR is the one that changes the dark set, and only the dark set.
+// The pixels are CI's. Two Linux machines with the same Chromium and the same fonts still do not
+// agree: glyph hinting differs by a few hundred pixels per page, and a classic scrollbar on one
+// shifts a whole layout that overlay scrollbars on the other leave alone. So the baselines are
+// rendered on the CI runner, the comparison runs there (or here on request, `KARTA_BASELINES=1`),
+// and the "Launcher baselines" workflow regenerates them after a change you meant. The rest of the
+// harness runs everywhere.
+
+test.skip(!process.env.CI && !process.env.KARTA_BASELINES, "baselines are CI's pixels — set KARTA_BASELINES=1 to compare here");
 
 const WIDTHS = [375, 768, 1440] as const;
 const THEMES = ["light", "dark"] as const;
