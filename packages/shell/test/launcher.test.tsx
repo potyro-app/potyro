@@ -31,7 +31,6 @@ describe("Launcher", () => {
   // the registry from anywhere — the Studio, another launcher, another tab — reaches this render.
   it("shows an app saved after it mounted, with no help from its parent", () => {
     render(<Launcher {...props} />);
-    expect(tiles("recipes")).toHaveLength(1); // the built-ins come from the same list
     expect(tiles("Groceries")).toHaveLength(0);
     seed(app("groceries", "Groceries"));
     act(() => {
@@ -40,14 +39,14 @@ describe("Launcher", () => {
     expect(tiles("Groceries")).toHaveLength(1);
   });
 
-  it("hands the opened app to onOpen with its kind, for both kinds", () => {
-    seed(app("groceries", "Groceries"));
+  it("hands the opened app to onOpen with its key", () => {
+    seed(app("groceries", "Groceries"), app("trips", "Trips"));
     const onOpen = vi.fn();
     render(<Launcher {...props} onOpen={onOpen} />);
-    fireEvent.click(tiles("recipes")[0]!);
+    fireEvent.click(tiles("Trips")[0]!);
     fireEvent.click(tiles("Groceries")[0]!);
     expect(onOpen.mock.calls.map(([a]) => [a.kind, a.id, a.key])).toEqual([
-      ["builtin", "recipes", "builtin:recipes"],
+      ["user", "trips", "user:trips"],
       ["user", "groceries", "user:groceries"],
     ]);
   });

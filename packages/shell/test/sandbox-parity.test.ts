@@ -5,7 +5,7 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import recipes from "../../../examples/recipes.app.ts";
+import recipes from "../../../examples/recipes.app.tsx";
 import { MemoryStore } from "@karta/store";
 import { FakeCapabilities } from "@karta/capabilities";
 import type { NavBridge, UiBridge } from "@karta/host";
@@ -17,7 +17,7 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 async function bundleRecipes(): Promise<string> {
   const result = await build({
-    entryPoints: [here("../../../examples/recipes.app.ts")],
+    entryPoints: [here("../../../examples/recipes.app.tsx")],
     bundle: true,
     write: false,
     format: "iife",

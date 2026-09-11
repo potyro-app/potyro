@@ -50,6 +50,6 @@ test("opening an app by URL records an open, and a reload records another", asyn
   // A built-in counts the same way, under its own key.
   await page.goto("/?app=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes");
-  const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number }>)["builtin:recipes"]);
+  const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number }>)["user:recipes"]);
   expect(recipes?.openCount).toBe(1);
 });

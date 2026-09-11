@@ -12,10 +12,12 @@ pnpm dev            # trusted shell → http://localhost:5173
 pnpm dev:sandbox    # same apps UNTRUSTED in the QuickJS-WASM isolate
 ```
 
-Opening `/` shows the **launcher** — a home screen listing apps by provenance: **Apps** (trusted
-built-ins) and **My Apps** (untrusted apps you saved in the Studio). Click a tile to launch it. Inside
-any app, the **⊞ Apps** button slides the launcher in to switch. Deep links still work:
-`?app=recipes | plants | places | workout` (built-ins) or `?user=<id>` (a saved app).
+Opening `/` shows the **launcher** — one list of your apps, pinned ones first, then by how often
+and how recently you open them (#84). The four examples (`recipes`, `plants`, `places`, `workout`)
+are seeded into that list on first run as ordinary apps (#152): open them in the Studio, rename,
+share or delete them — a deleted example stays deleted. Click a tile to launch it. Inside any app,
+the **⊞ Apps** button slides the launcher in to switch. Deep links: `?user=<id>`; the older
+`?app=recipes` form still opens the same app.
 
 > **Note on durability:** the durable store is SQLite over OPFS. Some browsers (and headless Chrome)
 > lack the sync-access-handle API and silently fall back to `localStorage` — data still persists per
