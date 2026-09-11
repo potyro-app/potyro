@@ -2140,6 +2140,98 @@ button.k-switch:focus-visible {
   box-shadow: var(--shadow);
   animation: k-slide-in var(--dur-slow) var(--ease);
 }
+/* The tile editor (#83): a preview of the tile as it will look, then name, icon and colour, each
+   with a way back to the app's own. Swatches are 44px, a grid of them wraps. */
+.k-tile-editor {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.k-tile-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.k-tile-editor-head h2 {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-tile-editor-head .k-muted {
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+.k-tile-editor-preview {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 8rem;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.k-tile-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-tile-editor-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.k-tile-editor-row .k-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.k-tile-editor-icon-input {
+  font-size: 1.2rem;
+}
+.k-tile-editor-icons,
+.k-tile-editor-hues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.k-tile-editor-swatch {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: 1.3rem;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-tile-editor-swatch:hover {
+  transform: translateY(-1px);
+}
+.k-tile-editor-swatch[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+.k-tile-editor-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-tile-editor-hue {
+  background: color-mix(in oklab, var(--swatch) 55%, var(--surface));
+  border-color: color-mix(in oklab, var(--swatch) 35%, var(--line));
+}
+.k-tile-editor-hue[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+.k-tile-editor-own {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* The switcher (#88): a compact list — icon, name, marks — in a drawer on a desktop and a bottom
    sheet on a phone, with the search field at the bottom edge where a thumb is. Rows are 56px, so a
    phone shows eight or more apps before scrolling. */
