@@ -183,3 +183,35 @@ describe("Launcher search", () => {
     expect(onOpen.mock.calls.map(([a]) => a.id)).toEqual(["garden"]);
   });
 });
+
+// #83: what this device calls an app, shows for it, and colours it — from the tile menu, on the
+// launcher entry only; the app's record is untouched.
+describe("Launcher tile editor", () => {
+  it("renames, re-icons and recolours the tile from its menu, on this device only", () => {
+    seed(app("recipes", "Recipes"));
+    render(<Launcher {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Recipes/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit tile" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit tile: Recipes" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Tile name" }), { target: { value: "Mum's recipes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Icon 🥘" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hue 205" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.queryByRole("dialog", { name: /Edit tile/ })).toBeNull();
+    expect(dialog.isConnected).toBe(false);
+    const tile = tiles("Mum's recipes")[0]!;
+    expect(tile.querySelector(".k-launch-avatar")?.textContent).toBe("🥘");
+    expect(tile.style.getPropertyValue("--tile-accent")).toBe("oklch(72% 0.13 205)");
+    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:recipes"]).toMatchObject({ displayName: "Mum's recipes", icon: "🥘", hue: 205 });
+    // The record is the author's, untouched.
+    expect(JSON.parse(localStorage.getItem("karta:user-apps")!)[0].name).toBe("Recipes");
+    // Reset puts it back.
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Mum's recipes/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit tile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset name" }));
+    fireEvent.click(screen.getByRole("button", { name: "The app's own colour" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(tiles("Recipes")).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:recipes"].hue).toBeUndefined();
+  });
+});

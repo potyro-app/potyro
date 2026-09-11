@@ -13,6 +13,7 @@ import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type A
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "./launcher-reorder.js";
 import { tileIdentity } from "./tile-identity.js";
+import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
@@ -75,6 +76,7 @@ function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onO
  * Delete is last and set apart, so it is not a thumb's width from Rename.
  */
 interface UserActions {
+  onEditTile: () => void;
   onHistory: () => void;
   onSync: () => void;
   onShare: () => void;
@@ -160,6 +162,7 @@ function TileMenu({
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
             {item("open", "Open", onOpen)}
             {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
+            {item("edit-tile", "Edit tile", user.onEditTile)}
             {item("history", "History", user.onHistory)}
             {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
             {item("share", "Share", user.onShare)}
@@ -223,6 +226,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
+  // The tile editor (#83): this device's name, icon and colour for an app.
+  const [editing, setEditing] = useState<InstalledApp | null>(null);
   // You and your other devices — reachable from every launcher, nagged from none.
   const [identity, setIdentity] = useState(false);
 
@@ -380,6 +385,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       open={openMenuLive === a.key}
       onOpenChange={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
       user={{
+        onEditTile: () => setEditing(a),
         onHistory: () => setHistory(a.user),
         onSync: () => void toggleSync(a.user),
         onShare: () => void share(a.user),
@@ -490,6 +496,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
           onRestored={() => openUserApp(history.id)}
         />
       ) : null}
+      {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
     </div>
   );
 
@@ -578,6 +585,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             />
           </div>
           {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}
+          {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
         </div>
       </div>
     );

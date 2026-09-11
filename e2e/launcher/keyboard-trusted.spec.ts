@@ -67,6 +67,8 @@ test("the tile menu is a keyboard menu: focus in, arrows, Escape back out", asyn
   await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("menuitem", { name: "Pin" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem", { name: "Edit tile" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("menuitem", { name: "History" })).toBeFocused();
   await page.keyboard.press("End");
   await expect(menu.getByRole("menuitem", { name: "Delete" })).toBeFocused();
