@@ -54,6 +54,28 @@ describe("Launcher", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  // #94: a menu is a keyboard thing. Focus moves into it on open, arrows walk it (wrapping), and
+  // Escape puts focus back on the button — without the first of these, Escape did nothing, because
+  // the button holding focus was outside the element listening for it.
+  it("is a keyboard menu: focus in, arrows wrap, Escape returns focus to the button", () => {
+    render(<Launcher {...props} userApps={[app("groceries", "Groceries")]} />);
+    const button = screen.getByRole("button", { name: /Actions for Groceries/ });
+    fireEvent.click(button);
+    const menu = screen.getByRole("menu");
+    const item = (name: string) => screen.getByRole("menuitem", { name });
+    expect(document.activeElement).toBe(item("Open"));
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(item("Delete"));
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Open"));
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(document.activeElement).toBe(item("Delete"));
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("has no dead conditional around Share", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");

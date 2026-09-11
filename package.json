@@ -15,6 +15,8 @@
     "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @karta/shell dev\"",
     "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
     "e2e": "playwright test",
+    "e2e:launcher": "playwright test e2e/launcher",
+    "e2e:baselines": "playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
     "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0",
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @karta/shell dev",
@@ -23,6 +25,7 @@
     "test:e2e:firefox": "KARTA_FIREFOX=1 playwright test --project=trusted-firefox"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.62.0",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.12",

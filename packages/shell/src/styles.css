@@ -1862,6 +1862,18 @@ button {
   }
 }
 
+/* A finger is not a cursor. Where the pointer is coarse, the general-purpose button and the tab
+   grow to the 44px a thumb can hit (WCAG 2.5.8): the launcher harness (#94) measured the Switch
+   app button and every dialog's OK / Cancel / Confirm at 40px on a phone. */
+@media (pointer: coarse) {
+  .k-add,
+  .k-tab,
+  .k-header-actions > button,
+  .k-header-actions > .k-app-switch {
+    min-height: 2.75rem;
+  }
+}
+
 /* Picker modal (ctx.ui.pick) — a searchable list, not a numbered text prompt. Rows are large
    because the real use is one-handed, mid-set, with a rest clock running. */
 .k-picker {

@@ -1,0 +1,89 @@
+import { test, expect, type Page } from "@playwright/test";
+import { tileAction } from "../launcher-actions.js";
+import { openApp, openHome, openSwitcher, pinFonts, seed } from "./fixture.js";
+
+// Screenshot baselines for the launcher (#94): home (empty and seeded), the in-app switcher and the
+// tile menu, at 375 / 768 / 1440, in light and dark. Chromium only, one worker (the suite's rule).
+//
+// A baseline is a claim about the pixels: a change that moves them is a change somebody has to
+// look at. `pnpm e2e:baselines` regenerates them after an intended one. The type is pinned to
+// DejaVu (see `pinFonts`) so the pixels are about the launcher, not about the fonts a machine has.
+//
+// The two themes are identical until #92 lands a dark palette: that is the point of taking them
+// now — #92's PR is the one that changes the dark set, and only the dark set.
+
+const WIDTHS = [375, 768, 1440] as const;
+const THEMES = ["light", "dark"] as const;
+
+const shot = (page: Page, name: string) =>
+  expect(page).toHaveScreenshot(`${name}.png`, {
+    fullPage: false,
+    // Antialiasing wobble between Chromium builds is a few dozen pixels; a 1px padding change on a
+    // grid of tiles is thousands.
+    maxDiffPixels: 120,
+  });
+
+for (const width of WIDTHS) {
+  for (const theme of THEMES) {
+    test.describe(`${width}px ${theme}`, () => {
+      test.use({ viewport: { width, height: width < 500 ? 812 : 900 }, colorScheme: theme, isMobile: width < 500, hasTouch: width < 500 });
+
+      test("home, empty", async ({ page }) => {
+        await seed(page, []);
+        await openHome(page);
+        await pinFonts(page);
+        await shot(page, `home-empty-${width}-${theme}`);
+      });
+
+      test("home, seeded", async ({ page }) => {
+        await seed(page);
+        await openHome(page);
+        await pinFonts(page);
+        await shot(page, `home-${width}-${theme}`);
+      });
+
+      test("tile menu", async ({ page }) => {
+        await seed(page);
+        await openHome(page);
+        await pinFonts(page);
+        await page.getByRole("button", { name: "Actions for Groceries" }).click();
+        await expect(page.getByRole("menu")).toBeVisible();
+        await shot(page, `tile-menu-${width}-${theme}`);
+      });
+
+      test("switcher", async ({ page }) => {
+        await seed(page);
+        await openApp(page, "groceries", "Groceries");
+        await pinFonts(page);
+        await openSwitcher(page);
+        await shot(page, `switcher-${width}-${theme}`);
+      });
+    });
+  }
+}
+
+// The share dialog needs the relay and a few seconds of sync per shot, so it is baselined at the
+// two ends only, in light.
+for (const width of [375, 1440] as const) {
+  test.describe(`share dialog ${width}px`, () => {
+    test.use({ viewport: { width, height: width < 500 ? 812 : 900 }, isMobile: width < 500, hasTouch: width < 500 });
+
+    test("share dialog", async ({ page }) => {
+      await seed(page);
+      await openHome(page);
+      await pinFonts(page);
+      await tileAction(page, "Tasks", "share"); // already synced: straight to the name, then the link
+      const nameDialog = page.locator(".k-dialog", { hasText: "see you as" });
+      const shareDialog = page.locator(".k-share-dialog");
+      await expect(nameDialog.or(shareDialog).first()).toBeVisible({ timeout: 60_000 });
+      if (await nameDialog.count()) {
+        await nameDialog.locator("input").fill("Vasco");
+        await nameDialog.getByRole("button", { name: "OK" }).click();
+      }
+      await expect(shareDialog).toBeVisible({ timeout: 60_000 });
+      await expect(shareDialog.getByRole("textbox", { name: "Share link" })).toHaveValue(/#join=/);
+      // The link differs every run; the field is masked so the baseline is the dialog, not the key.
+      await expect(page).toHaveScreenshot(`share-dialog-${width}-light.png`, { maxDiffPixels: 120, mask: [shareDialog.getByRole("textbox", { name: "Share link" })] });
+    });
+  });
+}

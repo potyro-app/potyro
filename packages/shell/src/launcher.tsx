@@ -6,7 +6,7 @@
 // something imported from elsewhere runs in the QuickJS isolate until promoted). Selecting a tile
 // navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
@@ -91,9 +91,36 @@ function TileMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // A menu is a keyboard thing too (#94): focus moves into it when it opens, arrows walk it, and
+  // Escape hands focus back to the button that opened it. Without the first of these, Escape on the
+  // menu did nothing — focus was still on the button, outside the element listening for it.
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
+  }, [open]);
+
+  const close = (refocus: boolean): void => {
+    setOpen(false);
+    if (refocus) buttonRef.current?.focus();
+  };
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
+  };
+  const onMenuKey = (e: KeyboardEvent<HTMLDivElement>): void => {
+    const items: HTMLButtonElement[] = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)") ?? []);
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    const go = (i: number): void => items[(i + items.length) % items.length]?.focus();
+    if (e.key === "Escape") close(true);
+    else if (e.key === "ArrowDown") go(at + 1);
+    else if (e.key === "ArrowUp") go(at - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(items.length - 1);
+    else if (e.key === "Tab") close(false);
+    else return;
+    e.preventDefault();
   };
   const item = (action: string, label: string, fn: () => void, extra: { className?: string; disabled?: boolean } = {}) => (
     <button type="button" role="menuitem" data-action={action} className={`k-tile-menu-item${extra.className ? ` ${extra.className}` : ""}`} disabled={extra.disabled} onClick={run(fn)}>
@@ -103,6 +130,7 @@ function TileMenu({
   return (
     <div className="k-tile-menu-host">
       <button
+        ref={buttonRef}
         type="button"
         className="k-tile-menu-btn"
         aria-label={`Actions for ${app.name}`}
@@ -114,22 +142,16 @@ function TileMenu({
       </button>
       {open ? (
         <>
-          <div className="k-tile-menu-scrim" onClick={() => setOpen(false)} />
-          <div
-            className="k-tile-menu"
-            role="menu"
-            aria-label={`Actions for ${app.name}`}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setOpen(false);
-            }}
-          >
-            <div className="k-tile-menu-title">{app.name}</div>
+          <div className="k-tile-menu-scrim" onClick={() => close(false)} />
+          <div ref={menuRef} className="k-tile-menu" role="menu" aria-label={`Actions for ${app.name}`} onKeyDown={onMenuKey}>
+            {/* The menu already says whose it is (aria-label); the title is for the eye. */}
+            <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
             {item("open", "Open", onOpen)}
             {item("history", "History", onHistory)}
             {item("sync", app.sync ? "Turn sync off" : "Turn sync on", onSync, { disabled: busy })}
             {item("share", "Share", onShare)}
             {item("rename", "Rename", onRename)}
-            <div className="k-tile-menu-sep" />
+            <div className="k-tile-menu-sep" role="separator" />
             {item("delete", "Delete", onDelete, { className: "k-danger" })}
           </div>
         </>
