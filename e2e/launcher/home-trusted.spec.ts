@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { openApp, seed } from "./fixture.js";
 
 // The launcher: with no app selected, the shell opens a home screen listing apps by provenance —
 // trusted built-ins under "Apps", untrusted saved apps under "My Apps". Selecting a tile launches
@@ -32,4 +33,23 @@ test("in-app ⊞ Apps button slides in the launcher to switch", async ({ page })
   // Switch to plants.
   await overlay.getByRole("button", { name: /plants/ }).click();
   await expect(page.locator("h1").first()).toHaveText("Plants");
+});
+
+// The launcher store (#81): an open is counted where every route to an app passes — boot — so a
+// deep link and a reload count exactly like a tap on a tile.
+test("opening an app by URL records an open, and a reload records another", async ({ page }) => {
+  await seed(page);
+  const entry = () => page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number; lastOpenedAt?: string }>)["user:groceries"]);
+  await openApp(page, "groceries", "Groceries");
+  const first = await entry();
+  expect(first?.openCount).toBe(1);
+  expect(first?.lastOpenedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  await page.reload();
+  await expect(page.locator("h1").first()).toHaveText("Groceries");
+  expect((await entry())?.openCount).toBe(2);
+  // A built-in counts the same way, under its own key.
+  await page.goto("/?app=recipes");
+  await expect(page.locator("h1").first()).toHaveText("Recipes");
+  const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number }>)["builtin:recipes"]);
+  expect(recipes?.openCount).toBe(1);
 });

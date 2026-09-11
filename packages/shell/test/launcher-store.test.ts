@@ -1,0 +1,78 @@
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BUILTIN_APPS, getEntry, listInstalledApps, recordOpen, removeEntry, subscribe, updateEntry } from "../src/launcher-store.js";
+import { removeUserApp, saveUserApp } from "../src/user-apps.js";
+
+// The launcher store (#81): what this device knows about each installed app.
+
+vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
+vi.mock("../src/app-diagnoses.js", () => ({ clearDiagnoses: async () => {} }));
+vi.mock("../src/app-cases.js", () => ({ clearCases: async () => {} }));
+
+const NOW = "2026-09-11T12:00:00.000Z";
+const LATER = "2026-09-11T13:00:00.000Z";
+
+beforeEach(() => localStorage.clear());
+afterEach(() => localStorage.clear());
+
+describe("launcher store", () => {
+  it("round-trips an entry and merges patches immutably", () => {
+    expect(getEntry("user:groceries")).toEqual({ key: "user:groceries" });
+    const a = updateEntry("user:groceries", { pinned: true, displayName: "Food" });
+    const b = updateEntry("user:groceries", { displayName: undefined });
+    expect(a).toEqual({ key: "user:groceries", pinned: true, displayName: "Food" });
+    expect(b).toEqual({ key: "user:groceries", pinned: true }); // undefined removes; `a` untouched
+    expect(a.displayName).toBe("Food");
+    expect(JSON.parse(localStorage.getItem("karta:launcher")!)).toEqual({ "user:groceries": { key: "user:groceries", pinned: true } });
+  });
+
+  it("tolerates garbage in storage", () => {
+    for (const junk of ["not json", "[1,2]", "null", '{"nope":{"pinned":true},"user:x":null,"builtin:recipes":{"openCount":3}}']) {
+      localStorage.setItem("karta:launcher", junk);
+      expect(() => listInstalledApps()).not.toThrow();
+      expect(getEntry("builtin:plants")).toEqual({ key: "builtin:plants" });
+    }
+    // The one well-formed entry in the last blob survived the junk around it.
+    expect(getEntry("builtin:recipes").openCount).toBe(3);
+  });
+
+  it("recordOpen increments the count and stamps the time", () => {
+    recordOpen("builtin:recipes", NOW);
+    recordOpen("builtin:recipes", LATER);
+    expect(getEntry("builtin:recipes")).toEqual({ key: "builtin:recipes", openCount: 2, lastOpenedAt: LATER });
+  });
+
+  it("lists built-ins in order, then user apps, joined with their entries", async () => {
+    await saveUserApp({ name: "Groceries", source: "export default 1" }, NOW);
+    await saveUserApp({ name: "Garden", source: "export default 1", trusted: false }, LATER);
+    updateEntry("user:groceries", { displayName: "Food", pinned: true });
+    const apps = listInstalledApps();
+    expect(apps.map((a) => a.key)).toEqual([...BUILTIN_APPS.map((id) => `builtin:${id}`), "user:garden", "user:groceries"]);
+    const groceries = apps.find((a) => a.key === "user:groceries")!;
+    expect(groceries).toMatchObject({ kind: "user", id: "groceries", name: "Food", trusted: true, sync: false, entry: { pinned: true } });
+    expect(groceries.user?.name).toBe("Groceries"); // the app's own name is still there
+    expect(apps.find((a) => a.key === "user:garden")).toMatchObject({ name: "Garden", trusted: false });
+    expect(apps[0]).toMatchObject({ kind: "builtin", id: "recipes", name: "recipes", trusted: true, entry: { key: "builtin:recipes" } });
+  });
+
+  it("drops the entry of a user app that was deleted", async () => {
+    await saveUserApp({ name: "Trips", source: "export default 1" }, NOW);
+    recordOpen("user:trips", NOW);
+    await removeUserApp("trips");
+    expect(listInstalledApps().some((a) => a.key === "user:trips")).toBe(false);
+    expect(localStorage.getItem("karta:launcher")).not.toContain("user:trips");
+    removeEntry("builtin:recipes"); // absent: a no-op, not an error
+  });
+
+  it("tells subscribers about writes to either registry", async () => {
+    const seen = vi.fn();
+    const off = subscribe(seen);
+    recordOpen("builtin:plants", NOW);
+    expect(seen).toHaveBeenCalledTimes(1);
+    await saveUserApp({ name: "Books", source: "export default 1" }, NOW);
+    expect(seen).toHaveBeenCalledTimes(2);
+    off();
+    recordOpen("builtin:plants", LATER);
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+});
