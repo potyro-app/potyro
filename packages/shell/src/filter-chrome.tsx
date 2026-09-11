@@ -79,12 +79,17 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
   );
 }
 
+// The same switch a form's boolean is (#97), at chip scale: "Open now" on a list and a boolean in
+// a form look like the same thing, because they are.
 function BooleanChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "runtime">) {
   const on = Boolean(params[chip.param]);
   return (
     <div className="k-chip-group">
-      <button type="button" className="k-chip" data-on={on} onClick={() => setParam(chip.param, on ? undefined : true)}>
+      <button type="button" role="switch" aria-checked={on} className="k-chip k-chip-switch" data-on={on} onClick={() => setParam(chip.param, on ? undefined : true)}>
         {chip.label}
+        <span className="k-switch" aria-hidden>
+          <span className="k-switch-knob" />
+        </span>
       </button>
     </div>
   );

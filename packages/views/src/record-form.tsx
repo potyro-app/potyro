@@ -6,6 +6,7 @@ import type { Field } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { FieldInput } from "./field-input.js";
 import { fieldLabel } from "./format.js";
+import { SwitchRow } from "./switch.js";
 
 export interface RecordFormProps {
   runtime: KartaRuntime;
@@ -90,6 +91,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
   const { record, loading } = runtime.useRecord(entity, recordId ?? "");
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -117,6 +119,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       return;
     }
     setSaving(true);
+    setSaveError(null);
     try {
       if (isEdit && recordId) {
         await runtime.patch(entity, recordId, form);
@@ -125,6 +128,10 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
         const created = await runtime.create(entity, form);
         onDone(created.id);
       }
+    } catch (err) {
+      // A save that fails — an app's computed throwing on the new record, a store refusing — used
+      // to leave the form open and silent, as if the button had not worked. Say so.
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -139,15 +146,32 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     <Root className={`k-form${nested ? " k-form-nested" : ""}`} {...rootProps}>
       <h3>{isEdit ? `Edit ${def?.label ?? entity}` : `New ${def?.label ?? entity}`}</h3>
       {errors.length > 0 ? <p className="k-form-error">Required: {errors.join(", ")}</p> : null}
-      {fields.map(([key, field]) => (
-        <label className="k-form-field" key={key}>
-          <span className="k-form-label">
-            {fieldLabel(runtime, entity, key)}
-            {(field as { required?: boolean }).required ? <em aria-hidden> *</em> : null}
-          </span>
-          <FieldInput runtime={runtime} field={field} value={form[key]} onChange={(v) => set(key, v)} />
-        </label>
-      ))}
+      {saveError ? (
+        <p className="k-form-error" role="alert">
+          Couldn't save: {saveError}
+        </p>
+      ) : null}
+      {fields.map(([key, field]) =>
+        field.type === "boolean" ? (
+          // A boolean is a switch row (#97): the label and the toggle are one hit target, not a
+          // grey caption over a bare checkbox.
+          <SwitchRow
+            key={key}
+            label={fieldLabel(runtime, entity, key)}
+            required={(field as { required?: boolean }).required}
+            checked={Boolean(form[key])}
+            onChange={(v) => set(key, v)}
+          />
+        ) : (
+          <label className="k-form-field" key={key}>
+            <span className="k-form-label">
+              {fieldLabel(runtime, entity, key)}
+              {(field as { required?: boolean }).required ? <em aria-hidden> *</em> : null}
+            </span>
+            <FieldInput runtime={runtime} field={field} value={form[key]} onChange={(v) => set(key, v)} />
+          </label>
+        ),
+      )}
       <div className="k-form-actions">
         <button type="button" className="k-add" onClick={onCancel}>
           Cancel
