@@ -13,7 +13,7 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await openRecipes(page);
 
   // Provenance: the user's own app runs directly (trusted), not in the isolate.
-  await expect(page.locator(".k-prov")).toHaveText("trusted");
+  await expect(page.locator(".k-prov")).toHaveText(/^trusted/);
 
   // List renders with rows, and the secondary line shows a COMPUTED macro ("… kcal · …").
   const rows = page.locator(".k-list-row");

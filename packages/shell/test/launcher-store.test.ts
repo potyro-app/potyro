@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_APPS, ensureIdentities, getEntry, listInstalledApps, recordOpen, removeEntry, sourceHash, subscribe, updateEntry } from "../src/launcher-store.js";
+import { ensureIdentities, getEntry, listInstalledApps, recordOpen, removeEntry, sourceHash, subscribe, updateEntry } from "../src/launcher-store.js";
 import { removeUserApp, saveUserApp } from "../src/user-apps.js";
 
 // The launcher store (#81): what this device knows about each installed app.
@@ -26,33 +26,33 @@ describe("launcher store", () => {
     expect(JSON.parse(localStorage.getItem("karta:launcher")!)).toEqual({ "user:groceries": { key: "user:groceries", pinned: true } });
   });
 
-  it("tolerates garbage in storage", () => {
-    for (const junk of ["not json", "[1,2]", "null", '{"nope":{"pinned":true},"user:x":null,"builtin:recipes":{"openCount":3}}']) {
+  it("tolerates garbage in storage", async () => {
+    await saveUserApp({ id: "recipes", name: "Recipes", source: "export default 1" }, NOW); // so its entry is live, not pruned
+    for (const junk of ["not json", "[1,2]", "null", '{"nope":{"pinned":true},"user:x":null,"user:recipes":{"openCount":3}}']) {
       localStorage.setItem("karta:launcher", junk);
       expect(() => listInstalledApps()).not.toThrow();
-      expect(getEntry("builtin:plants")).toEqual({ key: "builtin:plants" });
+      expect(getEntry("user:plants")).toEqual({ key: "user:plants" });
     }
     // The one well-formed entry in the last blob survived the junk around it.
-    expect(getEntry("builtin:recipes").openCount).toBe(3);
+    expect(getEntry("user:recipes").openCount).toBe(3);
   });
 
   it("recordOpen increments the count and stamps the time", () => {
-    recordOpen("builtin:recipes", NOW);
-    recordOpen("builtin:recipes", LATER);
-    expect(getEntry("builtin:recipes")).toEqual({ key: "builtin:recipes", openCount: 2, lastOpenedAt: LATER });
+    recordOpen("user:recipes", NOW);
+    recordOpen("user:recipes", LATER);
+    expect(getEntry("user:recipes")).toEqual({ key: "user:recipes", openCount: 2, lastOpenedAt: LATER });
   });
 
-  it("lists built-ins in order, then user apps, joined with their entries", async () => {
+  it("lists the apps, newest first, joined with their entries", async () => {
     await saveUserApp({ name: "Groceries", source: "export default 1" }, NOW);
     await saveUserApp({ name: "Garden", source: "export default 1", trusted: false }, LATER);
     updateEntry("user:groceries", { displayName: "Food", pinned: true });
     const apps = listInstalledApps();
-    expect(apps.map((a) => a.key)).toEqual([...BUILTIN_APPS.map((id) => `builtin:${id}`), "user:garden", "user:groceries"]);
+    expect(apps.map((a) => a.key)).toEqual(["user:garden", "user:groceries"]);
     const groceries = apps.find((a) => a.key === "user:groceries")!;
     expect(groceries).toMatchObject({ kind: "user", id: "groceries", name: "Food", trusted: true, sync: false, entry: { pinned: true } });
     expect(groceries.user?.name).toBe("Groceries"); // the app's own name is still there
     expect(apps.find((a) => a.key === "user:garden")).toMatchObject({ name: "Garden", trusted: false });
-    expect(apps[0]).toMatchObject({ kind: "builtin", id: "recipes", name: "recipes", trusted: true, entry: { key: "builtin:recipes" } });
   });
 
   it("drops the entry of a user app that was deleted", async () => {
@@ -61,18 +61,18 @@ describe("launcher store", () => {
     await removeUserApp("trips");
     expect(listInstalledApps().some((a) => a.key === "user:trips")).toBe(false);
     expect(localStorage.getItem("karta:launcher")).not.toContain("user:trips");
-    removeEntry("builtin:recipes"); // absent: a no-op, not an error
+    removeEntry("user:recipes"); // absent: a no-op, not an error
   });
 
   it("tells subscribers about writes to either registry", async () => {
     const seen = vi.fn();
     const off = subscribe(seen);
-    recordOpen("builtin:plants", NOW);
+    recordOpen("user:plants", NOW);
     expect(seen).toHaveBeenCalledTimes(1);
     await saveUserApp({ name: "Books", source: "export default 1" }, NOW);
     expect(seen).toHaveBeenCalledTimes(2);
     off();
-    recordOpen("builtin:plants", LATER);
+    recordOpen("user:plants", LATER);
     expect(seen).toHaveBeenCalledTimes(2);
   });
 });
@@ -108,9 +108,4 @@ describe("launcher store: identity", () => {
     expect(after.accent).toBeUndefined();
   });
 
-  it("reads a built-in's identity from its shipped source", async () => {
-    await ensureIdentities(listInstalledApps());
-    expect(listInstalledApps().find((a) => a.key === "builtin:workout")).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
-    expect(listInstalledApps().find((a) => a.key === "builtin:recipes")).toMatchObject({ name: "Recipes", icon: "🍳" });
-  });
 });

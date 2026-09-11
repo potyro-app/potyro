@@ -99,7 +99,7 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   await expect(studio.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
 
   await studio.getByRole("button", { name: "Save to My Apps" }).click();
-  await expect(studio.locator(".k-myapps .k-myapp-open")).toHaveText(APP_NAME);
+  await expect(studio.locator(".k-myapps .k-myapp-open", { hasText: APP_NAME })).toHaveCount(1);
 
   // Read back the id the UI actually assigned — not assumed from the slugging rule — so the rest of
   // the test drives the exact record the app just created.
