@@ -30,19 +30,20 @@ test("Tab walks the grid in order and Enter opens the focused tile", async ({ pa
   await openHome(page);
   // The first tile is a handful of Tabs from the top, not buried.
   const presses = await tabUntil(page, (a) => a.cls.includes("k-launch-tile"));
-  expect(presses).toBeLessThanOrEqual(4);
+  expect(presses).toBeLessThanOrEqual(6); // You, then the three sort buttons, then the grid
 
   // Walk on: the built-ins first, then each saved app as tile, then its menu button — reading order.
   const order: string[] = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 40; i++) {
     const a = await active(page);
     order.push(a.label || a.text);
+    if (a.text.startsWith("+New app")) break; // the grid ends here; past it the walk wraps
     await page.keyboard.press("Tab");
   }
   const trail = order.join(" | ");
   // Every menu button comes right after the tile it belongs to, never before, never elsewhere.
   const menus = order.map((o, i) => [o, i] as const).filter(([o]) => o.startsWith("Actions for "));
-  expect(menus.length, trail).toBe(8);
+  expect(menus.length, trail).toBe(12); // every app has one now, the built-ins too (#84)
   for (const [label, i] of menus) expect(order[i - 1], trail).toContain(label.slice("Actions for ".length));
   // The New app tile closes the grid, after the last saved app's menu button.
   const last = menus[menus.length - 1]![1];
@@ -63,6 +64,8 @@ test("the tile menu is a keyboard menu: focus in, arrows, Escape back out", asyn
   await expect(menu).toBeVisible();
   // Focus moved into the menu, onto its first item.
   await expect(menu.getByRole("menuitem", { name: "Open" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem", { name: "Pin" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("menuitem", { name: "History" })).toBeFocused();
   await page.keyboard.press("End");

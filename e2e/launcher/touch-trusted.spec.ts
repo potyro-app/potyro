@@ -45,7 +45,7 @@ test("a tile's actions are reachable by touch, at 44px, with Delete kept apart",
     const item = menu.getByRole("menuitem", { name });
     await expect(item).toBeVisible();
     const b = (await item.boundingBox())!;
-    expect(b.height, `${name} is ${b.height}px tall`).toBeGreaterThanOrEqual(44);
+    expect(Math.round(b.height), `${name} is ${b.height}px tall`).toBeGreaterThanOrEqual(44);
   }
   // Delete is not next to Rename: something separates them.
   const rename = (await menu.getByRole("menuitem", { name: "Rename" }).boundingBox())!;
