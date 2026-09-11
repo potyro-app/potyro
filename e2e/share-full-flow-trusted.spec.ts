@@ -86,7 +86,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
-  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
   await expect(a.locator(".k-dialog")).toContainText("more than one place", { timeout: 30_000 });
   await a.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
 
@@ -116,7 +116,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
   await pressShare(a);
   const second = a.locator(".k-dialog input");
   await expect(second).toHaveValue(/#join=/, { timeout: 60_000 });
-  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
 
   // ---- and a GUEST pressing share is told why, not shown a crypto error ----
   // Minting an invite needs admin; a guest is a writer. That is correct behaviour, but it used to

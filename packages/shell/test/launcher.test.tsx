@@ -11,7 +11,7 @@ vi.mock("../src/share-sync.js", () => ({ createShareLink: async () => "link" }))
 vi.mock("../src/toggle-sync.js", () => ({ toggleAppSync: async () => ({ copied: { records: 0 }, warnings: [] }) }));
 vi.mock("../src/history.js", () => ({ History: () => null }));
 vi.mock("../src/app-source.js", () => ({ inspect: async () => ({ entities: [], pages: [] }) }));
-vi.mock("../src/dialog.js", () => ({ shellDialogs: { confirm: async () => true, prompt: async (_m: string, o?: { default?: string }) => `${o?.default ?? ""} 2` } }));
+vi.mock("../src/dialog.js", () => ({ shellDialogs: { confirm: async () => true, prompt: async (_m: string, o?: { default?: string }) => `${o?.default ?? ""} 2`, share: async () => {} } }));
 
 import { Launcher } from "../src/launcher.js";
 import type { UserApp } from "../src/user-apps.js";
