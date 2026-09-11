@@ -21,7 +21,7 @@ const seasonOf = (d: Date): "spring" | "summer" | "autumn" | "winter" => {
 
 // arbitrary logic: seasonal override falls back to the base interval
 type Plant = {
-  lastWatered: Date; wateringIntervalDays: number; active: boolean; name: string;
+  lastWatered?: Date; wateringIntervalDays: number; active: boolean; name: string;
   seasonalCare: { season: string; intervalDays: number }[];
 };
 const effectiveIntervalDays = (p: Plant) => {
@@ -29,7 +29,8 @@ const effectiveIntervalDays = (p: Plant) => {
   const override = p.seasonalCare.find((r) => r.season === s);
   return override?.intervalDays ?? p.wateringIntervalDays;
 };
-const nextWatering = (p: Plant) => addDays(p.lastWatered, effectiveIntervalDays(p));
+// Never watered counts as long overdue: a new plant is due the moment it exists.
+const nextWatering = (p: Plant) => addDays(p.lastWatered ?? new Date(0), effectiveIntervalDays(p));
 
 export default defineApp({
   id: "plants",
@@ -123,7 +124,7 @@ export default defineApp({
       entity: "plant",
       when: (p) => (p.active ? p.nextWatering : null),
       title: (p) => `Water ${p.name}`,
-      body: (p) => `Last watered ${relativeTime(p.lastWatered)}`,
+      body: (p) => `Last watered ${p.lastWatered ? relativeTime(p.lastWatered) : "never"}`,
     },
   ],
 });

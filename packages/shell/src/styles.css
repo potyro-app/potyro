@@ -1159,6 +1159,117 @@ button {
   gap: 0.5rem;
   margin-top: 0.4rem;
 }
+
+/* tokens-only: start — switches */
+/* A boolean is a switch (#97). The row is the hit target, 44px tall, label left, toggle right; the
+   knob moves on transform only and the accent says "on". `aria-checked` on the row or on the
+   toggle itself drives the look, so a form row and a bare toggle share these rules. */
+.k-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-1);
+  margin: 0 calc(-1 * var(--space-1));
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-switch-row:hover {
+  background: var(--surface-sunken);
+}
+.k-switch-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.k-switch-label {
+  font-size: 0.95rem;
+}
+.k-switch-label em {
+  color: var(--danger);
+  font-style: normal;
+}
+.k-switch-help {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.k-switch {
+  flex: 0 0 auto;
+  position: relative;
+  display: inline-block;
+  width: 2.75rem;
+  height: 1.625rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  vertical-align: middle;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+button.k-switch {
+  cursor: pointer;
+}
+button.k-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.625rem - 6px);
+  height: calc(1.625rem - 6px);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: transform var(--dur-fast) var(--ease);
+}
+[aria-checked="true"] > .k-switch,
+.k-switch[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+[aria-checked="true"] > .k-switch .k-switch-knob,
+.k-switch[aria-checked="true"] .k-switch-knob {
+  transform: translateX(calc(2.75rem - 1.625rem));
+}
+/* The chip version: the same toggle, smaller, after the label. On, the chip is the accent and the
+   toggle inverts so it still reads. */
+.k-chip-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-chip-switch .k-switch {
+  width: 2rem;
+  height: 1.2rem;
+}
+.k-chip-switch .k-switch-knob {
+  width: calc(1.2rem - 6px);
+  height: calc(1.2rem - 6px);
+}
+.k-chip-switch[aria-checked="true"] .k-switch {
+  background: var(--on-accent);
+  border-color: var(--on-accent);
+}
+.k-chip-switch[aria-checked="true"] .k-switch-knob {
+  transform: translateX(calc(2rem - 1.2rem));
+  background: var(--accent);
+}
+/* tokens-only: end */
 .k-geo-input {
   display: flex;
   flex-direction: column;
