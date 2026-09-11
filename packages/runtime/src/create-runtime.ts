@@ -23,6 +23,15 @@ export interface KartaRuntime extends Runtime {
   /** Resolve a view/reminder binding (string field key or function) to a value. */
   resolveBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<import("karta").Value>;
   entityForPage(pageId: string): string;
+  /** The app-wide selection (`ctx.scope`), by entity — what the header chip shows. */
+  readonly scope: Readonly<Record<string, Resolved | undefined>>;
+  /**
+   * Select the app-wide record for an entity by id (`null` clears it). Loads it resolved, then every
+   * live watcher re-runs. The shell calls this from the scope picker and at boot from what it saved.
+   */
+  setScope(entity: string, id: string | null): Promise<void>;
+  /** A `Dynamic<T>` view option — the literal, or the function evaluated with a fresh ctx. */
+  viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
 }
 
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
@@ -81,6 +90,15 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
     },
     resolveBinding(ref, record, ctx) {
       return core.resolveBinding(ref, record, ctx);
+    },
+    get scope() {
+      return core.getScope();
+    },
+    async setScope(entity, id) {
+      core.setScope(entity, id ? await core.getRecord(entity, id) : null);
+    },
+    viewOption(pageId, key, params) {
+      return core.viewOption(pageId, key, params);
     },
     entityForPage(pageId) {
       return core.entityForPage(pageId);

@@ -239,6 +239,8 @@ const cameraSchema = z.union([
   z.literal("remember"),
   z.literal("fit"),
   z.object({ center: z.tuple([z.number(), z.number()]), zoom: z.number() }),
+  // `Dynamic<MapCamera>`: a function of ctx, evaluated by the host (#133 — the first dynamic option).
+  zFn,
 ]);
 
 const mapView = z.object({
@@ -479,6 +481,7 @@ export const structureSchema = z.object({
   theme: z.object({ accent: z.string().optional() }).optional(),
   permissions: permissionSchema.optional(),
   nav: z.enum(["grid", "tabs"]).optional(),
+  scope: z.object({ entity: z.string().min(1), label: z.string().optional(), required: z.boolean().optional() }).optional(),
   quickActions: z.array(quickActionSchema).optional(),
   entities: z.record(entitySchema),
   pages: z.array(pageSchema),
@@ -608,6 +611,9 @@ export function checkReferences(def: AppDefinition): string[] {
   for (const r of def.reminders ?? []) {
     ensureEntity(r.entity, `reminder "${r.id}"`);
   }
+
+  // the scope names a real entity
+  if (def.scope) ensureEntity(def.scope.entity, "scope");
 
   // quick actions target a real entity (and its prefill keys are real fields)
   for (const qa of def.quickActions ?? []) {

@@ -135,6 +135,14 @@ export interface FilterChip {
  */
 export type MapCamera = "remember" | "fit" | { center: [number, number]; zoom: number };
 
+/**
+ * A view option that may be a literal or a function of `ctx`, evaluated by the host each time the
+ * view opens (and again when `ctx.scope` changes). The function form is what lets an option depend
+ * on the selected record: `camera: (ctx) => ({ center: [lng, lat], zoom: 11 })` from
+ * `ctx.scope.trip?.location`. Runs untrusted like `filter` does — a value in, a value out.
+ */
+export type Dynamic<T> = T | ((ctx: Ctx) => T | Promise<T>);
+
 export interface MapView {
   type: "map";
   entity: string;
@@ -145,7 +153,7 @@ export interface MapView {
   filters?: FilterChip[];
   /** Where tapping a marker goes. Without it a marker only shows its `title` in a popup. */
   onOpen?: OnOpen;
-  camera?: MapCamera;
+  camera?: Dynamic<MapCamera>;
 }
 
 export interface StepsView {
@@ -373,6 +381,25 @@ export interface QuickAction {
   prefill?: Record<string, unknown>;
 }
 
+/**
+ * The one record everything else in the app belongs to — the current trip, project, season, child.
+ *
+ * Declaring it gives the app a header chip that shows the selected record and a picker to switch it,
+ * and gives every filter, binding, computed, action and function-valued view option a synchronous
+ * `ctx.scope.<entity>` to read (a `Resolved` record or `undefined`). Nothing is filtered for you:
+ * a page narrows itself with `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`, so a page can
+ * still show everything. A relation field pointing at this entity defaults to the current scope on
+ * create. The selection is per device and survives reloads. Contrast `ctx.params`, which is per page.
+ */
+export interface ScopeDef {
+  /** The entity whose records are selectable. */
+  entity: string;
+  /** Chip label; defaults to the entity's label. */
+  label?: string;
+  /** When true the app asks for a selection before showing its pages, and keeps asking until one exists. */
+  required?: boolean;
+}
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -380,6 +407,8 @@ export interface AppDefinition {
   schemaVersion: number;
   theme?: Theme;
   permissions?: PermissionManifest;
+  /** An app-wide selected record ("current trip") that every function can read as `ctx.scope`. */
+  scope?: ScopeDef;
   /** How the app presents its object types: a grid home or a tab bar. Default: grid when there are
    *  several entities, tabs when few. */
   nav?: "grid" | "tabs";

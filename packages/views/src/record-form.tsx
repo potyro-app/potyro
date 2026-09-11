@@ -48,6 +48,12 @@ function rawRow(runtime: KartaRuntime, of: Record<string, Field>, row: Record<st
 function defaultFor(runtime: KartaRuntime, field: Field): unknown {
   const d = (field as { default?: unknown }).default;
   if (d !== undefined) return typeof d === "function" ? (d as (ctx: unknown) => unknown)(runtime.ctx) : d;
+  // A relation to the scoped entity ("which trip is this for") defaults to the current selection
+  // (#134): a new place, event or expense belongs to the trip you are in unless the app says otherwise.
+  if (field.type === "relation" && !field.many && field.to === runtime.definition.scope?.entity) {
+    const current = runtime.ctx.scope[field.to];
+    if (current) return current.id;
+  }
   if (field.type === "list" || field.type === "tags") return [];
   if (field.type === "boolean") return false;
   return undefined;
