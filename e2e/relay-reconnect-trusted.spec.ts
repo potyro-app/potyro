@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
@@ -149,7 +150,7 @@ test("two peers keep syncing after the relay dies and comes back", async ({ brow
   await add(a, "before");
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await a.getByRole("button", { name: "Share Reconnect" }).click();
+  await tileAction(a, "Reconnect", "share");
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await answerNamePrompt(a);
   const linkField = a.locator(".k-dialog input");

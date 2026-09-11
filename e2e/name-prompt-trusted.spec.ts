@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 
 // When Karta asks what to call you — and, more importantly, when it must NOT.
 //
@@ -48,7 +49,7 @@ test("naming yourself first means sharing does not ask again", async ({ page }) 
   await expect(page.locator(".k-identity-name")).toContainText("Vasco");
   await page.locator(".k-identity").getByRole("button", { name: "Close" }).click();
 
-  await page.getByRole("button", { name: "Share Name Check" }).click();
+  await tileAction(page, "Name Check", "share");
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turns sync on
 
   // The next thing asked must be the LINK, not the name. Waiting for a dialog rather than a fixed
@@ -62,7 +63,7 @@ test("naming yourself first means sharing does not ask again", async ({ page }) 
 test("sharing asks once, and not on every share after", async ({ page }) => {
   await open(page);
 
-  await page.getByRole("button", { name: "Share Name Check" }).click();
+  await tileAction(page, "Name Check", "share");
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await expect(nameDialog(page)).toBeVisible({ timeout: 60_000 });
   await nameDialog(page).locator("input").fill("Vasco");
@@ -74,7 +75,7 @@ test("sharing asks once, and not on every share after", async ({ page }) => {
   await page.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
 
   // Share again: straight to the link.
-  await page.getByRole("button", { name: "Share Name Check" }).click();
+  await tileAction(page, "Name Check", "share");
   await page.locator(".k-dialog").waitFor({ timeout: 60_000 });
   await expect(nameDialog(page)).toHaveCount(0);
   await expect(page.locator(".k-dialog")).toContainText("Send this link");

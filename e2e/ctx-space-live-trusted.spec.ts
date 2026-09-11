@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // APP CODE must see the space as it is now, not as it was at boot (KA-36 follow-up).
@@ -72,7 +73,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
 
   // Share (which turns sync on), then come back to the app and open the People page.
   await ana.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await ana.getByRole("button", { name: "Share Roster" }).click();
+  await tileAction(ana, "Roster", "share");
   await ana.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await answerNamePrompt(ana, "Ana");
   const linkField = ana.locator(".k-dialog input");

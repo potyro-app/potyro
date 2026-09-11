@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 
 // The gate, in a browser, on the path a real person takes.
 //
@@ -52,7 +53,7 @@ test("sharing an app that loses concurrent edits says so first", async ({ page }
   await expect(page.locator("h1").first()).toHaveText("Gate Demo", { timeout: 30_000 });
 
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await page.getByRole("button", { name: "Share Gate Demo" }).click();
+  await tileAction(page, "Gate Demo", "share");
   // "Share turns on sync" first.
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
 
