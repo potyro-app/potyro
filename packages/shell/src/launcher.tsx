@@ -6,7 +6,7 @@
 // elsewhere runs in the QuickJS isolate until promoted. Selecting a tile navigates via a reload
 // (?user=<id>) — boot() routes on that.
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
@@ -208,6 +208,41 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const [history, setHistory] = useState<UserApp | null>(null);
   // You and your other devices — reachable from every launcher, nagged from none.
   const [identity, setIdentity] = useState(false);
+
+  // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
+  // bottom edge, inside the thumb's reach; on a desktop a drawer. Both are a compact list, not the
+  // home grid squeezed into a panel — "switch to X" is a name in your head, not a place on a grid.
+  const [query, setQuery] = useState("");
+  const [dragY, setDragY] = useState(0);
+  const swipe = useRef<{ id: number; y: number } | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  useEffect(() => {
+    // Escape must work from the start; a finger gets no keyboard popping up over the list.
+    if (variant === "overlay" && coarse) sheetRef.current?.focus();
+  }, [variant, coarse]);
+  const swipeHandlers = {
+    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+      if (e.button !== 0) return;
+      swipe.current = { id: e.pointerId, y: e.clientY };
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+      if (swipe.current?.id !== e.pointerId) return;
+      setDragY(Math.max(0, e.clientY - swipe.current.y));
+    },
+    onPointerUp: (e: ReactPointerEvent<HTMLElement>) => {
+      if (swipe.current?.id !== e.pointerId) return;
+      const dy = e.clientY - swipe.current.y;
+      swipe.current = null;
+      setDragY(0);
+      if (dy > 80) onClose?.();
+    },
+    onPointerCancel: () => {
+      swipe.current = null;
+      setDragY(0);
+    },
+  };
   // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
   // undo. It asked for nothing at all before.
   const del = async (a: UserApp): Promise<void> => {
@@ -415,9 +450,93 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   );
 
   if (variant === "overlay") {
+    const q = query.trim().toLowerCase();
+    const rows = [...pinned, ...rest].filter((a) => !q || a.name.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q));
+    const row = (a: InstalledApp) => {
+      const identity = tileIdentity(a);
+      const current = isSelected(a);
+      return (
+        <div key={a.key} className="k-launch-item k-launch-usertile" {...inertUnless(a.key)}>
+          <button
+            type="button"
+            className="k-launch-tile k-launch-tile-row"
+            data-active={current}
+            aria-current={current ? "true" : undefined}
+            disabled={current}
+            title={current ? "This app" : undefined}
+            style={{ "--tile-accent": identity.accent } as CSSProperties}
+            onClick={() => onOpen(a)}
+          >
+            <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
+              {identity.glyph}
+            </span>
+            <span className="k-launch-name">{a.name}</span>
+            {a.sync ? (
+              <span className="k-launch-mark" title="Synced" aria-label="Synced">
+                ⟳
+              </span>
+            ) : null}
+            <span className={`k-prov k-prov-${a.trusted ? "trusted" : "untrusted"}`}>{a.trusted ? "trusted" : "untrusted"}</span>
+          </button>
+          {menuFor(a)}
+        </div>
+      );
+    };
+    const extra = (label: string, glyph: string, fn: () => void) => (
+      <button type="button" className="k-launch-tile k-launch-tile-row k-launch-tile-extra" onClick={fn}>
+        <span className="k-launch-avatar" aria-hidden>{glyph}</span>
+        <span className="k-launch-name">{label}</span>
+      </button>
+    );
     return (
       <div className="k-launcher-scrim" onClick={onClose}>
-        {body}
+        <div
+          ref={sheetRef}
+          className="k-launcher k-launcher-overlay k-switcher"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Switch app"
+          tabIndex={-1}
+          style={dragY ? { transform: `translateY(${dragY}px)`, transition: "none" } : undefined}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onClose?.();
+          }}
+        >
+          <div className="k-switcher-grip" {...swipeHandlers}>
+            <span className="k-switcher-handle" aria-hidden />
+            <header className="k-switcher-head">
+              <strong>Switch app</strong>
+              <button type="button" className="k-add k-switcher-close" aria-label="Close launcher" onClick={onClose}>
+                ✕
+              </button>
+            </header>
+          </div>
+          {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+          <div className="k-switcher-list">
+            {rows.map(row)}
+            {rows.length === 0 ? <p className="k-muted k-switcher-empty">No app called “{query.trim()}”.</p> : null}
+            <div className="k-switcher-sep" role="separator" />
+            {extra("Home", "⌂", goHome)}
+            {extra("New app", "+", onNewApp)}
+            {extra("You and your devices", "⌾", () => setIdentity(true))}
+          </div>
+          <div className="k-switcher-search">
+            <input
+              className="k-input"
+              type="search"
+              placeholder="Find an app"
+              aria-label="Find an app"
+              value={query}
+              autoFocus={!coarse}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && rows[0] && !isSelected(rows[0])) onOpen(rows[0]);
+              }}
+            />
+          </div>
+          {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}
+        </div>
       </div>
     );
   }
