@@ -18,7 +18,7 @@ const css = readFileSync(file, "utf8");
 const lines = css.split("\n");
 
 /** Tokens the markup sets on an element rather than the stylesheet. */
-const INLINE = new Set(["--accent", "--tile-accent", "--k-hue"]);
+const INLINE = new Set(["--accent", "--tile-accent", "--k-hue", "--swatch"]);
 
 const problems = [];
 
