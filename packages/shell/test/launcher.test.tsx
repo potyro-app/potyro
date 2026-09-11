@@ -152,3 +152,34 @@ describe("Launcher order", () => {
     expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:a"].order).toBe(1);
   });
 });
+
+// #85: search. The field filters; nothing found offers to create it; Enter opens the first match.
+describe("Launcher search", () => {
+  it("filters the tiles by name and offers to create what it cannot find", () => {
+    seed(app("groceries", "Groceries"), app("garden", "Garden"), app("trips", "Trips"));
+    const onNewApp = vi.fn();
+    render(<Launcher {...props} onNewApp={onNewApp} />);
+    const field = screen.getByRole("searchbox", { name: "Find an app" });
+    fireEvent.change(field, { target: { value: "gr" } });
+    expect(tiles("Groceries")).toHaveLength(1);
+    expect(tiles("Garden")).toHaveLength(0);
+    expect(tiles("Trips")).toHaveLength(0);
+    fireEvent.change(field, { target: { value: "zzz" } });
+    expect(screen.getByText(/No app called “zzz”/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Create “zzz”/ }));
+    expect(onNewApp).toHaveBeenCalledWith("zzz");
+    // Escape clears.
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(tiles("Garden")).toHaveLength(1);
+  });
+
+  it("opens the first match on Enter", () => {
+    seed(app("groceries", "Groceries"), app("garden", "Garden"));
+    const onOpen = vi.fn();
+    render(<Launcher {...props} onOpen={onOpen} />);
+    const field = screen.getByRole("searchbox", { name: "Find an app" });
+    fireEvent.change(field, { target: { value: "gar" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(onOpen.mock.calls.map(([a]) => a.id)).toEqual(["garden"]);
+  });
+});

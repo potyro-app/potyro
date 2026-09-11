@@ -165,6 +165,19 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [launcherOpen, setLauncherOpen] = useState(false);
+  // Ctrl/⌘K opens the switcher with its field focused (#85): "switch to X" is a name in your head.
+  useEffect(() => {
+    if (!generator) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setLauncherOpen(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [generator]);
+  const [studioPrefill, setStudioPrefill] = useState<string | undefined>(undefined);
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
 
   const params = paramsByPage[pageId] ?? {};
@@ -1224,8 +1237,9 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           variant="overlay"
           selected={appId ? { kind: currentKind ?? "user", id: appId } : undefined}
           onOpen={openInstalledApp}
-          onNewApp={() => {
+          onNewApp={(prefill) => {
             setLauncherOpen(false);
+            setStudioPrefill(prefill);
             setGenOpen(true);
           }}
           onClose={() => setLauncherOpen(false)}
@@ -1256,7 +1270,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
 
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
-      {genOpen ? <Studio onClose={() => setGenOpen(false)} /> : null}
+      {genOpen ? <Studio onClose={() => setGenOpen(false)} initialDescription={studioPrefill} /> : null}
 
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>

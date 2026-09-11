@@ -40,7 +40,8 @@ interface LauncherProps {
   variant: "home" | "overlay";
   selected?: Selected;
   onOpen: (app: InstalledApp) => void;
-  onNewApp: () => void;
+  /** Open the Studio; a search that found nothing passes what was typed as the prompt to start from. */
+  onNewApp: (prefill?: string) => void;
   onClose?: () => void;
 }
 
@@ -183,11 +184,42 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // you are looking at it is worse than a slightly stale one, and opens happen through a reload.
   const sortMode = useSortMode();
   const [mountedAt] = useState(() => Date.now());
-  const { pinned, rest } = orderApps(installed, sortMode, mountedAt);
+  const ordered = orderApps(installed, sortMode, mountedAt);
   const hasUserApps = installed.some((a) => a.kind === "user");
   const nameOf = (key: string): string => installed.find((a) => a.key === key)?.name ?? key;
-  const pinnedReorder = useReorder(pinned.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), true);
-  const restReorder = useReorder(rest.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), sortMode === "manual");
+
+  // Search (#85): past a handful of apps a grid is scanned, not read. The field filters by the
+  // name on the tile and the app's own name; on a desktop, typing with nothing focused starts it,
+  // Enter opens the first match, Escape clears. Nothing found offers to create what was typed.
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = (a: InstalledApp): boolean => !q || a.name.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q);
+  const pinned = ordered.pinned.filter(matches);
+  const rest = ordered.rest.filter(matches);
+  const firstMatch = pinned[0] ?? rest[0];
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const onSearchKey = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === "Enter" && firstMatch && !isSelected(firstMatch)) onOpen(firstMatch);
+    if (e.key === "Escape") {
+      if (query) e.stopPropagation(); // a first Escape clears; a second may close the switcher
+      setQuery("");
+    }
+  };
+  // Reordering by hand is for the whole list, not a filtered view of it.
+  const pinnedReorder = useReorder(pinned.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), !q);
+  const restReorder = useReorder(rest.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), sortMode === "manual" && !q);
+  useEffect(() => {
+    if (variant !== "home") return;
+    // Spotlight-style: a printable key with nothing focused goes to the field and starts the filter.
+    const onKey = (e: globalThis.KeyboardEvent): void => {
+      const t = e.target as HTMLElement | null;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      searchRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [variant]);
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -197,7 +229,6 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
   // bottom edge, inside the thumb's reach; on a desktop a drawer. Both are a compact list, not the
   // home grid squeezed into a panel — "switch to X" is a name in your head, not a place on a grid.
-  const [query, setQuery] = useState("");
   const [dragY, setDragY] = useState(0);
   const swipe = useRef<{ id: number; y: number } | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
@@ -380,6 +411,28 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
 
+      <div className="k-launch-search">
+        <input
+          ref={searchRef}
+          className="k-input"
+          type="search"
+          placeholder="Find an app"
+          aria-label="Find an app"
+          value={query}
+          autoFocus={!coarse}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onSearchKey}
+        />
+      </div>
+      {q && !firstMatch ? (
+        <p className="k-muted k-launch-empty k-launch-nomatch">
+          No app called “{query.trim()}”.{" "}
+          <button type="button" className="k-add" onClick={() => onNewApp(query.trim())}>
+            Create “{query.trim()}”
+          </button>
+        </p>
+      ) : null}
+
       {pinned.length ? (
         <section className="k-launch-section" aria-labelledby="k-launch-pinned">
           <h3 className="k-launch-title" id="k-launch-pinned">Pinned</h3>
@@ -415,7 +468,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               {menuFor(a)}
             </div>
           ))}
-          <button type="button" className="k-launch-tile k-launch-new" onClick={onNewApp} {...inertUnless("new")}>
+          <button type="button" className="k-launch-tile k-launch-new" onClick={() => onNewApp()} {...inertUnless("new")}>
             <span className="k-launch-avatar" aria-hidden>+</span>
             <span className="k-launch-name">New app</span>
             <span className="k-muted">Studio</span>
@@ -441,8 +494,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   );
 
   if (variant === "overlay") {
-    const q = query.trim().toLowerCase();
-    const rows = [...pinned, ...rest].filter((a) => !q || a.name.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q));
+    const rows = [...pinned, ...rest];
     const row = (a: InstalledApp) => {
       const identity = tileIdentity(a);
       const current = isSelected(a);
@@ -509,11 +561,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             {rows.length === 0 ? <p className="k-muted k-switcher-empty">No app called “{query.trim()}”.</p> : null}
             <div className="k-switcher-sep" role="separator" />
             {extra("Home", "⌂", goHome)}
-            {extra("New app", "+", onNewApp)}
+            {extra("New app", "+", () => onNewApp())}
             {extra("You and your devices", "⌾", () => setIdentity(true))}
           </div>
           <div className="k-switcher-search">
             <input
+              ref={searchRef}
               className="k-input"
               type="search"
               placeholder="Find an app"
@@ -521,9 +574,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               value={query}
               autoFocus={!coarse}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && rows[0] && !isSelected(rows[0])) onOpen(rows[0]);
-              }}
+              onKeyDown={onSearchKey}
             />
           </div>
           {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}

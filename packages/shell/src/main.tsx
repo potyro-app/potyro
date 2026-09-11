@@ -139,11 +139,11 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
 // The launcher home — first surface when no app is selected. A tile launches (reload → ?user=);
 // "New app" opens the Studio in place.
 function Home() {
-  const [studio, setStudio] = useState(false);
+  const [studio, setStudio] = useState<{ prefill?: string } | null>(null);
   return (
     <>
-      <Launcher variant="home" onOpen={openInstalledApp} onNewApp={() => setStudio(true)} />
-      {studio ? <Studio onClose={() => setStudio(false)} /> : null}
+      <Launcher variant="home" onOpen={openInstalledApp} onNewApp={(prefill) => setStudio({ prefill })} />
+      {studio ? <Studio onClose={() => setStudio(null)} initialDescription={studio.prefill} /> : null}
     </>
   );
 }

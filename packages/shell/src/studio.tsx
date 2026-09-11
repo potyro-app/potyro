@@ -81,7 +81,7 @@ interface Preview {
   provenance: Provenance;
 }
 
-export function Studio({ onClose }: { onClose: () => void }) {
+export function Studio({ onClose, initialDescription }: { onClose: () => void; /** What to start the prompt with — a launcher search that found nothing offers to create it (#85). */ initialDescription?: string }) {
   const [source, setSource] = useState(STARTER);
   // Every generate/modify in the Studio is a real step in how the app came to be, but until Save
   // there is no app id to hang history on — so the steps were simply dropped and only the final
@@ -108,7 +108,7 @@ export function Studio({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(initialDescription ?? "");
   // Which model answers, and everything it needs, as ONE value (engines.ts) — held in the module-
   // level store (engine-store.ts), not local state, so App.tsx can read the same choice to gate
   // "Fix this". Keys live in memory for the tab's lifetime and are never persisted — they are the
