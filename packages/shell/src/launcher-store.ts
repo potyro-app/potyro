@@ -162,6 +162,37 @@ export function recordOpen(key: AppKey, now: string): LauncherEntry {
   return updateEntry(key, { lastOpenedAt: now, openCount: (prev.openCount ?? 0) + 1 });
 }
 
+/** Give `keys` positions 0…n in one write (a pinned row, or the manual order of the rest). */
+export function setOrder(keys: readonly AppKey[]): void {
+  const entries = read();
+  const next: Record<string, LauncherEntry> = { ...entries };
+  keys.forEach((key, i) => {
+    next[key] = { ...(entries[key] ?? { key }), order: i };
+  });
+  write(next);
+}
+
+/** Pin puts an app at the end of the pinned row; unpin drops it back among the rest. */
+export function setPinned(key: AppKey, pinned: boolean): void {
+  const entries = read();
+  const last = Math.max(-1, ...Object.values(entries).filter((e) => e.pinned).map((e) => e.order ?? -1));
+  updateEntry(key, pinned ? { pinned: true, order: last + 1 } : { pinned: undefined, order: undefined });
+}
+
+const SORT_KEY = "karta:launcher:sort";
+const SORT_MODES = new Set(["recent", "az", "manual"]);
+
+/** How the unpinned apps are ordered on this device. `recent` (frecency) unless chosen otherwise. */
+export function getSortMode(): "recent" | "az" | "manual" {
+  const raw = globalThis.localStorage?.getItem(SORT_KEY);
+  return raw && SORT_MODES.has(raw) ? (raw as "recent" | "az" | "manual") : "recent";
+}
+
+export function setSortMode(mode: "recent" | "az" | "manual"): void {
+  globalThis.localStorage?.setItem(SORT_KEY, mode);
+  announce(CHANGED);
+}
+
 export function removeEntry(key: AppKey): void {
   const entries = read();
   if (!(key in entries)) return;
@@ -216,7 +247,7 @@ export function subscribe(cb: () => void): () => void {
   if (!target?.addEventListener) return () => {};
   const onStorage = (e: Event): void => {
     const k = (e as StorageEvent).key;
-    if (k === null || k === KEY || k === "karta:user-apps") cb();
+    if (k === null || k === KEY || k === SORT_KEY || k === "karta:user-apps") cb();
   };
   target.addEventListener(CHANGED, cb);
   target.addEventListener(USER_APPS_CHANGED, cb);
@@ -235,6 +266,11 @@ function getSnapshot(): InstalledApp[] {
   const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("karta:user-apps") ?? ""}`;
   if (!snapshot || snapshot.raw !== raw) snapshot = { raw, apps: listInstalledApps() };
   return snapshot.apps;
+}
+
+/** The sort mode, live. */
+export function useSortMode(): "recent" | "az" | "manual" {
+  return useSyncExternalStore(subscribe, getSortMode, getSortMode);
 }
 
 /** The installed-app list, live: re-renders on any write to either registry, and has each app's
