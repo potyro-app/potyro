@@ -16,7 +16,7 @@
     "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
     "e2e": "playwright test",
     "e2e:launcher": "playwright test e2e/launcher",
-    "e2e:baselines": "playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
+    "e2e:baselines": "KARTA_BASELINES=1 playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
     "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0",
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @karta/shell dev",
