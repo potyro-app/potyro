@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 
 // Turning sync on for an app, in a real browser (KA-08 / ADR 0001 D3).
 //
@@ -87,7 +88,7 @@ test("sync can be turned on, and the app's data comes with it", async ({ page })
   // Turn sync on from the launcher. This copies the data between two stores that keep it in
   // DIFFERENT files — a bare flag flip would open the app empty.
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await page.getByRole("button", { name: "Turn on sync for Sync Target" }).click();
+  await tileAction(page, "Sync Target", "sync");
 
   const confirmDialog = page.locator(".k-dialog");
   await expect(confirmDialog).toBeVisible();
@@ -115,7 +116,7 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
   await page.goto("/?user=sync-target");
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await page.getByRole("button", { name: "Turn on sync for Sync Target" }).click();
+  await tileAction(page, "Sync Target", "sync");
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await expect(page.locator(".k-dialog")).toContainText("Moved", { timeout: 30_000 });
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
@@ -154,7 +155,7 @@ test("a SECOND app can be synced on the same device, with no relay", async ({ pa
 
   const enableSyncFor = async (name: string, first = false): Promise<void> => {
     await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-    await page.getByRole("button", { name: `Turn on sync for ${name}` }).click();
+    await tileAction(page, name, "sync");
     await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
     await expect(page.locator(".k-dialog")).toContainText("Moved", { timeout: 30_000 });
     await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();

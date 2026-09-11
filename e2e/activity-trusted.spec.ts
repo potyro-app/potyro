@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // "What changed while I was away", end to end, in two browsers (KA-36).
@@ -68,7 +69,7 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await expect(ana.locator(".k-list-row", { hasText: "Milk" })).toBeVisible();
 
   await ana.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await ana.getByRole("button", { name: "Share Shoplist" }).click();
+  await tileAction(ana, "Shoplist", "share");
   await ana.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await answerNamePrompt(ana, "Ana");
   const linkField = ana.locator(".k-dialog input");
