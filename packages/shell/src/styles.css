@@ -167,6 +167,11 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
+  /* Name, provenance, sync pill and the report control together pass 375px on a phone. Unwrapped,
+     the page grew a sideways scroll and every fixed sheet grew with it (#88). */
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 .k-logo {
   color: var(--accent);
@@ -1935,6 +1940,152 @@ button {
   box-shadow: var(--shadow);
   animation: k-slide-in var(--dur-slow) var(--ease);
 }
+/* The switcher (#88): a compact list — icon, name, marks — in a drawer on a desktop and a bottom
+   sheet on a phone, with the search field at the bottom edge where a thumb is. Rows are 56px, so a
+   phone shows eight or more apps before scrolling. */
+.k-launcher-overlay.k-switcher {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+  outline: none;
+  will-change: transform;
+}
+.k-switcher-grip {
+  flex: 0 0 auto;
+  touch-action: none;
+  cursor: grab;
+}
+.k-switcher-handle {
+  display: none;
+  width: 2.5rem;
+  height: 4px;
+  margin: var(--space-2) auto 0;
+  border-radius: 999px;
+  background: var(--line);
+}
+.k-switcher-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.k-switcher-head strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+.k-switcher-close {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+}
+.k-switcher-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.k-launch-tile-row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.5rem;
+  padding: var(--space-2) 3rem var(--space-2) var(--space-3);
+  border-color: transparent;
+  background: transparent;
+  border-radius: var(--radius-sm);
+}
+.k-launch-tile-row:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+  background: color-mix(in oklab, var(--tile-accent, var(--accent)) 12%, var(--surface));
+}
+.k-launch-tile-row[data-active="true"] {
+  border-color: transparent;
+  box-shadow: none;
+  background: color-mix(in oklab, var(--tile-accent, var(--accent)) 20%, var(--surface));
+  cursor: default;
+}
+.k-launch-tile-row:disabled {
+  opacity: 1;
+}
+.k-launch-tile-row .k-launch-avatar {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  border-radius: 9px;
+}
+.k-launch-tile-row .k-launch-avatar[data-kind="icon"] {
+  font-size: 1.15rem;
+}
+.k-launch-tile-row .k-launch-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-launch-tile-row .k-prov {
+  font-size: 0.6rem;
+}
+.k-launch-mark {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.k-launch-tile-extra {
+  padding-right: var(--space-3);
+  color: var(--ink-soft);
+}
+.k-launch-tile-extra .k-launch-avatar {
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+}
+.k-switcher .k-tile-menu-host {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.k-switcher-sep {
+  height: 1px;
+  margin: var(--space-2) var(--space-1);
+  background: var(--line);
+}
+.k-switcher-empty {
+  padding: var(--space-3);
+  text-align: center;
+}
+.k-switcher-search {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+@media (max-width: 760px) {
+  .k-launcher-overlay.k-switcher {
+    inset: auto 0 0 0;
+    width: auto;
+    height: auto;
+    max-height: 85vh;
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: k-sheet-up var(--dur) var(--ease);
+  }
+  .k-switcher-handle {
+    display: block;
+  }
+  /* The menu sheet must ride above the switcher sheet. */
+  .k-switcher .k-tile-menu-scrim,
+  .k-switcher .k-tile-menu {
+    z-index: 80;
+  }
+}
 @keyframes k-fade {
   from { opacity: 0; }
 }
@@ -2918,6 +3069,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex-wrap: wrap;
 }
 .k-case-note textarea {
   resize: vertical;

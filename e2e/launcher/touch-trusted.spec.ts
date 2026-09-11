@@ -110,6 +110,10 @@ test("share via the tile menu: sync on, a name, then the link with a Copy button
 
 test("an app opened from the switcher keeps the switcher reachable", async ({ page }) => {
   await openApp(page, "garden", "Garden");
+  // A synced app's header carries the most: name, provenance, sync pill, the report control. It
+  // must still fit — once it did not, the page scrolled sideways and every fixed sheet grew with it,
+  // so the switcher's close button sat off the screen.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
   const overlay = await openSwitcher(page);
   await expectTappable(overlay.getByRole("button", { name: "Close launcher" }));
   await overlay.getByRole("button", { name: "Close launcher" }).tap();
