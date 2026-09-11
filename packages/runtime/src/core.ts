@@ -99,6 +99,11 @@ export class RuntimeCore {
     return this.app.callViewOption(pageId, key, this.ctxFor(params));
   }
 
+  /** A `Dynamic<T>` page option (`title`), resolved through the host. */
+  pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
+    return this.app.callPageOption(pageId, key, this.ctxFor(params));
+  }
+
   /**
    * Things that change what a view would render WITHOUT changing any record.
    *
@@ -160,7 +165,7 @@ export class RuntimeCore {
     const resolved = await ctx.query(entity);
     const keep = await Promise.all(resolved.map((r) => this.app.callFilter(pageId, r, ctx)));
     const filtered = resolved.filter((_, i) => keep[i]);
-    const sorted = await asyncSort(filtered, (a, b) => this.app.callSort(pageId, a, b));
+    const sorted = await asyncSort(filtered, (a, b) => this.app.callSort(pageId, a, b, ctx));
     return { rows: sorted, ctx };
   }
 

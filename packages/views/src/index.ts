@@ -7,6 +7,7 @@ export { CalendarView, buildMonthGrid, sameDay, type CalendarCell, type Calendar
 export { MapView, useMapMarkers, type MapMarker } from "./map.js";
 export { CustomView } from "./custom.js";
 export { useDisplayCells } from "./cells.js";
+export { useDynamicText, usePageTitles } from "./dynamic.js";
 export { FieldValue } from "./field-value.js";
 export { FieldInput, type FieldInputProps } from "./field-input.js";
 export { RecordForm, createDefaults, type RecordFormProps } from "./record-form.js";

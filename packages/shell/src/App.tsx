@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
-import { RecordForm, ViewHost, createDefaults } from "@karta/views";
+import { RecordForm, ViewHost, createDefaults, usePageTitles } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -131,6 +131,8 @@ interface AppProps {
 
 export function App({ runtime, provenance, toaster, appId, apps, currentKind, sync, onExport, onImport, generator, picker, navHost }: AppProps) {
   const def = runtime.definition;
+  // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
+  const titles = usePageTitles(runtime);
   // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
   // them out of the tab bar so nav shows real sections only (no redundant singular "Session" tabs).
   const visiblePages = def.pages.filter((p) => !p.hidden && (p.view as { type?: string }).type !== "detail");
@@ -647,7 +649,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     const page = def.pages.find((p) => p.id === pageId);
     const viewType = (page?.view as { type?: string } | undefined)?.type;
     if (!viewType || !VIEW_FIELDS[viewType]) return undefined;
-    return { viewType, pageTitle: page?.title, fields: VIEW_FIELDS[viewType]!, pageFields: PAGE_FIELDS };
+    return { viewType, pageTitle: page ? titles[page.id] : undefined, fields: VIEW_FIELDS[viewType]!, pageFields: PAGE_FIELDS };
   })();
 
   // One round-trip through the local `claude -p` dev endpoint. The contract goes in `system`, not
@@ -846,7 +848,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
     }
   };
 
-  const currentPageLabel = pageId === HOME ? "the object grid (home)" : `the "${def.pages.find((p) => p.id === pageId)?.title ?? pageId}" page`;
+  const currentPageLabel = pageId === HOME ? "the object grid (home)" : `the "${titles[pageId] ?? pageId}" page`;
 
   // Promote/demote trust. Promotion runs the app DIRECTLY (not in the isolate) — a deliberate,
   // prompted decision (CLAUDE.md rule 3). Only for your own saved apps.
@@ -1019,7 +1021,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
             data-active={p.id === pageId}
             onClick={() => navigate(p.id)}
           >
-            {p.title}
+            {titles[p.id] ?? p.id}
           </button>
         ))}
       </nav>

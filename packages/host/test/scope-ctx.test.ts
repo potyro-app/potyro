@@ -29,7 +29,17 @@ const trusted = () =>
       place: { displayField: "name", fields: { name: { type: "text" }, trip: { type: "relation", to: "trip" }, location: { type: "geo" } } },
     },
     pages: [
-      { id: "places", title: "Places", view: { type: "list", entity: "place", filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id } },
+      {
+        id: "places",
+        // A page title and a sort that read ctx (#133).
+        title: (ctx: Ctx) => (ctx.scope.trip ? `Places in ${String((ctx.scope.trip as { city?: string }).city)}` : "Places"),
+        view: {
+          type: "list",
+          entity: "place",
+          filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id,
+          sort: (a, b, ctx) => (ctx.params.desc ? String(b.name).localeCompare(String(a.name)) : String(a.name).localeCompare(String(b.name))),
+        },
+      },
       {
         id: "map",
         title: "Map",
@@ -56,8 +66,9 @@ globalThis.__kartaApp = {
     place: { displayField: "name", fields: { name: { type: "text" }, trip: { type: "relation", to: "trip" }, location: { type: "geo" } } }
   },
   pages: [
-    { id: "places", title: "Places", view: { type: "list", entity: "place",
-        filter: function(p, ctx){ return !ctx.scope.trip || (p.trip && p.trip.id === ctx.scope.trip.id); } } },
+    { id: "places", title: function(ctx){ return ctx.scope.trip ? "Places in " + ctx.scope.trip.city : "Places"; }, view: { type: "list", entity: "place",
+        filter: function(p, ctx){ return !ctx.scope.trip || (p.trip && p.trip.id === ctx.scope.trip.id); },
+        sort: function(a, b, ctx){ return ctx.params.desc ? String(b.name).localeCompare(String(a.name)) : String(a.name).localeCompare(String(b.name)); } } },
     { id: "map", title: "Map", view: { type: "map", entity: "place", geo: "location",
         camera: function(ctx){ var at = ctx.scope.trip && ctx.scope.trip.location; return at ? { center: [at.lng, at.lat], zoom: 11 } : "fit"; } } }
   ]
@@ -109,6 +120,23 @@ for (const [name, setup] of [
       expect(await loaded.callViewOption("map", "camera", ctx)).toEqual({ center: [13.405, 52.52], zoom: 11 });
       expect(await loaded.callViewOption("map", "geo", ctx)).toBe("location");
       expect(await loaded.callViewOption("places", "camera", ctx)).toBeNull();
+      loaded.dispose?.();
+    });
+
+    it("a sort reads ctx (#133): the page's params decide the direction", async () => {
+      const { loaded, ctx } = await setup({ params: { desc: true } });
+      expect(await loaded.callSort("places", inBerlin, elsewhere, ctx)).toBeGreaterThan(0);
+      const { loaded: asc, ctx: ascCtx } = await setup();
+      expect(await asc.callSort("places", inBerlin, elsewhere, ascCtx)).toBeLessThan(0);
+      loaded.dispose?.();
+      asc.dispose?.();
+    });
+
+    it("a page title is a function of the selection (#133)", async () => {
+      const { loaded, ctx } = await setup({ scope: { trip: berlin } });
+      expect(await loaded.callPageOption("places", "title", ctx)).toBe("Places in Berlin");
+      expect(await loaded.callPageOption("map", "title", ctx)).toBe("Map");
+      expect(await loaded.callPageOption("map", "nothing", ctx)).toBeNull();
       loaded.dispose?.();
     });
   });
