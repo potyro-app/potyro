@@ -67,11 +67,16 @@ export abstract class ChatBackend implements ModelBackend {
   /** Send one exchange and return the raw reply text (fences and all). */
   protected abstract ask(messages: ChatMessage[], temperature: number): Promise<string>;
 
+  /** The contract this engine is taught. On-device engines with a small context override it. */
+  protected get systemPrompt(): string {
+    return SYSTEM_PROMPT;
+  }
+
   async generate(prompt: GenPrompt): Promise<string> {
     return extractSource(
       await this.ask(
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: this.systemPrompt },
           { role: "user", content: buildUserMessage(prompt) },
         ],
         GENERATE_TEMPERATURE,
@@ -83,7 +88,7 @@ export abstract class ChatBackend implements ModelBackend {
     return extractSource(
       await this.ask(
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: this.systemPrompt },
           { role: "user", content: buildUserMessage(prompt) },
           priorTurn(source),
           { role: "user", content: buildRepairMessage(errors) },
@@ -100,7 +105,7 @@ export abstract class ChatBackend implements ModelBackend {
   async modify(source: string, instruction: string, _prompt: GenPrompt): Promise<string> {
     return this.ask(
       [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: this.systemPrompt },
         { role: "user", content: buildModifyOpener() },
         priorTurn(source),
         { role: "user", content: buildModifyMessage(instruction) },

@@ -272,6 +272,8 @@ class IsolateLoadedApp implements LoadedApp {
       capsAvailable: this.capsAvailable(ctx),
       me: ctx.me,
       space: ctx.space ? { id: ctx.space.id, role: ctx.space.role, members: ctx.space.members } : undefined,
+      // The selection is plain resolved data, like `record` — nothing to reach back through.
+      scope: ctx.scope,
     };
   }
 
@@ -283,6 +285,9 @@ class IsolateLoadedApp implements LoadedApp {
   }
   async callFilter(pageId: string, record: Resolved, ctx: Ctx): Promise<boolean> {
     return Boolean(await this.invoke({ kind: "filter", pageId, record, ...this.base(ctx) }, ctx));
+  }
+  async callViewOption(pageId: string, key: string, ctx: Ctx): Promise<Value> {
+    return this.invoke({ kind: "viewOption", pageId, key, ...this.base(ctx) }, ctx);
   }
   async callSort(pageId: string, a: Resolved, b: Resolved): Promise<number> {
     // Sort needs no live caps; a bare ctx-ish payload suffices.

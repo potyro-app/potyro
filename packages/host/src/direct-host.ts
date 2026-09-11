@@ -68,6 +68,13 @@ export class DirectLoadedApp implements LoadedApp {
     return Number(sort(a, b));
   }
 
+  async callViewOption(pageId: string, key: string, ctx: unknown): Promise<Value> {
+    const view = pageView(this.definition, pageId) as Record<string, unknown> | undefined;
+    const option = view?.[key];
+    if (option === undefined) return null;
+    return (typeof option === "function" ? await (option as (c: unknown) => unknown)(ctx) : option) as Value;
+  }
+
   async callBinding(ref: BindingRef, record: Resolved, ctx: unknown): Promise<Value> {
     const b = bindingFn(this.definition, ref);
     if (typeof b !== "function") {

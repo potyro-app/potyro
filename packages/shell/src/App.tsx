@@ -31,7 +31,7 @@ import {
   guardedModify,
   type ModifyContext,
 } from "@karta/generator/backends";
-import { VIEW_FIELDS, PAGE_FIELDS } from "karta";
+import { VIEW_FIELDS, PAGE_FIELDS, type Resolved } from "karta";
 import { listVersions } from "./app-history.js";
 import { listDiagnoses, recordDiagnosis } from "./app-diagnoses.js";
 import { StructurePanel } from "./structure-panel.js";
@@ -47,6 +47,7 @@ import { canGenerate, generateViaCli } from "./generate-client.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { describeDrift, schemaDrift } from "./schema-drift.js";
 import { shellDialogs } from "./dialog.js";
+import { chooseScope } from "./scope.js";
 
 interface EditorState {
   entity: string;
@@ -55,6 +56,8 @@ interface EditorState {
   initial?: Record<string, unknown>;
   /** After creating, open the new record's detail. */
   openAfter?: boolean;
+  /** After creating, hand the new id to whoever asked for the record (the scope picker's "New…"). */
+  onCreated?: (id: string) => void;
 }
 
 // Declarative quick action (mirrors karta's QuickAction; kept structural to avoid a hard dep here).
@@ -177,6 +180,37 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
   })();
   const setParam = (key: string, value: unknown): void =>
     setParamsByPage((prev) => ({ ...prev, [pageId]: { ...(prev[pageId] ?? {}), [key]: value } }));
+
+  // The app-wide selection (#134). The runtime owns the value and re-runs watchers when it changes;
+  // the header chip below reads it, so it re-renders on the same signal, and the page remounts on a
+  // change (see the boundary's `key`) so a map created once opens where the new selection says.
+  const scopeDef = def.scope;
+  const [, bumpScope] = useState(0);
+  useEffect(() => runtime.core.onInvalidate(() => bumpScope((n) => n + 1)), [runtime]);
+  const scopeAppId = appId ?? def.id;
+  const scoped = scopeDef ? runtime.scope[scopeDef.entity] : undefined;
+  const scopeEntity = scopeDef ? def.entities[scopeDef.entity] : undefined;
+  const scopeLabel = scopeDef?.label ?? scopeEntity?.label ?? scopeDef?.entity ?? "";
+  const scopeName = (r: Resolved): string => String(r[scopeEntity?.displayField ?? "id"] ?? r.id);
+  const pickScope = async (): Promise<void> => {
+    if (!scopeDef) return;
+    const NEW = { __new: true as const };
+    const rows = await runtime.ctx.query(scopeDef.entity);
+    const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>([...rows, NEW], {
+      label: (r) => ("__new" in r ? `＋ New ${scopeEntity?.label ?? scopeDef.entity}` : scopeName(r)),
+    });
+    if (!picked || Array.isArray(picked)) return;
+    if ("__new" in picked) {
+      setEditor({ entity: scopeDef.entity, openAfter: false, onCreated: (id) => void chooseScope(runtime, scopeAppId, id) });
+      return;
+    }
+    await chooseScope(runtime, scopeAppId, picked.id);
+  };
+  // A required scope is asked for as the app opens, once; the chip stays there to ask again.
+  useEffect(() => {
+    if (scopeDef?.required && !scoped) void pickScope();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Holds the case being recorded, if any. One per mounted app instance — see case-recorder.ts for
   // why `navigate` below, and not `createNavBridge`, is where it has to be wrapped.
@@ -834,6 +868,19 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
         <div className="k-brand">
           <span className="k-logo" aria-hidden>◆</span>
           <h1>{def.name}</h1>
+          {scopeDef ? (
+            <button
+              type="button"
+              className="k-scope"
+              data-empty={!scoped || undefined}
+              aria-label={`${scopeLabel}: ${scoped ? scopeName(scoped) : "none chosen"} — change`}
+              title={`Which ${scopeLabel.toLowerCase()} the app is showing`}
+              onClick={() => void pickScope()}
+            >
+              <span className="k-scope-label">{scopeLabel}</span>
+              {scoped ? scopeName(scoped) : `Choose…`} ▾
+            </button>
+          ) : null}
           {canEdit ? (
             <button
               type="button"
@@ -1002,7 +1049,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
         // that crashed (the fallback's own "Back to a working page" button, or any other nav) mounts
         // a clean boundary for wherever you land, instead of carrying yesterday's error state into a
         // page that never had a problem.
-        <ViewErrorBoundary key={pageId} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
+        <ViewErrorBoundary key={`${pageId}:${scoped?.id ?? ""}`} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
           <main className="k-main">
@@ -1045,6 +1092,7 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
               onDone={(id) => {
                 const ed = editor;
                 setEditor(null);
+                if (id) ed?.onCreated?.(id);
                 if (ed?.openAfter && id) openRecord(ed.entity, id);
               }}
               onCancel={() => setEditor(null)}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GeminiNanoBackend, SYSTEM_PROMPT, type PromptModel, type PromptSession } from "../src/index.js";
+import { GeminiNanoBackend, SYSTEM_PROMPT_COMPACT, type PromptModel, type PromptSession } from "../src/index.js";
 
 const GOOD = `import { defineApp } from "karta";
 export default defineApp({
@@ -44,7 +44,8 @@ describe("GeminiNanoBackend", () => {
     const src = await backend.generate({ id: "t", description: "a todo list" });
 
     expect(src).toBe(GOOD);
-    expect(rec.systemPrompts[0]).toBe(SYSTEM_PROMPT);
+    // Compact on purpose: Nano's context cannot hold the full schema reference (#130).
+    expect(rec.systemPrompts[0]).toBe(SYSTEM_PROMPT_COMPACT);
     expect(rec.prompts[0]).toContain("a todo list");
     expect(rec.destroyed).toBe(1); // session cleaned up
     expect(backend.name).toBe("gemini-nano");

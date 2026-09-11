@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { defineApp, type MapCamera } from "karta";
+import { defineApp, type Ctx, type Dynamic, type MapCamera } from "karta";
 import { MemoryStore } from "@karta/store";
 import { FakeCapabilities } from "@karta/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@karta/host";
@@ -101,13 +101,15 @@ const { MapView } = await import("../src/map.js");
 
 const CAMERA_KV = "kv:map:map:camera";
 
-function fixture(camera?: MapCamera) {
+function fixture(camera?: Dynamic<MapCamera>) {
   return defineApp({
     id: "map-camera-fixture",
     name: "Map Camera Fixture",
     version: "1.0.0",
     schemaVersion: 1,
+    scope: { entity: "trip" },
     entities: {
+      trip: { label: "Trip", displayField: "city", fields: { city: { type: "text" }, location: { type: "geo" } } },
       place: { label: "Place", displayField: "name", fields: { name: { type: "text", required: true }, location: { type: "geo" } } },
     },
     pages: [
@@ -120,7 +122,7 @@ function fixture(camera?: MapCamera) {
   });
 }
 
-async function makeRuntime(camera?: MapCamera, saved?: unknown): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
+async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("map-camera-fixture");
   await store.insert("place", { name: "Cozy Bar", location: { lat: 52.52, lng: 13.405 } });
@@ -196,6 +198,27 @@ describe("camera", () => {
     expect(spies.built[0]).toEqual({ center: [0, 20], zoom: 1 });
     expect(spies.fits).toBe(1);
     // ...and it does not quietly start remembering.
+    expect(spies.handlers.has("moveend")).toBe(false);
+  });
+
+  // #133 / #134: "the map opens on the trip I am in". The camera is a function of ctx and reads the
+  // app-wide selection; a literal never could, and `ctx.params` is per page.
+  it("a function camera opens where ctx.scope says, and falls back when nothing is selected", async () => {
+    const camera = (ctx: Ctx): MapCamera => {
+      const at = (ctx.scope.trip as { location?: { lat: number; lng: number } } | undefined)?.location;
+      return at ? { center: [at.lng, at.lat], zoom: 11 } : "fit";
+    };
+    const { runtime, store } = await makeRuntime(camera);
+    const berlin = await store.insert("trip", { city: "Berlin", location: { lat: 52.52, lng: 13.405 } });
+    await runtime.setScope("trip", berlin.id);
+
+    render(<View runtime={runtime} />);
+    gate.open();
+
+    await waitFor(() => expect(spies.markers).toBe(1));
+    expect(spies.built[0]).toEqual({ center: [13.405, 52.52], zoom: 11 });
+    expect(spies.fits).toBe(0);
+    // Not "remember": a computed position must not be overwritten by a saved one.
     expect(spies.handlers.has("moveend")).toBe(false);
   });
 

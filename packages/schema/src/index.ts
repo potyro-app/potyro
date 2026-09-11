@@ -66,6 +66,8 @@ export type {
   CalendarView,
   MapView,
   MapCamera,
+  Dynamic,
+  ScopeDef,
   SummaryValue,
   SummaryOp,
   StepsView,

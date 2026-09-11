@@ -41,6 +41,8 @@ export interface RuntimeDeps {
    * are accepted because tests and fakes have nothing to keep fresh.
    */
   space?: Space | (() => Space | undefined);
+  /** The initial app-wide selection (`ctx.scope`), by entity. Changed later through `setScope`. */
+  scope?: Record<string, Resolved | undefined>;
 }
 
 function viewOf(def: AppDefinition, pageId: string): View {
@@ -59,6 +61,7 @@ export class RuntimeCore {
   private readonly now?: Date;
   private readonly me?: Person;
   private readonly space?: Space | (() => Space | undefined);
+  private scope: Record<string, Resolved | undefined>;
 
   constructor(deps: RuntimeDeps) {
     this.app = deps.app;
@@ -70,6 +73,30 @@ export class RuntimeCore {
     this.now = deps.now;
     this.me = deps.me;
     this.space = deps.space;
+    this.scope = { ...(deps.scope ?? {}) };
+  }
+
+  /** The current app-wide selection, by entity. */
+  getScope(): Readonly<Record<string, Resolved | undefined>> {
+    return this.scope;
+  }
+
+  /**
+   * Select (or clear, with `null`) the app-wide record for an entity, then re-run every live watcher:
+   * a filter reading `ctx.scope` now answers differently for the same rows, and no record changed,
+   * so nothing else would refresh the screen. The shell owns persistence; this owns the value.
+   */
+  setScope(entity: string, record: Resolved | null): void {
+    const next = { ...this.scope };
+    if (record) next[entity] = record;
+    else delete next[entity];
+    this.scope = next;
+    this.invalidate();
+  }
+
+  /** A `Dynamic<T>` view option, resolved through the host (see `LoadedApp.callViewOption`). */
+  viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
+    return this.app.callViewOption(pageId, key, this.ctxFor(params));
   }
 
   /**
@@ -112,6 +139,7 @@ export class RuntimeCore {
       me: this.me,
       // Resolved per pass, never captured — see `RuntimeDeps.space`.
       space: typeof this.space === "function" ? this.space() : this.space,
+      scope: this.scope,
     };
     return this.host.makeCtx(this.app, base);
   }

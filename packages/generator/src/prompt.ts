@@ -4,6 +4,8 @@
 
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
+import { SCHEMA_REFERENCE } from "./reference.generated.js";
+import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "karta";
 
 export const EXAMPLE_TODO = `import { defineApp } from "karta";
 
@@ -119,14 +121,48 @@ export default defineApp({
   ],
 });`;
 
-export const SYSTEM_PROMPT = `You generate a single Karta app module (a \`.app.ts\` file) from a natural-language description.
+/**
+ * The model's reference: the `karta` module's declarations, verbatim (see reference.ts). The
+ * hand-written catalogue this replaces said less than the schema did, and every gap was a refusal
+ * (#130). Now what the model is told exists is, byte for byte, what the validator enforces.
+ */
+function fullReferenceSection(): string {
+  return `REFERENCE — THE \`karta\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the complete and authoritative
+surface: every field type, every view type and each option it accepts, every member of \`ctx\`, with the
+doc comment that says what it does. If an option is declared here, it works; if it is not declared
+here, it does not exist — do not invent one and do not assume one is missing without reading the
+declaration. Before saying something cannot be done, find the type it would live on and read it.
+
+\`\`\`ts
+${SCHEMA_REFERENCE}
+\`\`\``;
+}
+
+/**
+ * The same facts at a fraction of the size, for on-device models whose context cannot hold the full
+ * declarations (Gemini Nano, WebLLM's 4k-context Qwen builds). Still DERIVED from the schema —
+ * `FIELD_TYPES` and `VIEW_FIELDS` come from the Zod validator — so it lists every option the full
+ * reference lists; what it drops is the doc comments and the types of each option.
+ */
+function compactReferenceSection(): string {
+  const views = Object.entries(VIEW_FIELDS)
+    .map(([type, fields]) => `  \`${type}\`  { ${fields.join(", ")} }`)
+    .join("\n");
+  return `REFERENCE (compact — every option that exists, from the validator; \`?\` marks optional)
+- Field \`type\`: ${FIELD_TYPES.join(", ")}.
+- A page declares: ${PAGE_FIELDS.join(", ")} and a \`view\`. Each view type and everything it accepts:
+${views}
+An option not listed here does not exist; one listed here works.`;
+}
+
+function assembleSystemPrompt(reference: string): string {
+  return `You generate a single Karta app module (a \`.app.ts\` file) from a natural-language description.
 
 CONTRACT
 - The file default-exports \`defineApp({ ... })\` imported from "karta".
 - Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`entities\`, \`pages\`.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
-- Field \`type\` is one of: text, richtext, url, number, duration, boolean, datetime, enum (with \`options\`),
-  tags (with \`options\`), media, geo, relation (with \`to\`), list (with \`of\`). There is NO "object" type.
+- Field \`type\` is one of the \`Field\` union in the REFERENCE below. There is NO "object" type.
 - To REFERENCE another object type, use a \`relation\` field: \`{ type: "relation", to: "<entity>" }\` (add
   \`many: true\` for a multi-select). The form then shows a PICKER of that entity's existing records.
 - A \`list\` field's \`of\` is a FLAT MAP of sub-fields — the sub-fields go DIRECTLY in \`of\`, keyed by name.
@@ -154,7 +190,9 @@ CONTRACT
   NEVER \`actions: { water: { label: "...", run: ... } }\`. A detail view lists action KEYS:
   \`actions: ["water", "repot"]\`.
 
-THE \`ctx\` API — THIS IS THE COMPLETE SURFACE. Calling anything not on this list is a runtime crash.
+${reference}
+
+NOTES ON \`ctx\` — the surface is \`interface Ctx\` above; these are the mistakes models make with it.
 There is NO \`ctx.data\` namespace. Data methods live directly on \`ctx\` and are ALL async:
 - \`await ctx.query(entity, { filter?, sort?, limit?, offset? })\` → Resolved[]   (NOT \`ctx.data.list\`,
   NOT a \`where\` option — the option is \`filter\`, a JS predicate \`(r) => boolean\`)
@@ -234,24 +272,18 @@ migrations: [
   (there is NOTHING else on \`ctx.ui\` — no \`openUrl\`, no \`alert\`)
 - \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
-- A page has \`id\`, \`title\`, and a \`view\`. View \`type\` is one of: list, gallery, table, detail, calendar,
-  map, custom. A \`display.primary\`/\`secondary\` binding is a field-key string OR a function \`(r) => ...\`.
-- EACH VIEW TYPE HAS REQUIRED OPTIONS — omitting one fails validation:
-  \`list\`     { entity, display?: { primary, secondary?, media?, badges? }, sort?, filter?, onOpen?, emptyText? }
-  \`gallery\`  same as list; \`display.media\` names a \`media\` field to show as the tile image
-  \`table\`    { entity, display: { columns: string[] } }   — columns live under \`display\`, not top level
-  \`detail\`   { entity, param, sections: [{ title?, fields: string[] }], actions?: string[] }
-  \`calendar\` { entity, date: <REQUIRED binding to a datetime field>, title?, color? }
-  \`map\`      { entity, geo: "<REQUIRED name of a geo field>", title?, color?, filters?, onOpen? }
-             — give a map \`onOpen\` so tapping a pin opens that record's detail page; without it a
-             pin only shows its \`title\` in a popup. Tapping EMPTY map always starts a new record
-             with the geo field pre-filled, so no separate "add here" affordance is needed.
-  \`custom\`   { entity, param?, render }
-- A \`map\` view REQUIRES \`geo\` — the KEY of a \`geo\` field on that entity (a string, not a function):
-  \`{ type: "map", entity: "place", geo: "location", title: "name" }\`
-- Filter chips (list/map \`filters\`) are declarative: \`{ label, param, from: "<enum-or-tags field>", multi? }\`,
-  or \`{ label, param, type: "boolean" }\`, or \`{ label, param, type: "geo" }\` for a "near me" button. Read the
-  chosen value in the view's \`filter\` via \`ctx.params[param]\`.
+- A page has \`id\`, \`title\`, and a \`view\`; the view types and every option each accepts are the \`View\`
+  union in the REFERENCE. Omitting a required option fails validation. A \`display.primary\`/\`secondary\`
+  binding is a field-key string OR a function \`(r) => ...\`.
+- \`table\` columns live under \`display.columns\`, not at the top level. A \`map\` view's \`geo\` is the KEY
+  of a \`geo\` field (a string, not a function): \`{ type: "map", entity: "place", geo: "location", title: "name" }\`.
+- Give a map \`onOpen\` so tapping a pin opens that record's detail page; without it a pin only shows its
+  \`title\` in a popup. Tapping EMPTY map always starts a new record with the geo field pre-filled, so no
+  separate "add here" affordance is needed. \`camera\` (see \`MapCamera\`) says where the map opens.
+- Filter chips (list/map \`filters\`, see \`FilterChip\`): \`from\` names an enum/tags field OR an entity
+  (record chips — one per record, param = selected ids); \`type: "boolean"\` is a toggle; \`type: "geo"\` a
+  "near me" button. Read the chosen value in the view's \`filter\` via \`ctx.params[param]\`. Params are
+  per page — a chip on one page does not filter another.
 - Every field/computed referenced by a view must exist on that entity.
 - A \`custom\` view is a REACT COMPONENT — write JSX (the file is compiled as .tsx). Import hooks with
   \`import { useState, useEffect } from "react"\`. React is NOT on \`props\`, NOT on \`runtime\`, and NOT a
@@ -277,6 +309,13 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   entity's ONLY required field is a single enum (a "type"/"day"), add \`mode: "menu"\` to pick it inline;
   otherwise the shell opens the create form. \`open: true\` lands the user in the new record.
 - Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
+- When one entity is what everything else belongs to (a trip and its places/events/expenses, a project
+  and its tasks), declare \`scope: { entity: "trip", required: true }\`. The shell then shows the current
+  trip in the header with a picker, and every function reads it synchronously as \`ctx.scope.trip\`.
+  Narrow each page yourself: \`filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id\`. Options such as
+  the map \`camera\` may be a function of ctx (\`Dynamic<T>\`): \`camera: (ctx) => ctx.scope.trip?.location
+  ? { center: [lng, lat], zoom: 11 } : "fit"\`. A relation to the scoped entity defaults to the current
+  selection on create. Do NOT reach for \`ctx.params\` (per page) or \`ctx.storage\` (async) for this.
 - Do NOT expose sub-records (e.g. a session's individual sets) as their own top-level tab — model them
   as a nested \`list\` field or reach them from the parent's detail.
 - Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).
@@ -313,6 +352,13 @@ EXAMPLE 3 — a custom view: a real React component, in the same file, with hook
 \`\`\`ts
 ${EXAMPLE_CUSTOM_VIEW}
 \`\`\``;
+}
+
+/** The contract every cloud and CLI backend teaches: judgement rules + the schema, verbatim. */
+export const SYSTEM_PROMPT = assembleSystemPrompt(fullReferenceSection());
+
+/** The same contract with the compact, validator-derived reference — for small on-device models. */
+export const SYSTEM_PROMPT_COMPACT = assembleSystemPrompt(compactReferenceSection());
 
 
 export function buildUserMessage(prompt: GenPrompt): string {
@@ -359,10 +405,35 @@ export interface ModifyContext {
   priorDiagnoses?: readonly string[];
 }
 
-/** Either an edit, or a reasoned refusal to make one. */
+/** Either an edit (possibly partial, with the undone parts named), or a reasoned refusal to make one. */
 export type ModifyReply =
-  | { kind: "source"; source: string; rationale?: string }
+  | { kind: "source"; source: string; rationale?: string; notDone?: string[] }
   | { kind: "diagnosis"; text: string };
+
+/** The heading a reply uses to name the parts of a request it did not do (the ladder's third rung). */
+export const NOT_DONE = "Not done:";
+
+/**
+ * The bullet lines under a `Not done:` heading in the prose — the parts of the request the edits do
+ * not cover, each naming what would be needed. Tolerates markdown dressing (`**Not done:**`, `*`/`•`/
+ * numbered bullets) because that is how models write headings; stops at the first line that is not
+ * a bullet. Empty when there is no heading.
+ */
+export function parseNotDone(prose: string): string[] {
+  const heading = new RegExp(`^[\\s*_\`#]*${NOT_DONE}[\\s*_\`]*$`, "im").exec(prose);
+  if (!heading) return [];
+  const rest = prose.slice(heading.index + heading[0].length).split("\n");
+  const items: string[] = [];
+  for (const line of rest) {
+    const m = /^\s*(?:[-*•]|\d+[.)])\s+(.+?)\s*$/.exec(line);
+    if (!m) {
+      if (items.length === 0 && line.trim() === "") continue; // a blank line right after the heading
+      break;
+    }
+    items.push(m[1]!);
+  }
+  return items;
+}
 
 /**
  * The Edit-mode prompt.
@@ -408,15 +479,25 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
   }
 
   lines.push(
-    "Reply with exactly one of:",
-    "1. SEARCH/REPLACE edits to the app above, in one ```ts block:",
+    "Work down this ladder and stop at the first rung that fits:",
+    "1. Declare it with the built-in views and options in the REFERENCE. Before deciding an option is missing,",
+    "   find the type it would live on and read its declaration.",
+    "2. If no built-in option fits, use a `custom` view — a React component in this file. This app is the",
+    "   person's own and runs trusted, so a custom view is a legitimate answer here; the size-budget rule",
+    "   against custom views is for creating new apps, not for meeting a request on an existing one.",
+    "3. If only PART of the request can be done, do that part. Then, still in the prose before the block, add:",
+    `   ${NOT_DONE}`,
+    "   - <the part you did not do>, because <the declaration or host behaviour it would need>",
+    "   one bullet per part. Never refuse a request because one part of it cannot be done.",
+    `4. Only if NO part can be done: \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to`,
+    "   change there>\` - and no code.",
+    "",
+    "Edits are SEARCH/REPLACE blocks against the app above, in one ```ts block:",
     "",
     EDIT_FORMAT,
     "",
-    `2. \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to change there>\` - and no code.`,
-    "",
-    "Answering (2) when it is true is cheap. A plausible edit that cannot possibly work is the more damaging mistake,",
-    "because it is indistinguishable from a fix until someone tries it.",
+    "A plausible edit that cannot possibly work is worse than a Not done line, because it is indistinguishable",
+    "from a fix until someone tries it. A refusal of a request you could mostly do is worse than both.",
     "",
     "The OUTPUT rule in the system prompt (the whole file, no prose) does not apply to this reply: it is for",
     "creating an app. Here, send edits, and put your reasoning in the prose before the block. Do NOT write",
@@ -434,6 +515,12 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
  * explaining that the patch cannot help, and acting on source the model has just disowned is
  * precisely the failure this contract exists to prevent.
  */
+/** Attach the `Not done:` parts found in a source reply's rationale; no key at all when there are none. */
+export function withNotDone<T extends { rationale?: string }>(reply: T): T & { notDone?: string[] } {
+  const notDone = reply.rationale ? parseNotDone(reply.rationale) : [];
+  return notDone.length ? { ...reply, notDone } : reply;
+}
+
 export function parseModifyReply(reply: string): ModifyReply {
   // The marker may arrive dressed up: a model that has just written three paragraphs of reasoning
   // tends to present its verdict as `` `NOT-IN-APP: …` `` or **NOT-IN-APP: …**. A measured DeepSeek
@@ -454,7 +541,7 @@ export function parseModifyReply(reply: string): ModifyReply {
   if (block) {
     const rationale = reply.slice(0, block.index).trim();
     // Reasoning belongs in the version's rationale, not in source comments (docs/04).
-    return rationale ? { kind: "source", source: block.code, rationale } : { kind: "source", source: block.code };
+    return withNotDone(rationale ? { kind: "source" as const, source: block.code, rationale } : { kind: "source" as const, source: block.code });
   }
   return { kind: "source", source: reply.trim() };
 }
