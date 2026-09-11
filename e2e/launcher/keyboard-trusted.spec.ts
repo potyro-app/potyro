@@ -30,7 +30,7 @@ test("Tab walks the grid in order and Enter opens the focused tile", async ({ pa
   await openHome(page);
   // The first tile is a handful of Tabs from the top, not buried.
   const presses = await tabUntil(page, (a) => a.cls.includes("k-launch-tile"));
-  expect(presses).toBeLessThanOrEqual(6); // You, then the three sort buttons, then the grid
+  expect(presses).toBeLessThanOrEqual(7); // You, the search field, the three sort buttons, then the grid
 
   // Walk on: the built-ins first, then each saved app as tile, then its menu button — reading order.
   const order: string[] = [];
