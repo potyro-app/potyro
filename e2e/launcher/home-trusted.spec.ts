@@ -11,13 +11,13 @@ test("launcher home lists apps and launches a built-in", async ({ page }) => {
   const launcher = page.locator(".k-launcher-home");
   await expect(launcher).toBeVisible();
   // Trusted examples appear under "Apps".
-  await expect(launcher.getByRole("button", { name: /recipes/ })).toBeVisible();
-  await expect(launcher.getByRole("button", { name: /plants/ })).toBeVisible();
+  await expect(launcher.getByRole("button", { name: /Recipes/ })).toBeVisible();
+  await expect(launcher.getByRole("button", { name: /Plants/ })).toBeVisible();
   // A "New app" tile opens the Studio.
   await expect(launcher.getByRole("button", { name: /New app/ })).toBeVisible();
 
   // Launch recipes → it loads the running app.
-  await launcher.getByRole("button", { name: /recipes/ }).click();
+  await launcher.getByRole("button", { name: /Recipes/ }).click();
   await expect(page.locator("h1").first()).toHaveText("Recipes");
 });
 
@@ -28,10 +28,10 @@ test("in-app ⊞ Apps button slides in the launcher to switch", async ({ page })
   await page.getByRole("button", { name: "Switch app" }).click();
   const overlay = page.locator(".k-launcher-overlay");
   await expect(overlay).toBeVisible();
-  await expect(overlay.getByRole("button", { name: /plants/ })).toBeVisible();
+  await expect(overlay.getByRole("button", { name: /Plants/ })).toBeVisible();
 
   // Switch to plants.
-  await overlay.getByRole("button", { name: /plants/ }).click();
+  await overlay.getByRole("button", { name: /Plants/ }).click();
   await expect(page.locator("h1").first()).toHaveText("Plants");
 });
 

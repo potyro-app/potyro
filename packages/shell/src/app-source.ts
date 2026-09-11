@@ -61,6 +61,12 @@ export interface PageShape {
 export interface AppShape {
   entities: EntityShape[];
   pages: PageShape[];
+  /** The app's declared identity, when written literally: what a launcher tile shows without
+   *  running the app (#82). */
+  name?: string;
+  icon?: string;
+  /** `theme.accent`. */
+  accent?: string;
   /** Set when the module itself can't be read structurally at all. */
   blocked?: string;
 }
@@ -229,7 +235,10 @@ export async function inspect(source: string): Promise<AppShape> {
     }
   }
 
-  return { entities, pages };
+  const name = literalString(propValue(def, "name"));
+  const icon = literalString(propValue(def, "icon"));
+  const accent = literalString(propValue(propValue(def, "theme"), "accent"));
+  return { entities, pages, ...(name ? { name } : {}), ...(icon ? { icon } : {}), ...(accent ? { accent } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------------
