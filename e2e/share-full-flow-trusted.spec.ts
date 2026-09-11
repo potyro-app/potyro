@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // THE WHOLE SHARING FLOW, end to end, in two browser contexts.
@@ -65,7 +66,7 @@ const add = async (page: Page, name: string): Promise<void> => {
 /** Open the launcher and press Share on the app, returning the dialog. */
 async function pressShare(page: Page): Promise<void> {
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await page.getByRole("button", { name: "Share Share Flow" }).click();
+  await tileAction(page, "Share Flow", "share");
 }
 
 test("share → join → the guest writes → the owner shares AGAIN", async ({ browser }) => {

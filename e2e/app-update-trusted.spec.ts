@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // Adopting a collaborator's edit — and the WHITE PAGE that used to be.
@@ -52,7 +53,7 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
   await expect(a.locator("h1").first()).toHaveText("Shared Todo", { timeout: 30_000 });
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await a.getByRole("button", { name: "Share Shared Todo" }).click();
+  await tileAction(a, "Shared Todo", "share");
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await answerNamePrompt(a, "Ana");
   const linkField = a.locator(".k-dialog input");

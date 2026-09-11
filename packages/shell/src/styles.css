@@ -1535,34 +1535,115 @@ button {
 .k-launch-usertile .k-launch-tile {
   flex: 1 1 auto;
 }
-.k-launch-actions {
+/* A tile's actions: one always-visible 44px button, then a menu (#77). Never hover-only. */
+.k-tile-menu-host {
   position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  display: flex;
-  gap: 0.15rem;
-  opacity: 0;
-  transition: opacity 150ms var(--ease);
+  top: 0.25rem;
+  right: 0.25rem;
 }
-.k-launch-usertile:hover .k-launch-actions,
-.k-launch-usertile:focus-within .k-launch-actions {
-  opacity: 1;
-}
-.k-launch-act {
-  width: 1.6rem;
-  height: 1.6rem;
+.k-tile-menu-btn {
+  width: 2.75rem;
+  height: 2.75rem;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
   color: var(--ink-soft);
-  font-size: 0.75rem;
+  font-size: 1.25rem;
   line-height: 1;
+  cursor: pointer;
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
 }
-.k-launch-act:hover {
-  border-color: var(--accent);
+.k-tile-menu-btn:hover,
+.k-tile-menu-btn:focus-visible,
+.k-tile-menu-btn[aria-expanded="true"] {
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
   color: var(--ink);
+}
+.k-tile-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.k-tile-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 71;
+  min-width: 13rem;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  animation: k-fade 120ms var(--ease);
+}
+.k-tile-menu-title {
+  padding: 0.35rem 0.75rem 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+}
+.k-tile-menu-item {
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.k-tile-menu-item:hover,
+.k-tile-menu-item:focus-visible {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+}
+.k-tile-menu-item:disabled {
+  color: var(--ink-soft);
+  cursor: default;
+}
+.k-tile-menu-sep {
+  height: 1px;
+  margin: 0.4rem 0.5rem;
+  background: var(--line);
+}
+.k-tile-menu-item.k-danger {
+  color: oklch(50% 0.16 30);
+}
+.k-tile-menu-item.k-danger:hover,
+.k-tile-menu-item.k-danger:focus-visible {
+  background: oklch(50% 0.16 30 / 0.1);
+}
+@media (max-width: 760px) {
+  /* On a phone the menu is a sheet from the bottom, inside the thumb's reach. */
+  .k-tile-menu {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    animation: k-sheet-up 180ms var(--ease);
+  }
+  .k-tile-menu-scrim {
+    background: oklch(20% 0.02 60 / 0.32);
+  }
+}
+@keyframes k-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 .k-launch-empty {
   margin: 0;

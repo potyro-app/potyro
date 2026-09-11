@@ -6,7 +6,7 @@
 // something imported from elsewhere runs in the QuickJS isolate until promoted). Selecting a tile
 // navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { shellDialogs } from "./dialog.js";
 import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { toggleAppSync } from "./toggle-sync.js";
@@ -64,9 +64,86 @@ function Tile({
   );
 }
 
+/**
+ * A tile's actions behind one always-visible button (#77). The row they replaced was `opacity: 0`
+ * until `:hover`, so on a phone — no hover — History, Sync, Share, Rename and Delete did not exist,
+ * and when they did appear they were 25px squares. This is one 44px control that opens a menu: a
+ * popover beside the tile on a wide screen, a sheet from the bottom on a phone (CSS decides).
+ * Delete is last and set apart, so it is not a thumb's width from Rename.
+ */
+function TileMenu({
+  app,
+  busy,
+  onOpen,
+  onHistory,
+  onSync,
+  onShare,
+  onRename,
+  onDelete,
+}: {
+  app: UserApp;
+  busy: boolean;
+  onOpen: () => void;
+  onHistory: () => void;
+  onSync: () => void;
+  onShare: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const run = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+  const item = (action: string, label: string, fn: () => void, extra: { className?: string; disabled?: boolean } = {}) => (
+    <button type="button" role="menuitem" data-action={action} className={`k-tile-menu-item${extra.className ? ` ${extra.className}` : ""}`} disabled={extra.disabled} onClick={run(fn)}>
+      {label}
+    </button>
+  );
+  return (
+    <div className="k-tile-menu-host">
+      <button
+        type="button"
+        className="k-tile-menu-btn"
+        aria-label={`Actions for ${app.name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {busy ? "…" : "⋯"}
+      </button>
+      {open ? (
+        <>
+          <div className="k-tile-menu-scrim" onClick={() => setOpen(false)} />
+          <div
+            className="k-tile-menu"
+            role="menu"
+            aria-label={`Actions for ${app.name}`}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+            }}
+          >
+            <div className="k-tile-menu-title">{app.name}</div>
+            {item("open", "Open", onOpen)}
+            {item("history", "History", onHistory)}
+            {item("sync", app.sync ? "Turn sync off" : "Turn sync on", onSync, { disabled: busy })}
+            {item("share", "Share", onShare)}
+            {item("rename", "Rename", onRename)}
+            <div className="k-tile-menu-sep" />
+            {item("delete", "Delete", onDelete, { className: "k-danger" })}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin, onOpenUser, onNewApp, onClose }: LauncherProps) {
-  // Local copy so inline delete/rename reflect immediately (navigation elsewhere is reload-based).
+  // Local copy so inline delete/rename reflect immediately (navigation elsewhere is reload-based) —
+  // and kept in step with the prop (#78): `useState(userApps)` read it once, so an app created in
+  // the Studio did not appear on the home screen until a full reload.
   const [myApps, setMyApps] = useState(userApps);
+  useEffect(() => setMyApps(userApps), [userApps]);
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -229,33 +306,16 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
                 active={selected?.kind === "user" && selected.id === a.id}
                 onOpen={() => onOpenUser(a.id)}
               />
-              <div className="k-launch-actions">
-                <button type="button" className="k-launch-act" aria-label={`History of ${a.name}`} title="History" onClick={() => setHistory(a)}>⟲</button>
-                <button
-                  type="button"
-                  className="k-launch-act"
-                  aria-label={`${a.sync ? "Turn off" : "Turn on"} sync for ${a.name}`}
-                  title={a.sync ? "Sync on — click to turn off" : "Sync off — click to turn on"}
-                  data-on={a.sync || undefined}
-                  disabled={busy === a.id}
-                  onClick={() => void toggleSync(a)}
-                >
-                  {busy === a.id ? "…" : a.sync ? "⇄" : "⇄̸"}
-                </button>
-                {true ? (
-                  <button
-                    type="button"
-                    className="k-launch-act"
-                    aria-label={`Share ${a.name}`}
-                    title="Share this app and its data"
-                    onClick={() => void share(a)}
-                  >
-                    ⇗
-                  </button>
-                ) : null}
-                <button type="button" className="k-launch-act" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => void rename(a)}>✎</button>
-                <button type="button" className="k-launch-act" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => void del(a)}>✕</button>
-              </div>
+              <TileMenu
+                app={a}
+                busy={busy === a.id}
+                onOpen={() => onOpenUser(a.id)}
+                onHistory={() => setHistory(a)}
+                onSync={() => void toggleSync(a)}
+                onShare={() => void share(a)}
+                onRename={() => void rename(a)}
+                onDelete={() => void del(a)}
+              />
             </div>
           ))}
           <button type="button" className="k-launch-tile k-launch-new" onClick={onNewApp}>
