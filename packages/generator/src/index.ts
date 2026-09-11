@@ -4,7 +4,8 @@ export { FixtureBackend } from "./backend.js";
 export { scoreSource, type ScoreResult } from "./score.js";
 export { runEval, formatReport, type EvalReport, type PromptOutcome } from "./run-eval.js";
 export { PROMPTS } from "./prompts.js";
-export { SYSTEM_PROMPT, buildUserMessage, buildRepairMessage, buildModifyMessage, extractSource, parseModifyReply, NOT_IN_APP } from "./prompt.js";
+export { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT, buildUserMessage, buildRepairMessage, buildModifyMessage, extractSource, parseModifyReply, NOT_IN_APP } from "./prompt.js";
+export { SCHEMA_REFERENCE } from "./reference.generated.js";
 export type { ModifyContext, ModifyReply } from "./prompt.js";
 export {
   ClaudeBackend,

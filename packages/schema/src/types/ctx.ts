@@ -162,8 +162,24 @@ export interface Ctx {
    */
   space?: Space;
 
-  // ---- runtime inputs (view filter params, custom-view args) ----
+  /**
+   * Runtime inputs: the values of the current page's filter chips (`FilterChip.param`) and the
+   * route params it was navigated to with (`navigate(pageId, params)` / `onOpen.param`).
+   *
+   * Scoped PER PAGE. A chip chosen on one page is not visible to another page's `filter`, so a
+   * selection that should follow the user across pages cannot live here. (`ctx.storage` persists
+   * across pages but is async, so a synchronous `filter` cannot read it either.)
+   */
   params: Readonly<Record<string, unknown>>;
+
+  /**
+   * The app-wide selected record, when the app declares a top-level `scope` (see `ScopeDef`):
+   * `ctx.scope.trip` is the current trip as a `Resolved` record, or `undefined` while none is
+   * chosen. Synchronous and fixed per evaluation pass, so a `filter` can read it directly:
+   * `(e, ctx) => e.trip?.id === ctx.scope.trip?.id`. Always present; `{}` for an app with no scope.
+   * Per device — which trip *you* are looking at is not shared state.
+   */
+  scope: Readonly<Record<string, Resolved | undefined>>;
 
   // ---- app-scoped key/value storage ----
   storage: CtxStorage;

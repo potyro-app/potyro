@@ -25,6 +25,11 @@ export default defineApp({
   // is run untrusted. Trusted (own) apps get everything without prompting.
   permissions: { camera: true, filesystem: true /* network, notifications, geo … */ },
 
+  // optional: the one record everything else belongs to (a trip, a project). The shell shows it in
+  // the header with a picker; every function reads it synchronously as `ctx.scope.trip`. Pages
+  // narrow themselves: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`. Per device.
+  scope: { entity: "trip", required: true },
+
   entities: { /* … */ },   // declarative shape + co-located computed/action functions
   pages:    [ /* … */ ],   // declarative view layout; display/filter/sort may be functions
   reminders:[ /* … */ ],   // functions

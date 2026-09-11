@@ -6,6 +6,7 @@
 // validator-gated, and safe-when-wrong (untrusted → isolate).
 
 import { ChatBackend, firstContent, type ChatEngine, type ChatMessage } from "./chat-backend.js";
+import { SYSTEM_PROMPT_COMPACT } from "./prompt.js";
 
 // The chat shape lives in chat-backend.ts, shared with the cloud backends that speak it. Re-exported
 // here so existing importers (and the eval tests) keep working.
@@ -39,6 +40,12 @@ export class WebLLMBackend extends ChatBackend {
   constructor(private readonly engine: ChatEngine, model: string = DEFAULT_MODEL) {
     super();
     this.name = `webllm:${model}`;
+  }
+
+  // The MLC Qwen builds run with a 4k context; the full schema reference alone is ~7.5k tokens, so
+  // the compact, validator-derived variant is what fits (#130).
+  protected override get systemPrompt(): string {
+    return SYSTEM_PROMPT_COMPACT;
   }
 
   // No `model` on the request: the MLC engine is loaded for one model and is already bound to it.

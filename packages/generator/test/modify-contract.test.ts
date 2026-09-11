@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { NOT_IN_APP, buildModifyMessage, parseModifyReply, buildRepairInstruction } from "../src/prompt.js";
+import { NOT_IN_APP, buildModifyMessage, parseModifyReply, parseNotDone, buildRepairInstruction } from "../src/prompt.js";
 
 // The Edit-mode contract. Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer:
 // when the only legal reply is updated source, a request the module cannot express comes back as a
@@ -11,8 +11,10 @@ describe("buildModifyMessage", () => {
     const msg = buildModifyMessage("make the map remember my zoom");
     expect(msg).toContain(NOT_IN_APP);
     expect(msg).toContain("```ts block");
-    // The asymmetry has to be stated, or the model defaults to producing code.
-    expect(msg).toMatch(/more damaging mistake/i);
+    // The asymmetry has to be stated, or the model defaults to producing code — and since #132 it is
+    // two-sided: an edit that cannot work is bad, and refusing a mostly-doable request is worse.
+    expect(msg).toMatch(/cannot possibly work/i);
+    expect(msg).toMatch(/worse than both/i);
   });
 
   test("states the target view's declarable surface, so the boundary is knowable", () => {
@@ -65,7 +67,65 @@ describe("buildModifyMessage", () => {
   });
 });
 
+// The ladder (#132). A request with four parts and one host gap used to be refused whole: the only
+// legal replies were "edits" and "NOT-IN-APP", and the prompt called the refusal cheap. Now the
+// refusal is the LAST rung, after built-ins, a custom view, and doing the parts that can be done.
+describe("buildModifyMessage — the feasibility ladder", () => {
+  const msg = buildModifyMessage("select a trip, then everything shows that trip");
+
+  test("orders the rungs: declare, custom view, partial with Not done, refuse last", () => {
+    const declare = msg.search(/REFERENCE/);
+    const custom = msg.search(/custom.*view/i);
+    const partial = msg.indexOf("Not done:");
+    const refuse = msg.indexOf(NOT_IN_APP);
+    expect(declare).toBeGreaterThanOrEqual(0);
+    expect(custom).toBeGreaterThan(declare);
+    expect(partial).toBeGreaterThan(custom);
+    expect(refuse).toBeGreaterThan(partial);
+  });
+
+  test("says a custom view is a legitimate answer for a trusted app, despite the size budget", () => {
+    expect(msg).toMatch(/size.budget[\s\S]*?(creating|new) apps/i);
+  });
+
+  test("forbids refusing a request because one part of it cannot be done", () => {
+    expect(msg).toMatch(/never refuse .* because (one|a) part/i);
+    expect(msg).toMatch(/only if no part/i);
+  });
+
+  test("still names the asymmetry, so the model does not send edits it knows cannot work", () => {
+    expect(msg).toMatch(/cannot possibly work/i);
+  });
+});
+
+describe("parseNotDone", () => {
+  test("reads the bullet lines under a Not done heading", () => {
+    expect(parseNotDone("I added the chip.\n\nNot done:\n- centre the map on the trip, needs a function-valued `camera`\n- an app-wide current trip, needs `ctx.scope`\n")).toEqual([
+      "centre the map on the trip, needs a function-valued `camera`",
+      "an app-wide current trip, needs `ctx.scope`",
+    ]);
+  });
+
+  test("tolerates markdown dressing on the heading and the bullets", () => {
+    expect(parseNotDone("**Not done:**\n* first\n• second\n1. third")).toEqual(["first", "second", "third"]);
+  });
+
+  test("stops at the first non-bullet line and is empty without the heading", () => {
+    expect(parseNotDone("Not done:\n- one\n\nAlso, I renamed a page.")).toEqual(["one"]);
+    expect(parseNotDone("Nothing was left undone.")).toEqual([]);
+  });
+});
+
 describe("parseModifyReply", () => {
+  test("carries the Not done parts alongside the source", () => {
+    const r = parseModifyReply("Added the chip.\n\nNot done:\n- centre the map\n```ts\nconst a = 1;\n```");
+    expect(r).toEqual({ kind: "source", source: "const a = 1;", rationale: "Added the chip.\n\nNot done:\n- centre the map", notDone: ["centre the map"] });
+  });
+
+  test("a reply without a Not done section has no notDone key at all", () => {
+    expect(parseModifyReply("done\n```ts\nconst a = 1;\n```")).not.toHaveProperty("notDone");
+  });
+
   test("reads a code block as source", () => {
     const r = parseModifyReply("here you go\n```ts\nconst a = 1;\n```");
     expect(r).toEqual({ kind: "source", source: "const a = 1;", rationale: "here you go" });

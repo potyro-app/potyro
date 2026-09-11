@@ -50,8 +50,13 @@ interface Ctx {
   now(): Date;
   today(): Date;
 
-  // ---- runtime inputs (view filter params, custom-view args) ----
+  // ---- runtime inputs (view filter params, custom-view args) — PER PAGE ----
   params: Readonly<Record<string, unknown>>;
+
+  // ---- the app-wide selection, when the app declares a top-level `scope` (docs/03) ----
+  // `ctx.scope.trip` is the current trip as a Resolved record, or undefined; `{}` without a scope.
+  // Synchronous and fixed per evaluation pass, so a filter can read it. Per device, not shared.
+  scope: Readonly<Record<string, Resolved | undefined>>;
 
   // ---- app-scoped key/value storage (separate from entity records) ----
   storage: { get<T>(k: string): Promise<T | null>; set(k: string, v: unknown): Promise<void>;
