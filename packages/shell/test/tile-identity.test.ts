@@ -28,3 +28,15 @@ describe("tileIdentity", () => {
     expect(tileIdentity({ key: "user:x", name: "Xylo", icon: "  ", accent: "" })).toMatchObject({ kind: "monogram", glyph: "XY" });
   });
 });
+
+// #83: the person's own colour for a tile wins over the declared accent; their icon and name come in
+// already merged, so the tile shows them the same way.
+describe("tileIdentity overrides", () => {
+  it("uses the chosen hue over the declared accent, and keeps the derived hue otherwise", () => {
+    const own = tileIdentity({ key: "user:recipes", name: "Recipes", icon: "🍳", accent: "#E4A93C" });
+    const mine = tileIdentity({ key: "user:recipes", name: "Recipes", icon: "🍳", accent: "#E4A93C", hue: 205 });
+    expect(own.accent).toBe("#E4A93C");
+    expect(mine).toMatchObject({ accent: "oklch(72% 0.13 205)", hue: 205, glyph: "🍳" });
+    expect(tileIdentity({ key: "user:x", name: "Xylo", hue: 25 })).toMatchObject({ accent: "oklch(72% 0.13 25)", kind: "monogram" });
+  });
+});
