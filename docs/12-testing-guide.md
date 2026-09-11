@@ -72,6 +72,25 @@ reason it is the only spec that sees it.
 Not fixed here: the cause is understood but not confirmed, and guessing at a durability fallback
 under time pressure is how an import silently stops being durable. It wants its own change.
 
+### The launcher harness (`e2e/launcher/`)
+
+The launcher is audited by *operating* it, on the device it is for (#94). One directory, one spec
+per concern, all on the same seeded library (`fixture.ts`: eight apps, trusted and untrusted, synced
+and local, names colliding on their first letter):
+
+- `touch-trusted.spec.ts` — 375×812 with touch: open, switch, share, rename, delete. Every control
+  tapped is measured against 44px.
+- `keyboard-trusted.spec.ts` — 1440: Tab order through the grid, the tile menu as a real menu.
+- `a11y-trusted.spec.ts` — axe on home, switcher and open menu (zero serious/critical), and a
+  reduced-motion run in which nothing animates.
+- `baselines-trusted.spec.ts` — screenshots of home (empty, seeded), the tile menu and the switcher
+  at 375 / 768 / 1440 in light and dark, plus the share dialog at the two ends. The type is pinned
+  to DejaVu for the shot so the pixels are about the launcher, not about which fonts a machine has.
+  Light and dark are identical until #92 lands a dark palette — that PR changes the dark set.
+
+`pnpm e2e:launcher` runs the directory (about a minute at one worker). `pnpm e2e:baselines`
+regenerates the screenshots after a change you meant; a diff you did not mean is the point.
+
 ### Specs that skip themselves, and say why
 
 - `studio-generate-trusted.spec.ts` drives a **real** `claude -p`. With no `claude` on PATH it skips
