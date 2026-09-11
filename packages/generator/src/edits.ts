@@ -233,7 +233,16 @@ function bodyLines(text: string): string[] {
  * must never pick one of two places on the model's behalf. Fragments of a line never match:
  * substituting inside a line would put the replacement's other lines at the wrong depth, silently.
  */
+/** `key:: value` → `key: value`. A model tic (#136); `::` before a space is never TypeScript. */
+const DOUBLED_COLON = /::(?= )/; // no `g`: a global regex's `test` carries `lastIndex` between calls
+const undoubleColons = (text: string): string => text.replace(/::(?= )/g, ":");
+
 function applyOne(source: string, edit: SearchReplace): { source: string } | { reason: EditFailureReason; count: number } {
+  // Read the edit as the model meant it, not as it typed it. Both halves: a SEARCH that matches only
+  // once undoubled would otherwise land a REPLACE that writes the same typo into the file.
+  if (DOUBLED_COLON.test(edit.search) || DOUBLED_COLON.test(edit.replace)) {
+    return applyOne(source, { search: undoubleColons(edit.search), replace: undoubleColons(edit.replace) });
+  }
   const search = bodyLines(edit.search);
   if (search.every((l) => l.trim() === "")) return { reason: "empty-search", count: 0 };
   const replacement = bodyLines(edit.replace);

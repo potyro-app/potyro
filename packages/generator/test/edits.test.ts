@@ -115,6 +115,23 @@ describe("applyEdits", () => {
     expect(r.ok && r.source).not.toContain('id: "all"');
   });
 
+  // #136: `deepseek-v4-flash` writes `key:: value` when it copies a line. Measured on 2026-09-11 in the
+  // edits eval (2 of 12 cases, both runs) and on a 300-line app (every attempt). `::` followed by a
+  // space never occurs in a .app.ts, so reading it as `:` costs nothing — and the tolerance covers
+  // REPLACE too, because the same tic lands in the replacement and would write `city:: {` into the file.
+  test("reads a doubled colon before a space as a single one, in SEARCH and in REPLACE", () => {
+    const r = applyEdits(FILE, [{ search: '  id:: "x",', replace: '  id:: "y",\n  name:: "Y",' }]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.source).toContain('  id: "y",\n  name: "Y",');
+    expect(r.source).not.toContain("::");
+  });
+
+  test("leaves a doubled colon that is not followed by a space alone (an IPv6 literal, say)", () => {
+    const r = applyEdits(FILE, [{ search: '  id: "x",', replace: '  id: "::1",' }]);
+    expect(r.ok && r.source).toContain('  id: "::1",');
+  });
+
   test("matches when only trailing whitespace differs", () => {
     const r = applyEdits(FILE, [{ search: '  id: "x",   ', replace: '  id: "q",' }]);
     expect(r.ok && r.source).toContain('  id: "q",');
