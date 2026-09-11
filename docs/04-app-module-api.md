@@ -140,12 +140,24 @@ unreachable request comes back as a confident change to whichever function looke
 comment it writes to justify itself becomes the *input* to the next attempt, and one wrong guess
 survives round after round.
 
-So the contract (`buildModifyMessage` / `parseModifyReply` in `packages/generator`) has two legal
-replies:
+So the contract (`buildModifyMessage` / `parseModifyReply` in `packages/generator`) is a **ladder**
+the model works down, stopping at the first rung that fits:
 
-1. **Updated source**, in one ```ts block — the request was reachable.
-2. **`NOT-IN-APP: <what host behaviour is responsible, and what would have to change there>`** — it
-   was not. No code.
+1. **Declare it** with the built-in views and options — the schema's own type declarations are in
+   the prompt verbatim (`reference.generated.ts`, regenerated from `packages/schema/src/types` and
+   checked by a test), so "this option does not exist" is something to read, not assume.
+2. **A `custom` view** when no built-in fits — the person's own app runs trusted.
+3. **The doable parts**, as SEARCH/REPLACE edits, with the rest listed under **`Not done:`** in the
+   prose (carried as `notDone`, shown in the Studio, filed as diagnoses). A request is never refused
+   because one part of it cannot be done.
+4. **`NOT-IN-APP: <what host behaviour is responsible, and what would have to change there>`** —
+   only when no part can be done. No code.
+
+With a chat engine the Studio runs this as an **agent loop** (`runModifyLoop`, `start-modify.ts`)
+rather than one turn: the model has `lookup` (the real declaration of a type, option or ctx member),
+`check` (bundle + validate a candidate) and `example`; every candidate must compile, validate and
+keep the app's entities and pages; and a `NOT-IN-APP` sent without a `lookup` or `check` behind it
+is sent back to the tools once. One-shot engines (`claude -p`, on-device) keep the one-turn guard.
 
 Supporting this:
 
