@@ -62,7 +62,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
 
   // Save to the local library → it appears in "My Apps".
   await studio.getByRole("button", { name: /Save to My Apps/ }).click();
-  await expect(studio.locator(".k-myapps .k-myapp-open")).toHaveText("My App");
+  await expect(studio.locator(".k-myapps .k-myapp-open", { hasText: "My App" })).toHaveCount(1);
 
   // The saved app is launchable full-screen from its route, and runs TRUSTED: it is the user's own.
   await page.goto("/?user=my-app");
@@ -105,7 +105,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   // The ⊞ Apps launcher lists the saved app under My Apps, and can delete it inline.
   await page.getByRole("button", { name: "Switch app" }).click();
   const overlay = page.locator(".k-launcher-overlay");
-  await expect(overlay.locator(".k-launch-usertile .k-launch-name")).toHaveText("My App");
+  await expect(overlay.locator(".k-launch-tile", { hasText: "My App" })).toHaveCount(1);
   // Deleting an app destroys its records, history and diagnoses, so it asks first — in-app, not a
   // platform dialog.
   await tileAction(overlay, "My App", "delete");
@@ -113,5 +113,5 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog).toContainText("can't be undone");
   await confirmDialog.getByRole("button", { name: "Confirm" }).click();
-  await expect(overlay.locator(".k-launch-usertile")).toHaveCount(0);
+  await expect(overlay.locator(".k-launch-tile", { hasText: "My App" })).toHaveCount(0);
 });

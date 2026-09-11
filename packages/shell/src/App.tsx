@@ -121,7 +121,7 @@ interface AppProps {
   toaster: Toaster;
   appId?: string;
   /** How the current app was launched — for highlighting it in the launcher. */
-  currentKind?: "builtin" | "user";
+  currentKind?: "user";
   onExport?: () => void;
   onImport?: () => void;
   /** Enables the Studio + launcher (the shell's top-level app only — not the preview). */
@@ -1225,7 +1225,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       {launcherOpen ? (
         <Launcher
           variant="overlay"
-          selected={appId ? { kind: currentKind ?? "builtin", id: appId } : undefined}
+          selected={appId ? { kind: currentKind ?? "user", id: appId } : undefined}
           onOpen={openInstalledApp}
           onNewApp={() => {
             setLauncherOpen(false);

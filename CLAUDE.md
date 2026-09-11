@@ -80,8 +80,8 @@ pnpm i
 pnpm -r build
 pnpm -r test
 pnpm --filter host test
-pnpm dev            # shell loads examples/*.app.ts (trusted, direct) in the browser
-pnpm dev:sandbox    # loads an example as UNTRUSTED to exercise the isolate + prompts
+pnpm dev            # the shell; the examples are seeded into My Apps on first run (trusted, direct)
+pnpm dev:sandbox    # same, but the examples are seeded UNTRUSTED to exercise the isolate + prompts
 pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playwright.config.ts)
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries

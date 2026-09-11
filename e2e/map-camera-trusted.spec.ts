@@ -60,13 +60,13 @@ test("map reopens where the user left it", async ({ page }) => {
   await expect
     .poll(async () =>
       page.evaluate(() => {
-        const raw = localStorage.getItem("karta:places");
+        const raw = localStorage.getItem("karta:user:places");
         return raw ? ((JSON.parse(raw) as { kv?: Record<string, string> }).kv?.["kv:map:map:camera"] ?? null) : null;
       }),
     )
     .not.toBeNull();
   const zoomedTo = await page.evaluate(() => {
-    const kv = (JSON.parse(localStorage.getItem("karta:places")!) as { kv: Record<string, string> }).kv;
+    const kv = (JSON.parse(localStorage.getItem("karta:user:places")!) as { kv: Record<string, string> }).kv;
     return (JSON.parse(kv["kv:map:map:camera"]!) as { zoom: number }).zoom;
   });
   expect(zoomedTo).toBeGreaterThan(6);

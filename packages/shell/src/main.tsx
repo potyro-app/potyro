@@ -1,10 +1,11 @@
-// Shell entry / composition root wiring. `pnpm dev` → trusted (recipes imported directly).
-// `pnpm dev:sandbox` (mode "sandbox") → the same app UNTRUSTED in the QuickJS-WASM isolate.
+// Shell entry / composition root wiring. Every app — the seeded examples included (#152) — is a
+// saved source: trusted ones run direct, untrusted ones in the QuickJS-WASM isolate. `pnpm
+// dev:sandbox` (mode "sandbox") seeds the examples untrusted, which is what exercises the isolate.
 
 import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
-import type { KartaApp, KartaRecord } from "karta";
+import type { KartaRecord } from "karta";
 import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
 import { readOnlyStore } from "./read-only-store.js";
@@ -17,7 +18,8 @@ import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
-import { BUILTIN_APPS, appKey, recordOpen, type BuiltinId } from "./launcher-store.js";
+import { appKey, recordOpen } from "./launcher-store.js";
+import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
 import { getUserApp } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
@@ -30,32 +32,15 @@ import { seedIfEmpty } from "./seed.js";
 import { startReminderSync } from "./reminder-sync.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
-const APPS = BUILTIN_APPS;
-type AppId = BuiltinId;
 
-// Route from the URL: a saved user app (?user=), a built-in example (?app=), or the launcher home.
-type Route = { kind: "builtin"; id: AppId } | { kind: "user"; id: string } | { kind: "home" };
+// Route from the URL: a saved app (?user=, or the older ?app= that named an example) or the home.
+// The examples are ordinary apps (#152), so `?app=recipes` is the same app as `?user=recipes`.
+type Route = { kind: "user"; id: string } | { kind: "home" };
 function route(): Route {
   const p = new URLSearchParams(location.search);
-  const user = p.get("user");
-  if (user && getUserApp(user)) return { kind: "user", id: user };
-  const app = p.get("app");
-  if (app && (APPS as readonly string[]).includes(app)) return { kind: "builtin", id: app as AppId };
+  const id = p.get("user") ?? p.get("app");
+  if (id && getUserApp(id)) return { kind: "user", id };
   return { kind: "home" };
-}
-
-// Static specifiers so Vite can resolve each sandbox virtual module.
-async function sandboxBundle(appId: AppId): Promise<string> {
-  switch (appId) {
-    case "recipes":
-      return (await import("virtual:sandbox:recipes")).default;
-    case "plants":
-      return (await import("virtual:sandbox:plants")).default;
-    case "places":
-      return (await import("virtual:sandbox:places")).default;
-    case "workout":
-      return (await import("virtual:sandbox:workout")).default;
-  }
 }
 
 // Export the current app as a portable `.karta.zip` bundle (KA-04): logic + a real SQLite data file
@@ -138,16 +123,21 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
     toaster.push("Not a valid Karta export bundle.");
     return;
   }
-  if (!(APPS as readonly string[]).includes(appId)) {
+  const target = getUserApp(appId);
+  if (!target) {
     toaster.push(`No app "${appId}" installed to import into.`);
     return;
   }
+  if (target.sync) {
+    toaster.push(`"${target.name}" is synced; a data import would overwrite what others share.`);
+    return;
+  }
   sessionStorage.setItem(IMPORT_KEY, bytesToBase64(sqlite));
-  location.search = `?app=${appId}`; // reload → boot() detects the pending import
+  location.search = `?user=${encodeURIComponent(appId)}`; // reload → boot() detects the pending import
 }
 
-// The launcher home — first surface when no app is selected. Lists trusted examples + untrusted
-// saved apps; a tile launches (reload → ?app / ?user); "New app" opens the Studio in place.
+// The launcher home — first surface when no app is selected. A tile launches (reload → ?user=);
+// "New app" opens the Studio in place.
 function Home() {
   const [studio, setStudio] = useState(false);
   return (
@@ -177,67 +167,6 @@ function mount(root: HTMLElement, node: ReactNode): void {
   );
   registerServiceWorker();
   registerDeepLinks();
-}
-
-// A built-in example: trusted (direct) by default, or untrusted (isolate) under `dev:sandbox`.
-async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
-  const pending = sessionStorage.getItem(IMPORT_KEY);
-  let store: Store;
-  if (pending) {
-    sessionStorage.removeItem(IMPORT_KEY);
-    store = await importSqliteStore(appId, base64ToBytes(pending));
-    toaster.push(`Imported data into ${appId}.`);
-  } else {
-    store = await openStore(appId);
-    await seedIfEmpty(store, appId);
-  }
-  const picker = new PickerHost();
-  const ui = createUiBridge(toaster.push, picker, shellDialogs);
-  const navHost = new NavHost();
-  const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
-
-  const examples = import.meta.glob("../../../examples/*.app.ts", { import: "default" });
-  const loadTrusted = examples[`../../../examples/${appId}.app.ts`] as (() => Promise<KartaApp>) | undefined;
-  if (!loadTrusted) throw new Error(`example "${appId}" not found`);
-  const app = await loadTrusted();
-
-  // Built-in examples get the same identity as everything else: `ctx.me` is a property of the
-  // device, not of how an app happened to be installed.
-  const { ensureIdentity } = await import("@karta/identity");
-  const me = await ensureIdentity();
-
-  let composed: Composed;
-  let appSource: string | undefined;
-  if (SANDBOX) {
-    const { createSandboxLoader } = await import("./isolate-bridge.js");
-    appSource = await sandboxBundle(appId);
-    composed = await compose({ app, provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, loadIsolated: await createSandboxLoader(store) });
-  } else {
-    composed = await compose({ app, provenance: "trusted", store, caps, ui, nav, me });
-  }
-  // docs/06: bring stored data up to the definition before anything reads it. A read-only store
-  // (older copy of a shared app) refuses this, which is correct — it must not rewrite shared
-  // records with an old app's idea of the schema.
-  await runMigrationsIfPossible(composed.runtime.definition, store, toaster);
-  startReminderSync(composed.runtime, store);
-
-  const provenance: Provenance = SANDBOX ? "untrusted" : "trusted";
-  await restoreScope(composed.runtime, appId);
-  mount(
-    root,
-    <App
-      navHost={navHost}
-      picker={picker}
-      runtime={composed.runtime}
-      provenance={provenance}
-      toaster={toaster}
-      appId={appId}
-      currentKind="builtin"
-      onExport={() => void exportApp(composed.runtime, store, caps, provenance, appSource, toaster)}
-      onImport={() => void importApp(caps, toaster)}
-      generator
-    />,
-  );
 }
 
 // A saved user app. UNTRUSTED by default (isolate); if the user promoted it, TRUSTED (direct) — the
@@ -338,7 +267,19 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
   // exactly the previous SqliteStore/LocalStore path.
-  const rawStore = await openStore(`user:${id}`, { sync: saved.sync });
+  // A data import (KA-04) lands here after the reload it triggers. Otherwise the store opens, and
+  // an empty one gets its first-run rows from `seedIfEmpty` — keyed by app id, so the examples are
+  // filled the way they always were, now as ordinary apps (#152).
+  let rawStore: Store;
+  const pending = sessionStorage.getItem(IMPORT_KEY);
+  if (pending && !saved.sync) {
+    sessionStorage.removeItem(IMPORT_KEY);
+    rawStore = await importSqliteStore(`user:${id}`, base64ToBytes(pending));
+    toaster.push(`Imported data into ${saved.name}.`);
+  } else {
+    rawStore = await openStore(`user:${id}`, { sync: saved.sync });
+    await seedIfEmpty(rawStore, id);
+  }
 
   // Who this device is (KA-18). Minted on first run with crypto alone — no database, no network —
   // so it is the same person whether or not this app has ever synced. `ctx.me` is always present,
@@ -481,6 +422,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       appId={id}
       currentKind="user"
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
+      onImport={() => void importApp(caps, toaster)}
       generator
     />,
   );
@@ -489,6 +431,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
+
+  // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
+  // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
+  // isolate. Before routing, because routing asks the registry whether an app exists.
+  await seedExamples({ trusted: !SANDBOX, now: new Date().toISOString() });
 
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
@@ -514,8 +461,7 @@ async function boot(): Promise<void> {
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
 
-  if (r.kind === "user") await bootUserApp(r.id, root, toaster, caps);
-  else await bootBuiltin(r.id, root, toaster, caps);
+  await bootUserApp(r.id, root, toaster, caps);
 }
 
 /**

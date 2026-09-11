@@ -19,8 +19,8 @@ import { applyEdit, inspect, resetSourceTools, type Edit } from "../src/app-sour
 // cwd is packages/shell when vitest runs this workspace project.
 const read = (name: string): string => readFileSync(resolve(process.cwd(), "../../examples", name), "utf8");
 const PLACES = read("places.app.ts");
-const RECIPES = read("recipes.app.ts");
-const WORKOUT = read("workout.app.ts");
+const RECIPES = read("recipes.app.tsx");
+const WORKOUT = read("workout.app.tsx");
 
 /** What the agent produced for the user's city-places app — generated code, not hand-written. */
 const GENERATED = `import { defineApp } from "karta";
@@ -284,7 +284,7 @@ export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion:
   });
 
   it("reads the example apps' identity", async () => {
-    const workout = readFileSync(resolve(process.cwd(), "../../examples/workout.app.ts"), "utf8");
+    const workout = readFileSync(resolve(process.cwd(), "../../examples/workout.app.tsx"), "utf8");
     expect(await inspect(workout)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
   });
 });

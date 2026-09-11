@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 test("places app runs untrusted in the QuickJS-WASM isolate (list + map)", async ({ page }) => {
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");
-  await expect(page.locator(".k-prov")).toHaveText("untrusted");
+  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
 
   await page.locator(".k-tab", { hasText: "All places" }).click();
   await expect(page.locator(".k-list-row").first()).toBeVisible();
@@ -27,7 +27,7 @@ test("places app runs untrusted in the QuickJS-WASM isolate (list + map)", async
 // in the isolate and its rows come back across the bridge.
 test("an aggregate screen renders UNTRUSTED, folded inside the isolate", async ({ page }) => {
   await page.goto("/?app=places");
-  await expect(page.locator(".k-prov")).toHaveText("untrusted");
+  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
 
   await page.locator(".k-tab", { hasText: "By category" }).click();
 

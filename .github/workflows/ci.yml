@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A commit the "Launcher baselines" workflow pushes with the workflow token gets no run of its
+  # own (GitHub does not chain workflows off that token), so this lets a branch be checked by hand:
+  #   gh workflow run ci.yml --ref <branch>
+  workflow_dispatch:
 
 jobs:
   build-test:
