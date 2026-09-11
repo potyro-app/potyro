@@ -222,6 +222,26 @@ renders, and the values sit in the store where nothing will ever show them again
 Where nothing can be decided mechanically (a migration that ran a `transform`, an unattributable
 value change) the verdict is **review**, not pass, and a person fills in the score.
 
+### The edits eval — does the model edit, and does it refuse what it could do?
+
+`eval:modify:edits` is the sibling: one change against a fixed corpus (`modify-corpus.ts`), through
+the same guard the Studio uses, reporting whether the reply was edits or a rewrite, whether the
+change landed, and whether the result validates. Two numbers were added for the ladder (#132, #135):
+
+| Number | What it means |
+|---|---|
+| **refused when feasible** | the reply was `NOT-IN-APP` on a case that has a doable part. The failure the ladder exists to end; the target is 0 |
+| **named what it could not do** | on a case with a part the host cannot do (`notDone` patterns), the reply's `Not done:` lines named every one |
+
+`--loop` runs the corpus through the product's modify loop (#131: `lookup`/`check`/`example`, a
+refusal without a lookup sent back once) instead of the one-turn guard; OpenRouter only.
+`--backend scripted-decline` proves the harness: every case with a predicate scores refused.
+
+```bash
+pnpm --filter @karta/generator eval:modify:edits -- --backend scripted-decline      # free proof
+pnpm --filter @karta/generator eval:modify:edits -- --backend openrouter --loop --only trip-scope,recipes-chart
+```
+
 ### Cost controls
 
 | Flag | Default | |

@@ -17,15 +17,18 @@
  *  schema import and a scripted backend can satisfy it in tests. */
 export interface DefinitionShape {
   entities: Record<string, { fields?: Record<string, unknown> }>;
-  pages: Array<{ id: string; view: { type: string } }>;
+  pages: Array<{ id: string; view: { type: string; sort?: unknown; filters?: unknown[]; camera?: unknown } }>;
+  scope?: { entity: string };
+  reminders?: unknown[];
 }
 
 export interface ModifyCase {
   id: string;
   /** Which app the instruction is applied to: an example under examples/, or an eval fixture under
    *  packages/generator/fixtures/ - `city-guide` is a REAL model-generated app a person was using
-   *  when a modify rewrote it, added verbatim. The curated examples never triggered a rewrite. */
-  app: "recipes" | "plants" | "places" | "workout" | "city-guide";
+   *  when a modify rewrote it, added verbatim; `trip-planner` is the real app whose modify request
+   *  was refused whole and opened #130–#135. The curated examples never triggered a rewrite. */
+  app: "recipes" | "plants" | "places" | "workout" | "city-guide" | "trip-planner";
   instruction: string;
   /** Did the requested change land? Structural and coarse on purpose - see the header. Absent for
    *  a keep-only case whose change is behaviour structure cannot see; such a case measures only
@@ -33,6 +36,14 @@ export interface ModifyCase {
   landed?: (after: DefinitionShape, before: DefinitionShape) => boolean;
   /** What `landed` checks, in words, for the report. */
   expects: string;
+  /**
+   * The parts of the request that CANNOT be done on this host, as patterns (case-insensitive
+   * regex sources) each of which must be named in the reply's `Not done:` lines (#135). A case with
+   * this set is partially feasible: `landed` checks the doable part, and a refusal of the whole
+   * request scores `refusedWhenFeasible` — the failure the ladder (#132) exists to end. A case
+   * with `landed` and no `notDone` is fully feasible, and refusing it scores the same way.
+   */
+  notDone?: string[];
 }
 
 const hasField = (entity: string, field: string) => (d: DefinitionShape): boolean =>
@@ -155,5 +166,59 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     instruction: "Add opening hours to each place, as free text.",
     landed: (d) => Object.keys(d.entities.place?.fields ?? {}).some((f) => /hour|open/i.test(f)),
     expects: "place gains an opening-hours-like field",
+  },
+
+  // --- feasibility (#135): multi-part requests, some with a part the host cannot do -------------
+  // The failure these measure is a refusal of the WHOLE request because one part of it cannot be
+  // done. A model that does the doable part and names the rest under `Not done:` scores; one that
+  // refuses scores `refusedWhenFeasible`, whatever its reason. The first is the request that opened
+  // the track, verbatim, and is now fully feasible (ctx.scope, #134): refusing it is the control.
+  {
+    id: "trip-scope",
+    app: "trip-planner",
+    instruction:
+      "when I open the map I need to create or select a trip. when a trip is selected the map opens automatically in the trip city and all lists show elements for the trip. we need to have a way to see that I am currently in the trip X.",
+    landed: (d) => d.scope?.entity === "trip" && d.pages.some((p) => p.view.type === "map" && typeof p.view.camera === "function"),
+    expects: "declares scope over trip and the map's camera is a function of ctx",
+  },
+  {
+    id: "recipes-chart",
+    app: "recipes",
+    instruction: "Show me a chart of how many recipes I cooked each month.",
+    // The doable part: a derived table per month (an aggregate view). The chart itself is #109.
+    landed: (d, before) => d.pages.length > before.pages.length && d.pages.some((p) => p.view.type === "aggregate" || p.view.type === "custom"),
+    expects: "a new page folds cookings per month (aggregate, or a custom view)",
+    notDone: ["chart|graph"],
+  },
+  {
+    id: "workout-photo-crop",
+    app: "workout",
+    instruction: "Let me attach a photo to each session and crop it before saving.",
+    landed: (d) => Object.values(d.entities.session?.fields ?? {}).some((f) => (f as { type?: string }).type === "media"),
+    expects: "session gains a media field",
+    notDone: ["crop"],
+  },
+  {
+    id: "places-visit-sms",
+    app: "places",
+    instruction: "Let me plan a date to visit a place, remind me the day before, and text my partner the address.",
+    landed: (d, before) =>
+      Object.values(d.entities.place?.fields ?? {}).some((f) => (f as { type?: string }).type === "datetime") &&
+      (d.reminders?.length ?? 0) > (before.reminders?.length ?? 0),
+    expects: "place gains a datetime field and a reminder is declared",
+    notDone: ["text|sms|message"],
+  },
+  {
+    id: "places-distance-sort",
+    app: "places",
+    instruction: "Sort the list of all places by distance from me.",
+    // Fully feasible (a geo chip + a sort reading ctx.params): a control that must not be refused.
+    landed: (d, before) => {
+      const list = (s: DefinitionShape) => s.pages.find((p) => p.id === "all")?.view;
+      const a = list(d);
+      const b = list(before);
+      return Boolean(a) && (String(a!.sort) !== String(b?.sort) || (a!.filters?.length ?? 0) > (b?.filters?.length ?? 0));
+    },
+    expects: "the All places list changes its sort or gains a chip",
   },
 ];
