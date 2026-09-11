@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-// The launcher's own state (#78, #77). The sync, share and identity machinery behind the tiles is
-// mocked: this is about what the list shows and how a tile's actions are reached, not about sync.
+// The launcher's own state (#78, #77, #81, #94). The sync, share and identity machinery behind the
+// tiles is mocked: this is about what the list shows and how a tile's actions are reached.
 vi.mock("../src/identity-panel.js", () => ({ IdentityPanel: () => null, askNameIfUnnamed: async () => {}, offerBackupOnFirstSync: async () => {} }));
 vi.mock("../src/open-store.js", () => ({ canSync: () => true, CANNOT_SYNC_MESSAGE: "no" }));
 vi.mock("../src/check-concurrency.js", () => ({ checkConcurrency: async () => ({}), describeHazards: () => [] }));
@@ -14,10 +14,12 @@ vi.mock("../src/app-source.js", () => ({ inspect: async () => ({ entities: [], p
 vi.mock("../src/dialog.js", () => ({ shellDialogs: { confirm: async () => true, prompt: async (_m: string, o?: { default?: string }) => `${o?.default ?? ""} 2`, share: async () => {} } }));
 
 import { Launcher } from "../src/launcher.js";
-import type { UserApp } from "../src/user-apps.js";
+import { USER_APPS_CHANGED, type UserApp } from "../src/user-apps.js";
 
 const app = (id: string, name = id): UserApp => ({ id, name, source: "export default 1", updatedAt: "2026-09-11T00:00:00.000Z", trusted: true });
-const props = { builtins: ["recipes"], variant: "home" as const, onOpenBuiltin: () => {}, onOpenUser: () => {}, onNewApp: () => {} };
+const seed = (...apps: UserApp[]) => localStorage.setItem("karta:user-apps", JSON.stringify(apps));
+const props = { variant: "home" as const, onOpen: () => {}, onNewApp: () => {} };
+const tiles = (name: string) => screen.queryAllByRole("button", { name: new RegExp(name) }).filter((b) => b.classList.contains("k-launch-tile"));
 
 afterEach(() => {
   cleanup();
@@ -25,20 +27,35 @@ afterEach(() => {
 });
 
 describe("Launcher", () => {
-  // #78: `useState(userApps)` read the prop once. Create an app in the Studio, close it, and the
-  // home screen still showed the old list until a full reload.
-  it("shows an app that arrives in a later render, not only the first one", () => {
-    const tile = (name: string) => screen.queryAllByRole("button", { name: new RegExp(name) }).filter((b) => b.classList.contains("k-launch-tile"));
-    const { rerender } = render(<Launcher {...props} userApps={[]} />);
-    expect(tile("Groceries")).toHaveLength(0);
-    rerender(<Launcher {...props} userApps={[app("groceries", "Groceries")]} />);
-    expect(tile("Groceries")).toHaveLength(1);
+  // #78 / #81: the list used to be a prop read once. Now it is the launcher store, live: a write to
+  // the registry from anywhere — the Studio, another launcher, another tab — reaches this render.
+  it("shows an app saved after it mounted, with no help from its parent", () => {
+    render(<Launcher {...props} />);
+    expect(tiles("recipes")).toHaveLength(1); // the built-ins come from the same list
+    expect(tiles("Groceries")).toHaveLength(0);
+    seed(app("groceries", "Groceries"));
+    act(() => {
+      window.dispatchEvent(new Event(USER_APPS_CHANGED));
+    });
+    expect(tiles("Groceries")).toHaveLength(1);
+  });
+
+  it("hands the opened app to onOpen with its kind, for both kinds", () => {
+    seed(app("groceries", "Groceries"));
+    const onOpen = vi.fn();
+    render(<Launcher {...props} onOpen={onOpen} />);
+    fireEvent.click(tiles("recipes")[0]!);
+    fireEvent.click(tiles("Groceries")[0]!);
+    expect(onOpen.mock.calls.map(([a]) => [a.kind, a.id, a.key])).toEqual([
+      ["builtin", "recipes", "builtin:recipes"],
+      ["user", "groceries", "user:groceries"],
+    ]);
   });
 
   // #77: the actions were a row that was `opacity: 0` until hover. A phone has no hover.
   it("reaches every per-app action through an always-visible menu button", async () => {
-    localStorage.setItem("karta:user-apps", JSON.stringify([app("groceries", "Groceries")]));
-    render(<Launcher {...props} userApps={[app("groceries", "Groceries")]} />);
+    seed(app("groceries", "Groceries"));
+    render(<Launcher {...props} />);
     const menuButton = screen.getByRole("button", { name: /Actions for Groceries/ });
     expect(menuButton.className).not.toContain("k-launch-act");
     fireEvent.click(menuButton);
@@ -46,7 +63,8 @@ describe("Launcher", () => {
     for (const item of ["Open", "History", "Share", "Rename", "Delete"]) expect(menu.querySelector(`[role=menuitem][data-action="${item.toLowerCase()}"]`)).toBeTruthy();
     // Delete sits apart from the rest, styled as destructive.
     expect(menu.querySelector('[data-action="delete"]')?.className).toContain("k-danger");
-    // Rename goes through the same handler as before and the tile updates in place.
+    // Rename goes through the same handler as before and the tile updates in place — through the
+    // registry's own change event, not a local copy.
     fireEvent.click(menu.querySelector('[data-action="rename"]')!);
     const renamed = await screen.findAllByRole("button", { name: /Groceries 2/ });
     expect(renamed.some((b) => b.classList.contains("k-launch-tile"))).toBe(true);
@@ -58,7 +76,8 @@ describe("Launcher", () => {
   // Escape puts focus back on the button — without the first of these, Escape did nothing, because
   // the button holding focus was outside the element listening for it.
   it("is a keyboard menu: focus in, arrows wrap, Escape returns focus to the button", () => {
-    render(<Launcher {...props} userApps={[app("groceries", "Groceries")]} />);
+    seed(app("groceries", "Groceries"));
+    render(<Launcher {...props} />);
     const button = screen.getByRole("button", { name: /Actions for Groceries/ });
     fireEvent.click(button);
     const menu = screen.getByRole("menu");

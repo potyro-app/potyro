@@ -16,9 +16,10 @@ import type { Provenance } from "@karta/host";
 import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
-import { Launcher, openBuiltinApp, openUserApp } from "./launcher.js";
+import { Launcher, openInstalledApp } from "./launcher.js";
+import { BUILTIN_APPS, appKey, recordOpen, type BuiltinId } from "./launcher-store.js";
 import { restoreScope } from "./scope.js";
-import { getUserApp, listUserApps } from "./user-apps.js";
+import { getUserApp } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -29,8 +30,8 @@ import { seedIfEmpty } from "./seed.js";
 import { startReminderSync } from "./reminder-sync.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
-const APPS = ["recipes", "plants", "places", "workout"] as const;
-type AppId = (typeof APPS)[number];
+const APPS = BUILTIN_APPS;
+type AppId = BuiltinId;
 
 // Route from the URL: a saved user app (?user=), a built-in example (?app=), or the launcher home.
 type Route = { kind: "builtin"; id: AppId } | { kind: "user"; id: string } | { kind: "home" };
@@ -151,14 +152,7 @@ function Home() {
   const [studio, setStudio] = useState(false);
   return (
     <>
-      <Launcher
-        variant="home"
-        builtins={APPS as readonly string[]}
-        userApps={listUserApps()}
-        onOpenBuiltin={openBuiltinApp}
-        onOpenUser={openUserApp}
-        onNewApp={() => setStudio(true)}
-      />
+      <Launcher variant="home" onOpen={openInstalledApp} onNewApp={() => setStudio(true)} />
       {studio ? <Studio onClose={() => setStudio(false)} /> : null}
     </>
   );
@@ -238,7 +232,6 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
       provenance={provenance}
       toaster={toaster}
       appId={appId}
-      apps={APPS as readonly string[]}
       currentKind="builtin"
       onExport={() => void exportApp(composed.runtime, store, caps, provenance, appSource, toaster)}
       onImport={() => void importApp(caps, toaster)}
@@ -486,7 +479,6 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       provenance={provenance}
       toaster={toaster}
       appId={id}
-      apps={APPS as readonly string[]}
       currentKind="user"
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
       generator
@@ -513,6 +505,9 @@ async function boot(): Promise<void> {
     mount(root, <Home />);
     return;
   }
+  // An open is an open however it came about — a tile, a deep link, a reload — so it is counted
+  // here, where every route to an app passes, not on the tile click (#81).
+  recordOpen(appKey(r.kind, r.id), new Date().toISOString());
 
   const toaster = new Toaster();
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
