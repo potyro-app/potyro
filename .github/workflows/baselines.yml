@@ -1,0 +1,42 @@
+name: Launcher baselines
+
+# Regenerates e2e/launcher's screenshot baselines on the same runner image CI compares them on, and
+# commits them to the branch you dispatch it for. Run it after a change to the launcher's pixels
+# that you meant; the CI run on your PR then compares against what you just committed.
+#
+#   gh workflow run baselines.yml --ref <your-branch>
+#
+# Rendered here and not on a developer machine on purpose: see e2e/launcher/baselines-trusted.spec.ts.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  baselines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e:baselines
+      - name: Commit the new baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add e2e/launcher/*-snapshots
+          if git diff --cached --quiet; then
+            echo "Baselines unchanged."
+          else
+            git commit -m "test(e2e): regenerate launcher baselines on CI"
+            git push
+          fi

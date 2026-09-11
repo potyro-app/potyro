@@ -84,12 +84,24 @@ and local, names colliding on their first letter):
 - `a11y-trusted.spec.ts` — axe on home, switcher and open menu (zero serious/critical), and a
   reduced-motion run in which nothing animates.
 - `baselines-trusted.spec.ts` — screenshots of home (empty, seeded), the tile menu and the switcher
-  at 375 / 768 / 1440 in light and dark, plus the share dialog at the two ends. The type is pinned
-  to DejaVu for the shot so the pixels are about the launcher, not about which fonts a machine has.
-  Light and dark are identical until #92 lands a dark palette — that PR changes the dark set.
+  at 375 / 768 / 1440 in light and dark, plus the share dialog at the two ends. Light and dark are
+  identical until #92 lands a dark palette — that PR changes the dark set.
 
-`pnpm e2e:launcher` runs the directory (about a minute at one worker). `pnpm e2e:baselines`
-regenerates the screenshots after a change you meant; a diff you did not mean is the point.
+`pnpm e2e:launcher` runs the directory (about a minute at one worker).
+
+**The baselines are CI's pixels.** Two Linux machines with the same Chromium and the same fonts
+still disagree — glyph hinting by a few hundred pixels a page, and a classic scrollbar on one shifts
+a layout that overlay scrollbars on the other leave alone — so the comparison runs on CI and is
+skipped locally (`KARTA_BASELINES=1 pnpm e2e:launcher` compares here anyway, expect noise). After a
+change to the launcher's pixels that you meant, regenerate them on the runner and they land on your
+branch as a commit:
+
+```
+gh workflow run baselines.yml --ref <your-branch>
+```
+
+A diff you did not mean is the point: CI's report artifact carries the expected / actual / diff
+images for every shot that moved.
 
 ### Specs that skip themselves, and say why
 
