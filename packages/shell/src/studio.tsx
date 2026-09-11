@@ -10,6 +10,7 @@ import { createWebCapabilities } from "@karta/capabilities";
 import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@karta/runtime";
 import { caseLabel, listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
+import { modifyLoopRefusal, startModify } from "./start-modify.js";
 import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
 import {
@@ -397,6 +398,53 @@ export function Studio({ onClose }: { onClose: () => void }) {
     const def = preview.composed.runtime.definition;
     // No clearing here: `withGen` clears both before it calls `run`, and this modify's own note is
     // set inside that run.
+    // A chat engine drives the modify LOOP (#131): the model can look declarations up and check a
+    // candidate before sending it, every candidate must compile, validate and keep the app's shape,
+    // and a refusal is only accepted after it has looked. Other engines keep the one-turn guard.
+    if (!modifyLoopRefusal(engineCfg)) {
+      return withGen(
+        label,
+        async () => {
+          const result = await startModify({
+            source,
+            instruction,
+            before: { pages: def.pages, entities: def.entities },
+            engine: engineCfg,
+            onStep: (step) => {
+              if (step.kind === "thinking") setProgress(`Thinking via ${label}…`);
+              else if (step.kind === "tool") setProgress(`${step.name}: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
+              else if (step.kind === "candidate") setProgress(step.passed ? "Candidate passed the check." : `Candidate rejected: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
+              else setProgress(`Asked to try again: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
+            },
+          });
+          if (result.kind === "diagnosis") {
+            setModifyNote(`Not changed — the model says this is not the app's to change: ${result.text}`);
+            return null;
+          }
+          if (result.kind === "question") {
+            setModifyNote(`The model needs to know: ${result.text}`);
+            return null;
+          }
+          if (result.kind === "failed" || result.kind === "stopped") {
+            setError(`Not changed — ${result.kind === "failed" ? result.reason : "stopped"}`);
+            return null;
+          }
+          const applied = result.via === "edits" ? `Applied ${result.applied} edit${result.applied === 1 ? "" : "s"}.` : "The model sent the whole file back instead of edits.";
+          if (result.notDone?.length) {
+            setModifyNote(`${applied} Not done yet: ${result.notDone.join("; ")}`);
+            if (currentId) {
+              const now = new Date().toISOString();
+              for (const part of result.notDone) void recordDiagnosis(currentId, { complaint: instruction, text: part }, now);
+            }
+          } else {
+            setModifyNote(applied);
+          }
+          return result.source;
+        },
+        true,
+        instruction,
+      );
+    }
     return withGen(
       label,
       () =>
