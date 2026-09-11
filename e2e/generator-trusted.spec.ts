@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 
 // The Studio: a full-screen surface that generates/edits an app, previews it live, and saves it to a
 // local "My Apps" library. The preview is the default view, and it runs TRUSTED — an app authored
@@ -107,7 +108,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(overlay.locator(".k-launch-usertile .k-launch-name")).toHaveText("My App");
   // Deleting an app destroys its records, history and diagnoses, so it asks first — in-app, not a
   // platform dialog.
-  await overlay.getByRole("button", { name: "Delete My App" }).click();
+  await tileAction(overlay, "My App", "delete");
   const confirmDialog = page.locator(".k-dialog");
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog).toContainText("can't be undone");
