@@ -29,12 +29,14 @@ export default defineApp({
   pages: [
     {
       id: "places",
-      title: "Places",
+      // The tab and the empty state name the trip (#133).
+      title: (ctx) => (ctx.scope.trip ? `Places in ${ctx.scope.trip.city}` : "Places"),
       view: {
         type: "list",
         entity: "place",
         display: { primary: "name", secondary: (p) => p.trip?.city ?? "" },
         filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id,
+        emptyText: (ctx) => `No places in ${ctx.scope.trip?.city ?? "this trip"} yet.`,
         onOpen: { page: "place", param: { placeId: "id" } },
       },
     },

@@ -47,6 +47,23 @@ describe("Dynamic<MapCamera> (#133, the first function-valued option)", () => {
     expect(typeof (app.pages[0]!.view as { camera?: unknown }).camera).toBe("function");
   });
 
+  it("accepts a function page title, empty text and aggregate title", () => {
+    const app = defineApp(
+      trips({
+        scope: { entity: "trip" },
+        pages: [
+          {
+            id: "places",
+            title: ((ctx: { scope: Record<string, { city?: string } | undefined> }) => `Places in ${ctx.scope.trip?.city ?? "…"}`) as never,
+            view: { type: "list", entity: "place", emptyText: (() => "Nothing here for this trip") as never },
+          },
+          { id: "totals", title: "Totals", view: { type: "aggregate", entity: "place", rows: () => [], title: (() => "Totals for the trip") as never } },
+        ],
+      }),
+    );
+    expect(typeof app.pages[0]!.title).toBe("function");
+  });
+
   it("still rejects a camera that is neither a mode, a position nor a function", () => {
     expect(() =>
       defineApp(trips({ pages: [{ id: "map", title: "Map", view: { type: "map", entity: "place", geo: "location", camera: "zoomed" as never } }] })),
