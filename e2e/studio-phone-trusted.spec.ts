@@ -21,7 +21,7 @@ test.describe("phone", () => {
 
   test("the prompt is whole and on screen, with nothing on top of it", async ({ page }) => {
     await page.goto("/");
-    await page.locator(".k-launch-tile", { hasText: "New App" }).tap();
+    await page.locator(".k-launch-tile", { hasText: "New app" }).tap();
     const studio = page.getByRole("dialog", { name: "App studio" });
     const prompt = studio.getByRole("textbox", { name: "Describe the app" });
     await expect(prompt).toBeVisible();
@@ -56,7 +56,7 @@ test.describe("desktop", () => {
 
   test("keeps the rail: prompt and saving on the left, the stage beside them", async ({ page }) => {
     await page.goto("/");
-    await page.locator(".k-launch-tile", { hasText: "New App" }).click();
+    await page.locator(".k-launch-tile", { hasText: "New app" }).click();
     const studio = page.getByRole("dialog", { name: "App studio" });
     const p = await box(studio.getByRole("textbox", { name: "Describe the app" }));
     const save = await box(studio.getByRole("button", { name: /Save to My Apps/ }));

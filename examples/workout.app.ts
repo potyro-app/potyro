@@ -23,6 +23,7 @@ const setScore = (bw: boolean, s: { kg?: number; reps?: number }) => (bw ? (s.re
 export default defineApp({
   id: "workout",
   name: "PPL Log",
+  icon: "🏋",
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#5B8DEF" },

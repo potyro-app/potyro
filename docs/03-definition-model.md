@@ -17,9 +17,10 @@ import { scoreDifficulty } from "./lib/difficulty";   // your own imports — al
 export default defineApp({
   id: "recipes",
   name: "Recipes",
+  icon: "🍳",                       // the launcher tile; without it, a monogram in a derived colour
   version: "1.0.0",
   schemaVersion: 1,
-  theme: { accent: "#E4A93C" },
+  theme: { accent: "#E4A93C" },     // colours the app when open, and its tile
 
   // declares what native powers this app expects; used for the trust prompt when the app
   // is run untrusted. Trusted (own) apps get everything without prompting.

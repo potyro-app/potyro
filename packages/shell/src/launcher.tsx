@@ -6,10 +6,11 @@
 // something imported from elsewhere runs in the QuickJS isolate until promoted). Selecting a tile
 // navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
+import { tileIdentity } from "./tile-identity.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
@@ -45,24 +46,24 @@ interface LauncherProps {
   onClose?: () => void;
 }
 
-function Tile({
-  name,
-  badge,
-  active,
-  onOpen,
-}: {
-  name: string;
-  badge: "trusted" | "untrusted";
-  active: boolean;
-  onOpen: () => void;
-}) {
+// A tile is the app's identity (#82): its declared icon and accent, or a monogram in a colour derived
+// from the app so that four apps starting with P are four different tiles. The name is the app's
+// declared one ("PPL Log", not "workout") unless the user renamed it here.
+function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onOpen: () => void }) {
+  const identity = tileIdentity(app);
   return (
-    <button type="button" className="k-launch-tile" data-active={active} onClick={onOpen}>
-      <span className="k-launch-avatar" aria-hidden>
-        {name.slice(0, 1).toUpperCase()}
+    <button
+      type="button"
+      className="k-launch-tile"
+      data-active={active}
+      style={{ "--tile-accent": identity.accent } as CSSProperties}
+      onClick={onOpen}
+    >
+      <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
+        {identity.glyph}
       </span>
-      <span className="k-launch-name">{name}</span>
-      <span className={`k-prov k-prov-${badge}`}>{badge}</span>
+      <span className="k-launch-name">{app.name}</span>
+      <span className={`k-prov k-prov-${app.trusted ? "trusted" : "untrusted"}`}>{app.trusted ? "trusted" : "untrusted"}</span>
     </button>
   );
 }
@@ -303,7 +304,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         <h3 className="k-launch-title">Apps</h3>
         <div className="k-launch-grid">
           {builtins.map((a) => (
-            <Tile key={a.key} name={a.name} badge="trusted" active={selected?.kind === "builtin" && selected.id === a.id} onOpen={() => onOpen(a)} />
+            <Tile key={a.key} app={a} active={selected?.kind === "builtin" && selected.id === a.id} onOpen={() => onOpen(a)} />
           ))}
         </div>
       </section>
@@ -313,14 +314,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         <div className="k-launch-grid">
           {myApps.map((a) => (
             <div key={a.key} className="k-launch-usertile">
-              <Tile
-                name={a.name}
-                // Read the record, don't assume: a Studio-authored app is the user's own and runs
-                // trusted. Hardcoding "untrusted" here reported the opposite of what actually ran.
-                badge={a.trusted ? "trusted" : "untrusted"}
-                active={selected?.kind === "user" && selected.id === a.id}
-                onOpen={() => onOpen(a)}
-              />
+              {/* The badge reads the record: a Studio-authored app is the user's own and runs
+                  trusted. Hardcoding "untrusted" here once reported the opposite of what ran. */}
+              <Tile app={a} active={selected?.kind === "user" && selected.id === a.id} onOpen={() => onOpen(a)} />
               <TileMenu
                 app={a.user}
                 busy={busy === a.id}
