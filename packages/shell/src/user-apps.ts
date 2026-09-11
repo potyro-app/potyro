@@ -14,6 +14,8 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 
 const KEY = "karta:user-apps";
+/** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
+export const USER_APPS_CHANGED = "karta:user-apps:changed";
 
 export interface UserApp {
   id: string;
@@ -50,6 +52,7 @@ function read(): UserApp[] {
 
 function write(apps: UserApp[]): void {
   globalThis.localStorage?.setItem(KEY, JSON.stringify(apps));
+  if (typeof globalThis.dispatchEvent === "function" && typeof Event === "function") globalThis.dispatchEvent(new Event(USER_APPS_CHANGED));
 }
 
 function slug(name: string): string {

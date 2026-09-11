@@ -17,13 +17,13 @@ import { startFix } from "./start-fix.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
-import { Launcher, openBuiltinApp, openUserApp, goHome } from "./launcher.js";
+import { Launcher, openInstalledApp, goHome } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
 import { ChatPanel, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
 import { ROOM_THREAD } from "@karta/store";
-import { listUserApps, getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
+import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
   SYSTEM_PROMPT,
   buildModifyMessage,
@@ -120,7 +120,6 @@ interface AppProps {
   provenance: Provenance;
   toaster: Toaster;
   appId?: string;
-  apps?: readonly string[];
   /** How the current app was launched — for highlighting it in the launcher. */
   currentKind?: "builtin" | "user";
   onExport?: () => void;
@@ -129,7 +128,7 @@ interface AppProps {
   generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, apps, currentKind, sync, onExport, onImport, generator, picker, navHost }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, navHost }: AppProps) {
   const def = runtime.definition;
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -1226,11 +1225,8 @@ export function App({ runtime, provenance, toaster, appId, apps, currentKind, sy
       {launcherOpen ? (
         <Launcher
           variant="overlay"
-          builtins={apps ?? []}
-          userApps={listUserApps()}
           selected={appId ? { kind: currentKind ?? "builtin", id: appId } : undefined}
-          onOpenBuiltin={openBuiltinApp}
-          onOpenUser={openUserApp}
+          onOpen={openInstalledApp}
           onNewApp={() => {
             setLauncherOpen(false);
             setGenOpen(true);
