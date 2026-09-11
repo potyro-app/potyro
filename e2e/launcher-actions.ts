@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 // A tile's actions live behind one "Actions for <app>" button since #77 (they used to be a
 // hover-only row). Every spec that shares or syncs an app from the launcher goes through here,
@@ -8,8 +8,8 @@ import type { Page } from "@playwright/test";
 
 export type TileAction = "open" | "history" | "sync" | "share" | "rename" | "delete";
 
-/** Open the tile's menu and choose an action. `page` may be any page-like locator root. */
-export async function tileAction(page: Page, appName: string, action: TileAction): Promise<void> {
-  await page.getByRole("button", { name: `Actions for ${appName}` }).click();
-  await page.getByRole("menu").locator(`[data-action="${action}"]`).click();
+/** Open the tile's menu and choose an action. `root` is the page, or the launcher overlay within it. */
+export async function tileAction(root: Page | Locator, appName: string, action: TileAction): Promise<void> {
+  await root.getByRole("button", { name: `Actions for ${appName}` }).click();
+  await root.getByRole("menu").locator(`[data-action="${action}"]`).click();
 }

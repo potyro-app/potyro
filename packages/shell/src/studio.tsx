@@ -666,7 +666,11 @@ export function Studio({ onClose }: { onClose: () => void }) {
             </p>
           ) : null}
           {progress ? <p className="k-muted k-studio-progress">{progress}</p> : null}
+        </aside>
 
+        {/* Secondary: saving and the saved list. Its own region so that on a phone it can sit
+            BELOW the preview — the prompt and its one action are what a phone shows first (#80). */}
+        <aside className="k-studio-side">
           <div className="k-studio-savebar">
             <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void save()}>
               {currentId ? "Save changes" : "Save to My Apps"}
