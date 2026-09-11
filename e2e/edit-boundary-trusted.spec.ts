@@ -115,7 +115,7 @@ test("a host-side cause is reported, not faked as an app edit", async ({ page })
   // The app is untouched: still on the page, and its source is byte-identical.
   await expect(page.locator("h1")).toHaveText("Pins");
   const stored = await page.evaluate(
-    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source,
   );
   expect(stored).toBe(APP_SOURCE);
 
@@ -181,7 +181,7 @@ test("an edit-block reply is applied to the file, not the whole file", async ({ 
   // Same route as the whole-file test below: Edit mode reloads once the version is saved.
   const savedSource = () =>
     page
-      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
+      .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source)
       .catch(() => "");
   await expect.poll(savedSource, { timeout: 30_000 }).toContain('title: "Where I have been"');
 
@@ -194,7 +194,7 @@ test("an edit-block reply is applied to the file, not the whole file", async ({ 
   // once under a loaded full-suite run and never when this spec ran alone.
   await expect(page.locator(".k-modifydialog")).toHaveCount(0, { timeout: 30_000 });
   const saved = await page.evaluate(
-    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source,
   );
   // The proof that this was an EDIT and not a rewrite: the untouched lines are byte-identical, and
   // only the one line the model named differs.
@@ -219,7 +219,7 @@ test("a real app-level change still applies, and its reasoning is kept out of th
     .poll(
       async () =>
         page
-          .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source)
+          .evaluate(() => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source)
           .catch(() => ""),
       { timeout: 30_000 },
     )
@@ -232,7 +232,7 @@ test("a real app-level change still applies, and its reasoning is kept out of th
   // comment becomes the next edit's premise, which is how one wrong guess survives three rounds.
   await expect(page.locator(".k-history-rationale")).toContainText("always frame the pins");
   const saved = await page.evaluate(
-    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source,
   );
   expect(saved).not.toContain("always frame the pins");
 });
@@ -272,7 +272,7 @@ test("an edit that does not validate is repaired with a second edit, then saved"
   // Only now is the stored source worth reading: the two edits cancel, so what got saved is exactly
   // what was there before either one ran — read fresh, the way the "saves nothing" test does.
   const stored = await page.evaluate(
-    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source,
   );
   expect(stored).toBe(APP_SOURCE);
 
@@ -321,7 +321,7 @@ test("a repair that still does not validate saves nothing", async ({ page }) => 
 
   // …and the source on disk is untouched, byte for byte.
   const stored = await page.evaluate(
-    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { source: string }[])[0]!.source,
+    () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "pins")!.source,
   );
   expect(stored).toBe(APP_SOURCE);
 });

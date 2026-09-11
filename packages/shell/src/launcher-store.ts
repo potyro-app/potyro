@@ -16,12 +16,10 @@ import { useEffect, useSyncExternalStore } from "react";
 import { USER_APPS_CHANGED, listUserApps, type UserApp } from "./user-apps.js";
 import { inspect } from "./app-source.js";
 
-/** The bundled example apps, in launcher order. */
-export const BUILTIN_APPS = ["recipes", "plants", "places", "workout"] as const;
-export type BuiltinId = (typeof BUILTIN_APPS)[number];
-
-export type AppKind = "builtin" | "user";
-/** Stable key for an installed app: `builtin:recipes`, `user:groceries`. */
+/** There is one kind of app (#152): the examples are seeded into the same registry as yours. The
+ *  key keeps its `user:` prefix so entries written before that stay valid. */
+export type AppKind = "user";
+/** Stable key for an installed app: `user:groceries`. */
 export type AppKey = `${AppKind}:${string}`;
 export const appKey = (kind: AppKind, id: string): AppKey => `${kind}:${id}`;
 
@@ -49,10 +47,11 @@ export interface AppIdentity {
 }
 
 /** One row of the launcher: what the app is, joined with what this device knows about it. */
-export type InstalledApp = {
+export interface InstalledApp {
   key: AppKey;
+  kind: AppKind;
   id: string;
-  /** What the tile says. The user's override, else the app's declared name, else its record's. */
+  /** What the tile says: the user's override, else the record's name. */
   name: string;
   /** Declared for the tile (#82); absent until the source has been read, or when it declares none. */
   icon?: string;
@@ -60,15 +59,7 @@ export type InstalledApp = {
   trusted: boolean;
   sync: boolean;
   entry: LauncherEntry;
-} & ({ kind: "builtin"; user?: undefined } | { kind: "user"; user: UserApp });
-
-// The example apps' sources, for their identity: loaded lazily, as text, only when a launcher needs
-// to read one — never evaluated here.
-const EXAMPLE_SOURCES = import.meta.glob("../../../examples/*.app.ts", { query: "?raw", import: "default" }) as Record<string, () => Promise<string>>;
-
-async function sourceOf(app: InstalledApp): Promise<string | undefined> {
-  if (app.kind === "user") return app.user.source;
-  return EXAMPLE_SOURCES[`../../../examples/${app.id}.app.ts`]?.();
+  user: UserApp;
 }
 
 /** FNV-1a over the source: short, stable, and enough to notice a different version. */
@@ -91,17 +82,12 @@ export async function ensureIdentities(apps: readonly InstalledApp[]): Promise<v
   await Promise.all(
     apps.map(async (app) => {
       if (reading.has(app.key)) return;
-      // A user app's hash is known up front; a built-in's needs its source first. Either way the
-      // cached identity is used when its hash matches.
-      const known = app.kind === "user" ? sourceHash(app.user.source) : undefined;
-      if (known && app.entry.identity?.hash === known) return;
+      const hash = sourceHash(app.user.source);
+      if (app.entry.identity?.hash === hash) return;
       reading.add(app.key);
       try {
-        const source = await sourceOf(app);
-        if (source === undefined) return;
-        const hash = known ?? sourceHash(source);
         if (getEntry(app.key).identity?.hash === hash) return;
-        const shape = await inspect(source);
+        const shape = await inspect(app.user.source);
         const identity: AppIdentity = { hash, ...(shape.name ? { name: shape.name } : {}), ...(shape.icon ? { icon: shape.icon } : {}), ...(shape.accent ? { accent: shape.accent } : {}) };
         updateEntry(app.key, { identity });
       } finally {
@@ -201,44 +187,38 @@ export function removeEntry(key: AppKey): void {
 }
 
 /**
- * Every installed app as one list: the built-ins in their declared order, then the user's apps
- * most-recently-updated first. Built-ins and user apps are one list to the user; provenance is an
- * attribute of a row, not a section (#87 decides how it shows).
+ * Every installed app as one list, most-recently-updated first (the launcher orders it, #84).
  *
- * Entries for user apps that no longer exist are dropped here, so deleting an app anywhere —
+ * Entries for apps that no longer exist are dropped here, so deleting an app anywhere —
  * `removeUserApp` cannot reach this module without a cycle — leaves nothing behind.
  */
 export function listInstalledApps(): InstalledApp[] {
   const entries = read();
   const users = listUserApps();
-  const live = new Set<string>([...BUILTIN_APPS.map((id) => appKey("builtin", id)), ...users.map((u) => appKey("user", u.id))]);
+  const live = new Set<string>(users.map((u) => appKey("user", u.id)));
   const stale = Object.keys(entries).filter((k) => !live.has(k));
   if (stale.length) write(Object.fromEntries(Object.entries(entries).filter(([k]) => live.has(k))));
 
-  const entryOf = (key: AppKey): LauncherEntry => entries[key] ?? { key };
-  // A cached identity counts only while it is for THIS source. A built-in's source is not at hand
-  // here, so its cache is trusted as is: the sources ship with the app and change with it.
-  const identityOf = (entry: LauncherEntry, source?: string): AppIdentity | undefined =>
-    entry.identity && (source === undefined || entry.identity.hash === sourceHash(source)) ? entry.identity : undefined;
-  const declared = (identity: AppIdentity | undefined): { icon?: string; accent?: string } => ({
-    ...(identity?.icon ? { icon: identity.icon } : {}),
-    ...(identity?.accent ? { accent: identity.accent } : {}),
-  });
-  const builtins: InstalledApp[] = BUILTIN_APPS.map((id) => {
-    const key = appKey("builtin", id);
-    const entry = entryOf(key);
-    const identity = identityOf(entry);
-    return { key, kind: "builtin", id, name: entry.displayName ?? identity?.name ?? id, ...declared(identity), trusted: true, sync: false, entry };
-  });
-  const mine: InstalledApp[] = users.map((user) => {
+  return users.map((user) => {
     const key = appKey("user", user.id);
-    const entry = entryOf(key);
-    const identity = identityOf(entry, user.source);
-    // The record's name, not the source's: it starts as the declared one when the Studio saves,
+    const entry = entries[key] ?? { key };
+    // A cached identity counts only while it is for THIS source.
+    const identity = entry.identity && entry.identity.hash === sourceHash(user.source) ? entry.identity : undefined;
+    // The record's name, not the source's: it starts as the declared one when the app is saved,
     // and Rename in the launcher changes it — which the tile has to show.
-    return { key, kind: "user", id: user.id, name: entry.displayName ?? user.name, ...declared(identity), trusted: user.trusted !== false, sync: Boolean(user.sync), entry, user };
+    return {
+      key,
+      kind: "user",
+      id: user.id,
+      name: entry.displayName ?? user.name,
+      ...(identity?.icon ? { icon: identity.icon } : {}),
+      ...(identity?.accent ? { accent: identity.accent } : {}),
+      trusted: user.trusted !== false,
+      sync: Boolean(user.sync),
+      entry,
+      user,
+    };
   });
-  return [...builtins, ...mine];
 }
 
 /** Called back after any change to the launcher entries or the user-apps registry, in any tab. */

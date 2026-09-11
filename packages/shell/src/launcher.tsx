@@ -1,10 +1,10 @@
 // Launcher — the app switcher. Two variants share one presentation:
 //   • "home"    — the full-screen first surface when no app is selected.
 //   • "overlay" — a slide-in panel opened from inside a running app, to switch quickly.
-// Each tile shows the provenance the app ACTUALLY runs under: built-in examples are trusted; a saved
-// app reports its own `trusted` flag (Studio-authored apps are the user's own and run directly;
-// something imported from elsewhere runs in the QuickJS isolate until promoted). Selecting a tile
-// navigates via a reload (?app=<id> or ?user=<id>) — boot() routes on that.
+// Each tile shows the provenance the app ACTUALLY runs under, from its own `trusted` flag: an app
+// authored here (the seeded examples included, #152) runs directly; something imported from
+// elsewhere runs in the QuickJS isolate until promoted. Selecting a tile navigates via a reload
+// (?user=<id>) — boot() routes on that.
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { shellDialogs } from "./dialog.js";
@@ -20,23 +20,19 @@ import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 
-export function openBuiltinApp(id: string): void {
-  location.search = `?app=${encodeURIComponent(id)}`;
-}
 export function openUserApp(id: string): void {
   location.search = `?user=${encodeURIComponent(id)}`;
 }
 export function goHome(): void {
   location.assign(location.pathname);
 }
-/** Open an installed app the way its kind is routed. */
+/** Open an installed app: a reload into its route, which is how boot() counts an open (#81). */
 export function openInstalledApp(app: InstalledApp): void {
-  if (app.kind === "builtin") openBuiltinApp(app.id);
-  else openUserApp(app.id);
+  openUserApp(app.id);
 }
 
 export interface Selected {
-  kind: "builtin" | "user";
+  kind: "user";
   id: string;
 }
 
@@ -97,8 +93,8 @@ function TileMenu({
   busy: boolean;
   onOpen: () => void;
   onPin: () => void;
-  /** A user's own app has more to do with it; a built-in has Open and Pin. */
-  user?: UserActions;
+  /** History, sync, share, rename, delete: every app has them (#152). */
+  user: UserActions;
   /** Told when the menu opens or closes, so the launcher can make everything else inert. */
   onToggle?: (open: boolean) => void;
 }) {
@@ -178,16 +174,12 @@ function TileMenu({
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
             {item("open", "Open", onOpen)}
             {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
-            {user ? (
-              <>
-                {item("history", "History", user.onHistory)}
-                {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
-                {item("share", "Share", user.onShare)}
-                {item("rename", "Rename", user.onRename)}
-                <div className="k-tile-menu-sep" role="separator" />
-                {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
-              </>
-            ) : null}
+            {item("history", "History", user.onHistory)}
+            {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
+            {item("share", "Share", user.onShare)}
+            {item("rename", "Rename", user.onRename)}
+            <div className="k-tile-menu-sep" role="separator" />
+            {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
           </div>
         </>
       ) : null}
@@ -330,17 +322,13 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       onOpen={() => onOpen(a)}
       onPin={() => setPinned(a.key, !a.entry.pinned)}
       onToggle={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
-      user={
-        a.kind === "user"
-          ? {
-              onHistory: () => setHistory(a.user),
-              onSync: () => void toggleSync(a.user),
-              onShare: () => void share(a.user),
-              onRename: () => void rename(a.user),
-              onDelete: () => void del(a.user),
-            }
-          : undefined
-      }
+      user={{
+        onHistory: () => setHistory(a.user),
+        onSync: () => void toggleSync(a.user),
+        onShare: () => void share(a.user),
+        onRename: () => void rename(a.user),
+        onDelete: () => void del(a.user),
+      }}
     />
   );
 

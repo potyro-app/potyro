@@ -50,7 +50,7 @@ async function seed(page: Page, source = APP_SOURCE): Promise<void> {
 const storedSource = async (page: Page): Promise<string> => {
   try {
     return await page.evaluate(
-      () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[])[0]!.source,
+      () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "kit")!.source,
     );
   } catch {
     return "";

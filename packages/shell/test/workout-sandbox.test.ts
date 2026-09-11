@@ -5,7 +5,7 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import workout from "../../../examples/workout.app.ts";
+import workout from "../../../examples/workout.app.tsx";
 import { MemoryStore } from "@karta/store";
 import { FakeCapabilities } from "@karta/capabilities";
 import type { NavBridge, UiBridge } from "@karta/host";
@@ -17,7 +17,7 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 async function bundleWorkout(): Promise<string> {
   const result = await build({
-    entryPoints: [here("../../../examples/workout.app.ts")],
+    entryPoints: [here("../../../examples/workout.app.tsx")],
     bundle: true,
     write: false,
     format: "iife",

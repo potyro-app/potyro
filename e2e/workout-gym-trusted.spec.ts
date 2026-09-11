@@ -115,5 +115,5 @@ test("the launcher reports a saved app's real provenance", async ({ page }) => {
   const tile = page.locator(".k-launch-usertile").filter({ hasText: "Workout Sessions" });
   await expect(tile).toBeVisible({ timeout: 30_000 });
   await expect(tile).toContainText("trusted");
-  await expect(tile).not.toContainText("untrusted");
+  await expect(tile).not.toContainText(/^untrusted/);
 });

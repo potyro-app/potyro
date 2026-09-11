@@ -96,6 +96,6 @@ prove reminders on the native target. See `docs/08`.
 - **End-to-end (M1 smoke, issue #15):** `pnpm e2e` runs Playwright against the recipes app in a
   real browser — the **trusted** path (`pnpm dev`: list, custom cook-along view, computed macros,
   add-a-recipe, "ingredients I have" JS filter, persistence across reload) and the **sandbox**
-  path (`pnpm dev:sandbox`: the same app untrusted in the QuickJS-WASM isolate). Playwright starts
+  path (`pnpm dev:sandbox`: the examples seeded untrusted, run in the QuickJS-WASM isolate). Playwright starts
   both Vite dev servers itself. Requires **Node 20+** (Playwright constraint); install browsers
   once with `pnpm exec playwright install chromium`.

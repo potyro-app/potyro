@@ -30,11 +30,11 @@ test("a built-in shows its declared name, icon and accent, not its module id", a
 });
 
 test("three apps starting with P are three different tiles", async ({ page }) => {
-  await seed(page, [app("plants-2", "Plants"), app("places-2", "Places"), app("pins", "Pins")]);
+  await seed(page, [app("pens", "Pens"), app("pots", "Pots"), app("pizza", "Pizza")]);
   await openHome(page);
   // The user's tiles: two of these names are also built-ins, which sit in the section above.
   const mine = (name: string) => page.locator(".k-launch-usertile .k-launch-tile", { hasText: name });
-  const tiles = [mine("Plants"), mine("Places"), mine("Pins")];
+  const tiles = [mine("Pens"), mine("Pots"), mine("Pizza")];
   for (const t of tiles) {
     await expect(t).toBeVisible();
     await expect(avatar(t)).toHaveAttribute("data-kind", "monogram");
@@ -43,7 +43,7 @@ test("three apps starting with P are three different tiles", async ({ page }) =>
   const accents = await Promise.all(tiles.map(accentOf));
   // The letters carry the name: two of them, not one.
   for (const g of glyphs) expect(g).toMatch(/^P[A-Z]$/);
-  expect(glyphs[2]).not.toBe(glyphs[0]); // Pins vs Plants
+  expect(glyphs[2]).not.toBe(glyphs[0]); // Pizza vs Pens
   // The colour is what cannot collide: a hue derived from each app's key.
   expect(new Set(accents).size).toBe(3);
   for (const a of accents) expect(a).toMatch(/^oklch\(/);

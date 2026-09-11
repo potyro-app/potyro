@@ -1,12 +1,5 @@
 /// <reference types="vite/client" />
 
-// Virtual modules provided by the sandbox-bundle Vite plugin: a bundled `.app.js` string for
-// running an example untrusted in the isolate.
-declare module "virtual:sandbox:*" {
-  const bundleCode: string;
-  export default bundleCode;
-}
-
 // Deployment knobs (KA-28). Both optional: absent, a build falls back to a same-origin `/sync`
 // relay and hides every surface that would need a model.
 interface ImportMetaEnv {

@@ -19,7 +19,7 @@ const figure = (page: Page, label: string) =>
 async function openList(page: Page): Promise<void> {
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");
-  await expect(page.locator(".k-prov")).toHaveText("untrusted");
+  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
   await page.locator(".k-tab", { hasText: "All places" }).click();
   await expect(page.locator(".k-summary")).toBeVisible();
 }

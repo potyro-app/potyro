@@ -2,8 +2,70 @@
 // Stresses: relations (recipe->ingredient), nested list rows, computed macros as real
 // functions, a JS "ingredients I have" filter, and a CUSTOM cook-along view (full React).
 import { defineApp } from "karta";
-import { CookAlong } from "./views/CookAlong";        // your own component — full code
-import { scoreDifficulty } from "./lib/difficulty";    // your own helper — full code
+import { useState } from "react";
+import type { Resolved, ViewProps } from "karta";
+
+// ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
+// it, and it runs anywhere the shell does. ----
+
+/** Rough difficulty from the amount of prep + steps. */
+function scoreDifficulty(r: Resolved): "easy" | "medium" | "hard" {
+  const steps = Array.isArray(r.steps) ? r.steps.length : 0;
+  const ingredients = Array.isArray(r.ingredients) ? r.ingredients.length : 0;
+  const score = steps + ingredients;
+  if (score <= 6) return "easy";
+  if (score <= 12) return "medium";
+  return "hard";
+}
+
+// The custom cook-along view (docs M1 DoD): a full React component — the "no ceiling" escape
+// hatch. It reads the recipe via the runtime, keeps local tick state, and fires the finish
+// action when every step is checked.
+interface Step {
+  text: string;
+  durationSec?: number;
+}
+
+function CookAlong(props: ViewProps) {
+  const { runtime, param } = props;
+  const recipeId = param?.recipeId ?? "";
+  const { record, loading } = runtime.useRecord("recipe", recipeId);
+  const [done, setDone] = useState<Set<number>>(() => new Set());
+
+  if (loading) return <p>Loading…</p>;
+  if (!record) return <p>Recipe not found.</p>;
+
+  const steps: Step[] = Array.isArray(record.steps) ? (record.steps as Step[]) : [];
+  const allDone = steps.length > 0 && done.size === steps.length;
+
+  const toggle = (i: number): void =>
+    setDone((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+
+  return (
+    <section aria-labelledby="cook-heading">
+      <h1 id="cook-heading">Cooking: {String(record.name)}</h1>
+      <ol>
+        {steps.map((step, i) => (
+          <li key={i} data-done={done.has(i)}>
+            <label>
+              <input type="checkbox" checked={done.has(i)} onChange={() => toggle(i)} />
+              <span>{step.text}</span>
+              {step.durationSec ? <em> · {Math.round(step.durationSec / 60)} min</em> : null}
+            </label>
+          </li>
+        ))}
+      </ol>
+      <button type="button" disabled={!allDone} onClick={() => void runtime.runAction("recipe", "markCooked", record.id)}>
+        Finish
+      </button>
+    </section>
+  );
+}
 
 export default defineApp({
   id: "recipes",
