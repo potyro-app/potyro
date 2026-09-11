@@ -26,8 +26,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
-import { createOpenRouterBackend, type ReasoningEffort } from "../src/openrouter-backend.js";
-import { guardedModify } from "../src/guarded-modify.js";
+import { createOpenRouterBackend, createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
+import { guardedModify, type GuardedModifyResult } from "../src/guarded-modify.js";
+import { runModifyLoop } from "../src/agent/modify-loop.js";
+import { buildDiscoveryTools } from "../src/agent/discovery-tools.js";
+import { MODIFY_AGENT_SYSTEM_PROMPT } from "../src/agent/modify-system-prompt.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
@@ -59,6 +62,12 @@ interface Outcome {
    *  outcome. null when repair was not requested, not needed (validates already true), or the
    *  case never reached a `kind: "source"` result to repair. */
   repair: { via: "edits" | "whole-file" | "declined" | "failed"; validates: boolean } | null;
+  /** The `Not done:` lines the reply carried (#135). */
+  notDone: string[];
+  /** For a case that names parts the host cannot do: did the reply name every one? null otherwise. */
+  namedNotDone: boolean | null;
+  /** The reply refused (NOT-IN-APP) a case that has a doable part — the failure the ladder exists to end. */
+  refusedWhenFeasible: boolean;
   ms: number;
   crashed?: string;
 }
@@ -146,9 +155,23 @@ function scriptedRepairBackend(): ModelBackend {
   };
 }
 
+/** Every reply is a refusal. Must report refusedWhenFeasible = every case with a `landed` predicate. */
+function scriptedDeclineBackend(): ModelBackend {
+  return {
+    name: "scripted:decline-everything",
+    async generate() {
+      throw new Error("scripted backend only modifies");
+    },
+    async modify() {
+      return "NOT-IN-APP: the scripted backend declines everything.";
+    },
+  };
+}
+
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
   if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
   if (kind === "scripted-repair") return scriptedRepairBackend();
+  if (kind === "scripted-decline") return scriptedDeclineBackend();
   if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
   if (kind === "openrouter") {
     return createOpenRouterBackend({
@@ -156,14 +179,68 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
       ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
     });
   }
-  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits or scripted-repair)`);
+  throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits, scripted-repair or scripted-decline)`);
 }
 
 /** The shape the guard compares, from a loaded app. Throws when the source does not load, which
  *  `guardedModify` treats as "cannot judge" rather than a loss. */
 async function shapeOf(source: string, resolveDir: string): Promise<AppShape & DefinitionShape> {
   const app = (await loadApp(source, resolveDir)) as unknown as DefinitionShape;
-  return { entities: app.entities, pages: app.pages as AppShape["pages"] & DefinitionShape["pages"] };
+  return {
+    entities: app.entities,
+    pages: app.pages as AppShape["pages"] & DefinitionShape["pages"],
+    ...(app.scope ? { scope: app.scope } : {}),
+    ...(app.reminders ? { reminders: app.reminders } : {}),
+  };
+}
+
+/**
+ * The product's modify LOOP (#131) in place of the one-turn guard: the model gets `lookup`/`check`/
+ * `example`, every candidate must compile, validate and keep the shape, and a refusal without a
+ * lookup is sent back once. Mapped onto the guard's result type so the scoring below is shared.
+ */
+async function loopModify(
+  model: string | undefined,
+  c: ModifyCase,
+  source: string,
+  before: AppShape,
+  resolveDir: string,
+  keep: (text: string) => string,
+): Promise<GuardedModifyResult> {
+  const check = async (src: string): Promise<string[]> => {
+    const r = await scoreSource(src, resolveDir);
+    if (!r.compiles) throw new Error(r.errors.join("; "));
+    return r.validates ? [] : r.errors;
+  };
+  const engine = createOpenRouterEngine({ ...(model ? { model } : {}) });
+  const out = await runModifyLoop({
+    engine: {
+      chat: {
+        completions: {
+          create: async (req) => {
+            const res = await engine.chat.completions.create(req);
+            const m = res.choices[0]?.message;
+            if (m && !m.tool_calls?.length) keep(m.content);
+            return res;
+          },
+        },
+      },
+    },
+    model,
+    tools: buildDiscoveryTools({ check }),
+    system: MODIFY_AGENT_SYSTEM_PROMPT,
+    instruction: c.instruction,
+    source,
+    check,
+    shapeOf: (src) => shapeOf(src, resolveDir),
+    before,
+  });
+  const trace = { attempts: 1, noMatchRetry: false, lossRetry: false };
+  if (out.kind === "source") {
+    return { kind: "source", source: out.source, via: out.via, applied: out.applied, loss: null, trace, ...(out.rationale ? { rationale: out.rationale } : {}), ...(out.notDone ? { notDone: out.notDone } : {}) };
+  }
+  if (out.kind === "diagnosis") return { kind: "diagnosis", text: out.text, trace };
+  return { kind: "failed", reason: out.kind === "question" ? `asked: ${out.text}` : out.kind === "stopped" ? "stopped" : out.reason, trace };
 }
 
 async function runCase(
@@ -172,6 +249,7 @@ async function runCase(
   examplesDir: string,
   outDir: string,
   withRepair: boolean,
+  loop: { model: string | undefined } | null,
 ): Promise<Outcome> {
   const started = Date.now();
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
@@ -192,27 +270,34 @@ async function runCase(
     id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false,
     // A crash is not a case that failed to land; it is a case that did not run - so it leaves the
     // `landable` denominator rather than counting against it.
-    loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started, crashed: msg,
+    loss: null, landed: null, validates: false, declined: false, repair: null, notDone: [], namedNotDone: null, refusedWhenFeasible: false, ms: Date.now() - started, crashed: msg,
   });
   try {
-    if (!backend.modify) throw new Error(`${backend.name} has no modify()`);
-    const before = await shapeOf(source, examplesDir);
+    if (!backend.modify && !loop) throw new Error(`${backend.name} has no modify()`);
+    const before = await shapeOf(source, sourceDir);
     if (c.landed && c.landed(before, before)) {
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
-    const result = await guardedModify({
-      attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
-      shapeOf: (src) => shapeOf(src, examplesDir),
-      before,
-      instruction: c.instruction,
-      source,
-    });
+    const result = loop
+      ? await loopModify(loop.model, c, source, before, sourceDir, keep)
+      : await guardedModify({
+          attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
+          shapeOf: (src) => shapeOf(src, sourceDir),
+          before,
+          instruction: c.instruction,
+          source,
+        });
     const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry };
+    // Feasibility (#135). A refusal of a case with a doable part is the ladder's failure; a reply
+    // that did the doable part is also asked whether it NAMED the parts it could not do.
+    const notDone = result.kind === "source" ? (result.notDone ?? []) : [];
+    const namedNotDone = c.notDone ? c.notDone.every((re) => notDone.some((line) => new RegExp(re, "i").test(line))) : null;
+    const feasibility = { notDone, namedNotDone, refusedWhenFeasible: result.kind === "diagnosis" && Boolean(c.landed) };
     if (result.kind === "diagnosis") {
-      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ms: Date.now() - started };
+      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ...feasibility, ms: Date.now() - started };
     }
     if (result.kind === "failed") {
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ms: Date.now() - started };
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
@@ -258,6 +343,7 @@ async function runCase(
       validates,
       declined: false,
       repair,
+      ...feasibility,
       ms: Date.now() - started,
     };
   } catch (e) {
@@ -276,25 +362,36 @@ async function main(): Promise<void> {
   // the flag's meaning in two places and made the runner impossible to drive from anything but a
   // command line.
   const repairRequested = process.argv.includes("--repair");
+  // `--loop`: the product's modify loop (#131) instead of the one-turn guard. OpenRouter only —
+  // it needs a chat engine with tools, which the scripted and CLI backends are not.
+  const loopRequested = process.argv.includes("--loop");
   const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `modify-${Date.now()}`))!);
   const examplesDir = resolve(process.cwd(), "..", "..", "examples");
   const selected = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
   const cases = selected.flatMap((c) => Array.from({ length: runs }, (_, i) => (runs > 1 ? { ...c, id: `${c.id}#${i + 1}` } : c)));
 
   mkdirSync(outDir, { recursive: true });
-  const backend = await makeBackend(arg("backend", "openrouter") ?? "openrouter", arg("model"), arg("reasoning"));
-  console.log(`backend=${backend.name} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  const backendKind = arg("backend", "openrouter") ?? "openrouter";
+  if (loopRequested && backendKind !== "openrouter") throw new Error("--loop needs --backend openrouter (a chat engine with tools)");
+  const backend = await makeBackend(backendKind, arg("model"), arg("reasoning"));
+  const loop = loopRequested ? { model: arg("model") } : null;
+  console.log(`backend=${backend.name}${loop ? " via the modify LOOP" : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await runCase(backend, c, examplesDir, outDir, repairRequested);
+    const o = await runCase(backend, c, examplesDir, outDir, repairRequested, loop);
     // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
     //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
     const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
     const how = o.via === "edits" ? `${o.applied} edit${o.applied === 1 ? "" : "s"}` : o.via === "whole-file" ? "WHOLE FILE" : o.via;
     const note = o.crashed
       ? ` CRASHED: ${o.crashed.slice(0, 80)}`
-      : [o.noMatchRetry ? " SEARCH missed once" : "", o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : ""].join("");
+      : [
+          o.noMatchRetry ? " SEARCH missed once" : "",
+          o.rewroteFirst ? (o.rewroteFinal ? ` rewrote, retry did not help: ${o.loss}` : " rewrote, retry kept the app") : "",
+          o.refusedWhenFeasible ? " — REFUSED A FEASIBLE CHANGE" : "",
+          o.namedNotDone === false ? " — did not name what it could not do" : o.namedNotDone === true ? ` — named what it could not do (${o.notDone.length})` : "",
+        ].join("");
     console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s) via ${how}${o.landed === false ? " — did not land" : ""}${note}`);
     return o;
   });
@@ -316,6 +413,11 @@ async function main(): Promise<void> {
     validates: count((o) => o.validates),
     validatesAfterRepair: count((o) => o.validates || o.repair?.validates === true),
     declined: count((o) => o.declined),
+    // #135: the two numbers the ladder is judged by.
+    refusedWhenFeasible: count((o) => o.refusedWhenFeasible),
+    feasible: count((o) => o.landed !== null || o.refusedWhenFeasible),
+    namedNotDone: count((o) => o.namedNotDone === true),
+    partial: count((o) => o.namedNotDone !== null),
     crashed: count((o) => Boolean(o.crashed)),
   };
   const lines = [
@@ -332,6 +434,8 @@ async function main(): Promise<void> {
     `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
     repairRequested ? `  validates after repair:   ${summary.validatesAfterRepair}/${n} (${pct(summary.validatesAfterRepair)})` : "",
     summary.declined ? `  declined (NOT-IN-APP):    ${summary.declined}/${n}   ← judged not the app's to change; excluded from landed` : "",
+    `  refused when feasible:    ${summary.refusedWhenFeasible}/${summary.feasible}   ← a refusal of a case with a doable part: the ladder's failure`,
+    summary.partial ? `  named what it could not do: ${summary.namedNotDone}/${summary.partial}   ← of cases with a part the host cannot do` : "",
     summary.crashed ? `  crashed:                  ${summary.crashed}/${n}` : "",
     "=".repeat(60),
   ].filter((l) => l !== "");
