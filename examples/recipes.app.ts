@@ -8,6 +8,7 @@ import { scoreDifficulty } from "./lib/difficulty";    // your own helper — fu
 export default defineApp({
   id: "recipes",
   name: "Recipes",
+  icon: "🍳",
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#E4A93C" },

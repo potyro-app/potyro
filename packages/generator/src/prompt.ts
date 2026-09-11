@@ -299,7 +299,8 @@ Because reads are async, a computed that queries other records MUST be \`async\`
   view type — do not invent one; build it from JSX (e.g. sized \`div\`s) inside a custom view.
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
-- Give every entity a \`label\` and an \`icon\` (a single emoji).
+- Give every entity a \`label\` and an \`icon\` (a single emoji), and the app itself a top-level \`icon\`
+  (one emoji) — it is the app's launcher tile.
 - Make exactly ONE top-level LIST page per entity (title = plural, e.g. "Sessions"). NEVER add a
   separate top-level page for a single record (no "Session" tab next to "Sessions").
 - To show a record's details, add a \`detail\` page, mark it \`hidden: true\`, and link the list to it with

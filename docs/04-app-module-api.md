@@ -11,8 +11,12 @@ typed `record` and `ctx`, (b) normalizes defaults, and (c) in dev runs a Zod che
 **declarative** parts only. It does not and must not constrain function bodies.
 
 ```ts
-export default defineApp({ id, name, version, schemaVersion, permissions, entities, pages, reminders, migrations });
+export default defineApp({ id, name, icon, version, schemaVersion, theme, permissions, entities, pages, reminders, migrations });
 ```
+
+`name`, `icon` (one emoji) and `theme.accent` are the app's identity: the launcher tile shows them
+without running the app (they are read from the source), and falls back to a monogram of the name
+in a colour derived from the app when `icon` or `accent` is absent.
 
 ## Function signatures
 

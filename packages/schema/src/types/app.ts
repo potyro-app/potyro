@@ -407,6 +407,9 @@ export interface ScopeDef {
 export interface AppDefinition {
   id: string;
   name: string;
+  /** One emoji or short glyph for the app's launcher tile (e.g. "🏋"). Without it the tile shows a
+   *  monogram of the name in a colour derived from the app, which cannot collide by accident. */
+  icon?: string;
   version: string;
   schemaVersion: number;
   theme?: Theme;

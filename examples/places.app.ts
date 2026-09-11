@@ -24,6 +24,7 @@ const distanceKm = (a: { lat: number; lng: number }, b: { lat: number; lng: numb
 export default defineApp({
   id: "places",
   name: "Places",
+  icon: "📍",
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#5FB0E4" },

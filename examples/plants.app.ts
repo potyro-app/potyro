@@ -34,6 +34,7 @@ const nextWatering = (p: Plant) => addDays(p.lastWatered, effectiveIntervalDays(
 export default defineApp({
   id: "plants",
   name: "Plants",
+  icon: "🌱",
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#7FCF8E" },
