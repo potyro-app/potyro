@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // Two people actually talking (KA-35, part 2).
@@ -114,7 +115,7 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   await add(a, "milk");
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await a.getByRole("button", { name: "Share Chat Pair" }).click();
+  await tileAction(a, "Chat Pair", "share");
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turn sync on
 
   // Sharing asks what to call you, because this is the first moment anyone else can see it. Nothing

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 
 // A synced app created BEFORE the cojson database was renamed must still open (regression).
 //
@@ -58,7 +59,7 @@ test("a synced app created before the database rename still opens", async ({ pag
   await expect(page.locator("h1").first()).toHaveText("Legacy App", { timeout: 30_000 });
 
   await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await page.getByRole("button", { name: "Turn on sync for Legacy App" }).click();
+  await tileAction(page, "Legacy App", "sync");
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
   await expect(page.locator(".k-dialog")).toContainText("Moved", { timeout: 30_000 });
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();

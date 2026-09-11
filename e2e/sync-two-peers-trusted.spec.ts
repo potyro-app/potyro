@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
 // Two people, one dataset, through a real relay (KA-08's actual acceptance criterion).
@@ -87,7 +88,7 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   await add(a, "milk");
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await a.getByRole("button", { name: "Share Sync Pair" }).click();
+  await tileAction(a, "Sync Pair", "share");
   await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // turn sync on
   // Sharing asks what to call you now. Declined here: this spec is about data reaching the other
   // device, not about names, and declining is a supported answer.
