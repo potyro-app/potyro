@@ -2,20 +2,129 @@
    app-supplied accent, real scale contrast, layered surfaces, and designed interaction states.
    Deliberately not a default card grid. */
 
+/* ---- Tokens (#92) --------------------------------------------------------------------------
+   The palette lives here and nowhere else. Light is the default; the dark set below overrides the
+   same names under `prefers-color-scheme: dark`, and `[data-theme]` on the root wins over both so a
+   manual toggle can. A rule that needs a colour names a token; `scripts/check-tokens.mjs` fails the
+   build on a raw colour inside a `tokens-only` region and on a token that resolves to nothing. */
 :root {
-  --accent: #e4a93c;
+  color-scheme: light;
+
+  /* Surfaces: paper is the ground, surface sits on it, raised floats above, sunken recedes. */
   --paper: oklch(97% 0.012 85);
   --surface: oklch(99% 0.006 85);
+  --surface-raised: oklch(99.5% 0.004 85);
+  --surface-sunken: oklch(94.5% 0.012 85);
+
+  /* Ink, three strengths. */
   --ink: oklch(24% 0.02 60);
   --ink-soft: oklch(45% 0.02 60);
+  --ink-faint: oklch(60% 0.015 60);
   --line: oklch(89% 0.01 70);
+
+  /* The one accent an app supplies (`theme.accent`, set on `.k-app`). What must read on it, and the
+     tints derived from it, are declared again on `.k-app` below so they follow the override. */
+  --accent: #e4a93c;
+  --on-accent: oklch(22% 0.04 70);
+
+  /* Semantic colours: a state is a word AND a colour, never a colour alone. */
+  --ok: oklch(45% 0.1 150);
+  --ok-line: oklch(82% 0.08 150);
+  --ok-tint: oklch(96% 0.03 150);
+  --danger: oklch(48% 0.16 27);
+  --danger-line: oklch(80% 0.1 30);
+  --danger-tint: oklch(96% 0.04 30);
+  --warn: oklch(52% 0.12 70);
+  --scrim: oklch(20% 0.02 60 / 0.4);
+  --scrim-soft: oklch(20% 0.02 60 / 0.32);
   --shadow: 0 1px 2px oklch(30% 0.02 60 / 0.06), 0 8px 24px oklch(30% 0.02 60 / 0.08);
+
+  /* Shape and rhythm. */
+  --radius-sm: 9px;
   --radius: 14px;
+  --radius-lg: 18px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
   --space: clamp(1rem, 0.7rem + 1.4vw, 2rem);
   --text-hero: clamp(1.6rem, 1.2rem + 1.8vw, 2.4rem);
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Motion: one curve, three durations. `prefers-reduced-motion` collapses all of them. */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Names older rules still use. Aliases, so no reference resolves to nothing. */
+  --bg: var(--paper);
+  --muted: var(--ink-soft);
+  --k-border: var(--line);
+  --k-surface: var(--surface);
+  --k-surface-sunken: var(--surface-sunken);
+  --k-muted: var(--ink-soft);
+  --k-accent: var(--accent);
+  --k-danger: var(--danger);
+}
+/* Derived from the accent, at the element where the accent is set: a custom property computes
+   where it is declared, so a tint declared only on :root would keep the default amber inside an
+   app that set its own accent. */
+:root,
+.k-app {
+  --accent-tint: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  --accent-line: color-mix(in oklab, var(--accent) 45%, var(--line));
+}
+/* Dark. The same warm cast, inverted: near-black paper with the ink lifted to cream. Accents stay
+   the app's own; what changes is what sits under and around them. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: oklch(18% 0.012 70);
+    --surface: oklch(22% 0.012 70);
+    --surface-raised: oklch(26% 0.012 70);
+    --surface-sunken: oklch(15% 0.01 70);
+    --ink: oklch(93% 0.01 85);
+    --ink-soft: oklch(72% 0.015 80);
+    --ink-faint: oklch(58% 0.015 80);
+    --line: oklch(32% 0.012 70);
+    --on-accent: oklch(20% 0.04 70);
+    --ok: oklch(80% 0.12 150);
+    --ok-line: oklch(42% 0.08 150);
+    --ok-tint: oklch(27% 0.04 150);
+    --danger: oklch(80% 0.13 27);
+    --danger-line: oklch(44% 0.1 30);
+    --danger-tint: oklch(27% 0.05 30);
+    --warn: oklch(80% 0.11 75);
+    --scrim: oklch(8% 0.01 60 / 0.6);
+    --scrim-soft: oklch(8% 0.01 60 / 0.5);
+    --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: oklch(18% 0.012 70);
+  --surface: oklch(22% 0.012 70);
+  --surface-raised: oklch(26% 0.012 70);
+  --surface-sunken: oklch(15% 0.01 70);
+  --ink: oklch(93% 0.01 85);
+  --ink-soft: oklch(72% 0.015 80);
+  --ink-faint: oklch(58% 0.015 80);
+  --line: oklch(32% 0.012 70);
+  --on-accent: oklch(20% 0.04 70);
+  --ok: oklch(80% 0.12 150);
+  --ok-line: oklch(42% 0.08 150);
+  --ok-tint: oklch(27% 0.04 150);
+  --danger: oklch(80% 0.13 27);
+  --danger-line: oklch(44% 0.1 30);
+  --danger-tint: oklch(27% 0.05 30);
+  --warn: oklch(80% 0.11 75);
+  --scrim: oklch(8% 0.01 60 / 0.6);
+  --scrim-soft: oklch(8% 0.01 60 / 0.5);
+  --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
 }
 
 * {
@@ -152,14 +261,14 @@ body {
   color: var(--ink-soft);
 }
 .k-prov-untrusted {
-  color: oklch(45% 0.14 30);
-  border-color: oklch(80% 0.1 30);
-  background: oklch(96% 0.04 30);
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-tint);
 }
 .k-prov-trusted {
-  color: oklch(45% 0.1 150);
-  border-color: oklch(82% 0.08 150);
-  background: oklch(96% 0.03 150);
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-tint);
 }
 
 /* Buttons */
@@ -354,6 +463,7 @@ button {
   align-self: flex-start;
 }
 
+/* tokens-only: start — dialogs */
 /* ctx.ui.confirm / prompt. Deliberately narrow and quiet — it interrupts, so it should say one thing
    and offer two answers, in the app's own type rather than the browser chrome's. */
 /* Above everything, including the launcher scrim (60) and the Studio (50). A dialog interrupts
@@ -390,7 +500,7 @@ button {
   color: var(--ink-soft);
 }
 .k-share-status-failed {
-  color: oklch(50% 0.16 30);
+  color: var(--danger);
 }
 .k-share-actions {
   flex-wrap: wrap;
@@ -399,13 +509,14 @@ button {
 /* Destructive actions read as destructive. Not red-by-default screaming — this is still a small
    inline control — but unmistakably not the same thing as "Edit". */
 .k-action-danger {
-  color: oklch(48% 0.16 27);
-  border-color: color-mix(in oklab, oklch(60% 0.18 27) 45%, var(--line));
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 45%, var(--line));
 }
 .k-action-danger:hover {
-  background: oklch(96% 0.04 27);
-  border-color: oklch(60% 0.18 27);
+  background: var(--danger-tint);
+  border-color: var(--danger);
 }
+/* tokens-only: end */
 
 /* The `steps` built-in: an ordered walk-through you tick off. Done steps recede rather than vanish,
    so the list keeps its shape and you can see how far you've come. */
@@ -802,7 +913,7 @@ button {
 .k-primary-action {
   background: var(--accent);
   border-color: var(--accent);
-  color: oklch(22% 0.04 70);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -950,14 +1061,14 @@ button {
 .k-modal-scrim {
   position: fixed;
   inset: 0;
-  background: oklch(20% 0.02 60 / 0.4);
+  background: var(--scrim);
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 4vh 1rem;
   overflow-y: auto;
   z-index: 40;
-  animation: scrim-in 160ms var(--ease);
+  animation: scrim-in var(--dur) var(--ease);
 }
 @keyframes scrim-in {
   from {
@@ -970,7 +1081,7 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  animation: modal-in 200ms var(--ease);
+  animation: modal-in var(--dur) var(--ease);
   /* Padding belongs to the modal box itself. Without it, only children that bring their own spacing
      (`.k-form`) looked right — a modal whose content sits directly inside, like the trust dialog,
      rendered flush to all four edges with its text clipped at the border. */
@@ -1511,6 +1622,7 @@ button {
   }
 }
 
+/* tokens-only: start — launcher */
 /* Launcher — home surface + slide-in overlay */
 .k-launcher {
   display: flex;
@@ -1560,7 +1672,7 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  transition: transform 150ms var(--ease), box-shadow 150ms var(--ease), border-color 150ms var(--ease);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 /* `--tile-accent` is the app's own colour (#82): its declared `theme.accent`, else one derived from
    its key. The tile carries it in the avatar and on hover/selection, so the tile matches the app it
@@ -1635,7 +1747,7 @@ button {
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
-  transition: background 150ms var(--ease), border-color 150ms var(--ease);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .k-tile-menu-btn:hover,
 .k-tile-menu-btn:focus-visible,
@@ -1662,7 +1774,7 @@ button {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  animation: k-fade 120ms var(--ease);
+  animation: k-fade var(--dur-fast) var(--ease);
 }
 .k-tile-menu-title {
   padding: 0.35rem 0.75rem 0.5rem;
@@ -1695,11 +1807,11 @@ button {
   background: var(--line);
 }
 .k-tile-menu-item.k-danger {
-  color: oklch(50% 0.16 30);
+  color: var(--danger);
 }
 .k-tile-menu-item.k-danger:hover,
 .k-tile-menu-item.k-danger:focus-visible {
-  background: oklch(50% 0.16 30 / 0.1);
+  background: var(--danger-tint);
 }
 @media (max-width: 760px) {
   /* On a phone the menu is a sheet from the bottom, inside the thumb's reach. */
@@ -1711,10 +1823,10 @@ button {
     bottom: 0;
     border-radius: var(--radius) var(--radius) 0 0;
     padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
-    animation: k-sheet-up 180ms var(--ease);
+    animation: k-sheet-up var(--dur) var(--ease);
   }
   .k-tile-menu-scrim {
-    background: oklch(20% 0.02 60 / 0.32);
+    background: var(--scrim-soft);
   }
 }
 @keyframes k-sheet-up {
@@ -1736,8 +1848,8 @@ button {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: oklch(20% 0.02 60 / 0.32);
-  animation: k-fade 150ms var(--ease);
+  background: var(--scrim-soft);
+  animation: k-fade var(--dur-fast) var(--ease);
 }
 .k-launcher-overlay {
   position: fixed;
@@ -1749,7 +1861,7 @@ button {
   background: var(--paper);
   border-right: 1px solid var(--line);
   box-shadow: var(--shadow);
-  animation: k-slide-in 240ms var(--ease);
+  animation: k-slide-in var(--dur-slow) var(--ease);
 }
 @keyframes k-fade {
   from { opacity: 0; }
@@ -1757,6 +1869,7 @@ button {
 @keyframes k-slide-in {
   from { transform: translateX(-100%); }
 }
+/* tokens-only: end */
 
 /* Filter-chip chrome groups (M3) */
 .k-chip-group {
@@ -2278,6 +2391,7 @@ button {
   background: oklch(93% 0.06 30);
   box-shadow: inset 2px 0 0 oklch(60% 0.16 30);
 }
+/* tokens-only: start — sync, people, identity */
 /* Sync status pill — the only on-screen answer to "is this actually syncing?" */
 .k-sync-status {
   display: inline-flex;
@@ -2290,10 +2404,10 @@ button {
   opacity: 0.85;
   white-space: nowrap;
 }
-.k-sync-status[data-state="synced"] { color: #2E9E5B; }
-.k-sync-status[data-state="connecting"] { color: #8A8A8A; }
+.k-sync-status[data-state="synced"] { color: var(--ok); }
+.k-sync-status[data-state="connecting"] { color: var(--ink-faint); }
 .k-sync-status[data-state="offline"],
-.k-sync-status[data-state="local"] { color: #B4762A; }
+.k-sync-status[data-state="local"] { color: var(--warn); }
 
 /* Person chips — `member` fields (KA-19). A person reads as a person, not as an opaque id:
    the chip is the same shape whether it is being displayed or picked, so the picker looks like
@@ -2303,9 +2417,9 @@ button {
   align-items: center;
   gap: 0.35em;
   padding: 0.15em 0.6em;
-  border: 1px solid var(--k-border, #d9d9d9);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--k-surface, #fff);
+  background: var(--surface);
   font-size: 0.9em;
   line-height: 1.6;
   color: inherit;
@@ -2317,19 +2431,19 @@ button {
 }
 .k-member-input .k-person-chip {
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .k-member-input .k-person-chip:hover {
-  border-color: var(--k-accent, #3ba55d);
+  border-color: var(--accent);
 }
 /* Selected is carried by aria-pressed too, so the state is not colour-only. */
 .k-member-input .k-person-chip[data-on] {
-  background: var(--k-accent, #3ba55d);
-  border-color: var(--k-accent, #3ba55d);
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 .k-member-input .k-person-chip:focus-visible {
-  outline: 2px solid var(--k-accent, #3ba55d);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -2356,7 +2470,7 @@ button {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--k-muted, #6b6b6b);
+  color: var(--ink-soft);
 }
 .k-identity-name {
   display: flex;
@@ -2367,7 +2481,7 @@ button {
 }
 .k-identity-id {
   margin: -1rem 0 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   word-break: break-all;
 }
@@ -2377,15 +2491,16 @@ button {
   display: block;
   margin-bottom: 0.75rem;
   padding: 0.85rem 1rem;
-  border: 1px solid var(--k-border, #d9d9d9);
-  border-radius: 0.5rem;
-  background: var(--k-surface-sunken, #f6f6f6);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
   font-size: 0.9rem;
   line-height: 1.9;
   word-spacing: 0.25em;
   user-select: all;
 }
+/* tokens-only: end */
 
 /* Derived screens (`aggregate` views, KA-24). A balance sheet is read down the right-hand edge, so
    the values form a column and the labels stay left — the alignment is the affordance. */
@@ -2435,8 +2550,8 @@ button {
   font-weight: 600;
   white-space: nowrap;
 }
-.k-aggregate-row[data-tone="positive"] .k-aggregate-value { color: #2e9e5b; }
-.k-aggregate-row[data-tone="negative"] .k-aggregate-value { color: #b4762a; }
+.k-aggregate-row[data-tone="positive"] .k-aggregate-value { color: var(--ok); }
+.k-aggregate-row[data-tone="negative"] .k-aggregate-value { color: var(--warn); }
 .k-aggregate-error {
   color: #b4762a;
 }
@@ -2750,7 +2865,7 @@ button {
   box-shadow: var(--shadow);
   padding: 1.1rem 1.25rem;
   z-index: 45;
-  animation: modal-in 200ms var(--ease);
+  animation: modal-in var(--dur) var(--ease);
 }
 .k-case-report h3 {
   margin: 0 0 0.5rem;
@@ -2862,7 +2977,7 @@ button {
   box-shadow: var(--shadow);
   padding: 1.1rem 1.25rem;
   z-index: 46; /* above .k-case-report (45) — a fix flow started from a report sits on top of it */
-  animation: modal-in 200ms var(--ease);
+  animation: modal-in var(--dur) var(--ease);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

@@ -12,6 +12,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck && pnpm typecheck:spikes",
     "lint:boundaries": "node scripts/check-boundaries.mjs",
+    "lint:tokens": "node scripts/check-tokens.mjs",
     "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @karta/shell dev\"",
     "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
     "e2e": "playwright test",
