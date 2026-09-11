@@ -16,7 +16,9 @@ import type { ViewProps } from "./runtime.js";
 export type Computed = (record: Resolved, ctx: Ctx) => Value | Promise<Value>;
 export type ActionFn = (record: Resolved, ctx: Ctx, input?: unknown) => void | Promise<void>;
 export type FilterFn = (record: Resolved, ctx: Ctx) => boolean;
-export type SortFn = (a: Resolved, b: Resolved) => number;
+/** Orders two rows. `ctx` (#133) lets a sort read the selection, the page's chips or the user's
+ *  position: `(a, b, ctx) => distance(a, ctx.params.me) - distance(b, ctx.params.me)`. */
+export type SortFn = (a: Resolved, b: Resolved, ctx: Ctx) => number;
 export type BindingFn<T = Value> = (record: Resolved, ctx: Ctx) => T;
 export type ReminderWhen = (record: Resolved, ctx: Ctx) => Date | null;
 
@@ -62,7 +64,8 @@ export interface ListView {
   display?: ListDisplay;
   rowActions?: string[];
   onOpen?: OnOpen;
-  emptyText?: string;
+  /** Shown when the page has no rows. A function of ctx may say why: `(ctx) => \`No places in ${ctx.scope.trip?.city} yet\``. */
+  emptyText?: Dynamic<string>;
   param?: string;
   filters?: FilterChip[];
 }
@@ -74,7 +77,7 @@ export interface GalleryView {
   sort?: SortFn;
   display?: ListDisplay;
   onOpen?: OnOpen;
-  emptyText?: string;
+  emptyText?: Dynamic<string>;
 }
 
 export interface TableView {
@@ -214,9 +217,9 @@ export interface AggregateView {
   /** Fold the page's rows into what should be displayed. */
   rows: (rows: Resolved[], ctx: Ctx) => AggregateRow[] | Promise<AggregateRow[]>;
   /** Heading above the derived table. */
-  title?: string;
+  title?: Dynamic<string>;
   /** Shown when the fold returns nothing — "Nobody owes anybody." */
-  emptyText?: string;
+  emptyText?: Dynamic<string>;
 }
 
 export interface CustomView {
@@ -292,7 +295,8 @@ export interface SummaryValue {
 
 export interface Page {
   id: string;
-  title: string;
+  /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
+  title: Dynamic<string>;
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
   summary?: SummaryValue[];

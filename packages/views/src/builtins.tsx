@@ -2,10 +2,10 @@
 // (M2/M3). Each consumes the runtime only.
 
 import type { Resolved } from "karta";
-import { useEffect, useState } from "react";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
 import { useDisplayCells } from "./cells.js";
+import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
 
 function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
@@ -88,9 +88,9 @@ export function ListView(props: BuiltinViewProps) {
     entity: string;
     rowActions?: string[];
     onOpen?: { page: string; param?: Record<string, string> };
-    emptyText?: string;
   };
   const remove = useDeleteRecord(runtime, view.entity);
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
   // always reachable to view/edit even when the generated app didn't link a detail page.
@@ -101,7 +101,7 @@ export function ListView(props: BuiltinViewProps) {
     : undefined;
 
   if (loading) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{view.emptyText ?? "Nothing here yet."}</p>;
+  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
 
   return (
     <ul className="k-list">
@@ -148,7 +148,8 @@ export function GalleryView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
-  const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; emptyText?: string };
+  const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> } };
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
 
   const openCard = view.onOpen
     ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
@@ -157,7 +158,7 @@ export function GalleryView(props: BuiltinViewProps) {
     : undefined;
 
   if (loading) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{view.emptyText ?? "Nothing here yet."}</p>;
+  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
 
   return (
     <div className="k-gallery">

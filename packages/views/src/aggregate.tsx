@@ -25,13 +25,7 @@
 import { useEffect, useState } from "react";
 import type { AggregateRow, Resolved } from "karta";
 import type { BuiltinViewProps } from "./types.js";
-import { getView } from "./format.js";
-
-interface AggregateViewDef {
-  entity: string;
-  title?: string;
-  emptyText?: string;
-}
+import { useDynamicText } from "./dynamic.js";
 
 /** Coerce whatever the app returned into rows we can render, dropping anything unusable. */
 function toRows(value: unknown): AggregateRow[] {
@@ -54,8 +48,10 @@ function toRows(value: unknown): AggregateRow[] {
 }
 
 export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
-  const view = getView(runtime, pageId) as unknown as AggregateViewDef;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
+  // Both may be functions of ctx (#133) — "Balances for the Lisbon trip".
+  const title = useDynamicText(runtime, pageId, "title", "view", "");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing to show yet.");
 
   const [derived, setDerived] = useState<AggregateRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +86,7 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
   if (error) {
     return (
       <section className="k-aggregate" aria-labelledby="k-agg-h">
-        {view.title ? <h2 id="k-agg-h">{view.title}</h2> : null}
+        {title ? <h2 id="k-agg-h">{title}</h2> : null}
         <p className="k-aggregate-error" role="status">
           This screen could not be worked out: {error}
         </p>
@@ -101,8 +97,8 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
   if (!derived.length) {
     return (
       <section className="k-aggregate" aria-labelledby="k-agg-h">
-        {view.title ? <h2 id="k-agg-h">{view.title}</h2> : null}
-        <p className="k-muted">{view.emptyText ?? "Nothing to show yet."}</p>
+        {title ? <h2 id="k-agg-h">{title}</h2> : null}
+        <p className="k-muted">{emptyText}</p>
       </section>
     );
   }
@@ -117,8 +113,8 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
   }
 
   return (
-    <section className="k-aggregate" aria-labelledby={view.title ? "k-agg-h" : undefined}>
-      {view.title ? <h2 id="k-agg-h">{view.title}</h2> : null}
+    <section className="k-aggregate" aria-labelledby={title ? "k-agg-h" : undefined}>
+      {title ? <h2 id="k-agg-h">{title}</h2> : null}
       {sections.map((section, i) => (
         <div key={section.group ?? i} className="k-aggregate-section">
           {section.group ? <h3 className="k-aggregate-group">{section.group}</h3> : null}

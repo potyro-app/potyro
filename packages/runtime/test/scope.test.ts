@@ -29,13 +29,15 @@ const app = () =>
     pages: [
       {
         id: "places",
-        title: "Places",
+        title: (ctx: Ctx) => (ctx.scope.trip ? `Places in ${String((ctx.scope.trip as { city?: string }).city)}` : "Places"),
         view: {
           type: "list",
           entity: "place",
           display: { primary: "name" },
           // Convention, not magic: the page narrows itself. Without a selection it shows everything.
           filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id,
+          sort: (a, b, ctx) => (ctx.params.desc ? String(b.name).localeCompare(String(a.name)) : String(a.name).localeCompare(String(b.name))),
+          emptyText: (ctx: Ctx) => `No places in ${String((ctx.scope.trip as { city?: string } | undefined)?.city ?? "any trip")} yet`,
         },
       },
       {
@@ -101,6 +103,23 @@ describe("ctx.scope", () => {
     expect(seen.at(-1)).toEqual(["Cozy Bar", "Pastelaria"]);
     expect(seen).toContainEqual(["Cozy Bar"]);
     expect(seen).toContainEqual(["Pastelaria"]);
+  });
+
+  it("a sort reads ctx, so a page's chips can decide the order (#133)", async () => {
+    const { runtime } = await setup();
+    expect((await runtime.queryPage("places")).rows.map((r) => r.name)).toEqual(["Cozy Bar", "Pastelaria"]);
+    expect((await runtime.queryPage("places", { desc: true })).rows.map((r) => r.name)).toEqual(["Pastelaria", "Cozy Bar"]);
+  });
+
+  it("a page title and an empty text follow the selection (#133)", async () => {
+    const { runtime, lisbon } = await setup();
+    expect(await runtime.pageOption("places", "title")).toBe("Places");
+    expect(await runtime.viewOption("places", "emptyText")).toBe("No places in any trip yet");
+    await runtime.setScope("trip", lisbon);
+    expect(await runtime.pageOption("places", "title")).toBe("Places in Lisbon");
+    expect(await runtime.viewOption("places", "emptyText")).toBe("No places in Lisbon yet");
+    // A literal page option comes back as itself.
+    expect(await runtime.pageOption("map", "title")).toBe("Map");
   });
 
   it("a function-valued view option sees the selection", async () => {

@@ -9,7 +9,8 @@ import type { Case, CaseStep, ScreenState } from "./case.js";
 
 /** The slice of a composed runtime replay needs. Structural, so tests need no real app. */
 export interface ReplayTarget {
-  definition: { pages: Array<{ id: string; title?: string; view: { type: string; entity?: string } }> };
+  // `title` is `Dynamic<string>` on a real definition (#133); replay only ever reads the id.
+  definition: { pages: Array<{ id: string; title?: unknown; view: { type: string; entity?: string } }> };
   /** Runs a page's real query — filters, sorts and display bindings included. */
   query: (entity: string, pageId: string) => Promise<unknown[]>;
   /**

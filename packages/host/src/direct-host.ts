@@ -9,6 +9,12 @@ import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
 type Fn = (...args: unknown[]) => unknown;
 
+/** A `Dynamic<T>` option: the literal as declared, or the function called with ctx; null when absent. */
+async function resolveOption(option: unknown, ctx: unknown): Promise<Value> {
+  if (option === undefined) return null;
+  return (typeof option === "function" ? await (option as (c: unknown) => unknown)(ctx) : option) as Value;
+}
+
 function pageView(def: AppDefinition, pageId: string) {
   return def.pages.find((p) => p.id === pageId)?.view;
 }
@@ -61,18 +67,21 @@ export class DirectLoadedApp implements LoadedApp {
     return Boolean(filter(record, ctx));
   }
 
-  async callSort(pageId: string, a: Resolved, b: Resolved): Promise<number> {
+  async callSort(pageId: string, a: Resolved, b: Resolved, ctx: unknown): Promise<number> {
     const view = pageView(this.definition, pageId);
     const sort = (view as { sort?: Fn } | undefined)?.sort;
     if (!sort) return 0;
-    return Number(sort(a, b));
+    return Number(sort(a, b, ctx));
   }
 
   async callViewOption(pageId: string, key: string, ctx: unknown): Promise<Value> {
     const view = pageView(this.definition, pageId) as Record<string, unknown> | undefined;
-    const option = view?.[key];
-    if (option === undefined) return null;
-    return (typeof option === "function" ? await (option as (c: unknown) => unknown)(ctx) : option) as Value;
+    return resolveOption(view?.[key], ctx);
+  }
+
+  async callPageOption(pageId: string, key: string, ctx: unknown): Promise<Value> {
+    const page = this.definition.pages.find((p) => p.id === pageId) as Record<string, unknown> | undefined;
+    return resolveOption(page?.[key], ctx);
   }
 
   async callBinding(ref: BindingRef, record: Resolved, ctx: unknown): Promise<Value> {

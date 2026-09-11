@@ -289,10 +289,12 @@ class IsolateLoadedApp implements LoadedApp {
   async callViewOption(pageId: string, key: string, ctx: Ctx): Promise<Value> {
     return this.invoke({ kind: "viewOption", pageId, key, ...this.base(ctx) }, ctx);
   }
-  async callSort(pageId: string, a: Resolved, b: Resolved): Promise<number> {
-    // Sort needs no live caps; a bare ctx-ish payload suffices.
-    const ctx = { params: {}, now: () => new Date(), caps: {} } as unknown as Ctx;
-    return Number(await this.invoke({ kind: "sort", pageId, a, b, params: {}, nowIso: new Date().toISOString(), capsAvailable: [] }, ctx));
+  async callSort(pageId: string, a: Resolved, b: Resolved, ctx: Ctx): Promise<number> {
+    // The real ctx (#133): a sort may read the selection, the page's chips or the user's position.
+    return Number(await this.invoke({ kind: "sort", pageId, a, b, ...this.base(ctx) }, ctx));
+  }
+  async callPageOption(pageId: string, key: string, ctx: Ctx): Promise<Value> {
+    return this.invoke({ kind: "pageOption", pageId, key, ...this.base(ctx) }, ctx);
   }
   async callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value> {
     const payload =

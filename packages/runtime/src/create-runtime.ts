@@ -32,6 +32,8 @@ export interface KartaRuntime extends Runtime {
   setScope(entity: string, id: string | null): Promise<void>;
   /** A `Dynamic<T>` view option — the literal, or the function evaluated with a fresh ctx. */
   viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
+  /** A `Dynamic<T>` page option (`title`) — the literal, or the function evaluated with a fresh ctx. */
+  pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
 }
 
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
@@ -99,6 +101,9 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
     },
     viewOption(pageId, key, params) {
       return core.viewOption(pageId, key, params);
+    },
+    pageOption(pageId, key, params) {
+      return core.pageOption(pageId, key, params);
     },
     entityForPage(pageId) {
       return core.entityForPage(pageId);
