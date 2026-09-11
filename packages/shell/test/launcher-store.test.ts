@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_APPS, getEntry, listInstalledApps, recordOpen, removeEntry, subscribe, updateEntry } from "../src/launcher-store.js";
+import { BUILTIN_APPS, ensureIdentities, getEntry, listInstalledApps, recordOpen, removeEntry, sourceHash, subscribe, updateEntry } from "../src/launcher-store.js";
 import { removeUserApp, saveUserApp } from "../src/user-apps.js";
 
 // The launcher store (#81): what this device knows about each installed app.
@@ -74,5 +74,43 @@ describe("launcher store", () => {
     off();
     recordOpen("builtin:plants", LATER);
     expect(seen).toHaveBeenCalledTimes(2);
+  });
+});
+
+// #82: the declared identity, read from the source and cached against its hash.
+describe("launcher store: identity", () => {
+  const SOURCE = (name: string, extra = "") =>
+    `import { defineApp } from "karta";\nexport default defineApp({ id: "g", name: ${JSON.stringify(name)}, ${extra} version: "1.0.0", schemaVersion: 1, entities: {}, pages: [] });`;
+
+  it("reads a user app's declared name, icon and accent once, and again only when the source changes", async () => {
+    await saveUserApp({ id: "g", name: "Groceries", source: SOURCE("Grocery run", 'icon: "🛒", theme: { accent: "#123456" },') }, NOW);
+    const before = listInstalledApps().find((a) => a.key === "user:g")!;
+    expect(before.name).toBe("Groceries");
+    expect(before.icon).toBeUndefined();
+    await ensureIdentities(listInstalledApps());
+    const read = listInstalledApps().find((a) => a.key === "user:g")!;
+    expect(read).toMatchObject({ name: "Groceries", icon: "🛒", accent: "#123456" });
+    expect(read.entry.identity?.name).toBe("Grocery run"); // read and kept; the record's own name is what the tile says
+    expect(read.entry.identity?.hash).toBe(sourceHash(read.user!.source));
+
+    // The user's own name for it wins over the declared one.
+    updateEntry("user:g", { displayName: "Food" });
+    expect(listInstalledApps().find((a) => a.key === "user:g")!.name).toBe("Food");
+    updateEntry("user:g", { displayName: undefined });
+
+    // A new version of the source: the old identity no longer applies, and the new one is read.
+    await saveUserApp({ id: "g", name: "Groceries", source: SOURCE("Weekly shop") }, LATER);
+    expect(listInstalledApps().find((a) => a.key === "user:g")!.name).toBe("Groceries"); // stale cache ignored
+    await ensureIdentities(listInstalledApps());
+    const after = listInstalledApps().find((a) => a.key === "user:g")!;
+    expect(after.entry.identity?.name).toBe("Weekly shop");
+    expect(after.icon).toBeUndefined();
+    expect(after.accent).toBeUndefined();
+  });
+
+  it("reads a built-in's identity from its shipped source", async () => {
+    await ensureIdentities(listInstalledApps());
+    expect(listInstalledApps().find((a) => a.key === "builtin:workout")).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
+    expect(listInstalledApps().find((a) => a.key === "builtin:recipes")).toMatchObject({ name: "Recipes", icon: "🍳" });
   });
 });

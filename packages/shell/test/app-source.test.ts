@@ -262,3 +262,29 @@ describe("everything else is byte-identical", () => {
     expect(differing[0]).toContain("servings");
   });
 });
+
+// #82: the launcher shows an app's identity without running it, so `inspect` reads it from the
+// source — the literal `name`, `icon` and `theme.accent`, and nothing when they are not literal.
+describe("inspect: identity", () => {
+  it("reads name, icon and accent when they are written literally", async () => {
+    const source = `import { defineApp } from "karta";
+export default defineApp({ id: "gym", name: "PPL Log", icon: "🏋", version: "1.0.0", schemaVersion: 1, theme: { accent: "#5B8DEF" },
+  entities: { x: { fields: { name: { type: "text" } } } }, pages: [] });`;
+    expect(await inspect(source)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
+  });
+
+  it("leaves out what is not there, or not literal", async () => {
+    const source = `import { defineApp } from "karta";
+const NAME = "Computed";
+export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion: 1, entities: {}, pages: [] });`;
+    const shape = await inspect(source);
+    expect(shape.name).toBeUndefined();
+    expect(shape.icon).toBeUndefined();
+    expect(shape.accent).toBeUndefined();
+  });
+
+  it("reads the example apps' identity", async () => {
+    const workout = readFileSync(resolve(process.cwd(), "../../examples/workout.app.ts"), "utf8");
+    expect(await inspect(workout)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
+  });
+});

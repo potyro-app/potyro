@@ -479,6 +479,7 @@ const permissionSchema = z.object({
 export const structureSchema = z.object({
   id: z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/, "id must be a lowercase slug"),
   name: z.string().min(1),
+  icon: z.string().min(1).max(8).optional(),
   version: z.string().regex(SEMVER, "version must be semver (e.g. 1.0.0)"),
   schemaVersion: z.number().int().min(1),
   theme: z.object({ accent: z.string().optional() }).optional(),
