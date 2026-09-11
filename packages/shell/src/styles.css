@@ -1757,6 +1757,16 @@ button {
 .k-launch-grid[data-reorderable="true"] .k-launch-tile {
   cursor: grab;
 }
+/* The home search field (#85): one line, wide enough to read a name, not the width of the page. */
+.k-launch-search {
+  max-width: 28rem;
+}
+.k-launch-nomatch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
 .k-launch-section-head {
   display: flex;
   align-items: center;
