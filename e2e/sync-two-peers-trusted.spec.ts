@@ -98,7 +98,7 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
-  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click(); // a prompt, not a confirm
+  await a.locator(".k-dialog").getByRole("button", { name: "Done" }).click(); // a prompt, not a confirm
 
   // Sharing is the first time this device's data leaves it, so the recovery-words offer appears
   // once, right after the link (ADR D2a). Declined here — the words are tested on their own spec.

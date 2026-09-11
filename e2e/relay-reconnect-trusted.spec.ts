@@ -156,7 +156,7 @@ test("two peers keep syncing after the relay dies and comes back", async ({ brow
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
-  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
   await expect(a.locator(".k-dialog")).toContainText("more than one place", { timeout: 30_000 });
   await a.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
   await a.goto("/?user=reconnect");
