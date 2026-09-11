@@ -8,6 +8,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import { RecordForm } from "./record-form.js";
 import { MAP_STYLE } from "./map.js";
 import { displayFieldFor, humanizeKey } from "./format.js";
+import { Switch } from "./switch.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
@@ -49,7 +50,9 @@ export function FieldInput({ runtime, field, value, onChange }: FieldInputProps)
       );
 
     case "boolean":
-      return <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />;
+      // The toggle alone: a form renders the whole switch row itself (record-form.tsx); here the
+      // label is whatever surrounds this input — a list row's column, say.
+      return <Switch checked={Boolean(value)} onChange={onChange} label={(field as { label?: string }).label} />;
 
     case "enum":
       return (

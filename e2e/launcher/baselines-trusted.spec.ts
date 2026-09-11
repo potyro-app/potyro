@@ -68,6 +68,26 @@ for (const width of WIDTHS) {
   }
 }
 
+// The Plants form (#97): the switch rows, and from here on every form control the forms epic lands.
+// Baselined at both ends in both schemes; it is the harness's file so one workflow regenerates it.
+for (const width of [375, 1440] as const) {
+  for (const theme of THEMES) {
+    test.describe(`plants form ${width}px ${theme}`, () => {
+      test.use({ viewport: { width, height: width < 500 ? 812 : 900 }, colorScheme: theme, isMobile: width < 500, hasTouch: width < 500 });
+
+      test("plants form", async ({ page }) => {
+        await seed(page, []);
+        await page.goto("/?user=plants");
+        await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
+        await pinFonts(page);
+        await page.getByRole("button", { name: "New Plant" }).click();
+        await expect(page.locator(".k-form")).toBeVisible();
+        await shot(page, `plants-form-${width}-${theme}`);
+      });
+    });
+  }
+}
+
 // The share dialog needs the relay and a few seconds of sync per shot, so it is baselined at the
 // two ends only, in light.
 for (const width of [375, 1440] as const) {
