@@ -398,10 +398,35 @@ export interface ModifyContext {
   priorDiagnoses?: readonly string[];
 }
 
-/** Either an edit, or a reasoned refusal to make one. */
+/** Either an edit (possibly partial, with the undone parts named), or a reasoned refusal to make one. */
 export type ModifyReply =
-  | { kind: "source"; source: string; rationale?: string }
+  | { kind: "source"; source: string; rationale?: string; notDone?: string[] }
   | { kind: "diagnosis"; text: string };
+
+/** The heading a reply uses to name the parts of a request it did not do (the ladder's third rung). */
+export const NOT_DONE = "Not done:";
+
+/**
+ * The bullet lines under a `Not done:` heading in the prose — the parts of the request the edits do
+ * not cover, each naming what would be needed. Tolerates markdown dressing (`**Not done:**`, `*`/`•`/
+ * numbered bullets) because that is how models write headings; stops at the first line that is not
+ * a bullet. Empty when there is no heading.
+ */
+export function parseNotDone(prose: string): string[] {
+  const heading = new RegExp(`^[\\s*_\`#]*${NOT_DONE}[\\s*_\`]*$`, "im").exec(prose);
+  if (!heading) return [];
+  const rest = prose.slice(heading.index + heading[0].length).split("\n");
+  const items: string[] = [];
+  for (const line of rest) {
+    const m = /^\s*(?:[-*•]|\d+[.)])\s+(.+?)\s*$/.exec(line);
+    if (!m) {
+      if (items.length === 0 && line.trim() === "") continue; // a blank line right after the heading
+      break;
+    }
+    items.push(m[1]!);
+  }
+  return items;
+}
 
 /**
  * The Edit-mode prompt.
@@ -447,15 +472,25 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
   }
 
   lines.push(
-    "Reply with exactly one of:",
-    "1. SEARCH/REPLACE edits to the app above, in one ```ts block:",
+    "Work down this ladder and stop at the first rung that fits:",
+    "1. Declare it with the built-in views and options in the REFERENCE. Before deciding an option is missing,",
+    "   find the type it would live on and read its declaration.",
+    "2. If no built-in option fits, use a `custom` view — a React component in this file. This app is the",
+    "   person's own and runs trusted, so a custom view is a legitimate answer here; the size-budget rule",
+    "   against custom views is for creating new apps, not for meeting a request on an existing one.",
+    "3. If only PART of the request can be done, do that part. Then, still in the prose before the block, add:",
+    `   ${NOT_DONE}`,
+    "   - <the part you did not do>, because <the declaration or host behaviour it would need>",
+    "   one bullet per part. Never refuse a request because one part of it cannot be done.",
+    `4. Only if NO part can be done: \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to`,
+    "   change there>\` - and no code.",
+    "",
+    "Edits are SEARCH/REPLACE blocks against the app above, in one ```ts block:",
     "",
     EDIT_FORMAT,
     "",
-    `2. \`${NOT_IN_APP} <which host behaviour is responsible, and what would have to change there>\` - and no code.`,
-    "",
-    "Answering (2) when it is true is cheap. A plausible edit that cannot possibly work is the more damaging mistake,",
-    "because it is indistinguishable from a fix until someone tries it.",
+    "A plausible edit that cannot possibly work is worse than a Not done line, because it is indistinguishable",
+    "from a fix until someone tries it. A refusal of a request you could mostly do is worse than both.",
     "",
     "The OUTPUT rule in the system prompt (the whole file, no prose) does not apply to this reply: it is for",
     "creating an app. Here, send edits, and put your reasoning in the prose before the block. Do NOT write",
@@ -473,6 +508,12 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
  * explaining that the patch cannot help, and acting on source the model has just disowned is
  * precisely the failure this contract exists to prevent.
  */
+/** Attach the `Not done:` parts found in a source reply's rationale; no key at all when there are none. */
+export function withNotDone<T extends { rationale?: string }>(reply: T): T & { notDone?: string[] } {
+  const notDone = reply.rationale ? parseNotDone(reply.rationale) : [];
+  return notDone.length ? { ...reply, notDone } : reply;
+}
+
 export function parseModifyReply(reply: string): ModifyReply {
   // The marker may arrive dressed up: a model that has just written three paragraphs of reasoning
   // tends to present its verdict as `` `NOT-IN-APP: …` `` or **NOT-IN-APP: …**. A measured DeepSeek
@@ -493,7 +534,7 @@ export function parseModifyReply(reply: string): ModifyReply {
   if (block) {
     const rationale = reply.slice(0, block.index).trim();
     // Reasoning belongs in the version's rationale, not in source comments (docs/04).
-    return rationale ? { kind: "source", source: block.code, rationale } : { kind: "source", source: block.code };
+    return withNotDone(rationale ? { kind: "source" as const, source: block.code, rationale } : { kind: "source" as const, source: block.code });
   }
   return { kind: "source", source: reply.trim() };
 }

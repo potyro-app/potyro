@@ -9,6 +9,7 @@ import { MemoryStore, type Store } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
 import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@karta/runtime";
 import { caseLabel, listCases } from "./app-cases.js";
+import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
 import {
@@ -424,11 +425,22 @@ export function Studio({ onClose }: { onClose: () => void }) {
             return null;
           }
           setModifyLoss(result.loss);
-          setModifyNote(
+          const applied =
             result.via === "edits"
               ? `Applied ${result.applied} edit${result.applied === 1 ? "" : "s"}.`
-              : "The model sent the whole file back instead of edits. Check that nothing else changed.",
-          );
+              : "The model sent the whole file back instead of edits. Check that nothing else changed.";
+          // The ladder's third rung (#132): the parts that could be done were, and the parts that
+          // could not are said in full — each one is a host gap, so it is filed with the app's
+          // diagnoses too, where Edit mode reads them back as "already reported as host-side".
+          if (result.notDone?.length) {
+            setModifyNote(`${applied} Not done yet: ${result.notDone.join("; ")}`);
+            if (currentId) {
+              const now = new Date().toISOString();
+              for (const part of result.notDone) void recordDiagnosis(currentId, { complaint: instruction, text: part }, now);
+            }
+          } else {
+            setModifyNote(applied);
+          }
           return result.source;
         }),
       true,
