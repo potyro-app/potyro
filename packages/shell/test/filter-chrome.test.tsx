@@ -70,7 +70,10 @@ describe("FilterChrome", () => {
     expect(setParam).toHaveBeenCalledWith("kind", "bar");
 
     // Boolean toggle.
-    fireEvent.click(screen.getByRole("button", { name: "Open now" }));
+    // A boolean chip is a switch (#97): named by its label, with a state to read.
+    const openNow = screen.getByRole("switch", { name: "Open now" });
+    expect(openNow.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(openNow); // the params object below is what records the flip
     expect(setParam).toHaveBeenCalledWith("openOnly", true);
 
     // "Near me" reads ctx.caps.geo and writes the coordinates.
