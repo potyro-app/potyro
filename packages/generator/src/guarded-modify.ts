@@ -19,11 +19,11 @@
 
 import { structuralLoss, type AppShape } from "@karta/runtime";
 import { applyEdits, describeEditFailures, EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, type EditFailure } from "./edits.js";
-import { extractSource, looksLikeApp, parseModifyReply } from "./prompt.js";
+import { extractSource, looksLikeApp, parseModifyReply, withNotDone } from "./prompt.js";
 
 export type ReadReply =
-  | { kind: "edits"; source: string; applied: number; rationale?: string }
-  | { kind: "whole-file"; source: string; rationale?: string }
+  | { kind: "edits"; source: string; applied: number; rationale?: string; notDone?: string[] }
+  | { kind: "whole-file"; source: string; rationale?: string; notDone?: string[] }
   | { kind: "diagnosis"; text: string }
   | { kind: "no-match"; failures: EditFailure[] }
   | { kind: "unusable"; text: string };
@@ -129,13 +129,17 @@ export function readEditsOrFile(source: string, reply: string): Exclude<ReadRepl
     // Prose before the first block is the rationale; an opening fence right before it is not.
     const firstBlock = /^<{5,9} SEARCH/m.exec(cleaned)?.index ?? 0;
     const rationale = cleaned.slice(0, firstBlock).replace(/```[A-Za-z]*\s*$/, "").trim();
-    return rationale ? { kind: "edits", source: applied.source, applied: applied.applied, rationale } : { kind: "edits", source: applied.source, applied: applied.applied };
+    return withNotDone(
+      rationale
+        ? { kind: "edits" as const, source: applied.source, applied: applied.applied, rationale }
+        : { kind: "edits" as const, source: applied.source, applied: applied.applied },
+    );
   }
   const whole = extractSource(cleaned);
   if (looksLikeApp(whole)) {
     const parsed = parseModifyReply(cleaned);
     const rationale = parsed.kind === "source" ? parsed.rationale : undefined;
-    return rationale ? { kind: "whole-file", source: whole, rationale } : { kind: "whole-file", source: whole };
+    return withNotDone(rationale ? { kind: "whole-file" as const, source: whole, rationale } : { kind: "whole-file" as const, source: whole });
   }
   return { kind: "unusable", text: cleaned };
 }
@@ -180,6 +184,8 @@ export type GuardedModifyResult =
       /** What the FINAL result still removes, or null. Non-null means the retry did not help either. */
       loss: string | null;
       rationale?: string;
+      /** The parts of the request the model said it did not do, each naming what it would need (#132). */
+      notDone?: string[];
       trace: ModifyTrace;
     }
   | { kind: "diagnosis"; text: string; trace: ModifyTrace }
@@ -252,7 +258,11 @@ function toResult(
   trace: ModifyTrace,
 ): Extract<GuardedModifyResult, { kind: "source" }> {
   const base = { kind: "source" as const, source: reply.source, via: reply.kind, applied: reply.kind === "edits" ? reply.applied : 0, loss, trace };
-  return reply.rationale ? { ...base, rationale: reply.rationale } : base;
+  return {
+    ...base,
+    ...(reply.rationale ? { rationale: reply.rationale } : {}),
+    ...(reply.notDone?.length ? { notDone: reply.notDone } : {}),
+  };
 }
 
 async function judge(deps: GuardedModifyDeps, source: string): Promise<string | null> {

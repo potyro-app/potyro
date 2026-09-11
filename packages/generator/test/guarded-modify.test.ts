@@ -50,6 +50,14 @@ describe("readModifyReply", () => {
     expect(r).toEqual({ kind: "diagnosis", text: "the map owns taps." });
   });
 
+  // The ladder's third rung (#132): the parts that could be done are applied, and the parts that
+  // could not are carried out of the prose as data, so the Studio can show them and file them.
+  it("carries a Not done section out of the rationale as notDone", () => {
+    const prose = "Added the trip chip.\n\nNot done:\n- centre the map on the trip (needs a function-valued `camera`)";
+    const r = readModifyReply(SOURCE, editReply('  id: "x",', '  id: "y",', prose));
+    expect(r).toMatchObject({ kind: "edits", applied: 1, notDone: ["centre the map on the trip (needs a function-valued `camera`)"] });
+  });
+
   it("prose with neither edits nor an app is unusable", () => {
     expect(readModifyReply(SOURCE, "I would add a field.")).toEqual({ kind: "unusable", text: "I would add a field." });
   });
