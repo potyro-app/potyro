@@ -79,7 +79,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
   const linkField = ana.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
-  await ana.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await ana.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
   await expect(ana.locator(".k-dialog")).toContainText("more than one place", { timeout: 30_000 });
   await ana.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
 
