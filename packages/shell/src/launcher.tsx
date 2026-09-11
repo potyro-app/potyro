@@ -8,7 +8,8 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { shellDialogs } from "./dialog.js";
-import { listUserApps, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
@@ -25,6 +26,11 @@ export function openUserApp(id: string): void {
 export function goHome(): void {
   location.assign(location.pathname);
 }
+/** Open an installed app the way its kind is routed. */
+export function openInstalledApp(app: InstalledApp): void {
+  if (app.kind === "builtin") openBuiltinApp(app.id);
+  else openUserApp(app.id);
+}
 
 export interface Selected {
   kind: "builtin" | "user";
@@ -32,12 +38,9 @@ export interface Selected {
 }
 
 interface LauncherProps {
-  builtins: readonly string[];
-  userApps: UserApp[];
   variant: "home" | "overlay";
   selected?: Selected;
-  onOpenBuiltin: (id: string) => void;
-  onOpenUser: (id: string) => void;
+  onOpen: (app: InstalledApp) => void;
   onNewApp: () => void;
   onClose?: () => void;
 }
@@ -160,12 +163,13 @@ function TileMenu({
   );
 }
 
-export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin, onOpenUser, onNewApp, onClose }: LauncherProps) {
-  // Local copy so inline delete/rename reflect immediately (navigation elsewhere is reload-based) —
-  // and kept in step with the prop (#78): `useState(userApps)` read it once, so an app created in
-  // the Studio did not appear on the home screen until a full reload.
-  const [myApps, setMyApps] = useState(userApps);
-  useEffect(() => setMyApps(userApps), [userApps]);
+export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: LauncherProps) {
+  // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
+  // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
+  // this render. Nothing is read once and kept (#78).
+  const installed = useInstalledApps();
+  const builtins = installed.filter((a) => a.kind === "builtin");
+  const myApps = installed.filter((a): a is InstalledApp & { kind: "user" } => a.kind === "user");
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -176,7 +180,6 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
   const del = async (a: UserApp): Promise<void> => {
     if (!(await shellDialogs.confirm(`Delete "${a.name}" and everything in it? This can't be undone.`))) return;
     await removeUserApp(a.id);
-    setMyApps(listUserApps());
   };
   // Sync moves the app's data between two stores that keep it in DIFFERENT files, so this is a
   // migration, not a checkbox. It says what it will do, reports anything it could not move, and
@@ -200,7 +203,6 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       const shape = await inspect(a.source);
       const entities = shape.entities.map((e) => e.key);
       const { copied, warnings } = await toggleAppSync(a.id, entities, on, new Date().toISOString());
-      setMyApps(listUserApps());
       const moved = `Moved ${copied.records} record(s)`;
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
       // path exists to avoid.
@@ -235,7 +237,6 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
         const { inspect } = await import("./app-source.js");
         const shape = await inspect(a.source);
         await toggleAppSync(a.id, shape.entities.map((e) => e.key), true, new Date().toISOString());
-        setMyApps(listUserApps());
         setBusy(null);
       }
       // The moment concurrency stops being hypothetical. Everything up to here, the app has had one
@@ -273,7 +274,6 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
     const name = await shellDialogs.prompt("Rename app", { default: a.name });
     if (name && name.trim()) {
       renameUserApp(a.id, name, new Date().toISOString());
-      setMyApps(listUserApps());
     }
   };
 
@@ -302,14 +302,8 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       <section className="k-launch-section">
         <h3 className="k-launch-title">Apps</h3>
         <div className="k-launch-grid">
-          {builtins.map((id) => (
-            <Tile
-              key={id}
-              name={id}
-              badge="trusted"
-              active={selected?.kind === "builtin" && selected.id === id}
-              onOpen={() => onOpenBuiltin(id)}
-            />
+          {builtins.map((a) => (
+            <Tile key={a.key} name={a.name} badge="trusted" active={selected?.kind === "builtin" && selected.id === a.id} onOpen={() => onOpen(a)} />
           ))}
         </div>
       </section>
@@ -318,24 +312,24 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
         <h3 className="k-launch-title">My Apps</h3>
         <div className="k-launch-grid">
           {myApps.map((a) => (
-            <div key={a.id} className="k-launch-usertile">
+            <div key={a.key} className="k-launch-usertile">
               <Tile
                 name={a.name}
                 // Read the record, don't assume: a Studio-authored app is the user's own and runs
                 // trusted. Hardcoding "untrusted" here reported the opposite of what actually ran.
-                badge={a.trusted === false ? "untrusted" : "trusted"}
+                badge={a.trusted ? "trusted" : "untrusted"}
                 active={selected?.kind === "user" && selected.id === a.id}
-                onOpen={() => onOpenUser(a.id)}
+                onOpen={() => onOpen(a)}
               />
               <TileMenu
-                app={a}
+                app={a.user}
                 busy={busy === a.id}
-                onOpen={() => onOpenUser(a.id)}
-                onHistory={() => setHistory(a)}
-                onSync={() => void toggleSync(a)}
-                onShare={() => void share(a)}
-                onRename={() => void rename(a)}
-                onDelete={() => void del(a)}
+                onOpen={() => onOpen(a)}
+                onHistory={() => setHistory(a.user)}
+                onSync={() => void toggleSync(a.user)}
+                onShare={() => void share(a.user)}
+                onRename={() => void rename(a.user)}
+                onDelete={() => void del(a.user)}
               />
             </div>
           ))}
