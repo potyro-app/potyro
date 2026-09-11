@@ -64,6 +64,8 @@ export async function openSwitcher(page: Page): Promise<Locator> {
   await page.getByRole("button", { name: "Switch app" }).click();
   const overlay = page.locator(".k-launcher-overlay");
   await expect(overlay).toBeVisible();
+  // It slides in; a finger or a box measured mid-slide lands in the wrong place.
+  await overlay.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
   return overlay;
 }
 

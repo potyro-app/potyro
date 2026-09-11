@@ -17,7 +17,7 @@ import { startFix } from "./start-fix.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
-import { Launcher, openInstalledApp, goHome } from "./launcher.js";
+import { Launcher, openInstalledApp } from "./launcher.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
@@ -911,11 +911,8 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           ) : null}
         </div>
         <div className="k-header-actions">
-          {generator ? (
-            <button type="button" className="k-add" aria-label="Home" title="Launcher home" onClick={goHome}>
-              ⌂
-            </button>
-          ) : null}
+          {/* One way to the other apps (#88): the switcher, which has Home as a row. The header used
+              to offer ⌂ and ⊞ Apps side by side, two routes to the same place. */}
           {generator ? (
             <button type="button" className="k-add k-apps-btn" aria-label="Switch app" onClick={() => setLauncherOpen(true)}>
               ⊞ Apps
