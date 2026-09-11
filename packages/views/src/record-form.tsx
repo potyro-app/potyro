@@ -162,6 +162,17 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
             checked={Boolean(form[key])}
             onChange={(v) => set(key, v)}
           />
+        ) : field.type === "number" || field.type === "duration" ? (
+          // A number control is several controls — the input and its stepper — so it cannot sit in
+          // a <label>, which would name only the first of them (the − button) and press it when the
+          // caption is tapped. The control names itself from the label it is given (#99).
+          <div className="k-form-field" key={key}>
+            <span className="k-form-label" aria-hidden>
+              {fieldLabel(runtime, entity, key)}
+              {(field as { required?: boolean }).required ? <em aria-hidden> *</em> : null}
+            </span>
+            <FieldInput runtime={runtime} field={field} value={form[key]} onChange={(v) => set(key, v)} label={fieldLabel(runtime, entity, key)} />
+          </div>
         ) : (
           <label className="k-form-field" key={key}>
             <span className="k-form-label">

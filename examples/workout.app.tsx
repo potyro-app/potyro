@@ -371,7 +371,7 @@ export default defineApp({
         name: { type: "text", required: true },
         day: { type: "enum", options: ["push", "pull", "legs"], required: true },
         order: { type: "number", integer: true, default: 0 },
-        targetSets: { type: "number", integer: true, min: 1, default: 3 },
+        targetSets: { type: "number", unit: "sets", integer: true, min: 1, default: 3 },
         repRange: { type: "text", default: "8–12" },
         cue: { type: "text", multiline: true },
         bodyweight: { type: "boolean", default: false },
@@ -419,7 +419,7 @@ export default defineApp({
               type: "list",
               ordered: true,
               of: {
-                kg: { type: "number", min: 0 },
+                kg: { type: "number", unit: "kg", min: 0 },
                 reps: { type: "number", min: 0, integer: true },
               },
             },
