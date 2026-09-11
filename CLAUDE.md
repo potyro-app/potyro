@@ -86,6 +86,10 @@ pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playw
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
 
+# after ANY change under packages/schema/src/types: the generator's model-facing reference is
+# generated from them, and test/reference.test.ts fails while it is stale (#130)
+pnpm --filter @karta/generator gen:reference
+
 # does changing an app that holds records keep the records? (docs/12 §8)
 pnpm --filter @karta/generator eval:modify:fixture   # no model, no money — sample review sheet
 pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6

@@ -162,7 +162,14 @@ export interface Ctx {
    */
   space?: Space;
 
-  // ---- runtime inputs (view filter params, custom-view args) ----
+  /**
+   * Runtime inputs: the values of the current page's filter chips (`FilterChip.param`) and the
+   * route params it was navigated to with (`navigate(pageId, params)` / `onOpen.param`).
+   *
+   * Scoped PER PAGE. A chip chosen on one page is not visible to another page's `filter`, so a
+   * selection that should follow the user across pages cannot live here. (`ctx.storage` persists
+   * across pages but is async, so a synchronous `filter` cannot read it either.)
+   */
   params: Readonly<Record<string, unknown>>;
 
   // ---- app-scoped key/value storage ----

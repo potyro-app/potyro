@@ -7,7 +7,7 @@
 // so it's unit-testable without Chrome; `createGeminiNanoBackend` resolves the real global.
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT_COMPACT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
 
 /** A live prompting session (Chrome's `LanguageModel` session). */
 export interface PromptSession {
@@ -41,7 +41,8 @@ export class GeminiNanoBackend implements ModelBackend {
 
   private newSession(): Promise<PromptSession> {
     // The Prompt API takes the system prompt as an initial "system" turn, not a per-message role.
-    return this.model.create({ initialPrompts: [{ role: "system", content: SYSTEM_PROMPT }] });
+    // Compact: Nano's context cannot hold the full schema reference.
+    return this.model.create({ initialPrompts: [{ role: "system", content: SYSTEM_PROMPT_COMPACT }] });
   }
 
   async generate(prompt: GenPrompt): Promise<string> {
