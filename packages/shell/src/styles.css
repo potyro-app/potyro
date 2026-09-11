@@ -1722,12 +1722,84 @@ button {
   display: flex;
   gap: 0.5rem;
 }
-.k-launch-usertile {
+.k-launch-item {
   position: relative;
   display: flex;
+  /* A tap scrolls, a hold drags (#84): the hook decides, so the browser must not take the tap
+     away as a double-tap zoom, but may still pan. */
+  touch-action: manipulation;
 }
-.k-launch-usertile .k-launch-tile {
+.k-launch-item .k-launch-tile {
   flex: 1 1 auto;
+}
+/* Reordering: the tile in hand rides above the grid; the tile it would displace shows a dashed
+   edge in the accent, so the drop is announced before it happens. */
+.k-launch-item[data-dragging="true"] {
+  position: relative;
+  z-index: 5;
+  user-select: none;
+}
+.k-launch-item[data-dragging="true"] .k-launch-tile {
+  transform: scale(1.03);
+  box-shadow: var(--shadow);
+  border-color: var(--accent);
+  cursor: grabbing;
+}
+.k-launch-item[data-over="true"] .k-launch-tile {
+  outline: 2px dashed var(--accent-line);
+  outline-offset: 2px;
+}
+.k-launch-grid[data-reorderable="true"] .k-launch-tile {
+  cursor: grab;
+}
+.k-launch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+/* The sort switch: one control, three words. The pressed one carries the accent. */
+.k-launch-sort {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+}
+.k-launch-sort-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  min-height: 2rem;
+  font-size: 0.8rem;
+  background: transparent;
+  color: var(--ink-soft);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-launch-sort-btn:hover {
+  color: var(--ink);
+}
+.k-launch-sort-btn[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.k-launch-sort-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 /* A tile's actions: one always-visible 44px button, then a menu (#77). Never hover-only. */
 .k-tile-menu-host {
