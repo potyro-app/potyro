@@ -115,6 +115,9 @@ export interface CalendarView {
 /** A filter chip surfaced in a map/list view chrome; writes into `ctx.params[param]`.
  *  - `type: "boolean"` → a toggle (param = true | undefined).
  *  - `type: "geo"` → a "use my location" button (param = { lat, lng } from `ctx.caps.geo`).
+ *  - `from` naming an ENTITY → record chips: one chip per record of that entity (its `displayField`),
+ *    param = the selected record ids (string[]). This is how a list or map is narrowed to "the
+ *    trip / the project / the person" chosen by the user.
  *  - otherwise `from` names an enum/tags field whose options become selectable chips (single, or
  *    multi when `multi` is set). */
 export interface FilterChip {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HybridBackend,
-  SYSTEM_PROMPT,
+  SYSTEM_PROMPT_COMPACT,
   WebLLMBackend,
   runEval,
   type ChatEngine,
@@ -58,7 +58,8 @@ describe("WebLLMBackend", () => {
     const src = await backend.generate({ id: "t", description: "a todo list" });
 
     expect(src).toBe(GOOD);
-    expect(reqs[0]!.messages[0]).toMatchObject({ role: "system", content: SYSTEM_PROMPT });
+    // Compact on purpose: the Qwen MLC builds have a 4k context, which the full reference exceeds (#130).
+    expect(reqs[0]!.messages[0]).toMatchObject({ role: "system", content: SYSTEM_PROMPT_COMPACT });
     expect(reqs[0]!.messages[1]!.content).toContain("a todo list");
     expect(backend.name).toBe("webllm:Qwen2.5-Coder-1.5B");
   });
