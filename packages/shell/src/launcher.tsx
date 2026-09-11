@@ -87,7 +87,8 @@ function TileMenu({
   onOpen,
   onPin,
   user,
-  onToggle,
+  open,
+  onOpenChange,
 }: {
   app: InstalledApp;
   busy: boolean;
@@ -95,30 +96,14 @@ function TileMenu({
   onPin: () => void;
   /** History, sync, share, rename, delete: every app has them (#152). */
   user: UserActions;
-  /** Told when the menu opens or closes, so the launcher can make everything else inert. */
-  onToggle?: (open: boolean) => void;
+  /** Whether this menu is the open one. The launcher owns it — one menu at a time, and while one
+   *  is open every other tile is inert — so there is one source of truth, not two to drift. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpenState] = useState(false);
-  const setOpen = (next: boolean | ((v: boolean) => boolean)): void =>
-    setOpenState((v) => {
-      const value = typeof next === "function" ? next(v) : next;
-      if (value !== v) onToggle?.(value);
-      return value;
-    });
+  const setOpen = (next: boolean | ((v: boolean) => boolean)): void => onOpenChange(typeof next === "function" ? next(open) : next);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  // Pinning moves the tile to another section, which remounts this menu with its state gone. The
-  // launcher must hear that the menu closed, or every other tile stays inert.
-  const openRef = useRef(false);
-  openRef.current = open;
-  useEffect(
-    () => () => {
-      if (openRef.current) onToggle?.(false);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
 
   // A menu is a keyboard thing too (#94): focus moves into it when it opens, arrows walk it, and
   // Escape hands focus back to the button that opened it. Without the first of these, Escape on the
@@ -224,6 +209,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const swipeHandlers = {
     onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
+      // A pointer that starts on the close button is a click, not a swipe: capturing it would retarget
+      // the pointerup to the grip and the click would never reach the button.
+      if ((e.target as HTMLElement).closest("button, a, input")) return;
       swipe.current = { id: e.pointerId, y: e.clientY };
       e.currentTarget.setPointerCapture?.(e.pointerId);
     },
@@ -349,14 +337,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // While one tile's menu is open the other tiles are inert: a popover that sits over the tile
   // below it must not leave that tile's button half-reachable, by pointer or by Tab.
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const inertUnless = (key: string): Record<string, string> | Record<string, never> => (openMenu && openMenu !== key ? { inert: "" } : {});
+  // A menu whose tile is gone (deleted, filtered out) must not leave the rest inert.
+  const openMenuLive = openMenu && installed.some((a) => a.key === openMenu) ? openMenu : null;
+  const inertUnless = (key: string): Record<string, string> | Record<string, never> => (openMenuLive && openMenuLive !== key ? { inert: "" } : {});
   const menuFor = (a: InstalledApp) => (
     <TileMenu
       app={a}
       busy={busy === a.id}
       onOpen={() => onOpen(a)}
       onPin={() => setPinned(a.key, !a.entry.pinned)}
-      onToggle={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
+      open={openMenuLive === a.key}
+      onOpenChange={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
       user={{
         onHistory: () => setHistory(a.user),
         onSync: () => void toggleSync(a.user),
