@@ -1171,16 +1171,34 @@ button {
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
+/* Three regions: the prompt and its action (controls), saving + the saved list (side), and the
+   stage. Named areas so the phone can reorder them without touching the DOM: on a desktop the two
+   asides stack in a left rail; on a phone it is prompt → stage → side, one column (#80). */
 .k-studio-body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(300px, 360px) 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "controls stage"
+    "side stage";
   gap: 0;
 }
 .k-studio-controls {
+  grid-area: controls;
   border-right: 1px solid var(--line);
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--paper);
+}
+.k-studio-side {
+  grid-area: side;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  padding: 0 1.25rem 1.25rem;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -1197,6 +1215,11 @@ button {
 .k-studio-desc {
   resize: vertical;
   line-height: 1.5;
+  /* A flex child with overflow shrinks to nothing under pressure; at 375px this textarea was 31px
+     tall with its own button on top of it. The prompt is the Studio's reason to exist — it keeps
+     its size. */
+  flex-shrink: 0;
+  min-height: 6.5rem;
 }
 /* One action, one engine. The primary button carries the weight; the engine sits beside it as a
    quieter chip that still always names the model — an anonymous request is what made "is this even
@@ -1246,8 +1269,8 @@ button {
 }
 .k-studio-savebar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.25rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
 }
@@ -1299,6 +1322,7 @@ button {
   color: #c0392b;
 }
 .k-studio-stage {
+  grid-area: stage;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -1308,6 +1332,7 @@ button {
 }
 .k-studio-tabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
 }
@@ -1453,15 +1478,36 @@ button {
 .k-syntax .token.namespace {
   opacity: 0.7;
 }
+/* A phone: one column that scrolls as a whole. The prompt and its action first and in full, the
+   stage next at a height that is worth looking at, saving and the saved list after it. */
 @media (max-width: 760px) {
   .k-studio-body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "controls"
+      "stage"
+      "side";
+    overflow: auto;
   }
   .k-studio-controls {
     border-right: none;
     border-bottom: 1px solid var(--line);
-    max-height: 45vh;
+    padding: 1rem;
+  }
+  .k-studio-side {
+    border-right: none;
+    border-top: 1px solid var(--line);
+    padding: 1rem;
+    overflow: visible;
+  }
+  .k-studio-side .k-studio-savebar {
+    padding-top: 0;
+    border-top: none;
+  }
+  .k-studio-stage {
+    min-height: 75vh;
+    padding: 0.75rem 1rem 1rem;
   }
 }
 
