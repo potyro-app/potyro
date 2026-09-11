@@ -9,7 +9,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
-import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
+import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
+import { SORT_MODES, orderApps } from "./launcher-order.js";
+import { useReorder } from "./launcher-reorder.js";
 import { tileIdentity } from "./tile-identity.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
@@ -75,28 +77,52 @@ function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onO
  * popover beside the tile on a wide screen, a sheet from the bottom on a phone (CSS decides).
  * Delete is last and set apart, so it is not a thumb's width from Rename.
  */
-function TileMenu({
-  app,
-  busy,
-  onOpen,
-  onHistory,
-  onSync,
-  onShare,
-  onRename,
-  onDelete,
-}: {
-  app: UserApp;
-  busy: boolean;
-  onOpen: () => void;
+interface UserActions {
   onHistory: () => void;
   onSync: () => void;
   onShare: () => void;
   onRename: () => void;
   onDelete: () => void;
+}
+
+function TileMenu({
+  app,
+  busy,
+  onOpen,
+  onPin,
+  user,
+  onToggle,
+}: {
+  app: InstalledApp;
+  busy: boolean;
+  onOpen: () => void;
+  onPin: () => void;
+  /** A user's own app has more to do with it; a built-in has Open and Pin. */
+  user?: UserActions;
+  /** Told when the menu opens or closes, so the launcher can make everything else inert. */
+  onToggle?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  const setOpen = (next: boolean | ((v: boolean) => boolean)): void =>
+    setOpenState((v) => {
+      const value = typeof next === "function" ? next(v) : next;
+      if (value !== v) onToggle?.(value);
+      return value;
+    });
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Pinning moves the tile to another section, which remounts this menu with its state gone. The
+  // launcher must hear that the menu closed, or every other tile stays inert.
+  const openRef = useRef(false);
+  openRef.current = open;
+  useEffect(
+    () => () => {
+      if (openRef.current) onToggle?.(false);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   // A menu is a keyboard thing too (#94): focus moves into it when it opens, arrows walk it, and
   // Escape hands focus back to the button that opened it. Without the first of these, Escape on the
@@ -151,12 +177,17 @@ function TileMenu({
             {/* The menu already says whose it is (aria-label); the title is for the eye. */}
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
             {item("open", "Open", onOpen)}
-            {item("history", "History", onHistory)}
-            {item("sync", app.sync ? "Turn sync off" : "Turn sync on", onSync, { disabled: busy })}
-            {item("share", "Share", onShare)}
-            {item("rename", "Rename", onRename)}
-            <div className="k-tile-menu-sep" role="separator" />
-            {item("delete", "Delete", onDelete, { className: "k-danger" })}
+            {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
+            {user ? (
+              <>
+                {item("history", "History", user.onHistory)}
+                {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
+                {item("share", "Share", user.onShare)}
+                {item("rename", "Rename", user.onRename)}
+                <div className="k-tile-menu-sep" role="separator" />
+                {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
+              </>
+            ) : null}
           </div>
         </>
       ) : null}
@@ -169,8 +200,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
   // this render. Nothing is read once and kept (#78).
   const installed = useInstalledApps();
-  const builtins = installed.filter((a) => a.kind === "builtin");
-  const myApps = installed.filter((a): a is InstalledApp & { kind: "user" } => a.kind === "user");
+  // One list, ordered (#84): pinned apps first in the order you gave them, then the rest by
+  // frecency, name, or your own hand. Built-ins and your apps are one list to you; provenance is
+  // the badge on the tile. The clock is read once, at mount: an order that re-sorts itself while
+  // you are looking at it is worse than a slightly stale one, and opens happen through a reload.
+  const sortMode = useSortMode();
+  const [mountedAt] = useState(() => Date.now());
+  const { pinned, rest } = orderApps(installed, sortMode, mountedAt);
+  const hasUserApps = installed.some((a) => a.kind === "user");
+  const nameOf = (key: string): string => installed.find((a) => a.key === key)?.name ?? key;
+  const pinnedReorder = useReorder(pinned.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), true);
+  const restReorder = useReorder(rest.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), sortMode === "manual");
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -278,6 +318,32 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
     }
   };
 
+  const isSelected = (a: InstalledApp): boolean => selected?.kind === a.kind && selected.id === a.id;
+  // While one tile's menu is open the other tiles are inert: a popover that sits over the tile
+  // below it must not leave that tile's button half-reachable, by pointer or by Tab.
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const inertUnless = (key: string): Record<string, string> | Record<string, never> => (openMenu && openMenu !== key ? { inert: "" } : {});
+  const menuFor = (a: InstalledApp) => (
+    <TileMenu
+      app={a}
+      busy={busy === a.id}
+      onOpen={() => onOpen(a)}
+      onPin={() => setPinned(a.key, !a.entry.pinned)}
+      onToggle={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
+      user={
+        a.kind === "user"
+          ? {
+              onHistory: () => setHistory(a.user),
+              onSync: () => void toggleSync(a.user),
+              onShare: () => void share(a.user),
+              onRename: () => void rename(a.user),
+              onDelete: () => void del(a.user),
+            }
+          : undefined
+      }
+    />
+  );
+
   const body = (
     <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label="App launcher" onClick={(e) => e.stopPropagation()}>
       <header className="k-launcher-head">
@@ -300,42 +366,49 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
 
-      <section className="k-launch-section">
-        <h3 className="k-launch-title">Apps</h3>
-        <div className="k-launch-grid">
-          {builtins.map((a) => (
-            <Tile key={a.key} app={a} active={selected?.kind === "builtin" && selected.id === a.id} onOpen={() => onOpen(a)} />
-          ))}
-        </div>
-      </section>
+      {pinned.length ? (
+        <section className="k-launch-section" aria-labelledby="k-launch-pinned">
+          <h3 className="k-launch-title" id="k-launch-pinned">Pinned</h3>
+          <div className="k-launch-grid" data-reorderable="true">
+            {pinned.map((a) => (
+              <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...pinnedReorder.item(a.key)} {...inertUnless(a.key)}>
+                <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} />
+                {menuFor(a)}
+              </div>
+            ))}
+          </div>
+          <p className="k-visually-hidden" aria-live="polite">{pinnedReorder.announcement}</p>
+        </section>
+      ) : null}
 
-      <section className="k-launch-section">
-        <h3 className="k-launch-title">My Apps</h3>
-        <div className="k-launch-grid">
-          {myApps.map((a) => (
-            <div key={a.key} className="k-launch-usertile">
+      <section className="k-launch-section" aria-labelledby="k-launch-all">
+        <div className="k-launch-section-head">
+          <h3 className="k-launch-title" id="k-launch-all">{pinned.length ? "Everything else" : "Apps"}</h3>
+          <div className="k-launch-sort" role="group" aria-label="Sort apps">
+            {SORT_MODES.map((m) => (
+              <button key={m.id} type="button" className="k-launch-sort-btn" aria-pressed={sortMode === m.id} title={m.title} onClick={() => setSortMode(m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="k-launch-grid" data-reorderable={sortMode === "manual"}>
+          {rest.map((a) => (
+            <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...restReorder.item(a.key)} {...inertUnless(a.key)}>
               {/* The badge reads the record: a Studio-authored app is the user's own and runs
                   trusted. Hardcoding "untrusted" here once reported the opposite of what ran. */}
-              <Tile app={a} active={selected?.kind === "user" && selected.id === a.id} onOpen={() => onOpen(a)} />
-              <TileMenu
-                app={a.user}
-                busy={busy === a.id}
-                onOpen={() => onOpen(a)}
-                onHistory={() => setHistory(a.user)}
-                onSync={() => void toggleSync(a.user)}
-                onShare={() => void share(a.user)}
-                onRename={() => void rename(a.user)}
-                onDelete={() => void del(a.user)}
-              />
+              <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} />
+              {menuFor(a)}
             </div>
           ))}
-          <button type="button" className="k-launch-tile k-launch-new" onClick={onNewApp}>
+          <button type="button" className="k-launch-tile k-launch-new" onClick={onNewApp} {...inertUnless("new")}>
             <span className="k-launch-avatar" aria-hidden>+</span>
             <span className="k-launch-name">New app</span>
             <span className="k-muted">Studio</span>
           </button>
         </div>
-        {myApps.length === 0 ? (
+        <p className="k-visually-hidden" aria-live="polite">{restReorder.announcement}</p>
+        {!hasUserApps ? (
           <p className="k-muted k-launch-empty">No saved apps yet — create one in the Studio, then it appears here.</p>
         ) : null}
       </section>

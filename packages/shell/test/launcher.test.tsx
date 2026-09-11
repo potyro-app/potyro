@@ -102,3 +102,54 @@ describe("Launcher", () => {
     expect(source).not.toContain("{true ?");
   });
 });
+
+// #84: order. Pinned first, in your order; the rest by frecency, name, or your hand.
+describe("Launcher order", () => {
+  const keysIn = (heading: string): string[] => {
+    const section = screen.getByRole("heading", { name: heading }).closest("section")!;
+    return Array.from(section.querySelectorAll<HTMLElement>(".k-launch-item")).map((el) => el.dataset.key!);
+  };
+  const opened = (id: string, name: string, openCount: number) => {
+    localStorage.setItem(
+      "karta:launcher",
+      JSON.stringify({ ...JSON.parse(localStorage.getItem("karta:launcher") ?? "{}"), [`user:${id}`]: { key: `user:${id}`, openCount, lastOpenedAt: new Date().toISOString() } }),
+    );
+    return app(id, name);
+  };
+
+  it("pins an app from its menu into a Pinned row that comes first", () => {
+    seed(app("groceries", "Groceries"), app("trips", "Trips"));
+    render(<Launcher {...props} />);
+    expect(screen.queryByRole("heading", { name: "Pinned" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Trips/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Pin" }));
+    expect(keysIn("Pinned")).toEqual(["user:trips"]);
+    expect(keysIn("Everything else")).not.toContain("user:trips");
+    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:trips"]).toMatchObject({ pinned: true, order: 0 });
+    // And back.
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Trips/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+    expect(screen.queryByRole("heading", { name: "Pinned" })).toBeNull();
+  });
+
+  it("orders by frecency by default, and by name when asked, and remembers", () => {
+    seed(opened("zebra", "Zebra", 5), app("apple", "Apple"));
+    render(<Launcher {...props} />);
+    const all = keysIn("Apps");
+    expect(all.indexOf("user:zebra")).toBeLessThan(all.indexOf("user:apple"));
+    fireEvent.click(screen.getByRole("button", { name: "A–Z" }));
+    expect(keysIn("Apps")[0]).toBe("user:apple");
+    expect(screen.getByRole("button", { name: "A–Z" }).getAttribute("aria-pressed")).toBe("true");
+    expect(localStorage.getItem("karta:launcher:sort")).toBe("az");
+  });
+
+  it("moves a pinned tile with Alt+arrows", () => {
+    seed(app("a", "Alpha"), app("b", "Beta"));
+    localStorage.setItem("karta:launcher", JSON.stringify({ "user:a": { key: "user:a", pinned: true, order: 0 }, "user:b": { key: "user:b", pinned: true, order: 1 } }));
+    render(<Launcher {...props} />);
+    expect(keysIn("Pinned")).toEqual(["user:a", "user:b"]);
+    fireEvent.keyDown(tiles("Alpha")[0]!, { key: "ArrowRight", altKey: true });
+    expect(keysIn("Pinned")).toEqual(["user:b", "user:a"]);
+    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:a"].order).toBe(1);
+  });
+});
