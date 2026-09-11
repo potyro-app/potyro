@@ -36,6 +36,30 @@ test("the in-app switcher has none", async ({ page }) => {
   await audit(page, "switcher");
 });
 
+// Dark (#92): the same three audits under `prefers-color-scheme: dark`, so a token that only reads
+// on paper is caught here rather than on a phone at night.
+test.describe("dark", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("home has no serious or critical violations in dark", async ({ page }) => {
+    await openHome(page);
+    await audit(page, "home, dark");
+  });
+
+  test("the open tile menu has none in dark", async ({ page }) => {
+    await openHome(page);
+    await page.getByRole("button", { name: "Actions for Groceries" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await audit(page, "tile menu, dark");
+  });
+
+  test("the in-app switcher has none in dark", async ({ page }) => {
+    await openApp(page, "groceries", "Groceries");
+    await openSwitcher(page);
+    await audit(page, "switcher, dark");
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 
