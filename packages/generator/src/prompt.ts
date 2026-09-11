@@ -309,6 +309,13 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   entity's ONLY required field is a single enum (a "type"/"day"), add \`mode: "menu"\` to pick it inline;
   otherwise the shell opens the create form. \`open: true\` lands the user in the new record.
 - Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
+- When one entity is what everything else belongs to (a trip and its places/events/expenses, a project
+  and its tasks), declare \`scope: { entity: "trip", required: true }\`. The shell then shows the current
+  trip in the header with a picker, and every function reads it synchronously as \`ctx.scope.trip\`.
+  Narrow each page yourself: \`filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id\`. Options such as
+  the map \`camera\` may be a function of ctx (\`Dynamic<T>\`): \`camera: (ctx) => ctx.scope.trip?.location
+  ? { center: [lng, lat], zoom: 11 } : "fit"\`. A relation to the scoped entity defaults to the current
+  selection on create. Do NOT reach for \`ctx.params\` (per page) or \`ctx.storage\` (async) for this.
 - Do NOT expose sub-records (e.g. a session's individual sets) as their own top-level tab — model them
   as a nested \`list\` field or reach them from the parent's detail.
 - Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).

@@ -30,13 +30,14 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     return row;
   }
 
-  function makeCtx(app, params, nowIso, capsAvailable, me, space){
+  function makeCtx(app, params, nowIso, capsAvailable, me, space, scope){
     var fixedNow = new Date(nowIso);
     var ctx = {
       params: params || {},
       // Always present, exactly as in a trusted app — so one app source behaves the same either way.
       me: me || { id: "local", name: "Me" },
       space: space,
+      scope: scope || {},
       now: function(){ return new Date(nowIso); },
       today: function(){ return new Date(fixedNow.getFullYear(), fixedNow.getMonth(), fixedNow.getDate()); },
       log: function(){ var a=[].slice.call(arguments).map(String); bridgeSync({op:"log", args:a}); },
@@ -123,7 +124,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       var p = __deserialize(payloadJson);
       var app = globalThis.__kartaApp;
       if (!app) return __serialize({ ok:false, error:"no app loaded" });
-      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space);
+      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope);
       var record = (p.record !== undefined && p.record !== null) ? p.record : null;
       try {
         var result = null;
@@ -132,6 +133,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
           case "action": await app.entities[p.entity].actions[p.key](record, ctx, p.input); result = null; break;
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
           case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b)) : 0; break; }
+          case "viewOption": { var vo = findView(app, p.pageId); var opt = vo ? vo[p.key] : undefined; result = (opt === undefined) ? null : (typeof opt === "function" ? await opt(ctx) : opt); break; }
           case "binding": result = await resolveBinding(app, p, record, ctx); break;
           case "summary": {
             var pg = (app.pages||[]).find(function(x){ return x.id === p.pageId; });

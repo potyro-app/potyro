@@ -17,6 +17,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openBuiltinApp, openUserApp } from "./launcher.js";
+import { restoreScope } from "./scope.js";
 import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
@@ -227,6 +228,7 @@ async function bootBuiltin(appId: AppId, root: HTMLElement, toaster: Toaster, ca
   startReminderSync(composed.runtime, store);
 
   const provenance: Provenance = SANDBOX ? "untrusted" : "trusted";
+  await restoreScope(composed.runtime, appId);
   mount(
     root,
     <App
@@ -472,6 +474,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);
+  await restoreScope(composed!.runtime, id);
 
   mount(
     root,

@@ -137,6 +137,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     },
 
     params: Object.freeze({ ...(base.params ?? {}) }),
+    // Fixed per pass like `now()`: a filter must see the same selection for every row it judges.
+    scope: Object.freeze({ ...(base.scope ?? {}) }),
 
     storage: {
       async get<T = unknown>(k: string): Promise<T | null> {

@@ -125,6 +125,32 @@ body {
   border: 1px solid var(--line);
   color: var(--ink-soft);
 }
+/* The app-wide selection ("Trip: Berlin ▾") — a pill like provenance, but it is a control. */
+.k-scope {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25em 0.7em;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 2rem;
+  transition: border-color 150ms var(--ease), background 150ms var(--ease);
+}
+.k-scope:hover,
+.k-scope:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 20%, var(--surface));
+}
+.k-scope-label {
+  color: var(--ink-soft);
+  margin-right: 0.35em;
+}
+.k-scope[data-empty="true"] {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
 .k-prov-untrusted {
   color: oklch(45% 0.14 30);
   border-color: oklch(80% 0.1 30);

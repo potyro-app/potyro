@@ -60,7 +60,7 @@ describe("SYSTEM_PROMPT", () => {
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {
     // The map can be positioned.
-    expect(SYSTEM_PROMPT).toContain("camera?: MapCamera");
+    expect(SYSTEM_PROMPT).toContain("camera?: Dynamic<MapCamera>");
     // Filter chips can draw their options from an entity's records, not only from an enum.
     expect(SYSTEM_PROMPT).toMatch(/from.*name.*entity/i);
     // Params are per page, so one selection cannot filter every page.

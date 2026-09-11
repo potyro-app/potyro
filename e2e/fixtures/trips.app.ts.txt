@@ -1,0 +1,63 @@
+import { defineApp } from "karta";
+
+// The shape of the request that opened #134: one trip is what everything else belongs to. Seeded as
+// a USER app by e2e/scope-trusted.spec.ts (kept as .txt so the examples tsconfig does not compile it).
+export default defineApp({
+  id: "trips",
+  name: "Trips",
+  version: "1.0.0",
+  schemaVersion: 1,
+  scope: { entity: "trip", label: "Trip", required: true },
+  entities: {
+    trip: {
+      label: "Trip",
+      icon: "✈️",
+      displayField: "city",
+      fields: { city: { type: "text", required: true }, location: { type: "geo" } },
+    },
+    place: {
+      label: "Place",
+      icon: "📍",
+      displayField: "name",
+      fields: {
+        name: { type: "text", required: true },
+        trip: { type: "relation", to: "trip", required: true },
+        location: { type: "geo" },
+      },
+    },
+  },
+  pages: [
+    {
+      id: "places",
+      title: "Places",
+      view: {
+        type: "list",
+        entity: "place",
+        display: { primary: "name", secondary: (p) => p.trip?.city ?? "" },
+        filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id,
+        onOpen: { page: "place", param: { placeId: "id" } },
+      },
+    },
+    {
+      id: "place",
+      title: "Place",
+      hidden: true,
+      view: { type: "detail", entity: "place", param: "placeId", sections: [{ fields: ["name", "trip", "location"] }] },
+    },
+    {
+      id: "map",
+      title: "Map",
+      view: {
+        type: "map",
+        entity: "place",
+        geo: "location",
+        title: "name",
+        filter: (p, ctx) => !ctx.scope.trip || p.trip?.id === ctx.scope.trip.id,
+        camera: (ctx) => {
+          const at = ctx.scope.trip?.location as { lat: number; lng: number } | undefined;
+          return at ? { center: [at.lng, at.lat], zoom: 11 } : "fit";
+        },
+      },
+    },
+  ],
+});

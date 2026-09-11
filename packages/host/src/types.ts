@@ -66,6 +66,8 @@ export interface MakeCtxBase {
   me?: Person;
   /** The space this app's data lives in, when it is synced. Absent = solo (ADR D3). */
   space?: Space;
+  /** The app-wide selected record(s) by entity (`ctx.scope`, see `ScopeDef`). Absent = `{}`. */
+  scope?: Record<string, Resolved | undefined>;
 }
 
 /**
@@ -82,6 +84,12 @@ export interface LoadedApp {
   callFilter(pageId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
   callSort(pageId: string, a: Resolved, b: Resolved): Promise<number>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
+  /**
+   * Resolve a `Dynamic<T>` view option (`camera` first): the literal as declared, or the function
+   * called with `ctx`. Through the host for the same reason `callBinding` is — for an untrusted app
+   * the function never leaves the isolate. `null` when the option is absent.
+   */
+  callViewOption(pageId: string, key: string, ctx: Ctx): Promise<Value>;
   /**
    * Compute a page summary figure's `value` function over the page's filtered rows.
    *

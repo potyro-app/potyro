@@ -130,6 +130,22 @@ function popupContent(title: string, onOpen: (() => void) | null): HTMLElement {
   return el;
 }
 
+/** The declared `camera`, evaluated when it is a function (trusted or in the isolate), else as is. */
+async function resolveCamera(runtime: BuiltinViewProps["runtime"], pageId: string, declared: unknown): Promise<MapCamera | null> {
+  const viewOption = (runtime as { viewOption?: (p: string, k: string) => Promise<unknown> }).viewOption;
+  if (viewOption) {
+    try {
+      const value = await viewOption.call(runtime, pageId, "camera");
+      return (value ?? null) as MapCamera | null;
+    } catch (e) {
+      console.warn("[karta] the map's camera function failed; opening as remembered:", e);
+      return null;
+    }
+  }
+  // A runtime without `viewOption` (a bare fake) can only honour a literal.
+  return typeof declared === "function" || declared === undefined ? null : (declared as MapCamera);
+}
+
 export function MapView(props: BuiltinViewProps) {
   const { runtime, pageId, params, onCreate } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
@@ -162,10 +178,13 @@ export function MapView(props: BuiltinViewProps) {
   const onCreateRef = useRef(onCreate);
   onCreateRef.current = onCreate;
   const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
-    | { entity?: string; geo?: string; camera?: MapCamera }
+    | { entity?: string; geo?: string; camera?: unknown }
     | undefined;
-  const cameraModeRef = useRef<MapCamera>(view?.camera ?? "remember");
-  cameraModeRef.current = view?.camera ?? "remember";
+  // What the app declared (a mode, a position, or a function of ctx — or, for an untrusted app, the
+  // sentinel where the function was), and what it resolved to once the map was created.
+  const declaredCameraRef = useRef<unknown>(view?.camera);
+  declaredCameraRef.current = view?.camera;
+  const cameraModeRef = useRef<MapCamera>("remember");
   const entityRef = useRef(view?.entity ?? "");
   entityRef.current = view?.entity ?? "";
   const geoFieldKey = useRef(typeof view?.geo === "string" ? view.geo : "");
@@ -190,7 +209,12 @@ export function MapView(props: BuiltinViewProps) {
       // Resolve the opening camera BEFORE constructing: handing it to the constructor means the map
       // opens where it should, with no visible jump from the world view and no race against the
       // marker auto-fit.
-      const mode = cameraModeRef.current;
+      //
+      // Through the runtime, not read off the definition: `camera` may be a function of `ctx`
+      // (#133 — "open on the selected trip"), and for an untrusted app that function never leaves
+      // the isolate. A literal comes back as itself, so both forms take the same path.
+      const mode = (await resolveCamera(runtimeRef.current, pageIdRef.current, declaredCameraRef.current)) ?? "remember";
+      cameraModeRef.current = mode;
       let opening: Camera | null = typeof mode === "object" ? { center: mode.center, zoom: mode.zoom } : null;
       if (mode === "remember") {
         try {
