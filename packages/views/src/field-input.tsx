@@ -9,12 +9,15 @@ import { RecordForm } from "./record-form.js";
 import { MAP_STYLE } from "./map.js";
 import { displayFieldFor, humanizeKey } from "./format.js";
 import { Switch } from "./switch.js";
+import { DurationInput, NumberInput } from "./number-input.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
+  /** The field's label, for controls that name themselves (a number with its stepper buttons). */
+  label?: string;
 }
 
 function toLocalInput(d: Date): string {
@@ -22,7 +25,7 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function FieldInput({ runtime, field, value, onChange }: FieldInputProps) {
+export function FieldInput({ runtime, field, value, onChange, label }: FieldInputProps) {
   switch (field.type) {
     case "text":
       return field.multiline ? (
@@ -36,17 +39,13 @@ export function FieldInput({ runtime, field, value, onChange }: FieldInputProps)
       return <input className="k-input" type="url" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
 
     case "number":
+      // Unit inside the field, a stepper where the value is nudged, the right phone keyboard (#99).
+      return <NumberInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
     case "duration":
-      return (
-        <input
-          className="k-input"
-          type="number"
-          value={value === undefined || value === null ? "" : String(value)}
-          min={field.type === "number" ? field.min : undefined}
-          max={field.type === "number" ? field.max : undefined}
-          step={field.type === "number" ? field.step ?? (field.integer ? 1 : undefined) : undefined}
-          onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        />
+      return field.unit === "min" || field.unit === "h" ? (
+        <DurationInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />
+      ) : (
+        <NumberInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />
       );
 
     case "boolean":
