@@ -30,6 +30,12 @@ export default defineApp({
   // narrow themselves: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`. Per device.
   scope: { entity: "trip", required: true },
 
+  // Display options marked `Dynamic<T>` in docs/04's types accept a function of ctx in place of the
+  // literal — a page `title`, a list's `emptyText`, an aggregate's `title`, a map's `camera`:
+  //   title: (ctx) => `Places in ${ctx.scope.trip?.city ?? "…"}`
+  // The host evaluates it on every pass (and in the isolate for a shared app). `sort` receives
+  // `ctx` as its third argument for the same reason: `(a, b, ctx) => …`.
+
   entities: { /* … */ },   // declarative shape + co-located computed/action functions
   pages:    [ /* … */ ],   // declarative view layout; display/filter/sort may be functions
   reminders:[ /* … */ ],   // functions

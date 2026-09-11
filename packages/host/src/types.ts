@@ -82,14 +82,17 @@ export interface LoadedApp {
   callComputed(entity: string, key: string, record: Resolved, ctx: Ctx): Promise<Value>;
   callAction(entity: string, key: string, record: Resolved, ctx: Ctx, input?: unknown): Promise<void>;
   callFilter(pageId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
-  callSort(pageId: string, a: Resolved, b: Resolved): Promise<number>;
+  callSort(pageId: string, a: Resolved, b: Resolved, ctx: Ctx): Promise<number>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
   /**
-   * Resolve a `Dynamic<T>` view option (`camera` first): the literal as declared, or the function
-   * called with `ctx`. Through the host for the same reason `callBinding` is — for an untrusted app
-   * the function never leaves the isolate. `null` when the option is absent.
+   * Resolve a `Dynamic<T>` view option (`camera`, `emptyText`, an aggregate's `title`): the literal
+   * as declared, or the function called with `ctx`. Through the host for the same reason
+   * `callBinding` is — for an untrusted app the function never leaves the isolate. `null` when the
+   * option is absent.
    */
   callViewOption(pageId: string, key: string, ctx: Ctx): Promise<Value>;
+  /** The same for a PAGE's own options (`title`). */
+  callPageOption(pageId: string, key: string, ctx: Ctx): Promise<Value>;
   /**
    * Compute a page summary figure's `value` function over the page's filtered rows.
    *

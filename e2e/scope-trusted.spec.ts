@@ -54,6 +54,9 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await chip(page).click();
   await createTrip(page, "Lisbon");
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toHaveCount(0);
+  // The tab and the empty state are functions of the selection (#133).
+  await expect(page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Places in Lisbon" })).toBeVisible();
+  await expect(page.locator(".k-empty")).toHaveText("No places in Lisbon yet.");
 
   // Back to Berlin through the picker's rows.
   await chip(page).click();

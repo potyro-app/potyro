@@ -172,6 +172,9 @@ const filterChipSchema = z.object({
   type: z.enum(["boolean", "geo"]).optional(),
 });
 
+/** `Dynamic<string>` (#133): a literal, or a function of ctx the host evaluates. */
+const zDynamicString = z.union([z.string(), zFn]);
+
 const listView = z.object({
   type: z.literal("list"),
   entity: z.string(),
@@ -180,7 +183,7 @@ const listView = z.object({
   display: listDisplaySchema.optional(),
   rowActions: z.array(z.string()).optional(),
   onOpen: onOpenSchema.optional(),
-  emptyText: z.string().optional(),
+  emptyText: zDynamicString.optional(),
   param: z.string().optional(),
   filters: z.array(filterChipSchema).optional(),
 });
@@ -192,7 +195,7 @@ const galleryView = z.object({
   sort: zFn.optional(),
   display: listDisplaySchema.optional(),
   onOpen: onOpenSchema.optional(),
-  emptyText: z.string().optional(),
+  emptyText: zDynamicString.optional(),
 });
 
 const tableView = z.object({
@@ -273,8 +276,8 @@ const aggregateView = z.object({
   entity: z.string(),
   param: z.string().optional(),
   rows: zFn,
-  title: z.string().optional(),
-  emptyText: z.string().optional(),
+  title: zDynamicString.optional(),
+  emptyText: zDynamicString.optional(),
 });
 
 const customView = z.object({
@@ -370,7 +373,7 @@ const summaryValueSchema = z
 const pageSchema = z
   .object({
     id: z.string().min(1),
-    title: z.string(),
+    title: zDynamicString,
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
     view: viewSchema,

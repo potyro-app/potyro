@@ -132,8 +132,9 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
           case "computed": result = await app.entities[p.entity].computed[p.key](record, ctx); break;
           case "action": await app.entities[p.entity].actions[p.key](record, ctx, p.input); result = null; break;
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
-          case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b)) : 0; break; }
+          case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b, ctx)) : 0; break; }
           case "viewOption": { var vo = findView(app, p.pageId); var opt = vo ? vo[p.key] : undefined; result = (opt === undefined) ? null : (typeof opt === "function" ? await opt(ctx) : opt); break; }
+          case "pageOption": { var pg = (app.pages || []).find(function(x){ return x.id === p.pageId; }); var po = pg ? pg[p.key] : undefined; result = (po === undefined) ? null : (typeof po === "function" ? await po(ctx) : po); break; }
           case "binding": result = await resolveBinding(app, p, record, ctx); break;
           case "summary": {
             var pg = (app.pages||[]).find(function(x){ return x.id === p.pageId; });
