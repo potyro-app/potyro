@@ -29,6 +29,9 @@ export interface LauncherEntry {
   displayName?: string;
   /** User override; falls back to the app's declared icon. */
   icon?: string;
+  /** User override for the tile's colour: a hue on the same twelve-step wheel tiles derive from
+   *  their key, chosen from the tile editor (#83). Falls back to the declared accent, then the key. */
+  hue?: number;
   pinned?: boolean;
   /** Manual position among pinned. */
   order?: number;
@@ -53,9 +56,13 @@ export interface InstalledApp {
   id: string;
   /** What the tile says: the user's override, else the record's name. */
   name: string;
-  /** Declared for the tile (#82); absent until the source has been read, or when it declares none. */
+  /** For the tile: the user's own icon for it (#83), else the declared one (#82) once the source
+   *  has been read. */
   icon?: string;
+  /** The declared accent (#82). */
   accent?: string;
+  /** The user's own colour for the tile (#83), a hue. */
+  hue?: number;
   trusted: boolean;
   sync: boolean;
   entry: LauncherEntry;
@@ -211,8 +218,9 @@ export function listInstalledApps(): InstalledApp[] {
       kind: "user",
       id: user.id,
       name: entry.displayName ?? user.name,
-      ...(identity?.icon ? { icon: identity.icon } : {}),
+      ...(entry.icon ?? identity?.icon ? { icon: entry.icon ?? identity?.icon } : {}),
       ...(identity?.accent ? { accent: identity.accent } : {}),
+      ...(typeof entry.hue === "number" ? { hue: entry.hue } : {}),
       trusted: user.trusted !== false,
       sync: Boolean(user.sync),
       entry,
