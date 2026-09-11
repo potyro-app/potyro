@@ -237,8 +237,7 @@ export function Launcher({ builtins, userApps, variant, selected, onOpenBuiltin,
       // republished it.
       await askNameIfUnnamed();
       const link = await createShareLink(a.id);
-      await navigator.clipboard?.writeText(link).catch(() => {});
-      await shellDialogs.prompt("Send this link. Whoever opens it joins your app and its data.", { default: link });
+      await shellDialogs.share("Send this link. Whoever opens it joins your app and its data.", link);
       // After the link, not before it: the user came here to share, and interrupting that with a
       // question about recovery words buries the thing they actually asked for.
       await offerBackupOnFirstSync(() => setIdentity(true));

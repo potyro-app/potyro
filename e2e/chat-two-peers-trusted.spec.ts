@@ -126,7 +126,7 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   const linkField = a.locator(".k-dialog input");
   await expect(linkField).toHaveValue(/#join=/, { timeout: 60_000 });
   const link = await linkField.inputValue();
-  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
 
   // The recovery-words offer fires on the first sync of anything (ADR D2a). Declined — it has its
   // own spec.

@@ -70,7 +70,7 @@ test("sharing asks once, and not on every share after", async ({ page }) => {
   await nameDialog(page).getByRole("button", { name: "OK" }).click();
 
   await expect(page.locator(".k-dialog input")).toHaveValue(/#join=/, { timeout: 60_000 });
-  await page.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await page.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
   // The recovery-words offer, first sync of anything (ADR D2a).
   await page.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
 
