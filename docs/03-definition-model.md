@@ -90,6 +90,16 @@ entities: {
 
 - **Fields** are declarative — the runtime uses them for persistence, form generation,
   validation, view binding, migrations. Same closed type set as before (see "Field types").
+  Every field may carry presentation hints: `label`, `required`, `hidden`, `help` (one line
+  under the control), `placeholder` (example text in an empty control) and `width: "half"`
+  (two half-width neighbours share a row on a wide form; they stack on a phone).
+- **`groups`** arrange the fields: `groups: [{ title?, fields: [...], collapsed? }]`. The form
+  and the detail page read the same declaration, so what is edited under "Nutrition" is read
+  back under "Nutrition". A group may list computed keys — they show on the detail page, and
+  the form skips them. Fields left out of every group follow the last one, untitled. A
+  `collapsed` group starts folded (never the first). A detail page's `sections` override the
+  groups for that page only. A group naming a field the entity does not have, or listing one
+  twice, fails validation by name.
 - **`computed`** are functions `(record, ctx) => value | Promise<value>`. Relations are
   resolved one level deep on `record`; deeper or cross-entity work uses `ctx.query`. Memoized
   per query pass. Referenced in views exactly like fields.

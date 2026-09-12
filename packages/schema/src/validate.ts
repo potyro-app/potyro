@@ -27,6 +27,9 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     label: z.string().optional(),
     required: z.boolean().optional(),
     hidden: z.boolean().optional(),
+    help: z.string().optional(),
+    placeholder: z.string().optional(),
+    width: z.enum(["full", "half"]).optional(),
     default: z.any().optional(),
   };
 
@@ -132,11 +135,18 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
   ]);
 });
 
+const fieldGroupSchema = z.object({
+  title: z.string().optional(),
+  fields: z.array(z.string().min(1)).min(1, "a group needs at least one field"),
+  collapsed: z.boolean().optional(),
+});
+
 const entitySchema = z.object({
   label: z.string().optional(),
   icon: z.string().optional(),
   displayField: z.string().optional(),
   fields: z.record(fieldSchema),
+  groups: z.array(fieldGroupSchema).optional(),
   computed: z.record(zFn).optional(),
   actions: z.record(zFn).optional(),
 });
@@ -536,6 +546,22 @@ function checkFieldRelations(
   }
 }
 
+/** Every group names fields (or computed) the entity has, and names each once: a form that shows a
+ *  field twice would save whichever copy was edited last. The message names the offender (#100). */
+function checkGroups(entityName: string, entity: EntityDef, issues: string[]): void {
+  const known = boundKeys(entity);
+  const seen = new Map<string, string>();
+  for (const [i, group] of (entity.groups ?? []).entries()) {
+    const where = `entity "${entityName}" group ${group.title ? `"${group.title}"` : `#${i + 1}`}`;
+    for (const key of group.fields) {
+      if (!known.has(key)) issues.push(`${where} names unknown field/computed "${key}"`);
+      const earlier = seen.get(key);
+      if (earlier !== undefined) issues.push(`${where} lists "${key}" again — it is already in ${earlier}`);
+      else seen.set(key, where);
+    }
+  }
+}
+
 /** Referential integrity across the whole definition. */
 export function checkReferences(def: AppDefinition): string[] {
   const issues: string[] = [];
@@ -544,6 +570,7 @@ export function checkReferences(def: AppDefinition): string[] {
   // relations point at real entities
   for (const [name, entity] of Object.entries(def.entities)) {
     checkFieldRelations(name, entity.fields, entityNames, issues);
+    checkGroups(name, entity, issues);
   }
 
   const ensureEntity = (entity: string, where: string): EntityDef | null => {
