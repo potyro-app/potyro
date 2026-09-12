@@ -11,6 +11,7 @@ import { displayFieldFor, humanizeKey } from "./format.js";
 import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
 import { DateInput } from "./date-input.js";
+import { EnumInput } from "./enum-input.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
@@ -51,16 +52,9 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       return <Switch checked={Boolean(value)} onChange={onChange} label={(field as { label?: string }).label} />;
 
     case "enum":
-      return (
-        <select className="k-input" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value || null)}>
-          <option value="">— choose —</option>
-          {field.options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-      );
+      // A row of buttons for a short list, a searchable picker for a long one — never a raw
+      // `<select>`, which hid the options and was the last unstyled control in the form (#98).
+      return <EnumInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "tags":
       return <TagsInput field={field} value={value} onChange={onChange} />;
@@ -113,14 +107,50 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
       </div>
     );
   }
+  // No declared options: the person makes them up. Type a word, press Enter, it becomes a chip —
+  // rather than a comma-separated line where a stray space silently made a different tag (#98).
+  return <FreeTags selected={[...selected]} onChange={onChange} />;
+}
+
+function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: unknown) => void }) {
+  const [draft, setDraft] = useState("");
+  const add = (raw: string): void => {
+    const tag = raw.trim();
+    setDraft("");
+    if (!tag || selected.includes(tag)) return;
+    onChange([...selected, tag]);
+  };
   return (
-    <input
-      className="k-input"
-      type="text"
-      placeholder="comma,separated,tags"
-      value={[...selected].join(",")}
-      onChange={(e) => onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
-    />
+    <div className="k-tags">
+      {selected.length ? (
+        <div className="k-chips">
+          {selected.map((t) => (
+            <span key={t} className="k-chip k-tag" data-on="true">
+              {t}
+              <button type="button" className="k-tag-x" aria-label={`Remove ${t}`} onClick={() => onChange(selected.filter((x) => x !== t))}>
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <input
+        className="k-input"
+        type="text"
+        placeholder="Type a tag, press Enter"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => add(draft)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            add(draft);
+          } else if (e.key === "Backspace" && !draft && selected.length) {
+            onChange(selected.slice(0, -1));
+          }
+        }}
+      />
+    </div>
   );
 }
 

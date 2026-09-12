@@ -9,6 +9,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
+import { EnumPill } from "./enum-input.js";
 
 export function FieldValue({
   runtime,
@@ -129,6 +130,10 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
         </a>
       );
     }
+    case "enum":
+      // The value as a tinted pill, the same colour it wore in the form (#98).
+      return <EnumPill field={field} value={String(value)} />;
+
     case "datetime": {
       // A day reads as a day; only a minute field shows its time (#103). The absolute date sits in
       // the title, so a relative word ("yesterday") never hides the real one.

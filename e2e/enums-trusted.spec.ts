@@ -1,0 +1,99 @@
+import { test, expect, type Page } from "@playwright/test";
+
+// Choosing one of a set (#98). Recipes' "Diet" has three options, so the form shows all three as a
+// row of buttons. Places' "Kind" has six, so it opens a searchable list — a popover on a wide
+// screen, a bottom sheet on a phone. Neither is a browser `<select>`, which was the last unstyled
+// control in the form. A chosen value wears the same tint in the form, in a row badge and on the
+// record page.
+
+async function openApp(page: Page, app: string, title: string): Promise<void> {
+  await page.goto(`/?user=${app}`);
+  await expect(page.locator("h1").first()).toHaveText(title, { timeout: 30_000 });
+}
+
+test.describe("desktop", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("three options are a row of buttons; the colour follows the value everywhere", async ({ page }) => {
+    await openApp(page, "recipes", "Recipes");
+    await page.getByRole("button", { name: /New Ingredient/ }).click();
+    const form = page.locator(".k-form");
+    await expect(form).toBeVisible();
+    // Not a select — the whole form has none.
+    await expect(form.locator("select")).toHaveCount(0);
+
+    const diet = form.getByRole("radiogroup", { name: "Diet" });
+    await expect(diet.getByRole("radio")).toHaveText(["vegan", "vegetarian", "animal-based"]);
+    // Nothing is chosen for you.
+    await expect(diet.locator("[aria-checked='true']")).toHaveCount(0);
+    const vegan = diet.getByRole("radio", { name: "vegan" });
+    await vegan.click();
+    await expect(vegan).toHaveAttribute("aria-checked", "true");
+    const formTint = await vegan.getAttribute("style");
+    expect(formTint).toContain("--swatch");
+
+    await form.getByRole("textbox", { name: "Name" }).fill("E2E Tofu");
+    await form.getByRole("button", { name: "Create" }).click();
+
+    // The record page shows the value as a pill in the same colour.
+    const pill = page.locator("article.k-detail .k-enum-pill", { hasText: "vegan" });
+    await expect(pill).toBeVisible();
+    expect(await pill.getAttribute("style")).toBe(formTint);
+
+    // And so does the row badge back in the list.
+    await page.getByRole("button", { name: "Back" }).click();
+    const badge = page.locator(".k-list-row", { hasText: "E2E Tofu" }).locator(".k-badge", { hasText: "vegan" });
+    await expect(badge).toHaveAttribute("data-tinted", "true");
+    expect(await badge.getAttribute("style")).toBe(formTint);
+  });
+
+  test("six options open a searchable list in a popover", async ({ page }) => {
+    await openApp(page, "places", "Places");
+    await page.getByRole("button", { name: /New Place/ }).click();
+    const form = page.locator(".k-form");
+    await expect(form.locator("select")).toHaveCount(0);
+
+    await form.getByRole("button", { name: "Kind: choose" }).click();
+    const list = page.getByRole("listbox", { name: "Kind" });
+    await expect(list.getByRole("option")).toHaveCount(6);
+    await expect(page.getByRole("dialog", { name: "Kind" })).not.toHaveClass(/k-enum-list-sheet/);
+    await page.getByRole("searchbox", { name: "Search Kind" }).fill("ba");
+    await expect(list.getByRole("option")).toHaveText([/bar/, /bakery/]);
+    await list.getByRole("option", { name: /bakery/ }).click();
+    await expect(page.getByRole("dialog", { name: "Kind" })).toHaveCount(0);
+    await expect(form.getByRole("button", { name: "Kind: bakery" })).toBeVisible();
+  });
+
+  test("a tags field with no options takes a typed tag", async ({ page }) => {
+    await openApp(page, "plants", "Plants");
+    await page.getByRole("button", { name: "New Plant" }).click();
+    const form = page.locator(".k-form");
+    const tags = form.locator(".k-tags input");
+    await expect(tags).toHaveAttribute("placeholder", "Type a tag, press Enter");
+    await tags.fill("weeknight");
+    await tags.press("Enter");
+    const chip = form.locator(".k-tag", { hasText: "weeknight" });
+    await expect(chip).toBeVisible();
+    await expect(tags).toHaveValue("");
+    await chip.getByRole("button", { name: "Remove weeknight" }).click();
+    await expect(form.locator(".k-tag")).toHaveCount(0);
+  });
+});
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+
+  test("the long list is a bottom sheet", async ({ page }) => {
+    await openApp(page, "places", "Places");
+    await page.getByRole("button", { name: /New Place/ }).tap();
+    const form = page.locator(".k-form");
+    await form.getByRole("button", { name: "Kind: choose" }).tap();
+    const sheet = page.getByRole("dialog", { name: "Kind" });
+    await expect(sheet).toHaveClass(/k-enum-list-sheet/);
+    const box = (await sheet.boundingBox())!;
+    expect(box.x).toBeLessThan(2);
+    expect(Math.round(box.y + box.height)).toBeGreaterThan(800);
+    await sheet.getByRole("option", { name: /cafe/ }).tap();
+    await expect(form.getByRole("button", { name: "Kind: cafe" })).toBeVisible();
+  });
+});

@@ -84,7 +84,13 @@ export default defineApp({
       fields: {
         name: { type: "text", required: true },
         // ingredients are a real data model — not just a picker option
-        diet: { type: "enum", options: ["vegan", "vegetarian", "animal-based"], label: "Diet" },
+        // Three options, so all three show as a row of buttons; the colours mean something here.
+        diet: {
+          type: "enum",
+          options: ["vegan", "vegetarian", "animal-based"],
+          label: "Diet",
+          colors: { vegan: "green", vegetarian: "teal", "animal-based": "red" },
+        },
         category: { type: "enum", options: ["vegetable", "fruit", "grain", "dairy", "protein", "spice", "fat", "other"] },
         seasons: { type: "tags", options: ["spring", "summer", "autumn", "winter"] },
         pricePerKg: { type: "number", unit: "$/kg", min: 0, label: "Price per kg" },

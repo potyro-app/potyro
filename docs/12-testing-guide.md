@@ -182,6 +182,15 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4d. Enums — the control the list deserves (#98)
+
+**New Ingredient** in Recipes: "Diet" has three options, so all three sit in a row — tap one, tap it
+again to unset it. "Category" has eight, so it opens a searchable list under the field; type "fr",
+press Enter, and it takes the first match. On a phone the same list arrives as a bottom sheet. There
+is **no `<select>` left in any form**. The value you chose wears the same colour in the form, on the
+record page and in the row badge back in the list. In Plants, "Labels" has no fixed options: type a
+word, press Enter, it becomes a chip; Backspace on the empty box removes the last one.
+
 ## 4c. Dates — a day, not a moment (#103)
 
 Any form with a date: **New Plant** in Plants ("Last Watered"), or the e2e fixture app. The box

@@ -183,7 +183,10 @@ CONTRACT
     - \`datetime\` -> a real \`Date\` (call \`.getTime()\`, never compare strings). It is a DAY unless the
       field says \`precision: "minute"\` — do that only when the hour matters (a session start).
     - \`media\` -> a \`MediaRef\`; render it through a media binding, do not read it as a URL.
-    - text/number/boolean/enum/tags/geo/list read as written.
+    - text/number/boolean/enum/tags/geo/list read as written. An \`enum\` picks its own control
+      from the option count (up to five are a row of buttons, more a searchable picker) — never
+      write a control; give it \`colors\` (red orange yellow green teal blue purple pink grey) only
+      when a value's colour MEANS something ("overdue" red), never for decoration.
   When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
