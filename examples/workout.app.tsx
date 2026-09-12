@@ -408,7 +408,7 @@ export default defineApp({
       displayField: "label",
       fields: {
         day: { type: "enum", options: ["push", "pull", "legs"], required: true },
-        date: { type: "datetime", required: true, default: (ctx) => ctx.now() },
+        date: { type: "datetime", precision: "minute", required: true, default: (ctx) => ctx.now() },
         durationSec: { type: "number", hidden: true },
         entries: {
           type: "list",

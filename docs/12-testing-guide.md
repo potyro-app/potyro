@@ -182,6 +182,19 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4c. Dates — a day, not a moment (#103)
+
+Any form with a date: **New Plant** in Plants ("Last Watered"), or the e2e fixture app. The box
+says the day in words — "Today, 12 Sep", "In 3 days, 15 Sep", "Thu, 24 Dec" — and **never asks for
+an hour**. Tap **Today** / **Yesterday** / **Tomorrow** and the box fills; **Clear** empties it.
+The calendar button opens a month grid: a popover under the box on a wide screen, a bottom sheet on
+a phone, with the same shortcuts plus **+1 week**. Type into the box too: `2026-12-24`, `24/12/2026`,
+`24 dec` and `tomorrow` all land; anything else is ignored and the box goes back to what it held.
+Save it and the record page shows the day with no time.
+
+The exception is a field that asks for the hour. Workout's session date says `precision: "minute"`,
+so it — and nothing else — has a time box beside the day (below it on a phone).
+
 ## 5. Data export / import (KA-04) — "your data is a file"
 
 | Do | Expect |

@@ -10,6 +10,7 @@ import { MAP_STYLE } from "./map.js";
 import { displayFieldFor, humanizeKey } from "./format.js";
 import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
+import { DateInput } from "./date-input.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
@@ -18,11 +19,6 @@ export interface FieldInputProps {
   onChange: (v: unknown) => void;
   /** The field's label, for controls that name themselves (a number with its stepper buttons). */
   label?: string;
-}
-
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function FieldInput({ runtime, field, value, onChange, label }: FieldInputProps) {
@@ -69,17 +65,9 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
     case "tags":
       return <TagsInput field={field} value={value} onChange={onChange} />;
 
-    case "datetime": {
-      const d = value instanceof Date ? value : value ? new Date(String(value)) : null;
-      return (
-        <input
-          className="k-input"
-          type="datetime-local"
-          value={d ? toLocalInput(d) : ""}
-          onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
-        />
-      );
-    }
+    case "datetime":
+      // A day by default, with chips and a month grid; the hour only when the field asks (#103).
+      return <DateInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "geo":
       return <GeoInput runtime={runtime} value={value as Geo | null} onChange={onChange} />;

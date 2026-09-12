@@ -279,8 +279,9 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
         </FormField>
       );
     }
-    if (field.type === "number" || field.type === "duration") {
-      // Several controls — the input and its stepper — so no <label> around them (#99).
+    if (field.type === "number" || field.type === "duration" || field.type === "datetime") {
+      // Several controls — an input and its stepper, a date and its chips — so no <label> around
+      // them (#99, #103): the control names itself from the label it is given.
       return (
         <FormField key={key} {...common} plain>
           <span className="k-form-label" aria-hidden>
