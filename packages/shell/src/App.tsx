@@ -1093,23 +1093,21 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       )}
 
       {editor ? (
-        <div className="k-modal-scrim" onClick={() => setEditor(null)}>
-          <div className="k-modal" onClick={(e) => e.stopPropagation()}>
-            <RecordForm
-              runtime={runtime}
-              entity={editor.entity}
-              recordId={editor.id}
-              initial={editor.initial}
-              onDone={(id) => {
-                const ed = editor;
-                setEditor(null);
-                if (id) ed?.onCreated?.(id);
-                if (ed?.openAfter && id) openRecord(ed.entity, id);
-              }}
-              onCancel={() => setEditor(null)}
-            />
-          </div>
-        </div>
+        // The form brings its own sheet (#101): full-screen on a phone with the actions in a fixed
+        // footer, a capped modal on a wide screen; it asks before discarding edits.
+        <RecordForm
+          runtime={runtime}
+          entity={editor.entity}
+          recordId={editor.id}
+          initial={editor.initial}
+          onDone={(id) => {
+            const ed = editor;
+            setEditor(null);
+            if (id) ed?.onCreated?.(id);
+            if (ed?.openAfter && id) openRecord(ed.entity, id);
+          }}
+          onCancel={() => setEditor(null)}
+        />
       ) : null}
 
       {quickMenu ? (
