@@ -119,6 +119,12 @@ it, and Remove lives in the card's own menu. `ordered: true` earns a grip — dr
 a finger, or focus it and press an arrow — and the record page then reads the list as a numbered
 list rather than a table. On a phone a card can be swiped aside to reveal Remove. The button that
 adds one names what it adds, from the field's label.
+A `media` field is a tile, never the browser's file button (#102). Empty it says what it wants
+("Add photo", or video/audio per `accept`); on a phone it offers Camera or Library through
+`ctx.caps.camera`, and on a wide screen it opens the file dialog and takes a dropped file. Filled it
+shows the thing, with a way to take it off. `multiple: true` makes it a strip with the add tile
+last. The same tile renders the value on a record page, so one photo looks like one photo
+everywhere. A file that fails to store says so, with a way to try again.
 
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a

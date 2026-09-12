@@ -279,10 +279,18 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
         </FormField>
       );
     }
-    if (field.type === "number" || field.type === "duration" || field.type === "datetime" || field.type === "enum" || field.type === "list") {
+    if (
+      field.type === "number" ||
+      field.type === "duration" ||
+      field.type === "datetime" ||
+      field.type === "enum" ||
+      field.type === "media" ||
+      field.type === "list"
+    ) {
       // Several controls — an input and its stepper, a date and its chips, a row of options, a
-      // stack of row cards — so no <label> around them (#99, #103, #98, #104): the control names
-      // itself from the label it is given, and a list needs it to say what it adds.
+      // strip of tiles, a stack of row cards — so no <label> around them (#99, #103, #98, #102,
+      // #104): the control names itself from the label it is given, and a list needs it to say
+      // what it adds.
       return (
         <FormField key={key} {...common} plain>
           <span className="k-form-label" aria-hidden>

@@ -182,6 +182,23 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4f. Nested rows — cards you can reorder (#104)
+
+Open a recipe, **More actions → Edit**, and unfold **Steps**. Each step is a card: the text on its
+line, its time under it, and Remove in the card's `⋯` menu — no bare ✕ beside the boxes. Steps are
+`ordered`, so each card has a grip: drag it with the mouse, or focus it and press ↑/↓. **Save
+changes** and the record page lists the steps numbered, in the order you left them. Ingredients are
+not ordered, so their cards are numbered instead of gripped. **Add step** names what it adds and
+puts the caret in the new card. On a phone, flick a card's grip sideways and Remove appears.
+
+## 4e. Photos — a tile, not a file button (#102)
+
+**New Plant** in Plants: "Photo" is a dashed tile that says **Add photo**. On a desktop, click it
+(the file dialog opens) or drag an image onto it; the tile then shows the photo with an ✕ to take it
+off. On a phone it asks first: **Take a photo** or **Choose from library**. Save, and the record page
+shows the same tile. Places' photo field takes several, so it shows a strip with the add tile last,
+and the record page shows all of them. There is **no "Choose File" button** anywhere in a form.
+
 ## 4d. Enums — the control the list deserves (#98)
 
 **New Ingredient** in Recipes: "Diet" has three options, so all three sit in a row — tap one, tap it
