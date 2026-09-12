@@ -11,6 +11,7 @@ import type { Field } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { FieldInput } from "./field-input.js";
 import { fieldLabel } from "./format.js";
+import { FormSheet } from "./form-sheet.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { SwitchRow } from "./switch.js";
 
@@ -23,7 +24,8 @@ export interface RecordFormProps {
   initial?: Record<string, unknown>;
   onDone: (id: string) => void;
   onCancel: () => void;
-  /** Render as a div, not a form — for nesting inside another form (see RelationInput). */
+  /** A form opened from inside another (a relation creating its target): a second sheet stacked
+   *  on the first, and a div rather than a <form>, so its submit never reaches the outer form. */
   nested?: boolean;
 }
 
@@ -193,19 +195,35 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
   const [focus, setFocus] = useState<{ key: string; n: number } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // What the form opened with, so "has it been edited" is a comparison, not a flag to maintain.
+  const opened = useRef<string>("");
 
   useEffect(() => {
     if (form) return;
-    if (isEdit) {
-      if (!loading && record) setForm(initialFormState(runtime, entity, record));
-    } else {
-      setForm(initialFormState(runtime, entity, null, initial));
-    }
+    const next = isEdit ? (!loading && record ? initialFormState(runtime, entity, record) : null) : initialFormState(runtime, entity, null, initial);
+    if (!next) return;
+    opened.current = JSON.stringify(next);
+    setForm(next);
   }, [form, isEdit, loading, record, runtime, entity, initial]);
 
-  if (!form) return <p className="k-loading">Loading…</p>;
-
   const def = runtime.definition.entities[entity];
+  const title = isEdit ? `Edit ${def?.label ?? entity}` : `New ${def?.label ?? entity}`;
+  const dirty = form !== null && JSON.stringify(form) !== opened.current;
+
+  // Closing a form with edits in it asks once — Escape, the scrim, a swipe, Close and Cancel alike.
+  const requestClose = async (): Promise<void> => {
+    if (dirty && !(await runtime.ctx.ui.confirm("Discard your changes?"))) return;
+    onCancel();
+  };
+
+  if (!form) {
+    return (
+      <FormSheet title={title} onClose={onCancel} stacked={nested} ready={false}>
+        <p className="k-loading">Loading…</p>
+      </FormSheet>
+    );
+  }
+
   const fields = def?.fields ?? {};
   const groups = resolveGroups(def, "form");
   const set = (key: string, v: unknown): void => {
@@ -299,33 +317,42 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     );
   };
 
-  // `nested` renders a div instead of a form: a relation field can open a create form for its target
-  // entity inline, and a <form> inside a <form> is invalid HTML (the inner submit would bubble).
+  // `nested` renders a div instead of a form: the sheet is a portal, so the DOM is not a <form> in a
+  // <form>, but React would still bubble the inner submit to the outer form's handler.
   const Root = (nested ? "div" : "form") as "div";
   const rootProps = nested ? {} : { onSubmit: submit as unknown as React.FormEventHandler, noValidate: true };
 
   return (
-    <Root className={`k-form${nested ? " k-form-nested" : ""}`} {...rootProps}>
-      <h3>{isEdit ? `Edit ${def?.label ?? entity}` : `New ${def?.label ?? entity}`}</h3>
-      {saveError ? (
-        <p className="k-form-error" role="alert">
-          Couldn't save: {saveError}
-        </p>
-      ) : null}
-      {groups.map(renderGroup)}
-      <div className="k-form-actions">
-        <button type="button" className="k-add" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type={nested ? "button" : "submit"}
-          className="k-add k-primary-action"
-          disabled={saving}
-          onClick={nested ? () => void submit() : undefined}
-        >
-          {saving ? "Saving…" : isEdit ? "Save changes" : "Create"}
-        </button>
-      </div>
-    </Root>
+    <FormSheet title={title} onClose={() => void requestClose()} stacked={nested} className={nested ? "k-inline-create" : undefined}>
+      <Root className={`k-form${nested ? " k-form-nested" : ""}`} {...rootProps}>
+        <header className="k-form-head">
+          <h3>{title}</h3>
+          <button type="button" className="k-form-close" aria-label="Close" onClick={() => void requestClose()}>
+            ✕
+          </button>
+        </header>
+        <div className="k-form-body">
+          {saveError ? (
+            <p className="k-form-error" role="alert">
+              Couldn't save: {saveError}
+            </p>
+          ) : null}
+          {groups.map(renderGroup)}
+        </div>
+        <footer className="k-form-actions">
+          <button type="button" className="k-add" onClick={() => void requestClose()}>
+            Cancel
+          </button>
+          <button
+            type={nested ? "button" : "submit"}
+            className="k-add k-primary-action"
+            disabled={saving}
+            onClick={nested ? () => void submit() : undefined}
+          >
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Create"}
+          </button>
+        </footer>
+      </Root>
+    </FormSheet>
   );
 }

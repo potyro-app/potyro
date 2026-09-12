@@ -43,10 +43,13 @@ const app = defineApp({
   pages: [{ id: "all", title: "Recipes", view: { type: "list", entity: "recipe" } }],
 });
 
+/** What the shell's confirm dialog would answer; a test decides. */
+const confirm = vi.fn(async (_message: string) => true);
+
 async function makeRuntime(): Promise<KartaRuntime> {
   const store = new MemoryStore();
   await store.open("groups-fixture");
-  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+  const ui: UiBridge = { toast: () => {}, confirm: (message) => confirm(message), prompt: async () => null, pick: async () => null };
   const nav: NavBridge = { navigate: () => {} };
   const host = createHost();
   const loaded = await host.load({ kind: "module", app });
@@ -118,5 +121,48 @@ describe("RecordForm", () => {
       fireEvent.click(screen.getByRole("button", { name: "Create" }));
     });
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+  });
+});
+
+// The form's surface (#101): a dialog named by its title, the first field focused on open and the
+// opener again on close, Tab kept inside, and a close that asks first when there are edits.
+describe("FormSheet", () => {
+  it("is a named dialog, focuses the first field, traps Tab and returns focus to the opener", async () => {
+    const runtime = await makeRuntime();
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    const view = render(<RecordForm runtime={runtime} entity="recipe" onDone={() => {}} onCancel={() => {}} />);
+    const dialog = await screen.findByRole("dialog", { name: "New Recipe" });
+    const name = screen.getByRole("textbox", { name: "Name" });
+    expect(document.activeElement).toBe(name);
+    // Shift+Tab from the first control (Close) wraps to the last (Create); Tab from the last wraps back.
+    screen.getByRole("button", { name: "Close" }).focus();
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Create" }));
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it("closes on Escape when untouched, and asks first once there are edits", async () => {
+    const runtime = await makeRuntime();
+    confirm.mockResolvedValue(false);
+    const onCancel = vi.fn();
+    render(<RecordForm runtime={runtime} entity="recipe" onDone={() => {}} onCancel={onCancel} />);
+    const dialog = await screen.findByRole("dialog", { name: "New Recipe" });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
+    expect(confirm).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Shakshuka" } });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith("Discard your changes?"));
+    expect(onCancel).toHaveBeenCalledTimes(1); // declined — still open
+    confirm.mockResolvedValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(2));
   });
 });

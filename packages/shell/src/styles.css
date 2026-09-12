@@ -1168,6 +1168,146 @@ details.k-section > summary h3 {
   font-family: var(--font-display);
   font-size: 1.3rem;
 }
+
+/* tokens-only: start — form sheet */
+/* The form's surface (#101). Head and foot stay put; the fields scroll between them. On a wide
+   screen the sheet is the centred modal capped at 90vh; on a phone it is the whole screen, sliding
+   up, its footer above the home indicator. A stacked sheet (a relation's inline create) sits over
+   the first with a darker scrim. */
+.k-sheet-scrim {
+  z-index: 40;
+  padding: 4vh var(--space-4);
+}
+.k-sheet-scrim-stacked {
+  z-index: 41;
+  background: var(--scrim);
+}
+.k-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  max-height: 90dvh;
+  padding: 0;
+  outline: none;
+}
+.k-sheet[data-dragging] {
+  animation: none;
+  transition: none;
+}
+.k-sheet > .k-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.k-form-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  touch-action: none;
+}
+.k-form-close {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-form-close:hover {
+  background: var(--accent-tint);
+  color: var(--ink);
+}
+.k-form-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-form-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.k-form-body > .k-form-group + .k-form-group {
+  padding-top: var(--space-4);
+}
+.k-sheet .k-form-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+@media (max-width: 640px) {
+  .k-sheet-scrim {
+    padding: 0;
+    align-items: stretch;
+    overflow: hidden;
+  }
+  .k-sheet {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    animation: k-sheet-rise var(--dur-slow) var(--ease);
+  }
+  .k-sheet-stacked {
+    height: calc(100vh - var(--space-6));
+    height: calc(100dvh - var(--space-6));
+    margin-top: auto;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .k-form-head {
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+    min-height: 2.75rem;
+  }
+  .k-form-close {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .k-sheet .k-form-actions {
+    border-radius: 0;
+  }
+  .k-sheet .k-form-actions .k-add {
+    min-height: 2.75rem;
+    flex: 1 1 0;
+  }
+}
+@keyframes k-sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-sheet {
+    animation: none;
+  }
+}
+/* tokens-only: end — form sheet */
 .k-form-field,
 .k-form-control {
   display: flex;
@@ -2735,7 +2875,7 @@ button.k-switch:focus-visible {
   background: color-mix(in oklab, var(--accent) 6%, var(--surface));
 }
 .k-form-nested {
-  padding: 0.6rem 0.2rem;
+  padding: 0;
 }
 .k-form-nested h3 {
   font-size: 1rem;
