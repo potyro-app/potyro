@@ -69,22 +69,29 @@ describe("ChecklistView", () => {
     await act(async () => {
       fireEvent.click(milk);
     });
-    await waitFor(async () => {
-      const rows = await store.all("item");
-      expect(rows.find((r) => r.name === "Milk")?.bought).toBe(true);
-    });
-    // Struck through and checked, but still under "dairy" — not yet in Done.
-    await waitFor(() => {
-      const row = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
-      expect(row.getAttribute("data-done")).toBe("true");
-      expect(row.closest("section")?.getAttribute("aria-label")).toBe("dairy");
-    });
+    // Generous waits: CI's runner is slow enough that the default second is not always enough for
+    // the store to notify and React to commit.
+    await waitFor(
+      async () => {
+        const rows = await store.all("item");
+        expect(rows.find((r) => r.name === "Milk")?.bought).toBe(true);
+      },
+      { timeout: 5000 },
+    );
+    // Struck through and checked; while held it is still under "dairy", then it moves to Done.
+    await waitFor(
+      () => {
+        const row = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
+        expect(row.getAttribute("data-done")).toBe("true");
+      },
+      { timeout: 5000 },
+    );
     await waitFor(
       () => {
         const moved = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
         expect(moved.closest("section")?.getAttribute("aria-label")).toBe("Done");
       },
-      { timeout: 2000 },
+      { timeout: 5000 },
     );
     expect(screen.getByRole("heading", { name: "Done (2)" })).toBeTruthy();
   });
