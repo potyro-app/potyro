@@ -208,7 +208,7 @@ test("several reorders in one sitting, without losing the panel or your place", 
 
   // Closing re-runs the app once — and brings you back to the page you were on.
   await closePanelAndAwaitRerun(page);
-  await expect(page.locator(".k-tab[data-active='true']")).toHaveText("Everything");
+  await expect(page.locator(".k-tab[data-active='true'] .k-tab-label")).toHaveText("Everything");
 
   await expect.poll(() => storedSource(page)).toMatch(/notes:[\s\S]*title:[\s\S]*quantity:/);
   await openNewItemForm(page);

@@ -117,6 +117,17 @@ images for every shot that moved.
 
 ---
 
+## 0. The chrome around every app (#111)
+
+Open any app at 375 wide: a top bar (Apps, the app's icon and name, one `⋯` menu), the page, a
+floating button with the page's quick action, and a bottom tab bar with four pages and More. The
+shell's tools — Studio, Edit mode, History, Import, Export, "Something's wrong", the trust line —
+are in the `⋯` menu; on a wide screen they are the "This app" group at the bottom of the sidebar,
+under the pages and the quick actions. There is no TRUSTED pill: an untrusted app carries a grey
+"sandbox" mark, and specs read the app root's `data-provenance` instead. A record's page shows its
+title, one filled action (the app's first), the others plain, and Edit / Delete behind "More
+actions". `chrome-trusted.spec.ts` drives all of it at 375 and 1440.
+
 ## 1. Recipes (`?app=recipes`) — the M1 core
 
 | Do | Expect |

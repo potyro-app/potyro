@@ -85,7 +85,7 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   // --- 1. Author + save an app by hand, no model call -------------------------------------------
   await page.goto("/?app=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes");
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
 
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
@@ -140,7 +140,7 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   await liveReport.getByRole("button", { name: "Close" }).click();
 
   // --- 3. Evolve the SAME app: drop the page the case visited -------------------------------------
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio2 = page.locator(".k-studio");
   await expect(studio2).toBeVisible();
   await expect(studio2.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 30_000 });

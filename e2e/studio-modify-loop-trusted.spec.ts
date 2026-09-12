@@ -26,7 +26,7 @@ test("modify runs on the loop: an unlooked refusal is sent to lookup, then edits
   });
 
   await page.goto("/?app=recipes");
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
 

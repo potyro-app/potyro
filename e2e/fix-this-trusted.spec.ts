@@ -133,7 +133,7 @@ test.beforeEach(async ({ page }) => {
  *  it: through the Studio's Model settings. Assumes the app is already open (`?user=<id>`). */
 async function chooseOpenRouter(page: Page): Promise<void> {
   await expect(page.locator("h1").first()).toHaveText(APP_NAME);
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
   await studio.getByRole("button", { name: "Model settings" }).click();
@@ -231,7 +231,7 @@ test("a reported problem is investigated, verified and applied", async ({ page }
   await expect(page.locator("h1").first()).toHaveText(APP_NAME, { timeout: 30_000 });
 
   // The Studio's Source tab shows the corrected app, not a reprompt or a placeholder.
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio2 = page.locator(".k-studio");
   await expect(studio2).toBeVisible();
   await studio2.locator(".k-myapp-open").getByText(APP_NAME).click(); // load the saved app's CURRENT source

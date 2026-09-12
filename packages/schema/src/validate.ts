@@ -356,7 +356,7 @@ const viewSchema = z.discriminatedUnion("type", [
  * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
  * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
  */
-export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "hidden?", "summary?"]);
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?"]);
 
 export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   Object.fromEntries(
@@ -403,6 +403,7 @@ const pageSchema = z
   .object({
     id: z.string().min(1),
     title: zDynamicString,
+    icon: z.string().min(1).max(8).optional(),
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
     view: viewSchema,

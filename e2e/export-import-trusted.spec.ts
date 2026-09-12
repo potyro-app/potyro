@@ -21,7 +21,7 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   // Export the current (seed) data to a bundle file.
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.locator("header").getByRole("button", { name: "Export" }).click(),
+    page.getByRole("button", { name: "Export" }).click(),
   ]);
   const bundlePath = await download.path();
 
@@ -36,7 +36,7 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   // Import the earlier bundle → replaces the live data (reloads the app).
   const [chooser] = await Promise.all([
     page.waitForEvent("filechooser"),
-    page.locator("header").getByRole("button", { name: "Import" }).click(),
+    page.getByRole("button", { name: "Import" }).click(),
   ]);
   await chooser.setFiles(bundlePath);
 
