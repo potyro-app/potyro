@@ -109,11 +109,12 @@ test("a workout can be started, filled and logged without a form", async ({ page
 });
 
 // The launcher hardcoded `badge="untrusted"` on every saved app, so a trusted app was labelled the
-// opposite of how it actually ran. The badge must reflect the record.
+// opposite of how it actually ran. The tile must reflect the record: a trusted app carries no
+// sandbox shield (#87) — and no pill of any kind.
 test("the launcher reports a saved app's real provenance", async ({ page }) => {
   await page.goto("/");
   const tile = page.locator(".k-launch-usertile").filter({ hasText: "Workout Sessions" });
   await expect(tile).toBeVisible({ timeout: 30_000 });
-  await expect(tile).toContainText("trusted");
-  await expect(tile).not.toContainText(/^untrusted/);
+  await expect(tile.getByRole("img", { name: "Runs in a sandbox" })).toHaveCount(0);
+  await expect(tile.locator(".k-prov")).toHaveCount(0);
 });

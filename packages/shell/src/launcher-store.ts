@@ -40,6 +40,9 @@ export interface LauncherEntry {
   /** What the app declares about itself, read from its source without running it (#82), cached
    *  against a hash of that source so it is read once per version. */
   identity?: AppIdentity;
+  /** Who is in a synced app's space, as last seen while it was open (#87). The launcher cannot
+   *  open every app's store to ask, so a tile shows the people you have already seen there. */
+  people?: { id: string; name: string }[];
 }
 
 export interface AppIdentity {
@@ -65,6 +68,8 @@ export interface InstalledApp {
   hue?: number;
   trusted: boolean;
   sync: boolean;
+  /** The members last seen in the space (synced apps only, once opened). */
+  people: { id: string; name: string }[];
   entry: LauncherEntry;
   user: UserApp;
 }
@@ -223,6 +228,7 @@ export function listInstalledApps(): InstalledApp[] {
       ...(typeof entry.hue === "number" ? { hue: entry.hue } : {}),
       trusted: user.trusted !== false,
       sync: Boolean(user.sync),
+      people: user.sync ? (entry.people ?? []) : [],
       entry,
       user,
     };

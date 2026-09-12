@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openApp, seed } from "./fixture.js";
+import { openApp, openHome, seed } from "./fixture.js";
 
 // The launcher: with no app selected, the shell opens a home screen listing apps by provenance —
 // trusted built-ins under "Apps", untrusted saved apps under "My Apps". Selecting a tile launches
@@ -52,4 +52,21 @@ test("opening an app by URL records an open, and a reload records another", asyn
   await expect(page.locator("h1").first()).toHaveText("Recipes");
   const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number }>)["user:recipes"]);
   expect(recipes?.openCount).toBe(1);
+});
+
+// Tiles say what matters (#87): nothing on a trusted local app, a shield on a sandboxed one, a sync
+// mark on a synced one — never the word TRUSTED on every tile.
+test("tiles carry a sandbox shield and a sync mark, and no provenance pill", async ({ page }) => {
+  await seed(page);
+  const home = await openHome(page);
+  await expect(home.locator(".k-prov")).toHaveCount(0);
+  const tile = (name: string) => home.locator(".k-launch-tile", { hasText: name });
+  // Garden: trusted and synced → a sync mark, no shield.
+  await expect(tile("Garden").getByLabel("Synced to your other devices")).toBeVisible();
+  await expect(tile("Garden").getByRole("img", { name: "Runs in a sandbox" })).toHaveCount(0);
+  // Budget: sandboxed and synced → both marks.
+  await expect(tile("Budget").getByRole("img", { name: "Runs in a sandbox" })).toBeVisible();
+  await expect(tile("Budget").getByLabel("Synced to your other devices")).toBeVisible();
+  // Groceries: trusted and local → nothing at all.
+  await expect(tile("Groceries").locator(".k-launch-mark, .k-launch-shield")).toHaveCount(0);
 });
