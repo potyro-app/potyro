@@ -43,6 +43,8 @@ async function makeRuntime(layout: PageLayout): Promise<KartaRuntime> {
   return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav });
 }
 
+// Like the shell: navigating to a page merges the params into that page's params — so a split's
+// selection, which navigates to its own page, lands in the params the detail reads.
 function Harness({ runtime, layout, navigate }: { runtime: KartaRuntime; layout: PageLayout; navigate?: (p: string, q?: Record<string, string>) => void }) {
   const [params, setParams] = useState<Record<string, unknown>>({});
   return (
@@ -52,7 +54,10 @@ function Harness({ runtime, layout, navigate }: { runtime: KartaRuntime; layout:
       layout={layout}
       params={params}
       setParam={(k, v) => setParams((p) => ({ ...p, [k]: v }))}
-      navigate={navigate ?? (() => {})}
+      navigate={(p, q) => {
+        navigate?.(p, q);
+        if (p === "home" && q) setParams((prev) => ({ ...prev, ...q }));
+      }}
     />
   );
 }
@@ -114,7 +119,9 @@ describe("LayoutHost", () => {
     expect(screen.getByText("Choose one on the left.")).toBeTruthy();
     fireEvent.click(screen.getByText("Fern"));
     await waitFor(() => expect(document.querySelector("article.k-detail")).toBeTruthy());
-    expect(navigate).not.toHaveBeenCalled();
+    // The selection went through `navigate` — to this page, never to the row's own page.
+    expect(navigate).toHaveBeenCalledWith("home", { plantId: expect.any(String) });
+    expect(navigate.mock.calls.some(([page]) => page === "one")).toBe(false);
     expect(document.querySelector("article.k-detail")!.textContent).toContain("Fern");
     // The row is marked as the one shown (the detail also says "Fern", so look at the list's copy).
     expect(screen.getAllByText("Fern").find((el) => el.closest("li"))!.closest("li")!.getAttribute("data-active")).toBe("true");
