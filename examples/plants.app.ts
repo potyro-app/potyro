@@ -49,6 +49,9 @@ export default defineApp({
         name: { type: "text", required: true },
         photo: { type: "media", accept: "image" },
         wiki: { type: "url" },
+        // No options on purpose: these are the owner's own words — "from Ana", "needs repotting" —
+        // so the control is type-a-word-press-Enter, not a fixed set (#98).
+        labels: { type: "tags", help: "Your own words: where it lives, who gave it to you" },
         needsDirectSun: { type: "boolean", default: false },
         active: { type: "boolean", default: true },
         lastWatered: { type: "datetime", width: "half" },
@@ -56,7 +59,7 @@ export default defineApp({
         seasonalCare: {
           type: "list",
           of: {
-            season: { type: "enum", options: ["spring", "summer", "autumn", "winter"] },
+            season: { type: "enum", options: ["spring", "summer", "autumn", "winter"], colors: { spring: "green", summer: "yellow", autumn: "orange", winter: "blue" } },
             intervalDays: { type: "number", min: 1, integer: true },
             note: { type: "text" },
           },

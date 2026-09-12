@@ -4,12 +4,13 @@
 // gets an hour box beside the date; the rest never show a time. Typing into the box still works:
 // `2026-09-12`, `12/9/2026`, `12 sep`, or "tomorrow".
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { DateTimeField } from "karta";
 import { buildMonthGrid, sameDay } from "./calendar.js";
 import { usePhone } from "./media.js";
 import { addDays, formatDateForInput, parseTypedDay, precisionOf, startOfDay, toDate, toIsoTime, withTime } from "./dates.js";
+import { placeUnder } from "./popover.js";
 
 export interface DateInputProps {
   field: DateTimeField;
@@ -134,11 +135,17 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
   const headingId = useId();
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const r = anchor.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 8 - 336)) });
+    const panel = ref.current?.getBoundingClientRect();
+    // Placed once the grid is laid out: a field near the bottom of the window gets the month above
+    // the box rather than half of it below the fold.
+    if (r && panel) setPos(placeUnder(r, panel));
+  }, [anchor, phone, month]);
+
+  useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>("[data-selected], [data-today]")?.focus();
-  }, [anchor]);
+  }, []);
 
   const grid = buildMonthGrid(month);
 
@@ -167,7 +174,7 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        style={!phone && pos ? { top: pos.top, left: pos.left } : undefined}
+        style={phone ? undefined : pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
         onKeyDown={onKey}
       >
         <div className="k-menu-grip" aria-hidden />

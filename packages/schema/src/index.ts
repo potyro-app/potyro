@@ -19,6 +19,7 @@ export type {
   NumberField,
   BooleanField,
   EnumField,
+  EnumColor,
   TagsField,
   DateTimeField,
   DurationField,
@@ -29,7 +30,7 @@ export type {
   MemberField,
   ListField,
 } from "./types/fields.js";
-export { FIELD_TYPES } from "./types/fields.js";
+export { FIELD_TYPES, ENUM_COLORS } from "./types/fields.js";
 
 // ---- ctx surface ----
 export type {
