@@ -278,6 +278,24 @@ const stepsView = z.object({
   onFinish: z.string().optional(),
 });
 
+const checklistView = z.object({
+  type: z.literal("checklist"),
+  entity: z.string(),
+  done: z.string().min(1),
+  doneValue: z.string().optional(),
+  text: zBinding.optional(),
+  detail: zBinding.optional(),
+  group: zBinding.optional(),
+  filter: zFn.optional(),
+  sort: zFn.optional(),
+  filters: z.array(filterChipSchema).optional(),
+  hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
+  quickAdd: z.boolean().optional(),
+  rowActions: z.array(z.string()).optional(),
+  onOpen: onOpenSchema.optional(),
+  emptyText: zDynamicString.optional(),
+});
+
 // `rows` is a function, so it is typed rather than validated (CLAUDE.md rule 4) — but its PRESENCE
 // is required, because an aggregate page without a fold has nothing to show and would render an
 // empty screen that looks like a data problem rather than a missing declaration.
@@ -317,6 +335,7 @@ const viewSchema = z.discriminatedUnion("type", [
   calendarView.strict(),
   mapView.strict(),
   stepsView.strict(),
+  checklistView.strict(),
   aggregateView.strict(),
   customView.strict(),
 ]);
@@ -631,6 +650,23 @@ export function checkReferences(def: AppDefinition): string[] {
       }
       case "steps": {
         ensureKey(entity, v.entity, v.list, `${where} list`);
+        break;
+      }
+      case "checklist": {
+        // `done` must be something a tick can flip: a boolean, or an enum with a `doneValue` it has.
+        const done = entity.fields[v.done];
+        if (!done) issues.push(`${where} done names unknown field "${v.done}" on entity "${v.entity}"`);
+        else if (done.type === "boolean") {
+          if (v.doneValue !== undefined) issues.push(`${where} doneValue is for an enum \`done\`; "${v.done}" is a boolean`);
+        } else if (done.type === "enum") {
+          if (v.doneValue === undefined) issues.push(`${where} done "${v.done}" is an enum, so \`doneValue\` must say which option means done`);
+          else if (!done.options.includes(v.doneValue)) {
+            issues.push(`${where} doneValue "${v.doneValue}" is not an option of "${v.done}" (${done.options.join(", ")})`);
+          }
+        } else issues.push(`${where} done "${v.done}" must be a boolean or enum field, not ${done.type}`);
+        checkBinding(v.text, "text");
+        checkBinding(v.detail, "detail");
+        checkBinding(v.group, "group");
         break;
       }
       case "custom":

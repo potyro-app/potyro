@@ -3,6 +3,7 @@ export { ViewHost } from "./host.js";
 export { defaultRegistry, resolveViewComponent } from "./registry.js";
 export { ListView, GalleryView, TableView, DetailView } from "./builtins.js";
 export { StepsView } from "./steps.js";
+export { ChecklistView } from "./checklist.js";
 export { CalendarView, buildMonthGrid, sameDay, type CalendarCell, type CalendarEvent } from "./calendar.js";
 export { MapView, useMapMarkers, type MapMarker } from "./map.js";
 export { CustomView } from "./custom.js";

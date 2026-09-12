@@ -14,7 +14,22 @@ const SEEDERS: Record<string, (store: Store) => Promise<void>> = {
   plants: seedPlants,
   places: seedPlaces,
   workout: seedWorkout,
+  groceries: seedGroceries,
 };
+
+async function seedGroceries(store: Store): Promise<void> {
+  const existing = await store.all("item");
+  if (existing.length > 0) return;
+  const item = (name: string, aisle: string, over: Record<string, unknown> = {}) =>
+    store.insert("item", { name, aisle, bought: false, quantity: "", note: "", ...over });
+  await item("Milk", "dairy", { quantity: "2 × 1 l" });
+  await item("Yoghurt", "dairy");
+  await item("Apples", "produce", { quantity: "1 kg" });
+  await item("Spinach", "produce", { bought: true });
+  await item("Sourdough", "bakery");
+  await item("Rice", "pantry", { quantity: "1 kg", bought: true });
+  await item("Dish soap", "household");
+}
 
 async function seedPlaces(store: Store): Promise<void> {
   const existing = await store.all("place");

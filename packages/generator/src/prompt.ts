@@ -309,6 +309,11 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   show on the detail page). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
   \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
   text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
+- A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
+  whose rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
+  text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.
+  \`done\` is a boolean field (or an enum plus \`doneValue\`); \`quickAdd\` adds the typed text as the
+  display field. Keep the detail page for the rest of the fields.
 - Make exactly ONE top-level LIST page per entity (title = plural, e.g. "Sessions"). NEVER add a
   separate top-level page for a single record (no "Session" tab next to "Sessions").
 - To show a record's details, add a \`detail\` page, mark it \`hidden: true\`, and link the list to it with

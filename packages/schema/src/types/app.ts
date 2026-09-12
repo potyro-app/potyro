@@ -186,6 +186,37 @@ export interface StepsView {
 }
 
 /**
+ * A list of things you tick (#106): groceries, packing, chores, habits. Rows in, patches out —
+ * tapping a row's check flips its `done` field through `ctx.patch`, so it renders untrusted like
+ * every declarative view. `steps` ticks *within* one record; this ticks *across* records.
+ */
+export interface ChecklistView {
+  type: "checklist";
+  entity: string;
+  /** The boolean field a tick flips — or an enum field, with `doneValue` naming the done option. */
+  done: string;
+  /** For an enum `done`: the option that means done. Un-ticking restores the enum's first other option. */
+  doneValue?: string;
+  /** The row's label. Default: the entity's display field. */
+  text?: Binding;
+  /** A quieter second line. */
+  detail?: Binding;
+  /** Rows sharing a value sit under one heading ("Produce", "Dairy"). */
+  group?: Binding;
+  filter?: FilterFn;
+  sort?: SortFn;
+  filters?: FilterChip[];
+  /** `true`: done rows disappear. `"collapse"`: they fold into a "Done (n)" section. Default: listed under "Done". */
+  hideDone?: boolean | "collapse";
+  /** An input at the bottom: type, Enter, next — creates a record with the text as its display field. */
+  quickAdd?: boolean;
+  rowActions?: string[];
+  /** Where the row's chevron goes. Without it a row has no detail. */
+  onOpen?: OnOpen;
+  emptyText?: Dynamic<string>;
+}
+
+/**
  * One row of a derived table — a balance, a settle-up transfer, a remaining quantity.
  *
  * Deliberately display-ready plain data, not markup. That is the whole design of the aggregate view
@@ -270,6 +301,7 @@ export type View =
   | CalendarView
   | MapView
   | StepsView
+  | ChecklistView
   | AggregateView
   | CustomView;
 
@@ -281,6 +313,7 @@ export const VIEW_TYPES = [
   "calendar",
   "map",
   "steps",
+  "checklist",
   "aggregate",
   "custom",
 ] as const;
