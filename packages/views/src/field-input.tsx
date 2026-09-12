@@ -12,6 +12,7 @@ import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
 import { DateInput } from "./date-input.js";
 import { EnumInput } from "./enum-input.js";
+import { MediaInput } from "./media-input.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
@@ -67,7 +68,9 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       return <GeoInput runtime={runtime} value={value as Geo | null} onChange={onChange} />;
 
     case "media":
-      return <MediaInput runtime={runtime} value={value as MediaRef | MediaRef[] | null} onChange={onChange} />;
+      // A tile that shows what you chose, with Camera / Library on a phone and drag-and-drop on a
+      // desktop — not the browser's bare file button (#102).
+      return <MediaInput runtime={runtime} field={field} value={value as MediaRef | MediaRef[] | null} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "relation":
       return <RelationInput runtime={runtime} field={field} value={value} onChange={onChange} />;
@@ -294,40 +297,6 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
           </label>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function MediaInput({
-  runtime,
-  value,
-  onChange,
-}: {
-  runtime: KartaRuntime;
-  value: MediaRef | MediaRef[] | null;
-  onChange: (v: unknown) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const current = Array.isArray(value) ? value[0] : value;
-  return (
-    <div className="k-media-input">
-      <input
-        type="file"
-        accept="image/*"
-        disabled={busy}
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          setBusy(true);
-          try {
-            const ref = await runtime.ctx.media.put(file);
-            onChange(ref);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      />
-      {current ? <span className="k-muted">attached</span> : null}
     </div>
   );
 }

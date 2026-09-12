@@ -6,6 +6,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import type { MediaRef, Resolved } from "karta";
 import type { DisplayCell } from "./types.js";
 import { formatDateValue, getView, toBadges } from "./format.js";
+import { releaseMediaUrl } from "./media-input.js";
 
 function str(v: unknown): string {
   if (v == null) return "";
@@ -18,6 +19,7 @@ export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Res
 
   useEffect(() => {
     let alive = true;
+    const minted: string[] = [];
     const ctx = runtime.ctx;
     const view = getView(runtime, pageId) as { display?: Record<string, unknown>; entity?: string };
     const display = view.display;
@@ -37,7 +39,10 @@ export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Res
         if (typeof display.media === "string") {
           const ref = row[display.media] as MediaRef | MediaRef[] | undefined;
           const one = Array.isArray(ref) ? ref[0] : ref;
+          // Each call mints a fresh object URL, so this list owns the ones it asked for and frees
+          // them when the rows change — a long scroll otherwise holds every thumbnail it ever drew.
           if (one) cell.mediaUrl = await ctx.media.url(one);
+          if (cell.mediaUrl) minted.push(cell.mediaUrl);
         }
         if (Array.isArray(display.badges)) {
           // An enum badge keeps its field, so the row shows the value in the colour it wears in the
@@ -57,6 +62,7 @@ export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Res
 
     return () => {
       alive = false;
+      minted.forEach(releaseMediaUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime, pageId, rows]);
