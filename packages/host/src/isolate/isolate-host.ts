@@ -356,7 +356,14 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
         "JSON.stringify(globalThis.__kartaApp, (k, v) => (typeof v === 'function' ? '__karta_fn__' : v))",
       );
       const defHandle = vm.unwrapResult(defRes);
-      const definition = deserialize<AppDefinition>(vm.getString(defHandle));
+      const raw = deserialize<AppDefinition>(vm.getString(defHandle));
+      // The guest's `defineApp` brands and validates; the normalisation the real one does — a
+      // layout page's `view` is its first item's (#105) — is repeated here, so the shell reads the
+      // same shape whether the app ran directly or in the isolate.
+      const definition: AppDefinition = {
+        ...raw,
+        pages: (raw.pages ?? []).map((p) => (p.view ? p : { ...p, view: p.layout!.items[0]!.view })),
+      };
       defHandle.dispose();
 
       // 3) Install the harness (ctx bridge + __karta.call).

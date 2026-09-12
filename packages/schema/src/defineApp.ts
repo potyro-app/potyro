@@ -1,5 +1,5 @@
 import type { ZodIssue } from "zod";
-import type { AppDefinition, KartaApp } from "./types/app.js";
+import type { AppDefinition, AppInput, KartaApp, Page } from "./types/app.js";
 import { checkReferences, structureSchema, ValidationError } from "./validate.js";
 
 function formatIssue(issue: ZodIssue): string {
@@ -25,13 +25,18 @@ function formatIssue(issue: ZodIssue): string {
  *
  * Throws {@link ValidationError} if the declarative parts are invalid.
  */
-export function defineApp(def: AppDefinition): KartaApp {
+export function defineApp(def: AppInput): KartaApp {
   const parsed = structureSchema.safeParse(def);
   if (!parsed.success) {
     throw new ValidationError(parsed.error.issues.map(formatIssue));
   }
 
-  const definition = def;
+  // A page written with a `layout` gets its first item as its `view` (#105), so everything that
+  // reads a page's view — the tab bar, the summary strip, the quick action — sees the primary one
+  // and never has to know about layouts. The page object is copied, not mutated: the author's
+  // literal stays theirs.
+  const pages: Page[] = def.pages.map((p) => (p.view ? (p as Page) : { ...p, view: p.layout!.items[0]!.view }));
+  const definition: AppDefinition = { ...def, pages };
 
   const refIssues = checkReferences(definition);
   if (refIssues.length > 0) {

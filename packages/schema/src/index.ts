@@ -57,6 +57,10 @@ export type {
   KartaApp,
   EntityDef,
   FieldGroup,
+  LayoutItem,
+  PageLayout,
+  PageInput,
+  AppInput,
   Page,
   View,
   ViewType,
@@ -109,3 +113,6 @@ export type {
   LogicRecord,
   RecordFor,
 } from "./types/infer.js";
+
+export { LAYOUT_TYPES } from "./types/app.js";
+export { resolveView, basePageId, layoutItemId } from "./layout.js";
