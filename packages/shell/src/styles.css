@@ -1160,6 +1160,85 @@ button {
   margin-top: 0.4rem;
 }
 
+/* tokens-only: start — numbers */
+/* A number with its unit inside the field, and a stepper when the value is nudged rather than
+   typed (#99). The buttons are 44px; the input keeps its width for the digits. */
+.k-number {
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+.k-number-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.k-number-field .k-number-input {
+  padding-right: 3.2rem;
+  min-width: 6.5rem;
+}
+.k-number[data-stepper="true"] .k-number-field .k-number-input {
+  text-align: center;
+  min-width: 7.5rem;
+}
+.k-number-unit {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 2.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.k-number-step {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-number-step:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-number-step:active:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 25%, var(--surface));
+}
+.k-number-step:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+.k-number-step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-duration {
+  align-items: center;
+}
+.k-duration .k-number-field .k-number-input {
+  min-width: 5.5rem;
+}
+.k-duration-colon {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+/* tokens-only: end */
+
 /* tokens-only: start — switches */
 /* A boolean is a switch (#97). The row is the hit target, 44px tall, label left, toggle right; the
    knob moves on transform only and the accent says "on". `aria-checked` on the row or on the

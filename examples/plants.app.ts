@@ -52,7 +52,7 @@ export default defineApp({
         needsDirectSun: { type: "boolean", default: false },
         active: { type: "boolean", default: true },
         lastWatered: { type: "datetime" },
-        wateringIntervalDays: { type: "number", min: 1, default: 7, integer: true },
+        wateringIntervalDays: { type: "number", unit: "days", min: 1, default: 7, integer: true },
         seasonalCare: {
           type: "list",
           of: {
