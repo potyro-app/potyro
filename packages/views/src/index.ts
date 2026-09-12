@@ -17,5 +17,7 @@ export { RecordForm, createDefaults, type RecordFormProps } from "./record-form.
 export { FormSheet, type FormSheetProps } from "./form-sheet.js";
 export { ActionMenu, type ActionMenuProps, type MenuEntry, type MenuItem } from "./menu.js";
 export { usePhone, PHONE_QUERY } from "./media.js";
-export { formatValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
+export { DateInput } from "./date-input.js";
+export { formatDateAbsolute, formatDateRelative, formatDateForInput, parseTypedDay, relativeDay, startOfDay } from "./dates.js";
+export { formatValue, formatDateValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
 export type { BuiltinViewProps, DisplayCell, ViewRegistration } from "./types.js";

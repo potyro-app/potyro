@@ -58,6 +58,10 @@ export interface TagsField extends FieldCommon {
 
 export interface DateTimeField extends FieldCommon {
   type: "datetime";
+  /** `"day"` (the default): a date, no time — the picker offers days and the value reads as one.
+   *  `"minute"`: the field keeps the time too (a session start, an appointment). Most fields want
+   *  the day; ask for the minute only when the hour matters (#103). */
+  precision?: "day" | "minute";
 }
 
 export interface DurationField extends FieldCommon {

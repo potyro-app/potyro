@@ -114,6 +114,13 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
 
+A `datetime` is a **day** unless the field says `precision: "minute"` (#103). Most dates are
+days — when a plant was watered, when a bill is due — and the form offers a day: the box reads
+"Today, 12 Sep", chips set today, yesterday or tomorrow in one tap, the calendar button opens a
+month grid (a sheet on a phone, a popover on a wide screen), and typing `12/9/2026`, `12 sep` or
+`tomorrow` works too. A day is stored at local midnight and never shows a time. A minute field
+adds an hour box beside the day and shows its time wherever the value appears.
+
 ## Pages & views: declarative layout, code where it's logic
 
 A page has `id`, `title` (a string or a function of `ctx`), an optional `icon` — one emoji for its

@@ -4,10 +4,11 @@
 // computed keys (which have no field definition — their value is already final).
 
 import { useEffect, useState } from "react";
-import type { Field, Geo, MediaRef } from "karta";
+import type { Field, Geo, MediaRef, DateTimeField } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
+import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
 
 export function FieldValue({
   runtime,
@@ -128,8 +129,14 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
         </a>
       );
     }
-    case "datetime":
-      return <>{value instanceof Date ? value.toLocaleString() : String(value)}</>;
+    case "datetime": {
+      // A day reads as a day; only a minute field shows its time (#103). The absolute date sits in
+      // the title, so a relative word ("yesterday") never hides the real one.
+      const d = toDate(value);
+      if (!d) return <>{String(value ?? "")}</>;
+      const precision = precisionOf(field as DateTimeField);
+      return <span title={formatDateAbsolute(d, precision)}>{formatDateAbsolute(d, precision)}</span>;
+    }
     case "boolean":
       return <>{value ? "Yes" : "No"}</>;
     case "url":
