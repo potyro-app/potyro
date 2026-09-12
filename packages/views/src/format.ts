@@ -1,11 +1,26 @@
 import { resolveView, humanizeKey } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import type { View } from "karta";
+import { formatDateRelative, type Precision } from "./dates.js";
+
+/**
+ * How a date reads where the field is not in hand — a list row, a badge, a table cell (#103).
+ * A day-precision value is stored at local midnight, so a value with no time of day is a day and
+ * never grows one; anything else keeps its clock.
+ */
+export function precisionOfValue(d: Date): Precision {
+  return d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0 && d.getMilliseconds() === 0 ? "day" : "minute";
+}
+
+/** A date in a row or a badge: "today", "in 3 days", "3 Oct" — near dates in words (#103). */
+export function formatDateValue(d: Date): string {
+  return formatDateRelative(d, precisionOfValue(d));
+}
 
 /** Human-format a resolved value for display in built-in views. */
 export function formatValue(v: unknown): string {
   if (v == null) return "–";
-  if (v instanceof Date) return v.toLocaleDateString();
+  if (v instanceof Date) return formatDateValue(v);
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(1);
   if (typeof v === "boolean") return v ? "Yes" : "No";
   if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? "•" : String(x))).join(", ");
@@ -14,9 +29,10 @@ export function formatValue(v: unknown): string {
 }
 
 export function toBadges(v: unknown): string[] {
-  if (Array.isArray(v)) return v.map(String);
+  if (Array.isArray(v)) return v.map((x) => (x instanceof Date ? formatDateValue(x) : String(x)));
   if (typeof v === "boolean") return v ? ["✓"] : [];
   if (v == null) return [];
+  if (v instanceof Date) return [formatDateValue(v)];
   return [String(v)];
 }
 
