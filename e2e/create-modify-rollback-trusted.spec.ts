@@ -122,7 +122,7 @@ const pageTab = (scope: ReturnType<typeof studioOf> | Page, title: string) =>
 async function openStudio(page: Page): Promise<void> {
   // `exact`, because the Studio's own header carries a "Close studio" button and a substring match
   // finds both the moment it is already open.
-  await page.locator("header").getByRole("button", { name: "Studio", exact: true }).click();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(studioOf(page)).toBeVisible();
 }
 

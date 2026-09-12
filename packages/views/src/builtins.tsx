@@ -8,6 +8,7 @@ import { useDisplayCells } from "./cells.js";
 import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
+import { ActionMenu, type MenuEntry } from "./menu.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -24,14 +25,18 @@ export function mapOnOpen(onOpen: { page: string; param?: Record<string, string>
  * (there is no undo yet), which is exactly why it asks first, through the host's own `ctx.ui.confirm`
  * rather than `window.confirm`.
  */
-export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<void> {
+export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<boolean> {
+  // Resolves to whether the record is gone: a caller that leaves the page afterwards must not
+  // leave it on "no" — declining used to send you back to the list as if you had deleted.
   return async (id, label) => {
     const ok = await runtime.ctx.ui.confirm(`Delete ${label}? This can't be undone.`);
-    if (!ok) return;
+    if (!ok) return false;
     try {
       await runtime.remove(entity, id);
+      return true;
     } catch (e) {
       runtime.ctx.ui.toast(e instanceof Error ? e.message : "Could not delete that record");
+      return false;
     }
   };
 }
@@ -104,6 +109,9 @@ export function ListView(props: BuiltinViewProps) {
   if (loading) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">{emptyText}</p>;
 
+  // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
+  // lives on the detail page (#111). Only a row with nowhere to open keeps its Delete.
+  const hasDetail = Boolean(view.onOpen);
   return (
     <ul className="k-list">
       {rows.map((row, i) => {
@@ -134,10 +142,14 @@ export function ListView(props: BuiltinViewProps) {
               entity={view.entity}
               actions={view.rowActions}
               id={String(row.id)}
-              onEdit={onEdit}
-              onDelete={() => remove(String(row.id), String(cell.primary ?? "this record"))}
+              onDelete={hasDetail ? undefined : async () => void (await remove(String(row.id), String(cell.primary ?? "this record")))}
               label={String(cell.primary ?? "this record")}
             />
+            {openRow ? (
+              <span className="k-row-chevron" aria-hidden>
+                ›
+              </span>
+            ) : null}
           </li>
         );
       })}
@@ -246,7 +258,7 @@ export function DetailView(props: BuiltinViewProps) {
 
   const label = String(record[displayFieldFor(runtime, view.entity)] ?? "this record");
   const onDelete = async (): Promise<void> => {
-    await remove(id, label);
+    if (!(await remove(id, label))) return;
     if (listPage) navigate(listPage.id);
   };
 
@@ -270,6 +282,44 @@ export function DetailView(props: BuiltinViewProps) {
 
   return (
     <article className="k-detail">
+      <h2 className="k-detail-title">{label}</h2>
+      {/* The app's first action is the one filled button; its other actions sit beside it, plain.
+          Edit and Delete are behind "More actions", Delete last and styled as the one thing you
+          might regret — never inline next to the thing you came to do (#111). */}
+      <div className="k-detail-actions">
+        {(view.actions ?? []).map((a, ai) =>
+            typeof a === "string" ? (
+              <button key={ai} type="button" className={`k-add${ai === 0 ? " k-primary-action" : ""}`} onClick={() => void runtime.runAction(view.entity, a, id)}>
+                {/* The action KEY is an identifier, not a label — "snapPhoto" is not a button name. */}
+                {humanizeKey(a)}
+              </button>
+            ) : (
+              <button
+                key={ai}
+                type="button"
+                className={`k-add${ai === 0 ? " k-primary-action" : ""}`}
+                onClick={() => navigate(a.navigate.page, mapDetailNav(a.navigate.param, record))}
+              >
+                {a.label}
+              </button>
+            ),
+          )}
+        {/* No app action at all: Edit is the one thing to do here, so it is the filled button. */}
+        {!(view.actions ?? []).length && onEdit ? (
+          <button type="button" className="k-add k-primary-action" onClick={() => onEdit(view.entity, id)}>
+            Edit
+          </button>
+        ) : null}
+        <ActionMenu
+          label="More actions"
+          title={label}
+          entries={[
+            ...((view.actions ?? []).length && onEdit ? [{ key: "edit", label: "Edit", icon: "✎", onSelect: () => onEdit(view.entity, id) } as MenuEntry] : []),
+            ...(((view.actions ?? []).length && onEdit) ? ["separator" as const] : []),
+            { key: "delete", label: "Delete", icon: "🗑", danger: true, onSelect: () => void onDelete() },
+          ]}
+        />
+      </div>
       {groups.map((group, si) =>
         group.collapsed ? (
           <details key={si} className="k-section">
@@ -285,33 +335,6 @@ export function DetailView(props: BuiltinViewProps) {
           </section>
         ),
       )}
-      <div className="k-detail-actions">
-        {onEdit ? (
-          <button type="button" className="k-action" onClick={() => onEdit(view.entity, id)}>
-            Edit
-          </button>
-        ) : null}
-        <button type="button" className="k-action k-action-danger" onClick={() => void onDelete()}>
-          Delete
-        </button>
-        {(view.actions ?? []).map((a, ai) =>
-            typeof a === "string" ? (
-              <button key={ai} type="button" className="k-action" onClick={() => void runtime.runAction(view.entity, a, id)}>
-                {/* The action KEY is an identifier, not a label — "snapPhoto" is not a button name. */}
-                {humanizeKey(a)}
-              </button>
-            ) : (
-              <button
-                key={ai}
-                type="button"
-                className="k-action k-primary-action"
-                onClick={() => navigate(a.navigate.page, mapDetailNav(a.navigate.param, record))}
-              >
-                {a.label}
-              </button>
-            ),
-          )}
-      </div>
     </article>
   );
 }

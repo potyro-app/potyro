@@ -12,7 +12,7 @@ async function openPlaces(page: Page): Promise<void> {
 
 test("places app runs the M3 flow in the browser (trusted)", async ({ page }) => {
   await openPlaces(page);
-  await expect(page.locator(".k-prov")).toHaveText(/^trusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
   // All-places list → open a place → detail → run the markVisited action.
   await page.locator(".k-tab", { hasText: "All places" }).click();

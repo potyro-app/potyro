@@ -116,6 +116,12 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 
 ## Pages & views: declarative layout, code where it's logic
 
+A page has `id`, `title` (a string or a function of `ctx`), an optional `icon` — one emoji for its
+tab; without it the tab shows the entity's icon — `hidden` for a page reached by tapping a row
+rather than from the navigation, an optional `summary` strip, and its `view`. The shell decides
+how pages are presented (#111): a bottom tab bar on a phone (four pages and More), a sidebar on a
+wide screen; the app never lays out its own chrome.
+
 ```ts
 pages: [
   {
