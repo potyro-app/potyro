@@ -114,6 +114,14 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
 
+An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
+visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
+wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a
+tint, the same in the form, in a row badge and on the record page: derived from the value's own
+name, or named by the field with `colors: { overdue: "red" }` from the closed set red · orange ·
+yellow · green · teal · blue · purple · pink · grey. A required enum with no `default` starts on
+nothing. `tags` with no `options` is free-text: type a word, press Enter, it becomes a chip.
+
 A `datetime` is a **day** unless the field says `precision: "minute"` (#103). Most dates are
 days — when a plant was watered, when a bill is due — and the form offers a day: the box reads
 "Today, 12 Sep", chips set today, yesterday or tomorrow in one tap, the calendar button opens a

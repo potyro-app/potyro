@@ -2127,6 +2127,219 @@ details.k-layout-fold[open] > summary::before {
 }
 /* tokens-only: end — page layouts */
 
+/* tokens-only: start — enums */
+/* Choosing one of a set (#98). A short list is a row of buttons; a long one is a button that opens
+   a searchable list — a popover on a wide screen, a bottom sheet on a phone. A chosen value wears a
+   tint derived from the value (or named by the field), the same colour in the form, the row and the
+   record page. `--swatch` is set inline per value; the palette mixing happens here. */
+.k-enum-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-enum-segment {
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-enum-segment:hover {
+  border-color: var(--accent-line);
+}
+.k-enum-segment[data-on] {
+  background: color-mix(in oklab, var(--swatch, var(--accent)) 22%, var(--surface));
+  border-color: color-mix(in oklab, var(--swatch, var(--accent)) 55%, var(--line));
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-enum-segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .k-enum-segment {
+    min-height: 2.75rem;
+  }
+}
+.k-enum-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--swatch, var(--ink-faint)) 20%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--swatch, var(--ink-faint)) 45%, var(--line));
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+.k-badge[data-tinted] {
+  background: color-mix(in oklab, var(--swatch, var(--ink-faint)) 18%, var(--surface));
+  border-color: color-mix(in oklab, var(--swatch, var(--ink-faint)) 40%, var(--line));
+  color: var(--ink);
+}
+.k-enum {
+  display: flex;
+  min-width: 0;
+}
+.k-enum-trigger {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.k-enum-trigger:hover,
+.k-enum-trigger[aria-expanded="true"] {
+  border-color: var(--accent);
+}
+.k-enum-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-enum-empty {
+  color: var(--ink-faint);
+}
+.k-enum-caret {
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+}
+.k-enum-list {
+  position: absolute;
+  z-index: 1;
+  max-width: min(24rem, calc(100vw - 1rem));
+  max-height: min(24rem, 70vh);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  animation: k-fade var(--dur-fast) var(--ease);
+}
+.k-enum-list-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: none;
+  max-height: 80vh;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  animation: k-sheet-up var(--dur) var(--ease);
+}
+.k-enum-list .k-menu-grip {
+  display: none;
+}
+.k-enum-list-sheet .k-menu-grip {
+  display: block;
+  width: 2.5rem;
+  height: 0.3rem;
+  margin: 0 auto var(--space-1);
+  border-radius: 999px;
+  background: var(--line);
+}
+.k-enum-list-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+}
+.k-enum-search {
+  flex: none;
+}
+.k-enum-options {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+.k-enum-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.k-enum-option:hover,
+.k-enum-option:focus-visible {
+  background: var(--surface-sunken);
+  outline: none;
+}
+.k-enum-option[data-on] {
+  font-weight: 600;
+}
+.k-enum-option[data-on]::after {
+  content: "✓";
+  margin-left: auto;
+  color: var(--accent);
+}
+.k-enum-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--swatch, var(--ink-faint));
+  flex: none;
+}
+.k-enum-none {
+  margin: 0;
+  padding: var(--space-3) var(--space-2);
+  color: var(--ink-faint);
+}
+.k-enum-clear {
+  flex: none;
+  min-height: 2.75rem;
+}
+/* A tag you typed yourself, with a way to take it off again. */
+.k-tags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.k-tag-x {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.15rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.k-tag-x:hover {
+  opacity: 1;
+}
+/* tokens-only: end — enums */
+
 /* tokens-only: start — dates */
 /* The date field (#103): the day in words, an hour box only for a minute field, the calendar
    button, and chips for the common answers. The picker is a month grid: a bottom sheet on a

@@ -46,9 +46,20 @@ export interface BooleanField extends FieldCommon {
   type: "boolean";
 }
 
+/** The colours an enum value may be given. A closed set, so a shared app cannot walk off the
+ *  palette or land unreadable text on its own background (#98). */
+export const ENUM_COLORS = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"] as const;
+export type EnumColor = (typeof ENUM_COLORS)[number];
+
 export interface EnumField extends FieldCommon {
   type: "enum";
   options: string[];
+  /** Colour per option, for values that mean something — `{ overdue: "red", done: "green" }`.
+   *  Options left out keep the colour derived from their name, which is stable everywhere. */
+  colors?: Record<string, EnumColor>;
+  /** Overrides the control the option count would choose: up to five options are a row of
+   *  buttons, more open a searchable picker. */
+  control?: "segmented" | "picker";
 }
 
 export interface TagsField extends FieldCommon {

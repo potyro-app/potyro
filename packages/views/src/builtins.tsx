@@ -9,6 +9,7 @@ import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { ActionMenu, type MenuEntry } from "./menu.js";
+import { enumSwatch } from "./enum.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -134,8 +135,8 @@ export function ListView(props: BuiltinViewProps) {
               {cell.badges?.length ? (
                 <span className="k-badges">
                   {cell.badges.map((b) => (
-                    <span key={b} className="k-badge">
-                      {b}
+                    <span key={b.text} className="k-badge" data-tinted={b.field ? "true" : undefined} {...enumSwatch(b.field, b.text)}>
+                      {b.text}
                     </span>
                   ))}
                 </span>
