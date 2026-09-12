@@ -12,14 +12,14 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await page.goto("/?app=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes");
 
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
 
   // Preview-first: the starter app renders immediately, nothing to click.
   const preview = studio.locator(".k-studio-preview");
   await expect(preview.locator("h1")).toHaveText("My App", { timeout: 30_000 });
-  await expect(preview.locator(".k-prov")).toContainText("trusted"); // the user's own app runs direct
+  await expect(preview.locator(".k-app")).toHaveAttribute("data-provenance", "trusted"); // the user's own app runs direct
 
   // ONE action, and one engine chosen in one place. The starter is an empty page, so the action is
   // "Create"; it becomes "Modify" once there is a real app.
@@ -67,7 +67,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   // The saved app is launchable full-screen from its route, and runs TRUSTED: it is the user's own.
   await page.goto("/?user=my-app");
   await expect(page.locator("h1").first()).toHaveText("My App");
-  await expect(page.locator(".k-prov").first()).toHaveText(/^trusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
   await expect(page.getByRole("button", { name: "Switch app" })).toBeVisible(); // the ⊞ Apps switcher
 
   // Both directions still work, starting from trusted. Revoke → back into the isolate.
@@ -76,14 +76,14 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(trust).toBeVisible();
   await trust.getByRole("button", { name: "Revoke trust" }).click();
   await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
-  await expect(page.locator(".k-prov").first()).toHaveText(/^untrusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
   // Promote untrusted → trusted: the badge is actionable → a trust prompt → runs DIRECTLY on reload.
   await page.locator(".k-prov-btn").click();
   await page.locator(".k-trustdialog").getByRole("button", { name: "Promote to trusted" }).click();
   // Re-runs the saved source as a real module. h1 still renders → it executed.
   await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
-  await expect(page.locator(".k-prov").first()).toHaveText(/^trusted/, { timeout: 30_000 });
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
 
   // ⑤ Edit mode: toggle it, click a UI element's ✎, and get a targeted Modify dialog (no live call).
   await page.getByRole("button", { name: "Edit mode" }).click();

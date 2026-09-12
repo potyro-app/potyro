@@ -9,7 +9,7 @@ test("recipes app runs untrusted in the QuickJS-WASM isolate", async ({ page }) 
   await expect(page.locator("h1")).toHaveText("Recipes");
 
   // Provenance badge proves this is the isolate path, not direct execution.
-  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
   // The app's list + computed functions executed inside the isolate and marshalled results out.
   const rows = page.locator(".k-list-row");

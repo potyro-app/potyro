@@ -35,7 +35,7 @@ test("the Studio generates an app end to end, surviving a long run", async ({ pa
   });
 
   await page.goto("/?app=recipes");
-  await page.locator("header").getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
 

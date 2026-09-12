@@ -51,7 +51,7 @@ test("a workout can be started, filled and logged without a form", async ({ page
 
   // It must run TRUSTED: custom views are stubbed out in the isolate, so an untrusted load renders
   // the runner as a blank panel.
-  await expect(page.locator(".k-prov").first()).toContainText("trusted");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
   // --- library: create an exercise through the normal form -------------------------------------
   await page.getByRole("button", { name: /New exercise/ }).click();

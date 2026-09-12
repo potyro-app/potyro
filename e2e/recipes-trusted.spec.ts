@@ -13,7 +13,7 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await openRecipes(page);
 
   // Provenance: the user's own app runs directly (trusted), not in the isolate.
-  await expect(page.locator(".k-prov")).toHaveText(/^trusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
   // List renders with rows, and the secondary line shows a COMPUTED macro ("… kcal · …").
   const rows = page.locator(".k-list-row");
@@ -62,8 +62,12 @@ test("edits an existing record in place from the list (universal edit)", async (
   const firstRow = page.locator(".k-list-row").first();
   await expect(firstRow).toBeVisible();
 
-  // Every list row is editable — click its inline Edit (previously impossible without a wired detail).
-  await firstRow.getByRole("button", { name: "Edit" }).click();
+  // Edit lives on the record's page (#111): the row opens it, and Edit is behind "More actions"
+  // there, next to Delete — never inline on every row.
+  await firstRow.locator(".k-list-text").click();
+  await expect(page.locator("article.k-detail")).toBeVisible();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
   const modal = page.locator(".k-modal");
   await expect(modal).toBeVisible();
 
@@ -74,6 +78,7 @@ test("edits an existing record in place from the list (universal edit)", async (
   await modal.getByRole("button", { name: "Save changes" }).click();
 
   await expect(modal).toBeHidden();
+  await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the list
   await expect(page.locator(".k-list-row", { hasText: "Edited Dish E2E" })).toBeVisible();
 });
 

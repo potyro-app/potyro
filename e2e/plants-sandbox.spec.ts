@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 test("plants app runs untrusted in the QuickJS-WASM isolate (list + calendar)", async ({ page }) => {
   await page.goto("/?app=plants");
   await expect(page.locator("h1")).toHaveText("Plants");
-  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
   await expect(page.locator(".k-list-row").first()).toBeVisible();
 

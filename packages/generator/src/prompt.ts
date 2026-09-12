@@ -300,7 +300,10 @@ Because reads are async, a computed that queries other records MUST be \`async\`
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
 - Give every entity a \`label\` and an \`icon\` (a single emoji), and the app itself a top-level \`icon\`
-  (one emoji) — it is the app's launcher tile.
+  (one emoji) — it is the app's launcher tile. Give each page an \`icon\` too (one emoji, distinct
+  per page): pages are a tab bar on a phone, and four identical icons say nothing.
+- Order a detail page's \`actions\` with the one people came for FIRST: it is the page's one filled
+  button; the rest sit beside it, plain. Edit and Delete are the shell's, behind "More actions".
 - Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"€"\`, \`"days"\`) and \`integer: true\` when
   it counts things; the form shows the unit inside the field and a − / + stepper, and the phone opens
   the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).

@@ -79,6 +79,7 @@ export default defineApp({
   entities: {
     ingredient: {
       label: "Ingredient",
+      icon: "🥕",
       displayField: "name",
       fields: {
         name: { type: "text", required: true },
@@ -114,6 +115,7 @@ export default defineApp({
 
     recipe: {
       label: "Recipe",
+      icon: "🍳",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, placeholder: "Shakshuka" },
@@ -192,6 +194,7 @@ export default defineApp({
   pages: [
     {
       id: "all",
+      icon: "🍳",
       title: "Recipes",
       view: {
         type: "list",
@@ -209,6 +212,7 @@ export default defineApp({
     },
     {
       id: "cook-with",
+      icon: "🔍",
       title: "What can I cook?",
       view: {
         type: "list",
@@ -226,6 +230,7 @@ export default defineApp({
     },
     {
       id: "high-protein",
+      icon: "💪",
       title: "High protein",
       view: {
         type: "table",
@@ -237,6 +242,7 @@ export default defineApp({
     },
     {
       id: "plant-based",
+      icon: "🌿",
       title: "Plant-based",
       view: {
         type: "list",
@@ -255,6 +261,7 @@ export default defineApp({
     },
     {
       id: "ready",
+      icon: "✅",
       title: "Ready to cook",
       view: {
         type: "list",
@@ -281,13 +288,15 @@ export default defineApp({
         entity: "recipe",
         param: "recipeId",
         // No `sections`: the page shows the entity's `groups`, as the form does.
-        actions: ["markCooked", { label: "Cook", navigate: { page: "cook", param: { recipeId: "id" } } }],
+        // The first action is the page's one filled button (#111): cooking is why you opened it.
+        actions: [{ label: "Cook", navigate: { page: "cook", param: { recipeId: "id" } } }, "markCooked"],
       },
     },
 
     // ---- ingredients are first-class: their own list + detail pages ----
     {
       id: "pantry",
+      icon: "🥕",
       title: "Ingredients",
       view: {
         type: "list",
@@ -304,6 +313,7 @@ export default defineApp({
     },
     {
       id: "in-season",
+      icon: "🌱",
       title: "In season",
       view: {
         type: "list",
