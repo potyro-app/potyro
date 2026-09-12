@@ -12,5 +12,6 @@ export { FieldValue } from "./field-value.js";
 export { FieldInput, type FieldInputProps } from "./field-input.js";
 export { resolveGroups, type ResolvedGroup, type GroupSurface } from "./groups.js";
 export { RecordForm, createDefaults, type RecordFormProps } from "./record-form.js";
+export { FormSheet, type FormSheetProps } from "./form-sheet.js";
 export { formatValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
 export type { BuiltinViewProps, DisplayCell, ViewRegistration } from "./types.js";
