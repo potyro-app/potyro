@@ -344,6 +344,8 @@ export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<string>;
+  /** One emoji or short glyph for the page's tab (#111). Without it the tab shows the entity's icon. */
+  icon?: string;
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
   summary?: SummaryValue[];

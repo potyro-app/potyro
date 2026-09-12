@@ -18,6 +18,7 @@ import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
 import { Launcher, openInstalledApp } from "./launcher.js";
+import { AppChrome, type ChromePage, type ChromeQuick, type ChromeTool } from "./chrome.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
@@ -876,13 +877,69 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
 
   const accent = def.theme?.accent ?? "#E4A93C";
 
+  // What the chrome shows (#111). Pages carry an icon — the entity's, else one for the view type —
+  // because a tab bar without icons is a row of truncated words. Through `navigate`, NOT
+  // `setPageId`: the recorder taps `navigate`, and clicking a tab is the most ordinary way anyone
+  // moves around an app.
+  const viewGlyph: Record<string, string> = { list: "☰", gallery: "▦", table: "⊞", calendar: "📅", map: "🗺", steps: "✓", checklist: "☑", aggregate: "Σ", custom: "◇", detail: "◇" };
+  const pageIcon = (p: (typeof def.pages)[number]): string => {
+    const v = p.view as { type?: string; entity?: string };
+    return (p as { icon?: string }).icon || (v.entity && def.entities[v.entity]?.icon) || viewGlyph[v.type ?? ""] || "◇";
+  };
+  const chromePages: ChromePage[] = [
+    ...(navMode === "grid" ? [{ id: HOME, title: "Home", icon: "⊞", active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
+    ...visiblePages.map((p) => ({ id: p.id, title: titles[p.id] ?? p.id, icon: pageIcon(p), active: p.id === pageId, onOpen: () => navigate(p.id) })),
+  ];
+  const chromeQuick: ChromeQuick[] = quickActions.map((qa) => ({
+    id: qa.id,
+    label: qa.label,
+    icon: qa.icon ?? def.entities[qa.entity]?.icon ?? "＋",
+    entity: qa.entity,
+    onRun: () => triggerQuick(qa),
+  }));
+  const currentPage = def.pages.find((p) => p.id === pageId);
+  const currentEntity = (currentPage?.view as { entity?: string } | undefined)?.entity;
+  // A hidden page (a record's detail, a custom walk-through) is a sub-page: the top bar gets a back
+  // control to the entity's list, and the floating quick action stays out of the page's own actions.
+  const isSubPage = Boolean(currentPage?.hidden);
+  const backTo = (): void => {
+    const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === currentEntity);
+    navigate(list?.id ?? landingPage());
+  };
+  const chromeTools: ChromeTool[] = [
+    ...(generator && canAskAgent ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => setGenOpen(true) }] : []),
+    ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => setEditMode((v) => !v) }] : []),
+    ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
+    ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
+    ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
+  ];
+  const chromeReport: ChromeTool[] = appId
+    ? recording
+      ? [
+          { key: "stop-recording", label: "Stop recording", icon: "■", onSelect: () => void onStopRecording() },
+          { key: "add-note", label: "Add a note", icon: "✎", onSelect: () => setNoting(true) },
+        ]
+      : [{ key: "report", label: "Something's wrong", icon: "⚑", onSelect: startRecording }]
+    : [];
+  // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
+  const chromeTrust: ChromeTool | undefined = canEdit
+    ? {
+        key: "trust",
+        label: provenance === "trusted" ? "Runs directly" : "Runs in a sandbox",
+        icon: "🛡",
+        hint: provenance === "trusted" ? "review" : "allow direct",
+        className: `k-prov-btn k-prov-${provenance}`,
+        onSelect: () => setTrustPrompt(true),
+      }
+    : undefined;
+
   return (
-    <div className="k-app" style={{ ["--accent" as string]: accent }}>
-      <header className="k-header">
-        <div className="k-brand">
-          <span className="k-logo" aria-hidden>◆</span>
-          <h1>{def.name}</h1>
-          {scopeDef ? (
+    <div className="k-app" data-provenance={provenance} style={{ ["--accent" as string]: accent }}>
+      <AppChrome
+        name={def.name}
+        icon={def.icon ?? "◆"}
+        scope={
+          scopeDef ? (
             <button
               type="button"
               className="k-scope"
@@ -894,147 +951,64 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
               <span className="k-scope-label">{scopeLabel}</span>
               {scoped ? scopeName(scoped) : `Choose…`} ▾
             </button>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              className={`k-prov k-prov-${provenance} k-prov-btn`}
-              title={provenance === "trusted" ? "Trusted — runs directly. Click to review / revoke." : "Untrusted — runs in a sandbox. Click to promote to trusted."}
-              onClick={() => setTrustPrompt(true)}
-            >
-              {provenance} ▾
-            </button>
-          ) : (
-            <span className={`k-prov k-prov-${provenance}`}>{provenance}</span>
-          )}
-          <SyncStatus sync={sync} />
-          {appId ? (
-            <div className="k-case-controls">
-              {recording ? (
-                <>
-                  <button type="button" className="k-add" onClick={() => void onStopRecording()}>Stop recording</button>
-                  <button type="button" className="k-add" onClick={() => setNoting(true)}>Add a note</button>
-                </>
-              ) : (
-                <button type="button" className="k-add" onClick={startRecording}>
-                  Something&apos;s wrong
-                </button>
-              )}
-            </div>
-          ) : null}
-        </div>
-        <div className="k-header-actions">
-          {/* One way to the other apps (#88): the switcher, which has Home as a row. The header used
-              to offer ⌂ and ⊞ Apps side by side, two routes to the same place. */}
-          {generator ? (
-            <button type="button" className="k-add k-apps-btn" aria-label="Switch app" onClick={() => setLauncherOpen(true)}>
-              ⊞ Apps
-            </button>
-          ) : null}
-          {activity ? (
-            <button
-              type="button"
-              className="k-add k-activity-btn"
-              aria-label={activity.length ? `What changed — ${activity.length} since you last looked` : "What changed"}
-              data-unread={activity.length || undefined}
-              onClick={() => setActivityOpen(true)}
-            >
-              ✻ Changes
-              {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
-            </button>
-          ) : null}
-          {canChat ? (
-            <button
-              type="button"
-              // Its own class, not `k-activity-btn`: that one is how the activity spec finds the
-              // Changes button, and sharing it made the selector ambiguous.
-              className="k-add k-chat-btn"
-              aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
-              data-unread={roomUnread || undefined}
-              onClick={() => setChatOpen(true)}
-            >
-              💬 Chat
-              {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
-            </button>
-          ) : null}
-          {generator && canAskAgent ? (
-            <button type="button" className="k-add" onClick={() => setGenOpen(true)}>
-              Studio
-            </button>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              className="k-add"
-              aria-label="History"
-              title="History — review and roll back changes to this app"
-              onClick={() => setHistoryOpen(true)}
-            >
-              ⟲ History
-            </button>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              className="k-add"
-              aria-label="Edit mode"
-              data-active={editMode}
-              title="Edit mode — click a UI element to change it with the agent"
-              onClick={() => setEditMode((v) => !v)}
-            >
-              ✎ Edit
-            </button>
-          ) : null}
-          {onImport ? (
-            <button type="button" className="k-add" onClick={onImport}>
-              Import
-            </button>
-          ) : null}
-          {onExport ? (
-            <button type="button" className="k-add" onClick={onExport}>
-              Export
-            </button>
-          ) : null}
-        </div>
-      </header>
-
-      {quickActions.length ? (
-        <div className="k-quickbar">
-          {quickActions.map((qa) => (
-            <button key={qa.id} type="button" className="k-add k-primary-action k-quick" onClick={() => triggerQuick(qa)}>
-              <span aria-hidden>{qa.icon ?? def.entities[qa.entity]?.icon ?? "＋"}</span> {qa.label}
-            </button>
-          ))}
-          {editMark("the quick action buttons", "quickActions")}
-        </div>
-      ) : null}
-
-      <nav className="k-nav" aria-label="Pages">
-        {/* THROUGH `navigate`, NOT `setPageId`. These are the app's own chrome, and they were
-            calling setPageId directly — so the recorder, which taps `navigate`, never saw a tab
-            click. Clicking a tab is the most ordinary way anyone moves around an app, so most
-            recordings captured nothing at all and reported "nothing was recorded". Same mistake as
-            wrapping the nav bridge instead of `navigate`: the choke point is only a choke point if
-            EVERY path actually goes through it. */}
-        {editMark("the navigation / tabs", "nav")}
-        {navMode === "grid" ? (
-          <button type="button" className="k-tab" data-active={pageId === HOME} onClick={() => navigate(HOME)}>
-            ⊞ Home
-          </button>
-        ) : null}
-        {visiblePages.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className="k-tab"
-            data-active={p.id === pageId}
-            onClick={() => navigate(p.id)}
-          >
-            {titles[p.id] ?? p.id}
-          </button>
-        ))}
-      </nav>
-
+          ) : null
+        }
+        status={
+          <>
+            {/* Provenance is shown only when it is unusual (#87): an app that runs in the sandbox
+                gets a quiet mark, never red — that is the safe state. A trusted app says nothing. */}
+            {provenance === "untrusted" ? (
+              <span className="k-prov k-prov-untrusted" title="Runs in a sandbox — click Runs in a sandbox in the menu to review">
+                🛡 sandbox
+              </span>
+            ) : null}
+            <SyncStatus sync={sync} />
+          </>
+        }
+        pages={chromePages}
+        quick={chromeQuick}
+        currentEntity={currentEntity}
+        tools={chromeTools}
+        report={chromeReport}
+        recording={recording}
+        trust={chromeTrust}
+        onApps={generator ? () => setLauncherOpen(true) : undefined}
+        extras={
+          <>
+            {activity ? (
+              <button
+                type="button"
+                className="k-add k-activity-btn"
+                aria-label={activity.length ? `What changed — ${activity.length} since you last looked` : "What changed"}
+                data-unread={activity.length || undefined}
+                onClick={() => setActivityOpen(true)}
+              >
+                ✻ Changes
+                {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
+              </button>
+            ) : null}
+            {canChat ? (
+              <button
+                type="button"
+                // Its own class, not `k-activity-btn`: that one is how the activity spec finds the
+                // Changes button, and sharing it made the selector ambiguous.
+                className="k-add k-chat-btn"
+                aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
+                data-unread={roomUnread || undefined}
+                onClick={() => setChatOpen(true)}
+              >
+                💬 Chat
+                {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
+              </button>
+            ) : null}
+          </>
+        }
+        navMark={editMark("the navigation / tabs", "nav")}
+        quickMark={editMark("the quick action buttons", "quickActions")}
+        onBack={isSubPage ? backTo : undefined}
+        pageTitle={pageId === HOME ? undefined : titles[pageId] ?? pageId}
+        showQuick={!isSubPage}
+      >
       {pageId === HOME ? (
         <main className="k-main">
           {editMark("the object grid home", "home")}
@@ -1091,6 +1065,8 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           </main>
         </ViewErrorBoundary>
       )}
+
+      </AppChrome>
 
       {editor ? (
         // The form brings its own sheet (#101): full-screen on a phone with the actions in a fixed

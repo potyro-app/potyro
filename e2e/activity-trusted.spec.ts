@@ -97,11 +97,9 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await answerNamePrompt(bruno, "Bruno");
   await expect(bruno.locator(".k-list-row", { hasText: "Milk" })).toBeVisible({ timeout: 60_000 });
 
-  // Scoped to the ROW. `/^Edit/` alone also matches the header's "Edit mode" button, so an unscoped
-  // locator toggled edit mode and no form ever opened.
+  // The row is the way in (#111): with no detail page, tapping it opens the editor.
   const row = bruno.locator(".k-list-row", { hasText: "Milk" }).first();
-  await row.hover();
-  await row.getByRole("button", { name: "Edit", exact: true }).click({ timeout: 30_000 });
+  await row.locator(".k-list-text").click({ timeout: 30_000 });
   const qty = bruno.getByLabel(/quantity/i);
   await expect(qty).toBeVisible({ timeout: 30_000 });
   await qty.fill("5");

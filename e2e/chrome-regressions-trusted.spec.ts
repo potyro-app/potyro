@@ -52,16 +52,20 @@ async function open(page: Page, width = 1280): Promise<void> {
   await expect(page.locator("h1")).toBeVisible();
 }
 
-test("every header control is the same height, even with a long app name", async ({ page }) => {
-  // The long name is the point: it wraps the title, squeezing the actions until each button wrapped
-  // its own text and grew. Uniform height has to survive that, not just a roomy header.
-  await open(page);
-  const heights = await page
-    .locator(".k-header-actions > *")
-    .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
-
-  expect(heights.length).toBeGreaterThan(3);
-  expect(new Set(heights).size, `header controls differ in height: ${heights.join(", ")}`).toBe(1);
+test("every top-bar control is the same height, even with a long app name", async ({ page }) => {
+  // The long name is the point: it used to wrap the title and squeeze the actions until each button
+  // wrapped its own text and grew. The top bar (#111) truncates the name instead, and its controls
+  // are one size, a thumb's.
+  await open(page, 390);
+  const heights = await page.locator(".k-topbar button").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+  expect(heights.length).toBeGreaterThan(1);
+  expect(new Set(heights).size, `top-bar controls differ in height: ${heights.join(", ")}`).toBe(1);
+  expect(heights[0]).toBeGreaterThanOrEqual(44);
+  // Also the sidebar's tools on a wide screen.
+  await open(page, 1280);
+  const tools = await page.locator(".k-tools .k-tool").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+  expect(tools.length).toBeGreaterThan(3);
+  expect(new Set(tools).size, `tools differ in height: ${tools.join(", ")}`).toBe(1);
 });
 
 test("the page never scrolls sideways on a phone", async ({ page }) => {
@@ -77,8 +81,8 @@ test("each edit mark offers controls for what it points at", async ({ page }) =>
   await open(page);
   await page.getByRole("button", { name: "Edit mode" }).click();
 
-  // The tab bar → tab names. Not the open page's fields, which is what it used to show.
-  await page.locator(".k-editmark").nth(1).click();
+  // The navigation → tab names. Not the open page's fields, which is what it used to show.
+  await page.getByRole("button", { name: "Edit the navigation / tabs" }).click();
   await expect(page.locator(".k-structure-heading")).toHaveText("Tab names");
   await expect(page.getByLabel("Name for the All tab")).toBeVisible();
   await expect(page.locator(".k-structure-field")).toHaveCount(0);
@@ -96,10 +100,10 @@ test("the tab list offers exactly the tabs that are on screen", async ({ page })
   // shell keeps it out of the tab bar. The panel listed every page with a title and offered to
   // rename five "tabs" on an app showing three.
   await open(page);
-  const onScreen = await page.locator(".k-tab").allInnerTexts();
+  const onScreen = await page.locator(".k-tab .k-tab-label").allInnerTexts();
 
   await page.getByRole("button", { name: "Edit mode" }).click();
-  await page.locator(".k-editmark").nth(1).click();
+  await page.getByRole("button", { name: "Edit the navigation / tabs" }).click();
   await expect(page.locator(".k-structure-heading")).toHaveText("Tab names");
 
   const offered = await page.locator(".k-structure-row .k-structure-label").allInnerTexts();
@@ -128,7 +132,7 @@ test("an action that fails tells the user instead of failing silently", async ({
 
   await page.goto("/?user=chrome");
   await expect(page.locator("h1")).toBeVisible();
-  await page.locator(".k-list-row").first().click();
+  await page.locator(".k-list-row .k-list-text").first().click();
   await page.locator(".k-detail-actions button", { hasText: "Snap Photo" }).click();
 
   await expect(page.getByText("camera is not available")).toBeVisible();
@@ -151,7 +155,7 @@ test("the AI button appears only when there is something to send", async ({ page
 
 test("detail actions are labelled, not keyed", async ({ page }) => {
   await open(page);
-  await page.locator(".k-list-row").first().click();
+  await page.locator(".k-list-row .k-list-text").first().click();
   const labels = await page.locator(".k-detail-actions button").allInnerTexts();
 
   expect(labels).toContain("Snap Photo");
@@ -180,11 +184,11 @@ test("ctx.navigate from an app action actually changes page", async ({ page }) =
   await page.goto("/?user=chrome");
   await expect(page.locator("h1")).toBeVisible();
 
-  await page.locator(".k-list-row").first().click();
+  await page.locator(".k-list-row .k-list-text").first().click();
   await expect(page.locator(".k-detail")).toBeVisible();
   await page.locator(".k-detail-actions button", { hasText: "Pin Here" }).click();
 
-  await expect(page.locator(".k-tab[data-active='true']")).toHaveText("Other");
+  await expect(page.locator(".k-tab[data-active='true'] .k-tab-label")).toHaveText("Other");
 });
 
 test("a record can be deleted, and it asks first", async ({ page }) => {
@@ -196,16 +200,24 @@ test("a record can be deleted, and it asks first", async ({ page }) => {
   await open(page);
   await expect(page.locator(".k-list-row")).toHaveCount(1);
 
+  // Delete lives on the record's page, last in "More actions" (#111) — not on every row.
+  const del = async (): Promise<void> => {
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+  };
+  await page.locator(".k-list-row .k-list-text").first().click();
+  await expect(page.locator(".k-detail")).toBeVisible();
   // Declining must keep the record — deletion is irreversible here.
-  await page.locator(".k-list-row").first().locator("button", { hasText: "Delete" }).click();
+  await del();
   const dialog = page.locator(".k-dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Somewhere");
   await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.locator(".k-list-row")).toHaveCount(1);
+  await expect(page.locator(".k-detail")).toBeVisible();
 
-  await page.locator(".k-list-row").first().locator("button", { hasText: "Delete" }).click();
+  await del();
   await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  // Back on the list, and the record is gone.
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
   // And it never reached for a platform dialog.

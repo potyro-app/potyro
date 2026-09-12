@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 test("groceries checklist runs untrusted in the isolate: rows, headings, a tick", async ({ page }) => {
   await page.goto("/?app=groceries");
   await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
-  await expect(page.locator(".k-prov")).toHaveText(/^untrusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
   const list = page.locator(".k-checklist");
   await expect(list.locator(".k-check-heading").first()).toHaveText("bakery");

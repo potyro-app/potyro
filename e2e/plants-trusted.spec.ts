@@ -10,7 +10,7 @@ async function openPlants(page: Page): Promise<void> {
 
 test("plants app runs the M2 flow in the browser (trusted)", async ({ page }) => {
   await openPlants(page);
-  await expect(page.locator(".k-prov")).toHaveText(/^trusted/);
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
   // List renders (sorted by nextWatering).
   await expect(page.locator(".k-list-row").first()).toBeVisible();

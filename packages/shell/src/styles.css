@@ -144,79 +144,24 @@ body {
 }
 
 .k-app {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: var(--space);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
   min-height: 100%;
+  /* The chrome sizes itself to the viewport, never to its longest line: without a width the app
+     grew to its title's length on a phone and the whole page scrolled sideways. */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.k-app-chrome {
+  display: block;
+  min-width: 0;
+  width: 100%;
+}
+.k-app-phone {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Header */
-.k-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  /* The actions drop to their own row rather than being squeezed: at 390px they are 454px wide, and
-     without this the whole page scrolled sideways. */
-  flex-wrap: wrap;
-}
-.k-brand {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  /* Name, provenance, sync pill and the report control together pass 375px on a phone. Unwrapped,
-     the page grew a sideways scroll and every fixed sheet grew with it (#88). */
-  flex-wrap: wrap;
-  min-width: 0;
-  max-width: 100%;
-}
-.k-logo {
-  color: var(--accent);
-  font-size: 1.3rem;
-  transform: translateY(2px);
-}
-.k-brand h1 {
-  font-family: var(--font-display);
-  font-size: var(--text-hero);
-  letter-spacing: -0.01em;
-  margin: 0;
-  font-weight: 600;
-}
-.k-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-/* Every control in the header bar is the same height. Left to each class, they drifted: `.k-add`
-   never set `font: inherit` (so it fell back to the ~13px UA button font) and used different padding
-   from `.k-app-switch`, giving visibly different heights in the same row. Height is set here, once,
-   rather than re-derived from each button's own font and padding. */
-.k-header-actions > button,
-.k-header-actions > .k-app-switch,
-.k-header-actions > .k-prov {
-  font: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.5rem;
-  box-sizing: border-box;
-  /* Height was set here but wrapping was not, so a squeezed row broke "⊞ Apps" onto two lines and
-     that button alone became 64px next to its 41px neighbours. */
-  white-space: nowrap;
-  flex-shrink: 0;
-  /* And a FIXED line box, or the glyph decides the height: "⊞ Apps" and "⟲ History" sat 2px taller
-     than their plain-text neighbours because those symbols have a taller natural line box. With this,
-     content height is always under the min-height, so every control resolves to the same number. */
-  line-height: 1.25;
-}
-/* The provenance pill keeps its small-caps type without shrinking the row. */
-.k-header-actions > .k-prov {
-  font-size: 0.66rem;
-}
 .k-app-switch {
   font: inherit;
   padding: 0.45rem 0.6rem;
@@ -229,15 +174,6 @@ body {
 }
 .k-app-switch:hover {
   border-color: var(--accent);
-}
-.k-prov {
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0.18em 0.55em;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  color: var(--ink-soft);
 }
 /* The app-wide selection ("Trip: Berlin ▾") — a pill like provenance, but it is a control. */
 .k-scope {
@@ -265,16 +201,6 @@ body {
   border-style: dashed;
   color: var(--ink-soft);
 }
-.k-prov-untrusted {
-  color: var(--danger);
-  border-color: var(--danger-line);
-  background: var(--danger-tint);
-}
-.k-prov-trusted {
-  color: var(--ok);
-  border-color: var(--ok-line);
-  background: var(--ok-tint);
-}
 
 /* Buttons */
 button {
@@ -298,17 +224,6 @@ button {
   transform: translateY(0);
 }
 
-/* Quick-actions bar */
-.k-quickbar {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.k-quick {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
 .k-quickmenu {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -333,18 +248,6 @@ button {
   text-transform: capitalize;
 }
 
-/* Trust promotion */
-.k-prov-btn {
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: box-shadow 150ms var(--ease);
-}
-.k-prov-btn:hover {
-  box-shadow: var(--shadow);
-}
 .k-trustdialog {
   width: min(460px, 94vw);
   display: flex;
@@ -771,30 +674,6 @@ button {
   font-size: 1.1rem;
 }
 
-/* Nav */
-.k-nav {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--line);
-  overflow-x: auto;
-}
-.k-tab {
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  padding: 0.55rem 0.7rem;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: color 150ms var(--ease), border-color 150ms var(--ease);
-}
-.k-tab:hover {
-  color: var(--ink);
-}
-.k-tab[data-active="true"] {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-  font-weight: 600;
-}
 
 /* Add form */
 .k-addform {
@@ -1512,6 +1391,609 @@ details.k-form-group > summary:focus-visible {
   font-weight: 600;
 }
 /* tokens-only: end */
+
+
+/* tokens-only: start — app chrome */
+/* The app's chrome (#111). Phone: a compact top bar, the page, a floating quick action and a bottom
+   tab bar. Wide: a sidebar (identity, pages, quick actions, the shell's tools at the bottom) beside
+   the content. The chrome is neutral; the accent marks the active page and the primary action. */
+.k-app-phone {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.k-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3.25rem;
+  padding: var(--space-1) var(--space-2);
+  padding-top: calc(var(--space-1) + env(safe-area-inset-top));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.k-topbar-btn,
+.k-menu-btn.k-topbar-btn {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-topbar-btn:hover,
+.k-topbar-btn[aria-expanded="true"] {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.k-topbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.k-topbar-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex: none;
+}
+.k-topbar-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k-topbar .k-scope {
+  min-height: 2rem;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-topbar .k-activity-btn,
+.k-topbar .k-chat-btn {
+  padding: 0.35rem 0.6rem;
+  min-height: 2.5rem;
+}
+.k-page {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) calc(7.5rem + env(safe-area-inset-bottom));
+}
+.k-recbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--danger-line);
+}
+.k-recbar .k-add {
+  margin-left: auto;
+  font-weight: 500;
+}
+.k-recbar .k-add + .k-add {
+  margin-left: 0;
+}
+.k-recbar-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--danger);
+  animation: k-rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes k-rec-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* The quiet marks: the sandbox pill and the sync state. */
+.k-prov {
+  font-size: 0.7rem;
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* Bottom tab bar: four pages and More, each a 44px column with its glyph over its name. */
+.k-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-around;
+  padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.k-tabbar .k-tab,
+.k-tabbar .k-menu-btn.k-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 3.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.k-tabbar .k-tab-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.k-tabbar .k-tab-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k-tabbar .k-tab[data-active="true"],
+.k-tabbar .k-tab-more-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-tabbar .k-tab[data-active="true"] .k-tab-icon,
+.k-tabbar .k-tab-more-active .k-tab-icon {
+  color: var(--accent);
+}
+.k-tabbar .k-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.k-tabbar > .k-editmark {
+  position: absolute;
+  top: -1.9rem;
+  right: 0.5rem;
+}
+
+/* The floating quick action, above the tab bar in thumb reach; held, the others rise above it. */
+.k-fab {
+  position: fixed;
+  right: var(--space-3);
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  z-index: 21;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3.25rem;
+  padding: 0 1.2rem 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.k-fab:active,
+.k-fab[data-open] {
+  transform: scale(0.97);
+}
+.k-fab:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.k-fab-plus {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.k-fab-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--scrim-soft);
+}
+.k-fab-dial {
+  position: fixed;
+  right: var(--space-3);
+  bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  animation: k-sheet-up var(--dur) var(--ease);
+}
+.k-fab-other {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+/* Wide: the sidebar and the content column. */
+.k-app-wide {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 78rem;
+  margin: 0 auto;
+}
+.k-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--line);
+}
+.k-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  min-width: 0;
+}
+.k-brand-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex: none;
+}
+.k-brand-name {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-sidebar-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+}
+.k-sidebar-heading {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-2);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-sidenav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  position: relative;
+}
+.k-sidenav .k-tab,
+.k-tools .k-tool {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: 0.3rem var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-sidenav .k-tab:hover,
+.k-tools .k-tool:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.k-sidenav .k-tab:focus-visible,
+.k-tools .k-tool:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.k-sidenav .k-tab[data-active="true"] {
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-sidenav .k-tab-icon,
+.k-tools .k-tool-icon {
+  width: 1.4rem;
+  text-align: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  flex: none;
+}
+.k-sidenav .k-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-sidenav > .k-editmark {
+  position: absolute;
+  top: -0.2rem;
+  right: 0;
+}
+.k-quickbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+}
+.k-quickbar .k-quick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.6rem;
+  text-align: left;
+}
+.k-quickbar > .k-editmark {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+}
+.k-tools {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.k-tools .k-tool {
+  min-height: 2.25rem;
+  font-size: 0.9rem;
+}
+.k-tools .k-tool[data-active="true"] {
+  color: var(--ink);
+  background: var(--accent-tint);
+}
+.k-tools .k-tool-hint {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+.k-tools .k-recbar {
+  border: 0;
+  border-radius: var(--radius-sm);
+  margin: var(--space-1) 0;
+}
+.k-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+}
+.k-page-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+}
+.k-page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.k-topbar-back {
+  font-size: 1.7rem;
+}
+.k-sidenav .k-tab {
+  min-height: 2.35rem;
+}
+.k-tools .k-tool {
+  min-height: 2.1rem;
+}
+
+/* The menu behind one button: a popover on a wide screen, a bottom sheet on a phone. */
+.k-menu-btn {
+  font: inherit;
+  cursor: pointer;
+}
+.k-menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.k-menu-scrim {
+  position: absolute;
+  inset: 0;
+}
+.k-menu {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  min-width: 14rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  animation: k-fade var(--dur-fast) var(--ease);
+}
+.k-menu-grip {
+  display: none;
+}
+.k-menu-title {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+.k-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.k-menu-item:hover,
+.k-menu-item:focus-visible {
+  background: var(--accent-tint);
+  outline: none;
+}
+.k-menu-item:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+  background: transparent;
+}
+.k-menu-icon {
+  width: 1.5rem;
+  text-align: center;
+  color: var(--ink-soft);
+  flex: none;
+}
+.k-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.k-menu-hint {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+.k-menu-sep {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--line);
+}
+.k-menu-item.k-danger {
+  color: var(--danger);
+}
+.k-menu-item.k-danger:hover,
+.k-menu-item.k-danger:focus-visible {
+  background: var(--danger-tint);
+}
+@media (max-width: 759px) {
+  .k-menu-scrim {
+    background: var(--scrim-soft);
+  }
+  .k-menu {
+    top: auto !important;
+    right: 0 !important;
+    left: 0;
+    bottom: 0;
+    max-width: none;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: var(--space-2) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom));
+    animation: k-sheet-up var(--dur) var(--ease);
+  }
+  .k-menu-grip {
+    display: block;
+    width: 2.5rem;
+    height: 0.3rem;
+    margin: 0 auto var(--space-2);
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .k-menu-item {
+    min-height: 3rem;
+    font-size: 1rem;
+  }
+}
+/* A list row's chevron: the row opens something. */
+.k-row-chevron {
+  color: var(--ink-faint);
+  font-size: 1.4rem;
+  line-height: 1;
+  flex: none;
+}
+/* The detail page: the record's title, its action bar (one filled, the rest plain, More at the
+   end), then the groups. */
+.k-detail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.k-detail-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.k-detail-actions .k-add {
+  min-height: 2.75rem;
+}
+.k-detail-actions .k-menu-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-recbar-dot,
+  .k-fab-dial,
+  .k-menu {
+    animation: none;
+  }
+}
+/* tokens-only: end — app chrome */
 
 /* tokens-only: start — checklist */
 /* The checklist view (#106): a 44px check at the left of each row, the label struck through and
@@ -2978,9 +3460,7 @@ button.k-switch:focus-visible {
    app button and every dialog's OK / Cancel / Confirm at 40px on a phone. */
 @media (pointer: coarse) {
   .k-add,
-  .k-tab,
-  .k-header-actions > button,
-  .k-header-actions > .k-app-switch {
+  .k-tab {
     min-height: 2.75rem;
   }
 }

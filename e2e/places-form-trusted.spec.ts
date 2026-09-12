@@ -208,5 +208,5 @@ test("tapping an existing marker shows which place it is, not a new form", async
   await expect(page.locator(".k-modal")).toHaveCount(0);
 
   await popup.getByRole("button", { name: "Open" }).click();
-  await expect(page.getByRole("heading", { name: "Place" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Place", exact: true })).toBeVisible();
 });
