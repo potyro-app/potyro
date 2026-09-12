@@ -1,4 +1,4 @@
-import { humanizeKey } from "karta";
+import { resolveView, humanizeKey } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import type { View } from "karta";
 
@@ -21,10 +21,9 @@ export function toBadges(v: unknown): string[] {
 }
 
 /** The view object for a page (typed loosely — declarative fields only guaranteed present). */
-export function getView(runtime: KartaRuntime, pageId: string): View {
-  const page = runtime.definition.pages.find((p) => p.id === pageId);
-  if (!page) throw new Error(`view: page ${pageId} not found`);
-  return page.view;
+/** The view a page ref names — a layout item's for `page#index` (#105). */
+export function getView(runtime: KartaRuntime, pageRef: string): View {
+  return resolveView(runtime.definition, pageRef);
 }
 
 /** The field an entity uses as its human label (relation pickers, list rows). */

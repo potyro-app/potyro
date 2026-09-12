@@ -76,6 +76,52 @@ export default defineApp({
   },
 
   pages: [
+    // A home page made of three views (#105): the figures, the overdue plants, the month. Each is
+    // an ordinary view, so this page renders for someone this app is shared with, in the sandbox.
+    {
+      id: "today",
+      title: "Today",
+      icon: "☀️",
+      layout: {
+        type: "grid",
+        items: [
+          {
+            title: "Watering",
+            span: 1,
+            view: {
+              type: "aggregate",
+              entity: "plant",
+              rows: (plants) => {
+                const week = Date.now() + 7 * DAY;
+                return [
+                  { label: "Due now", value: plants.filter((p) => p.overdue).length, tone: plants.some((p) => p.overdue) ? "negative" : undefined },
+                  { label: "This week", value: plants.filter((p) => p.active && p.nextWatering.getTime() <= week).length },
+                  { label: "Plants", value: plants.filter((p) => p.active).length },
+                ];
+              },
+            },
+          },
+          {
+            title: "Overdue",
+            span: 2,
+            view: {
+              type: "list",
+              entity: "plant",
+              filter: (p) => p.overdue,
+              sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
+              display: { primary: "name", secondary: (p) => `due ${relativeTime(p.nextWatering)}` },
+              rowActions: ["water"],
+              emptyText: "Nothing to water. 🌱",
+            },
+          },
+          {
+            title: "This month",
+            span: 3,
+            view: { type: "calendar", entity: "plant", date: "nextWatering", title: (p) => p.name, color: (p) => (p.needsDirectSun ? "#E4A93C" : "#7FCF8E") },
+          },
+        ],
+      },
+    },
     {
       id: "list",
       title: "Plants",

@@ -1,5 +1,6 @@
 // @karta/views — view registry + built-in views.
 export { ViewHost } from "./host.js";
+export { LayoutHost, type LayoutHostProps } from "./layout-host.js";
 export { defaultRegistry, resolveViewComponent } from "./registry.js";
 export { ListView, GalleryView, TableView, DetailView } from "./builtins.js";
 export { StepsView } from "./steps.js";

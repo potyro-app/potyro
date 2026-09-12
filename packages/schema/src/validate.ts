@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 import { FIELD_TYPES } from "./types/fields.js";
-import type { AppDefinition, EntityDef } from "./types/app.js";
+import type { AppDefinition, EntityDef, View } from "./types/app.js";
 import type { Field } from "./types/fields.js";
 
 /** A value that must be a function (logic — not validated further). */
@@ -356,7 +356,7 @@ const viewSchema = z.discriminatedUnion("type", [
  * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
  * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
  */
-export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?"]);
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?", "layout?"]);
 
 export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   Object.fromEntries(
@@ -399,6 +399,44 @@ const summaryValueSchema = z
 
 // Strict for the same reason views are: a misspelled `summaries:` that is silently ignored looks
 // exactly like a feature that doesn't work.
+const layoutItemSchema = z
+  .object({
+    view: viewSchema,
+    title: z.string().optional(),
+    span: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    collapsible: z.boolean().optional(),
+  })
+  .strict();
+
+const layoutSchema = z
+  .object({
+    type: z.enum(["stack", "grid", "split", "tabs"]),
+    items: z.array(layoutItemSchema).min(1, "a layout needs at least one item"),
+  })
+  .strict()
+  .superRefine((layout, ctx) => {
+    if (layout.type === "split" && layout.items.length !== 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: "a split layout has exactly two items: the list on the left, the detail on the right" });
+    }
+    if (layout.type === "split" && layout.items.length === 2 && (layout.items[1]!.view as { type?: string }).type !== "detail") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", 1, "view"], message: "a split layout's second item is the detail view the rows fill" });
+    }
+    if (layout.type === "tabs") {
+      layout.items.forEach((item, i) => {
+        if (!item.title) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i, "title"], message: "a tabs layout names each item — its title is the tab" });
+      });
+    }
+  });
+
+/** A custom view needs exactly one way to render. Checked for the page's view and every layout item. */
+function customViewIssue(view: unknown): string | null {
+  const v = view as { type?: string; render?: unknown; mount?: unknown };
+  if (v.type !== "custom") return null;
+  return (v.render === undefined) === (v.mount === undefined)
+    ? "a custom view needs exactly one of `render` (a React element) or `mount` (el, props) => cleanup"
+    : null;
+}
+
 const pageSchema = z
   .object({
     id: z.string().min(1),
@@ -406,19 +444,24 @@ const pageSchema = z
     icon: z.string().min(1).max(8).optional(),
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
-    view: viewSchema,
+    view: viewSchema.optional(),
+    layout: layoutSchema.optional(),
   })
   .strict()
   .superRefine((page, ctx) => {
-    const view = page.view as { type?: string; render?: unknown; mount?: unknown };
-    if (view.type !== "custom") return;
-    if ((view.render === undefined) === (view.mount === undefined)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["view"],
-        message: "a custom view needs exactly one of `render` (a React element) or `mount` (el, props) => cleanup",
-      });
+    // A page is one view or a layout of several — never both, never neither (#105).
+    if ((page.view === undefined) === (page.layout === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["view"], message: "a page declares either `view` or `layout`" });
+      return;
     }
+    if (page.view) {
+      const issue = customViewIssue(page.view);
+      if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["view"], message: issue });
+    }
+    page.layout?.items.forEach((item, i) => {
+      const issue = customViewIssue(item.view);
+      if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["layout", "items", i, "view"], message: issue });
+    });
   });
 
 const reminderSchema = z.object({
@@ -605,10 +648,14 @@ export function checkReferences(def: AppDefinition): string[] {
     }
   };
 
-  // pages / views
+  // pages / views — a page's own view, and every item of its layout (#105)
+  const views: Array<{ v: View; where: string }> = [];
   for (const page of def.pages) {
-    const v = page.view;
-    const where = `page "${page.id}" view`;
+    if (page.layout) {
+      page.layout.items.forEach((item, i) => views.push({ v: item.view, where: `page "${page.id}" layout item ${i + 1}${item.title ? ` ("${item.title}")` : ""}` }));
+    } else views.push({ v: page.view, where: `page "${page.id}" view` });
+  }
+  for (const { v, where } of views) {
     const entity = ensureEntity(v.entity, where);
     if (!entity) continue;
 

@@ -272,7 +272,11 @@ migrations: [
   (there is NOTHING else on \`ctx.ui\` — no \`openUrl\`, no \`alert\`)
 - \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
-- A page has \`id\`, \`title\`, and a \`view\`; the view types and every option each accepts are the \`View\`
+- A page has \`id\`, \`title\`, and a \`view\` — or a \`layout\` of several views (\`PageLayout\` in the
+  REFERENCE): \`{ type: "grid", items: [{ title: "Due", span: 1, view: {...} }, { title: "Overdue", span: 2,
+  view: {...} }] }\`. Use a grid for a home page that shows figures, a short list and a calendar at
+  once; a \`split\` (a list, then its \`detail\`) so a wide screen shows the record beside the list; \`tabs\`
+  for "Active / Done" inside one page. The view types and every option each accepts are the \`View\`
   union in the REFERENCE. Omitting a required option fails validation. A \`display.primary\`/\`secondary\`
   binding is a field-key string OR a function \`(r) => ...\`.
 - \`table\` columns live under \`display.columns\`, not at the top level. A \`map\` view's \`geo\` is the KEY
