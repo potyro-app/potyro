@@ -98,7 +98,7 @@ test("a relation to an empty entity can create its first record inline", async (
   await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
 
   await page.getByRole("button", { name: /New place/ }).click();
-  const form = page.locator(".k-modal");
+  const form = page.locator(".k-modal").first();
   await expect(form).toBeVisible();
   await form.getByLabel(/^Name/).first().fill("Parque Ibirapuera");
 
@@ -108,10 +108,12 @@ test("a relation to an empty entity can create its first record inline", async (
   await expect(relation.locator("select")).toContainText("No Place Type yet");
   await relation.getByRole("button", { name: /New Place Type/ }).click();
 
-  // The nested create form must NOT be a <form> inside a <form>.
-  const inline = form.locator(".k-inline-create");
+  // The nested create is a second sheet over the first (#101), and not a <form> — React would
+  // bubble its submit to the outer form even through the portal.
+  const inline = page.locator(".k-inline-create");
   await expect(inline).toBeVisible();
   expect(await inline.locator("form").count()).toBe(0);
+  await expect(page.getByRole("dialog", { name: "New Place Type" })).toBeVisible();
 
   await inline.getByLabel(/^Name/).fill("Park");
   await inline.getByRole("button", { name: "Create" }).click();

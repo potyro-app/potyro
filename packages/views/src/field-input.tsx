@@ -330,26 +330,25 @@ function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRunt
     </button>
   );
 
+  // A second sheet over the first (#101), not a form folded into this one.
   const inlineForm = creating ? (
-    <div className="k-inline-create">
-      <RecordForm
-        nested
-        runtime={runtime}
-        entity={field.to}
-        onCancel={() => setCreating(false)}
-        onDone={(id) => {
-          setCreating(false);
-          // Select what was just created — that is why the user made it.
-          if (field.many) {
-            const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
-            sel.add(id);
-            onChange([...sel]);
-          } else {
-            onChange(id);
-          }
-        }}
-      />
-    </div>
+    <RecordForm
+      nested
+      runtime={runtime}
+      entity={field.to}
+      onCancel={() => setCreating(false)}
+      onDone={(id) => {
+        setCreating(false);
+        // Select what was just created — that is why the user made it.
+        if (field.many) {
+          const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
+          sel.add(id);
+          onChange([...sel]);
+        } else {
+          onChange(id);
+        }
+      }}
+    />
   ) : null;
 
   if (field.many) {
@@ -375,7 +374,8 @@ function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRunt
           ))}
           {rows.length === 0 ? <span className="k-muted">No {label} yet</span> : null}
         </div>
-        {creating ? inlineForm : addNew}
+        {addNew}
+        {inlineForm}
       </div>
     );
   }
@@ -391,7 +391,8 @@ function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRunt
           </option>
         ))}
       </select>
-      {creating ? inlineForm : addNew}
+      {addNew}
+      {inlineForm}
     </div>
   );
 }
