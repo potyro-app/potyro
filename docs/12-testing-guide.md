@@ -86,8 +86,9 @@ and local, names colliding on their first letter):
 - `a11y-trusted.spec.ts` — axe on home, switcher and open menu (zero serious/critical), and a
   reduced-motion run in which nothing animates.
 - `baselines-trusted.spec.ts` — screenshots of home (empty, seeded), the tile menu and the switcher
-  at 375 / 768 / 1440 in light and dark, plus the share dialog at the two ends. Light and dark are
-  identical until #92 lands a dark palette — that PR changes the dark set.
+  at 375 / 768 / 1440 in light and dark, plus the share dialog at the two ends, and the Plants form
+  at 375 / 1440 in both schemes — the one shot the forms epic (#113) lands its controls in: switch
+  rows, numbers with units and steppers, groups, help lines and half-width pairs.
 
 `pnpm e2e:launcher` runs the directory (about a minute at one worker).
 

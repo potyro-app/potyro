@@ -28,6 +28,8 @@ export type Edit =
   | { kind: "field-label"; entity: string; field: string; value: string }
   | { kind: "field-hidden"; entity: string; field: string; value: boolean }
   | { kind: "field-order"; entity: string; order: readonly string[] }
+  /** The new field lists of the entity's groups, one per existing group, in order (#100). */
+  | { kind: "field-groups"; entity: string; groups: readonly (readonly string[])[] }
   | { kind: "page-title"; page: string; value: string };
 
 export type EditResult = { ok: true; source: string; note: string } | { ok: false; reason: string };
@@ -40,9 +42,19 @@ export interface FieldShape {
   hidden: boolean;
 }
 
+/** One of the entity's `groups`, as written: its title and the keys it lists (fields or computed). */
+export interface GroupShape {
+  title?: string;
+  fields: string[];
+}
+
 export interface EntityShape {
   key: string;
   fields: FieldShape[];
+  /** The declared `groups`, when written as literal arrays of field names (#100). */
+  groups?: GroupShape[];
+  /** Computed keys, so a group listing one can be told apart from a group naming nothing. */
+  computed?: string[];
   /** Absent when every field is a literal. Otherwise why this entity can't be reordered/edited. */
   blocked?: string;
 }
@@ -166,6 +178,28 @@ function literalString(node: Node | null): string | undefined {
   return node?.type === "StringLiteral" && typeof node.value === "string" ? node.value : undefined;
 }
 
+/** The entity's `groups` when every group is `{ title?, fields: ["a", "b"] }` written out; `undefined`
+ *  when there are none; `"opaque"` when there are groups this cannot read (a helper call, a spread). */
+function literalGroups(node: Node | null): GroupShape[] | undefined | "opaque" {
+  if (!node) return undefined;
+  if (node.type !== "ArrayExpression") return "opaque";
+  const out: GroupShape[] = [];
+  for (const el of asArray(node.elements)) {
+    if (el?.type !== "ObjectExpression" || hasOpaqueMembers(el)) return "opaque";
+    const fieldsNode = propValue(el, "fields");
+    if (fieldsNode?.type !== "ArrayExpression") return "opaque";
+    const fields: string[] = [];
+    for (const f of asArray(fieldsNode.elements)) {
+      const key = literalString(f ?? null);
+      if (key === undefined) return "opaque";
+      fields.push(key);
+    }
+    const title = literalString(propValue(el, "title"));
+    out.push({ ...(title !== undefined ? { title } : {}), fields });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Reading
 
@@ -212,7 +246,15 @@ export async function inspect(source: string): Promise<AppShape> {
         const hiddenNode = value.type === "ObjectExpression" ? propValue(value, "hidden") : null;
         fields.push({ key, hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true, ...(label ? { label } : {}) });
       }
-      entities.push({ key: name, fields });
+      const groups = literalGroups(propValue(ep.value as Node, "groups"));
+      if (groups === "opaque") {
+        entities.push({ key: name, fields, blocked: "this entity's groups aren't written as plain lists of field names" });
+        continue;
+      }
+      const computedNode = propValue(ep.value as Node, "computed");
+      const computed =
+        computedNode?.type === "ObjectExpression" ? asArray(computedNode.properties).map(keyOf).filter((k): k is string => Boolean(k)) : [];
+      entities.push({ key: name, fields, ...(groups ? { groups } : {}), ...(computed.length ? { computed } : {}) });
     }
   }
 
@@ -358,6 +400,37 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
       .join(`\n${indent}`);
     ms.overwrite(first.start, last.end, rewritten);
     return finish(t, ms, `reordered ${edit.entity} fields`);
+  }
+
+  if (edit.kind === "field-groups") {
+    const groupsNode = propValue(entityNode, "groups");
+    const current = literalGroups(groupsNode);
+    if (!current || current === "opaque" || groupsNode?.type !== "ArrayExpression") {
+      return { ok: false, reason: "this entity's groups aren't written as plain lists of field names" };
+    }
+    if (edit.groups.length !== current.length) return { ok: false, reason: "the groups must stay the groups that are there now" };
+    const computedNode = propValue(entityNode, "computed");
+    const known = new Set([
+      ...asArray(fieldsNode.properties).map((p) => keyOf(p) ?? ""),
+      ...(computedNode?.type === "ObjectExpression" ? asArray(computedNode.properties).map((p) => keyOf(p) ?? "") : []),
+    ]);
+    const seen = new Set<string>();
+    for (const [i, keys] of edit.groups.entries()) {
+      if (keys.length === 0) return { ok: false, reason: `"${current[i]!.title ?? `group ${i + 1}`}" would be left with no fields` };
+      for (const key of keys) {
+        if (!known.has(key)) return { ok: false, reason: `"${key}" isn't a field or computed value of ${edit.entity}` };
+        if (seen.has(key)) return { ok: false, reason: `"${key}" can only be in one group` };
+        seen.add(key);
+      }
+    }
+    // Each group's `fields: [...]` is rewritten in place, so titles, comments and the fold stay put.
+    const elements = asArray(groupsNode.elements);
+    for (const [i, keys] of edit.groups.entries()) {
+      if (keys.join("\0") === current[i]!.fields.join("\0")) continue;
+      const fieldsNode = propValue(elements[i]!, "fields")!;
+      ms.overwrite(fieldsNode.start, fieldsNode.end, `[${keys.map((k) => literal(k)).join(", ")}]`);
+    }
+    return finish(t, ms, `regrouped ${edit.entity} fields`);
   }
 
   const fieldProp = prop(fieldsNode, edit.field);

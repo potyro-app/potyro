@@ -116,10 +116,10 @@ export default defineApp({
       label: "Recipe",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true },
+        name: { type: "text", required: true, placeholder: "Shakshuka" },
         photo: { type: "media", accept: "image" },
         tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },
-        servings: { type: "number", default: 2, min: 1, integer: true },
+        servings: { type: "number", default: 2, min: 1, integer: true, help: "The per-serving figures divide by this" },
         ingredients: {
           type: "list",
           of: {
@@ -139,6 +139,14 @@ export default defineApp({
         lastCookedAt: { type: "datetime", hidden: true },
         timesCooked: { type: "number", default: 0, integer: true, hidden: true },
       },
+      // One arrangement for the form and the detail page (#100). The form shows the fields of each
+      // group it can edit; the detail page shows the computed values too.
+      groups: [
+        { title: "Overview", fields: ["name", "photo", "tags"] },
+        { title: "Ingredients", fields: ["ingredients"] },
+        { title: "Steps", fields: ["steps"], collapsed: true },
+        { title: "Nutrition & cost", fields: ["servings", "caloriesPerServing", "proteinPerServing", "diet", "estimatedCost", "missingIngredients"] },
+      ],
 
       // ---- logic: ordinary functions; relations on `r` are pre-resolved ----
       computed: {
@@ -272,12 +280,7 @@ export default defineApp({
         type: "detail",
         entity: "recipe",
         param: "recipeId",
-        sections: [
-          { title: "Overview", fields: ["photo", "tags", "servings"] },
-          { title: "Per serving", fields: ["caloriesPerServing", "proteinPerServing"] },
-          { title: "Diet & cost", fields: ["diet", "estimatedCost", "missingIngredients"] },
-          { title: "Ingredients", fields: ["ingredients"] },
-        ],
+        // No `sections`: the page shows the entity's `groups`, as the form does.
         actions: ["markCooked", { label: "Cook", navigate: { page: "cook", param: { recipeId: "id" } } }],
       },
     },
@@ -323,6 +326,7 @@ export default defineApp({
         type: "detail",
         entity: "ingredient",
         param: "ingredientId",
+        // `sections` on the page override the entity's groups for this page only.
         sections: [
           { title: "About", fields: ["diet", "category", "seasons", "pricePerKg"] },
           { title: "Nutrition (per 100g)", fields: ["caloriesPer100", "proteinPer100", "fatPer100", "carbsPer100"] },

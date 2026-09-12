@@ -90,6 +90,7 @@ export function NumberInput({ field, value, onChange, label }: NumberInputProps)
           type="number"
           inputMode={integer ? "numeric" : "decimal"}
           aria-label={label}
+          placeholder={field.placeholder}
           value={current === null ? "" : String(current)}
           min={num.min}
           max={num.max}

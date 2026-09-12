@@ -14,6 +14,12 @@ export interface FieldCommon {
   label?: string;
   required?: boolean;
   hidden?: boolean;
+  /** One line under the control on the form: what to put here, or why it matters (#100). */
+  help?: string;
+  /** Example text in the empty control (text, url, number). */
+  placeholder?: string;
+  /** `"half"` lets two short neighbours share a row on a wide form; they stack on a phone. */
+  width?: "full" | "half";
   /** Literal default, or `(ctx) => value`. Not validated (may be a function). */
   default?: DefaultValue;
 }

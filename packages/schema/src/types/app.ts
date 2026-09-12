@@ -29,12 +29,25 @@ export type Binding<T = Value> = string | BindingFn<T>;
 // Entities
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** A titled run of fields (#100). The form and the detail page both read it: the form shows the
+ *  editable fields of each group under its title, the detail page every listed field or computed. */
+export interface FieldGroup {
+  title?: string;
+  /** Field keys, or computed keys (those show on the detail page only). */
+  fields: string[];
+  /** Start folded. The first group is never folded, whatever this says. */
+  collapsed?: boolean;
+}
+
 export interface EntityDef {
   label?: string;
   /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
   icon?: string;
   displayField?: string;
   fields: Record<string, Field>;
+  /** How the form and the detail page arrange the fields. Fields left out of every group follow the
+   *  last group, untitled, in declaration order. */
+  groups?: FieldGroup[];
   computed?: Record<string, Computed>;
   actions?: Record<string, ActionFn>;
 }
@@ -102,6 +115,7 @@ export interface DetailView {
   type: "detail";
   entity: string;
   param?: string;
+  /** Overrides the entity's `groups` for this page only. Without it the page shows the groups. */
   sections?: DetailSection[];
   actions?: DetailAction[];
 }
