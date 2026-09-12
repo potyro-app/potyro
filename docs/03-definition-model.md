@@ -160,6 +160,36 @@ pages: [
 ]
 ```
 
+### Page `layout` — several views on one page
+
+```ts
+{
+  id: "today", title: "Today", icon: "☀️",
+  layout: {
+    type: "grid",                          // stack | grid | split | tabs
+    items: [
+      { title: "Watering", span: 1, view: { type: "aggregate", entity: "plant", rows: ... } },
+      { title: "Overdue",  span: 2, view: { type: "list", entity: "plant", filter: (p) => p.overdue } },
+      { title: "This month", span: 3, view: { type: "calendar", entity: "plant", date: "nextWatering" } },
+    ],
+  },
+}
+```
+
+A page declares either `view` or `layout` (#105). `stack` is a column, and a `collapsible` item
+folds behind its title, remembered per device. `grid` lays items out by `span` — three columns
+from 900px of page, two from 560px, one below, measured on the page rather than the window, so a
+grid beside a sidebar or inside the Studio's preview still fits. `split` is exactly two items: a
+list on the left whose rows fill the `detail` on the right instead of navigating (the row's
+`onOpen` params become the page's params, which the detail reads); on a phone the rows navigate as
+usual. `tabs` shows one item at a time behind a segmented control made of the items' titles.
+
+Every item is an ordinary view, addressed as `<pageId>#<index>` wherever a page id used to name
+one view, so filters, sorts, bindings and queries work per item and a layout renders for an
+untrusted app exactly as its views do. `ctx.params` are the page's, shared by every item. The
+page's `summary` and filter chips read the first item. `defineApp` fills `view` from a layout's
+first item, so anything that reads a page's view sees the primary one.
+
 ### Built-in view types (conveniences)
 
 `list · table · detail · gallery · calendar · map · steps`. Their bindings (`date` for

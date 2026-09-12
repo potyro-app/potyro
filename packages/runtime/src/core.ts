@@ -1,3 +1,4 @@
+import { resolveView } from "karta";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
@@ -45,11 +46,8 @@ export interface RuntimeDeps {
   scope?: Record<string, Resolved | undefined>;
 }
 
-function viewOf(def: AppDefinition, pageId: string): View {
-  const page = def.pages.find((p) => p.id === pageId);
-  if (!page) throw new Error(`page ${pageId} not found`);
-  return page.view;
-}
+/** A page ref may name a layout item (`today#1`, #105); `resolveView` knows the difference. */
+const viewOf = (def: AppDefinition, pageRef: string): View => resolveView(def, pageRef);
 
 export class RuntimeCore {
   readonly app: LoadedApp;

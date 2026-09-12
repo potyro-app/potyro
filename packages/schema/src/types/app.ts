@@ -340,6 +340,30 @@ export interface SummaryValue {
   value?: (rows: Resolved[], ctx: Ctx) => unknown;
 }
 
+/** One block of a page `layout` (#105): any view, with an optional title above it. */
+export interface LayoutItem {
+  view: View;
+  title?: string;
+  /** In a `grid`: columns out of three on a wide screen (two on a tablet, one on a phone). */
+  span?: 1 | 2 | 3;
+  /** In a `stack`: folds behind its title; the fold is remembered per device. */
+  collapsible?: boolean;
+}
+
+/**
+ * Several views on one page (#105). `stack`: a column, each item under its title. `grid`: bento
+ * columns by `span`, stacking on a phone. `split`: two items — a list on the left whose rows fill
+ * the right item (a `detail`) instead of navigating; on a phone the rows navigate as usual.
+ * `tabs`: one item at a time, chosen by a segmented control from the items' titles.
+ * Every item is an ordinary view, so a layout renders for an untrusted app exactly as its views do.
+ */
+export interface PageLayout {
+  type: "stack" | "grid" | "split" | "tabs";
+  items: LayoutItem[];
+}
+
+export const LAYOUT_TYPES = ["stack", "grid", "split", "tabs"] as const;
+
 export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
@@ -349,8 +373,19 @@ export interface Page {
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
   summary?: SummaryValue[];
+  /** The page's view — or, for a page with a `layout`, its first item's view (filled in by `defineApp`). */
   view: View;
+  /** Several views on one page (#105). A page declares EITHER `view` OR `layout`. */
+  layout?: PageLayout;
 }
+
+/** A page as an app declares it: `view` or `layout` (one of the two; `defineApp` fills `view` from a
+ *  layout's first item). One object type rather than a union, so the functions inside a page's
+ *  views keep their contextual types. */
+export type PageInput = Omit<Page, "view"> & { view?: View };
+
+/** What `defineApp` accepts: pages may carry a `view` or a `layout`. */
+export type AppInput = Omit<AppDefinition, "pages"> & { pages: PageInput[] };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reminders (docs/03)

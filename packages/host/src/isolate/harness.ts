@@ -15,9 +15,15 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   async function bridge(obj){ return __deserialize(await __host(__serialize(obj))); }
   function bridgeSync(obj){ __hostSync(__serialize(obj)); }
 
-  function findView(app, pageId){
+  // A page ref may name a layout item ("today#1", #105): the same rule as resolveView in the schema.
+  function findView(app, pageRef){
+    var at = String(pageRef).indexOf("#");
+    var pageId = at < 0 ? pageRef : String(pageRef).slice(0, at);
     var page = (app.pages||[]).find(function(p){ return p.id === pageId; });
-    return page ? page.view : null;
+    if (!page) return null;
+    if (at < 0) return page.view || (page.layout && page.layout.items && page.layout.items[0] ? page.layout.items[0].view : null);
+    var item = page.layout && page.layout.items ? page.layout.items[Number(String(pageRef).slice(at + 1))] : null;
+    return item ? item.view : null;
   }
 
   // async so computed may be async (and call ctx.query). Sequential in declaration order so a

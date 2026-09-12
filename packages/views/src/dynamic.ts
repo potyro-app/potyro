@@ -4,12 +4,13 @@
 // selection, membership). A view never calls an app function itself; that is the host's job.
 
 import type { KartaRuntime } from "@karta/runtime";
+import { basePageId, resolveView } from "karta";
 import { useEffect, useState } from "react";
 
-function declared(runtime: KartaRuntime, pageId: string, key: string, where: "view" | "page"): unknown {
-  const page = runtime.definition.pages.find((p) => p.id === pageId) as Record<string, unknown> | undefined;
-  if (!page) return undefined;
-  return where === "page" ? page[key] : (page.view as Record<string, unknown> | undefined)?.[key];
+function declared(runtime: KartaRuntime, pageRef: string, key: string, where: "view" | "page"): unknown {
+  if (where === "view") return (resolveView(runtime.definition, pageRef) as unknown as Record<string, unknown>)[key];
+  const page = runtime.definition.pages.find((p) => p.id === basePageId(pageRef)) as Record<string, unknown> | undefined;
+  return page?.[key];
 }
 
 /**

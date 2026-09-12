@@ -3,7 +3,7 @@
 // returns the real React component. No isolate, no marshalling. This is the runner for the
 // user's own apps and for tests.
 
-import type { AppDefinition, CustomViewComponent, CustomViewMount, Resolved, Value } from "karta";
+import { resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "karta";
 import type { Binding, ReminderWhen } from "karta";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
@@ -15,8 +15,13 @@ async function resolveOption(option: unknown, ctx: unknown): Promise<Value> {
   return (typeof option === "function" ? await (option as (c: unknown) => unknown)(ctx) : option) as Value;
 }
 
-function pageView(def: AppDefinition, pageId: string) {
-  return def.pages.find((p) => p.id === pageId)?.view;
+/** The view a page ref names — a layout item's when the ref is `page#index` (#105). */
+function pageView(def: AppDefinition, pageRef: string) {
+  try {
+    return resolveView(def, pageRef);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Locate a *function* binding by ref; throws if it is a field-key string or missing. */
@@ -103,8 +108,7 @@ export class DirectLoadedApp implements LoadedApp {
   }
 
   async callAggregate(pageId: string, rows: Resolved[], ctx: unknown): Promise<Value> {
-    const page = this.definition.pages.find((p) => p.id === pageId);
-    const view = page?.view;
+    const view = pageView(this.definition, pageId);
     if (!view || view.type !== "aggregate") throw new Error(`page ${pageId} is not an aggregate view`);
     if (typeof view.rows !== "function") throw new Error(`aggregate ${pageId} declares no rows function`);
     return (await view.rows(rows, ctx as never)) as unknown as Value;
