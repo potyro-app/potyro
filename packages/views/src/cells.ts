@@ -19,7 +19,7 @@ export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Res
   useEffect(() => {
     let alive = true;
     const ctx = runtime.ctx;
-    const view = getView(runtime, pageId) as { display?: Record<string, unknown> };
+    const view = getView(runtime, pageId) as { display?: Record<string, unknown>; entity?: string };
     const display = view.display;
 
     void Promise.all(
@@ -40,7 +40,14 @@ export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Res
           if (one) cell.mediaUrl = await ctx.media.url(one);
         }
         if (Array.isArray(display.badges)) {
-          cell.badges = (display.badges as string[]).flatMap((b) => toBadges(row[b]));
+          // An enum badge keeps its field, so the row shows the value in the colour it wears in the
+          // form and on the record page (#98).
+          const entity = runtime.definition.entities[(view as { entity?: string }).entity ?? ""];
+          cell.badges = (display.badges as string[]).flatMap((key) => {
+            const f = entity?.fields[key];
+            const field = f?.type === "enum" ? { colors: f.colors } : undefined;
+            return toBadges(row[key]).map((text) => ({ text, field }));
+          });
         }
         return cell;
       }),

@@ -8,7 +8,7 @@
 // parsed output is only used to surface errors.
 
 import { z } from "zod";
-import { FIELD_TYPES } from "./types/fields.js";
+import { ENUM_COLORS, FIELD_TYPES } from "./types/fields.js";
 import type { AppDefinition, EntityDef, View } from "./types/app.js";
 import type { Field } from "./types/fields.js";
 
@@ -48,6 +48,8 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
   const enumField = z.object({
     type: z.literal("enum"),
     options: z.array(z.string()).min(1),
+    colors: z.record(z.string(), z.enum(ENUM_COLORS)).optional(),
+    control: z.enum(["segmented", "picker"]).optional(),
     ...common,
   });
   const tags = z.object({ type: z.literal("tags"), options: z.array(z.string()).optional(), ...common });

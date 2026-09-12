@@ -17,11 +17,18 @@ export interface BuiltinViewProps {
   onCreate?: (entity: string, initial: Record<string, unknown>) => void;
 }
 
+export interface Badge {
+  text: string;
+  /** The enum field the value came from, when it came from one — it carries the colour map. */
+  field?: { colors?: Record<string, string> };
+}
+
 export interface DisplayCell {
   primary?: string;
   secondary?: string;
   mediaUrl?: string;
-  badges?: string[];
+  /** A badge is its text plus, for an enum value, the tint that value wears everywhere (#98). */
+  badges?: Badge[];
 }
 
 export interface ViewRegistration {
