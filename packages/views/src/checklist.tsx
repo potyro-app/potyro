@@ -38,29 +38,42 @@ interface RowText {
 
 const str = (v: unknown): string => (v == null ? "" : String(v));
 
-/** The three bindings per row, resolved outside render: a function binding is a host call. */
-function useRowTexts(runtime: BuiltinViewProps["runtime"], pageId: string, rows: Resolved[], view: ChecklistDef): RowText[] {
-  const [texts, setTexts] = useState<RowText[]>([]);
+const PATHS = ["text", "detail", "group"] as const;
+
+/**
+ * The three bindings per row. A field-key binding — the common case — is read straight off the
+ * row during render, so the rows appear grouped on the first paint. A function binding is a host
+ * call, resolved outside render; until every row has its texts, `null` says "not yet" and the view
+ * shows nothing rather than a flash of ungrouped rows that regroup a moment later.
+ */
+function useRowTexts(runtime: BuiltinViewProps["runtime"], pageId: string, rows: Resolved[], view: ChecklistDef): RowText[] | null {
+  const fallback = displayFieldFor(runtime, view.entity);
+  const plain = PATHS.every((p) => view[p] === undefined || typeof view[p] === "string");
+  const [resolved, setResolved] = useState<{ rows: Resolved[]; texts: RowText[] } | null>(null);
   useEffect(() => {
+    if (plain) return;
     let alive = true;
     const ctx = runtime.ctx;
-    const fallback = displayFieldFor(runtime, view.entity);
     void Promise.all(
       rows.map(async (row): Promise<RowText> => {
-        const one = async (path: "text" | "detail" | "group"): Promise<string> =>
+        const one = async (path: (typeof PATHS)[number]): Promise<string> =>
           view[path] === undefined ? "" : str(await runtime.resolveBinding({ kind: "view", page: pageId, path }, row, ctx));
         const [text, detail, group] = await Promise.all([one("text"), one("detail"), one("group")]);
         return { text: view.text === undefined ? str(row[fallback] ?? row.id) : text, detail, group };
       }),
-    ).then((next) => {
-      if (alive) setTexts(next);
+    ).then((texts) => {
+      if (alive) setResolved({ rows, texts });
     });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runtime, pageId, rows]);
-  return texts;
+  }, [runtime, pageId, rows, plain]);
+  if (plain) {
+    const read = (row: Resolved, path: (typeof PATHS)[number]): string => (view[path] === undefined ? "" : str(row[view[path] as string]));
+    return rows.map((row) => ({ text: view.text === undefined ? str(row[fallback] ?? row.id) : read(row, "text"), detail: read(row, "detail"), group: read(row, "group") }));
+  }
+  return resolved?.rows === rows ? resolved.texts : null;
 }
 
 export function ChecklistView(props: BuiltinViewProps) {
@@ -138,7 +151,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     }
   };
 
-  if (loading) return <p className="k-loading">Loading…</p>;
+  if (loading || texts === null) return <p className="k-loading">Loading…</p>;
 
   const open = rows.filter((r) => !placedDone(r));
   const done = rows.filter((r) => placedDone(r));
