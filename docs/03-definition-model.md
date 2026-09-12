@@ -189,6 +189,28 @@ record as a checklist. Progress is persisted per record in `ctx.storage` under
 `onFinish` names an action to run once the last step is ticked (once — not every time you reopen a
 finished one).
 
+### `checklist` — tick records in place
+
+```ts
+{
+  type: "checklist", entity: "item",
+  done: "bought",                 // a boolean field — or an enum field plus `doneValue: "done"`
+  text: "name", detail: "quantity", group: "aisle",   // bindings: a field key or a function
+  hideDone: "collapse",           // true: done rows vanish; "collapse": fold into "Done (n)"; default: listed under Done
+  quickAdd: true,                 // an input at the bottom: type, Enter, next
+  onOpen: { page: "item", param: { itemId: "id" } },
+}
+```
+
+A grocery list, a packing list, chores, habits: the most common personal app is a list of things
+you tick, and `list` made that three taps and a modal (open the row, flip a boolean in the form,
+save). Here the row's check flips `done` through `ctx.patch` — rows in, patches out, so it renders
+untrusted like every other declarative view — and the row strikes through, holds for a beat, then
+moves to the Done section. `steps` ticks *within* one record; this ticks *across* records.
+`quickAdd` creates a record with the typed text as the entity's display field and every other field
+at its default; the input keeps the focus for the next item. Validation says, by name, when `done`
+is not a boolean or an enum, or when `doneValue` is not one of the enum's options.
+
 ### Page `summary` — numbers over many records
 
 `computed` is per-record and every view renders rows, so a figure derived from the *whole set* — a

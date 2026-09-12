@@ -31,7 +31,7 @@ export type AppSource =
 
 /** Identifies a function *binding* so untrusted calls can be marshalled by reference. */
 export type BindingRef =
-  | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "date" | "title" | "color" | "text" | "geo" }
+  | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "date" | "title" | "color" | "text" | "detail" | "group" | "geo" }
   | { kind: "reminder"; id: string; path: "title" | "body" };
 
 /** What the shell provides to build `ctx.ui`. */

@@ -9,7 +9,7 @@ import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 
-function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
+export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
   const out: Record<string, string> = {};
   for (const [target, sourceKey] of Object.entries(onOpen.param)) out[target] = String(row[sourceKey] ?? "");
@@ -24,7 +24,7 @@ function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | un
  * (there is no undo yet), which is exactly why it asks first, through the host's own `ctx.ui.confirm`
  * rather than `window.confirm`.
  */
-function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<void> {
+export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<void> {
   return async (id, label) => {
     const ok = await runtime.ctx.ui.confirm(`Delete ${label}? This can't be undone.`);
     if (!ok) return;
@@ -36,7 +36,7 @@ function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): 
   };
 }
 
-function RowActions({
+export function RowActions({
   runtime,
   entity,
   actions,
