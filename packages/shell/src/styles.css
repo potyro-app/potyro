@@ -2127,6 +2127,159 @@ details.k-layout-fold[open] > summary::before {
 }
 /* tokens-only: end — page layouts */
 
+/* tokens-only: start — list rows */
+/* A list field's rows as cards (#104). The first sub-field is the line you read; the rest sit under
+   it. Remove lives in the card's menu, not as a bare ✕ beside the boxes. An ordered list gets a grip
+   — drag it, or focus it and press an arrow — and on a phone a card swipes aside to reveal Remove. */
+.k-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.k-row-swipe {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+.k-row-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-row-card[data-dragging] {
+  box-shadow: var(--shadow);
+  border-color: var(--accent-line);
+  cursor: grabbing;
+}
+.k-row-card[data-over] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-row-grip {
+  align-self: center;
+  width: 2rem;
+  min-height: 2.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-faint);
+  font-size: 0.95rem;
+  cursor: grab;
+  touch-action: none;
+}
+.k-row-grip:hover {
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+}
+.k-row-grip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-row-n {
+  align-self: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+.k-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.k-row-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-row-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.k-row-field-label {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+.k-row-field .k-input {
+  max-width: 9rem;
+}
+.k-row-menu {
+  align-self: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-faint);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.k-row-menu:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.k-row-add {
+  align-self: flex-start;
+}
+/* A control that brings its own extras — a relation's picker and its "New …" button — lays them
+   out along the line inside a card rather than as a full-width bar that splits the card in two. */
+.k-row-card .k-relation-input {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.k-row-card .k-relation-input > .k-input,
+.k-row-card .k-relation-input > select {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.k-row-card .k-relation-new {
+  flex: none;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.6rem;
+}
+.k-row-swipe-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5.5rem;
+  border: 0;
+  background: var(--danger);
+  color: var(--surface);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+/* An ordered list reads as a numbered list where it is only being read (#104). */
+.k-row-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.k-row-list li::marker {
+  color: var(--ink-faint);
+}
+/* tokens-only: end — list rows */
+
 /* tokens-only: start — enums */
 /* Choosing one of a set (#98). A short list is a row of buttons; a long one is a button that opens
    a searchable list — a popover on a wide screen, a bottom sheet on a phone. A chosen value wears a
@@ -2890,59 +3043,6 @@ button.k-switch:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-.k-list-input {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-left: 2px solid var(--line);
-  padding-left: 0.7rem;
-}
-.k-list-input-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: start;
-}
-.k-list-input-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 0.4rem;
-  flex: 1;
-}
-.k-subfield {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.72rem;
-  color: var(--ink-soft);
-}
-.k-remove {
-  border: 1px solid var(--line);
-  background: var(--paper);
-  border-radius: 8px;
-  width: 2rem;
-  height: 2rem;
-  line-height: 1;
-  font-size: 1.1rem;
-  color: var(--ink-soft);
-  transition: all 150ms var(--ease);
-}
-.k-remove:hover {
-  border-color: oklch(70% 0.14 30);
-  color: oklch(50% 0.16 30);
-}
-.k-add-row {
-  align-self: flex-start;
-  border: 1px dashed var(--line);
-  background: transparent;
-  color: var(--ink-soft);
-  border-radius: 9px;
-  padding: 0.4rem 0.7rem;
-  transition: all 150ms var(--ease);
-}
-.k-add-row:hover {
-  border-color: var(--accent);
-  color: var(--ink);
 }
 
 /* Toasts */

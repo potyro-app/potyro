@@ -114,6 +114,12 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
 
+A `list` field's rows are cards (#104): the first sub-field is the line you read, the rest sit under
+it, and Remove lives in the card's own menu. `ordered: true` earns a grip — drag it with a pointer or
+a finger, or focus it and press an arrow — and the record page then reads the list as a numbered
+list rather than a table. On a phone a card can be swiped aside to reveal Remove. The button that
+adds one names what it adds, from the field's label.
+
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
 wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a
