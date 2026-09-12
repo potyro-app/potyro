@@ -39,6 +39,11 @@ async function seedTall(page: Page): Promise<void> {
 const inside = (box: { x: number; y: number; width: number; height: number }, vp: { width: number; height: number }): boolean =>
   box.y >= 0 && box.x >= 0 && box.y + box.height <= vp.height && box.x + box.width <= vp.width;
 
+/** Resolves once the sheet's open animation has finished, so boxes are the final ones. */
+async function settled(dialog: import("@playwright/test").Locator): Promise<void> {
+  await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))).then(() => undefined));
+}
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
@@ -48,6 +53,8 @@ test.describe("phone", () => {
     await page.getByRole("button", { name: "New Place" }).click();
     const dialog = page.getByRole("dialog", { name: "New Place" });
     await expect(dialog).toBeVisible();
+    // The sheet slides up when it opens; measure where it lands, not where it is passing through.
+    await settled(dialog);
     const create = dialog.getByRole("button", { name: "Create" });
     expect(inside((await create.boundingBox())!, page.viewportSize()!)).toBe(true);
     // The body scrolls; the footer does not move.
@@ -68,6 +75,7 @@ test.describe("phone", () => {
     await page.getByRole("button", { name: "New Plant" }).click();
     const dialog = page.getByRole("dialog", { name: "New Plant" });
     await expect(dialog).toBeVisible();
+    await settled(dialog);
     const head = (await dialog.locator(".k-form-head").boundingBox())!;
     const x = head.x + head.width / 2;
     const y = head.y + head.height / 2;

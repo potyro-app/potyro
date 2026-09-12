@@ -1139,7 +1139,11 @@ details.k-section > summary h3 {
   .k-sheet-scrim {
     padding: 0;
     align-items: stretch;
-    overflow: hidden;
+    /* `clip`, not `hidden`: a hidden box is still a scroll container, so focusing a field inside a
+       form taller than the screen let the browser scroll the SCRIM — carrying the sheet up until
+       its header, its title and its ✕ were off the top of the screen. `clip` is not scrollable, so
+       the only thing that scrolls is the form's own body, which is what should. */
+    overflow: clip;
   }
   .k-sheet {
     width: 100%;
