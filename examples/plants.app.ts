@@ -111,6 +111,7 @@ export default defineApp({
               sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
               display: { primary: "name", secondary: (p) => `due ${relativeTime(p.nextWatering)}` },
               rowActions: ["water"],
+              onOpen: { page: "plant", param: { plantId: "id" } },
               emptyText: "Nothing to water. 🌱",
             },
           },
@@ -136,6 +137,7 @@ export default defineApp({
           badges: ["needsDirectSun"],
         },
         rowActions: ["water"],
+        onOpen: { page: "plant", param: { plantId: "id" } },
       },
     },
     {
@@ -148,8 +150,16 @@ export default defineApp({
         sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
         display: { primary: "name", secondary: (p) => `due ${relativeTime(p.nextWatering)}`, media: "photo" },
         rowActions: ["water"],
+        onOpen: { page: "plant", param: { plantId: "id" } },
         emptyText: "Nothing to water. 🌱",
       },
+    },
+    {
+      // A plant's own page: Water is its one filled action; Edit and Delete sit behind More actions.
+      id: "plant",
+      title: "Plant",
+      hidden: true,
+      view: { type: "detail", entity: "plant", param: "plantId", actions: ["water"] },
     },
     {
       id: "schedule",
