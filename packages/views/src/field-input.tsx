@@ -28,15 +28,16 @@ function toLocalInput(d: Date): string {
 export function FieldInput({ runtime, field, value, onChange, label }: FieldInputProps) {
   switch (field.type) {
     case "text":
+      // `placeholder` is the field's own (#100): example text in the empty control.
       return field.multiline ? (
-        <textarea className="k-input" rows={3} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <textarea className="k-input" rows={3} placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input className="k-input" type="text" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <input className="k-input" type="text" placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />
       );
     case "richtext":
-      return <textarea className="k-input" rows={5} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
+      return <textarea className="k-input" rows={5} placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
     case "url":
-      return <input className="k-input" type="url" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
+      return <input className="k-input" type="url" placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
 
     case "number":
       // Unit inside the field, a stepper where the value is nudged, the right phone keyboard (#99).

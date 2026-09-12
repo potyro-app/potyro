@@ -41,6 +41,59 @@ function moved(keys: readonly string[], from: number, to: number): string[] {
   return next;
 }
 
+/**
+ * The panel's picture of an entity's fields: its groups in order, then the fields in no group
+ * (#100). A field moves within its group, over a group's edge into the neighbouring one, or out
+ * of the last group into the ungrouped run — each step one ↑ or ↓, each one edit to the source.
+ * An entity without groups is one ungrouped run, and moving there is the plain field reorder.
+ */
+interface Run {
+  /** Index into `entity.groups`, or -1 for the ungrouped run. */
+  group: number;
+  title: string;
+  keys: string[];
+}
+
+function runsOf(entity: EntityShape): Run[] {
+  const groups = entity.groups ?? [];
+  const placed = new Set(groups.flatMap((g) => g.fields));
+  const runs: Run[] = groups.map((g, i) => ({ group: i, title: g.title ?? `Group ${i + 1}`, keys: [...g.fields] }));
+  const rest = entity.fields.map((f) => f.key).filter((k) => !placed.has(k));
+  if (rest.length || runs.length === 0) runs.push({ group: -1, title: groups.length ? "Not in a group" : "", keys: rest });
+  return runs;
+}
+
+/** The edit that moves the field at `index` of run `r` one step in `direction`, or null at a wall. */
+function stepEdit(entity: EntityShape, runs: Run[], r: number, index: number, direction: -1 | 1): Edit | null {
+  const run = runs[r]!;
+  const key = run.keys[index]!;
+  const groups = (entity.groups ?? []).map((g) => [...g.fields]);
+  const target = index + direction;
+  if (target >= 0 && target < run.keys.length) {
+    // Within the run.
+    if (run.group < 0) {
+      const order = entity.fields.map((f) => f.key);
+      const from = order.indexOf(key);
+      const to = order.indexOf(run.keys[target]!);
+      return { kind: "field-order", entity: entity.key, order: moved(order, from, to) };
+    }
+    groups[run.group] = moved(groups[run.group]!, index, target);
+    return { kind: "field-groups", entity: entity.key, groups };
+  }
+  // Over the run's edge into the neighbouring run.
+  const neighbour = runs[r + direction];
+  if (!neighbour) return null;
+  if (run.group >= 0) {
+    if (run.keys.length === 1) return null; // would leave the group empty — refused by the source
+    groups[run.group] = groups[run.group]!.filter((k) => k !== key);
+  }
+  if (neighbour.group >= 0) {
+    if (direction < 0) groups[neighbour.group] = [...groups[neighbour.group]!, key];
+    else groups[neighbour.group] = [key, ...groups[neighbour.group]!];
+  }
+  return { kind: "field-groups", entity: entity.key, groups };
+}
+
 export function StructurePanel({ source, target, onApply, busy }: StructurePanelProps) {
   const { kind, pageId } = target;
   const [shape, setShape] = useState<AppShape | null>(null);
@@ -71,7 +124,7 @@ export function StructurePanel({ source, target, onApply, busy }: StructurePanel
     kind === "page" && page?.entity ? shape.entities.find((e) => e.key === page.entity) : undefined;
 
   /** Resolves to whether the edit was actually applied, so an optimistic control can roll back. */
-  const run = async (edit: Edit): Promise<boolean> => {
+  const run_ = async (edit: Edit): Promise<boolean> => {
     setError(null);
     const result = await applyEdit(source, edit);
     if (!result.ok) {
@@ -104,7 +157,7 @@ export function StructurePanel({ source, target, onApply, busy }: StructurePanel
               aria-label={`Name for the ${p.title} tab`}
               onBlur={(e) => {
                 const value = e.target.value.trim();
-                if (value && value !== p.title) void run({ kind: "page-title", page: p.id, value });
+                if (value && value !== p.title) void run_({ kind: "page-title", page: p.id, value });
               }}
             />
           </label>
@@ -124,7 +177,9 @@ export function StructurePanel({ source, target, onApply, busy }: StructurePanel
     );
   }
 
-  const fieldKeys = entity?.fields.map((f) => f.key) ?? [];
+  const runs = entity ? runsOf(entity) : [];
+  const computed = new Set(entity?.computed ?? []);
+  const fieldByKey = new Map(entity?.fields.map((f) => [f.key, f]) ?? []);
 
   return (
     <div className="k-structure">
@@ -137,7 +192,7 @@ export function StructurePanel({ source, target, onApply, busy }: StructurePanel
           aria-label="Page name"
           onBlur={(e) => {
             const value = e.target.value.trim();
-            if (value && value !== page.title) void run({ kind: "page-title", page: page.id, value });
+            if (value && value !== page.title) void run_({ kind: "page-title", page: page.id, value });
           }}
         />
       </label>
@@ -149,71 +204,91 @@ export function StructurePanel({ source, target, onApply, busy }: StructurePanel
           <p className="k-structure-heading">
             Fields of <strong>{entity.key}</strong>
           </p>
-          <ul className="k-structure-fields">
-            {entity.fields.map((field, i) => (
-              <li key={field.key} className="k-structure-field">
-                <div className="k-structure-order">
-                  <button
-                    type="button"
-                    className="k-add k-structure-move"
-                    aria-label={`Move ${field.key} up`}
-                    disabled={busy || i === 0}
-                    onClick={() => void run({ kind: "field-order", entity: entity.key, order: moved(fieldKeys, i, i - 1) })}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="k-add k-structure-move"
-                    aria-label={`Move ${field.key} down`}
-                    disabled={busy || i === entity.fields.length - 1}
-                    onClick={() => void run({ kind: "field-order", entity: entity.key, order: moved(fieldKeys, i, i + 1) })}
-                  >
-                    ↓
-                  </button>
-                </div>
-                <input
-                  className="k-input k-structure-name"
-                  aria-label={`Label for ${field.key}`}
-                  // The key is what the app shows when no label is declared, so that is the
-                  // placeholder — an empty box here means "use the default", not "no name".
-                  placeholder={humanizeKey(field.key)}
-                  value={draft?.field === field.key ? draft.value : field.label ?? ""}
-                  disabled={busy}
-                  onChange={(e) => setDraft({ field: field.key, value: e.target.value })}
-                  onBlur={(e) => {
-                    setDraft(null);
-                    const value = e.target.value;
-                    if (value !== (field.label ?? "")) {
-                      void run({ kind: "field-label", entity: entity.key, field: field.key, value });
-                    }
-                  }}
-                />
-                <label className="k-structure-hide">
-                  <input
-                    type="checkbox"
-                    checked={pendingHidden[field.key] ?? field.hidden}
-                    disabled={busy}
-                    // Every row's visible text is the same three words, so the field's name has to be
-                    // in the accessible name or the checkboxes are indistinguishable to a screen
-                    // reader — and to anything else driving this by name.
-                    aria-label={`Hide ${field.key} from the form`}
-                    onChange={(e) => {
-                      const value = e.target.checked;
-                      setPendingHidden((p) => ({ ...p, [field.key]: value }));
-                      void run({ kind: "field-hidden", entity: entity.key, field: field.key, value }).then((applied) => {
-                        if (!applied) setPendingHidden(({ [field.key]: _dropped, ...rest }) => rest);
-                      });
-                    }}
-                  />
-                  {/* Deliberately not "Remove": `hidden` only affects the create/edit form. A field
-                      still listed in a view's `display` or a detail `section` keeps showing there,
-                      and calling this "remove" would make it look half-broken. */}
-                  <span>Hide from the form</span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {runs.map((run, r) => (
+            <ul className="k-structure-fields" key={run.group} aria-label={run.title || undefined}>
+              {run.title ? <li className="k-structure-group">{run.title}</li> : null}
+              {run.keys.map((key, i) => {
+                const field = fieldByKey.get(key);
+                const up = stepEdit(entity, runs, r, i, -1);
+                const down = stepEdit(entity, runs, r, i, 1);
+                return (
+                  <li key={key} className="k-structure-field">
+                    <div className="k-structure-order">
+                      <button
+                        type="button"
+                        className="k-add k-structure-move"
+                        aria-label={`Move ${key} up`}
+                        disabled={busy || !up}
+                        onClick={() => up && void run_(up)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="k-add k-structure-move"
+                        aria-label={`Move ${key} down`}
+                        disabled={busy || !down}
+                        onClick={() => down && void run_(down)}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    {field ? (
+                      <input
+                        className="k-input k-structure-name"
+                        aria-label={`Label for ${key}`}
+                        // The key is what the app shows when no label is declared, so that is the
+                        // placeholder — an empty box here means "use the default", not "no name".
+                        placeholder={humanizeKey(key)}
+                        value={draft?.field === key ? draft.value : field.label ?? ""}
+                        disabled={busy}
+                        onChange={(e) => setDraft({ field: key, value: e.target.value })}
+                        onBlur={(e) => {
+                          setDraft(null);
+                          const value = e.target.value;
+                          if (value !== (field.label ?? "")) {
+                            void run_({ kind: "field-label", entity: entity.key, field: key, value });
+                          }
+                        }}
+                      />
+                    ) : (
+                      // A computed value in a group: it shows on the detail page, has no label of
+                      // its own to edit here and nothing to hide from a form.
+                      <span className="k-structure-computed">
+                        {humanizeKey(key)} <small>{computed.has(key) ? "computed" : "unknown"}</small>
+                      </span>
+                    )}
+                    {field ? (
+                      <label className="k-structure-hide">
+                        <input
+                          type="checkbox"
+                          checked={pendingHidden[key] ?? field.hidden}
+                          disabled={busy}
+                          // Every row's visible text is the same three words, so the field's name has to be
+                          // in the accessible name or the checkboxes are indistinguishable to a screen
+                          // reader — and to anything else driving this by name.
+                          aria-label={`Hide ${key} from the form`}
+                          onChange={(e) => {
+                            const value = e.target.checked;
+                            setPendingHidden((p) => ({ ...p, [key]: value }));
+                            void run_({ kind: "field-hidden", entity: entity.key, field: key, value }).then((applied) => {
+                              if (!applied) setPendingHidden(({ [key]: _dropped, ...rest }) => rest);
+                            });
+                          }}
+                        />
+                        {/* Deliberately not "Remove": `hidden` only affects the create/edit form. A field
+                            still listed in a view's `display` or a detail `section` keeps showing there,
+                            and calling this "remove" would make it look half-broken. */}
+                        <span>Hide from the form</span>
+                      </label>
+                    ) : (
+                      <span />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ))}
         </>
       ) : null}
 

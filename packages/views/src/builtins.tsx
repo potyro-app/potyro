@@ -7,6 +7,7 @@ import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "
 import { useDisplayCells } from "./cells.js";
 import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
+import { resolveGroups, type ResolvedGroup } from "./groups.js";
 
 function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -249,23 +250,41 @@ export function DetailView(props: BuiltinViewProps) {
     if (listPage) navigate(listPage.id);
   };
 
+  // The page's own `sections` override; otherwise the entity's `groups`, the same arrangement the
+  // form uses (#100), so what was edited under "Nutrition" is read back under "Nutrition".
+  const groups: ResolvedGroup[] = view.sections
+    ? view.sections.map((s) => ({ ...(s.title ? { title: s.title } : {}), fields: s.fields, collapsed: false }))
+    : resolveGroups(runtime.definition.entities[view.entity], "detail");
+  const fieldsOf = (group: ResolvedGroup) => (
+    <dl>
+      {group.fields.map((f) => (
+        <div className="k-field" key={f}>
+          <dt>{fieldLabel(runtime, view.entity, f)}</dt>
+          <dd>
+            <FieldValue runtime={runtime} entity={view.entity} fieldKey={f} value={record[f]} />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+
   return (
     <article className="k-detail">
-      {(view.sections ?? []).map((section, si) => (
-        <section key={si} className="k-section">
-          {section.title ? <h3>{section.title}</h3> : null}
-          <dl>
-            {section.fields.map((f) => (
-              <div className="k-field" key={f}>
-                <dt>{fieldLabel(runtime, view.entity, f)}</dt>
-                <dd>
-                  <FieldValue runtime={runtime} entity={view.entity} fieldKey={f} value={record[f]} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      ))}
+      {groups.map((group, si) =>
+        group.collapsed ? (
+          <details key={si} className="k-section">
+            <summary className="k-section-title">
+              <h3>{group.title}</h3>
+            </summary>
+            {fieldsOf(group)}
+          </details>
+        ) : (
+          <section key={si} className="k-section">
+            {group.title ? <h3>{group.title}</h3> : null}
+            {fieldsOf(group)}
+          </section>
+        ),
+      )}
       <div className="k-detail-actions">
         {onEdit ? (
           <button type="button" className="k-action" onClick={() => onEdit(view.entity, id)}>

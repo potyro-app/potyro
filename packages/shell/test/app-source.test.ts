@@ -288,3 +288,63 @@ export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion:
     expect(await inspect(workout)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
   });
 });
+
+// Entity groups (#100): read when written literally, and regrouped in place — a group's
+// `fields: [...]` is the only text that changes, so titles, comments and the fold stay put.
+describe("groups", () => {
+  const GROUPED = `import { defineApp } from "karta";
+export default defineApp({
+  id: "a", name: "A", version: "1.0.0", schemaVersion: 1,
+  entities: {
+    recipe: {
+      displayField: "name",
+      fields: {
+        name: { type: "text" },
+        servings: { type: "number" },
+        notes: { type: "text" },
+        rating: { type: "number" },
+      },
+      computed: { calories: () => 1 },
+      groups: [
+        // what you see first
+        { title: "Overview", fields: ["name", "servings"] },
+        { title: "Nutrition", fields: ["calories"], collapsed: true },
+      ],
+    },
+  },
+  pages: [{ id: "p", title: "P", view: { type: "list", entity: "recipe" } }],
+});
+`;
+
+  it("reads the groups and the computed keys of the real Recipes app", async () => {
+    const recipe = (await inspect(RECIPES)).entities.find((e) => e.key === "recipe")!;
+    expect(recipe.groups?.map((g) => g.title)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    expect(recipe.groups?.[3]?.fields).toContain("caloriesPerServing");
+    expect(recipe.computed).toContain("caloriesPerServing");
+    expect(recipe.blocked).toBeUndefined();
+  });
+
+  it("moves a field between groups by rewriting only that group's list", async () => {
+    const next = await apply(GROUPED, { kind: "field-groups", entity: "recipe", groups: [["name"], ["servings", "calories"]] });
+    expect(next).toContain(`{ title: "Overview", fields: ["name"] }`);
+    expect(next).toContain(`{ title: "Nutrition", fields: ["servings", "calories"], collapsed: true }`);
+    expect(next).toContain("// what you see first");
+    expect(untouchedLines(GROUPED, next)).toBe(true);
+    expect((await inspect(next)).entities[0]!.groups?.map((g) => g.fields)).toEqual([["name"], ["servings", "calories"]]);
+  });
+
+  it("refuses a regroup that names an unknown key, lists one twice, or empties a group", async () => {
+    const refused = async (groups: string[][]) => (await applyEdit(GROUPED, { kind: "field-groups", entity: "recipe", groups })) as { ok: false; reason: string };
+    expect((await refused([["name", "photo"], ["calories"]])).reason).toContain('"photo"');
+    expect((await refused([["name", "servings"], ["name"]])).reason).toContain("one group");
+    expect((await refused([["name", "servings"], []])).reason).toContain("Nutrition");
+    expect((await refused([["name", "servings"]])).reason).toContain("groups that are there now");
+  });
+
+  it("marks an entity whose groups are not literal, rather than guessing", async () => {
+    const source = GROUPED.replace(/groups: \[[\s\S]*?\n      \],/, "groups: makeGroups(),");
+    expect(source).toContain("makeGroups()");
+    const recipe = (await inspect(source)).entities[0]!;
+    expect(recipe.blocked).toMatch(/groups/);
+  });
+});

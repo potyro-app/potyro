@@ -51,8 +51,8 @@ export default defineApp({
         wiki: { type: "url" },
         needsDirectSun: { type: "boolean", default: false },
         active: { type: "boolean", default: true },
-        lastWatered: { type: "datetime" },
-        wateringIntervalDays: { type: "number", unit: "days", min: 1, default: 7, integer: true },
+        lastWatered: { type: "datetime", width: "half" },
+        wateringIntervalDays: { type: "number", unit: "days", min: 1, default: 7, integer: true, width: "half", help: "The reminder comes this many days after a watering" },
         seasonalCare: {
           type: "list",
           of: {
