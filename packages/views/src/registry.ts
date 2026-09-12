@@ -7,6 +7,7 @@ import { StepsView } from "./steps.js";
 import { MapView } from "./map.js";
 import { CustomView } from "./custom.js";
 import { AggregateView } from "./aggregate.js";
+import { ChecklistView } from "./checklist.js";
 
 /** The default view registry (docs/05 view contract). Extendable by the shell. */
 export const defaultRegistry: Record<View["type"], ComponentType<BuiltinViewProps>> = {
@@ -18,6 +19,7 @@ export const defaultRegistry: Record<View["type"], ComponentType<BuiltinViewProp
   calendar: CalendarView,
   map: MapView,
   steps: StepsView,
+  checklist: ChecklistView,
   aggregate: AggregateView,
 };
 

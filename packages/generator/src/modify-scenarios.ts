@@ -132,6 +132,26 @@ export const MODIFY_SCENARIOS: ModifyScenario[] = [
     ],
   },
   {
+    // The checklist view (#106): a shopping list must come out as one, and stay one when changed.
+    id: "groceries",
+    description: "A shopping list. I add things as I run out, tick them off in the shop as they go into the basket, and I want the ticked ones out of the way.",
+    mods: [
+      {
+        instruction: "group the items by aisle — produce, dairy, bakery, pantry — with the aisle as a heading",
+        async expect(ctx) {
+          const failures: string[] = [];
+          const checklist = ctx.definition.pages.find((p) => (p.view as { type?: string }).type === "checklist");
+          if (!checklist) return ["no page is a checklist view — the list is a list whose rows open a form"];
+          const view = checklist.view as { group?: unknown; quickAdd?: boolean };
+          if (view.group === undefined) failures.push("the checklist has no `group` binding, so there are no aisle headings");
+          if (!view.quickAdd) failures.push("the checklist has no `quickAdd`, so adding an item still opens a form");
+          return failures;
+        },
+      },
+      { instruction: "add a quantity next to each item, like 2 × 1 l" },
+    ],
+  },
+  {
     id: "recipes-shopping",
     description:
       "Somewhere to keep my recipes with their ingredients and how long they take. I want to find the ones I can make with what I have.",

@@ -16,12 +16,12 @@ beforeEach(() => localStorage.clear());
 afterEach(() => localStorage.clear());
 
 describe("seedExamples", () => {
-  it("knows the four examples", () => {
-    expect(EXAMPLE_IDS).toEqual(["places", "plants", "recipes", "workout"]);
+  it("knows the five examples", () => {
+    expect(EXAMPLE_IDS).toEqual(["groceries", "places", "plants", "recipes", "workout"]);
   });
 
   it("seeds each example as a trusted app with its declared name and full source, once", async () => {
-    expect(await seedExamples({ trusted: true, now: NOW })).toEqual(["places", "plants", "recipes", "workout"]);
+    expect(await seedExamples({ trusted: true, now: NOW })).toEqual(["groceries", "places", "plants", "recipes", "workout"]);
     const workout = getUserApp("workout")!;
     expect(workout).toMatchObject({ id: "workout", name: "PPL Log", trusted: true, updatedAt: NOW });
     expect(workout.source).toContain('defineApp({');
@@ -37,7 +37,7 @@ describe("seedExamples", () => {
     await removeUserApp("plants");
     expect(await seedExamples({ trusted: true, now: NOW })).toEqual([]);
     expect(getUserApp("plants")).toBeUndefined();
-    expect(listUserApps().map((a) => a.id).sort()).toEqual(["places", "recipes", "workout"]);
+    expect(listUserApps().map((a) => a.id).sort()).toEqual(["groceries", "places", "recipes", "workout"]);
   });
 
   it("seeds untrusted for the sandbox, which is how the isolate gets exercised", async () => {

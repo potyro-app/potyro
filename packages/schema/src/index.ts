@@ -72,6 +72,7 @@ export type {
   SummaryValue,
   SummaryOp,
   StepsView,
+  ChecklistView,
   AggregateView,
   AggregateRow,
   CustomView,
