@@ -183,6 +183,8 @@ CONTRACT
     - \`datetime\` -> a real \`Date\` (call \`.getTime()\`, never compare strings). It is a DAY unless the
       field says \`precision: "minute"\` — do that only when the hour matters (a session start).
     - \`media\` -> a \`MediaRef\`; render it through a media binding, do not read it as a URL.
+    - \`media\` is a tile with a preview and (on a phone) Camera / Library; set \`accept\` and, when
+      a record can have several, \`multiple: true\`. Never ask for a URL field "for the photo".
     - text/number/boolean/enum/tags/geo/list read as written. An \`enum\` picks its own control
       from the option count (up to five are a row of buttons, more a searchable picker) — never
       write a control; give it \`colors\` (red orange yellow green teal blue purple pink grey) only
