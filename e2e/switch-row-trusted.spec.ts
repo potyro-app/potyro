@@ -34,6 +34,9 @@ test.describe("phone", () => {
     await form.getByRole("textbox").first().fill("Sun-lover");
     await form.getByRole("button", { name: "Create" }).tap();
     await expect(form).toHaveCount(0);
+    // A new plant opens on its own page (#111); the row is on the list behind Back.
+    await expect(page.locator(".k-detail-title")).toHaveText("Sun-lover");
+    await page.getByRole("button", { name: "Back" }).tap();
     await expect(page.locator(".k-list-row", { hasText: "Sun-lover" })).toBeVisible();
     // The value went into the record, not just the row's look. (Headless Chromium has no OPFS, so
     // the app's store is the localStorage fallback and the record is readable there.)
