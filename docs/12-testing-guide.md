@@ -163,6 +163,14 @@ the in-app **Due** view (native exact notifications are a separate, device-only 
 
 ---
 
+## 4b. Groceries (`?app=groceries`) — the checklist view
+
+A shopping list that is one tap per item (#106). Seven seeded items under aisle headings, two
+already bought and folded into "Done (2)". Tick Milk: it strikes through, holds a beat, moves to
+Done, and is still bought after a reload. Type "Coffee" in the box at the bottom and press Enter:
+it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
+proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
+
 ## 5. Data export / import (KA-04) — "your data is a file"
 
 | Do | Expect |
