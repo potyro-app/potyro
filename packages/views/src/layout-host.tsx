@@ -55,7 +55,7 @@ function readFold(key: string): boolean | null {
 }
 
 export function LayoutHost(props: LayoutHostProps) {
-  const { runtime, pageId, params, setParam, navigate, layout, registry } = props;
+  const { runtime, pageId, params, navigate, layout, registry } = props;
   const ref = useRef<HTMLDivElement>(null);
   const wide = useWide(ref);
   const [tab, setTab] = useState(0);
@@ -75,12 +75,15 @@ export function LayoutHost(props: LayoutHostProps) {
     const rightView = right.view as { param?: string };
     const param = rightView.param ?? "id";
     const selected = params[param];
-    // On a wide page a row fills the right pane: its `onOpen` params become the page's params, and
-    // the detail reads its own from there. Narrow, the row navigates where the app said.
+    // On a wide page a row fills the right pane: its `onOpen` params become THIS page's params —
+    // through `navigate`, to this same page, so the case recorder sees the step like any other
+    // navigation — and the detail reads its own param from there. Narrow, the row navigates where
+    // the app said.
     const fill = (page: string, p?: Record<string, string>): void => {
       if (!wide) return navigate(page, p);
-      for (const [k, v] of Object.entries(p ?? {})) setParam(k, v);
-      if (p && !(param in p)) setParam(param, Object.values(p)[0]);
+      const next = { ...(p ?? {}) };
+      if (p && !(param in p)) next[param] = Object.values(p)[0] ?? "";
+      navigate(pageId, next);
     };
     return (
       <div ref={ref} className="k-layout k-layout-split" data-wide={wide || undefined}>
