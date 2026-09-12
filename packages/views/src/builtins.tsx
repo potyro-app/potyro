@@ -112,6 +112,9 @@ export function ListView(props: BuiltinViewProps) {
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
   // lives on the detail page (#111). Only a row with nowhere to open keeps its Delete.
   const hasDetail = Boolean(view.onOpen);
+  // In a split layout (#105) the opened row's id sits in the page's params under the param its
+  // `onOpen` maps from "id"; that row is the selected one.
+  const selectedKey = Object.entries(view.onOpen?.param ?? {}).find(([, source]) => source === "id")?.[0];
   return (
     <ul className="k-list">
       {rows.map((row, i) => {
@@ -121,6 +124,7 @@ export function ListView(props: BuiltinViewProps) {
             key={row.id}
             className="k-list-row"
             data-clickable={Boolean(openRow)}
+            data-active={selectedKey !== undefined && params[selectedKey] === row.id ? "true" : undefined}
             onClick={openRow ? () => openRow(row) : undefined}
           >
             {cell.mediaUrl ? <img className="k-thumb" src={cell.mediaUrl} alt="" width={48} height={48} /> : null}

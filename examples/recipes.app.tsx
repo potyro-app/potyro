@@ -196,18 +196,35 @@ export default defineApp({
       id: "all",
       icon: "🍳",
       title: "Recipes",
-      view: {
-        type: "list",
-        entity: "recipe",
-        sort: (a, b) => a.name.localeCompare(b.name),
-        display: {
-          primary: (r) => r.name,
-          secondary: (r) => `${Math.round(r.caloriesPerServing)} kcal · ${r.difficulty}`,
-          media: "photo",
-          badges: ["tags"],
-        },
-        rowActions: ["markCooked"],
-        onOpen: { page: "detail", param: { recipeId: "id" } },
+      // A split (#105): on a wide screen a row fills the recipe on the right; on a phone it opens
+      // the detail page below, as any list does.
+      layout: {
+        type: "split",
+        items: [
+          {
+            view: {
+              type: "list",
+              entity: "recipe",
+              sort: (a, b) => a.name.localeCompare(b.name),
+              display: {
+                primary: (r) => r.name,
+                secondary: (r) => `${Math.round(r.caloriesPerServing)} kcal · ${r.difficulty}`,
+                media: "photo",
+                badges: ["tags"],
+              },
+              rowActions: ["markCooked"],
+              onOpen: { page: "detail", param: { recipeId: "id" } },
+            },
+          },
+          {
+            view: {
+              type: "detail",
+              entity: "recipe",
+              param: "recipeId",
+              actions: [{ label: "Cook", navigate: { page: "cook", param: { recipeId: "id" } } }, "markCooked"],
+            },
+          },
+        ],
       },
     },
     {

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { MapCamera, Resolved } from "karta";
 import type { BuiltinViewProps } from "./types.js";
+import { getView } from "./format.js";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -177,9 +178,7 @@ export function MapView(props: BuiltinViewProps) {
   // The map is created once; these keep its click handler current without re-creating it.
   const onCreateRef = useRef(onCreate);
   onCreateRef.current = onCreate;
-  const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
-    | { entity?: string; geo?: string; camera?: unknown }
-    | undefined;
+  const view = getView(runtime, pageId) as unknown as { entity?: string; geo?: string; camera?: unknown } | undefined;
   // What the app declared (a mode, a position, or a function of ctx — or, for an untrusted app, the
   // sentinel where the function was), and what it resolved to once the map was created.
   const declaredCameraRef = useRef<unknown>(view?.camera);

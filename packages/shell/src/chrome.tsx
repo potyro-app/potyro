@@ -25,7 +25,11 @@ function useNarrow(ref: React.RefObject<HTMLDivElement | null>, viewportPhone: b
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver !== "function") return;
-    const read = (): void => setNarrow(el.getBoundingClientRect().width < WIDE_FROM);
+    // A width of 0 is "not laid out yet", not "narrow": keep the viewport's answer until measured.
+    const read = (): void => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setNarrow(w < WIDE_FROM);
+    };
     read();
     const ro = new ResizeObserver(read);
     ro.observe(el);

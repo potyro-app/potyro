@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
-import { RecordForm, ViewHost, createDefaults, usePageTitles } from "@karta/views";
+import { LayoutHost, RecordForm, ViewHost, createDefaults, usePageTitles } from "@karta/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -1039,15 +1039,29 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
           <main className="k-main">
             {editMark(currentPageLabel, "page")}
-            <ViewHost
-              runtime={runtime}
-              pageId={pageId}
-              params={params}
-              setParam={setParam}
-              navigate={navigate}
-              onEdit={onEdit}
-              onCreate={onCreate}
-            />
+            {currentPage?.layout ? (
+              // Several views on one page (#105); each item is a view under its own page ref.
+              <LayoutHost
+                runtime={runtime}
+                pageId={pageId}
+                layout={currentPage.layout}
+                params={params}
+                setParam={setParam}
+                navigate={navigate}
+                onEdit={onEdit}
+                onCreate={onCreate}
+              />
+            ) : (
+              <ViewHost
+                runtime={runtime}
+                pageId={pageId}
+                params={params}
+                setParam={setParam}
+                navigate={navigate}
+                onEdit={onEdit}
+                onCreate={onCreate}
+              />
+            )}
             {/* The record's own conversation, under the record — the half of KA-35 nothing else can
                 do. Rendered by the SHELL and not by the detail view, because `views` is reachable
                 from a page an app declares and messages must stay out of app code's reach entirely
