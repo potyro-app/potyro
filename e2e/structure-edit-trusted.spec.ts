@@ -245,3 +245,38 @@ test("a source it can't edit structurally says so, and offers the agent", async 
   // The way through is still open.
   await expect(page.getByLabel("Describe the change")).toBeVisible();
 });
+
+// Entity groups (#100): the panel shows the fields group by group, and ↑/↓ move a field within its
+// group or over the edge into the next one — one step, one edit to that group's `fields` list.
+test("moving a field over a group's edge regroups it, in the source and on the form", async ({ page }) => {
+  const GROUPED = APP_SOURCE.replace(
+    `        notes: { type: "text", multiline: true },
+      },`,
+    `        notes: { type: "text", multiline: true },
+      },
+      groups: [
+        { title: "Basics", fields: ["title"] },
+        { title: "More", fields: ["quantity", "notes"] },
+      ],`,
+  );
+  expect(GROUPED).toContain("Basics");
+  await seed(page, GROUPED);
+  await page.goto("/?user=kit");
+  await expect(page.locator("h1")).toHaveText("Kit");
+
+  await openPanel(page);
+  await expect(page.locator(".k-structure-group")).toHaveText(["Basics", "More"]);
+  // The top of the first group has nowhere to go; the top of the second can cross into the first.
+  await expect(page.getByLabel("Move title up")).toBeDisabled();
+  await page.getByLabel("Move quantity up").click();
+  await expect.poll(() => storedSource(page)).toContain(`{ title: "Basics", fields: ["title", "quantity"] }`);
+  await expect.poll(() => storedSource(page)).toContain(`{ title: "More", fields: ["notes"] }`);
+  // The last field of a group cannot leave it empty.
+  await expect(page.getByLabel("Move notes up")).toBeDisabled();
+  await closePanelAndAwaitRerun(page);
+
+  await openNewItemForm(page);
+  const basics = page.locator(".k-modal .k-form-group").first();
+  await expect(basics.locator(".k-form-group-title")).toHaveText("Basics");
+  await expect(basics.locator(".k-form-label")).toHaveText(["Title *", "Quantity"]);
+});

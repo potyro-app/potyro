@@ -56,6 +56,7 @@ export type {
   AppDefinition,
   KartaApp,
   EntityDef,
+  FieldGroup,
   Page,
   View,
   ViewType,

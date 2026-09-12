@@ -667,6 +667,26 @@ button {
   align-items: center;
   gap: 0.5rem;
 }
+/* A group's fields under its title (#100); the runs stack, and one list scrolls as before. */
+.k-structure-fields + .k-structure-fields {
+  margin-top: 0.4rem;
+}
+.k-structure-group {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.k-structure-computed {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  padding: 0.35rem 0.5rem;
+}
+.k-structure-computed small {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
 .k-structure-order {
   display: flex;
   gap: 0.15rem;
@@ -989,6 +1009,34 @@ button {
   margin: 0 0 0.5rem;
   font-family: var(--font-display);
 }
+/* A folded group (#100): the title is the disclosure, the fields open under it. */
+details.k-section > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+details.k-section > summary::-webkit-details-marker {
+  display: none;
+}
+details.k-section > summary::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--ink-soft);
+  border-bottom: 2px solid var(--ink-soft);
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease);
+  flex: none;
+  margin-bottom: 0.5rem;
+}
+details.k-section[open] > summary::before {
+  transform: rotate(45deg);
+}
+details.k-section > summary h3 {
+  margin: 0 0 0.5rem;
+}
 .k-section dl {
   margin: 0;
   display: grid;
@@ -1120,10 +1168,12 @@ button {
   font-family: var(--font-display);
   font-size: 1.3rem;
 }
-.k-form-field {
+.k-form-field,
+.k-form-control {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  min-width: 0;
 }
 .k-form-label {
   font-size: 0.8rem;
@@ -1138,6 +1188,90 @@ button {
   color: oklch(50% 0.16 30);
   font-size: 0.85rem;
 }
+
+/* tokens-only: start — form groups */
+/* The form's groups (#100): a titled run of fields with a rule before each, the same arrangement
+   the detail page reads. A folded group is a <details>; its title is the disclosure. The fields
+   inside are a grid so two `width: "half"` neighbours can share a row once there is room. */
+.k-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.k-form-group + .k-form-group {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-4);
+}
+.k-form-group-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+details.k-form-group > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin: calc(-1 * var(--space-2)) 0;
+}
+details.k-form-group > summary::-webkit-details-marker {
+  display: none;
+}
+details.k-form-group > summary::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--ink-soft);
+  border-bottom: 2px solid var(--ink-soft);
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease);
+  flex: none;
+}
+details.k-form-group[open] > summary::before {
+  transform: rotate(45deg);
+}
+details.k-form-group > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.k-form-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-4);
+}
+@media (min-width: 480px) {
+  .k-form-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .k-form-field {
+    grid-column: 1 / -1;
+  }
+  .k-form-field[data-width="half"] {
+    grid-column: auto;
+  }
+}
+.k-form-help {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+/* Inline validation: the message sits under the field it is about, and the field says so. */
+.k-form-field-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger);
+}
+.k-form-field[data-invalid] .k-input,
+.k-form-field[data-invalid] .k-switch-row {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-tint);
+}
+/* tokens-only: end — form groups */
 .k-input {
   font: inherit;
   padding: 0.5rem 0.6rem;

@@ -304,6 +304,11 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
 - Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"€"\`, \`"days"\`) and \`integer: true\` when
   it counts things; the form shows the unit inside the field and a − / + stepper, and the phone opens
   the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
+- Arrange an entity's fields with \`groups: [{ title, fields: [...] }]\` when it has more than four:
+  the form and the detail page show the same titled sections (a group may list computed keys — they
+  show on the detail page). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
+  \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
+  text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
 - Make exactly ONE top-level LIST page per entity (title = plural, e.g. "Sessions"). NEVER add a
   separate top-level page for a single record (no "Session" tab next to "Sessions").
 - To show a record's details, add a \`detail\` page, mark it \`hidden: true\`, and link the list to it with
