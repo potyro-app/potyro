@@ -2127,6 +2127,172 @@ details.k-layout-fold[open] > summary::before {
 }
 /* tokens-only: end — page layouts */
 
+/* tokens-only: start — media */
+/* The photo field (#102): a tile, not the browser's file button. Empty it is a dashed square that
+   says what it wants; filled it shows the thing with a way to take it off. A `multiple` field is a
+   strip, the add tile last. The same tile renders the value on the record page. */
+.k-media {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.k-media[data-over] {
+  outline: 2px dashed var(--accent);
+  outline-offset: var(--space-2);
+}
+.k-media-tile {
+  position: relative;
+  width: 7rem;
+  height: 7rem;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  display: grid;
+  place-items: center;
+}
+.k-media-tile img,
+.k-media-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.k-media-glyph {
+  font-size: 1.8rem;
+}
+.k-media-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--surface);
+  font-size: 1.6rem;
+  text-shadow: 0 1px 3px var(--scrim);
+  pointer-events: none;
+}
+.k-media-x {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ink) 62%, transparent);
+  color: var(--surface);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.k-media-x:hover {
+  background: var(--ink);
+}
+.k-media-x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-media-add {
+  width: 7rem;
+  height: 7rem;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-media-add:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.k-media-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-media-add-glyph {
+  font-size: 1.4rem;
+}
+.k-media-adding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+/* Honest about what it knows: the store reports no progress, so this paces rather than pretends. */
+.k-media-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.3rem;
+  overflow: hidden;
+  background: var(--accent-tint);
+}
+.k-media-bar::after {
+  content: "";
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  animation: k-media-sweep 1.1s var(--ease) infinite;
+}
+@keyframes k-media-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-media-bar::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.6;
+  }
+}
+.k-media-drop,
+.k-media-failed {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-media-failed {
+  color: var(--danger);
+}
+.k-media-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* The fallback the tile drives; present for the file dialog, never shown. `display: none` rather
+   than a transparent pixel — a transparent pixel is still a visible element, and the form's promise
+   is that no file button is in it. A hidden input still opens the dialog when clicked in script. */
+.k-media-file {
+  display: none;
+}
+/* tokens-only: end — media */
+
 /* tokens-only: start — enums */
 /* Choosing one of a set (#98). A short list is a row of buttons; a long one is a button that opens
    a searchable list — a popover on a wide screen, a bottom sheet on a phone. A chosen value wears a

@@ -10,6 +10,7 @@ import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
 import { EnumPill } from "./enum-input.js";
+import { MediaTile, mediaList } from "./media-input.js";
 
 export function FieldValue({
   runtime,
@@ -168,19 +169,18 @@ function relText(v: unknown, displayField: string): string {
   return String(v);
 }
 
+/**
+ * On the record page, media shows as the same tiles the form used (#102) — one photo looks like one
+ * photo everywhere — and a `multiple` field shows all of them, not only the first.
+ */
 function MediaValue({ runtime, value }: { runtime: KartaRuntime; value: MediaRef | MediaRef[] }) {
-  const ref = Array.isArray(value) ? value[0] : value;
-  const [url, setUrl] = useState<string>("");
-  useEffect(() => {
-    if (!ref) return;
-    let alive = true;
-    void runtime.ctx.media.url(ref).then((u) => {
-      if (alive) setUrl(u);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [runtime, ref]);
-  if (!ref) return <span className="k-muted">–</span>;
-  return url ? <img className="k-detail-media" src={url} alt="" /> : <span className="k-muted">(image)</span>;
+  const refs = mediaList(value);
+  if (!refs.length) return <span className="k-muted">–</span>;
+  return (
+    <span className="k-media k-media-read">
+      {refs.map((ref, i) => (
+        <MediaTile key={`${ref.key}-${i}`} runtime={runtime} mediaRef={ref} />
+      ))}
+    </span>
+  );
 }

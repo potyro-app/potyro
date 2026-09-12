@@ -114,6 +114,13 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
 
+A `media` field is a tile, never the browser's file button (#102). Empty it says what it wants
+("Add photo", or video/audio per `accept`); on a phone it offers Camera or Library through
+`ctx.caps.camera`, and on a wide screen it opens the file dialog and takes a dropped file. Filled it
+shows the thing, with a way to take it off. `multiple: true` makes it a strip with the add tile
+last. The same tile renders the value on a record page, so one photo looks like one photo
+everywhere. A file that fails to store says so, with a way to try again.
+
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
 wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a
