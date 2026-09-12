@@ -51,7 +51,7 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     ...common,
   });
   const tags = z.object({ type: z.literal("tags"), options: z.array(z.string()).optional(), ...common });
-  const datetime = z.object({ type: z.literal("datetime"), ...common });
+  const datetime = z.object({ type: z.literal("datetime"), precision: z.enum(["day", "minute"]).optional(), ...common });
   const duration = z.object({
     type: z.literal("duration"),
     unit: z.enum(["ms", "s", "min", "h", "d"]).optional(),

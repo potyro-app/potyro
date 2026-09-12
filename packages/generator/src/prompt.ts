@@ -180,7 +180,8 @@ CONTRACT
       empty page or a count stuck at 0 with no error anywhere.
     - \`relation\` with \`many: true\` -> an ARRAY of records: \`todo.tags?.some((t) => t.id === x)\`.
     - \`member\` -> a \`Person\` (\`{ id, name }\`), so compare \`row.addedBy?.id === ctx.me.id\`.
-    - \`datetime\` -> a real \`Date\` (call \`.getTime()\`, never compare strings).
+    - \`datetime\` -> a real \`Date\` (call \`.getTime()\`, never compare strings). It is a DAY unless the
+      field says \`precision: "minute"\` — do that only when the hour matters (a session start).
     - \`media\` -> a \`MediaRef\`; render it through a media binding, do not read it as a URL.
     - text/number/boolean/enum/tags/geo/list read as written.
   When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.

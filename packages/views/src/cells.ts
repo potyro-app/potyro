@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { MediaRef, Resolved } from "karta";
 import type { DisplayCell } from "./types.js";
-import { getView, toBadges } from "./format.js";
+import { formatDateValue, getView, toBadges } from "./format.js";
 
 function str(v: unknown): string {
-  return v == null ? "" : String(v);
+  if (v == null) return "";
+  // A row that shows a date shows it as a person would say it, not as a JS Date prints (#103).
+  return v instanceof Date ? formatDateValue(v) : String(v);
 }
 
 export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Resolved[]): DisplayCell[] {
