@@ -7,11 +7,7 @@ import { useEffect, useState } from "react";
 import type { Field, Geo, MediaRef } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
-
-function formatNumber(v: unknown): string {
-  if (typeof v !== "number") return String(v);
-  return Number.isInteger(v) ? String(v) : v.toFixed(1);
-}
+import { formatDuration, formatWithUnit } from "./units.js";
 
 export function FieldValue({
   runtime,
@@ -143,13 +139,10 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
         </a>
       );
     case "number":
+      // The same formatting the form's suffix uses (#99): "7 days" reads the same everywhere.
+      return <>{formatWithUnit(value, field)}</>;
     case "duration":
-      return (
-        <>
-          {formatNumber(value)}
-          {field.type === "number" && field.unit ? ` ${field.unit}` : ""}
-        </>
-      );
+      return <>{formatDuration(value, field)}</>;
     default:
       return <>{formatValue(value)}</>;
   }
