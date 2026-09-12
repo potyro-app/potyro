@@ -12,7 +12,8 @@ import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "./launcher-reorder.js";
-import { tileIdentity } from "./tile-identity.js";
+import { hueColour, tileIdentity } from "./tile-identity.js";
+import { personHue, personInitials } from "@karta/runtime";
 import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
@@ -49,6 +50,48 @@ interface LauncherProps {
 // A tile is the app's identity (#82): its declared icon and accent, or a monogram in a colour derived
 // from the app so that four apps starting with P are four different tiles. The name is the app's
 // declared one ("PPL Log", not "workout") unless the user renamed it here.
+/**
+ * The marks a tile carries (#87), and only when they say something: a sandboxed app gets a
+ * shield on its icon's corner — never red, that is the safe state; a synced app says "synced", or
+ * "shared" with the initials of the people last seen there. A trusted, local-only app says nothing
+ * at all: when every tile said TRUSTED the word carried no information.
+ */
+function Avatar({ app, identity }: { app: InstalledApp; identity: ReturnType<typeof tileIdentity> }) {
+  return (
+    <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden={app.trusted || undefined}>
+      {identity.glyph}
+      {!app.trusted ? (
+        <span className="k-launch-shield" role="img" aria-label="Runs in a sandbox" title="Runs in a sandbox">
+          🛡
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function SyncMark({ app, compact }: { app: InstalledApp; compact?: boolean }) {
+  if (!app.sync) return null;
+  const others = app.people.length > 1 ? app.people : [];
+  const label = others.length ? `Shared with ${others.length} people` : "Synced to your other devices";
+  return (
+    <span className="k-launch-mark" data-shared={others.length ? "true" : undefined} title={label} aria-label={label}>
+      <span aria-hidden>⟳</span>
+      {compact ? null : <span aria-hidden>{others.length ? "shared" : "synced"}</span>}
+      {others.length ? (
+        <span className="k-launch-faces" aria-hidden>
+          {others.slice(0, 3).map((p) => (
+            <span key={p.id} className="k-launch-face" style={{ "--swatch": hueColour(personHue(p.id)) } as CSSProperties}>
+              {/* One letter: two do not fit a face this small, and three faces overlap. */}
+              {personInitials(p.name, p.id).slice(0, 1)}
+            </span>
+          ))}
+          {others.length > 3 ? <span className="k-launch-face">+{others.length - 3}</span> : null}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onOpen: () => void }) {
   const identity = tileIdentity(app);
   return (
@@ -59,11 +102,9 @@ function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onO
       style={{ "--tile-accent": identity.accent } as CSSProperties}
       onClick={onOpen}
     >
-      <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
-        {identity.glyph}
-      </span>
+      <Avatar app={app} identity={identity} />
       <span className="k-launch-name">{app.name}</span>
-      <span className={`k-prov k-prov-${app.trusted ? "trusted" : "untrusted"}`}>{app.trusted ? "trusted" : "untrusted"}</span>
+      <SyncMark app={app} />
     </button>
   );
 }
@@ -517,16 +558,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             style={{ "--tile-accent": identity.accent } as CSSProperties}
             onClick={() => onOpen(a)}
           >
-            <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
-              {identity.glyph}
-            </span>
+            <Avatar app={a} identity={identity} />
             <span className="k-launch-name">{a.name}</span>
-            {a.sync ? (
-              <span className="k-launch-mark" title="Synced" aria-label="Synced">
-                ⟳
-              </span>
-            ) : null}
-            <span className={`k-prov k-prov-${a.trusted ? "trusted" : "untrusted"}`}>{a.trusted ? "trusted" : "untrusted"}</span>
+            <SyncMark app={a} compact />
           </button>
           {menuFor(a)}
         </div>

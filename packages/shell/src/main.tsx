@@ -298,6 +298,15 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
         // Keep it current from here on: membership changes when someone joins, and a snapshot would
         // leave every later edit of theirs attributed to an account id.
         await watchSpace();
+        // The tile remembers who is here (#87): the launcher cannot open every store to ask.
+        const { onSpaceChange } = await import("./open-store.js");
+        const { updateEntry } = await import("./launcher-store.js");
+        const remember = (): void => {
+          const members = (liveSpace() ?? s).members.map((m) => ({ id: m.id, name: m.name }));
+          updateEntry(appKey("user", id), { people: members });
+        };
+        remember();
+        onSpaceChange(remember);
         return () => ({
           ...(liveSpace() ?? s),
           // Host-mediated: the shell owns the UI and the admin check, so an app cannot hand its

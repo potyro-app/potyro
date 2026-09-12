@@ -3274,12 +3274,61 @@ button.k-switch:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.k-launch-tile-row .k-prov {
-  font-size: 0.6rem;
+/* The marks a tile carries (#87): a shield on a sandboxed app's icon, a green "synced" / "shared"
+   pill with the initials of the people last seen there. Nothing on a trusted local app. */
+.k-launch-avatar {
+  position: relative;
+}
+.k-launch-shield {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.35rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 0.65rem;
+  line-height: 1;
 }
 .k-launch-mark {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.4rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--ok-line);
+  background: var(--ok-tint);
+  color: var(--ok);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.k-launch-faces {
+  display: inline-flex;
+  margin-left: 0.15rem;
+}
+.k-launch-face {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: -0.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+  background: color-mix(in oklab, var(--swatch, var(--accent)) 55%, var(--paper));
+  color: var(--ink);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.k-launch-face:first-child {
+  margin-left: 0;
+}
+.k-launch-tile-row .k-launch-mark {
+  padding: 0.05rem 0.4rem;
 }
 .k-launch-tile-extra {
   padding-right: var(--space-3);
