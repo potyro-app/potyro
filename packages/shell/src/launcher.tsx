@@ -11,7 +11,7 @@ import { shellDialogs } from "./dialog.js";
 import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
-import { useReorder } from "./launcher-reorder.js";
+import { useReorder } from "@karta/views";
 import { hueColour, tileIdentity } from "./tile-identity.js";
 import { personHue, personInitials } from "@karta/runtime";
 import { TileEditor } from "./tile-editor.js";
@@ -250,8 +250,10 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
     }
   };
   // Reordering by hand is for the whole list, not a filtered view of it.
-  const pinnedReorder = useReorder(pinned.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), !q);
-  const restReorder = useReorder(rest.map((a) => a.key), nameOf, (keys) => setOrder(keys as AppKey[]), sortMode === "manual" && !q);
+  // A tile is dragged from anywhere on itself, except its menu button (#84).
+  const TILE = { names: nameOf, onReorder: (keys: string[]) => setOrder(keys as AppKey[]), ignore: ".k-tile-menu-host" };
+  const pinnedReorder = useReorder({ ...TILE, keys: pinned.map((a) => a.key), enabled: !q });
+  const restReorder = useReorder({ ...TILE, keys: rest.map((a) => a.key), enabled: sortMode === "manual" && !q });
   useEffect(() => {
     if (variant !== "home") return;
     // Spotlight-style: a printable key with nothing focused goes to the field and starts the filter.

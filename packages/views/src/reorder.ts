@@ -1,15 +1,31 @@
-// Reordering tiles by hand (#84): pointer (mouse and touch) and keyboard, no library.
+// Putting things in the order you want, by hand: pointer (mouse and touch) and keyboard, no
+// library. Written for the launcher's tiles (#84) and reused by a form's nested rows (#104), which
+// is why it lives here rather than in the shell.
 //
 // A mouse drags after moving a few pixels. A finger must HOLD first (a quarter second, still), or
-// every scroll over the grid would pick a tile up; once the hold is in, a non-passive touchmove
-// listener keeps the page from panning under the drag. From the keyboard, Alt+arrows move the
-// focused tile one step; the same callback gets the same new order either way.
+// every scroll over the grid would pick something up; once the hold is in, a non-passive touchmove
+// listener keeps the page from panning under the drag. From the keyboard the same callback gets the
+// same new order.
+//
+// Two callers, two shapes: a tile is dragged from anywhere on itself, a row card only by its
+// handle. `handle` says which, and `ignore` keeps a menu button from starting a drag.
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { moveKey } from "./launcher-order.js";
 
 const HOLD_MS = 220;
 const SLOP_PX = 6;
+
+/** The list with `key` moved to index `to`, clamped. Pure, and the only place order changes. */
+export function moveKey(list: readonly { key: string }[], key: string, to: number): string[] {
+  const keys = list.map((a) => a.key);
+  const from = keys.indexOf(key);
+  if (from < 0) return keys;
+  const target = Math.max(0, Math.min(keys.length - 1, to));
+  if (target === from) return keys;
+  keys.splice(from, 1);
+  keys.splice(target, 0, key);
+  return keys;
+}
 
 interface Drag {
   key: string;
@@ -24,7 +40,7 @@ interface Drag {
 }
 
 export interface ReorderProps {
-  /** Spread on each tile's wrapper; `key` identifies it. */
+  /** Spread on each item's wrapper; `key` identifies it. */
   item: (key: string) => {
     "data-key": string;
     "data-dragging"?: true;
@@ -40,13 +56,27 @@ export interface ReorderProps {
   announcement: string;
 }
 
-/**
- * @param keys      the tiles, in their current order
- * @param names     what to call a tile when announcing a move
- * @param onReorder receives the keys in their new order
- * @param enabled   false renders inert props (the "Recent" and "A–Z" sorts are not yours to drag)
- */
-export function useReorder(keys: readonly string[], names: (key: string) => string, onReorder: (keys: string[]) => void, enabled: boolean): ReorderProps {
+export interface ReorderOptions {
+  /** The items, in their current order. */
+  keys: readonly string[];
+  /** What to call an item when announcing a move. */
+  names: (key: string) => string;
+  /** Receives the keys in their new order. */
+  onReorder: (keys: string[]) => void;
+  /** false renders inert props (the "Recent" and "A–Z" sorts are not yours to drag). */
+  enabled: boolean;
+  /** CSS selector a drag must start inside — a grip. Omitted, the whole item is the handle. */
+  handle?: string;
+  /** CSS selector that never starts a drag, whatever else is true (a menu button). */
+  ignore?: string;
+  /**
+   * Keyboard: `"alt"` needs Alt+arrows (a focusable tile in a grid, where bare arrows move focus),
+   * `"plain"` takes bare arrows (a grip button, which has no other use for them).
+   */
+  keyboard?: "alt" | "plain";
+}
+
+export function useReorder({ keys, names, onReorder, enabled, handle, ignore, keyboard = "alt" }: ReorderOptions): ReorderProps {
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,14 +108,22 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
     }
   };
 
-  // The tile in hand rides under the pointer, so the topmost element there is itself; the drop
-  // target is the first OTHER tile in the stack beneath the pointer.
-  const tileUnder = (x: number, y: number, self: string): string | null => {
+  // The item in hand rides under the pointer, so the topmost element there is itself; the drop
+  // target is the first OTHER item in the stack beneath the pointer.
+  const under = (x: number, y: number, self: string): string | null => {
     for (const el of document.elementsFromPoint(x, y)) {
       const key = el.closest<HTMLElement>("[data-key]")?.dataset.key;
       if (key && key !== self) return key;
     }
     return null;
+  };
+
+  const step = (key: string, by: number): void => {
+    const from = keys.indexOf(key);
+    const to = from + by;
+    if (to < 0 || to >= keys.length) return;
+    onReorder(moveKey(keys.map((k) => ({ key: k })), key, to));
+    setAnnouncement(`Moved ${names(key)} to position ${to + 1} of ${keys.length}.`);
   };
 
   const item: ReorderProps["item"] = (key) => ({
@@ -94,8 +132,9 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
     ...(enabled && drag && !drag.armed && drag.over === key && drag.key !== key ? { "data-over": true as const } : {}),
     onPointerDown: (e) => {
       if (!enabled || e.button !== 0) return;
-      // The menu button and anything inside a menu are not handles.
-      if ((e.target as HTMLElement).closest(".k-tile-menu-host")) return;
+      const target = e.target as HTMLElement;
+      if (ignore && target.closest(ignore)) return;
+      if (handle && !target.closest(handle)) return;
       const d: Drag = { key, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, armed: true, dx: 0, dy: 0, over: null };
       update(d);
       if (e.pointerType === "touch" || e.pointerType === "pen") {
@@ -103,7 +142,7 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
         hold.current = setTimeout(() => {
           const cur = dragRef.current;
           if (cur && cur.pointerId === d.pointerId) {
-            (e.target as HTMLElement).setPointerCapture?.(d.pointerId);
+            target.setPointerCapture?.(d.pointerId);
             update({ ...cur, armed: false });
           }
         }, HOLD_MS);
@@ -124,11 +163,11 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
           return;
         }
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        update({ ...cur, armed: false, dx, dy, over: tileUnder(e.clientX, e.clientY, cur.key) });
+        update({ ...cur, armed: false, dx, dy, over: under(e.clientX, e.clientY, cur.key) });
         return;
       }
       e.preventDefault();
-      update({ ...cur, dx, dy, over: tileUnder(e.clientX, e.clientY, cur.key) });
+      update({ ...cur, dx, dy, over: under(e.clientX, e.clientY, cur.key) });
     },
     onPointerUp: (e) => {
       const cur = dragRef.current;
@@ -136,7 +175,7 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
       if (!cur || cur.pointerId !== e.pointerId) return;
       if (!cur.armed) {
         e.preventDefault();
-        commit({ ...cur, over: tileUnder(e.clientX, e.clientY, cur.key) ?? cur.over });
+        commit({ ...cur, over: under(e.clientX, e.clientY, cur.key) ?? cur.over });
       }
       update(null);
     },
@@ -145,15 +184,12 @@ export function useReorder(keys: readonly string[], names: (key: string) => stri
       update(null);
     },
     onKeyDown: (e) => {
-      if (!enabled || !e.altKey) return;
-      const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
-      if (!step) return;
+      if (!enabled) return;
+      if (keyboard === "alt" && !e.altKey) return;
+      const by = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+      if (!by) return;
       e.preventDefault();
-      const from = keys.indexOf(key);
-      const to = from + step;
-      if (to < 0 || to >= keys.length) return;
-      onReorder(moveKey(keys.map((k) => ({ key: k })), key, to));
-      setAnnouncement(`Moved ${names(key)} to position ${to + 1} of ${keys.length}.`);
+      step(key, by);
     },
   });
 
