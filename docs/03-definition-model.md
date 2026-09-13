@@ -114,6 +114,11 @@ separates shape from logic.) Options per type are unchanged from the prior schem
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
 
+A `list` field's rows are cards (#104): the first sub-field is the line you read, the rest sit under
+it, and Remove lives in the card's own menu. `ordered: true` earns a grip — drag it with a pointer or
+a finger, or focus it and press an arrow — and the record page then reads the list as a numbered
+list rather than a table. On a phone a card can be swiped aside to reveal Remove. The button that
+adds one names what it adds, from the field's label.
 A `media` field is a tile, never the browser's file button (#102). Empty it says what it wants
 ("Add photo", or video/audio per `accept`); on a phone it offers Camera or Library through
 `ctx.caps.camera`, and on a wide screen it opens the file dialog and takes a dropped file. Filled it

@@ -182,6 +182,15 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4f. Nested rows — cards you can reorder (#104)
+
+Open a recipe, **More actions → Edit**, and unfold **Steps**. Each step is a card: the text on its
+line, its time under it, and Remove in the card's `⋯` menu — no bare ✕ beside the boxes. Steps are
+`ordered`, so each card has a grip: drag it with the mouse, or focus it and press ↑/↓. **Save
+changes** and the record page lists the steps numbered, in the order you left them. Ingredients are
+not ordered, so their cards are numbered instead of gripped. **Add step** names what it adds and
+puts the caret in the new card. On a phone, flick a card's grip sideways and Remove appears.
+
 ## 4e. Photos — a tile, not a file button (#102)
 
 **New Plant** in Plants: "Photo" is a dashed tile that says **Add photo**. On a desktop, click it

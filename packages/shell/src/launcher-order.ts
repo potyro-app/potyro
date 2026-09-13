@@ -53,13 +53,4 @@ export function orderApps(apps: readonly InstalledApp[], mode: SortMode, now: nu
 }
 
 /** The keys of `list` with `key` moved to index `to` (clamped). Same order back if nothing moves. */
-export function moveKey(list: readonly { key: string }[], key: string, to: number): string[] {
-  const keys = list.map((a) => a.key);
-  const from = keys.indexOf(key);
-  if (from < 0) return keys;
-  const target = Math.max(0, Math.min(keys.length - 1, to));
-  if (target === from) return keys;
-  keys.splice(from, 1);
-  keys.splice(target, 0, key);
-  return keys;
-}
+export { moveKey } from "@karta/views";
