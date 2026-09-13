@@ -34,7 +34,9 @@ test("the Studio generates an app end to end, surviving a long run", async ({ pa
     if (r.url().includes("/__generate")) generateCalls.push(`${r.request().method()} ${r.status()}`);
   });
 
-  await page.goto("/?app=recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
