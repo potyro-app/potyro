@@ -9,9 +9,9 @@ import { tileAction } from "./launcher-actions.js";
 // fallback for a malformed app, and the path for anything that arrived from someone else.
 
 test("studio previews an app trusted by default and saves it to My Apps", async ({ page }) => {
-  await page.goto("/?app=recipes");
-  await expect(page.locator("h1").first()).toHaveText("Recipes");
-
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();

@@ -3423,6 +3423,32 @@ button.k-switch:focus-visible {
   align-items: center;
   gap: 0.4rem;
 }
+/* The Studio's Preview / Source / History. These were styled by a global `.k-tab` until the app
+   chrome (#111) scoped that class to the tab bar and the sidebar, which left them as bare browser
+   buttons; they carry their own look here so the two cannot collide again. */
+.k-studio-tabs .k-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-studio-tabs .k-tab:hover {
+  color: var(--ink);
+}
+.k-studio-tabs .k-tab[data-active="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.k-studio-tabs .k-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .k-studio-tabs-spacer {
   flex: 1 1 auto;
 }
