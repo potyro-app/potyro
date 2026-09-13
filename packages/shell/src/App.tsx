@@ -179,6 +179,9 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     return () => document.removeEventListener("keydown", onKey);
   }, [generator]);
   const [studioPrefill, setStudioPrefill] = useState<string | undefined>(undefined);
+  // Which saved app the Studio opens on: this one, when it is opened as "change this app"; none when
+  // the launcher opens it to create something new.
+  const [studioAppId, setStudioAppId] = useState<string | undefined>(undefined);
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
 
   const params = paramsByPage[pageId] ?? {};
@@ -907,7 +910,11 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     navigate(list?.id ?? landingPage());
   };
   const chromeTools: ChromeTool[] = [
-    ...(generator && canAskAgent ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => setGenOpen(true) }] : []),
+    ...(generator && canAskAgent ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
+            setStudioPrefill(undefined);
+            setStudioAppId(currentKind === "user" ? appId : undefined);
+            setGenOpen(true);
+          } }] : []),
     ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => setEditMode((v) => !v) }] : []),
     ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
@@ -1228,6 +1235,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           onNewApp={(prefill) => {
             setLauncherOpen(false);
             setStudioPrefill(prefill);
+            setStudioAppId(undefined);
             setGenOpen(true);
           }}
           onClose={() => setLauncherOpen(false)}
@@ -1258,7 +1266,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
 
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
-      {genOpen ? <Studio onClose={() => setGenOpen(false)} initialDescription={studioPrefill} /> : null}
+      {genOpen ? <Studio onClose={() => setGenOpen(false)} initialDescription={studioPrefill} initialAppId={studioAppId} /> : null}
 
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>

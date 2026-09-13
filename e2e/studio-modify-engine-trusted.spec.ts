@@ -25,7 +25,9 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
   });
   await page.route("**/__generate**", (route) => (hits.push("claude-cli"), route.abort()));
 
-  await page.goto("/?app=recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
@@ -109,7 +111,9 @@ test("an edit-block reply changes only the lines it names, and the Studio says h
     });
   });
 
-  await page.goto("/?app=recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
@@ -157,7 +161,9 @@ test("the History tab shows this session before anything is saved, and New draft
     }),
   );
 
-  await page.goto("/?app=recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
@@ -250,7 +256,9 @@ test("a generate that needs repair is repaired with an edit, through the same ga
     });
   });
 
-  await page.goto("/?app=recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });

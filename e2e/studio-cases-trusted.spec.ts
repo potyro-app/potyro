@@ -83,8 +83,9 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   page,
 }) => {
   // --- 1. Author + save an app by hand, no model call -------------------------------------------
-  await page.goto("/?app=recipes");
-  await expect(page.locator("h1").first()).toHaveText("Recipes");
+  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
+  // it is for changing THAT app, and opens on it (reported 2026-09-13).
+  await page.goto("/");
   await page.getByRole("button", { name: "Studio" }).click();
 
   const studio = page.locator(".k-studio");
@@ -143,10 +144,10 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   await page.getByRole("button", { name: "Studio" }).click();
   const studio2 = page.locator(".k-studio");
   await expect(studio2).toBeVisible();
-  await expect(studio2.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 30_000 });
-
-  await studio2.locator(".k-myapp-open").getByText(APP_NAME).click(); // open the saved app from My Apps
+  // Opened from inside the app, the Studio is already on it — no detour through the starter and My
+  // Apps, which is the workaround this step used to need.
   await expect(studio2.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
+  await expect(studio2.locator(".k-studio-bar")).toContainText(`· ${APP_NAME}`);
 
   await studio2.getByRole("tab", { name: "Source" }).click();
   await studio2.getByRole("textbox", { name: "App source" }).fill(SOURCE_V2);
