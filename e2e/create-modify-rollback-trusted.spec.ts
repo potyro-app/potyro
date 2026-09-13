@@ -197,10 +197,13 @@ test.describe("create, change twice, and get back", () => {
 
   test("history keeps every version, and a rollback keeps every note", async ({ page }) => {
     const generator = await stubGenerator(page, [V1, V2, V3]);
-    await page.goto("/?app=recipes");
+    // From the home screen, so the Studio opens for a new app rather than on the one in view.
+    await page.goto("/");
 
     // ---- 1. make an app in the Studio and save it -------------------------------------------
-    await openStudio(page);
+    // Home's "New app" tile is the Studio's way in for a new app.
+    await page.getByRole("button", { name: /New app/ }).click();
+    await expect(studioOf(page)).toBeVisible();
     const studio = studioOf(page);
     await studio.getByRole("textbox", { name: "Describe the app" }).fill("somewhere to keep field notes");
     // One action button, not one button per engine: `claude -p` is the default engine and is named

@@ -35,7 +35,7 @@ import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
-import { listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
+import { getUserApp, listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
 import { History } from "./history.js";
 import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineReady } from "./engines.js";
@@ -81,7 +81,21 @@ interface Preview {
   provenance: Provenance;
 }
 
-export function Studio({ onClose, initialDescription }: { onClose: () => void; /** What to start the prompt with — a launcher search that found nothing offers to create it (#85). */ initialDescription?: string }) {
+export function Studio({
+  onClose,
+  initialDescription,
+  initialAppId,
+}: {
+  onClose: () => void;
+  /** What to start the prompt with — a launcher search that found nothing offers to create it (#85). */
+  initialDescription?: string;
+  /**
+   * The saved app to open on arrival. The in-app "Studio — change this app" passes the app it was
+   * opened from; without it the Studio opened on the blank starter as "new app", which is not what
+   * the tool says it does.
+   */
+  initialAppId?: string;
+}) {
   const [source, setSource] = useState(STARTER);
   // Every generate/modify in the Studio is a real step in how the app came to be, but until Save
   // there is no app id to hang history on — so the steps were simply dropped and only the final
@@ -228,9 +242,11 @@ export function Studio({ onClose, initialDescription }: { onClose: () => void; /
     }
   };
 
-  // Show the starter app immediately on open — preview-first, nothing to click.
+  // Preview-first, nothing to click: the app it was opened for, or else the starter.
   useEffect(() => {
-    void buildPreview(STARTER, null);
+    const app = initialAppId ? getUserApp(initialAppId) : undefined;
+    if (app) openSaved(app);
+    else void buildPreview(STARTER, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
