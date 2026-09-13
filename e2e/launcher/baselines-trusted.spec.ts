@@ -21,6 +21,15 @@ test.skip(!process.env.CI && !process.env.KARTA_BASELINES, "baselines are CI's p
 const WIDTHS = [375, 768, 1440] as const;
 const THEMES = ["light", "dark"] as const;
 
+/** Wait out every running animation and pin the form's scroll, so the pixels are reproducible. */
+async function settle(page: Page): Promise<void> {
+  await page.locator(".k-modal").evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))).then(() => undefined),
+  );
+  const body = page.locator(".k-form-body");
+  if (await body.count()) await body.evaluate((el) => el.scrollTo(0, 0));
+}
+
 const shot = (page: Page, name: string) =>
   expect(page).toHaveScreenshot(`${name}.png`, {
     fullPage: false,
@@ -82,6 +91,10 @@ for (const width of [375, 1440] as const) {
         await pinFonts(page);
         await page.getByRole("button", { name: "New Plant" }).click();
         await expect(page.locator(".k-form")).toBeVisible();
+        // Shoot the form where it lands, not where it is passing through: the sheet slides in, and
+        // focusing the first field can leave the body scrolled by a few pixels. Both made the same
+        // form render two different sets of pixels on two runs of the same commit.
+        await settle(page);
         await shot(page, `plants-form-${width}-${theme}`);
       });
     });

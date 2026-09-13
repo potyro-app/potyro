@@ -12,6 +12,7 @@ import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
 import { DateInput } from "./date-input.js";
 import { EnumInput } from "./enum-input.js";
+import { ListInput } from "./list-input.js";
 import { MediaInput } from "./media-input.js";
 
 export interface FieldInputProps {
@@ -79,7 +80,8 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       return <MemberInput runtime={runtime} field={field} value={value} onChange={onChange} />;
 
     case "list":
-      return <ListInput runtime={runtime} field={field} value={value} onChange={onChange} />;
+      // Rows as cards, with a grip when the list is ordered (#104).
+      return <ListInput runtime={runtime} field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     default:
       return <input className="k-input" value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />;
@@ -271,13 +273,13 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
         </p>
       ) : null}
       <div className="k-geo-actions">
-        <button type="button" className="k-add-row" disabled={busy || !geo} onClick={useMyLocation}>
+        <button type="button" className="k-add" disabled={busy || !geo} onClick={useMyLocation}>
           {busy ? "Locating…" : "📍 Use my location"}
         </button>
         <span className="k-muted">
           {placed ? `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}` : "Tap the map to place a point"}
         </span>
-        <button type="button" className="k-add-row" onClick={() => setShowCoords((v) => !v)}>
+        <button type="button" className="k-add" onClick={() => setShowCoords((v) => !v)}>
           {showCoords ? "Hide coordinates" : "Enter coordinates"}
         </button>
       </div>
@@ -312,7 +314,7 @@ function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRunt
   if (loading) return <span className="k-muted">Loading…</span>;
 
   const addNew = (
-    <button type="button" className="k-add-row" onClick={() => setCreating(true)}>
+    <button type="button" className="k-add k-relation-new" onClick={() => setCreating(true)}>
       ＋ New {label}
     </button>
   );
@@ -380,41 +382,6 @@ function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRunt
       </select>
       {addNew}
       {inlineForm}
-    </div>
-  );
-}
-
-function ListInput({ runtime, field, value, onChange }: { runtime: KartaRuntime; field: Extract<Field, { type: "list" }>; value: unknown; onChange: (v: unknown) => void }) {
-  const rows = (Array.isArray(value) ? value : []) as Record<string, unknown>[];
-  const subEntries = Object.entries(field.of);
-
-  const update = (i: number, key: string, v: unknown): void => {
-    const next = rows.map((r, ri) => (ri === i ? { ...r, [key]: v } : r));
-    onChange(next);
-  };
-  const addRow = (): void => onChange([...rows, {}]);
-  const removeRow = (i: number): void => onChange(rows.filter((_, ri) => ri !== i));
-
-  return (
-    <div className="k-list-input">
-      {rows.map((row, i) => (
-        <div className="k-list-input-row" key={i}>
-          <div className="k-list-input-fields">
-            {subEntries.map(([key, sub]) => (
-              <label className="k-subfield" key={key}>
-                <span>{sub.label ?? humanizeKey(key)}</span>
-                <FieldInput runtime={runtime} field={sub} value={row[key]} onChange={(v) => update(i, key, v)} />
-              </label>
-            ))}
-          </div>
-          <button type="button" className="k-remove" aria-label="Remove row" onClick={() => removeRow(i)}>
-            ×
-          </button>
-        </div>
-      ))}
-      <button type="button" className="k-add-row" onClick={addRow}>
-        + Add {field.label ?? "row"}
-      </button>
     </div>
   );
 }

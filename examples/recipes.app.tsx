@@ -141,7 +141,9 @@ export default defineApp({
           ordered: true,
           of: {
             text: { type: "text", multiline: true, required: true },
-            durationSec: { type: "number", min: 0 },
+            // A duration, not a bare number: the form asks in minutes and the card reads "8 min"
+            // rather than "Duration Sec: 480" (#99, #104). The stored value is still seconds.
+            durationSec: { type: "duration", unit: "s", label: "Time" },
           },
         },
         lastCookedAt: { type: "datetime", hidden: true },

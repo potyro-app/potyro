@@ -62,6 +62,25 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
         );
       }
 
+      // An ordered list is a sequence, so it reads as one: numbered, in order, not a table whose
+      // row numbers you have to infer from where they sit (#104).
+      if (field.ordered) {
+        return (
+          <ol className="k-row-list">
+            {rows.map((row, i) => (
+              <li key={i}>
+                {subEntries.map(([k, f], n) => (
+                  <span key={k}>
+                    {n > 0 ? " · " : ""}
+                    <FieldByType runtime={runtime} field={f} value={row[k]} />
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+
       // All-scalar rows render as a labelled table (e.g. sets → Kg | Reps).
       return (
         <table className="k-list-table">
