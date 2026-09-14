@@ -80,7 +80,7 @@ test("delete asks first, in-app, and the tile is gone", async ({ page }) => {
   await expect(dialog).toContainText(/can't be undone|cannot be undone/);
   // The way out is as big as the way in.
   await expectTappable(dialog.getByRole("button", { name: "Cancel" }));
-  const confirm = dialog.getByRole("button", { name: "Confirm" });
+  const confirm = dialog.getByRole("button", { name: "Delete" });
   await expectTappable(confirm);
   await confirm.tap();
   await expect(page.locator(".k-launch-tile", { hasText: "Trips" })).toHaveCount(0);

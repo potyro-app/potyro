@@ -112,6 +112,6 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   const confirmDialog = page.locator(".k-dialog");
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog).toContainText("can't be undone");
-  await confirmDialog.getByRole("button", { name: "Confirm" }).click();
+  await confirmDialog.getByRole("button", { name: "Delete" }).click();
   await expect(overlay.locator(".k-launch-tile", { hasText: "My App" })).toHaveCount(0);
 });

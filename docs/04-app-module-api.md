@@ -82,9 +82,14 @@ interface Ctx {
 
   // ---- UI affordances provided by the shell ----
   ui: { toast(msg: string): void;
-        confirm(msg: string): Promise<boolean>;
+        confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
         prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
-        pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>; };
+        pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
+        sheet<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+        menu<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+        form<T>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }): Promise<T | null>;
+        progress(label: string): { update(fraction: number, detail?: string): void; done(): void }; };
+  // UiItem<T> = { id: T; label: string; detail?: string; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
   navigate(pageId: string, params?: Record<string, string>): void;
@@ -93,6 +98,33 @@ interface Ctx {
   log(...args: unknown[]): void;
 }
 ```
+
+### Asking the person (`ctx.ui`, #112)
+
+Every `ctx.ui` call takes plain data and gives plain data back, so an untrusted app asks exactly
+what a trusted one does, with no permission prompt — none of them reach outside the app.
+
+| Call | Phone | Wide screen |
+|---|---|---|
+| `confirm(msg, { detail, ok, destructive })` | bottom sheet; the button says `ok` ("Delete"), in the danger colour when `destructive` | small centred dialog, same button |
+| `sheet({ title, items })` | bottom sheet | small centred panel |
+| `menu({ title, items })` | bottom sheet | hangs under the button that ran the action (a centred panel when there is none) |
+| `form({ title, fields, initial, submit })` | full-screen form sheet | centred form |
+| `progress(label)` | a bar above the tab bar | a bar at the bottom centre |
+
+- **Items.** A `destructive` item is always shown last, after a separator, in the danger colour —
+  whatever order the app listed it in. Arrow keys, Home/End and Escape work; dismissing answers `null`.
+- **Forms.** `fields` are ordinary field definitions, validated like an entity's before the form
+  opens (a bad one throws in the action). They render with the record form's controls — number
+  steppers with units, enum buttons, date chips, relation pickers — and required fields are checked
+  the same way. The answer is the raw values: a relation's id, a number as a number.
+- **Progress.** `update(fraction, detail?)` moves the bar (`detail` replaces the percentage, e.g. "24 of
+  40"); `done()` removes it. It is announced as a progress bar.
+- **Untrusted apps.** A question does not hold the isolate: while a form is open the page keeps
+  rendering, and the call's time budget pauses until it is answered.
+
+These are new optional members: no existing app changes, so `schemaVersion` (the app's own data
+version) is not bumped.
 
 ### How `ctx` differs by trust
 

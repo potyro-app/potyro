@@ -244,3 +244,43 @@ describe("callFold — functions inside a view, by path", () => {
     await expect(loaded.callFold("p", "__proto__.constructor", rows, {} as Ctx)).rejects.toThrow(/no function/);
   });
 });
+
+// #112: what ctx.ui checks before anything renders, and what a headless bridge answers.
+describe("ctx.ui questions", () => {
+  const app = defineApp({
+    id: "q",
+    name: "Q",
+    version: "1.0.0",
+    schemaVersion: 1,
+    entities: { thing: { fields: { name: { type: "text" } } } },
+    pages: [{ id: "p", title: "P", view: { type: "list", entity: "thing" } }],
+  } as never);
+  const base = async (ui: Partial<UiBridge>) => {
+    const store = new MemoryStore();
+    await store.open("q");
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app });
+    return host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui: { toast: () => {}, confirm: async () => false, prompt: async () => null, pick: async () => null, ...ui }, nav: { navigate: () => {} } });
+  };
+
+  it("a headless bridge answers every question as dismissed, and progress does nothing", async () => {
+    const ctx = await base({});
+    expect(await ctx.ui.sheet({ items: [{ id: "a", label: "A" }] })).toBeNull();
+    expect(await ctx.ui.menu({ items: [{ id: "a", label: "A" }] })).toBeNull();
+    expect(await ctx.ui.form({ title: "T", fields: { n: { type: "number" } } })).toBeNull();
+    const bar = ctx.ui.progress("x");
+    expect(() => (bar.update(0.5), bar.done())).not.toThrow();
+  });
+
+  it("refuses a form with a bad field or a relation to nowhere, and a sheet with no items", async () => {
+    const form = vi.fn(async () => ({}));
+    const ctx = await base({ form, sheet: (async () => "a") as never });
+    await expect(ctx.ui.form({ title: "T", fields: { when: { type: "calendar" } as never } })).rejects.toThrow(/ui.form field "when"/);
+    await expect(ctx.ui.form({ title: "T", fields: { who: { type: "relation", to: "person" } } })).rejects.toThrow(/unknown entity "person"/);
+    expect(form).not.toHaveBeenCalled();
+    await expect(ctx.ui.sheet({ items: [] })).rejects.toThrow(/at least one/);
+    expect(await ctx.ui.sheet({ items: [{ id: "a", label: "A" }] })).toBe("a");
+    await ctx.ui.form({ title: "T", fields: { thing: { type: "relation", to: "thing" } } });
+    expect(form).toHaveBeenCalledOnce();
+  });
+});

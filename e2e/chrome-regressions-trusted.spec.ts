@@ -216,7 +216,7 @@ test("a record can be deleted, and it asks first", async ({ page }) => {
   await expect(page.locator(".k-detail")).toBeVisible();
 
   await del();
-  await page.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await page.locator(".k-dialog").getByRole("button", { name: "Delete" }).click();
   // Back on the list, and the record is gone.
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 

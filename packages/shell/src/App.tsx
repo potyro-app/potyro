@@ -41,6 +41,7 @@ import type { StructureTarget } from "./structure-panel.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
+import { UiSurfaces, type UiHost } from "./ui-host.js";
 import type { NavHost } from "./nav-host.js";
 import { ViewErrorBoundary } from "./view-error-boundary.js";
 
@@ -117,6 +118,8 @@ interface AppProps {
   navHost?: NavHost;
   /** Backs a real `ctx.ui.pick` modal; omit for surfaces that never pick. */
   picker?: PickerHost;
+  /** Backs `ctx.ui.sheet`/`menu`/`form`/`progress` (#112); omit for surfaces that never ask. */
+  questions?: UiHost;
   runtime: KartaRuntime;
   provenance: Provenance;
   toaster: Toaster;
@@ -129,7 +132,7 @@ interface AppProps {
   generator?: boolean;
 }
 
-export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, navHost }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, questions, navHost }: AppProps) {
   const def = runtime.definition;
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -1328,6 +1331,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       ) : null}
 
       {picker ? <Picker host={picker} /> : null}
+      {questions ? <UiSurfaces host={questions} runtime={runtime} /> : null}
       <Toasts toaster={toaster} />
     </div>
   );

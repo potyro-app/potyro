@@ -2512,6 +2512,134 @@ button.k-tl-card:focus-visible {
 }
 /* tokens-only: end — timeline */
 
+/* tokens-only: start — questions */
+/* What an action asks (#112): a choice sheet or menu, a confirm, a progress bar. A menu item may
+   carry a quieter second line. On a wide screen a sheet with no button to hang from is a small
+   centred panel; on a phone every one of these is a bottom sheet, the confirm included, its button
+   named for what it does and in the danger colour when that cannot be undone. */
+.k-menu-item.k-menu-item-2 {
+  min-height: 3.2rem;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+.k-menu-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+.k-menu-detail {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+.k-choice-layer[data-centred] .k-choice {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  width: min(24rem, calc(100vw - 2rem));
+  max-width: none;
+  transform: translate(-50%, -50%);
+}
+.k-choice-layer[data-centred] .k-menu-scrim {
+  background: var(--scrim-soft);
+}
+.k-dialog-detail {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.k-add.k-primary-action.k-dialog-destructive {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+.k-progress-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 1.2rem;
+  z-index: 57;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(22rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+}
+.k-progress {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+  animation: toast-in var(--dur) var(--ease);
+}
+.k-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.k-progress-row span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+.k-progress-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--paper) 25%, transparent);
+}
+.k-progress-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--paper);
+  transition: width var(--dur) var(--ease);
+}
+@media (max-width: 759px) {
+  .k-choice-layer[data-centred] .k-choice {
+    top: auto;
+    left: 0;
+    width: auto;
+    transform: none;
+  }
+  .k-modal-scrim:has(> .k-dialog) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .k-dialog {
+    width: 100%;
+    margin: 0;
+    padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: k-sheet-up var(--dur) var(--ease);
+  }
+  .k-dialog::before {
+    content: "";
+    display: block;
+    width: 2.5rem;
+    height: 0.3rem;
+    margin: 0 auto var(--space-2);
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .k-dialog:not(.k-share-dialog) > .k-form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+  .k-dialog:not(.k-share-dialog) > .k-form-actions > button {
+    justify-content: center;
+    min-height: 2.9rem;
+  }
+  .k-progress-stack {
+    bottom: calc(5.2rem + env(safe-area-inset-bottom));
+  }
+}
+/* tokens-only: end — questions */
+
 /* tokens-only: start — grouped sections */
 /* Rows under headings, and sections that fold (#108). A list's group heading is the aggregate
    view's small uppercase label, so grouped lists and aggregates read as one family; it sticks while

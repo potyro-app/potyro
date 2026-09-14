@@ -1,18 +1,31 @@
 // The in-VM harness (plain ES2020 for QuickJS). Concatenated after the app bundle, which must
-// set `globalThis.__kartaApp` to the app definition. The host injects two bridges:
-//   - `__host(opJson) -> resultJson`  : ASYNCIFIED (host-async ops). Always `await`ed here so
-//                                       asyncify suspensions only ever happen at await points.
-//   - `__hostSync(opJson) -> void`    : SYNCHRONOUS fire-and-forget (toast/log/nav). Not
-//                                       asyncified, so it is safe inside promise continuations.
+// set `globalThis.__kartaApp` to the app definition. The host injects ONE bridge:
+//   - `__hostSync(opJson) -> void` : synchronous. Fire-and-forget ops (toast/log/nav) are handled
+//                                    on the spot; a host CALL (a query, a patch, a question for
+//                                    the person) is registered under an id and answered later
+//                                    through `__karta.settle`, which resolves the waiting promise.
 //
-// The isolate has NO ambient authority: no fetch, DOM, or globals beyond QuickJS + these two
-// bridges. `ctx` is the only way out.
+// Why not an asyncified function that suspends the VM until the host is done (what this used to
+// be): QuickJS's asyncify build allows one suspended call per WebAssembly module, and a suspended
+// call cannot be resumed from a pending job. An action that awaited two host calls in a row
+// corrupted the VM, and one waiting on a person while the page kept rendering crashed the tab
+// (#112). With promises the VM is never suspended; every entry is short and synchronous.
+//
+// The isolate has NO ambient authority: no fetch, DOM, or globals beyond QuickJS + this bridge.
+// `ctx` is the only way out.
 
 import { MARSHAL_SOURCE } from "./marshal.js";
 
 export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
 (function(){
-  async function bridge(obj){ return __deserialize(await __host(__serialize(obj))); }
+  var calls = {}, callSeq = 0;
+  function bridge(obj){
+    return new Promise(function(resolve, reject){
+      var id = "c" + (++callSeq);
+      calls[id] = { resolve: resolve, reject: reject };
+      __hostSync(__serialize({op:"host.call", id:id, req:obj}));
+    });
+  }
   function bridgeSync(obj){ __hostSync(__serialize(obj)); }
 
   // A page ref may name a layout item ("today#1", #105): the same rule as resolveView in the schema.
@@ -36,6 +49,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     return row;
   }
 
+  var progressSeq = 0;
   function makeCtx(app, params, nowIso, capsAvailable, me, space, scope){
     var fixedNow = new Date(nowIso);
     var ctx = {
@@ -86,9 +100,20 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       },
       ui: {
         toast: function(m){ bridgeSync({op:"ui.toast", msg:String(m)}); },
-        confirm: async function(m){ return bridge({op:"ui.confirm", msg:String(m)}); },
-        prompt: async function(m,o){ return bridge({op:"ui.prompt", msg:String(m), opts:o||null}); },
-        pick: async function(items,o){ return bridge({op:"ui.pick", items:items, opts:{multi: !!(o&&o.multi)}}); }
+        confirm: function(m,o){ return bridge({op:"ui.confirm", msg:String(m), opts:o||null}); },
+        prompt: function(m,o){ return bridge({op:"ui.prompt", msg:String(m), opts:o||null}); },
+        pick: function(items,o){ return bridge({op:"ui.pick", items:items, opts:{multi: !!(o&&o.multi)}}); },
+        sheet: function(o){ return bridge({op:"ui.sheet", opts:o}); },
+        menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
+        form: function(o){ return bridge({op:"ui.form", opts:o}); },
+        progress: function(label){
+          var id = "p" + (++progressSeq);
+          bridgeSync({op:"ui.progress", id:id, label:String(label)});
+          return {
+            update: function(f, d){ bridgeSync({op:"ui.progress", id:id, fraction:Number(f), detail: d == null ? null : String(d)}); },
+            done: function(){ bridgeSync({op:"ui.progress", id:id, done:true}); }
+          };
+        }
       },
       navigate: function(page, params){ bridgeSync({op:"nav", page:page, params:params||{}}); },
       caps: {}
@@ -126,6 +151,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   }
 
   globalThis.__karta = {
+    settle: function(id, ok, json){
+      var c = calls[id];
+      delete calls[id];
+      if (!c) return;
+      if (ok) c.resolve(__deserialize(json)); else c.reject(new Error(json));
+    },
     call: async function(payloadJson){
       var p = __deserialize(payloadJson);
       var app = globalThis.__kartaApp;

@@ -388,6 +388,50 @@ describe("IsolateHost — callFold", () => {
   });
 });
 
+// ── Host calls never suspend the VM (#112) ─────────────────────────────────────────────────
+// QuickJS's asyncify build allows one suspended call per WebAssembly module, and cannot resume one
+// from a pending job. The bridge used to suspend the VM for every host call, so an action awaiting
+// two in a row aborted QuickJS (`p->ref_count == 0`), and one waiting on a person while other calls
+// ran crashed the tab. Revert the promise bridge in harness.ts / isolate-host.ts and both fail.
+const SEQUENCE_BUNDLE = `globalThis.__kartaApp = { id: "x", name: "X", version: "1.0.0", schemaVersion: 1,
+  entities: { n: { fields: { t: { type: "text" }, k: { type: "number" } }, actions: {
+    two: async function(r, ctx){ var a = await ctx.get("n", r.id); var b = await ctx.patch("n", r.id, { k: 1 }); var c = await ctx.patch("n", r.id, { k: 2 }); ctx.ui.toast("k=" + c.k); },
+    askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); }
+  } } }, pages: [{ id: "p", title: "P", view: { type: "list", entity: "n" } }], reminders: [] };`;
+
+describe("IsolateHost — host calls as promises", () => {
+  async function sequence(ui: Partial<UiBridge>) {
+    const store = new MemoryStore();
+    await store.open("x");
+    const toasts: string[] = [];
+    const bridge = { toast: (m: string) => void toasts.push(m), confirm: async () => true, prompt: async () => null, pick: async () => null, ...ui } as UiBridge;
+    const host = createHost({ loadIsolated: createIsolateLoader({ store, newContext }) });
+    const loaded = await host.load({ kind: "bundle", code: SEQUENCE_BUNDLE, provenance: "untrusted" });
+    const ctx = host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui: bridge, nav: { navigate: () => {} } });
+    const rec = await store.insert("n", { t: "x", k: 0 });
+    return { loaded, ctx, toasts, rec };
+  }
+
+  it("an action awaits several host calls in a row", async () => {
+    const { loaded, ctx, toasts, rec } = await sequence({});
+    await loaded.callAction("n", "two", { ...rec } as never, ctx);
+    expect(toasts).toEqual(["k=2"]);
+    loaded.dispose();
+  });
+
+  it("an action waits on a person past its budget while other calls run, then writes", async () => {
+    let release!: (v: string) => void;
+    const { loaded, ctx, toasts, rec } = await sequence({ menu: (() => new Promise((r) => (release = r as never))) as never });
+    const waiting = loaded.callAction("n", "askThenWrite", { ...rec } as never, ctx);
+    await new Promise((r) => setTimeout(r, 1500)); // longer than the 1000 ms call budget
+    await loaded.callAction("n", "two", { ...rec } as never, ctx);
+    release("a");
+    await waiting;
+    expect(toasts).toEqual(["k=2", "t=a"]);
+    loaded.dispose();
+  }, 10000);
+});
+
 // KA-18: identity has to survive the isolate boundary, or one app source behaves differently
 // depending on how it was installed — which is exactly what provenance is supposed NOT to change.
 const IDENTITY_BUNDLE = `

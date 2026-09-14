@@ -274,8 +274,10 @@ migrations: [
     \`ctx.caps.filesystem.pick()\` / \`.save(name, blob)\`, \`ctx.caps.haptics\`, \`ctx.caps.network\`
   Declare what the app needs at the top level: \`permissions: { geo: true, camera: true }\`.
 - \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
-- \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg)\`, \`await prompt(msg)\`, \`await pick(items, opts)\`
-  (there is NOTHING else on \`ctx.ui\` — no \`openUrl\`, no \`alert\`)
+- \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg, { ok, destructive })\`, \`await prompt(msg)\`, \`await pick(items)\`,
+  \`await sheet({ title, items: [{ id, label, detail, destructive }] })\` / \`menu(...)\` for a short choice,
+  \`await form({ title, fields: { kg: { type: "number", unit: "kg" } }, initial, submit })\` when an action needs
+  several values (null = cancelled), \`progress(label)\` → \`{ update(0..1), done() }\`. Nothing else — no \`alert\`.
 - \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
 - A page has \`id\`, \`title\`, and a \`view\` — or a \`layout\` of several views (\`PageLayout\` in the
