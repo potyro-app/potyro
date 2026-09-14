@@ -23,9 +23,11 @@ export interface SearchReplace {
   replace: string;
 }
 
-const SEARCH_MARK = /^<{5,9} SEARCH\s*$/;
-const DIVIDER_MARK = /^={5,9}\s*$/;
-const REPLACE_MARK = /^>{5,9} REPLACE\s*$/;
+/** The three marker lines. Exported so the reply cleaner (guarded-modify.ts) and this parser can
+ *  never disagree about what a marker is. */
+export const SEARCH_MARK = /^<{5,9} SEARCH\s*$/;
+export const DIVIDER_MARK = /^={5,9}\s*$/;
+export const REPLACE_MARK = /^>{5,9} REPLACE\s*$/;
 
 /** Why one SEARCH/REPLACE block in a reply could not be read as a well-formed edit. */
 export interface MalformedBlock {
@@ -111,7 +113,7 @@ export function parseEdits(reply: string): SearchReplace[] {
   return parseEditsStrict(reply).edits;
 }
 
-export type EditFailureReason = "not-found" | "ambiguous" | "empty-search" | "malformed";
+export type EditFailureReason = "not-found" | "ambiguous" | "empty-search" | "malformed" | "no-change";
 
 export interface EditFailure {
   /** Zero-based position of the edit in the reply. `describeEditFailures` shows it one-based. */
@@ -194,9 +196,41 @@ function reindentToFile(replacement: string[], search: string[], lines: string[]
     const own = indentOf(line);
     const known = byIndent.get(own);
     if (known !== undefined) return known + line.slice(own.length);
+    // Deeper than any depth the window showed: count the extra levels in the MODEL's unit and write
+    // them in the FILE's, so a tab-indented reply against a space-indented file does not leave
+    // `    \t\tname: …` behind (#75).
+    const deeper = deeperIndent(own, byIndent);
+    if (deeper !== null) return deeper + line.slice(own.length);
     if (own.startsWith(from)) return to + line.slice(from.length);
     return to + line.trimStart();
   });
+}
+
+/** One indent level, from the smallest step between two known depths where one extends the other. */
+function indentUnit(indents: string[]): string | null {
+  let unit: string | null = null;
+  for (const a of indents) {
+    for (const b of indents) {
+      if (b.length > a.length && b.startsWith(a)) {
+        const step = b.slice(a.length);
+        if (unit === null || step.length < unit.length) unit = step;
+      }
+    }
+  }
+  return unit;
+}
+
+/** A replacement indent past the window's deepest known depth, re-expressed in the file's unit. */
+function deeperIndent(own: string, byIndent: Map<string, string>): string | null {
+  const modelUnit = indentUnit([...byIndent.keys()]);
+  const fileUnit = indentUnit([...byIndent.values()]);
+  if (!modelUnit || !fileUnit) return null;
+  let base: string | null = null;
+  for (const known of byIndent.keys()) if (own.startsWith(known) && (base === null || known.length > base.length)) base = known;
+  if (base === null) return null;
+  const extra = own.slice(base.length);
+  if (extra.length % modelUnit.length !== 0 || extra !== modelUnit.repeat(extra.length / modelUnit.length)) return null;
+  return byIndent.get(base)! + fileUnit.repeat(extra.length / modelUnit.length);
 }
 
 /**
@@ -283,6 +317,12 @@ export function applyEdits(source: string, edits: SearchReplace[]): ApplyResult 
     const edit = edits[index]!;
     const r = applyOne(current, edit);
     if ("source" in r) {
+      // An edit that says something different and changes nothing is not applied, whatever `ok`
+      // would claim: trailing blank lines are ignored in both halves, so adding or removing only a
+      // blank line at the end of a block lands as a silent no-op (#75). Say so instead.
+      if (r.source === current && edit.search !== edit.replace) {
+        return { ok: false, failures: [{ index, reason: "no-change", search: edit.search, count: 1 }] };
+      }
       current = r.source;
       continue;
     }
@@ -303,6 +343,12 @@ export function describeEditFailures(failures: EditFailure[]): string {
         );
       }
       if (f.reason === "empty-search") return `Edit ${n} has an empty SEARCH. Every edit must SEARCH for lines that exist in the file.`;
+      if (f.reason === "no-change") {
+        return (
+          `Edit ${n} changes nothing: its SEARCH and REPLACE are the same once blank lines at the end of each are ignored. ` +
+          "To add or remove a blank line, include the non-blank line next to it in both SEARCH and REPLACE."
+        );
+      }
       if (f.reason === "ambiguous") {
         return `Edit ${n}'s SEARCH text appears in ${f.count} places. Include more of the surrounding lines so it matches exactly one place.`;
       }
