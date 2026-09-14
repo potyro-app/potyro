@@ -111,6 +111,12 @@ export interface LoadedApp {
    * process throws. Routing it here is what lets a shared app render its own main screen.
    */
   callAggregate(pageId: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  /**
+   * Call a function inside a page's view over the page's rows (#109): `path` names it from the view —
+   * `"series"` of a chart, `"items.2.value"` or `"items.2.compare.value"` of a stats view. The same
+   * one-payload call as `callAggregate`, generalised so a new fold-shaped option needs no new call.
+   */
+  callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
   customView(pageId: string): CustomViewComponent | null;

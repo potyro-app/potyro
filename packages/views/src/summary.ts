@@ -54,6 +54,43 @@ export function formatFigure(v: unknown, unit?: string): string {
 }
 
 /**
+ * The raw figure: a number for the declarative ops, whatever `value` returned otherwise, `null` for
+ * an average or maximum of nothing. Throws when the figure cannot be computed. Stats tiles (#109)
+ * use the number itself, to compare it with an earlier one.
+ */
+export async function figureValue(spec: SummaryValue, rows: readonly Resolved[], ctx: Ctx, callValue?: CallSummaryValue): Promise<unknown> {
+  if (spec.value != null) {
+    // `spec.value` is only a real function when the app runs trusted. Under the isolate the
+    // definition carries the `__karta_fn__` SENTINEL STRING here — the function stayed in the VM
+    // — so calling it directly throws and the figure silently renders a dash. Routing through the
+    // host makes both provenances take the same path (the `resolveBinding` pattern).
+    if (callValue) return callValue(rows);
+    if (typeof spec.value === "function") return spec.value([...rows], ctx);
+    throw new Error("this summary's value function is not callable here");
+  }
+
+  if (spec.op === "count") return rows.length;
+
+  const field = spec.field;
+  if (!field || !spec.op) throw new Error("this summary declares no field to aggregate");
+
+  const values = numbers(rows, field);
+  // An empty set has no average or maximum. Zero would be a lie; a dash says "nothing here yet".
+  if (values.length === 0) return spec.op === "sum" ? 0 : null;
+
+  switch (spec.op) {
+    case "sum":
+      return values.reduce((n, v) => n + v, 0);
+    case "avg":
+      return values.reduce((n, v) => n + v, 0) / values.length;
+    case "max":
+      return Math.max(...values);
+    default:
+      throw new Error(`unknown summary op "${String(spec.op)}"`);
+  }
+}
+
+/**
  * Compute one figure over `rows`.
  *
  * Never throws: a `value` function is app code, and one bad summary must not blank the page it sits
@@ -67,37 +104,7 @@ export async function computeFigure(
   callValue?: CallSummaryValue,
 ): Promise<SummaryFigure> {
   try {
-    if (spec.value != null) {
-      // `spec.value` is only a real function when the app runs trusted. Under the isolate the
-      // definition carries the `__karta_fn__` SENTINEL STRING here — the function stayed in the VM
-      // — so calling it directly throws and the figure silently renders a dash. Routing through the
-      // host makes both provenances take the same path (the `resolveBinding` pattern).
-      if (callValue) return { label: spec.label, text: formatFigure(await callValue(rows), unit) };
-      if (typeof spec.value === "function") {
-        return { label: spec.label, text: formatFigure(await spec.value([...rows], ctx), unit) };
-      }
-      return { label: spec.label, text: null, error: "this summary's value function is not callable here" };
-    }
-
-    if (spec.op === "count") return { label: spec.label, text: String(rows.length) };
-
-    const field = spec.field;
-    if (!field || !spec.op) return { label: spec.label, text: null, error: "this summary declares no field to aggregate" };
-
-    const values = numbers(rows, field);
-    // An empty set has no average or maximum. Zero would be a lie; a dash says "nothing here yet".
-    if (values.length === 0) return { label: spec.label, text: spec.op === "sum" ? formatFigure(0, unit) : "–" };
-
-    switch (spec.op) {
-      case "sum":
-        return { label: spec.label, text: formatFigure(values.reduce((n, v) => n + v, 0), unit) };
-      case "avg":
-        return { label: spec.label, text: formatFigure(values.reduce((n, v) => n + v, 0) / values.length, unit) };
-      case "max":
-        return { label: spec.label, text: formatFigure(Math.max(...values), unit) };
-      default:
-        return { label: spec.label, text: null, error: `unknown summary op "${String(spec.op)}"` };
-    }
+    return { label: spec.label, text: formatFigure(await figureValue(spec, rows, ctx, callValue), unit) };
   } catch (e) {
     // Reported, not swallowed: the figure shows a dash and says why on hover.
     const reason = e instanceof Error ? e.message : String(e);
