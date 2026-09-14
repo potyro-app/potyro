@@ -229,6 +229,16 @@ Save it and the record page shows the day with no time.
 The exception is a field that asks for the hour. Workout's session date says `precision: "minute"`,
 so it — and nothing else — has a time box beside the day (below it on a phone).
 
+## 4h. Local CI — the merge gate on this machine
+
+`pnpm ci:local all` runs what GitHub's CI runs: install, build, every unit suite, typecheck, the
+boundary and token lints, and the whole trusted + sandbox browser suite in five shards, one worker
+each, one retry for a flake. Each step records its result under `.ci-local/<commit>/`, so an
+interrupted run picks up where it stopped (`pnpm ci:local status` shows what is left), and it refuses
+to run on uncommitted changes so a result always describes a commit. `pnpm ci:local status --post`
+marks the commit with a `local-ci` check on GitHub once everything passed. The pixel baselines are
+skipped here — they are GitHub's runner's pixels — and want regenerating there when Actions return.
+
 ## 5. Data export / import (KA-04) — "your data is a file"
 
 | Do | Expect |
