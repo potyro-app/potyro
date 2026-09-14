@@ -153,7 +153,8 @@ export default defineApp({
       // group it can edit; the detail page shows the computed values too.
       groups: [
         { title: "Overview", fields: ["name", "photo", "tags"] },
-        { title: "Ingredients", fields: ["ingredients"] },
+        // Folds on the record page, remembered on this device, with the count in its heading (#108).
+        { title: "Ingredients", fields: ["ingredients"], collapsible: true },
         { title: "Steps", fields: ["steps"], collapsed: true },
         { title: "Nutrition & cost", fields: ["servings", "caloriesPerServing", "proteinPerServing", "diet", "estimatedCost", "missingIngredients"] },
       ],

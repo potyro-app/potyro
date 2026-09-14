@@ -888,34 +888,6 @@ button {
   margin: 0 0 0.5rem;
   font-family: var(--font-display);
 }
-/* A folded group (#100): the title is the disclosure, the fields open under it. */
-details.k-section > summary {
-  cursor: pointer;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-details.k-section > summary::-webkit-details-marker {
-  display: none;
-}
-details.k-section > summary::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-right: 2px solid var(--ink-soft);
-  border-bottom: 2px solid var(--ink-soft);
-  transform: rotate(-45deg);
-  transition: transform var(--dur-fast) var(--ease);
-  flex: none;
-  margin-bottom: 0.5rem;
-}
-details.k-section[open] > summary::before {
-  transform: rotate(45deg);
-}
-details.k-section > summary h3 {
-  margin: 0 0 0.5rem;
-}
 .k-section dl {
   margin: 0;
   display: grid;
@@ -2130,6 +2102,101 @@ details.k-layout-fold[open] > summary::before {
   }
 }
 /* tokens-only: end — page layouts */
+
+/* tokens-only: start — grouped sections */
+/* Rows under headings, and sections that fold (#108). A list's group heading is the aggregate
+   view's small uppercase label, so grouped lists and aggregates read as one family; it sticks while
+   its group scrolls past, under the phone's top bar. A record page's section heading keeps the
+   section's own type. Either one, when it folds, is a button with a chevron and a count. */
+.k-app-phone {
+  --k-sticky-top: calc(3.25rem + env(safe-area-inset-top));
+}
+.k-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-fold-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-fold-group > .k-fold-head {
+  position: sticky;
+  top: var(--k-sticky-top, 0);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  background: color-mix(in oklab, var(--bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: left;
+}
+button.k-fold-head {
+  cursor: pointer;
+}
+.k-fold-group > button.k-fold-head:hover {
+  color: var(--ink);
+}
+.k-fold-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.k-fold-chevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.k-fold[data-open="false"] .k-fold-chevron {
+  transform: rotate(-90deg);
+}
+.k-fold-count {
+  color: var(--ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+.k-fold-section > .k-fold-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.k-fold-section .k-fold-title {
+  font-family: var(--font-display);
+  font-size: 1.17em;
+  font-weight: 700;
+}
+.k-fold-section .k-fold-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.k-fold-section[data-open="true"] > .k-fold-body {
+  margin-top: var(--space-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-fold-chevron {
+    transition: none;
+  }
+}
+/* tokens-only: end — grouped sections */
 
 /* tokens-only: start — list rows */
 /* A list field's rows as cards (#104). The first sub-field is the line you read; the rest sit under

@@ -1,6 +1,7 @@
 // Built-in views for M1: list, gallery, table, detail. calendar/map/steps get a placeholder
 // (M2/M3). Each consumes the runtime only.
 
+import type { ReactNode } from "react";
 import type { Resolved } from "karta";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
@@ -10,6 +11,8 @@ import { FieldValue } from "./field-value.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { ActionMenu, type MenuEntry } from "./menu.js";
 import { enumSwatch } from "./enum.js";
+import { useRowGroups, type RowGroup } from "./row-groups.js";
+import { Fold, foldKey } from "./fold.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -95,9 +98,12 @@ export function ListView(props: BuiltinViewProps) {
     entity: string;
     rowActions?: string[];
     onOpen?: { page: string; param?: Record<string, string> };
+    group?: unknown;
+    collapsible?: boolean;
   };
   const remove = useDeleteRecord(runtime, view.entity);
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
+  const groups = useRowGroups(runtime, pageId, rows, view);
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
   // always reachable to view/edit even when the generated app didn't link a detail page.
@@ -107,7 +113,7 @@ export function ListView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
-  if (loading) return <p className="k-loading">Loading…</p>;
+  if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">{emptyText}</p>;
 
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
@@ -116,10 +122,12 @@ export function ListView(props: BuiltinViewProps) {
   // In a split layout (#105) the opened row's id sits in the page's params under the param its
   // `onOpen` maps from "id"; that row is the selected one.
   const selectedKey = Object.entries(view.onOpen?.param ?? {}).find(([, source]) => source === "id")?.[0];
-  return (
+  // Cells line up with `rows`; a grouped row is looked up by id (a tag puts one row in two groups).
+  const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
+  const renderRows = (list: Resolved[]) => (
     <ul className="k-list">
-      {rows.map((row, i) => {
-        const cell = cells[i] ?? {};
+      {list.map((row) => {
+        const cell = cells[cellIndex.get(row.id) ?? -1] ?? {};
         return (
           <li
             key={row.id}
@@ -160,14 +168,58 @@ export function ListView(props: BuiltinViewProps) {
       })}
     </ul>
   );
+  return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderRows} />;
+}
+
+/**
+ * The rows under their headings (#108), or just the rows when the view does not group. Rows with no
+ * value for the binding come first, under no heading.
+ */
+function Grouped({
+  runtime,
+  pageId,
+  groups,
+  collapsible,
+  render,
+}: {
+  runtime: BuiltinViewProps["runtime"];
+  pageId: string;
+  groups: RowGroup[];
+  collapsible: boolean;
+  render: (rows: Resolved[]) => ReactNode;
+}) {
+  if (groups.length === 1 && groups[0]!.key === "") return <>{render(groups[0]!.rows)}</>;
+  return (
+    <div className="k-groups">
+      {groups.map((g) =>
+        g.key === "" ? (
+          <div key="" className="k-group-ungrouped">
+            {render(g.rows)}
+          </div>
+        ) : (
+          <Fold
+            key={g.key}
+            variant="group"
+            storageKey={foldKey(runtime.definition.id, pageId, `group:${g.key}`)}
+            title={g.label}
+            count={g.rows.length}
+            collapsible={collapsible}
+          >
+            {render(g.rows)}
+          </Fold>
+        ),
+      )}
+    </div>
+  );
 }
 
 export function GalleryView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
-  const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> } };
+  const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; group?: unknown; collapsible?: boolean };
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
+  const groups = useRowGroups(runtime, pageId, rows, view);
 
   const openCard = view.onOpen
     ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
@@ -175,13 +227,14 @@ export function GalleryView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
-  if (loading) return <p className="k-loading">Loading…</p>;
+  if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">{emptyText}</p>;
 
-  return (
+  const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
+  const renderCards = (list: Resolved[]) => (
     <div className="k-gallery">
-      {rows.map((row, i) => {
-        const cell = cells[i] ?? {};
+      {list.map((row) => {
+        const cell = cells[cellIndex.get(row.id) ?? -1] ?? {};
         return (
           <button
             key={row.id}
@@ -197,18 +250,20 @@ export function GalleryView(props: BuiltinViewProps) {
       })}
     </div>
   );
+  return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderCards} />;
 }
 
 export function TableView(props: BuiltinViewProps) {
   const { runtime, pageId, params, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
-  const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] } };
+  const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
   const columns = view.display?.columns ?? [];
+  const groups = useRowGroups(runtime, pageId, rows, view);
 
-  if (loading) return <p className="k-loading">Loading…</p>;
+  if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">No matching rows.</p>;
 
-  return (
+  const renderTable = (list: Resolved[]) => (
     <table className="k-table">
       <thead>
         <tr>
@@ -219,7 +274,7 @@ export function TableView(props: BuiltinViewProps) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
+        {list.map((row) => (
           <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
             {columns.map((c) => (
               <td key={c}>{formatValue(row[c])}</td>
@@ -234,6 +289,7 @@ export function TableView(props: BuiltinViewProps) {
       </tbody>
     </table>
   );
+  return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderTable} />;
 }
 
 export function DetailView(props: BuiltinViewProps) {
@@ -241,7 +297,7 @@ export function DetailView(props: BuiltinViewProps) {
   const view = getView(runtime, pageId) as {
     entity: string;
     param?: string;
-    sections?: { title?: string; fields: string[] }[];
+    sections?: { title?: string; fields: string[]; collapsible?: boolean; collapsed?: boolean }[];
     actions?: (string | { label: string; navigate: { page: string; param?: Record<string, string> } })[];
   };
   const id = String((view.param && params[view.param]) ?? "");
@@ -270,13 +326,22 @@ export function DetailView(props: BuiltinViewProps) {
   // The page's own `sections` override; otherwise the entity's `groups`, the same arrangement the
   // form uses (#100), so what was edited under "Nutrition" is read back under "Nutrition".
   const groups: ResolvedGroup[] = view.sections
-    ? view.sections.map((s) => ({ ...(s.title ? { title: s.title } : {}), fields: s.fields, collapsed: false }))
+    ? view.sections.map((s) => ({
+        ...(s.title ? { title: s.title } : {}),
+        fields: s.fields,
+        collapsed: s.collapsed === true,
+        collapsible: s.collapsible === true || s.collapsed === true,
+      }))
     : resolveGroups(runtime.definition.entities[view.entity], "detail");
   const fieldsOf = (group: ResolvedGroup) => (
     <dl>
       {group.fields.map((f) => (
         <div className="k-field" key={f}>
-          <dt>{fieldLabel(runtime, view.entity, f)}</dt>
+          {/* A section that is one field already says its name in the heading; saying it again
+              under the heading ("Ingredients / Ingredients") is noise. It stays for assistive tech. */}
+          <dt className={group.fields.length === 1 && group.title === fieldLabel(runtime, view.entity, f) ? "k-visually-hidden" : undefined}>
+            {fieldLabel(runtime, view.entity, f)}
+          </dt>
           <dd>
             <FieldValue runtime={runtime} entity={view.entity} fieldKey={f} value={record[f]} />
           </dd>
@@ -326,13 +391,21 @@ export function DetailView(props: BuiltinViewProps) {
         />
       </div>
       {groups.map((group, si) =>
-        group.collapsed ? (
-          <details key={si} className="k-section">
-            <summary className="k-section-title">
-              <h3>{group.title}</h3>
-            </summary>
-            {fieldsOf(group)}
-          </details>
+        (group.collapsible || group.collapsed) && group.title ? (
+          // A section that folds (#108): the heading is the button, the fold is remembered per page
+          // on this device, and a section that is one list says how many rows it holds.
+          <section key={si} className="k-section k-section-fold">
+            <Fold
+              variant="section"
+              storageKey={foldKey(runtime.definition.id, pageId, `section:${group.title}`)}
+              title={group.title}
+              count={sectionCount(runtime, view.entity, group, record)}
+              collapsible
+              initiallyOpen={!group.collapsed}
+            >
+              {fieldsOf(group)}
+            </Fold>
+          </section>
         ) : (
           <section key={si} className="k-section">
             {group.title ? <h3>{group.title}</h3> : null}
@@ -342,6 +415,15 @@ export function DetailView(props: BuiltinViewProps) {
       )}
     </article>
   );
+}
+
+/** How many rows a section holds, when the section is a single list field; otherwise no count. */
+function sectionCount(runtime: BuiltinViewProps["runtime"], entity: string, group: ResolvedGroup, record: Resolved): number | undefined {
+  if (group.fields.length !== 1) return undefined;
+  const field = runtime.definition.entities[entity]?.fields[group.fields[0]!];
+  if (field?.type !== "list") return undefined;
+  const value = record[group.fields[0]!];
+  return Array.isArray(value) ? value.length : 0;
 }
 
 function mapDetailNav(param: Record<string, string> | undefined, record: Resolved): Record<string, string> {

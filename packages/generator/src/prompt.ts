@@ -290,6 +290,7 @@ Because reads are async, a computed that queries other records MUST be \`async\`
 - Give a map \`onOpen\` so tapping a pin opens that record's detail page; without it a pin only shows its
   \`title\` in a popup. Tapping EMPTY map always starts a new record with the geo field pre-filled, so no
   separate "add here" affordance is needed. \`camera\` (see \`MapCamera\`) says where the map opens.
+- Prefer \`group\` (+ \`collapsible\`) to a filter chip when people want every group at once.
 - Filter chips (list/map \`filters\`, see \`FilterChip\`): \`from\` names an enum/tags field OR an entity
   (record chips — one per record, param = selected ids); \`type: "boolean"\` is a toggle; \`type: "geo"\` a
   "near me" button. Read the chosen value in the view's \`filter\` via \`ctx.params[param]\`. Params are

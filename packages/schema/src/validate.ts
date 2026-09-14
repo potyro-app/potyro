@@ -141,6 +141,7 @@ const fieldGroupSchema = z.object({
   title: z.string().optional(),
   fields: z.array(z.string().min(1)).min(1, "a group needs at least one field"),
   collapsed: z.boolean().optional(),
+  collapsible: z.boolean().optional(),
 });
 
 const entitySchema = z.object({
@@ -198,6 +199,8 @@ const listView = z.object({
   emptyText: zDynamicString.optional(),
   param: z.string().optional(),
   filters: z.array(filterChipSchema).optional(),
+  group: zBinding.optional(),
+  collapsible: z.boolean().optional(),
 });
 
 const galleryView = z.object({
@@ -208,6 +211,8 @@ const galleryView = z.object({
   display: listDisplaySchema.optional(),
   onOpen: onOpenSchema.optional(),
   emptyText: zDynamicString.optional(),
+  group: zBinding.optional(),
+  collapsible: z.boolean().optional(),
 });
 
 const tableView = z.object({
@@ -216,6 +221,8 @@ const tableView = z.object({
   filter: zFn.optional(),
   sort: zFn.optional(),
   display: z.object({ columns: z.array(z.string()) }).optional(),
+  group: zBinding.optional(),
+  collapsible: z.boolean().optional(),
 });
 
 const detailActionSchema = z.union([
@@ -230,7 +237,9 @@ const detailView = z.object({
   type: z.literal("detail"),
   entity: z.string(),
   param: z.string().optional(),
-  sections: z.array(z.object({ title: z.string().optional(), fields: z.array(z.string()) })).optional(),
+  sections: z
+    .array(z.object({ title: z.string().optional(), fields: z.array(z.string()), collapsible: z.boolean().optional(), collapsed: z.boolean().optional() }))
+    .optional(),
   actions: z.array(detailActionSchema).optional(),
 });
 
@@ -674,10 +683,14 @@ export function checkReferences(def: AppDefinition): string[] {
           if (v.display.media) ensureKey(entity, v.entity, v.display.media, `${where} display.media`);
           for (const b of v.display.badges ?? []) ensureKey(entity, v.entity, b, `${where} display.badges`);
         }
+        checkBinding(v.group, "group");
+        if (v.collapsible && v.group === undefined) issues.push(`${where} collapsible folds the group headings, so it needs \`group\``);
         break;
       }
       case "table": {
         for (const c of v.display?.columns ?? []) ensureKey(entity, v.entity, c, `${where} display.columns`);
+        checkBinding(v.group, "group");
+        if (v.collapsible && v.group === undefined) issues.push(`${where} collapsible folds the group headings, so it needs \`group\``);
         break;
       }
       case "detail": {
