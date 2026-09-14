@@ -24,3 +24,5 @@ packages/generator/eval-out/
 # local sync relay database
 .karta-relay.sqlite*
 packages/generator/.karta-eval-*/
+# local CI results, per commit (scripts/ci-local.mjs)
+.ci-local/
