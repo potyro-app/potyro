@@ -3,7 +3,7 @@
 // SAME Zod schema + referential checks the trusted path uses, against a source's definition — used by
 // the Studio (generate/preview/save) and by in-app Edit-mode (quick modify) so both catch + repair.
 
-import { structureSchema, checkReferences } from "karta";
+import { structureSchema, checkReferences, describeIssue } from "karta";
 import type { AppShape } from "@karta/runtime";
 import { MemoryStore } from "@karta/store";
 import { createWebCapabilities } from "@karta/capabilities";
@@ -29,8 +29,9 @@ function reviveFns(v: unknown): unknown {
 
 /** Structure issues for a runtime definition (empty = valid). */
 export function validateDefinition(def: unknown): string[] {
-  const parsed = structureSchema.safeParse(reviveFns(def));
-  if (!parsed.success) return parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`);
+  const revived = reviveFns(def);
+  const parsed = structureSchema.safeParse(revived);
+  if (!parsed.success) return parsed.error.issues.map((i) => describeIssue(i, revived));
   return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
 }
 

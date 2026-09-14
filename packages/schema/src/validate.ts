@@ -665,6 +665,22 @@ export function checkFormFields(fields: unknown, entities: readonly string[]): s
   return issues;
 }
 
+/**
+ * One structure issue as a line: `path: message`. Zod's wrong-discriminator message names the legal
+ * values but not the one it got, so the value is appended — `… got "lisst"` (#76). A repair round
+ * forwards these words to the model, which must SEARCH for the line it wrote: naming the value lets
+ * it anchor on that line instead of hunting for it from a path.
+ */
+export function describeIssue(issue: z.ZodIssue, input: unknown): string {
+  const path = issue.path.length ? issue.path.join(".") : "(root)";
+  if (issue.code === "invalid_union_discriminator") {
+    let at: unknown = input;
+    for (const key of issue.path) at = at != null && typeof at === "object" ? (at as Record<string | number, unknown>)[key] : undefined;
+    if (at !== undefined) return `${path}: ${issue.message}, got ${JSON.stringify(at)}`;
+  }
+  return `${path}: ${issue.message}`;
+}
+
 export class ValidationError extends Error {
   readonly issues: string[];
   constructor(issues: string[]) {

@@ -61,6 +61,14 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
   return undefined;
 }
 
+/** The app source a transcript's opening user turn showed the model, or null when it shows none. */
+export function sourceShownIn(transcript: NonNullable<LoopDeps["resumeFrom"]>): string | null {
+  const opening = transcript.find((m) => m.role === "user");
+  const text = typeof opening?.content === "string" ? opening.content : null;
+  const match = text ? /The app as it is:\n```ts\n([\s\S]*)\n```\s*$/.exec(text) : null;
+  return match ? match[1]! : null;
+}
+
 /** Build the `ReplayTarget` the same way `App.tsx` and `verify-candidate.ts` do: `definition` plus a
  *  `query` that unwraps `queryPage`'s `{ rows }`. `runAction` is deliberately never supplied — an
  *  action step would mutate the very records the bug report is about (see the SAFETY CRITICAL note
@@ -79,6 +87,20 @@ function targetFor(runtime: KartaRuntime): ReplayTarget {
 export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   const refused = refusal(opts.engine);
   if (refused) return refused;
+
+  // Resuming after a question (#73): the agent reasons about the file it was SHOWN, but its edits
+  // land on `opts.source`, read fresh now. If the app was saved in between, those are two files, and
+  // the edits would be applied to one the model has never seen. Today both save paths reload the
+  // page and destroy the question, but nothing enforced it — this does.
+  if (opts.resumeFrom) {
+    const shown = sourceShownIn(opts.resumeFrom);
+    if (shown !== opts.source) {
+      return {
+        kind: "refused",
+        text: "This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again.",
+      };
+    }
+  }
 
   const target = targetFor(opts.runtime);
 
