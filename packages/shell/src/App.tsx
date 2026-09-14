@@ -542,7 +542,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     // quick action quick; anything else is a form standing between the user and the thing they
     // opened the app to do.
     if (qa.mode === "instant") {
-      void runtime.create(qa.entity, createDefaults(runtime, qa.entity, qa.prefill)).then((rec) => {
+      void createDefaults(runtime, qa.entity, qa.prefill).then((values) => runtime.create(qa.entity, values)).then((rec) => {
         if (qa.open === false) return;
         if (qa.openPage) {
           const target = def.pages.find((p) => p.id === qa.openPage);
@@ -568,7 +568,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     if (!m) return;
     setQuickMenu(null);
     // Seed defaults like the form does (bare create() doesn't), then set the picked value + prefill.
-    const values = createDefaults(runtime, m.qa.entity, { [m.field]: option, ...(m.qa.prefill ?? {}) });
+    const values = await createDefaults(runtime, m.qa.entity, { [m.field]: option, ...(m.qa.prefill ?? {}) });
     const created = await runtime.create(m.qa.entity, values);
     if (m.qa.open !== false) openRecord(m.qa.entity, created.id);
   };

@@ -62,6 +62,15 @@ interface Ctx {
   // Synchronous and fixed per evaluation pass, so a filter can read it. Per device, not shared.
   scope: Readonly<Record<string, Resolved | undefined>>;
 
+  // ---- who is using this app (KA-18) ----
+  // `me` is always present — a solo app gets this device's identity. `space` is absent for a solo
+  // app; in a shared one it carries the members and this device's role (`invite()` is admin-only
+  // and never reaches an untrusted app). Every record carries `createdBy`, stamped by the HOST on
+  // create and never settable or patchable by app code, trusted or untrusted — "who is this about"
+  // is a `member` field, not `createdBy`.
+  me: Person;                                         // { id, name }
+  space?: { id: string; role: "admin" | "writer" | "reader"; members: Person[]; invite(role?): Promise<string> };
+
   // ---- app-scoped key/value storage (separate from entity records) ----
   storage: { get<T>(k: string): Promise<T | null>; set(k: string, v: unknown): Promise<void>;
              delete(k: string): Promise<void>; keys(prefix?: string): Promise<string[]>; };

@@ -8,7 +8,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Field } from "karta";
-import type { KartaRuntime } from "@karta/runtime";
+import { FN_SENTINEL, type KartaRuntime } from "@karta/runtime";
 import { FieldInput } from "./field-input.js";
 import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
@@ -56,9 +56,24 @@ function rawRow(runtime: KartaRuntime, of: Record<string, Field>, row: Record<st
   return out;
 }
 
-function defaultFor(runtime: KartaRuntime, field: Field): unknown {
+/**
+ * A field's starting value. A function default (KA-25, `(ctx) => ctx.now()`) is evaluated by the
+ * host where the function lives: for an untrusted app the definition out here holds only the
+ * sentinel string, and a form that used it pre-filled "__karta_fn__".
+ */
+async function defaultFor(runtime: KartaRuntime, entity: string, key: string, field: Field): Promise<unknown> {
   const d = (field as { default?: unknown }).default;
-  if (d !== undefined) return typeof d === "function" ? (d as (ctx: unknown) => unknown)(runtime.ctx) : d;
+  if (typeof d === "function" || d === FN_SENTINEL) {
+    try {
+      const v = await runtime.core.app.callFieldDefault(entity, key, runtime.ctx);
+      return v ?? undefined;
+    } catch (e) {
+      // A default is app code; one that throws starts the field empty rather than blocking the form.
+      console.warn(`[karta] default for ${entity}.${key} failed:`, e);
+      return undefined;
+    }
+  }
+  if (d !== undefined) return d;
   // A relation to the scoped entity ("which trip is this for") defaults to the current selection
   // (#134): a new place, event or expense belongs to the trip you are in unless the app says otherwise.
   if (field.type === "relation" && !field.many && field.to === runtime.definition.scope?.entity) {
@@ -70,17 +85,17 @@ function defaultFor(runtime: KartaRuntime, field: Field): unknown {
   return undefined;
 }
 
-function initialFormState(
+async function initialFormState(
   runtime: KartaRuntime,
   entity: string,
   resolved: Record<string, unknown> | null,
   preset?: Record<string, unknown>,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const fields = runtime.definition.entities[entity]?.fields ?? {};
   const out: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(fields)) {
     if (resolved) out[key] = toRaw(runtime, field, resolved[key]);
-    else out[key] = preset?.[key] ?? defaultFor(runtime, field);
+    else out[key] = preset?.[key] ?? (await defaultFor(runtime, entity, key, field));
   }
   return out;
 }
@@ -92,7 +107,7 @@ function isEmpty(v: unknown): boolean {
 /** Default-filled raw values for a NEW record of `entity`, with optional presets applied. Mirrors
  *  what the create form seeds, so a programmatic create (e.g. a quick action) matches a form create
  *  — including field defaults like a `datetime` default of `ctx.now()`. */
-export function createDefaults(runtime: KartaRuntime, entity: string, preset?: Record<string, unknown>): Record<string, unknown> {
+export function createDefaults(runtime: KartaRuntime, entity: string, preset?: Record<string, unknown>): Promise<Record<string, unknown>> {
   return initialFormState(runtime, entity, null, preset);
 }
 
@@ -259,10 +274,16 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
 
   useEffect(() => {
     if (form) return;
-    const next = isEdit ? (!loading && record ? initialFormState(runtime, entity, record) : null) : initialFormState(runtime, entity, null, initial);
-    if (!next) return;
-    opened.current = JSON.stringify(next);
-    setForm(next);
+    if (isEdit && (loading || !record)) return;
+    let live = true;
+    void initialFormState(runtime, entity, isEdit ? record : null, initial).then((next) => {
+      if (!live) return;
+      opened.current = JSON.stringify(next);
+      setForm(next);
+    });
+    return () => {
+      live = false;
+    };
   }, [form, isEdit, loading, record, runtime, entity, initial]);
 
   const def = runtime.definition.entities[entity];
@@ -413,9 +434,13 @@ export interface ValuesFormProps {
  * is the raw values (a relation's id, a number as a number).
  */
 export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, onCancel }: ValuesFormProps) {
+  // A ui.form's fields are plain data from the action, never functions: their defaults are values.
   const [form, setForm] = useState<Record<string, unknown>>(() => {
     const out: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(fields)) out[key] = initial?.[key] ?? defaultFor(runtime, field);
+    for (const [key, field] of Object.entries(fields)) {
+      const d = (field as { default?: unknown }).default;
+      out[key] = initial?.[key] ?? (d !== undefined && typeof d !== "function" && d !== FN_SENTINEL ? d : field.type === "boolean" ? false : field.type === "list" || field.type === "tags" ? [] : undefined);
+    }
     return out;
   });
   const opened = useRef(JSON.stringify(form));
