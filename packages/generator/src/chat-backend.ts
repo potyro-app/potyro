@@ -16,6 +16,7 @@ import {
   buildUserMessage,
   extractSource,
 } from "./prompt.js";
+import type { ModifyContext } from "./prompt.js";
 
 export interface ToolCallOnMessage {
   id: string;
@@ -102,13 +103,13 @@ export abstract class ChatBackend implements ModelBackend {
   // and opening with it ("create an app for: add a rating field") is what made models replace the
   // app wholesale. The app describes itself — it is right there in the next turn.
   // The reply is returned as text, not extracted: it holds edits, and `guardedModify` applies them.
-  async modify(source: string, instruction: string, _prompt: GenPrompt): Promise<string> {
+  async modify(source: string, instruction: string, _prompt: GenPrompt, ctx?: ModifyContext): Promise<string> {
     return this.ask(
       [
         { role: "system", content: this.systemPrompt },
         { role: "user", content: buildModifyOpener() },
         priorTurn(source),
-        { role: "user", content: buildModifyMessage(instruction) },
+        { role: "user", content: buildModifyMessage(instruction, ctx) },
       ],
       EDIT_TEMPERATURE,
     );

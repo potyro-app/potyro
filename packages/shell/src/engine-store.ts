@@ -22,6 +22,7 @@
 
 import { useSyncExternalStore } from "react";
 import { DEFAULT_ENGINE_CONFIG, type EngineConfig } from "./engines.js";
+import { canGenerate } from "./generate-client.js";
 
 const KEY = "karta:engine-config";
 
@@ -35,15 +36,21 @@ function session(): Storage | null {
   }
 }
 
+/** `claude -p` is the dev server's route. A build without it starts on a cloud engine, which asks for a key. */
+function startingConfig(): EngineConfig {
+  return canGenerate() ? DEFAULT_ENGINE_CONFIG : { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter" };
+}
+
 function load(): EngineConfig {
   const raw = session()?.getItem(KEY);
-  if (!raw) return DEFAULT_ENGINE_CONFIG;
+  if (!raw) return startingConfig();
   try {
     // Spread over the default so a config written by an older build (missing a field added since)
     // loads with that field defaulted rather than arriving as `undefined` at a call site.
-    return { ...DEFAULT_ENGINE_CONFIG, ...(JSON.parse(raw) as Partial<EngineConfig>) };
+    const loaded = { ...startingConfig(), ...(JSON.parse(raw) as Partial<EngineConfig>) };
+    return loaded.engine === "cli" && !canGenerate() ? { ...loaded, engine: startingConfig().engine } : loaded;
   } catch {
-    return DEFAULT_ENGINE_CONFIG;
+    return startingConfig();
   }
 }
 
@@ -79,7 +86,7 @@ export function resetEngineConfig(): void {
   } catch {
     // nothing to clean up
   }
-  config = DEFAULT_ENGINE_CONFIG;
+  config = startingConfig();
   emit();
 }
 

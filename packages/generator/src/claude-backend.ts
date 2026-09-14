@@ -5,6 +5,7 @@
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
 import { SYSTEM_PROMPT, buildModifyMessage, buildModifyOpener, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import type { ModifyContext } from "./prompt.js";
 
 // The slice of the Anthropic SDK we use (structurally satisfied by the real client + by test fakes).
 export interface MessageParam {
@@ -74,7 +75,7 @@ export class ClaudeBackend implements ModelBackend {
 
   // See ChatBackend.modify: `prompt` carries the CHANGE, not the app, so opening with it tells the
   // model to write a new app for that description instead of editing the one below.
-  async modify(source: string, instruction: string, _prompt: GenPrompt): Promise<string> {
+  async modify(source: string, instruction: string, _prompt: GenPrompt, ctx?: ModifyContext): Promise<string> {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: this.maxTokens,
@@ -83,7 +84,7 @@ export class ClaudeBackend implements ModelBackend {
       messages: [
         { role: "user", content: buildModifyOpener() },
         { role: "assistant", content: "```ts\n" + source + "\n```" },
-        { role: "user", content: buildModifyMessage(instruction) },
+        { role: "user", content: buildModifyMessage(instruction, ctx) },
       ],
     });
     return joinText(res);

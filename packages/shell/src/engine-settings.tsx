@@ -7,6 +7,7 @@
 import { useEffect, useRef } from "react";
 import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@karta/generator/backends";
 import { ENGINES, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
+import { canGenerate } from "./generate-client.js";
 
 interface EngineSettingsProps {
   config: EngineConfig;
@@ -31,6 +32,7 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
   // An engine the browser cannot run is shown, disabled, with the reason — hiding it makes the
   // Studio look different on different machines with nothing to explain why.
   const unavailable = (id: Engine): string | null => {
+    if (id === "cli" && !canGenerate()) return "only while the dev server runs";
     if (id === "edge" && !hasWebGPU) return "needs a WebGPU browser";
     if (id === "builtin" && !hasBuiltIn) return "not available in this browser";
     return null;
