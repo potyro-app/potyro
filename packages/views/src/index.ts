@@ -19,6 +19,7 @@ export { ActionMenu, type ActionMenuProps, type MenuEntry, type MenuItem } from 
 export { usePhone, PHONE_QUERY } from "./media.js";
 export { useReorder, moveKey, type ReorderProps, type ReorderOptions } from "./reorder.js";
 export { ListInput, singular } from "./list-input.js";
+export { BoardView } from "./board.js";
 export { DateInput } from "./date-input.js";
 export { EnumInput, EnumPill } from "./enum-input.js";
 export { MediaInput, MediaTile, useMediaUrl, releaseMediaUrl, mediaList, mediaKind } from "./media-input.js";

@@ -55,7 +55,10 @@ describe("SYSTEM_PROMPT", () => {
 
   it("stays within a cloud model's system-prompt budget", () => {
     // ~4 chars per token. Cached by every cloud backend, so the cost is paid once per prompt version.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(60_000);
+    // Raised from 60k to 65k with the board, stats and timeline views (#107, #109, #110): the reference
+    // is generated from the types, and each view the model can build is text it has to read. Cutting
+    // what it reads about existing features instead would trade a cached ~1k tokens for worse apps.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(65_000);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {
