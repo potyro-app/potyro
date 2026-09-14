@@ -285,7 +285,8 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       field.type === "datetime" ||
       field.type === "enum" ||
       field.type === "media" ||
-      field.type === "list"
+      field.type === "list" ||
+      field.type === "relation"
     ) {
       // Several controls — an input and its stepper, a date and its chips, a row of options, a
       // strip of tiles, a stack of row cards — so no <label> around them (#99, #103, #98, #102,
