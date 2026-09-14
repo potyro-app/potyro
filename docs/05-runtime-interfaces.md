@@ -109,6 +109,9 @@ export interface LoadedApp {
   // A function inside a page's view, over its rows, named by path (#109): "series" of a chart,
   // "items.2.value" / "items.2.compare.value" of a stats view. Own keys and indexes only.
   callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  // A field's `default` when it is a function of ctx (KA-25) — evaluated where the function lives,
+  // since an untrusted app's definition holds only the sentinel string where it was.
+  callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
   dispose(): void;

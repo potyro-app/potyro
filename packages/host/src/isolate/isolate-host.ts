@@ -7,6 +7,7 @@ import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiP
 import type { Store } from "@karta/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { resolveRecord, type ResolveDeps } from "../resolve.js";
+import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
 
@@ -115,12 +116,16 @@ class IsolateLoadedApp implements LoadedApp {
         const raw = await this.store.get(op.entity as string, op.id as string);
         return serialize(raw ? await resolveRecord(this.resolveDeps, op.entity as string, raw, false) : null);
       }
+      // The same authorship rule as the direct ctx (authorship.ts): an untrusted app is exactly the
+      // code that must not be able to forge or rewrite `createdBy`.
       case "data.create": {
-        const row = await this.store.insert(op.entity as string, op.data as Partial<KartaRecord>);
+        const me = this.ctxHost?.me.id;
+        if (!me) throw new Error("ctx.create: no identity to stamp the record with");
+        const row = await this.store.insert(op.entity as string, stampAuthor(op.data, me) as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       case "data.patch": {
-        const row = await this.store.update(op.entity as string, op.id as string, op.data as Partial<KartaRecord>);
+        const row = await this.store.update(op.entity as string, op.id as string, stripAuthor(op.data) as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       // A shared app runs HERE, so this is the surface that decides whether counting is safe for the
@@ -130,6 +135,7 @@ class IsolateLoadedApp implements LoadedApp {
         const entity = op.entity as string;
         const id = op.id as string;
         const field = op.field as string;
+        assertNotAuthor(field);
         const delta = Number(op.delta);
         if (!Number.isFinite(delta)) throw new Error("ctx.increment: delta must be a number");
         if (this.store.increment) {
@@ -410,6 +416,12 @@ class IsolateLoadedApp implements LoadedApp {
 
   async callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value> {
     return this.invoke({ kind: "fold", pageId, path, rows, ...this.base(ctx) }, ctx);
+  }
+
+  async callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value> {
+    // The definition out here carries the sentinel string where the function was; the function
+    // itself is only callable inside the VM.
+    return this.invoke({ kind: "fieldDefault", entity, key: field, ...this.base(ctx) }, ctx);
   }
 
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
