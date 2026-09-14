@@ -1,11 +1,5 @@
-import type { ZodIssue } from "zod";
 import type { AppDefinition, AppInput, KartaApp, Page } from "./types/app.js";
-import { checkReferences, structureSchema, ValidationError } from "./validate.js";
-
-function formatIssue(issue: ZodIssue): string {
-  const path = issue.path.length ? issue.path.join(".") : "(root)";
-  return `${path}: ${issue.message}`;
-}
+import { checkReferences, describeIssue, structureSchema, ValidationError } from "./validate.js";
 
 /**
  * The typed builder (docs/03, docs/04). It:
@@ -28,7 +22,7 @@ function formatIssue(issue: ZodIssue): string {
 export function defineApp(def: AppInput): KartaApp {
   const parsed = structureSchema.safeParse(def);
   if (!parsed.success) {
-    throw new ValidationError(parsed.error.issues.map(formatIssue));
+    throw new ValidationError(parsed.error.issues.map((i) => describeIssue(i, def)));
   }
 
   // A page written with a `layout` gets its first item as its `view` (#105), so everything that
