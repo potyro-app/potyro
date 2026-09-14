@@ -102,11 +102,16 @@ test("a relation to an empty entity can create its first record inline", async (
   await expect(form).toBeVisible();
   await form.getByLabel(/^Name/).first().fill("Parque Ibirapuera");
 
-  // No Place Type exists yet — the form must offer to make one rather than dead-ending.
+  // No Place Type exists yet — the picker says so and still offers to make one, rather than
+  // dead-ending. It is a searchable picker now, not a browser <select>.
   const relation = form.locator(".k-relation-input");
-  // `<option>` text is never "visible" to Playwright — assert on the select's content.
-  await expect(relation.locator("select")).toContainText("No Place Type yet");
-  await relation.getByRole("button", { name: /New Place Type/ }).click();
+  await expect(relation.locator("select")).toHaveCount(0);
+  const trigger = relation.getByRole("button", { name: /: choose$/ });
+  await expect(trigger).toContainText("No place type yet");
+  await trigger.click();
+  // What you type becomes the new record's name.
+  await page.getByRole("searchbox", { name: /^Search/ }).fill("Park");
+  await page.getByRole("button", { name: /New place type “Park”/ }).click();
 
   // The nested create is a second sheet over the first (#101), and not a <form> — React would
   // bubble its submit to the outer form even through the portal.
@@ -115,13 +120,12 @@ test("a relation to an empty entity can create its first record inline", async (
   expect(await inline.locator("form").count()).toBe(0);
   await expect(page.getByRole("dialog", { name: "New Place Type" })).toBeVisible();
 
-  await inline.getByLabel(/^Name/).fill("Park");
+  await expect(inline.getByLabel(/^Name/)).toHaveValue("Park");
   await inline.getByRole("button", { name: "Create" }).click();
 
   // Created AND selected — that is why the user made it.
   await expect(inline).toBeHidden();
-  await expect(relation.locator("select")).toHaveValue(/.+/);
-  await expect(relation.locator("select")).toContainText("Park");
+  await expect(relation.getByRole("button", { name: /: Park$/ })).toBeVisible();
 
   // The outer form still saves normally. (The default page is the Map, so check the list.)
   await form.getByRole("button", { name: "Create" }).click();

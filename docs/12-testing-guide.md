@@ -182,6 +182,14 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4g. Relations — pick by searching (#98 follow-up)
+
+Edit a recipe: each ingredient card's **Ingredient** is a button, not a dropdown. Open it, type
+"egg", pick **Egg**. Type something that does not exist, "Saffron", and the list's last line reads
+**＋ New ingredient “Saffron”…**: it opens a second sheet with the name filled in, and creating it
+selects it. On a phone the list is a bottom sheet. A field that holds several records shows the
+chosen ones as chips with ✕, and **＋ Add** opens the list with checkmarks and a **Done**.
+
 ## 4f. Nested rows — cards you can reorder (#104)
 
 Open a recipe, **More actions → Edit**, and unfold **Steps**. Each step is a card: the text on its

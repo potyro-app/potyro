@@ -2241,23 +2241,7 @@ details.k-layout-fold[open] > summary::before {
 .k-row-add {
   align-self: flex-start;
 }
-/* A control that brings its own extras — a relation's picker and its "New …" button — lays them
-   out along the line inside a card rather than as a full-width bar that splits the card in two. */
-.k-row-card .k-relation-input {
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.k-row-card .k-relation-input > .k-input,
-.k-row-card .k-relation-input > select {
-  flex: 1 1 8rem;
-  min-width: 0;
-}
-.k-row-card .k-relation-new {
-  flex: none;
-  font-size: 0.8rem;
-  padding: 0.35rem 0.6rem;
-}
+
 .k-row-swipe-remove {
   position: absolute;
   top: 0;
@@ -2659,6 +2643,79 @@ details.k-layout-fold[open] > summary::before {
 }
 .k-tag-x:hover {
   opacity: 1;
+}
+/* A relation to other records (#98 follow-up): the picker's trigger is the enum's; several chosen
+   records are chips you can take off, with Add after them. The list's "New …" row makes the record
+   the search did not find. */
+.k-relation-many {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-selchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 2.25rem;
+  padding: 0 0.2rem 0 var(--space-3);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.k-selchip-x {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.k-selchip-x:hover {
+  background: color-mix(in oklab, var(--ink) 10%, transparent);
+  color: var(--ink);
+}
+.k-selchip-x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-relation-add {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+}
+.k-pick-create {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.k-pick-create:hover,
+.k-pick-create:focus-visible {
+  background: var(--surface-sunken);
+  outline: none;
+}
+@media (pointer: coarse) {
+  .k-selchip {
+    min-height: 2.75rem;
+  }
+  .k-selchip-x {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
 }
 /* tokens-only: end — enums */
 
