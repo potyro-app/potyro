@@ -134,6 +134,10 @@ no heading. `collapsible: true` makes each heading a button that folds its group
 remembered on the device per page; on a phone the heading sticks under the top bar while its rows
 scroll past. On a record page, a detail section or an entity group with `collapsible: true` folds
 the same way (`collapsed: true` starts it folded), and a section that is one list shows its count.
+A `relation` is a searchable picker too. One record opens the same list a long enum uses and closes
+on a pick; `many: true` shows the chosen records as chips you can take off, with Add opening the
+list with checkmarks. When the search finds nothing, the list's last line creates the record, named
+with what was typed, in a sheet over the form, and selects it. No form renders a `<select>`.
 
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a

@@ -6,12 +6,10 @@
 // A required field with no default starts on nothing: the first option is not an answer the person
 // gave.
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { EnumField } from "karta";
-import { usePhone } from "./media.js";
-import { enumSwatch, filterOptions, wantsSegmented } from "./enum.js";
-import { placeUnder } from "./popover.js";
+import { enumSwatch, wantsSegmented } from "./enum.js";
+import { PickList } from "./pick-list.js";
 
 export interface EnumInputProps {
   field: EnumField;
@@ -102,12 +100,13 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
         </span>
       </button>
       {open ? (
-        <OptionList
-          field={field}
-          current={current}
+        <PickList
           title={label ?? "Choose"}
+          items={field.options.map((o) => ({ id: o, label: o, swatch: enumSwatch(field, o) }))}
+          selected={new Set(current ? [current] : [])}
           anchor={btnRef}
-          onPick={(v) => onChange(v)}
+          onToggle={(v) => onChange(v)}
+          onClear={field.required ? undefined : () => onChange(null)}
           onClose={() => {
             setOpen(false);
             btnRef.current?.focus();
@@ -115,119 +114,5 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
         />
       ) : null}
     </div>
-  );
-}
-
-function OptionList({
-  field,
-  current,
-  title,
-  anchor,
-  onPick,
-  onClose,
-}: {
-  field: EnumField;
-  current: string | null;
-  title: string;
-  anchor: React.RefObject<HTMLButtonElement | null>;
-  onPick: (v: string | null) => void;
-  onClose: () => void;
-}) {
-  const phone = usePhone();
-  const [query, setQuery] = useState("");
-  const headingId = useId();
-  const ref = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const r = anchor.current?.getBoundingClientRect();
-    const panel = ref.current?.getBoundingClientRect();
-    // Measured after the list is laid out, so a trigger near the bottom of the window flips the
-    // panel above it instead of running off the screen.
-    if (r && panel) setPos({ ...placeUnder(r, panel), width: Math.max(r.width, 220) });
-  }, [anchor, phone]);
-
-  useEffect(() => {
-    searchRef.current?.focus();
-  }, []);
-
-  const shown = filterOptions(field.options, query);
-  const pick = (v: string | null): void => {
-    onPick(v);
-    onClose();
-  };
-
-  // Down/Up walk the list, Enter takes the first match, Escape gives up.
-  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>): void => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      return onClose();
-    }
-    if (e.key === "Enter" && document.activeElement === searchRef.current) {
-      e.preventDefault();
-      if (shown[0]) pick(shown[0]);
-      return;
-    }
-    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-    e.preventDefault();
-    const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>(".k-enum-option") ?? [])];
-    if (!items.length) return;
-    const at = items.findIndex((b) => b === document.activeElement);
-    const step = e.key === "ArrowDown" ? 1 : -1;
-    const next = at < 0 ? items[0] : items[(at + step + items.length) % items.length];
-    next?.focus();
-  };
-
-  return createPortal(
-    <div className="k-menu-layer">
-      <div className="k-menu-scrim" onClick={onClose} />
-      <div
-        ref={ref}
-        className={`k-enum-list${phone ? " k-enum-list-sheet" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={headingId}
-        style={phone ? undefined : pos ? { top: pos.top, left: pos.left, minWidth: pos.width } : { visibility: "hidden" }}
-        onKeyDown={onKey}
-      >
-        <div className="k-menu-grip" aria-hidden />
-        <h4 id={headingId} className="k-enum-list-title">
-          {title}
-        </h4>
-        <input
-          ref={searchRef}
-          className="k-input k-enum-search"
-          type="search"
-          placeholder="Search"
-          aria-label={`Search ${title}`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="k-enum-options" role="listbox" aria-label={title}>
-          {shown.map((o) => (
-            <button
-              key={o}
-              type="button"
-              role="option"
-              aria-selected={current === o}
-              className="k-enum-option"
-              data-on={current === o || undefined}
-              onClick={() => pick(o)}
-            >
-              <span className="k-enum-dot" aria-hidden {...enumSwatch(field, o)} />
-              <span className="k-enum-option-label">{o}</span>
-            </button>
-          ))}
-          {shown.length === 0 ? <p className="k-enum-none">Nothing matches “{query}”.</p> : null}
-        </div>
-        {current && !field.required ? (
-          <button type="button" className="k-add k-enum-clear" onClick={() => pick(null)}>
-            Clear
-          </button>
-        ) : null}
-      </div>
-    </div>,
-    document.body,
   );
 }
