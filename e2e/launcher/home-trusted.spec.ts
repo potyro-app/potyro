@@ -13,8 +13,9 @@ test("launcher home lists apps and launches a built-in", async ({ page }) => {
   // Trusted examples appear under "Apps".
   await expect(launcher.locator(".k-launch-tile", { hasText: "Recipes" })).toBeVisible();
   await expect(launcher.locator(".k-launch-tile", { hasText: "Plants" })).toBeVisible();
-  // A "New app" tile opens the Studio.
-  await expect(launcher.locator(".k-launch-tile", { hasText: "New app" })).toBeVisible();
+  // One "New app" action, and it is not a tile among the apps (#90).
+  await expect(launcher.getByRole("button", { name: /New app/ }).filter({ visible: true })).toHaveCount(1);
+  await expect(launcher.locator(".k-launch-tile", { hasText: "New app" })).toHaveCount(0);
 
   // Launch recipes → it loads the running app.
   await launcher.locator(".k-launch-tile", { hasText: "Recipes" }).click();

@@ -18,6 +18,7 @@ import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
+import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
@@ -217,6 +218,19 @@ function TileMenu({
   );
 }
 
+const WELCOME_KEY = "karta:welcome:dismissed";
+
+/** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
+function YouButton({ onClick }: { onClick: () => void }) {
+  const me = peekIdentity();
+  const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
+  return (
+    <button type="button" className="k-launch-you" aria-label="You and your devices" onClick={onClick} style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
+      {me && named ? personInitials(me.name, me.id) : <span aria-hidden>⌾</span>}
+    </button>
+  );
+}
+
 export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: LauncherProps) {
   // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
@@ -229,7 +243,25 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const sortMode = useSortMode();
   const [mountedAt] = useState(() => Date.now());
   const ordered = orderApps(installed, sortMode, mountedAt);
-  const hasUserApps = installed.some((a) => a.kind === "user");
+  // First run (#90): nothing has ever been opened on this device and the welcome was not dismissed.
+  // Then the home screen says what Karta is and offers one thing to do, and the apps below are
+  // examples to try — not a grid with the create action as one more tile.
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => {
+    try {
+      return globalThis.localStorage?.getItem(WELCOME_KEY) === "1";
+    } catch {
+      return true;
+    }
+  });
+  const neverOpened = installed.every((a) => !a.entry.openCount);
+  const dismissWelcome = (): void => {
+    try {
+      globalThis.localStorage?.setItem(WELCOME_KEY, "1");
+    } catch {
+      // private mode: it simply shows again next time
+    }
+    setWelcomeDismissed(true);
+  };
   const nameOf = (key: string): string => installed.find((a) => a.key === key)?.name ?? key;
 
   // Search (#85): past a handful of apps a grid is scanned, not read. The field filters by the
@@ -447,9 +479,14 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
           <span className="k-muted">{variant === "home" ? "· choose an app" : "· switch app"}</span>
         </div>
         <div className="k-launcher-head-actions">
-          <button type="button" className="k-add" aria-label="You and your devices" onClick={() => setIdentity(true)}>
-            ⌾ You
-          </button>
+          {/* One persistent create action (#90): a button here on a wide screen, a floating button
+              in thumb reach on a phone (below) — never a tile among the apps. */}
+          {variant === "home" ? (
+            <button type="button" className="k-add k-primary-action k-launch-newbtn" onClick={() => onNewApp()}>
+              ＋ New app
+            </button>
+          ) : null}
+          <YouButton onClick={() => setIdentity(true)} />
           {onClose ? (
             <>
               <button type="button" className="k-add" onClick={goHome}>⌂ Home</button>
@@ -459,6 +496,24 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         </div>
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+
+      {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
+        <section className="k-welcome" aria-labelledby="k-welcome-h">
+          <h2 id="k-welcome-h">Make the app you need</h2>
+          <p>
+            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Karta builds it. Or open one
+            of the examples below and change it.
+          </p>
+          <div className="k-welcome-actions">
+            <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
+              Describe an app
+            </button>
+            <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
+              Not now
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="k-launch-search">
         <input
@@ -499,7 +554,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
 
       <section className="k-launch-section" aria-labelledby="k-launch-all">
         <div className="k-launch-section-head">
-          <h3 className="k-launch-title" id="k-launch-all">{pinned.length ? "Everything else" : "Apps"}</h3>
+          <h3 className="k-launch-title" id="k-launch-all">
+            {pinned.length ? "Everything else" : variant === "home" && neverOpened && !welcomeDismissed ? "Examples to try" : "Apps"}
+          </h3>
           <div className="k-launch-sort" role="group" aria-label="Sort apps">
             {SORT_MODES.map((m) => (
               <button key={m.id} type="button" className="k-launch-sort-btn" aria-pressed={sortMode === m.id} title={m.title} onClick={() => setSortMode(m.id)}>
@@ -517,17 +574,15 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               {menuFor(a)}
             </div>
           ))}
-          <button type="button" className="k-launch-tile k-launch-new" onClick={() => onNewApp()} {...inertUnless("new")}>
-            <span className="k-launch-avatar" aria-hidden>+</span>
-            <span className="k-launch-name">New app</span>
-            <span className="k-muted">Studio</span>
-          </button>
         </div>
         <p className="k-visually-hidden" aria-live="polite">{restReorder.announcement}</p>
-        {!hasUserApps ? (
-          <p className="k-muted k-launch-empty">No saved apps yet — create one in the Studio, then it appears here.</p>
-        ) : null}
+        {!installed.length ? <p className="k-muted k-launch-empty">No apps yet — press New app to make one.</p> : null}
       </section>
+      {variant === "home" ? (
+        <button type="button" className="k-launch-fab" onClick={() => onNewApp()}>
+          <span aria-hidden>＋</span> New app
+        </button>
+      ) : null}
 
       {history ? (
         <History
