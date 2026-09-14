@@ -21,6 +21,7 @@ export { useReorder, moveKey, type ReorderProps, type ReorderOptions } from "./r
 export { ListInput, singular } from "./list-input.js";
 export { BoardView } from "./board.js";
 export { StatsView } from "./stats.js";
+export { TimelineView, groupTimeline, whenText, type TimelineGroup } from "./timeline.js";
 export { ChartView, niceMax } from "./chart.js";
 export { computeFigure, computeSummary, figureValue, formatFigure, type SummaryFigure, type CallSummaryValue } from "./summary.js";
 export { DateInput } from "./date-input.js";
