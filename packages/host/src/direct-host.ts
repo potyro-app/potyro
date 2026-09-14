@@ -16,6 +16,17 @@ async function resolveOption(option: unknown, ctx: unknown): Promise<Value> {
 }
 
 /** The view a page ref names — a layout item's when the ref is `page#index` (#105). */
+/** What `path` ("series", "items.0.compare.value") names inside a view: own keys and indexes only. */
+export function foldAt(view: unknown, path: string): unknown {
+  if (!/^[A-Za-z_$][\w$]*(\.(\d+|[A-Za-z_$][\w$]*))*$/.test(path)) return undefined;
+  let at: unknown = view;
+  for (const key of path.split(".")) {
+    if (at == null || typeof at !== "object" || !Object.prototype.hasOwnProperty.call(at, key)) return undefined;
+    at = (at as Record<string, unknown>)[key];
+  }
+  return at;
+}
+
 function pageView(def: AppDefinition, pageRef: string) {
   try {
     return resolveView(def, pageRef);
@@ -112,6 +123,12 @@ export class DirectLoadedApp implements LoadedApp {
     if (!view || view.type !== "aggregate") throw new Error(`page ${pageId} is not an aggregate view`);
     if (typeof view.rows !== "function") throw new Error(`aggregate ${pageId} declares no rows function`);
     return (await view.rows(rows, ctx as never)) as unknown as Value;
+  }
+
+  async callFold(pageId: string, path: string, rows: Resolved[], ctx: unknown): Promise<Value> {
+    const fn = foldAt(pageView(this.definition, pageId), path);
+    if (typeof fn !== "function") throw new Error(`${pageId} has no function at ${path}`);
+    return (await (fn as Fn)(rows, ctx)) as Value;
   }
 
   async reminderWhen(id: string, record: Resolved, ctx: unknown): Promise<Date | null> {

@@ -301,6 +301,40 @@ export interface AggregateView {
   emptyText?: Dynamic<string>;
 }
 
+/** A stats tile (#109): a summary figure, optionally compared with the same figure for an earlier period. */
+export interface StatItem extends SummaryValue {
+  /** After the number: "kg", "min". A `field`'s own unit is used when this is left out. */
+  unit?: string;
+  /** `value` is the earlier figure; the tile reads "▲ 1 more than {label}" (or "6% less" with `as: "percent"`). */
+  compare?: { value: (rows: Resolved[], ctx: Ctx) => unknown; label: string; as?: "difference" | "percent" };
+}
+
+/** Big numbers folded out of the page's rows (#109). */
+export interface StatsView {
+  type: "stats";
+  entity: string;
+  filter?: FilterFn;
+  items: StatItem[];
+}
+
+/** One bar: its axis label, its value, and optionally the text to show for it ("5 sessions"). */
+export interface ChartPoint {
+  label: string;
+  value: number;
+  text?: string;
+}
+
+/** A bar chart of the points `series` folds out of the page's rows (#109). */
+export interface ChartView {
+  type: "chart";
+  entity: string;
+  filter?: FilterFn;
+  series: (rows: Resolved[], ctx: Ctx) => ChartPoint[] | Promise<ChartPoint[]>;
+  title?: Dynamic<string>;
+  subtitle?: Dynamic<string>;
+  emptyText?: Dynamic<string>;
+}
+
 export interface CustomView {
   type: "custom";
   entity: string;
@@ -337,6 +371,8 @@ export type View =
   | StepsView
   | ChecklistView
   | BoardView
+  | StatsView
+  | ChartView
   | AggregateView
   | CustomView;
 
@@ -350,6 +386,8 @@ export const VIEW_TYPES = [
   "steps",
   "checklist",
   "board",
+  "stats",
+  "chart",
   "aggregate",
   "custom",
 ] as const;

@@ -325,6 +325,8 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
 - Records with a stage or status (tasks, applications, "want to try / tried") want a \`board\` page:
   \`{ type: "board", entity, column: "<enum field>" }\`.
+- "How am I doing" numbers (this week vs last, totals over time) are a page \`layout\` stacking a \`stats\`
+  view and a \`chart\` view; both fold the page's rows in functions.
 - A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
   whose rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.

@@ -182,6 +182,14 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4k. Progress — stats and a chart (#109)
+
+PPL Log → **Progress**: three tiles (sessions this week, volume this week, average session), each
+with how it compares with last week in words. Under them a bar chart of sessions per week for eight
+weeks, the latest bar labelled. Hover a bar, tap it on a phone, or focus the chart and press ← → to
+read any week; Escape clears it. In the dark theme the bars turn a lighter amber. `pnpm dev:sandbox`
+shows the same numbers — every figure is computed inside the isolate.
+
 ## 4j. Board — records in columns (#107)
 
 Recipes → **Cookbook**: every recipe under want to try, tried or keeper, each column with its colour

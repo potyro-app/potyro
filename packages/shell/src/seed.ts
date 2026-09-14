@@ -133,14 +133,30 @@ async function seedWorkout(store: Store): Promise<void> {
   const row = await ex("Barbell Row", "pull", 0, { repRange: "6–10" });
   const pullup = await ex("Pull-up", "pull", 1, { bodyweight: true, repRange: "AMRAP" });
   const squat = await ex("Squat", "legs", 0, { targetSets: 4, repRange: "5–8" });
-  void row;
   void pullup;
 
   // A little history so `history`, `totalVolume`, and the async `lastBest` have data.
   const now = Date.now();
+  // Eight weeks of lighter, older sessions for Progress (#109). None outscores the recent ones below,
+  // so each exercise's rolling best still comes from the last week.
+  for (const [daysAgo, day, kg, minutes] of [
+    [10, "pull", 50, 52], [12, "legs", 80, 61], [15, "push", 55, 55], [17, "legs", 85, 58], [19, "pull", 50, 49],
+    [22, "push", 55, 57], [26, "legs", 80, 63], [29, "push", 50, 54], [31, "pull", 45, 50], [33, "legs", 80, 60],
+    [36, "push", 50, 52], [40, "legs", 75, 59], [43, "push", 50, 51], [45, "pull", 45, 47], [47, "legs", 75, 62],
+    [50, "push", 45, 50], [54, "legs", 70, 58],
+  ] as const) {
+    const lift = day === "push" ? bench.id : day === "legs" ? squat.id : row.id;
+    await store.insert("session", {
+      day,
+      date: new Date(now - daysAgo * DAY),
+      durationSec: minutes * 60,
+      entries: [{ exercise: lift, sets: [{ kg, reps: 5 }, { kg, reps: 5 }, { kg, reps: 4 }] }],
+    });
+  }
   await store.insert("session", {
     day: "push",
     date: new Date(now - 7 * DAY),
+    durationSec: 62 * 60,
     entries: [
       { exercise: bench.id, sets: [{ kg: 60, reps: 10 }, { kg: 70, reps: 8 }, { kg: 80, reps: 5 }] },
       { exercise: ohp.id, sets: [{ kg: 40, reps: 8 }, { kg: 40, reps: 7 }] },
@@ -149,11 +165,13 @@ async function seedWorkout(store: Store): Promise<void> {
   await store.insert("session", {
     day: "legs",
     date: new Date(now - 4 * DAY),
+    durationSec: 55 * 60,
     entries: [{ exercise: squat.id, sets: [{ kg: 100, reps: 5 }, { kg: 110, reps: 5 }, { kg: 120, reps: 3 }] }],
   });
   await store.insert("session", {
     day: "push",
     date: new Date(now - 1 * DAY),
+    durationSec: 58 * 60,
     entries: [
       { exercise: bench.id, sets: [{ kg: 65, reps: 10 }, { kg: 75, reps: 8 }, { kg: 85, reps: 4 }] },
       { exercise: ohp.id, sets: [{ kg: 42.5, reps: 8 }, { kg: 42.5, reps: 6 }] },

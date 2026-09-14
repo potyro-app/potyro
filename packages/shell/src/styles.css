@@ -35,6 +35,8 @@
   --danger-line: oklch(80% 0.1 30);
   --danger-tint: oklch(96% 0.04 30);
   --warn: oklch(52% 0.12 70);
+  /* A chart's single series (#109): checked with the dataviz palette validator against each theme's surface. */
+  --series-1: #a96b00;
   --scrim: oklch(20% 0.02 60 / 0.4);
   --scrim-soft: oklch(20% 0.02 60 / 0.32);
   --shadow: 0 1px 2px oklch(30% 0.02 60 / 0.06), 0 8px 24px oklch(30% 0.02 60 / 0.08);
@@ -99,6 +101,7 @@
     --danger-line: oklch(44% 0.1 30);
     --danger-tint: oklch(27% 0.05 30);
     --warn: oklch(80% 0.11 75);
+    --series-1: #c38300;
     --scrim: oklch(8% 0.01 60 / 0.6);
     --scrim-soft: oklch(8% 0.01 60 / 0.5);
     --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
@@ -122,6 +125,7 @@
   --danger-line: oklch(44% 0.1 30);
   --danger-tint: oklch(27% 0.05 30);
   --warn: oklch(80% 0.11 75);
+  --series-1: #c38300;
   --scrim: oklch(8% 0.01 60 / 0.6);
   --scrim-soft: oklch(8% 0.01 60 / 0.5);
   --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
@@ -2277,6 +2281,122 @@ details.k-layout-fold[open] > summary::before {
   background: var(--ink-soft);
 }
 /* tokens-only: end — board */
+
+/* tokens-only: start — stats and chart */
+/* Big numbers and a bar chart folded out of the rows (#109). Tiles wrap to two columns on a phone;
+   the chart is plain SVG whose marks take the series token and whose text stays in the ink tokens. */
+.k-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.k-stat-label {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.k-stat-value {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.k-stat-compare {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .k-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.k-chart {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.k-chart-head {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-2);
+}
+.k-chart-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.k-chart-sub {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+.k-chart-plot {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+.k-chart-plot svg {
+  display: block;
+  overflow: visible;
+}
+.k-chart-plot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.k-chart-tick {
+  fill: var(--ink-soft);
+  font-size: 11px;
+}
+.k-chart-latest {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.k-chart-bar {
+  fill: var(--series-1);
+}
+.k-chart-band {
+  fill: var(--surface-sunken);
+}
+.k-chart-hit {
+  fill: transparent;
+}
+.k-chart-tip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: var(--space-1) var(--space-2);
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+/* tokens-only: end — stats and chart */
 
 /* tokens-only: start — grouped sections */
 /* Rows under headings, and sections that fold (#108). A list's group heading is the aggregate

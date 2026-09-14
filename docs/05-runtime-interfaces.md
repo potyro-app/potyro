@@ -106,6 +106,9 @@ export interface LoadedApp {
   // It is a host call because for an untrusted app the function never leaves the isolate —
   // the extracted definition carries the `__karta_fn__` sentinel where the function was.
   callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  // A function inside a page's view, over its rows, named by path (#109): "series" of a chart,
+  // "items.2.value" / "items.2.compare.value" of a stats view. Own keys and indexes only.
+  callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
   dispose(): void;

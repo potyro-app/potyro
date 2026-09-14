@@ -319,6 +319,42 @@ const checklistView = z.object({
   emptyText: zDynamicString.optional(),
 });
 
+// A stats tile is a summary figure with a unit and a comparison; the one-of rules are the summary's.
+const statItemSchema = z
+  .object({
+    label: z.string().min(1),
+    field: z.string().optional(),
+    op: z.enum(["sum", "count", "avg", "max"]).optional(),
+    value: zFn.optional(),
+    unit: z.string().optional(),
+    compare: z.object({ value: zFn, label: z.string().min(1), as: z.enum(["difference", "percent"]).optional() }).strict().optional(),
+  })
+  .strict()
+  .refine((v) => (v.value === undefined) !== (v.op === undefined), {
+    message: 'a stat needs exactly one of `op` or `value: (rows, ctx) => …`',
+  })
+  .refine((v) => v.op === undefined || v.op === "count" || typeof v.field === "string", {
+    message: 'a stat using "sum", "avg" or "max" needs a `field` to aggregate',
+  });
+
+const statsView = z.object({
+  type: z.literal("stats"),
+  entity: z.string(),
+  filter: zFn.optional(),
+  items: z.array(statItemSchema).min(1, "a stats view needs at least one item"),
+});
+
+// `series` is typed, not validated (rule 4); its presence is required, as `rows` is for aggregate.
+const chartView = z.object({
+  type: z.literal("chart"),
+  entity: z.string(),
+  filter: zFn.optional(),
+  series: zFn,
+  title: zDynamicString.optional(),
+  subtitle: zDynamicString.optional(),
+  emptyText: zDynamicString.optional(),
+});
+
 // `rows` is a function, so it is typed rather than validated (CLAUDE.md rule 4) — but its PRESENCE
 // is required, because an aggregate page without a fold has nothing to show and would render an
 // empty screen that looks like a data problem rather than a missing declaration.
@@ -360,6 +396,8 @@ const viewSchema = z.discriminatedUnion("type", [
   stepsView.strict(),
   checklistView.strict(),
   boardView.strict(),
+  statsView.strict(),
+  chartView.strict(),
   aggregateView.strict(),
   customView.strict(),
 ]);
@@ -745,6 +783,10 @@ export function checkReferences(def: AppDefinition): string[] {
           if (v.display.media) ensureKey(entity, v.entity, v.display.media, `${where} display.media`);
           for (const b of v.display.badges ?? []) ensureKey(entity, v.entity, b, `${where} display.badges`);
         }
+        break;
+      }
+      case "stats": {
+        for (const item of v.items) if (item.field) ensureKey(entity, v.entity, item.field, `${where} stat "${item.label}"`);
         break;
       }
       case "checklist": {
