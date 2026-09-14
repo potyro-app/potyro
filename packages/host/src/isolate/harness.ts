@@ -155,6 +155,15 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             result = await av.rows(p.rows || [], ctx);
             break;
           }
+          case "fold": {
+            var fv = findView(app, p.pageId), fp = String(p.path);
+            if (!/^[A-Za-z_$][\\w$]*(\\.(\\d+|[A-Za-z_$][\\w$]*))*$/.test(fp)) fv = null;
+            var fk = fp.split(".");
+            for (var fi = 0; fv != null && fi < fk.length; fi++) fv = (typeof fv === "object" && Object.prototype.hasOwnProperty.call(fv, fk[fi])) ? fv[fk[fi]] : null;
+            if (typeof fv !== "function") throw new Error(p.pageId + " has no function at " + fp);
+            result = await fv(p.rows || [], ctx);
+            break;
+          }
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }
           default: return __serialize({ ok:false, error:"unknown kind " + p.kind });
         }

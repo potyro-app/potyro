@@ -345,6 +345,49 @@ describe("IsolateHost — page summary aggregates", () => {
   });
 });
 
+// ── Folds inside a view (#109) ──────────────────────────────────────────────────────────────
+// A stats tile's `value`, its `compare.value` and a chart's `series` stay in the VM; `callFold`
+// names them by path from the view — including a view inside a page layout.
+const FOLD_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "fold", name: "Fold", version: "1.0.0", schemaVersion: 1,
+  entities: { run: { fields: { km: { type: "number" } } } },
+  pages: [
+    { id: "p", title: "P", layout: { type: "stack", items: [
+      { view: { type: "stats", entity: "run", items: [
+        { label: "Total", value: function(rows){ return rows.reduce(function(n, r){ return n + r.km; }, 0); },
+          compare: { label: "before", value: function(rows){ return rows.length; } } } ] } },
+      { view: { type: "chart", entity: "run", series: function(rows){ return rows.map(function(r){ return { label: r.id, value: r.km }; }); } } }
+    ] } }
+  ],
+  reminders: []
+};
+`;
+
+describe("IsolateHost — callFold", () => {
+  const rows = [
+    { id: "a", createdAt: "", updatedAt: "", km: 5 },
+    { id: "b", createdAt: "", updatedAt: "", km: 7 },
+  ] as unknown as Parameters<Awaited<ReturnType<typeof setup>>["loaded"]["callFold"]>[2];
+
+  it("calls a function named by its path in a layout item's view", async () => {
+    const { loaded, ctx } = await setup(FOLD_BUNDLE);
+    expect(await loaded.callFold("p#0", "items.0.value", rows, ctx)).toBe(12);
+    expect(await loaded.callFold("p#0", "items.0.compare.value", rows, ctx)).toBe(2);
+    expect(await loaded.callFold("p#1", "series", rows, ctx)).toEqual([
+      { label: "a", value: 5 },
+      { label: "b", value: 7 },
+    ]);
+  });
+
+  it("refuses a path that names nothing callable, or reaches outside the view", async () => {
+    const { loaded, ctx } = await setup(FOLD_BUNDLE);
+    await expect(loaded.callFold("p#0", "items.0.label", rows, ctx)).rejects.toThrow(/no function at items.0.label/);
+    await expect(loaded.callFold("p#0", "constructor", rows, ctx)).rejects.toThrow(/no function/);
+    await expect(loaded.callFold("p#0", "items[0].value", rows, ctx)).rejects.toThrow(/no function/);
+  });
+});
+
 // KA-18: identity has to survive the isolate boundary, or one app source behaves differently
 // depending on how it was installed — which is exactly what provenance is supposed NOT to change.
 const IDENTITY_BUNDLE = `

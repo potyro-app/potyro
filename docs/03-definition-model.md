@@ -146,6 +146,16 @@ field, and so does "Move to…" in the card's menu — the way a keyboard or a p
 empty column offers Add, pre-filled with its value; records whose value is not a column sit in a
 leading "No …" column. `allowMove: false` makes it read-only. Cards do not reorder inside a column.
 
+Numbers folded out of a page's rows are a `stats` view and a `chart` view (#109), usually stacked in
+one page `layout`. A stats tile is a summary figure — `{ label, op, field }` or
+`{ label, value: (rows, ctx) => … }` — with an optional `unit` and
+`compare: { value, label, as? }`, which reads "▲ 1 more than last week" or, with `as: "percent"`,
+"▼ 6% less than last week": an arrow and words, never colour alone. A chart is
+`{ type: "chart", entity, series: (rows, ctx) => [{ label, value, text? }], title?, subtitle?,
+emptyText? }`: bars on a recessive grid, the latest labelled, the rest answering on hover, tap or the
+arrow keys, with the same numbers in a visually hidden table. Every function runs through the host,
+so both render untrusted.
+
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
 wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a

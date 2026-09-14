@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defineApp, type Ctx, type KartaApp } from "karta";
+import { defineApp, type Ctx, type KartaApp, type Resolved } from "karta";
 import { MemoryStore } from "@karta/store";
 import { FakeCapabilities } from "@karta/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
@@ -205,5 +205,42 @@ describe("ctx.storage + custom view", () => {
   it("customView is null for a non-custom page and available only when trusted", async () => {
     const { loaded } = await setup();
     expect(loaded.customView("cook-with")).toBeNull();
+  });
+});
+
+// #109: a trusted app's folds are called in place, by the same paths the isolate uses.
+describe("callFold — functions inside a view, by path", () => {
+  const app = defineApp({
+    id: "fold",
+    name: "Fold",
+    version: "1.0.0",
+    schemaVersion: 1,
+    entities: { run: { fields: { km: { type: "number" } } } },
+    pages: [
+      {
+        id: "p",
+        title: "P",
+        view: {
+          type: "stats",
+          entity: "run",
+          items: [
+            {
+              label: "Total",
+              value: (rows: Resolved[]) => rows.reduce((n, r) => n + (r.km as number), 0),
+              compare: { label: "before", value: (rows: Resolved[]) => rows.length },
+            },
+          ],
+        },
+      },
+    ],
+  } as never);
+  const rows = [{ id: "a", km: 5 }, { id: "b", km: 7 }] as never;
+
+  it("calls the value and the comparison, and refuses a path that is not a function", async () => {
+    const loaded = await createHost().load({ kind: "module", app });
+    expect(await loaded.callFold("p", "items.0.value", rows, {} as Ctx)).toBe(12);
+    expect(await loaded.callFold("p", "items.0.compare.value", rows, {} as Ctx)).toBe(2);
+    await expect(loaded.callFold("p", "items.0.label", rows, {} as Ctx)).rejects.toThrow(/no function at items.0.label/);
+    await expect(loaded.callFold("p", "__proto__.constructor", rows, {} as Ctx)).rejects.toThrow(/no function/);
   });
 });
