@@ -32,13 +32,13 @@ test.describe("desktop", () => {
     await page.locator(".k-list-row").first().click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    await expect(detail.locator(".k-section h3")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    // Headings are plain for a group that does not fold and a button for one that does (#108).
+    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
     // The folded group is closed until opened, and opens.
-    const steps = detail.locator("details.k-section");
-    await expect(steps).toHaveCount(1);
-    await expect(steps).not.toHaveAttribute("open", "");
-    await steps.locator("summary").click();
-    await expect(steps).toHaveAttribute("open", "");
+    const steps = detail.getByRole("button", { name: /^Steps/ });
+    await expect(steps).toHaveAttribute("aria-expanded", "false");
+    await steps.click();
+    await expect(steps).toHaveAttribute("aria-expanded", "true");
     // A computed value in a group shows on the detail page.
     await expect(detail.locator(".k-field dt", { hasText: "Calories Per Serving" })).toBeVisible();
 

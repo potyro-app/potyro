@@ -37,6 +37,8 @@ export interface FieldGroup {
   fields: string[];
   /** Start folded. The first group is never folded, whatever this says. */
   collapsed?: boolean;
+  /** The heading folds it on the record page, remembered per device (#108). */
+  collapsible?: boolean;
 }
 
 export interface EntityDef {
@@ -81,6 +83,10 @@ export interface ListView {
   emptyText?: Dynamic<string>;
   param?: string;
   filters?: FilterChip[];
+  /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
+  group?: Binding;
+  /** Headings fold their groups, remembered per device. Needs `group`. */
+  collapsible?: boolean;
 }
 
 export interface GalleryView {
@@ -91,6 +97,10 @@ export interface GalleryView {
   display?: ListDisplay;
   onOpen?: OnOpen;
   emptyText?: Dynamic<string>;
+  /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
+  group?: Binding;
+  /** Headings fold their groups, remembered per device. Needs `group`. */
+  collapsible?: boolean;
 }
 
 export interface TableView {
@@ -99,6 +109,10 @@ export interface TableView {
   filter?: FilterFn;
   sort?: SortFn;
   display?: { columns: string[] };
+  /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
+  group?: Binding;
+  /** Headings fold their groups, remembered per device. Needs `group`. */
+  collapsible?: boolean;
 }
 
 /** An action reference in a detail view: an action key, or an inline navigate button. */
@@ -109,6 +123,10 @@ export type DetailAction =
 export interface DetailSection {
   title?: string;
   fields: string[];
+  /** The heading folds it, remembered per device (#108). */
+  collapsible?: boolean;
+  /** Start folded; implies `collapsible`. */
+  collapsed?: boolean;
 }
 
 export interface DetailView {

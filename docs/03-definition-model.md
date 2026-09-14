@@ -126,6 +126,14 @@ shows the thing, with a way to take it off. `multiple: true` makes it a strip wi
 last. The same tile renders the value on a record page, so one photo looks like one photo
 everywhere. A file that fails to store says so, with a way to try again.
 
+A `list`, `gallery` or `table` view can put its rows under headings with `group` (#108): a field key
+— an enum, a tag (a row sits under each of its tags), a relation, shown by the record's name — or a
+function such as `(r) => monthOf(r.date)`. The view's `sort` holds inside each group; groups follow
+the enum's option order, else the order they first appear, and rows with no value come first under
+no heading. `collapsible: true` makes each heading a button that folds its group, with a count,
+remembered on the device per page; on a phone the heading sticks under the top bar while its rows
+scroll past. On a record page, a detail section or an entity group with `collapsible: true` folds
+the same way (`collapsed: true` starts it folded), and a section that is one list shows its count.
 A `relation` is a searchable picker too. One record opens the same list a long enum uses and closes
 on a pick; `many: true` shows the chosen records as chips you can take off, with Add opening the
 list with checkmarks. When the search finds nothing, the list's last line creates the record, named
