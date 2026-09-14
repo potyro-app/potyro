@@ -14,15 +14,10 @@ import { modifyLoopRefusal, startModify } from "./start-modify.js";
 import { CaseReport } from "./case-report.js";
 import { validateDefinition } from "./validate-app.js";
 import {
-  createClaudeBackend,
-  createOpenRouterBackend,
-  createWebLLMBackend,
-  createGeminiNanoBackend,
   hasBuiltInAI,
   SYSTEM_PROMPT,
   buildUserMessage,
   buildRepairInstruction,
-  buildModifyMessage,
   extractSource,
   looksLikeApp,
 } from "@karta/generator/backends";
@@ -33,6 +28,7 @@ import { loadTrustedModule } from "./trusted-loader.js";
 import type { Provenance } from "@karta/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
+import { backendFor, modifyTurn } from "./model-turn.js";
 import { UiHost } from "./ui-host.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
@@ -307,20 +303,10 @@ export function Studio({
     return source;
   };
 
-  // 2) On-device via WebLLM (WebGPU) — offline once the model is cached.
-  const edgeBackend = () =>
-    createWebLLMBackend({
-      model: engineCfg.edgeModel,
-      initProgressCallback: (p) => setProgress((p as { text?: string })?.text ?? "Loading model…"),
-    });
-
-  // 3) Cloud with the user's own API key (in memory only): Anthropic direct, or any model OpenRouter
-  // serves. Both speak the same ModelBackend contract and get the same generator prompt, so changing
-  // engine changes the model and nothing else.
-  const cloudBackend = () =>
-    engineCfg.engine === "openrouter"
-      ? createOpenRouterBackend({ apiKey: engineCfg.openrouterKey, model: engineCfg.openrouterModel })
-      : createClaudeBackend({ apiKey: engineCfg.anthropicKey, dangerouslyAllowBrowser: true });
+  // Every in-browser engine — on-device, Chrome built-in, or cloud with the user's own key — comes
+  // from one place, shared with Edit mode (model-turn.ts). Same contract, same generator prompt, so
+  // changing engine changes the model and nothing else.
+  const engineBackend = () => backendFor(engineCfg, (text) => setProgress(text));
 
   /**
    * A cloud generation is one long POST that produces nothing until it is done — and OpenRouter
@@ -346,16 +332,17 @@ export function Studio({
 
   // One raw model turn for the current engine, for a modify OR a repair (a repair is a modify whose
   // instruction is the validator's own words). Returns the model's REPLY: `guardedModify` reads it.
-  const modifyAttempt = async (src: string, instr: string): Promise<string> => {
-    const p = { id: "studio", description: instr };
-    if (engine === "edge") return (await edgeBackend()).modify(src, instr, p);
-    if (engine === "builtin") return (await createGeminiNanoBackend()).modify(src, instr, p);
-    if (engine === "cli") {
-      const prompt = ["The current app:", "```ts", src, "```", "", buildModifyMessage(instr)].join("\n");
-      return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (secs) => setProgress(`Modifying via ${label}… ${secs}s`) });
-    }
-    return (await cloudBackend()).modify(src, instr, p);
-  };
+  const modifyAttempt = (src: string, instr: string): Promise<string> =>
+    modifyTurn({
+      engine: engineCfg,
+      source: src,
+      instruction: instr,
+      // The clock is `withTick`'s for in-browser engines; only `claude -p` reports its own seconds.
+      onProgress: (text, secs) => {
+        if (secs === undefined) setProgress(text);
+        else if (engine === "cli") setProgress(`Modifying via ${label}… ${secs}s`);
+      },
+    });
 
   /** The shape a repair is judged against. A source that does not load has no shape to lose. */
   const shapeOrEmpty = async (src: string): Promise<AppShape> => {
@@ -378,9 +365,7 @@ export function Studio({
       () =>
         withTick("Generating", async () => {
           if (engine === "cli") return runCli(buildUserMessage({ id: "studio", description }));
-          if (engine === "edge") return (await edgeBackend()).generate({ id: "studio", description });
-          if (engine === "builtin") return (await createGeminiNanoBackend()).generate({ id: "studio", description });
-          return (await cloudBackend()).generate({ id: "studio", description });
+          return (await engineBackend()).generate({ id: "studio", description });
         }),
       true,
       description.trim() || undefined,

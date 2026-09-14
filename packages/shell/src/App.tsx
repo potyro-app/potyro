@@ -26,8 +26,6 @@ import { ChatPanel, RecordThread, chatSupported, unreadCount, useThread } from "
 import { ROOM_THREAD } from "@karta/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
-  SYSTEM_PROMPT,
-  buildModifyMessage,
   buildRepairInstruction,
   guardedModify,
   type ModifyContext,
@@ -45,7 +43,7 @@ import { UiSurfaces, type UiHost } from "./ui-host.js";
 import type { NavHost } from "./nav-host.js";
 import { ViewErrorBoundary } from "./view-error-boundary.js";
 
-import { canGenerate, generateViaCli } from "./generate-client.js";
+import { canUseEngine, modifyTurn } from "./model-turn.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { describeDrift, schemaDrift } from "./schema-drift.js";
 import { shellDialogs } from "./dialog.js";
@@ -597,11 +595,10 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   // ⑤ Edit mode → agent: point at a piece of UI and describe a change; the target + your text go to
   // the Modify agent, which edits THIS app's source. Only for your own saved apps (editable source).
   const canEdit = Boolean(generator && currentKind === "user" && appId);
-  // Whether a MODEL can be reached, which is a different question from whether this is the full
-  // shell. A deployed build has no `/__generate` route, so every AI surface offered itself and then
-  // failed with "Is `pnpm dev` still running?" — see `canGenerate`. Structural editing and History
-  // stay available either way; neither calls a model.
-  const canAskAgent = canGenerate();
+  // Whether a MODEL can be reached — the dev route, or an engine the person chose with its key
+  // (model-turn.ts). A deployed build has no `/__generate` route, so offering `claude -p` there showed
+  // "Is `pnpm dev` still running?". Structural editing and History stay available either way.
+  const canAskAgent = canUseEngine(engineCfg);
   const [editMode, setEditMode] = useState(false);
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -684,20 +681,21 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     return { viewType, pageTitle: page ? titles[page.id] : undefined, fields: VIEW_FIELDS[viewType]!, pageFields: PAGE_FIELDS };
   })();
 
-  // One round-trip through the local `claude -p` dev endpoint. The contract goes in `system`, not
-  // the prompt — see generate-client.ts.
-  const askAgent = async (currentSource: string, message: string): Promise<string> =>
-    generateViaCli({
-      system: SYSTEM_PROMPT,
-      prompt: ["The current app:", "```ts", currentSource, "```", "", message].join("\n"),
-      onProgress: (s) => setModifyProgress(`Working… ${s}s`),
+  // One turn with the chosen engine — the dev route or the person's own key (model-turn.ts).
+  const askAgent = (currentSource: string, instruction: string, ctx?: ModifyContext): Promise<string> =>
+    modifyTurn({
+      engine: engineCfg,
+      source: currentSource,
+      instruction,
+      ctx,
+      onProgress: (text, s) => setModifyProgress(s === undefined ? text : `${text}… ${s}s`),
     });
 
   /** An edit round: the model sends SEARCH/REPLACE edits, `guardedModify` applies them, and it may
    *  legitimately come back as "this isn't the app's to fix". */
   const runModify = (currentSource: string, instruction: string, ctx: ModifyContext) =>
     guardedModify({
-      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr, ctx)),
+      attempt: (instr) => askAgent(currentSource, instr, ctx),
       shapeOf: loadDefinition,
       before: { pages: def.pages, entities: def.entities },
       instruction,
@@ -717,7 +715,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       () => ({ pages: [], entities: {} }),
     );
     const result = await guardedModify({
-      attempt: (instr) => askAgent(currentSource, buildModifyMessage(instr)),
+      attempt: (instr) => askAgent(currentSource, instr),
       shapeOf: loadDefinition,
       before,
       instruction: buildRepairInstruction(issues),
@@ -926,7 +924,9 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     navigate(list?.id ?? landingPage());
   };
   const chromeTools: ChromeTool[] = [
-    ...(generator && canAskAgent ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
+    // The Studio needs no model: its source editor and History are how a broken app gets repaired
+    // on a build with no engine at all.
+    ...(generator ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
             setStudioPrefill(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
             openStudio();
@@ -1210,7 +1210,8 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
               // Say what this build cannot do, rather than leaving a box that fails on submit. The
               // controls above still work — they never needed a model.
               <p className="k-muted">
-                This copy of Karta has no agent, so changes here are the structural ones above.
+                To describe a change and have the agent make it, choose a model in the Studio&rsquo;s Model
+                settings — your own Anthropic or OpenRouter key works on any copy of Karta.
               </p>
             )}
             {modifyProgress && !modifyError ? <p className="k-muted">{modifyProgress}</p> : null}

@@ -1,6 +1,8 @@
 // Pluggable model backend for the eval harness. Cloud (Claude, KA-05) and on-device (KA-07)
 // backends implement this same interface so they report comparable numbers against one corpus.
 
+import type { ModifyContext } from "./prompt.js";
+
 export interface GenPrompt {
   id: string;
   /** The natural-language ask the model must turn into a single `.app.ts` source. */
@@ -19,7 +21,7 @@ export interface ModelBackend {
   /** Optional edit step: given the current source + a natural-language change, return the model's
    *  REPLY as text — SEARCH/REPLACE edits, a whole file, or a `NOT-IN-APP:` verdict. It is not
    *  source: `guardedModify` (guarded-modify.ts) is what reads it and applies edits to the app. */
-  modify?(source: string, instruction: string, prompt: GenPrompt): Promise<string>;
+  modify?(source: string, instruction: string, prompt: GenPrompt, ctx?: ModifyContext): Promise<string>;
 }
 
 /**

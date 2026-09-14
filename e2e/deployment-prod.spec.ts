@@ -52,13 +52,23 @@ test("a deployed build can be pointed at another relay, without devtools", async
     .toBe("wss://relay.example.com/sync");
 });
 
-test("a deployed build does not offer an agent it cannot reach", async ({ page }) => {
+test("a deployed build still lets you repair an app, and does not offer the dev server's generator", async ({ page }) => {
   // `/__generate` is a Vite DEV-SERVER middleware. In a deployed build the route does not exist, and
   // every AI surface still offered itself, failed on the fetch, and showed a stranger the words
-  // "Is `pnpm dev` still running?".
+  // "Is `pnpm dev` still running?". The first fix hid the Studio and the agent entirely — which left
+  // someone whose app had broken with no way to fix it. The source editor never needed a model, and
+  // a model reached with the person's own key never needed a server; only `claude -p` does.
   await page.goto("/");
   await expect(page.locator(".k-launcher")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Studio", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: /New app/ }).first().click();
+  const studio = page.locator(".k-studio");
+  await expect(studio).toBeVisible({ timeout: 30_000 });
+  // It starts on an engine that can work here — one that asks for a key — not on `claude -p`.
+  await expect(studio.getByRole("button", { name: "Model settings" })).not.toContainText("claude -p");
+  await studio.getByRole("button", { name: "Model settings" }).click();
+  const cli = page.getByRole("radio", { name: /claude -p/ });
+  await expect(cli).toBeDisabled();
+  await expect(page.locator(".k-engine-row", { has: cli })).toContainText("only while the dev server runs");
 
   // The endpoint really is absent — this is the fact the gate is protecting against, so assert it
   // rather than assuming. A preview server answers unknown paths with the SPA shell, so "not JSON"
