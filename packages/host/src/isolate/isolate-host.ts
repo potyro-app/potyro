@@ -314,6 +314,10 @@ class IsolateLoadedApp implements LoadedApp {
     return this.invoke({ kind: "aggregate", pageId, rows, ...this.base(ctx) }, ctx);
   }
 
+  async callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value> {
+    return this.invoke({ kind: "fold", pageId, path, rows, ...this.base(ctx) }, ctx);
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
     const v = await this.invoke({ kind: "reminderWhen", id, record, ...this.base(ctx) }, ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));

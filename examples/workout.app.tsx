@@ -341,6 +341,24 @@ const refId = (x: unknown): string => (typeof x === "string" ? x : (x as { id: s
 // scoring: bodyweight lifts progress on reps; loaded lifts on volume (kg × reps)
 const setScore = (bw: boolean, s: { kg?: number; reps?: number }) => (bw ? (s.reps ?? 0) : (s.kg ?? 0) * (s.reps ?? 0));
 
+// ---- Progress (#109): weeks start on Monday; a session belongs to the week its date falls in. ----
+const WEEK = 7 * 24 * 3600 * 1000;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const weekStart = (d: Date): number => {
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return day.getTime() - ((day.getDay() + 6) % 7) * 24 * 3600 * 1000;
+};
+/** The sessions of the week `back` weeks before this one. */
+const inWeek = (rows: any[], now: Date, back: number): any[] => {
+  const from = weekStart(now) - back * WEEK;
+  return rows.filter((s) => s.date.getTime() >= from && s.date.getTime() < from + WEEK);
+};
+const volume = (rows: any[]): number => rows.reduce((v, s) => v + s.totalVolume, 0);
+const avgMinutes = (rows: any[]): number | null => {
+  const timed = rows.filter((s) => s.durationSec);
+  return timed.length ? Math.round(timed.reduce((n, s) => n + s.durationSec, 0) / timed.length / 60) : null;
+};
+
 export default defineApp({
   id: "workout",
   name: "PPL Log",
@@ -463,6 +481,55 @@ export default defineApp({
         },
         onOpen: { page: "session", param: { sessionId: "id" } },
         emptyText: "No sessions logged yet. Hit Train to start one.",
+      },
+    },
+    {
+      id: "progress",
+      title: "Progress",
+      icon: "📈",
+      layout: {
+        type: "stack",
+        items: [
+          {
+            view: {
+              type: "stats",
+              entity: "session",
+              items: [
+                {
+                  label: "Sessions this week",
+                  value: (rows, ctx) => inWeek(rows, ctx.now(), 0).length,
+                  compare: { value: (rows, ctx) => inWeek(rows, ctx.now(), 1).length, label: "last week" },
+                },
+                {
+                  label: "Volume this week",
+                  unit: "kg",
+                  value: (rows, ctx) => volume(inWeek(rows, ctx.now(), 0)),
+                  compare: { value: (rows, ctx) => volume(inWeek(rows, ctx.now(), 1)), label: "last week", as: "percent" },
+                },
+                {
+                  label: "Average session",
+                  unit: "min",
+                  value: (rows, ctx) => avgMinutes(inWeek(rows, ctx.now(), 0)),
+                  compare: { value: (rows, ctx) => avgMinutes(inWeek(rows, ctx.now(), 1)), label: "last week" },
+                },
+              ],
+            },
+          },
+          {
+            view: {
+              type: "chart",
+              entity: "session",
+              title: "Sessions per week",
+              subtitle: "Last 8 weeks",
+              series: (rows, ctx) =>
+                [7, 6, 5, 4, 3, 2, 1, 0].map((back) => {
+                  const d = new Date(weekStart(ctx.now()) - back * WEEK);
+                  const n = inWeek(rows, ctx.now(), back).length;
+                  return { label: `${d.getDate()} ${MONTHS[d.getMonth()]}`, value: n, text: `${n} session${n === 1 ? "" : "s"}` };
+                }),
+            },
+          },
+        ],
       },
     },
     {

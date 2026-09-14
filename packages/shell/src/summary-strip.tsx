@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { Field, Resolved, SummaryValue } from "karta";
-import { computeSummary, type SummaryFigure } from "./summary.js";
+import { computeSummary, type SummaryFigure } from "@karta/views";
 
 interface SummaryStripProps {
   runtime: KartaRuntime;
