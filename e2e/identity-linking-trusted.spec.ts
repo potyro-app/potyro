@@ -74,7 +74,7 @@ test("a second device adopts the same identity from the recovery words", async (
 
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await a.getByRole("button", { name: "You and your devices" }).click();
-  await a.getByRole("button", { name: "Show my words" }).click();
+  await a.getByRole("button", { name: /Add a device/ }).click();
 
   const words = (await a.locator(".k-passphrase").innerText({ timeout: 30_000 })).trim();
   // 24, not 12: the seed is 32 bytes and BIP39 spends 3 words per 4. A short phrase here would mean
@@ -99,7 +99,7 @@ test("a second device adopts the same identity from the recovery words", async (
   b.once("dialog", () => {});
   await b.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await b.getByRole("button", { name: "You and your devices" }).click();
-  await b.getByRole("button", { name: "Enter my words" }).click();
+  await b.getByRole("button", { name: /This is my second device/ }).click();
 
   const field = b.locator(".k-dialog input");
   await expect(field).toBeVisible({ timeout: 30_000 });
