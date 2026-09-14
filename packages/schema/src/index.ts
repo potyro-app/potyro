@@ -79,6 +79,7 @@ export type {
   StepsView,
   ChecklistView,
   BoardView,
+  TimelineView,
   StatsView,
   StatItem,
   ChartView,

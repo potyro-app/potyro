@@ -301,6 +301,22 @@ export interface AggregateView {
   emptyText?: Dynamic<string>;
 }
 
+/** Records on a rail by date, newest first, under sticky day, week or month headings (#110). */
+export interface TimelineView {
+  type: "timeline";
+  entity: string;
+  /** A date field, or a function returning a Date. */
+  date: Binding;
+  display?: ListDisplay;
+  /** An enum field: each dot wears its option's colour. */
+  color?: string;
+  groupBy?: "day" | "week" | "month";
+  newest?: "first" | "last";
+  filter?: FilterFn;
+  onOpen?: OnOpen;
+  emptyText?: Dynamic<string>;
+}
+
 /** A stats tile (#109): a summary figure, optionally compared with the same figure for an earlier period. */
 export interface StatItem extends SummaryValue {
   /** After the number: "kg", "min". A `field`'s own unit is used when this is left out. */
@@ -371,6 +387,7 @@ export type View =
   | StepsView
   | ChecklistView
   | BoardView
+  | TimelineView
   | StatsView
   | ChartView
   | AggregateView
@@ -386,6 +403,7 @@ export const VIEW_TYPES = [
   "steps",
   "checklist",
   "board",
+  "timeline",
   "stats",
   "chart",
   "aggregate",
