@@ -32,6 +32,8 @@ test("a deployed build can be pointed at another relay, without devtools", async
   // reachable by typing a localStorage key by hand, which is not an escape hatch anyone can use.
   await page.goto("/");
   await page.getByRole("button", { name: "You and your devices" }).click();
+  // The relay is infrastructure, so it lives under Advanced (#95).
+  await page.getByText(/^Advanced/).click();
   await page.getByRole("button", { name: "Change relay" }).click();
 
   const dialog = page.locator(".k-dialog");
