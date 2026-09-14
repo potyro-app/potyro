@@ -319,6 +319,19 @@ const checklistView = z.object({
   emptyText: zDynamicString.optional(),
 });
 
+const timelineView = z.object({
+  type: z.literal("timeline"),
+  entity: z.string(),
+  date: zBinding,
+  display: listDisplaySchema.optional(),
+  color: z.string().optional(),
+  groupBy: z.enum(["day", "week", "month"]).optional(),
+  newest: z.enum(["first", "last"]).optional(),
+  filter: zFn.optional(),
+  onOpen: onOpenSchema.optional(),
+  emptyText: zDynamicString.optional(),
+});
+
 // A stats tile is a summary figure with a unit and a comparison; the one-of rules are the summary's.
 const statItemSchema = z
   .object({
@@ -396,6 +409,7 @@ const viewSchema = z.discriminatedUnion("type", [
   stepsView.strict(),
   checklistView.strict(),
   boardView.strict(),
+  timelineView.strict(),
   statsView.strict(),
   chartView.strict(),
   aggregateView.strict(),
@@ -776,6 +790,25 @@ export function checkReferences(def: AppDefinition): string[] {
           for (const c of v.columns ?? []) {
             if (!col.options.includes(c)) issues.push(`${where} columns names "${c}", which is not an option of "${v.column}" (${col.options.join(", ")})`);
           }
+        }
+        if (v.display) {
+          checkBinding(v.display.primary, "display.primary");
+          checkBinding(v.display.secondary, "display.secondary");
+          if (v.display.media) ensureKey(entity, v.entity, v.display.media, `${where} display.media`);
+          for (const b of v.display.badges ?? []) ensureKey(entity, v.entity, b, `${where} display.badges`);
+        }
+        break;
+      }
+      case "timeline": {
+        // A string `date` must be a date field: a text field would sort "10 Sep" before "9 Sep".
+        if (typeof v.date === "string") {
+          const f = entity.fields[v.date];
+          if (!f && !entity.computed?.[v.date]) issues.push(`${where} date names unknown field "${v.date}" on entity "${v.entity}"`);
+          else if (f && f.type !== "datetime") issues.push(`${where} date "${v.date}" must be a datetime field, not ${f.type}`);
+        }
+        if (v.color !== undefined) {
+          const c = entity.fields[v.color];
+          if (!c || c.type !== "enum") issues.push(`${where} color "${v.color}" must be an enum field — its options' colours are the dots`);
         }
         if (v.display) {
           checkBinding(v.display.primary, "display.primary");
