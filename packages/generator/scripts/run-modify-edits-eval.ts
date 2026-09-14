@@ -24,7 +24,7 @@
 // that keeps the app by ignoring the request does not score as a win.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
 import { createOpenRouterBackend, createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { guardedModify, type GuardedModifyResult } from "../src/guarded-modify.js";
@@ -255,8 +255,12 @@ async function runCase(
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
   // use) lives beside this harness, so the product's fixtures stay the product's.
   const fixturesDir = resolve(process.cwd(), "fixtures");
-  const sourceDir = existsSync(join(examplesDir, `${c.app}.app.ts`)) ? examplesDir : fixturesDir;
-  const source = readFileSync(join(sourceDir, `${c.app}.app.ts`), "utf8");
+  // `.app.tsx` too: an example with a custom view is a .tsx file (recipes, workout).
+  const candidates = [examplesDir, fixturesDir].flatMap((dir) => [join(dir, `${c.app}.app.ts`), join(dir, `${c.app}.app.tsx`)]);
+  const file = candidates.find((f) => existsSync(f));
+  if (!file) throw new Error(`no app "${c.app}" in examples/ or fixtures/`);
+  const source = readFileSync(file, "utf8");
+  const sourceDir = dirname(file);
   let turn = 0;
   // Every reply is written out as the model sent it (edits or a file), or a failed case cannot be
   // diagnosed. The applied result is written separately, so it can be diffed against the original.
