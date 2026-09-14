@@ -285,8 +285,8 @@ test("a generate that needs repair is repaired with an edit, through the same ga
   // Exactly two requests: the invalid generate, then one repair round — no extra retries.
   expect(hits).toEqual(["openrouter", "openrouter"]);
   expect(sent[1]).toContain("Fix exactly these problems"); // buildRepairInstruction's own words
-  // The validator's own words reached the model — Zod's discriminated-union message for an invalid
-  // `view.type` names what the page's view CAN be, not the bad string, so that (not "lisst" itself)
-  // is what to expect in the request the model actually saw.
+  // The validator's own words reached the model — including the bad value itself (#76), so the
+  // model can SEARCH for the line it wrote rather than hunt for it from a path.
   expect(sent[1]).toContain("Invalid discriminator value");
+  expect(sent[1]).toMatch(/got \\?"lisst\\?"/);
 });

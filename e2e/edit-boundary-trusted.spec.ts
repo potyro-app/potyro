@@ -280,9 +280,9 @@ test("an edit that does not validate is repaired with a second edit, then saved"
   // own words, not a rewritten whole-file request.
   expect(prompts).toHaveLength(2);
   expect(prompts[1]).toContain("Fix exactly these problems");
-  // The validator's message names the PATH, not the bad value (`pages.N.view.type: Invalid
-  // discriminator value. Expected …`) — so this checks for the path segment, not the literal "lisst".
+  // The validator's message names the path and, since #76, the bad value it found there.
   expect(prompts[1]).toContain("view.type");
+  expect(prompts[1]).toMatch(/got \\?"lisst\\?"/); // the value, not just the source that contains it
 });
 
 test("a repair that still does not validate saves nothing", async ({ page }) => {

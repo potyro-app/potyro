@@ -18,7 +18,7 @@
 // It is never silent, and it never burns a fourth call.
 
 import { structuralLoss, type AppShape } from "@karta/runtime";
-import { applyEdits, describeEditFailures, EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, type EditFailure } from "./edits.js";
+import { applyEdits, describeEditFailures, DIVIDER_MARK, EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, REPLACE_MARK, SEARCH_MARK, type EditFailure } from "./edits.js";
 import { extractSource, looksLikeApp, parseModifyReply, withNotDone } from "./prompt.js";
 
 export type ReadReply =
@@ -27,13 +27,6 @@ export type ReadReply =
   | { kind: "diagnosis"; text: string }
   | { kind: "no-match"; failures: EditFailure[] }
   | { kind: "unusable"; text: string };
-
-// Mirrors edits.ts's own marker regexes (kept private there, so duplicated here rather than
-// exported purely for this). Any drift between the two would show up as parseEditsStrict
-// disagreeing with what this pass thought was a block, which the tests would catch.
-const SEARCH_MARK = /^<{5,9} SEARCH\s*$/;
-const DIVIDER_MARK = /^={5,9}\s*$/;
-const REPLACE_MARK = /^>{5,9} REPLACE\s*$/;
 
 const FENCE = /```[A-Za-z0-9_+.-]*[ \t]*\r?\n[\s\S]*?(?:```|$)/g;
 

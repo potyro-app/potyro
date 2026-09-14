@@ -339,3 +339,33 @@ describe("describeEditFailures", () => {
     expect(text).toMatch(/edit 3 is malformed.*more than one =======/i);
   });
 });
+
+// #75: two quiet failures of the applier, found in review.
+describe("applyEdits — what used to pass silently", () => {
+  test("an edit whose only change is a trailing blank line is reported, not applied as ok", () => {
+    const source = "const a = 1;\nconst b = 2;\n";
+    const r = applyEdits(source, [{ search: "const a = 1;", replace: "const a = 1;\n\n" }]);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.failures[0]!.reason).toBe("no-change");
+    expect(describeEditFailures(r.failures)).toMatch(/Edit 1 changes nothing/);
+    // A real change next to a blank line still applies.
+    expect(applyEdits(source, [{ search: "const a = 1;", replace: "const a = 1;\n\nconst c = 3;" }]).ok).toBe(true);
+    // And an echo that repeats the SEARCH exactly is left alone, as before.
+    expect(applyEdits(source, [{ search: "const a = 1;", replace: "const a = 1;" }]).ok).toBe(true);
+  });
+
+  test("a line deeper than the window showed is re-indented in the file's unit, not the model's", () => {
+    const file = ["export default {", "  a: {", "    b: {", "      c: 1,", "    },", "  },", "};"].join("\n");
+    const r = applyEdits(file, [
+      {
+        search: "\ta: {\n\t\tb: {",
+        replace: "\ta: {\n\t\tb: {\n\t\t\td: {\n\t\t\t\te: 2,\n\t\t\t},",
+      },
+    ]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.source).toContain("  a: {\n    b: {\n      d: {\n        e: 2,\n      },");
+    expect(r.source).not.toContain("\t");
+  });
+});

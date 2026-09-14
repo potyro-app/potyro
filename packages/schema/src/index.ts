@@ -3,7 +3,7 @@
 export { defineApp, isKartaApp } from "./defineApp.js";
 export { f } from "./fields.js";
 export { humanizeKey } from "./humanize.js";
-export { structureSchema, checkReferences, checkFormFields, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
+export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- shared value types ----
 export type { Id, Value, KartaRecord, Resolved, MediaRef, Geo } from "./types/core.js";

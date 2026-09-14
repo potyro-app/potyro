@@ -260,3 +260,36 @@ describe("startFix — engine/client mismatch (FINDING 1)", () => {
     expect(mocks.chatCreate).not.toHaveBeenCalled();
   });
 });
+
+// #73: a fix resumed after a question must be about the app the agent was shown.
+describe("startFix — resuming after the app changed", () => {
+  const engine = { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter" as const, openrouterKey: "test-key" };
+  const transcript = (source: string) => [
+    { role: "system" as const, content: "system" },
+    { role: "user" as const, content: `Search stays empty\n\nThe app as it is:\n\`\`\`ts\n${source}\n\`\`\`` },
+    { role: "assistant" as const, content: "Which city did you type?" },
+    { role: "user" as const, content: "Lisbon" },
+  ];
+
+  it("reads the source the opening turn showed", async () => {
+    const { sourceShownIn } = await import("../src/start-fix.js");
+    expect(sourceShownIn(transcript("const a = 1;\n```inner```\nconst b = 2;"))).toBe("const a = 1;\n```inner```\nconst b = 2;");
+    expect(sourceShownIn([{ role: "user", content: "no app here" }])).toBeNull();
+  });
+
+  it("refuses, before spending anything, when the saved app is no longer the one shown", async () => {
+    mocks.chatCreate.mockClear();
+    const outcome = await startFix({ source: "export default NEW", theCase: aCase(), runtime, store: {} as never, engine, resumeFrom: transcript("export default OLD") as never });
+    expect(outcome.kind).toBe("refused");
+    expect((outcome as { text: string }).text).toMatch(/changed after the question/);
+    expect(mocks.chatCreate).not.toHaveBeenCalled();
+  });
+
+  it("resumes when the app is the one the agent was shown", async () => {
+    mocks.chatCreate.mockReset();
+    mocks.chatCreate.mockResolvedValue({ choices: [{ message: { content: "NOT-IN-APP: a data problem." } }] });
+    const outcome = await startFix({ source: "export default SAME", theCase: aCase(), runtime, store: {} as never, engine, resumeFrom: transcript("export default SAME") as never });
+    expect(outcome.kind).not.toBe("refused");
+    expect(mocks.chatCreate).toHaveBeenCalled();
+  });
+});
