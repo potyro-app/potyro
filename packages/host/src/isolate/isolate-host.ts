@@ -3,7 +3,7 @@
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
 // memory + time limits.
 
-import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, Value } from "karta";
+import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiProgress, Value } from "karta";
 import type { Store } from "@karta/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { resolveRecord, type ResolveDeps } from "../resolve.js";
@@ -66,6 +66,12 @@ class IsolateLoadedApp implements LoadedApp {
   readonly permissions: PermissionManifest;
 
   private ctxHost: Ctx | null = null;
+  private progress = new Map<string, UiProgress>();
+  private disposed = false;
+  /** Questions open for the person, and the time they have held calls up — a call's budget pauses for them. */
+  private questionsOpen = 0;
+  private questionSince = 0;
+  private questionMs = 0;
   private readonly resolveDeps: ResolveDeps;
 
   constructor(
@@ -91,8 +97,7 @@ class IsolateLoadedApp implements LoadedApp {
   }
 
   // ---- host-side bridge servicing ctx.* ops from inside the VM ----
-  private async handleOp(opJson: string): Promise<string> {
-    const op = deserialize<Record<string, unknown>>(opJson);
+  private async handleOp(op: Record<string, unknown>): Promise<string> {
     const kind = op.op as string;
     const nul = serialize(null);
 
@@ -159,19 +164,38 @@ class IsolateLoadedApp implements LoadedApp {
       case "ui.toast":
         this.ctxHost?.ui.toast(op.msg as string);
         return nul;
+      // Questions for the person (#112) — and the older confirm/prompt/pick. Plain data both ways, no
+      // permission: none of them reach outside the app. While one is open the call's budget pauses.
       case "ui.confirm":
-        return serialize((await this.ctxHost?.ui.confirm(op.msg as string)) ?? false);
       case "ui.prompt":
-        return serialize((await this.ctxHost?.ui.prompt(op.msg as string, op.opts as { default?: string })) ?? null);
       case "ui.pick":
-        // `UiBridge.pick`'s `opts.label` is a function `(t: T) => string` (types.ts) — a function
-        // cannot cross the isolate boundary, so `harness.ts` never sends it, only `{multi}`. An
-        // untrusted app's picker therefore renders with the host's default item labelling, not the
-        // app-chosen label a trusted app could supply directly. This is a real, deliberate gap
-        // between the trusted and untrusted paths, not an oversight — do not "fix" it by trying to
-        // marshal a function across. `?? null` matches the bridge's own cancel contract (`ui-bridge.ts`'s
-        // headless fallback also resolves to `null`).
-        return serialize((await this.ctxHost?.ui.pick(op.items as unknown[], op.opts as { multi?: boolean })) ?? null);
+      case "ui.sheet":
+      case "ui.menu":
+      case "ui.form": {
+        const ctx = this.ctxHost;
+        if (!ctx) return nul;
+        this.openQuestion();
+        try {
+          const opts = (op.opts ?? undefined) as never;
+          const answer =
+            kind === "ui.confirm"
+              ? await ctx.ui.confirm(op.msg as string, opts)
+              : kind === "ui.prompt"
+                ? await ctx.ui.prompt(op.msg as string, opts)
+                : kind === "ui.pick"
+                  ? // `opts.label` is a function and cannot cross, so only `{multi}` arrives: an untrusted
+                    // picker labels items the host's default way — a deliberate gap, not an oversight.
+                    await ctx.ui.pick(op.items as unknown[], opts)
+                  : kind === "ui.sheet"
+                    ? await ctx.ui.sheet(opts)
+                    : kind === "ui.menu"
+                      ? await ctx.ui.menu(opts)
+                      : await ctx.ui.form(opts);
+          return serialize((answer ?? (kind === "ui.confirm" ? false : null)) as Value);
+        } finally {
+          this.closeQuestion();
+        }
+      }
       case "nav":
         this.ctxHost?.navigate(op.page as string, op.params as Record<string, string>);
         return nul;
@@ -206,6 +230,30 @@ class IsolateLoadedApp implements LoadedApp {
       case "nav":
         this.ctxHost?.navigate(op.page as string, op.params as Record<string, string>);
         return;
+      case "host.call": {
+        // Answered later, never now: the VM is mid-execution while this runs.
+        const id = op.id as string;
+        this.handleOp(op.req as Record<string, unknown>).then(
+          (json) => this.settle(id, true, json),
+          (e: unknown) => this.settle(id, false, e instanceof Error ? e.message : String(e)),
+        );
+        return;
+      }
+      case "ui.progress": {
+        // A bar is a handle inside the VM; out here it is an id, opened on first sight.
+        const id = op.id as string;
+        let bar = this.progress.get(id);
+        if (!bar && this.ctxHost) {
+          bar = this.ctxHost.ui.progress(String(op.label ?? ""));
+          this.progress.set(id, bar);
+        }
+        if (!bar) return;
+        if (op.done) {
+          bar.done();
+          this.progress.delete(id);
+        } else if (typeof op.fraction === "number") bar.update(op.fraction, (op.detail as string | null) ?? undefined);
+        return;
+      }
       case "cap.haptics.vibrate":
         void this.ctxHost?.caps.haptics?.vibrate(op.pattern as number | number[]);
         return;
@@ -216,14 +264,6 @@ class IsolateLoadedApp implements LoadedApp {
   }
 
   installBridge(): void {
-    const asyncFn = this.vm.newAsyncifiedFunction("__host", async (argHandle) => {
-      const opJson = this.vm.getString(argHandle);
-      const result = await this.handleOp(opJson);
-      return this.vm.newString(result);
-    });
-    this.vm.setProp(this.vm.global, "__host", asyncFn);
-    asyncFn.dispose();
-
     const syncFn = this.vm.newFunction("__hostSync", (argHandle) => {
       this.handleSyncOp(this.vm.getString(argHandle));
       return this.vm.undefined;
@@ -236,20 +276,72 @@ class IsolateLoadedApp implements LoadedApp {
     return Object.keys(ctx.caps).filter((k) => (ctx.caps as Record<string, unknown>)[k] != null);
   }
 
-  /** Invoke `globalThis.__karta.call(payload)` in the VM under a timeout; return its value. */
-  private async invoke(payload: Record<string, unknown>, ctx: Ctx): Promise<Value> {
-    this.ctxHost = ctx;
+  private openQuestion(): void {
+    if (this.questionsOpen++ === 0) this.questionSince = Date.now();
+  }
+  private closeQuestion(): void {
+    if (--this.questionsOpen === 0) this.questionMs += Date.now() - this.questionSince;
+  }
+  /** Milliseconds spent waiting on the person so far, including a question still open. */
+  private waitedOnPeople(): number {
+    return this.questionMs + (this.questionsOpen ? Date.now() - this.questionSince : 0);
+  }
+
+  /** One synchronous entry into the VM, under the per-entry CPU budget, then the jobs it queued. */
+  private enter(run: () => void): void {
     const deadline = Date.now() + this.timeoutMs;
     this.vm.runtime.setInterruptHandler(() => Date.now() > deadline);
     try {
-      const payloadJson = serialize(payload);
-      const code = `globalThis.__karta.call(${JSON.stringify(payloadJson)})`;
-      const evalRes = await this.vm.evalCodeAsync(code);
-      const promiseHandle = this.vm.unwrapResult(evalRes);
-      const nativePromise = this.vm.resolvePromise(promiseHandle);
+      run();
       this.vm.runtime.executePendingJobs();
-      const resolved = await nativePromise;
-      promiseHandle.dispose();
+    } finally {
+      this.vm.runtime.removeInterruptHandler?.();
+    }
+  }
+
+  /** A host call's answer, handed back to the promise waiting for it inside the VM. */
+  private settle(id: string, ok: boolean, json: string): void {
+    if (this.disposed) return;
+    try {
+      this.enter(() => {
+        this.vm.unwrapResult(this.vm.evalCode(`globalThis.__karta.settle(${JSON.stringify(id)}, ${ok}, ${JSON.stringify(json)})`)).dispose();
+      });
+    } catch (e) {
+      // The continuation ran out of budget or threw at the top level; the call waiting on it
+      // reports that through its own timeout. Nothing here can hand the error to app code.
+      console.warn(`[${this.definition.id}] isolate continuation failed:`, e);
+    }
+  }
+
+  /**
+   * Invoke `globalThis.__karta.call(payload)` and return its value. The budget is wall-clock time
+   * spent by the call — its own code and the host calls it waits on — but not the time a question
+   * is open for the person: a form can take a minute, and that is not the app running away.
+   */
+  private async invoke(payload: Record<string, unknown>, ctx: Ctx): Promise<Value> {
+    this.ctxHost = ctx;
+    const code = `globalThis.__karta.call(${JSON.stringify(serialize(payload))})`;
+    let handle: QuickJSHandle | null = null;
+    let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
+    this.enter(() => {
+      handle = this.vm.unwrapResult(this.vm.evalCode(code));
+      settled = this.vm.resolvePromise(handle);
+    });
+
+    const started = Date.now();
+    const waitedBefore = this.waitedOnPeople();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      const check = (): void => {
+        const used = Date.now() - started - (this.waitedOnPeople() - waitedBefore);
+        if (used >= this.timeoutMs) reject(new Error(`isolate call timed out after ${this.timeoutMs} ms`));
+        else timer = setTimeout(check, Math.max(10, this.timeoutMs - used));
+      };
+      timer = setTimeout(check, this.timeoutMs);
+    });
+    timedOut.catch(() => {});
+    try {
+      const resolved = await Promise.race([settled, timedOut]);
       const valueHandle = this.vm.unwrapResult(resolved);
       const out = this.vm.getString(valueHandle);
       valueHandle.dispose();
@@ -257,8 +349,10 @@ class IsolateLoadedApp implements LoadedApp {
       if (!parsed.ok) throw new Error(`isolate app error: ${parsed.error}`);
       return parsed.value ?? null;
     } finally {
-      this.vm.runtime.removeInterruptHandler?.();
-      this.ctxHost = null;
+      clearTimeout(timer);
+      if (!this.disposed) (handle as QuickJSHandle | null)?.dispose();
+      // ctxHost is left as it is: an action that awaited a question resumes after this call has
+      // returned, and its host calls still need a ctx of this app.
     }
   }
 
@@ -326,6 +420,7 @@ class IsolateLoadedApp implements LoadedApp {
     return null; // docs/05: custom views run only for trusted apps
   }
   dispose(): void {
+    this.disposed = true;
     this.vm.dispose();
   }
 }

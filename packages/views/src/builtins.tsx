@@ -33,7 +33,7 @@ export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: st
   // Resolves to whether the record is gone: a caller that leaves the page afterwards must not
   // leave it on "no" — declining used to send you back to the list as if you had deleted.
   return async (id, label) => {
-    const ok = await runtime.ctx.ui.confirm(`Delete ${label}? This can't be undone.`);
+    const ok = await runtime.ctx.ui.confirm(`Delete ${label}?`, { detail: "This can't be undone.", ok: "Delete", destructive: true });
     if (!ok) return false;
     try {
       await runtime.remove(entity, id);

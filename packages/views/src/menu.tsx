@@ -138,3 +138,107 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
     </>
   );
 }
+
+export interface ChoiceItem {
+  key: string;
+  label: string;
+  detail?: string;
+  icon?: string;
+  destructive?: boolean;
+}
+
+export interface ChoicePanelProps {
+  /** The panel's accessible name; shown as its heading when `showTitle`. */
+  title?: string;
+  items: ChoiceItem[];
+  /** A menu hangs under this rect on a wide screen; without one the panel is a small centred dialog. */
+  anchor?: DOMRect | null;
+  onChoose: (key: string) => void;
+  onDismiss: () => void;
+}
+
+/**
+ * `ctx.ui.sheet` and `ctx.ui.menu` (#112): the same choices as a real menu, without a button of its
+ * own. On a phone it is the bottom sheet every menu is; on a wide screen it hangs under `anchor`
+ * (the button that ran the action), or sits centred as a small dialog. Destructive items go last,
+ * after a separator, in red — whatever order the app listed them in. Focus returns to whatever had
+ * it when the panel opened.
+ */
+export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: ChoicePanelProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const [place, setPlace] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
+  const safe = items.filter((i) => !i.destructive);
+  const risky = items.filter((i) => i.destructive);
+
+  useEffect(() => {
+    opener.current = document.activeElement as HTMLElement | null;
+    const panel = ref.current;
+    if (panel && anchor) {
+      const { width, height } = panel.getBoundingClientRect();
+      const below = window.innerHeight - anchor.bottom - 6;
+      const left = Math.max(8, Math.min(anchor.left, window.innerWidth - 8 - width));
+      setPlace(height <= below || below >= anchor.top ? { top: anchor.bottom + 6, left } : { bottom: Math.max(8, window.innerHeight - anchor.top + 6), left });
+    }
+    panel?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus();
+    return () => opener.current?.focus?.();
+  }, [anchor]);
+
+  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const buttons = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]") ?? []);
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const go = (i: number): void => buttons[(i + buttons.length) % buttons.length]?.focus();
+    if (e.key === "Escape") onDismiss();
+    else if (e.key === "ArrowDown") go(at + 1);
+    else if (e.key === "ArrowUp") go(at - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(buttons.length - 1);
+    else if (e.key === "Tab") e.preventDefault();
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const row = (item: ChoiceItem) => (
+    <button
+      key={item.key}
+      type="button"
+      role="menuitem"
+      className={`k-menu-item${item.destructive ? " k-danger" : ""}${item.detail ? " k-menu-item-2" : ""}`}
+      onClick={() => onChoose(item.key)}
+    >
+      <span className="k-menu-icon" aria-hidden>
+        {item.icon ?? ""}
+      </span>
+      <span className="k-menu-text">
+        <span className="k-menu-label">{item.label}</span>
+        {item.detail ? <span className="k-menu-detail">{item.detail}</span> : null}
+      </span>
+    </button>
+  );
+
+  return createPortal(
+    <div className="k-menu-layer k-choice-layer" data-centred={anchor ? undefined : "true"}>
+      <div className="k-menu-scrim" onClick={onDismiss} />
+      <div
+        ref={ref}
+        className="k-menu k-choice"
+        role="menu"
+        aria-label={title ?? "Choose"}
+        style={anchor ? (place ? { top: place.top, bottom: place.bottom, left: place.left, right: "auto" } : { visibility: "hidden" }) : undefined}
+        onKeyDown={onKey}
+      >
+        <div className="k-menu-grip" aria-hidden />
+        {title ? (
+          <div className="k-menu-title" aria-hidden>
+            {title}
+          </div>
+        ) : null}
+        {safe.map(row)}
+        {risky.length && safe.length ? <div className="k-menu-sep" role="separator" /> : null}
+        {risky.map(row)}
+      </div>
+    </div>,
+    document.body,
+  );
+}

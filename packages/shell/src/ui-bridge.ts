@@ -6,19 +6,22 @@
 import type { NavBridge, UiBridge } from "@karta/host";
 import type { PickerHost } from "./picker.js";
 import type { DialogHost } from "./dialog.js";
+import type { UiHost } from "./ui-host.js";
 
-export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost): UiBridge {
+export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost): UiBridge {
   return {
     toast: (msg) => onToast(msg),
     // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is confirmed.
     // `false`, never `true` — an unanswerable confirm must not authorise a deletion.
-    confirm: async (msg) => (dialogs ? dialogs.confirm(msg) : false),
+    confirm: async (msg, opts) => (dialogs ? dialogs.confirm(msg, opts) : false),
     prompt: async (msg, opts) => (dialogs ? dialogs.prompt(msg, opts) : null),
     pick: async (items, opts) => {
       if (picker) return picker.pick(items, opts);
       // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is chosen.
       return null;
     },
+    // #112. Without a host (headless) these are left out, and ctx answers them as dismissed.
+    ...(questions ? { sheet: questions.sheet, menu: questions.menu, form: questions.form, progress: questions.progress } : {}),
   };
 }
 
