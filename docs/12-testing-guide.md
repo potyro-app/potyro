@@ -182,6 +182,13 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4l. History — a timeline (#110)
+
+PPL Log → **History**: sessions newest first under "This week", "Last week", then a date range per
+week. Each dot is the day's colour (push red, pull blue, legs green) and each card shows the day it
+was. Scroll: the heading of the week you are reading sticks under the top bar, and older weeks keep
+appearing as you near the end. Tap a card to open the session.
+
 ## 4k. Progress — stats and a chart (#109)
 
 PPL Log → **Progress**: three tiles (sessions this week, volume this week, average session), each

@@ -341,6 +341,9 @@ const refId = (x: unknown): string => (typeof x === "string" ? x : (x as { id: s
 // scoring: bodyweight lifts progress on reps; loaded lifts on volume (kg × reps)
 const setScore = (bw: boolean, s: { kg?: number; reps?: number }) => (bw ? (s.reps ?? 0) : (s.kg ?? 0) * (s.reps ?? 0));
 
+// "1,410": the same digits trusted and in the isolate, whose Intl does not group them.
+const thousands = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
 // ---- Progress (#109): weeks start on Monday; a session belongs to the week its date falls in. ----
 const WEEK = 7 * 24 * 3600 * 1000;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -425,7 +428,7 @@ export default defineApp({
       icon: "🏋",
       displayField: "label",
       fields: {
-        day: { type: "enum", options: ["push", "pull", "legs"], required: true },
+        day: { type: "enum", options: ["push", "pull", "legs"], colors: { push: "red", pull: "blue", legs: "green" }, required: true },
         date: { type: "datetime", precision: "minute", required: true, default: (ctx) => ctx.now() },
         durationSec: { type: "number", hidden: true },
         entries: {
@@ -472,12 +475,14 @@ export default defineApp({
       id: "history",
       title: "History",
       view: {
-        type: "list",
+        type: "timeline",
         entity: "session",
-        sort: (a, b) => b.date.getTime() - a.date.getTime(),
+        date: "date",
+        groupBy: "week",
+        color: "day",
         display: {
-          primary: (s) => s.label,
-          secondary: (s) => `${s.totalSets} sets · ${Math.round(s.totalVolume)} kg · ${s.duration}`,
+          primary: (s) => `${s.day[0].toUpperCase()}${s.day.slice(1)}`,
+          secondary: (s) => `${s.totalSets} sets · ${thousands(Math.round(s.totalVolume))} kg · ${s.duration}`,
         },
         onOpen: { page: "session", param: { sessionId: "id" } },
         emptyText: "No sessions logged yet. Hit Train to start one.",

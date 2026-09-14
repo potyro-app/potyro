@@ -146,6 +146,14 @@ field, and so does "Move to…" in the card's menu — the way a keyboard or a p
 empty column offers Add, pre-filled with its value; records whose value is not a column sit in a
 leading "No …" column. `allowMove: false` makes it read-only. Cards do not reorder inside a column.
 
+A `timeline` page puts records on a rail by date (#110): `{ type: "timeline", entity, date }`, where
+`date` is a datetime field or a function returning a Date, with `groupBy` ("day", the default, "week"
+or "month") for the sticky headings — "Today", "This week", "24 – 30 Aug", "August" — `newest`
+("first", the default, or "last"), the same `display` a list has, `color` naming an enum field whose
+option colours the dots, `filter`, `onOpen` and `emptyText`. A card shows its date beside the heading
+that already names the day, week or month. It renders a few groups at a time and adds more as the
+end scrolls near, so a year of entries does not render — or cross the isolate — at once.
+
 Numbers folded out of a page's rows are a `stats` view and a `chart` view (#109), usually stacked in
 one page `layout`. A stats tile is a summary figure — `{ label, op, field }` or
 `{ label, value: (rows, ctx) => … }` — with an optional `unit` and

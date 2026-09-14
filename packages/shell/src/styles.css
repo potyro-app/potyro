@@ -2398,6 +2398,120 @@ details.k-layout-fold[open] > summary::before {
 }
 /* tokens-only: end — stats and chart */
 
+/* tokens-only: start — timeline */
+/* Records on a rail by date (#110). Headings stick under the phone's top bar while their group
+   scrolls past; each dot wears its enum option's colour, ringed in the ground so the rail breaks
+   around it; the card is a list row's content. */
+.k-tl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-left: 1.4rem;
+}
+.k-tl::before {
+  content: "";
+  position: absolute;
+  left: 0.45rem;
+  top: 0.4rem;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+.k-tl-group {
+  display: flex;
+  flex-direction: column;
+}
+.k-tl-head {
+  position: sticky;
+  top: var(--k-sticky-top, 0);
+  z-index: 5;
+  margin: var(--space-3) 0 var(--space-2) -1.4rem;
+  padding: var(--space-2) 0 var(--space-2) 1.4rem;
+  background: color-mix(in oklab, var(--bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.k-tl-group:first-child .k-tl-head {
+  margin-top: 0;
+}
+.k-tl-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-tl-item {
+  position: relative;
+}
+.k-tl-dot {
+  position: absolute;
+  left: -1.18rem;
+  top: 1rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--swatch, var(--accent));
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.k-tl-item[data-grey] .k-tl-dot {
+  background: var(--ink-faint);
+}
+.k-tl-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+button.k-tl-card {
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+button.k-tl-card:hover {
+  border-color: var(--accent-line);
+}
+button.k-tl-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-tl-thumb {
+  flex: none;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+.k-tl-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.k-tl-when {
+  flex: none;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.k-tl-more {
+  height: 1px;
+}
+/* tokens-only: end — timeline */
+
 /* tokens-only: start — grouped sections */
 /* Rows under headings, and sections that fold (#108). A list's group heading is the aggregate
    view's small uppercase label, so grouped lists and aggregates read as one family; it sticks while
