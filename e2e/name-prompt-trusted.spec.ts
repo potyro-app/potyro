@@ -43,7 +43,7 @@ test("naming yourself first means sharing does not ask again", async ({ page }) 
   await open(page);
 
   await page.getByRole("button", { name: "You and your devices" }).click();
-  await page.locator(".k-identity").getByRole("button", { name: "Rename", exact: true }).click();
+  await page.locator(".k-identity").getByRole("button", { name: /^(Rename|Set a name)$/ }).click();
   await page.locator(".k-dialog input").fill("Vasco");
   await page.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
   await expect(page.locator(".k-identity-name")).toContainText("Vasco");
