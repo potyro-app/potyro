@@ -126,6 +126,11 @@ shows the thing, with a way to take it off. `multiple: true` makes it a strip wi
 last. The same tile renders the value on a record page, so one photo looks like one photo
 everywhere. A file that fails to store says so, with a way to try again.
 
+A `relation` is a searchable picker too. One record opens the same list a long enum uses and closes
+on a pick; `many: true` shows the chosen records as chips you can take off, with Add opening the
+list with checkmarks. When the search finds nothing, the list's last line creates the record, named
+with what was typed, in a sheet over the form, and selects it. No form renders a `<select>`.
+
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
 wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a
