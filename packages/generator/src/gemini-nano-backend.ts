@@ -8,6 +8,7 @@
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
 import { SYSTEM_PROMPT_COMPACT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import type { ModifyContext } from "./prompt.js";
 
 /** A live prompting session (Chrome's `LanguageModel` session). */
 export interface PromptSession {
@@ -66,7 +67,7 @@ export class GeminiNanoBackend implements ModelBackend {
     return once(session, async (s) => extractSource(await s.prompt(message)));
   }
 
-  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
+  async modify(source: string, instruction: string, prompt: GenPrompt, ctx?: ModifyContext): Promise<string> {
     const message = [
       buildUserMessage(prompt),
       "",
@@ -75,7 +76,7 @@ export class GeminiNanoBackend implements ModelBackend {
       source,
       "```",
       "",
-      buildModifyMessage(instruction),
+      buildModifyMessage(instruction, ctx),
     ].join("\n");
     const session = await this.newSession();
     return once(session, (s) => s.prompt(message));
