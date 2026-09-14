@@ -33,6 +33,7 @@ import { loadTrustedModule } from "./trusted-loader.js";
 import type { Provenance } from "@karta/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
+import { UiHost } from "./ui-host.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { getUserApp, listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
@@ -77,6 +78,7 @@ interface Preview {
   toaster: Toaster;
   build: number;
   picker: PickerHost;
+  questions: UiHost;
   /** Which path actually ran — the isolate fallback is only taken if the trusted load throws. */
   provenance: Provenance;
 }
@@ -200,10 +202,11 @@ export function Studio({
       const store: Store = storeNamespace ? await openStore(`user:${storeNamespace}`) : await newMemoryStore();
       const toaster = new Toaster();
       const picker = new PickerHost();
+      const questions = new UiHost();
       const base = {
         store,
         caps: createWebCapabilities(),
-        ui: createUiBridge(toaster.push, picker),
+        ui: createUiBridge(toaster.push, picker, shellDialogs, questions),
         nav: createNavBridge(() => {}),
       };
 
@@ -228,7 +231,7 @@ export function Studio({
         });
       }
       buildRef.current += 1;
-      setPreview({ composed, toaster, build: buildRef.current, provenance, picker });
+      setPreview({ composed, toaster, build: buildRef.current, provenance, picker, questions });
       if (tabPicks.current === picksBefore) setTab("preview");
       const issues = validateDefinition(composed.runtime.definition);
       if (issues.length) setError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
@@ -766,7 +769,7 @@ export function Studio({
               {busy && !preview ? (
                 <p className="k-muted k-studio-building">Building…</p>
               ) : preview ? (
-                <App key={preview.build} runtime={preview.composed.runtime} provenance={preview.provenance} toaster={preview.toaster} picker={preview.picker} />
+                <App key={preview.build} runtime={preview.composed.runtime} provenance={preview.provenance} toaster={preview.toaster} picker={preview.picker} questions={preview.questions} />
               ) : null}
             </div>
           ) : tab === "source" ? (

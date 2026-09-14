@@ -27,6 +27,7 @@ import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { NavHost } from "./nav-host.js";
 import { Dialogs, shellDialogs } from "./dialog.js";
+import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
 import { startReminderSync } from "./reminder-sync.js";
@@ -381,7 +382,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     }
   }
   const picker = new PickerHost();
-  const ui = createUiBridge(toaster.push, picker, shellDialogs);
+  const questions = new UiHost();
+  const ui = createUiBridge(toaster.push, picker, shellDialogs, questions);
   const navHost = new NavHost();
   const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
 
@@ -424,6 +426,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     <App
       navHost={navHost}
       picker={picker}
+      questions={questions}
       sync={saved.sync}
       runtime={composed!.runtime}
       provenance={provenance}

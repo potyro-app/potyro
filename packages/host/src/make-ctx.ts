@@ -2,13 +2,22 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, Value } from "karta";
+import type { Ctx, Field, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "karta";
+import { checkFormFields } from "karta";
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
 import { resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase } from "./types.js";
 
 const KV_PREFIX = "kv:";
+
+/** A sheet or menu's items, checked: each needs an id and a label, or there is nothing to choose. */
+function checkItems<T>(opts: { title?: string; items: UiItem<T>[] }): { title?: string; items: UiItem<T>[] } {
+  const items = opts?.items;
+  if (!Array.isArray(items) || !items.length) throw new Error("ui.sheet / ui.menu need `items`: at least one { id, label }");
+  for (const it of items) if (it == null || typeof it.label !== "string" || it.id === undefined) throw new Error("every ui.sheet / ui.menu item needs an `id` and a `label`");
+  return opts;
+}
 
 /**
  * Stand-in identity for hosts built without one (tests, fakes, the Studio preview).
@@ -174,9 +183,19 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
 
     ui: {
       toast: (msg) => ui.toast(msg),
-      confirm: (msg) => ui.confirm(msg),
+      confirm: (msg, opts) => ui.confirm(msg, opts),
       prompt: (msg, opts) => ui.prompt(msg, opts),
       pick: (items, opts) => ui.pick(items, opts),
+      sheet: async <T,>(opts: { title?: string; items: UiItem<T>[] }) => (ui.sheet ? ui.sheet(checkItems(opts)) : null),
+      menu: async <T,>(opts: { title?: string; items: UiItem<T>[] }) => (ui.menu ? ui.menu(checkItems(opts)) : null),
+      form: async <T,>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }) => {
+        // Checked like an entity's fields, and before anything renders: a typo in a form is the app's
+        // bug, and it should read as one rather than as a form that silently shows nothing.
+        const issues = checkFormFields(opts?.fields, Object.keys(app.definition.entities));
+        if (issues.length) throw new Error(issues.join("\n"));
+        return ((await ui.form?.({ ...opts, initial: opts.initial as Record<string, unknown> | undefined })) ?? null) as T | null;
+      },
+      progress: (label) => ui.progress?.(label) ?? { update: () => {}, done: () => {} },
     },
 
     navigate: (pageId, params) => nav.navigate(pageId, params),

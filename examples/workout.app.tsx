@@ -170,14 +170,31 @@ function LogSession(props: ViewProps) {
   const addSet = (exId: string): void =>
     setPlan((p) => ({ ...p, [exId]: [...(p[exId] ?? []), { kg: "", reps: "", done: false }] }));
 
-  const cancel = (): void => {
-    if (!globalThis.confirm?.("Discard this workout?")) return;
+  const cancel = async (): Promise<void> => {
+    if (!(await runtime.ctx.ui.confirm("Discard this workout?", { detail: "Nothing from it is saved.", ok: "Discard", destructive: true }))) return;
     setStartedAt(null);
     setPlan({});
     setRest(null);
   };
 
   const finish = async (): Promise<void> => {
+    // Finishing is a choice, not a reflex (#112): save it, keep going, or throw it away — the last
+    // one set apart and in red by the sheet itself.
+    const choice = await runtime.ctx.ui.sheet({
+      title: "Finish workout?",
+      items: [
+        { id: "save", label: "Save and finish", detail: `${setsDone} sets · ${Math.max(1, Math.round(elapsed / 60))} min`, icon: "✓" },
+        { id: "keep", label: "Keep training", icon: "↺" },
+        { id: "discard", label: "Discard workout", detail: "Nothing from this workout is saved", icon: "✕", destructive: true },
+      ],
+    });
+    if (choice === "discard") {
+      setStartedAt(null);
+      setPlan({});
+      setRest(null);
+      return;
+    }
+    if (choice !== "save") return;
     const entries = exercises
       .map((e: any) => ({
         exercise: e.id,
@@ -208,7 +225,7 @@ function LogSession(props: ViewProps) {
           <span className="wk-top-prog">
             {setsDone}/{setsTotal}
           </span>
-          <button className="wk-cancel" onClick={cancel} aria-label="Discard workout">
+          <button className="wk-cancel" onClick={() => void cancel()} aria-label="Discard workout">
             ✕
           </button>
         </div>
@@ -457,6 +474,32 @@ export default defineApp({
             0,
           ),
       },
+      actions: {
+        // One set, asked for in one form (#112): which exercise, how heavy, how many. It starts from
+        // this session's last set, so the common case — the same again — is one tap.
+        logSet: async (s, ctx) => {
+          const entries = ((s.entries as any[]) ?? []).map((e: any) => ({ exercise: refId(e.exercise), sets: [...((e.sets as any[]) ?? [])] }));
+          const last = entries[entries.length - 1];
+          const lastSet = last?.sets[last.sets.length - 1];
+          const set = await ctx.ui.form<{ exercise: string; kg: number; reps: number }>({
+            title: "Log set",
+            submit: "Log set",
+            fields: {
+              exercise: { type: "relation", to: "exercise", required: true },
+              kg: { type: "number", label: "Weight", unit: "kg", min: 0 },
+              reps: { type: "number", integer: true, min: 0, required: true },
+            },
+            initial: { exercise: last?.exercise, kg: lastSet?.kg, reps: lastSet?.reps },
+          });
+          if (!set) return;
+          const entry = entries.find((e) => e.exercise === set.exercise);
+          const row = { kg: set.kg ?? 0, reps: set.reps };
+          if (entry) entry.sets.push(row);
+          else entries.push({ exercise: set.exercise, sets: [row] });
+          await ctx.patch("session", s.id, { entries });
+          ctx.ui.toast(`Logged ${row.kg} kg × ${row.reps}`);
+        },
+      },
     },
   },
 
@@ -575,6 +618,7 @@ export default defineApp({
         type: "detail",
         entity: "session",
         param: "sessionId",
+        actions: ["logSet"],
         sections: [
           { title: "Overview", fields: ["day", "date", "duration", "totalSets", "totalVolume"] },
           { title: "Entries", fields: ["entries"] }, // nested list rendered in the detail view

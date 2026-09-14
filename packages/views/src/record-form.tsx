@@ -10,7 +10,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import type { Field } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { FieldInput } from "./field-input.js";
-import { fieldLabel } from "./format.js";
+import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { SwitchRow } from "./switch.js";
@@ -187,6 +187,65 @@ function FormField({
   );
 }
 
+/** A field's row with the control its type asks for — shared by the record form and `ctx.ui.form` (#112). */
+function FieldRow({
+  runtime,
+  field,
+  label,
+  value,
+  onChange,
+  error,
+  focusToken,
+}: {
+  runtime: KartaRuntime;
+  field: Field;
+  label: string;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  error?: string;
+  focusToken: number;
+}) {
+  const hints = field as Hints;
+  const common = { label, hints, error, focusToken };
+  if (field.type === "boolean") {
+    // A boolean is a switch row (#97): the label and the toggle are one hit target, not a grey
+    // caption over a bare checkbox. The row carries its own help line.
+    return (
+      <FormField {...common} hints={{ ...hints, help: undefined }} plain>
+        <SwitchRow label={label} help={hints.help} required={hints.required} checked={Boolean(value)} onChange={(v) => onChange(v)} />
+      </FormField>
+    );
+  }
+  if (
+    field.type === "number" ||
+    field.type === "duration" ||
+    field.type === "datetime" ||
+    field.type === "enum" ||
+    field.type === "media" ||
+    field.type === "list" ||
+    field.type === "relation"
+  ) {
+    // Several controls — an input and its stepper, a date and its chips, a row of options, a
+    // strip of tiles, a stack of row cards — so no <label> around them (#99, #103, #98, #102,
+    // #104): the control names itself from the label it is given, and a list needs it to say
+    // what it adds.
+    return (
+      <FormField {...common} plain>
+        <span className="k-form-label" aria-hidden>
+          {label}
+          {hints.required ? <em aria-hidden> *</em> : null}
+        </span>
+        <FieldInput runtime={runtime} field={field} value={value} onChange={onChange} label={label} />
+      </FormField>
+    );
+  }
+  return (
+    <FormField {...common}>
+      <FieldInput runtime={runtime} field={field} value={value} onChange={onChange} />
+    </FormField>
+  );
+}
+
 export function RecordForm({ runtime, entity, recordId, initial, onDone, onCancel, nested }: RecordFormProps) {
   const isEdit = Boolean(recordId);
   const { record, loading } = runtime.useRecord(entity, recordId ?? "");
@@ -265,49 +324,18 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     }
   };
 
-  const renderField = (key: string): ReactNode => {
-    const field = fields[key]!;
-    const hints = field as Hints;
-    const label = fieldLabel(runtime, entity, key);
-    const common = { label, hints, error: errors[key], focusToken: focus?.key === key ? focus.n : 0 };
-    if (field.type === "boolean") {
-      // A boolean is a switch row (#97): the label and the toggle are one hit target, not a grey
-      // caption over a bare checkbox. The row carries its own help line.
-      return (
-        <FormField key={key} {...common} hints={{ ...hints, help: undefined }} plain>
-          <SwitchRow label={label} help={hints.help} required={hints.required} checked={Boolean(form[key])} onChange={(v) => set(key, v)} />
-        </FormField>
-      );
-    }
-    if (
-      field.type === "number" ||
-      field.type === "duration" ||
-      field.type === "datetime" ||
-      field.type === "enum" ||
-      field.type === "media" ||
-      field.type === "list" ||
-      field.type === "relation"
-    ) {
-      // Several controls — an input and its stepper, a date and its chips, a row of options, a
-      // strip of tiles, a stack of row cards — so no <label> around them (#99, #103, #98, #102,
-      // #104): the control names itself from the label it is given, and a list needs it to say
-      // what it adds.
-      return (
-        <FormField key={key} {...common} plain>
-          <span className="k-form-label" aria-hidden>
-            {label}
-            {hints.required ? <em aria-hidden> *</em> : null}
-          </span>
-          <FieldInput runtime={runtime} field={field} value={form[key]} onChange={(v) => set(key, v)} label={label} />
-        </FormField>
-      );
-    }
-    return (
-      <FormField key={key} {...common}>
-        <FieldInput runtime={runtime} field={field} value={form[key]} onChange={(v) => set(key, v)} />
-      </FormField>
-    );
-  };
+  const renderField = (key: string): ReactNode => (
+    <FieldRow
+      key={key}
+      runtime={runtime}
+      field={fields[key]!}
+      label={fieldLabel(runtime, entity, key)}
+      value={form[key]}
+      onChange={(v) => set(key, v)}
+      error={errors[key]}
+      focusToken={focus?.key === key ? focus.n : 0}
+    />
+  );
 
   const renderGroup = (group: ResolvedGroup, index: number): ReactNode => {
     const body = <div className="k-form-fields">{group.fields.map(renderField)}</div>;
@@ -364,6 +392,95 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
           </button>
         </footer>
       </Root>
+    </FormSheet>
+  );
+}
+
+export interface ValuesFormProps {
+  runtime: KartaRuntime;
+  title: string;
+  fields: Record<string, Field>;
+  initial?: Record<string, unknown>;
+  /** The submit button's words. Default: "OK". */
+  submit?: string;
+  onSubmit: (values: Record<string, unknown>) => void;
+  onCancel: () => void;
+}
+
+/**
+ * `ctx.ui.form` (#112): several values asked at once, in the record form's sheet with the record
+ * form's controls, but belonging to no record. Required fields are checked the same way; the answer
+ * is the raw values (a relation's id, a number as a number).
+ */
+export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, onCancel }: ValuesFormProps) {
+  const [form, setForm] = useState<Record<string, unknown>>(() => {
+    const out: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(fields)) out[key] = initial?.[key] ?? defaultFor(runtime, field);
+    return out;
+  });
+  const opened = useRef(JSON.stringify(form));
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [focus, setFocus] = useState<{ key: string; n: number } | null>(null);
+  const dirty = JSON.stringify(form) !== opened.current;
+
+  const requestClose = async (): Promise<void> => {
+    if (dirty && !(await runtime.ctx.ui.confirm("Discard what you entered?", { ok: "Discard", destructive: true }))) return;
+    onCancel();
+  };
+  const set = (key: string, v: unknown): void => {
+    setForm((prev) => ({ ...prev, [key]: v }));
+    if (errors[key]) setErrors(({ [key]: _gone, ...rest }) => rest);
+  };
+  const keys = Object.keys(fields).filter((k) => !(fields[k] as { hidden?: boolean }).hidden);
+  const send = (e?: React.FormEvent): void => {
+    e?.preventDefault();
+    const missing: Record<string, string> = {};
+    for (const key of keys) if ((fields[key] as Hints).required && isEmpty(form[key])) missing[key] = "Required";
+    const first = Object.keys(missing)[0];
+    if (first) {
+      setErrors(missing);
+      setFocus((prev) => ({ key: first, n: (prev?.n ?? 0) + 1 }));
+      return;
+    }
+    onSubmit(form);
+  };
+
+  return (
+    <FormSheet title={title} onClose={() => void requestClose()} className="k-values-form">
+      <form className="k-form" onSubmit={send} noValidate>
+        <header className="k-form-head">
+          <h3>{title}</h3>
+          <button type="button" className="k-form-close" aria-label="Close" onClick={() => void requestClose()}>
+            ✕
+          </button>
+        </header>
+        <div className="k-form-body">
+          <div className="k-form-group">
+            <div className="k-form-fields">
+              {keys.map((key) => (
+                <FieldRow
+                  key={key}
+                  runtime={runtime}
+                  field={fields[key]!}
+                  label={(fields[key] as { label?: string }).label ?? humanizeKey(key)}
+                  value={form[key]}
+                  onChange={(v) => set(key, v)}
+                  error={errors[key]}
+                  focusToken={focus?.key === key ? focus.n : 0}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <footer className="k-form-actions">
+          <button type="button" className="k-add" onClick={() => void requestClose()}>
+            Cancel
+          </button>
+          <button type="submit" className="k-add k-primary-action">
+            {submit ?? "OK"}
+          </button>
+        </footer>
+      </form>
     </FormSheet>
   );
 }

@@ -646,6 +646,25 @@ export const structureSchema = z.object({
 // Referential integrity (phase 2)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The fields of a `ctx.ui.form` (#112), checked like an entity's: the same schema, so a form field
+ * that validates here renders with the same control it would in a record form. Returns the problems.
+ */
+export function checkFormFields(fields: unknown, entities: readonly string[]): string[] {
+  if (fields == null || typeof fields !== "object" || Array.isArray(fields)) return ["ui.form needs `fields`: an object of field definitions"];
+  const issues: string[] = [];
+  for (const [key, field] of Object.entries(fields as Record<string, unknown>)) {
+    const parsed = fieldSchema.safeParse(field);
+    if (!parsed.success) {
+      issues.push(`ui.form field "${key}": ${parsed.error.issues.map((i) => `${i.path.join(".") || "type"} ${i.message}`).join("; ")}`);
+      continue;
+    }
+    const f = field as { type: string; to?: string };
+    if (f.type === "relation" && f.to && !entities.includes(f.to)) issues.push(`ui.form field "${key}" relates to unknown entity "${f.to}"`);
+  }
+  return issues;
+}
+
 export class ValidationError extends Error {
   readonly issues: string[];
   constructor(issues: string[]) {
