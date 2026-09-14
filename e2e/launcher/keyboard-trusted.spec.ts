@@ -30,14 +30,16 @@ test("Tab walks the grid in order and Enter opens the focused tile", async ({ pa
   await openHome(page);
   // The first tile is a handful of Tabs from the top, not buried.
   const presses = await tabUntil(page, (a) => a.cls.includes("k-launch-tile"));
-  expect(presses).toBeLessThanOrEqual(7); // You, the search field, the three sort buttons, then the grid
+  // New app, You, the first-run welcome's two buttons (#90), the search field, the three sort
+  // buttons, then the grid.
+  expect(presses).toBeLessThanOrEqual(10);
 
   // Walk on: the built-ins first, then each saved app as tile, then its menu button — reading order.
   const order: string[] = [];
   for (let i = 0; i < 40; i++) {
     const a = await active(page);
     order.push(a.label || a.text);
-    if (a.text.startsWith("+New app")) break; // the grid ends here; past it the walk wraps
+    if (order.filter((o) => o.startsWith("Actions for ")).length === 12) break; // the last app's menu ends the grid
     await page.keyboard.press("Tab");
   }
   const trail = order.join(" | ");
@@ -45,9 +47,8 @@ test("Tab walks the grid in order and Enter opens the focused tile", async ({ pa
   const menus = order.map((o, i) => [o, i] as const).filter(([o]) => o.startsWith("Actions for "));
   expect(menus.length, trail).toBe(12); // every app has one now, the built-ins too (#84)
   for (const [label, i] of menus) expect(order[i - 1], trail).toContain(label.slice("Actions for ".length));
-  // The New app tile closes the grid, after the last saved app's menu button.
-  const last = menus[menus.length - 1]![1];
-  expect(order[last + 1], trail).toContain("New app");
+  // No "New app" tile sits in the grid any more (#90): it is a header button and a floating button.
+  expect(order.some((o) => o.includes("New app")), trail).toBe(false);
 
   // Enter on a tile opens it.
   await page.locator(".k-launch-tile", { hasText: "Groceries" }).focus();

@@ -4901,6 +4901,79 @@ button.k-switch:focus-visible {
 @keyframes k-slide-in {
   from { transform: translateX(-100%); }
 }
+/* First run and the create action (#90). The welcome says what Karta is and offers one thing to
+   do; "New app" is a header button on a wide screen and a floating button in thumb reach on a phone,
+   never a tile among the apps. */
+.k-welcome {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.k-welcome h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+.k-welcome p {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-soft);
+  line-height: 1.45;
+  max-width: 40rem;
+}
+.k-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.k-welcome-later {
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.k-launch-fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  z-index: 21;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3.25rem;
+  padding: 0 1.2rem 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.k-launcher-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 759px) {
+  .k-launch-newbtn {
+    display: none;
+  }
+  .k-launch-fab {
+    display: inline-flex;
+  }
+  /* Room under the last row for the floating button. */
+  .k-launcher-home {
+    padding-bottom: 6rem;
+  }
+}
 /* tokens-only: end */
 
 /* Filter-chip chrome groups (M3) */
@@ -5605,6 +5678,21 @@ button.k-switch:focus-visible {
 /* Your avatar in the identity panel (#95): the same per-person hue as a chat author's chip, so you
    look like yourself everywhere. Outside the tokens-only region for the same reason the chat chip
    is — its colour is derived from a hue, not a named token. */
+/* You, on the launcher (#90): initials in your own hue, the same mark as a chat author. Outside the
+   tokens-only regions for the same reason: the colour is derived from a hue. */
+.k-launch-you {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: oklch(90% 0.08 var(--k-hue, 60));
+  color: oklch(35% 0.13 var(--k-hue, 60));
+  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
 .k-identity-avatar {
   flex: none;
   display: grid;
