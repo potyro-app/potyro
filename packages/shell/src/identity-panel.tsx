@@ -18,6 +18,7 @@ import { useState } from "react";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
+import { personHue, personInitials } from "@karta/runtime";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
 const OFFERED = "karta:identity:offeredBackup";
@@ -100,6 +101,8 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
       { default: me?.name ?? "" },
     );
     if (!name?.trim()) return;
+    // A fresh device may have no identity until something needs one; naming yourself is such a thing.
+    await ensureIdentity();
     const renamed = renameIdentity(name);
     setMe(renamed);
     // Naming yourself here IS the answer to "what should people see you as?", so the sharing and
@@ -169,6 +172,13 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const named = Boolean(me?.name && me.name !== DEFAULT_NAME);
+  const ownRelay = Boolean(globalThis.localStorage?.getItem(RELAY_KEY));
+  const relay = syncRelayUrl();
+
+  // #95: this read like a debug page — a monospace `no identity yet` under the name, a ws:// URL on
+  // the front, and "Add a device" / "I already use Karta" as two unrelated products. It leads with the
+  // person now; the two device paths sit under one heading; infrastructure is under Advanced.
   return (
     <div className="k-modal-scrim" onClick={onClose}>
       <div className="k-modal k-identity" role="dialog" aria-modal="true" aria-label="You and your devices" onClick={(e) => e.stopPropagation()}>
@@ -179,58 +189,75 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
           </button>
         </header>
 
-        <p className="k-identity-name">
-          <strong>{me?.name ?? "Me"}</strong>
+        <div className="k-identity-person">
+          <span className="k-identity-avatar" aria-hidden style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
+            {me ? personInitials(me.name, me.id) : "?"}
+          </span>
+          <div className="k-identity-who">
+            <strong className="k-identity-name">{named ? me!.name : "No name yet"}</strong>
+            <span className="k-muted">
+              {named ? "Shown to the people you share an app with." : "People you share an app with see you as “Me”."}
+            </span>
+          </div>
           <button type="button" className="k-add" onClick={() => void rename()}>
-            Rename
+            {named ? "Rename" : "Set a name"}
           </button>
-        </p>
-        <p className="k-muted k-identity-id">{me?.id ?? "no identity yet"}</p>
+        </div>
 
-        <section aria-labelledby="k-backup-h">
-          <h3 id="k-backup-h">Add a device</h3>
-          <p className="k-muted">
-            Type these words into Karta on another device to use the same data there. They are the only
-            copy — write them down somewhere safe.
-          </p>
+        <section aria-labelledby="k-devices-h">
+          <h3 id="k-devices-h">Your devices</h3>
+          <div className="k-identity-device">
+            <span aria-hidden>💻</span>
+            <div>
+              This device
+              <small className="k-muted">Your apps and data live here. Add another device to use them there too.</small>
+            </div>
+          </div>
           {words ? (
-            <>
+            <div className="k-identity-words">
+              <p className="k-muted">
+                Type these words into Karta on the other device. They are the only copy — write them down somewhere safe.
+              </p>
               <output className="k-passphrase">{words}</output>
               <button type="button" className="k-add" onClick={() => void navigator.clipboard?.writeText(words).catch(() => {})}>
                 Copy
               </button>
-            </>
+            </div>
           ) : (
-            <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void reveal()}>
-              Show my words
+            <button type="button" className="k-identity-path" disabled={busy} onClick={() => void reveal()}>
+              <b>Add a device</b>
+              <small className="k-muted">Shows 24 words to type on the other device. They are the only copy — keep them safe.</small>
             </button>
           )}
+          <button type="button" className="k-identity-path" disabled={busy} onClick={() => void signIn()}>
+            <b>This is my second device</b>
+            <small className="k-muted">Type the words from your first device to bring its apps here.</small>
+          </button>
         </section>
 
-        {/* KA-28. The relay had no UI at all: a deployed build had none, and the only way to give it
-            one was typing a localStorage key into devtools, on every device. "Bring your own relay"
-            is the self-host promise — it has to be reachable without a rebuild AND without devtools. */}
-        <section aria-labelledby="k-relay-h">
-          <h3 id="k-relay-h">Sync relay</h3>
+        {/* KA-28: "bring your own relay" must be reachable without a rebuild and without devtools —
+            and, since it is not something most people should touch, without being on the front. */}
+        <details className="k-identity-advanced">
+          <summary>Advanced — sync relay, identity id</summary>
           <p className="k-muted">
-            Where synced apps meet the people you share them with. It only ever sees encrypted data —
-            it cannot read your records. Leave it alone unless you run your own.
+            {relay
+              ? `Synced apps meet through ${ownRelay ? "your own relay" : "this site's relay"}. It only ever sees encrypted data — it cannot read your records.`
+              : "No relay: synced apps stay on this device."}
           </p>
-          <p className="k-muted k-relay-current">
-            <code>{syncRelayUrl() ?? "none — synced apps stay on this device"}</code>
-          </p>
+          {relay ? (
+            <p className="k-muted k-relay-current">
+              <code>{relay}</code>
+            </p>
+          ) : null}
           <button type="button" className="k-add" disabled={busy} onClick={() => void changeRelay()}>
             Change relay
           </button>
-        </section>
-
-        <section aria-labelledby="k-signin-h">
-          <h3 id="k-signin-h">I already use Karta</h3>
-          <p className="k-muted">Bring this device into an identity you already have elsewhere.</p>
-          <button type="button" className="k-add" disabled={busy} onClick={() => void signIn()}>
-            Enter my words
-          </button>
-        </section>
+          {me ? (
+            <p className="k-muted k-identity-id">
+              Identity <code>{me.id}</code>
+            </p>
+          ) : null}
+        </details>
       </div>
     </div>
   );
