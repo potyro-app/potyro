@@ -195,6 +195,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             result = await fv(p.rows || [], ctx);
             break;
           }
+          case "fieldDefault": {
+            var ent = app.entities[p.entity], fd = ent && ent.fields ? ent.fields[p.key] : null;
+            if (!fd) throw new Error("no field " + p.entity + "." + p.key);
+            result = typeof fd.default === "function" ? await fd.default(ctx) : (fd.default === undefined ? null : fd.default);
+            break;
+          }
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }
           default: return __serialize({ ok:false, error:"unknown kind " + p.kind });
         }

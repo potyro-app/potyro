@@ -126,6 +126,8 @@ export interface LoadedApp {
    * one-payload call as `callAggregate`, generalised so a new fold-shaped option needs no new call.
    */
   callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  /** A field's `default` when it is a function of ctx (KA-25), evaluated where the function lives. */
+  callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
   customView(pageId: string): CustomViewComponent | null;

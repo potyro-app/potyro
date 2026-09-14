@@ -6,6 +6,7 @@ import type { Ctx, Field, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved
 import { checkFormFields } from "karta";
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
+import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
 import { resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase } from "./types.js";
 
@@ -93,27 +94,22 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     },
 
     async create(entity, data) {
-      // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18). App code that
-      // could set it could rewrite authorship in a shared ledger, and untrusted code is precisely
-      // the code that would want to. An app needing an editable "who" uses a `member` field — who
-      // entered a record is not who it is about (spike F5).
-      const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
-      const row = await store.insert(entity, { ...clean, createdBy: me.id } as Partial<KartaRecord>);
+      // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18, authorship.ts).
+      // Who entered a record is not who it is about (spike F5): that is a `member` field.
+      const row = await store.insert(entity, stampAuthor(data, me.id) as Partial<KartaRecord>);
       deps.memo.clear(); // data changed → invalidate memoized computed for this pass
       return resolveRecord(deps, entity, row);
     },
 
     async patch(entity, id, data) {
-      // Authorship is a fact about the insert, so an edit can never change it — not even the
-      // author's own. Dropped rather than rejected: a patch that echoes back a resolved record
-      // would otherwise fail for doing nothing wrong.
-      const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
-      const row = await store.update(entity, id, clean as Partial<KartaRecord>);
+      // Authorship is a fact about the insert, so an edit can never change it (authorship.ts).
+      const row = await store.update(entity, id, stripAuthor(data) as Partial<KartaRecord>);
       deps.memo.clear();
       return resolveRecord(deps, entity, row);
     },
 
     async increment(entity, id, field, delta) {
+      assertNotAuthor(field);
       // Falls back rather than failing: only a CRDT store can add deltas up, and a local-only app is
       // single-writer anyway, so read-modify-write there is correct and has nothing to race with.
       if (store.increment) {

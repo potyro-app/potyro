@@ -131,6 +131,11 @@ export class DirectLoadedApp implements LoadedApp {
     return (await (fn as Fn)(rows, ctx)) as Value;
   }
 
+  async callFieldDefault(entity: string, field: string, ctx: unknown): Promise<Value> {
+    const d = (this.definition.entities[entity]?.fields[field] as { default?: unknown } | undefined)?.default;
+    return (typeof d === "function" ? await (d as Fn)(ctx) : (d ?? null)) as Value;
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: unknown): Promise<Date | null> {
     const rem = (this.definition.reminders ?? []).find((r) => r.id === id);
     if (!rem) throw new Error(`reminder ${id} not found`);

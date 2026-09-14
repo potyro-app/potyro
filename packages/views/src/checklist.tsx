@@ -134,7 +134,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     setAdding(true);
     try {
       const key = displayFieldFor(runtime, view.entity);
-      await runtime.create(view.entity, { ...createDefaults(runtime, view.entity), [key]: text });
+      await runtime.create(view.entity, { ...(await createDefaults(runtime, view.entity)), [key]: text });
       setDraft("");
     } catch (e) {
       runtime.ctx.ui.toast(e instanceof Error ? e.message : "Could not add that");

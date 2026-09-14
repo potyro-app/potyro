@@ -509,3 +509,72 @@ describe("IsolateHost — identity across the boundary (KA-18)", () => {
     expect(await loaded.callComputed("expense", "crowd", row as never, ctx)).toBe("undefined");
   });
 });
+
+// KA-18 across the isolate: `createdBy` was stamped and protected only on the DIRECT ctx. The bridge's
+// data.create / data.patch wrote the app's data as given, so an untrusted app — the one this rule
+// exists for — could forge a record's author or rewrite an existing one's.
+const FORGE_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "ledger", name: "Ledger", version: "1.0.0", schemaVersion: 1,
+  entities: { expense: { fields: { description: { type: "text" }, n: { type: "number" } }, actions: {
+    forgeCreate: async function(r, ctx){ await ctx.create("expense", { description: "forged", createdBy: "co_zMallory" }); },
+    forgePatch: async function(r, ctx){ await ctx.patch("expense", r.id, { description: "edited", createdBy: "co_zMallory" }); },
+    forgeCount: async function(r, ctx){ await ctx.increment("expense", r.id, "createdBy", 1); }
+  } } },
+  pages: [{ id: "all", title: "All", view: { type: "list", entity: "expense" } }],
+  reminders: []
+};
+`;
+
+describe("IsolateHost — authorship cannot be forged from the isolate (KA-18)", () => {
+  const ana = { id: "co_zAna", name: "Ana" };
+
+  it("stamps a created record with this device, whatever the app sent", async () => {
+    const { loaded, ctx, store } = await setup(FORGE_BUNDLE, {}, { me: ana });
+    await loaded.callAction("expense", "forgeCreate", { id: "x" } as never, ctx);
+    const rows = await store.all("expense");
+    expect(rows.map((r) => [r.description, r.createdBy])).toEqual([["forged", "co_zAna"]]);
+    loaded.dispose();
+  });
+
+  it("drops createdBy from a patch but applies the rest, and refuses to count on it", async () => {
+    const { loaded, ctx, store } = await setup(FORGE_BUNDLE, {}, { me: ana });
+    const row = await store.insert("expense", { description: "dinner", createdBy: "co_zBruno" } as never);
+    await loaded.callAction("expense", "forgePatch", { ...row } as never, ctx);
+    const after = await store.get("expense", row.id);
+    expect(after?.createdBy).toBe("co_zBruno");
+    expect(after?.description).toBe("edited");
+    await expect(loaded.callAction("expense", "forgeCount", { ...row } as never, ctx)).rejects.toThrow(/createdBy/);
+    expect((await store.get("expense", row.id))?.createdBy).toBe("co_zBruno");
+    loaded.dispose();
+  });
+});
+
+// KA-25 across the isolate: a function default lives in the VM; the definition out here holds only
+// the sentinel string. `callFieldDefault` is what lets a form or a quick action start from it.
+const DEFAULTS_BUNDLE = `
+globalThis.__kartaApp = {
+  id: "log", name: "Log", version: "1.0.0", schemaVersion: 1,
+  entities: { entry: { fields: {
+    at: { type: "datetime", default: function(ctx){ return ctx.now(); } },
+    who: { type: "text", default: function(ctx){ return ctx.me.name; } },
+    n: { type: "number", default: 3 }
+  } } },
+  pages: [{ id: "all", title: "All", view: { type: "list", entity: "entry" } }],
+  reminders: []
+};
+`;
+
+describe("IsolateHost — function field defaults (KA-25)", () => {
+  it("evaluates a default inside the VM with the real ctx, and returns a static one as it is", async () => {
+    const now = new Date("2026-09-09T10:00:00Z");
+    const { loaded, ctx } = await setup(DEFAULTS_BUNDLE, {}, { me: { id: "co_zAna", name: "Ana" }, now });
+    const fields = (loaded.definition.entities as Record<string, { fields: Record<string, { default?: unknown }> }>).entry!.fields;
+    expect(fields.at!.default).toBe("__karta_fn__");
+    const at = await loaded.callFieldDefault("entry", "at", ctx);
+    expect(at instanceof Date ? at.toISOString() : at).toBe(now.toISOString());
+    expect(await loaded.callFieldDefault("entry", "who", ctx)).toBe("Ana");
+    expect(await loaded.callFieldDefault("entry", "n", ctx)).toBe(3);
+    loaded.dispose();
+  });
+});
