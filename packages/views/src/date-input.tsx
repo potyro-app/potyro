@@ -10,7 +10,7 @@ import type { DateTimeField } from "karta";
 import { buildMonthGrid, sameDay } from "./calendar.js";
 import { usePhone } from "./media.js";
 import { addDays, formatDateForInput, parseTypedDay, precisionOf, startOfDay, toDate, toIsoTime, withTime } from "./dates.js";
-import { placeUnder } from "./popover.js";
+import { placeUnder, type Placement } from "./popover.js";
 
 export interface DateInputProps {
   field: DateTimeField;
@@ -133,7 +133,7 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
   const [month, setMonth] = useState<Date>(() => new Date((value ?? today).getFullYear(), (value ?? today).getMonth(), 1));
   const ref = useRef<HTMLDivElement>(null);
   const headingId = useId();
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<Placement | null>(null);
 
   useLayoutEffect(() => {
     const r = anchor.current?.getBoundingClientRect();
@@ -174,7 +174,7 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        style={phone ? undefined : pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
+        style={phone ? undefined : pos ? { top: pos.top, bottom: pos.bottom, left: pos.left } : { visibility: "hidden" }}
         onKeyDown={onKey}
       >
         <div className="k-menu-grip" aria-hidden />

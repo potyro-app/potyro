@@ -5,15 +5,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Field, Geo, MediaRef } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
-import { RecordForm } from "./record-form.js";
 import { MAP_STYLE } from "./map.js";
-import { displayFieldFor, humanizeKey } from "./format.js";
 import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
 import { DateInput } from "./date-input.js";
 import { EnumInput } from "./enum-input.js";
 import { ListInput } from "./list-input.js";
 import { MediaInput } from "./media-input.js";
+import { RelationInput } from "./relation-input.js";
 
 export interface FieldInputProps {
   runtime: KartaRuntime;
@@ -74,7 +73,8 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       return <MediaInput runtime={runtime} field={field} value={value as MediaRef | MediaRef[] | null} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "relation":
-      return <RelationInput runtime={runtime} field={field} value={value} onChange={onChange} />;
+      // A searchable picker, not a browser <select> — and several are chips you can take off.
+      return <RelationInput runtime={runtime} field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "member":
       return <MemberInput runtime={runtime} field={field} value={value} onChange={onChange} />;
@@ -299,89 +299,6 @@ function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: 
           </label>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function RelationInput({ runtime, field, value, onChange }: { runtime: KartaRuntime; field: Extract<Field, { type: "relation" }>; value: unknown; onChange: (v: unknown) => void }) {
-  const { rows, loading } = runtime.useQuery(field.to);
-  const disp = displayFieldFor(runtime, field.to);
-  // Creating the FIRST related record used to require abandoning this form, making the other record,
-  // and starting over — a relation to an empty entity was a dead end ("No placeType yet").
-  const [creating, setCreating] = useState(false);
-  const label = runtime.definition.entities[field.to]?.label ?? field.to;
-
-  if (loading) return <span className="k-muted">Loading…</span>;
-
-  const addNew = (
-    <button type="button" className="k-add k-relation-new" onClick={() => setCreating(true)}>
-      ＋ New {label}
-    </button>
-  );
-
-  // A second sheet over the first (#101), not a form folded into this one.
-  const inlineForm = creating ? (
-    <RecordForm
-      nested
-      runtime={runtime}
-      entity={field.to}
-      onCancel={() => setCreating(false)}
-      onDone={(id) => {
-        setCreating(false);
-        // Select what was just created — that is why the user made it.
-        if (field.many) {
-          const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
-          sel.add(id);
-          onChange([...sel]);
-        } else {
-          onChange(id);
-        }
-      }}
-    />
-  ) : null;
-
-  if (field.many) {
-    const sel = new Set(Array.isArray(value) ? (value as string[]) : []);
-    return (
-      <div className="k-relation-input">
-        <div className="k-chips">
-          {rows.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              className="k-chip"
-              data-on={sel.has(r.id)}
-              onClick={() => {
-                const next = new Set(sel);
-                if (next.has(r.id)) next.delete(r.id);
-                else next.add(r.id);
-                onChange([...next]);
-              }}
-            >
-              {String(r[disp] ?? r.id)}
-            </button>
-          ))}
-          {rows.length === 0 ? <span className="k-muted">No {label} yet</span> : null}
-        </div>
-        {addNew}
-        {inlineForm}
-      </div>
-    );
-  }
-
-  const selected = typeof value === "string" ? value : ((value as { id?: string } | null)?.id ?? "");
-  return (
-    <div className="k-relation-input">
-      <select className="k-input" value={selected} onChange={(e) => onChange(e.target.value || null)}>
-        <option value="">{rows.length ? "— choose —" : `No ${label} yet`}</option>
-        {rows.map((r) => (
-          <option key={r.id} value={r.id}>
-            {String(r[disp] ?? r.id)}
-          </option>
-        ))}
-      </select>
-      {addNew}
-      {inlineForm}
     </div>
   );
 }
