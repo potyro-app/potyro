@@ -43,6 +43,53 @@ export interface LauncherEntry {
   /** Who is in a synced app's space, as last seen while it was open (#87). The launcher cannot
    *  open every app's store to ask, so a tile shows the people you have already seen there. */
   people?: { id: string; name: string }[];
+  /** What wants attention in the app, as last known while it was open (#86, phase 1). */
+  signals?: AppSignals;
+}
+
+/**
+ * The three "something happened" counts, written by the running app whenever they change. The launcher
+ * cannot run every app to ask, so it shows the last known numbers. Changes and chat can only go stale
+ * upward while the app is closed; reminders are stored as due TIMES, so one that falls due after the
+ * app was closed is still counted.
+ */
+export interface AppSignals {
+  /** Edits by other people since you last looked. */
+  changes: number;
+  /** Unread chat messages. */
+  chat: number;
+  /** When each of the app's reminders falls due (ISO), past ones included, earliest first. */
+  due: string[];
+}
+
+export interface Attention {
+  total: number;
+  changes: number;
+  chat: number;
+  due: number;
+}
+
+/** The badge's numbers for an entry at `now`: a reminder counts once its time has come. */
+export function attentionOf(entry: LauncherEntry, now: number): Attention {
+  const s = entry.signals;
+  const changes = Math.max(0, s?.changes ?? 0);
+  const chat = Math.max(0, s?.chat ?? 0);
+  const due = (s?.due ?? []).filter((t) => Date.parse(t) <= now).length;
+  return { total: changes + chat + due, changes, chat, due };
+}
+
+/** "2 messages · 1 change · 1 due" — the badge in words. Empty when there is nothing. */
+export function describeAttention(a: Attention): string {
+  const part = (n: number, one: string, many: string): string | null => (n ? `${n} ${n === 1 ? one : many}` : null);
+  return [part(a.chat, "message", "messages"), part(a.changes, "change", "changes"), part(a.due, "due", "due")].filter(Boolean).join(" · ");
+}
+
+/** Merge new signal values into the app's entry — only when something changed, so a re-render does not write. */
+export function recordSignals(key: AppKey, patch: Partial<AppSignals>): void {
+  const prev = getEntry(key).signals ?? { changes: 0, chat: 0, due: [] };
+  const next: AppSignals = { ...prev, ...patch };
+  if (JSON.stringify(next) === JSON.stringify(prev) && getEntry(key).signals) return;
+  updateEntry(key, { signals: next });
 }
 
 export interface AppIdentity {
