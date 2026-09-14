@@ -1052,13 +1052,15 @@ details.k-section > summary h3 {
 /* The form's surface (#101). Head and foot stay put; the fields scroll between them. On a wide
    screen the sheet is the centred modal capped at 90vh; on a phone it is the whole screen, sliding
    up, its footer above the home indicator. A stacked sheet (a relation's inline create) sits over
-   the first with a darker scrim. */
+   the first with a darker scrim. The sheet is portalled to <body>, so it must sit above every
+   full-screen surface an app can be running inside — the Studio preview (50), a case report (45) —
+   or its form opens invisibly behind them. */
 .k-sheet-scrim {
-  z-index: 40;
+  z-index: 55;
   padding: 4vh var(--space-4);
 }
 .k-sheet-scrim-stacked {
-  z-index: 41;
+  z-index: 56;
   background: var(--scrim);
 }
 .k-sheet {
@@ -3223,7 +3225,7 @@ button.k-switch:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  z-index: 50;
+  z-index: 57; /* above a form sheet (55/56): a save error must not hide behind the form */
 }
 .k-toast {
   background: var(--ink);
