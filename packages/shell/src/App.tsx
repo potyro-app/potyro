@@ -165,6 +165,19 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
+  // This app's saved source as the Studio opened. The app below the Studio runs the module it booted
+  // with, so a save (or a restore) made in there is invisible until a reload — closing the Studio
+  // showed the old version of the app you had just changed.
+  const sourceAtStudioOpen = useRef<string | undefined>(undefined);
+  const openStudio = (): void => {
+    sourceAtStudioOpen.current = appId ? getUserApp(appId)?.source : undefined;
+    setGenOpen(true);
+  };
+  const closeStudio = (): void => {
+    setGenOpen(false);
+    const now = appId ? getUserApp(appId)?.source : undefined;
+    if (now !== undefined && now !== sourceAtStudioOpen.current) location.reload();
+  };
   const [launcherOpen, setLauncherOpen] = useState(false);
   // Ctrl/⌘K opens the switcher with its field focused (#85): "switch to X" is a name in your head.
   useEffect(() => {
@@ -913,7 +926,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     ...(generator && canAskAgent ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
             setStudioPrefill(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
-            setGenOpen(true);
+            openStudio();
           } }] : []),
     ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => setEditMode((v) => !v) }] : []),
     ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
@@ -1236,7 +1249,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
             setLauncherOpen(false);
             setStudioPrefill(prefill);
             setStudioAppId(undefined);
-            setGenOpen(true);
+            openStudio();
           }}
           onClose={() => setLauncherOpen(false)}
         />
@@ -1266,7 +1279,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
 
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
-      {genOpen ? <Studio onClose={() => setGenOpen(false)} initialDescription={studioPrefill} initialAppId={studioAppId} /> : null}
+      {genOpen ? <Studio onClose={closeStudio} initialDescription={studioPrefill} initialAppId={studioAppId} /> : null}
 
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
