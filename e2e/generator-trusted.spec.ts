@@ -12,7 +12,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
   // it is for changing THAT app, and opens on it (reported 2026-09-13).
   await page.goto("/");
-  await page.getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: /New app/ }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
 
