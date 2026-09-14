@@ -26,3 +26,6 @@ packages/generator/eval-out/
 packages/generator/.karta-eval-*/
 # local CI results, per commit (scripts/ci-local.mjs)
 .ci-local/
+
+# devlens session recordings (the dev proxy writes them into the project it watches)
+.devlens/
