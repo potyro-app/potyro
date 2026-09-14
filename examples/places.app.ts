@@ -126,9 +126,14 @@ export default defineApp({
           return !kind || p.kind === kind;
         },
         sort: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
+        // Every category at once, in the enum's order, each folding away (#108). The chips still
+        // narrow it to one.
+        group: "kind",
+        collapsible: true,
         display: {
           primary: "name",
-          secondary: (p) => `${p.kind} · ${p.rating ?? "–"}★`,
+          // The heading already says the category, so the row does not repeat it.
+          secondary: (p) => `${p.rating ?? "–"}★`,
           media: "photo",
           badges: ["vibes"],
         },

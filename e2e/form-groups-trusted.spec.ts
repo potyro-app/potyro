@@ -10,6 +10,18 @@ async function openApp(page: Page, app: string, title: string): Promise<void> {
   await expect(page.locator("h1").first()).toHaveText(title, { timeout: 30_000 });
 }
 
+/**
+ * Wait out the form sheet's open animation. Two boxes read while the sheet slides in are read at
+ * two different moments, so "is B below A" compared positions from different frames and failed
+ * about one run in two.
+ */
+async function settled(page: Page): Promise<void> {
+  await expect(page.locator(".k-modal").first()).toBeVisible();
+  await page.locator(".k-modal").first().evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))).then(() => undefined),
+  );
+}
+
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -20,13 +32,13 @@ test.describe("desktop", () => {
     await page.locator(".k-list-row").first().click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    await expect(detail.locator(".k-section h3")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    // Headings are plain for a group that does not fold and a button for one that does (#108).
+    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
     // The folded group is closed until opened, and opens.
-    const steps = detail.locator("details.k-section");
-    await expect(steps).toHaveCount(1);
-    await expect(steps).not.toHaveAttribute("open", "");
-    await steps.locator("summary").click();
-    await expect(steps).toHaveAttribute("open", "");
+    const steps = detail.getByRole("button", { name: /^Steps/ });
+    await expect(steps).toHaveAttribute("aria-expanded", "false");
+    await steps.click();
+    await expect(steps).toHaveAttribute("aria-expanded", "true");
     // A computed value in a group shows on the detail page.
     await expect(detail.locator(".k-field dt", { hasText: "Calories Per Serving" })).toBeVisible();
 
@@ -59,6 +71,7 @@ test.describe("desktop", () => {
     await openApp(page, "plants", "Plants");
     await page.getByRole("button", { name: "New Plant" }).click();
     const form = page.locator(".k-form");
+    await settled(page);
     const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
     const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
     const a = (await watered.boundingBox())!;
@@ -76,6 +89,7 @@ test.describe("phone", () => {
     await openApp(page, "plants", "Plants");
     await page.getByRole("button", { name: "New Plant" }).click();
     const form = page.locator(".k-form");
+    await settled(page);
     const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
     const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
     const a = (await watered.boundingBox())!;

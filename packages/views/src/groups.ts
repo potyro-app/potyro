@@ -11,6 +11,8 @@ export interface ResolvedGroup {
   fields: string[];
   /** Folded at first. Never true for the first group — it is what the page opens on. */
   collapsed: boolean;
+  /** The heading folds it, remembered on this device (#108). A folded-at-first group always can. */
+  collapsible?: boolean;
 }
 
 export type GroupSurface = "form" | "detail";
@@ -38,7 +40,8 @@ export function resolveGroups(entity: EntityDef | undefined, surface: GroupSurfa
     const keys = group.fields.filter((key) => shows(key) && !placed.has(key));
     for (const key of keys) placed.add(key);
     if (keys.length === 0) continue;
-    out.push({ ...(group.title ? { title: group.title } : {}), fields: keys, collapsed: out.length > 0 && Boolean(group.collapsed) });
+    const collapsed = out.length > 0 && Boolean(group.collapsed);
+    out.push({ ...(group.title ? { title: group.title } : {}), fields: keys, collapsed, collapsible: collapsed || Boolean(group.collapsible) });
   }
   const rest = Object.keys(fields).filter((key) => !placed.has(key) && shows(key));
   if (rest.length > 0) out.push({ fields: rest, collapsed: false });
