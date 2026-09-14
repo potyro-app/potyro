@@ -125,6 +125,13 @@ export default defineApp({
       displayField: "name",
       fields: {
         name: { type: "text", required: true, placeholder: "Shakshuka" },
+        // Where the recipe stands with you; the Cookbook board's columns (#107).
+        status: {
+          type: "enum",
+          options: ["want to try", "tried", "keeper"],
+          default: "want to try",
+          colors: { "want to try": "yellow", tried: "teal", keeper: "green" },
+        },
         photo: { type: "media", accept: "image" },
         tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },
         servings: { type: "number", default: 2, min: 1, integer: true, help: "The per-serving figures divide by this" },
@@ -152,7 +159,7 @@ export default defineApp({
       // One arrangement for the form and the detail page (#100). The form shows the fields of each
       // group it can edit; the detail page shows the computed values too.
       groups: [
-        { title: "Overview", fields: ["name", "photo", "tags"] },
+        { title: "Overview", fields: ["name", "status", "photo", "tags"] },
         // Folds on the record page, remembered on this device, with the count in its heading (#108).
         { title: "Ingredients", fields: ["ingredients"], collapsible: true },
         { title: "Steps", fields: ["steps"], collapsed: true },
@@ -303,6 +310,20 @@ export default defineApp({
         rowActions: ["markCooked"],
         onOpen: { page: "detail", param: { recipeId: "id" } },
         emptyText: "Nothing fully in stock yet — mark ingredients “in stock” on the Ingredients tab.",
+      },
+    },
+    {
+      // Every recipe by where it stands with you: drag one to "keeper" once it earns it (#107).
+      id: "cookbook",
+      icon: "📒",
+      title: "Cookbook",
+      view: {
+        type: "board",
+        entity: "recipe",
+        column: "status",
+        sort: (a, b) => a.name.localeCompare(b.name),
+        display: { primary: "name", secondary: (r) => `${Math.round(r.caloriesPerServing)} kcal · ${r.difficulty}`, badges: ["tags"] },
+        onOpen: { page: "detail", param: { recipeId: "id" } },
       },
     },
     {

@@ -289,6 +289,18 @@ const stepsView = z.object({
   onFinish: z.string().optional(),
 });
 
+const boardView = z.object({
+  type: z.literal("board"),
+  entity: z.string(),
+  column: z.string().min(1),
+  columns: z.array(z.string()).min(1).optional(),
+  display: listDisplaySchema.optional(),
+  filter: zFn.optional(),
+  sort: zFn.optional(),
+  onOpen: onOpenSchema.optional(),
+  allowMove: z.boolean().optional(),
+});
+
 const checklistView = z.object({
   type: z.literal("checklist"),
   entity: z.string(),
@@ -347,6 +359,7 @@ const viewSchema = z.discriminatedUnion("type", [
   mapView.strict(),
   stepsView.strict(),
   checklistView.strict(),
+  boardView.strict(),
   aggregateView.strict(),
   customView.strict(),
 ]);
@@ -713,6 +726,25 @@ export function checkReferences(def: AppDefinition): string[] {
       }
       case "steps": {
         ensureKey(entity, v.entity, v.list, `${where} list`);
+        break;
+      }
+      case "board": {
+        // The columns ARE an enum's options: a board over a free-text field would have a column per
+        // spelling, and a drop would write a value the field never offered.
+        const col = entity.fields[v.column];
+        if (!col) issues.push(`${where} column names unknown field "${v.column}" on entity "${v.entity}"`);
+        else if (col.type !== "enum") issues.push(`${where} column "${v.column}" must be an enum field, not ${col.type}`);
+        else {
+          for (const c of v.columns ?? []) {
+            if (!col.options.includes(c)) issues.push(`${where} columns names "${c}", which is not an option of "${v.column}" (${col.options.join(", ")})`);
+          }
+        }
+        if (v.display) {
+          checkBinding(v.display.primary, "display.primary");
+          checkBinding(v.display.secondary, "display.secondary");
+          if (v.display.media) ensureKey(entity, v.entity, v.display.media, `${where} display.media`);
+          for (const b of v.display.badges ?? []) ensureKey(entity, v.entity, b, `${where} display.badges`);
+        }
         break;
       }
       case "checklist": {

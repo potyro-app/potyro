@@ -323,6 +323,8 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   show on the detail page). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
   \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
   text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
+- Records with a stage or status (tasks, applications, "want to try / tried") want a \`board\` page:
+  \`{ type: "board", entity, column: "<enum field>" }\`.
 - A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
   whose rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.

@@ -30,12 +30,12 @@ test.describe("phone", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
 
-    // Four pages in the bar, the rest behind More — and each of the seven is reachable.
+    // Four pages in the bar, the rest behind More — and each of the eight is reachable.
     const bar = page.locator(".k-tabbar");
     await expect(bar.locator(".k-tab .k-tab-label")).toHaveText(["Recipes", "What can I cook?", "High protein", "Plant-based", "More"]);
     await bar.getByRole("button", { name: "More pages" }).tap();
     const more = page.getByRole("menu", { name: "More pages" });
-    await expect(more.getByRole("menuitem")).toHaveText([/Ready to cook/, /Ingredients/, /In season/]);
+    await expect(more.getByRole("menuitem")).toHaveText([/Ready to cook/, /Cookbook/, /Ingredients/, /In season/]);
     await more.getByRole("menuitem", { name: /Ingredients/ }).tap();
     await expect(page.locator(".k-list-row").first()).toContainText(/./);
     await expect(bar.locator(".k-tab-more-active")).toHaveCount(1);
@@ -90,7 +90,7 @@ test.describe("desktop", () => {
   test("a sidebar with the pages, the quick actions and the tools; the content column has no top strip", async ({ page }) => {
     await openRecipes(page);
     const side = page.locator(".k-sidebar");
-    await expect(side.locator(".k-sidenav .k-tab")).toHaveCount(7);
+    await expect(side.locator(".k-sidenav .k-tab")).toHaveCount(8);
     await expect(side.locator(".k-quickbar .k-quick")).toHaveText([/New Recipe/, /New Ingredient/]);
     await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/New Recipe/);
     await expect(side.locator(".k-tools .k-tool")).toHaveText([/Studio/, /Edit mode/, /History/, /Import/, /Export/, /Something's wrong/, /Runs directly/, /All apps/]);

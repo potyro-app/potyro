@@ -182,6 +182,14 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4j. Board — records in columns (#107)
+
+Recipes → **Cookbook**: every recipe under want to try, tried or keeper, each column with its colour
+dot and a count; the empty column says "Nothing here" and offers **＋ Add** starting in that column.
+Drag a card to another column — the column lights up under it — and it stays there after a reload.
+A plain click still opens the recipe. On a phone the columns snap sideways one at a time; a card's
+**⋯ → Move to …** moves it without dragging.
+
 ## 4i. Grouped sections — every group at once (#108)
 
 Places → **All places**: the places sit under their category, in the order the enum declares
