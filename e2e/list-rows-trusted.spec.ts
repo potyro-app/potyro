@@ -45,6 +45,10 @@ test.describe("desktop", () => {
     await page.locator(".k-form").getByRole("button", { name: /Save|Create/ }).click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
+    // Steps starts folded, and a folded section renders nothing (#108): open it to read the order.
+    const steps = detail.getByRole("button", { name: /^Steps/ });
+    if ((await steps.getAttribute("aria-expanded")) === "false") await steps.click();
+    await expect(detail.locator("ol.k-row-list li").first()).toBeVisible();
     const listed = await detail.locator("ol.k-row-list li").allTextContents();
     expect(listed[0]).toContain(after[0]!.slice(0, 12));
   });

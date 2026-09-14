@@ -62,8 +62,9 @@ describe("resolveGroups", () => {
   it("gives the form the editable fields of each group and the rest after, and the detail the computed too", () => {
     const entity = app.entities.recipe;
     expect(resolveGroups(entity, "form")).toEqual([
-      { title: "Overview", fields: ["name", "servings", "prepMinutes"], collapsed: false },
-      { title: "Notes", fields: ["notes"], collapsed: true },
+      // A group folded at first can always be folded again (#108); the others fold only when asked.
+      { title: "Overview", fields: ["name", "servings", "prepMinutes"], collapsed: false, collapsible: false },
+      { title: "Notes", fields: ["notes"], collapsed: true, collapsible: true },
       { fields: ["rating"], collapsed: false },
     ]);
     expect(resolveGroups(entity, "detail").map((g) => g.fields)).toEqual([

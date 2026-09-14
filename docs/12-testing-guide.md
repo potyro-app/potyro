@@ -182,6 +182,13 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4i. Grouped sections — every group at once (#108)
+
+Places → **All places**: the places sit under their category, in the order the enum declares
+(restaurant, bar, cafe, …), each heading with a count. Click a heading: its places fold away. Reload
+— still folded. The category chips still narrow it to one. On a phone with a long list, scroll: the
+heading of the group you are in stays pinned under the top bar. Open a recipe: **Ingredients** folds
+from its heading with its count, **Steps** starts folded, and both remember what you did.
 ## 4g. Relations — pick by searching (#98 follow-up)
 
 Edit a recipe: each ingredient card's **Ingredient** is a button, not a dropdown. Open it, type
