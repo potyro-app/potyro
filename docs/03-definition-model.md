@@ -139,6 +139,13 @@ on a pick; `many: true` shows the chosen records as chips you can take off, with
 list with checkmarks. When the search finds nothing, the list's last line creates the record, named
 with what was typed, in a sheet over the form, and selects it. No form renders a `<select>`.
 
+A `board` page puts records in columns by an enum field (#107): `{ type: "board", entity, column }`,
+with `columns` to choose and order a subset of the options, the same `display` a list has, `filter`,
+`sort` (the order inside every column) and `onOpen`. Dragging a card to another column patches that
+field, and so does "Move to…" in the card's menu — the way a keyboard or a phone moves a card. An
+empty column offers Add, pre-filled with its value; records whose value is not a column sit in a
+leading "No …" column. `allowMove: false` makes it read-only. Cards do not reorder inside a column.
+
 An `enum` never renders a browser `<select>` (#98). Up to five options are a row of buttons, all
 visible at once; six or more open a searchable picker — a bottom sheet on a phone, a popover on a
 wide screen. A field may force either with `control: "segmented" | "picker"`. Each value carries a
