@@ -7,6 +7,7 @@
 // for untrusted apps. App code sees the same interface either way — authority is what differs.
 
 import type { Geo, Id, MediaRef, Resolved, Value } from "./core.js";
+import type { Field } from "./fields.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -105,11 +106,36 @@ export interface CtxStorage {
 }
 
 /** UI affordances provided by the shell (docs/04). */
+/** One choice in `ui.sheet` / `ui.menu`. A destructive item is shown last, in red. */
+export interface UiItem<T = string> {
+  id: T;
+  label: string;
+  detail?: string;
+  icon?: string;
+  destructive?: boolean;
+}
+
+/** A running `ui.progress` bar. */
+export interface UiProgress {
+  /** `fraction` from 0 to 1; `detail` replaces the count on the right ("24 of 40"). */
+  update(fraction: number, detail?: string): void;
+  done(): void;
+}
+
 export interface CtxUi {
   toast(msg: string): void;
-  confirm(msg: string): Promise<boolean>;
+  /** `ok` names the button ("Delete"); `destructive` makes it red; `detail` is a quieter second line. */
+  confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
   prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
+  /** A short list of choices: a bottom sheet on a phone, a small dialog on a wide screen. Null when dismissed. */
+  sheet<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  /** The same, hanging under the button that ran the action on a wide screen (a sheet on a phone). */
+  menu<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  /** Several values at once, with the record form's controls. Relations come back as ids; null when cancelled. */
+  form<T = Record<string, unknown>>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }): Promise<T | null>;
+  /** A progress bar for a long action. */
+  progress(label: string): UiProgress;
 }
 
 /** Media helpers (docs/04). */

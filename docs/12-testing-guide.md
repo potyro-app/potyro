@@ -182,6 +182,14 @@ Done, and is still bought after a reload. Type "Coffee" in the box at the bottom
 it appears under "pantry" (the aisle's default) and the box keeps the focus. `groceries-sandbox`
 proves the same ticking works untrusted, with the app's `sort` crossing the isolate bridge.
 
+## 4m. Actions that ask (#112)
+
+PPL Log → History → open a session → **Log set**: one form with the exercise, weight and reps, starting
+from the session's last set; logging adds the set and says so. **Train** → start a workout → **Finish**:
+a sheet with Save and finish, Keep training, and Discard workout last in red. On a phone, **More
+actions → Delete** on any record asks in a bottom sheet whose button says Delete. `pnpm dev:sandbox`
+does the same inside the isolate — Log set included.
+
 ## 4l. History — a timeline (#110)
 
 PPL Log → **History**: sessions newest first under "This week", "Last week", then a date range per

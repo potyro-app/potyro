@@ -313,7 +313,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
   // undo. It asked for nothing at all before.
   const del = async (a: UserApp): Promise<void> => {
-    if (!(await shellDialogs.confirm(`Delete "${a.name}" and everything in it? This can't be undone.`))) return;
+    if (!(await shellDialogs.confirm(`Delete "${a.name}" and everything in it?`, { detail: "This can't be undone.", ok: "Delete", destructive: true }))) return;
     await removeUserApp(a.id);
   };
   // Sync moves the app's data between two stores that keep it in DIFFERENT files, so this is a
