@@ -8,7 +8,7 @@ import { openApp, openHome, seed } from "./fixture.js";
 
 const keysIn = (section: Locator) => section.locator(".k-launch-item").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.key));
 const pinnedSection = (page: Page) => page.getByRole("region", { name: "Pinned" });
-const restSection = (page: Page) => page.getByRole("region", { name: /^(Apps|Everything else)$/ });
+const restSection = (page: Page) => page.getByRole("region", { name: /^(Apps|Everything else|Examples to try)$/ });
 
 /** A finger: hold, then move, then let go — through CDP so the pointer events say `touch`. */
 async function touchDrag(page: Page, from: Locator, to: Locator): Promise<void> {

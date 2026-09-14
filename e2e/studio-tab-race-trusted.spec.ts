@@ -20,7 +20,7 @@ test("reading the source while the preview is still building stays on the source
   test.slow();
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: /New app/ }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
 
@@ -38,7 +38,7 @@ test("reading the source while the preview is still building stays on the source
   // bug still in place for exactly that reason. After a reload the store is cold (a fresh OPFS
   // SQLite open) and so is esbuild, which is the state the real flake happens in.
   await page.reload();
-  await page.getByRole("button", { name: "Studio" }).click();
+  await page.getByRole("button", { name: /New app/ }).click();
   await expect(studio).toBeVisible();
   await expect(studio.locator(".k-studio-building")).toHaveCount(0, { timeout: 60_000 });
 
