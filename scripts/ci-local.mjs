@@ -20,7 +20,7 @@
 //   - Flaky tests get one retry, as they do on GitHub.
 
 import { spawnSync, execSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync, createWriteStream } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { createConnection } from "node:net";
 
@@ -41,13 +41,11 @@ function dirty() {
 
 function run(label, cmd, args, env = {}) {
   const log = join(dir, `${label.replace(":", "-")}.log`);
-  const out = createWriteStream(log);
   process.stdout.write(`▶ ${label}: ${[cmd, ...args].join(" ")}\n`);
   const started = Date.now();
   const res = spawnSync(cmd, args, { cwd: ROOT, env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1 << 30 });
-  out.write(res.stdout ?? "");
-  out.write(res.stderr ?? "");
-  out.end();
+  // Synchronously: the script exits right after, and a stream would be cut off before it flushed.
+  writeFileSync(log, `$ ${[cmd, ...args].join(" ")}\n${res.stdout ?? ""}${res.stderr ?? ""}`);
   const secs = Math.round((Date.now() - started) / 1000);
   return { ok: res.status === 0, secs, log, tail: `${res.stdout ?? ""}${res.stderr ?? ""}`.trim().split("\n").slice(-25).join("\n") };
 }
