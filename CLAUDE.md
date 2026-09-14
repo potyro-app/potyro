@@ -86,6 +86,12 @@ pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playw
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
 
+# local CI — the same checks as GitHub's ci.yml, per commit, resumable; the merge gate while
+# GitHub Actions is unavailable. `status --post` puts a `local-ci` check on the commit.
+pnpm ci:local all              # every step (run in a terminal; ~15 min)
+pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..5
+pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
+
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130)
 pnpm --filter @karta/generator gen:reference
