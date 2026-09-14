@@ -234,6 +234,22 @@ export interface ChecklistView {
   emptyText?: Dynamic<string>;
 }
 
+/** Records in columns by an enum field; dragging a card, or its Move to, patches that field (#107). */
+export interface BoardView {
+  type: "board";
+  entity: string;
+  /** The enum field whose options are the columns. */
+  column: string;
+  /** Which options, in order. Default: all. */
+  columns?: string[];
+  display?: ListDisplay;
+  filter?: FilterFn;
+  sort?: SortFn;
+  onOpen?: OnOpen;
+  /** `false` makes the board read-only. */
+  allowMove?: boolean;
+}
+
 /**
  * One row of a derived table — a balance, a settle-up transfer, a remaining quantity.
  *
@@ -320,6 +336,7 @@ export type View =
   | MapView
   | StepsView
   | ChecklistView
+  | BoardView
   | AggregateView
   | CustomView;
 
@@ -332,6 +349,7 @@ export const VIEW_TYPES = [
   "map",
   "steps",
   "checklist",
+  "board",
   "aggregate",
   "custom",
 ] as const;

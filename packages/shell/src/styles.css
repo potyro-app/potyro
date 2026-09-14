@@ -2105,6 +2105,179 @@ details.k-layout-fold[open] > summary::before {
 }
 /* tokens-only: end — page layouts */
 
+/* tokens-only: start — board */
+/* Records in columns by an enum field (#107). Columns side by side on a wide screen; on a phone one
+   column at a time, snapping sideways, with a dot per column. A lifted card rides the pointer and the
+   column under it lights up. */
+.k-board-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.k-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(15rem, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.k-board[data-phone] {
+  grid-auto-columns: 85%;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  gap: 10px;
+}
+.k-board[data-phone] .k-board-col {
+  scroll-snap-align: start;
+}
+.k-board[data-dragging] {
+  user-select: none;
+}
+/* The board scrolls sideways when its columns do not fit, and a scroll container clips what is
+   inside it — including the card in the air. While a card is lifted on a wide screen the board lets
+   it overflow; on a phone the strip must keep scrolling, so the card stays within it. */
+.k-board[data-dragging]:not([data-phone]) {
+  overflow: visible;
+}
+.k-board-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 10rem;
+  padding: var(--space-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-board-col[data-over] {
+  border-color: var(--accent);
+  border-style: dashed;
+  background: var(--accent-tint);
+}
+.k-board-col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-board-dot {
+  display: inline-block;
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--swatch, var(--ink-faint));
+}
+.k-board-count {
+  color: var(--ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+.k-board-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-board-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  touch-action: pan-y;
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.k-board-card[data-lifted] {
+  z-index: 10;
+  box-shadow: var(--shadow);
+  border-color: var(--accent-line);
+  pointer-events: none;
+}
+.k-board-card-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+.k-board-card-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+.k-board-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.k-board-thumb {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+.k-board-card-menu {
+  flex: none;
+  padding: var(--space-1);
+}
+.k-board-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0 var(--space-2);
+  color: var(--ink-faint);
+  font-size: 0.88rem;
+}
+.k-board-empty p {
+  margin: 0;
+}
+.k-board-add {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+}
+.k-board-pager {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.k-board-pager-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-board-pager-dot[data-on] {
+  background: var(--ink-soft);
+}
+/* tokens-only: end — board */
+
 /* tokens-only: start — grouped sections */
 /* Rows under headings, and sections that fold (#108). A list's group heading is the aggregate
    view's small uppercase label, so grouped lists and aggregates read as one family; it sticks while

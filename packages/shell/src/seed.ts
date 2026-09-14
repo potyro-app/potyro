@@ -87,6 +87,7 @@ async function seedRecipes(store: Store): Promise<void> {
 
   await store.insert("recipe", {
     name: "Fluffy Pancakes",
+    status: "keeper",
     tags: ["breakfast", "vegetarian"],
     servings: 2,
     ingredients: [
@@ -104,6 +105,7 @@ async function seedRecipes(store: Store): Promise<void> {
 
   await store.insert("recipe", {
     name: "Chicken Caesar",
+    status: "tried",
     tags: ["lunch", "dinner"],
     servings: 1,
     ingredients: [
