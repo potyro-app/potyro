@@ -31,11 +31,18 @@
 
 import { entropyToMnemonic, mnemonicToEntropy } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english";
+import { currentVault, type SecretVault } from "./vault.js";
 
 /** Where identity is remembered. `localStorage` in the browser; a Map in tests. */
 export interface IdentityKeys {
   get(key: string): string | null;
   set(key: string, value: string): void;
+  remove?(key: string): void;
+  /**
+   * Where the SECRET keys go — the seed and the agent secret (vault.ts, #57). Absent = kept with the
+   * rest, which is what a test's plain map does and what a browser without a vault falls back to.
+   */
+  secrets?: SecretVault;
 }
 
 export interface Identity {
@@ -99,7 +106,69 @@ function browserKeys(): IdentityKeys {
   return {
     get: (k) => globalThis.localStorage?.getItem(k) ?? null,
     set: (k, v) => globalThis.localStorage?.setItem(k, v),
+    remove: (k) => globalThis.localStorage?.removeItem(k),
+    secrets: currentVault(),
   };
+}
+
+/** Every key that is a secret: whoever holds one can sign as this person. */
+const SECRET_KEYS = [SEED, SECRET, LEGACY_SECRET, LEGACY_SEED] as const;
+
+async function vaultOf(keys: IdentityKeys): Promise<SecretVault | null> {
+  return keys.secrets && (await keys.secrets.available()) ? keys.secrets : null;
+}
+
+/**
+ * Read a secret — from the vault, moving it there first if an older build left it in plain storage.
+ *
+ * The plain copy is removed only once the vault has been read back and AGREES. A move that failed
+ * halfway must leave the secret where it was: the only thing worse than a secret in the clear is no
+ * secret at all.
+ */
+async function getSecret(keys: IdentityKeys, key: string): Promise<string | null> {
+  const vault = await vaultOf(keys);
+  if (!vault) return keys.get(key);
+  const sealed = await vault.get(key);
+  if (sealed != null) {
+    if (keys.get(key) != null) keys.remove?.(key); // a leftover plain copy from an interrupted move
+    return sealed;
+  }
+  const plain = keys.get(key);
+  if (plain == null) return null;
+  try {
+    await vault.set(key, plain);
+    if ((await vault.get(key)) === plain) keys.remove?.(key);
+  } catch {
+    // Left in plain storage, still usable; the next read tries the move again.
+  }
+  return plain;
+}
+
+async function setSecret(keys: IdentityKeys, key: string, value: string): Promise<void> {
+  const vault = await vaultOf(keys);
+  if (!vault) return keys.set(key, value);
+  await vault.set(key, value);
+  keys.remove?.(key);
+}
+
+/**
+ * Move every secret this device holds out of plain storage and into the vault.
+ *
+ * Called once at boot so the move does not wait for the first time an app syncs — a device that
+ * never syncs again would otherwise keep its secret in the clear forever.
+ */
+export async function secureIdentitySecrets(keys: IdentityKeys = browserKeys()): Promise<void> {
+  for (const key of SECRET_KEYS) await getSecret(keys, key);
+}
+
+/** What a synced app needs and this device no longer has. */
+export class IdentityKeysMissingError extends Error {
+  constructor() {
+    super(
+      "This device's sign-in keys are missing, so shared apps cannot open. If you saved your recovery words, enter them under You to link this device again.",
+    );
+    this.name = "IdentityKeysMissingError";
+  }
 }
 
 /** cojson's crypto + the two internals that turn a seed into an account id, loaded on demand. */
@@ -146,7 +215,7 @@ export function peekIdentity(keys: IdentityKeys = browserKeys()): Identity | nul
  */
 export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promise<Identity> {
   const legacyId = keys.get(LEGACY_ID);
-  const legacySecret = keys.get(LEGACY_SECRET);
+  const legacySecret = legacyId ? await getSecret(keys, LEGACY_SECRET) : null;
   const existing = peekIdentity(keys);
 
   if (existing) {
@@ -158,10 +227,10 @@ export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promis
     const origin = keys.get(ORIGIN);
     const automatic = origin === null || origin === "minted";
     if (automatic && legacyId && legacySecret && legacyId !== existing.id) {
+      await setSecret(keys, SECRET, legacySecret);
+      const legacySeed = await getSecret(keys, LEGACY_SEED);
+      if (legacySeed) await setSecret(keys, SEED, legacySeed);
       keys.set(ID, legacyId);
-      keys.set(SECRET, legacySecret);
-      const legacySeed = keys.get(LEGACY_SEED);
-      if (legacySeed) keys.set(SEED, legacySeed);
       keys.set(ORIGIN, "adopted");
       return peekIdentity(keys)!;
     }
@@ -172,11 +241,11 @@ export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promis
   // minting — is what keeps a device that already synced from waking up as a stranger to its own
   // data.
   if (legacyId && legacySecret) {
-    keys.set(SECRET, legacySecret);
+    await setSecret(keys, SECRET, legacySecret);
     keys.set(NAME, keys.get(NAME) ?? DEFAULT_NAME);
     // Only if the store had already started keeping one. Usually absent, hence no passphrase.
-    const legacySeed = keys.get(LEGACY_SEED);
-    if (legacySeed) keys.set(SEED, legacySeed);
+    const legacySeed = await getSecret(keys, LEGACY_SEED);
+    if (legacySeed) await setSecret(keys, SEED, legacySeed);
     keys.set(ORIGIN, "adopted");
     keys.set(ID, legacyId);
     return peekIdentity(keys)!;
@@ -189,8 +258,8 @@ export async function ensureIdentity(keys: IdentityKeys = browserKeys()): Promis
   // Order matters: the id is written LAST, because `peekIdentity` treats it as the marker that a
   // complete identity exists. Interrupted halfway, the next run mints cleanly instead of reporting
   // an identity whose seed is missing — which would be an account that can never be linked.
-  keys.set(SEED, toHex(seed));
-  keys.set(SECRET, secret);
+  await setSecret(keys, SEED, toHex(seed));
+  await setSecret(keys, SECRET, secret);
   keys.set(NAME, DEFAULT_NAME);
   keys.set(ORIGIN, "minted");
   keys.set(ID, crypto.idFor(secret));
@@ -215,7 +284,9 @@ export function renameIdentity(name: string, keys: IdentityKeys = browserKeys())
  */
 export async function identityAccount(keys: IdentityKeys = browserKeys()): Promise<IdentityAccount> {
   await ensureIdentity(keys);
-  return { id: keys.get(ID)!, secret: keys.get(SECRET)! };
+  const secret = await getSecret(keys, SECRET);
+  if (!secret) throw new IdentityKeysMissingError();
+  return { id: keys.get(ID)!, secret };
 }
 
 /**
@@ -227,7 +298,7 @@ export async function identityAccount(keys: IdentityKeys = browserKeys()): Promi
  */
 export async function recoveryPassphrase(keys: IdentityKeys = browserKeys()): Promise<string> {
   await ensureIdentity(keys);
-  const seed = keys.get(SEED);
+  const seed = await getSecret(keys, SEED);
   if (!seed) {
     throw new Error(
       "This device's identity was created without a recovery seed, so it cannot be linked to another device.",
@@ -264,8 +335,8 @@ export async function signInWithPassphrase(
   const secret = crypto.agentSecretFromSecretSeed(seed);
   const name = keys.get(NAME) ?? DEFAULT_NAME;
 
-  keys.set(SEED, toHex(seed));
-  keys.set(SECRET, secret);
+  await setSecret(keys, SEED, toHex(seed));
+  await setSecret(keys, SECRET, secret);
   keys.set(NAME, name);
   // Deliberate: never reclaimed over by leftover legacy keys.
   keys.set(ORIGIN, "passphrase");
