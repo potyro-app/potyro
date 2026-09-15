@@ -52,6 +52,15 @@ export interface EntityDef {
   groups?: FieldGroup[];
   computed?: Record<string, Computed>;
   actions?: Record<string, ActionFn>;
+  /**
+   * Who may change or delete a record once it exists (KA-21). Default `"anyone"` in the app.
+   *
+   * `"creator"`: only the person who added the record. In a shared app, anyone else's edit or delete
+   * simply does not take — everyone keeps seeing the creator's version — and your own copy refuses
+   * such an edit up front. Use it for rows that belong to one person: a ledger entry, a vote, a
+   * signup. It changes nothing in an app nobody else uses.
+   */
+  editableBy?: "anyone" | "creator";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

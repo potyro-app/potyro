@@ -51,6 +51,10 @@ entities: {
   recipe: {
     label: "Recipe",
     displayField: "name",
+    // Who may change or delete a record (KA-21). "anyone" (default) or "creator": in a shared app only
+    // the person who added it — everyone else's edit simply does not take, and their Edit/Delete are
+    // drawn inactive. Enforced from the sync log's signatures, not from the `createdBy` value.
+    editableBy: "anyone",
     fields: {
       name:       { type: "text", required: true },
       photo:      { type: "media", accept: "image" },

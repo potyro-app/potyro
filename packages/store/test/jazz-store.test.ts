@@ -298,6 +298,59 @@ describe("JazzStore — two peers through the Store seam", () => {
     expect((await anaStore.get("expense", r.id))?.amountCents).toBe(4200);
   });
 
+  // KA-21 per-member scoping: `editableBy: "creator"`. Bruno's store is described WITHOUT the rule
+  // where the test needs a copy that ignores it — an old version, or a tampered one — because that is
+  // the case the rule exists for; his own copy refusing up front is the easy half.
+  const creatorOnly = { creatorOnly: ["expense"] };
+
+  it("creator-only: another member's copy refuses to change or delete someone else's row", async () => {
+    const { anaStore, brunoStore } = await pair();
+    anaStore.describe({}, creatorOnly);
+    brunoStore.describe({}, creatorOnly);
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+
+    await expect(brunoStore.update("expense", r.id, { amountCents: 1 })).rejects.toThrow("Only the person who added this can change it.");
+    await expect(brunoStore.delete("expense", r.id)).rejects.toThrow("Only the person who added this can delete it.");
+    await expect(brunoStore.increment("expense", r.id, "amountCents", 1)).rejects.toThrow(/can change it/);
+
+    // His own row is his to change.
+    const mine = await brunoStore.insert("expense", { description: "Taxi", amountCents: 1800 });
+    await brunoStore.update("expense", mine.id, { amountCents: 2000 });
+    await settle();
+    expect((await anaStore.get("expense", mine.id))?.amountCents).toBe(2000);
+  });
+
+  it("creator-only: an edit or delete from a copy that ignores the rule does not take for anyone who has it", async () => {
+    const { anaStore, brunoStore } = await pair();
+    anaStore.describe({}, creatorOnly);
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+
+    // Bruno's copy knows nothing of the rule and writes anyway.
+    await brunoStore.update("expense", r.id, { amountCents: 1, description: "Dinner (Ana owes me)" });
+    await settle();
+    expect((await brunoStore.get("expense", r.id))?.amountCents).toBe(1); // control: the write really happened
+
+    expect(await anaStore.get("expense", r.id)).toMatchObject({ description: "Dinner", amountCents: 4200 });
+    expect((await anaStore.all("expense")).map((e) => e.amountCents)).toEqual([4200]);
+    // Nor does it show up as something that happened.
+    expect((await anaStore.editHistory("expense", r.id)).some((e) => e.value === 1)).toBe(false);
+
+    await brunoStore.delete("expense", r.id);
+    await settle();
+    expect(await brunoStore.get("expense", r.id)).toBeNull(); // control
+    expect((await anaStore.all("expense")).map((e) => e.description)).toEqual(["Dinner"]);
+
+    // The creator's own edits and delete still take, and reach everyone.
+    await anaStore.update("expense", r.id, { amountCents: 4500 });
+    await settle();
+    expect((await anaStore.get("expense", r.id))?.amountCents).toBe(4500);
+    await anaStore.delete("expense", r.id);
+    await settle();
+    expect(await anaStore.all("expense")).toEqual([]);
+  });
+
   it("a kv write by one peer is heard by the other while it is open (KA-22)", async () => {
     // The version gate watches `__appSource` so a newer version locks an old copy the moment it is
     // published. Hearing it only on the next open is what let an old copy keep writing.

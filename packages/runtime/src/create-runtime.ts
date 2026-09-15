@@ -50,6 +50,13 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
   // carried them across would be inviting whatever is on the other side to call them.
   deps.store.describe?.(
     Object.fromEntries(Object.entries(core.definition.entities).map(([entity, def]) => [entity, def.fields ?? {}])),
+    // Who may change what (KA-21). The store is where authorship is signed, so it is the one that
+    // can hold another member's edit to someone else's row back.
+    {
+      creatorOnly: Object.entries(core.definition.entities)
+        .filter(([, def]) => def.editableBy === "creator")
+        .map(([entity]) => entity),
+    },
   );
 
   return {

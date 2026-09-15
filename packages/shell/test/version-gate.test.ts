@@ -48,6 +48,21 @@ describe("a store guarded by a lock", () => {
   });
 });
 
+describe("the guarded store is a drop-in", () => {
+  it("forwards every method the store it wraps has — a missing one silently loses a feature", () => {
+    // A Store with EVERY optional member present, so a method the wrapper forgets shows up here
+    // rather than as a shared app that quietly stops merging tags.
+    const methods = [
+      "open", "close", "describe", "all", "get", "byIndex", "insert", "update", "delete", "increment", "transaction",
+      "subscribe", "putBlob", "putBlobWithKey", "getBlob", "kvGet", "kvSet", "kvDelete", "kvKeys", "subscribeKv",
+      "storedSchemaVersion", "runMigrations", "editHistory", "postMessage", "messages", "subscribeMessages",
+    ];
+    const full = Object.fromEntries(methods.map((m) => [m, vi.fn(async () => undefined)])) as unknown as import("@karta/store").Store;
+    const guarded = guardedStore(full, () => null) as unknown as Record<string, unknown>;
+    expect(methods.filter((m) => typeof guarded[m] !== "function")).toEqual([]);
+  });
+});
+
 describe("changing shared data to a new version", () => {
   it("asks first when other people share the app, and 'not now' changes nothing", async () => {
     const raw = await oldData();
