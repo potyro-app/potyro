@@ -149,6 +149,9 @@ importers:
       '@karta/capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      capacitor-secure-storage-plugin:
+        specifier: 0.13.0
+        version: 0.13.0(@capacitor/core@8.4.2)
       karta:
         specifier: workspace:*
         version: link:../schema
@@ -1574,6 +1577,11 @@ packages:
 
   caniuse-lite@1.0.30001806:
     resolution: {integrity: sha512-72Cuvd95zbSYPKq6Fhg8eDJRlzgWDf7/mtoZv6Qe/DYNCEBdNxoA3+rZAU2ZhGCpZlns3EssFavaZomckT5Uuw==}
+
+  capacitor-secure-storage-plugin@0.13.0:
+    resolution: {integrity: sha512-+rLC/9Z0LTaRRt6L6HjBwcDh5gqgI3NPmDSwo4hk41XQOy3EBrRo81VleIqFsowsMA3oMT+E59Bl8/HiWk0nhQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   chai@5.3.3:
     resolution: {integrity: sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==}
@@ -4340,6 +4348,10 @@ snapshots:
   camelcase@6.3.0: {}
 
   caniuse-lite@1.0.30001806: {}
+
+  capacitor-secure-storage-plugin@0.13.0(@capacitor/core@8.4.2):
+    dependencies:
+      '@capacitor/core': 8.4.2
 
   chai@5.3.3:
     dependencies:
