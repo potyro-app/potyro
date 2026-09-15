@@ -13,7 +13,8 @@ import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
 import { getLaunchUrl, onUrlOpen } from "@karta/native";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
-import { maybeCreateNativeCapabilities } from "@karta/native";
+import { maybeCreateNativeCapabilities, maybeCreateNativeVault } from "@karta/native";
+import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@karta/identity";
 import type { Provenance } from "@karta/host";
 import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
@@ -537,9 +538,18 @@ function canSwitchInPlace(next: Route): boolean {
   return next.kind === "home" || !getUserApp(next.id)?.sync;
 }
 
+// Where the identity's secrets live (#57): the platform keystore on a device, else this browser's
+// encrypted vault, else — where neither exists — plain storage as before. Registered at module load,
+// before anything below can read identity; which one is decided on first use.
+setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? browserVault()));
+
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
+
+  // Move secrets an older build left in plain storage into the vault. Not awaited: nothing on screen
+  // waits on it, and every read of a secret performs the same move if this has not finished.
+  void secureIdentitySecrets().catch((e: unknown) => console.warn("[karta] could not secure identity keys:", e));
 
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
