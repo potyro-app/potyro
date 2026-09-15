@@ -49,6 +49,11 @@ interface Ctx {
   patch<E>(entity: string, id: string, data: Partial<E>): Promise<Resolved<E>>;
   delete(entity: string, id: string): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
+  // Values are checked against their declared field (KA-21). create/patch REJECT a value that does
+  // not fit (`FieldValueError`, e.g. "Amount must be a number."); a patch holds values it leaves
+  // unchanged only to their shape, so an old record stays saveable after its enum options change.
+  // Reads never return a value that does not fit: the record carries the last value that did (from
+  // the history, on a synced store) or nothing. Same on the direct ctx and across the isolate.
 
   // ---- time (injected once per evaluation pass for determinism) ----
   now(): Date;

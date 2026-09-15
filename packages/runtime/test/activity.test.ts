@@ -231,3 +231,19 @@ describe("no-op writes", () => {
     expect(items[0]!.text).toBe("Bruno changed Quantity from 5 to 2 on Milk");
   });
 });
+
+describe("activitySince and values that did not fit (KA-21)", () => {
+  it("does not announce a value that never took, nor use it as the 'from' of the next change", async () => {
+    const rows = [{ id: "r1", name: "Milk", updatedAt: "2026-08-09T12:00:00Z" }];
+    const history = {
+      r1: [
+        { field: "qty", value: 2, by: ANA.id, at: t("2026-08-09T09:00:00Z") },
+        { field: "qty", value: "lots", by: BRUNO.id, at: t("2026-08-09T10:00:00Z") },
+        { field: "qty", value: 3, by: ANA.id, at: t("2026-08-09T11:00:00Z") },
+      ],
+    };
+    const items = await activitySince({ store: fakeStore(rows, history), definition, me: ANA, members: [ANA, BRUNO] });
+    expect(items.map((i) => i.text)).toEqual(["You changed Quantity from 2 to 3 on Milk", "You set Quantity to 2 on Milk"]);
+  });
+});
+

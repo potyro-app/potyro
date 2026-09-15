@@ -7,6 +7,7 @@ import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiP
 import type { Store } from "@karta/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { resolveRecord, type ResolveDeps } from "../resolve.js";
+import { assertCountable, assertPatchFits, assertValuesFit } from "../values-gate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
@@ -121,11 +122,16 @@ class IsolateLoadedApp implements LoadedApp {
       case "data.create": {
         const me = this.ctxHost?.me.id;
         if (!me) throw new Error("ctx.create: no identity to stamp the record with");
-        const row = await this.store.insert(op.entity as string, stampAuthor(op.data, me) as Partial<KartaRecord>);
+        const clean = stampAuthor(op.data, me);
+        assertValuesFit(this.definition, op.entity as string, clean);
+        const row = await this.store.insert(op.entity as string, clean as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       case "data.patch": {
-        const row = await this.store.update(op.entity as string, op.id as string, stripAuthor(op.data) as Partial<KartaRecord>);
+        const clean = stripAuthor(op.data);
+        const current = (await this.store.get(op.entity as string, op.id as string)) as Record<string, unknown> | null;
+        assertPatchFits(this.definition, op.entity as string, clean, current);
+        const row = await this.store.update(op.entity as string, op.id as string, clean as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       // A shared app runs HERE, so this is the surface that decides whether counting is safe for the
@@ -136,6 +142,7 @@ class IsolateLoadedApp implements LoadedApp {
         const id = op.id as string;
         const field = op.field as string;
         assertNotAuthor(field);
+        assertCountable(this.definition, entity, field);
         const delta = Number(op.delta);
         if (!Number.isFinite(delta)) throw new Error("ctx.increment: delta must be a number");
         if (this.store.increment) {
