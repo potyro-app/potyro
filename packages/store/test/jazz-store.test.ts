@@ -242,6 +242,27 @@ describe("JazzStore — two peers through the Store seam", () => {
     expect(seen?.amountCents).toBe(4200);
   });
 
+  it("a kv write by one peer is heard by the other while it is open (KA-22)", async () => {
+    // The version gate watches `__appSource` so a newer version locks an old copy the moment it is
+    // published. Hearing it only on the next open is what let an old copy keep writing.
+    const { anaStore, brunoStore } = await pair();
+    const heard = vi.fn();
+    const stop = brunoStore.subscribeKv(heard);
+    await settle();
+
+    await anaStore.kvSet("__appSource", "{\"v\":2}");
+    await settle();
+
+    expect(heard).toHaveBeenCalled();
+    expect(await brunoStore.kvGet("__appSource")).toBe("{\"v\":2}");
+
+    stop();
+    heard.mockClear();
+    await anaStore.kvSet("__appSource", "{\"v\":3}");
+    await settle();
+    expect(heard).not.toHaveBeenCalled();
+  });
+
   it("either person can edit a record the OTHER one created", async () => {
     // Reported from the live deployment: a row created by the other member would not move up or
     // down. Everyone in a space is a writer (KA-21's per-member scoping is not built), so authorship

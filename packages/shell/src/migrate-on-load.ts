@@ -24,31 +24,49 @@ export { migrationChain };
 
 const APP_VERSION_KEY = "__appVersion";
 
+/** What `migrateOnLoad` would run against `store`, without running it — so a caller can ask first. */
+export async function pendingMigrations(
+  store: Store,
+  definition: AppDefinition,
+): Promise<{ chain: Migration[]; from: string | null; behind: boolean }> {
+  const from = await store.kvGet(APP_VERSION_KEY);
+  const stored = await store.storedSchemaVersion();
+  // Data already migrated past this definition — a newer copy wrote it. Running anything, or even
+  // recording our version, would be an OLDER app rewriting a newer one's data (KA-22).
+  const behind = definition.schemaVersion < stored;
+  return { chain: behind ? [] : migrationChain(definition.migrations ?? [], from), from, behind };
+}
+
 /**
  * Bring `store`'s data up to `definition`, if it is behind.
  *
  * Returns what it did, so a caller can report it. Never throws on a no-op.
+ *
+ * `recordVersion: false` skips writing the version marker when there is nothing to run. A caller
+ * sets it when this copy is known not to be the newest one around: the marker is how the NEXT
+ * version finds its migrations, and an older copy writing its own version over a newer one's makes
+ * that newer copy run its migrations a second time — harmless for a rename, corrupting for a
+ * `changeType`.
  */
 export async function migrateOnLoad(
   store: Store,
   definition: AppDefinition,
+  opts: { recordVersion?: boolean } = {},
 ): Promise<{ ran: Migration[]; from: string | null }> {
-  const from = await store.kvGet(APP_VERSION_KEY);
-  const stored = await store.storedSchemaVersion();
-  const chain = migrationChain(definition.migrations ?? [], from);
+  const { chain, from, behind } = await pendingMigrations(store, definition);
 
   if (!chain.length) {
     // Still record where the data now stands, so the NEXT version knows what to migrate from.
     // Without this the marker is only ever written by a migration, and an app that ships its first
     // migration later has no idea which version its existing data came from.
-    if (from !== definition.version) await store.kvSet(APP_VERSION_KEY, definition.version);
+    if (!behind && opts.recordVersion !== false && from !== definition.version) await store.kvSet(APP_VERSION_KEY, definition.version);
     return { ran: [], from };
   }
 
   await store.runMigrations({
     fromAppVersion: from,
     toAppVersion: definition.version,
-    fromSchemaVersion: stored,
+    fromSchemaVersion: await store.storedSchemaVersion(),
     toSchemaVersion: definition.schemaVersion,
     migrations: chain,
   });

@@ -95,6 +95,8 @@ export interface AppChromeProps {
   pageTitle?: string;
   /** False on a page that has its own actions (a detail): no floating button over them. */
   showQuick?: boolean;
+  /** This copy may not write (KA-22): quick actions are announced as unavailable. */
+  locked?: boolean;
   children: ReactNode;
 }
 
@@ -120,7 +122,7 @@ function toolEntry(t: ChromeTool): MenuEntry {
   return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger };
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, showQuick = true, children }: AppChromeProps) {
+function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, showQuick = true, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const [dial, setDial] = useState(false);
@@ -211,6 +213,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
                     key={q.id}
                     type="button"
                     className="k-fab-other"
+                    aria-disabled={locked || undefined}
                     onClick={() => {
                       setDial(false);
                       q.onRun();
@@ -222,7 +225,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
               </div>
             </>
           ) : null}
-          <button type="button" className="k-fab k-quick" data-open={dial || undefined} {...fabHandlers}>
+          <button type="button" className="k-fab k-quick" data-open={dial || undefined} aria-disabled={locked || undefined} {...fabHandlers}>
             <span className="k-fab-plus" aria-hidden>
               ＋
             </span>
@@ -262,7 +265,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
   );
 }
 
-function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, pageTitle, children }: AppChromeProps) {
+function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, pageTitle, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
   const toolButton = (t: ChromeTool) => (
@@ -318,7 +321,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
         {ordered.length ? (
           <div className="k-quickbar">
             {ordered.map((q, i) => (
-              <button key={q.id} type="button" className={`k-add k-quick${i === 0 ? " k-primary-action" : ""}`} onClick={q.onRun}>
+              <button key={q.id} type="button" className={`k-add k-quick${i === 0 ? " k-primary-action" : ""}`} aria-disabled={locked || undefined} onClick={q.onRun}>
                 <span aria-hidden>{q.icon}</span> {q.label}
               </button>
             ))}

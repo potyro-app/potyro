@@ -8,7 +8,8 @@ import "./styles.css";
 import type { KartaRecord } from "karta";
 import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
-import { readOnlyStore } from "./read-only-store.js";
+import { guardedStore } from "./read-only-store.js";
+import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
 import { getLaunchUrl, onUrlOpen } from "@karta/native";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
@@ -373,64 +374,17 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   // A synced app shares its SOURCE through the space too, so an edit by one person reaches the
   // others instead of silently diverging (and, if the edit changed the schema, silently misreading
-  // each other's records).
+  // each other's records). Whether this copy may write is the version gate's call (KA-22, #63), and
+  // it can change while the app is open — so the store is guarded by a lock read on every write.
+  const lock = new AppLock();
   let store = rawStore;
+  let gate: import("./version-gate.js").GateResult | undefined;
+  const canWrite = space ? space().role !== "reader" : true;
   if (saved.sync) {
-    const appSync = await import("./app-sync.js");
-    // The newest version's own record of WHY this source looks like this, so it travels with it.
-    // Read from history rather than kept on `UserApp`: history is already the one place that answers
-    // "what was asked for", and duplicating it onto the app record would give it two answers to
-    // disagree about.
-    const { listVersions } = await import("./app-history.js");
-    const latest = (await listVersions(id))[0];
-    const mine = {
-      source: saved.source,
-      name: saved.name,
-      updatedAt: saved.updatedAt,
-      schemaVersion: appSync.schemaVersionOf(saved.source),
-      // Only when they describe THIS source. A stale note from an older version would be worse than
-      // none: it would explain a change that is not the one you are looking at.
-      ...(latest?.source === saved.source ? { note: latest.note, rationale: latest.rationale } : {}),
-    };
-    const update = await appSync.pendingAppUpdate(store, mine);
-    // A newer SCHEMA is not merely a nicer version — writing with the old one puts records into the
-    // shared document in a shape the current app does not expect, and every peer replicates them.
-    const behind = appSync.isSchemaBehind(mine, await appSync.readPublishedApp(store));
-    if (update) {
-      const take = await shellDialogs.confirm(
-        behind
-          ? `“${update.name}” has been updated to a newer version.\n\nUpdate to keep making changes. Until you do, the app opens read-only so an old version cannot corrupt the shared data.\n\nUpdate now?`
-          : `“${update.name}” was updated by someone you share it with.\n\nUpdate your copy? Your version is kept in History, so you can go back.`,
-      );
-      if (take) {
-        const { saveUserApp } = await import("./user-apps.js");
-        await saveUserApp(
-          {
-            id,
-            name: update.name,
-            source: update.source,
-            origin: "imported",
-            // What they asked for, when they published it. The bare "updated by a collaborator" is
-            // the fallback for a copy published before notes travelled, not the normal case.
-            note: update.note ? `${update.note} — from a collaborator` : "updated by a collaborator",
-            ...(update.rationale ? { rationale: update.rationale } : {}),
-          },
-          new Date().toISOString(),
-        );
-        location.reload();
-        return null;
-      }
-      if (behind) {
-        // Declined while behind: readable, not writable, and it says why rather than failing
-        // mysteriously at the first tap.
-        store = readOnlyStore(store, `This app has been updated. Your copy is an older version, so it is read-only until you update.`);
-        toaster.push("Read-only: this app has a newer version. Reload to update.");
-      }
-    } else {
-      // Only publishes when this copy is strictly newer, so declining an update above does not
-      // push the older source back over the newer one.
-      void appSync.publishAppSource(store, mine);
-    }
+    const { openVersionGate } = await import("./version-gate.js");
+    gate = await openVersionGate({ id, saved, rawStore, lock, canWrite });
+    if (!gate.proceed) return null;
+    store = guardedStore(rawStore, lock.refusal);
   }
   const picker = new PickerHost();
   const questions = new UiHost();
@@ -468,10 +422,25 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     onSpaceChange(() => composed!.runtime.core.invalidate());
   }
 
-  await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
+  if (gate) {
+    const { migrateShared } = await import("./version-gate.js");
+    const current = space?.();
+    await migrateShared({
+      definition: composed!.runtime.definition,
+      rawStore,
+      lock,
+      gate,
+      canWrite,
+      others: (current?.members ?? []).filter((m) => m.id !== me.id).map((m) => m.name),
+      toast: toaster,
+      refresh: () => composed!.runtime.core.invalidate(),
+    });
+  } else {
+    await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
+  }
   // Everything this app started that outlives a render, so switching away can stop it (#89). The
   // page dying used to do this for free.
-  const stops: Array<() => void> = [];
+  const stops: Array<() => void> = gate ? [gate.stop] : [];
   stops.push(startReminderSync(composed!.runtime, store));
   // The launcher badge's reminders (#86): due times, so one that falls due while the app is closed counts.
   stops.push(watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due })));
@@ -509,6 +478,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       toaster={toaster}
       appId={id}
       currentKind="user"
+      lock={saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
       onImport={() => void importApp(caps, toaster)}
       generator

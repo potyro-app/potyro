@@ -5783,6 +5783,50 @@ button.k-switch:focus-visible {
   word-spacing: 0.25em;
   user-select: all;
 }
+
+/* Read-only lock (KA-22, #63): an older copy of a shared app, or data not yet updated to match.
+   The banner says why and offers the way out; the write controls stay where they are, drawn
+   inactive, so the app keeps its shape and nobody wonders where the buttons went. */
+.k-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-tint);
+  color: var(--ink);
+}
+.k-lock-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.k-lock-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.k-lock-text strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+.k-lock-text span {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.k-lock-banner .k-add {
+  flex: none;
+}
+[data-locked] :is(.k-quick, .k-fab-other, .k-action) {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 /* tokens-only: end */
 
 /* Your avatar in the identity panel (#95): the same per-person hue as a chat author's chip, so you
