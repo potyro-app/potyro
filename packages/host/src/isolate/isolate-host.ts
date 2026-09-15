@@ -7,7 +7,7 @@ import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiP
 import type { Store } from "@karta/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { resolveRecord, type ResolveDeps } from "../resolve.js";
-import { assertCountable, assertPatchFits, assertValuesFit } from "../values-gate.js";
+import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "../values-gate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
@@ -123,14 +123,17 @@ class IsolateLoadedApp implements LoadedApp {
         const me = this.ctxHost?.me.id;
         if (!me) throw new Error("ctx.create: no identity to stamp the record with");
         const clean = stampAuthor(op.data, me);
-        assertValuesFit(this.definition, op.entity as string, clean);
+        assertValuesFit(this.definition, op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me));
         const row = await this.store.insert(op.entity as string, clean as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       case "data.patch": {
         const clean = stripAuthor(op.data);
         const current = (await this.store.get(op.entity as string, op.id as string)) as Record<string, unknown> | null;
-        assertPatchFits(this.definition, op.entity as string, clean, current);
+        assertPatchFits(this.definition, op.entity as string, clean, current, {
+          now: currentPeople(this.ctxHost?.space, this.ctxHost?.me),
+          ever: everyone(this.store),
+        });
         const row = await this.store.update(op.entity as string, op.id as string, clean as Partial<KartaRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }

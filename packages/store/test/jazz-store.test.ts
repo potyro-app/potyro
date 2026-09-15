@@ -267,6 +267,11 @@ describe("JazzStore — two peers through the Store seam", () => {
     await settle(500);
 
     expect((await anaStore.get("expense", r.id))?.description).toBe("Dinner");
+
+    // Removed, but still someone who WAS here (KA-19): a row naming Bruno must stay readable.
+    const brunoId = (await bruno.node.expectCurrentAccount("bruno")).id;
+    expect(anaStore.memberIds()).toContain(brunoId);
+    expect(anaStore.memberIds().every((id) => id.startsWith("co_"))).toBe(true);
   });
 
   it("control: an offline edit by someone still a member DOES arrive on reconnect", async () => {
