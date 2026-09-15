@@ -13,7 +13,7 @@
 // it belongs is a product decision (local-only keeps it private and off the wire; synced would make
 // unread follow you across devices). This module takes a `since` and answers.
 
-import { humanizeKey } from "karta";
+import { fieldValueProblem, humanizeKey } from "karta";
 import type { AppDefinition, Id, Person } from "karta";
 import type { FieldEdit, Store } from "@karta/store";
 import { memberName } from "./people.js";
@@ -131,7 +131,12 @@ export async function activitySince(
       const history = await store.editHistory(entity, row.id);
       const previous = new Map<string, unknown>();
 
+      const fields = definition.entities[entity]?.fields ?? {};
       for (const edit of history) {
+        // A value that does not fit its field never took (KA-21): records show the last value that
+        // did, so the feed must not announce the one that did not — nor use it as a "from".
+        const declared = fields[edit.field];
+        if (declared && fieldValueProblem(declared, edit.value, "read") !== null) continue;
         const had = previous.has(edit.field);
         const before = previous.get(edit.field);
         previous.set(edit.field, edit.value);
