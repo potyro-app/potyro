@@ -23,6 +23,7 @@ import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
+import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -258,6 +259,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const sortMode = useSortMode();
   const [mountedAt] = useState(() => Date.now());
   const ordered = orderApps(installed, sortMode, mountedAt);
+  // Live counts for the synced apps, while this is the home screen (#86, phase 2). Keyed on WHICH
+  // apps, not on the list: every count written re-renders the list, and restarting the watch on each
+  // of those would reopen every store in a loop.
+  const liveIds = variant === "home" ? liveCandidates(installed).map((a) => a.id).join(",") : "";
+  useEffect(() => {
+    if (!liveIds) return;
+    const ids = new Set(liveIds.split(","));
+    return watchLiveSignals(installed.filter((a) => ids.has(a.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveIds]);
+
   // First run (#90): nothing has ever been opened on this device and the welcome was not dismissed.
   // Then the home screen says what Karta is and offers one thing to do, and the apps below are
   // examples to try — not a grid with the create action as one more tile.
