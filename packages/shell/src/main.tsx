@@ -6,7 +6,7 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { KartaRecord } from "karta";
-import { createMemorySqliteStore, importSqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
+import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
 import { readOnlyStore } from "./read-only-store.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
@@ -105,6 +105,36 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+/**
+ * Replace an app's records with a bundle's (KA-04), in whatever store the app uses.
+ *
+ * This used to hand the bundle's SQLite file to OPFS directly, which is only there where OPFS SQLite
+ * is — everywhere else (Firefox, the LocalStore fallback, a locked-down browser) the app failed to
+ * boot with "Missing required OPFS APIs". The file is now opened as an in-memory database, which
+ * works anywhere, and its rows are copied into the app's own store with their ids, dates, photos and
+ * app storage intact. The records it replaces are removed first, so what you import is what you have.
+ */
+async function replaceWithBundle(target: Store, pending: string, appId: string): Promise<void> {
+  let stash: { sqlite: string; entities?: string[] };
+  try {
+    stash = JSON.parse(pending) as { sqlite: string; entities?: string[] };
+  } catch {
+    stash = { sqlite: pending }; // stashed by a build that kept only the bytes
+  }
+  const entities = stash.entities?.length
+    ? stash.entities
+    : (await (await import("./app-source.js")).inspect(getUserApp(appId)?.source ?? "")).entities.map((e) => e.key);
+  const bundle = await createMemorySqliteStore(appId, { bytes: base64ToBytes(stash.sqlite) });
+  try {
+    for (const entity of entities) {
+      for (const row of await target.all(entity)) await target.delete(entity, row.id);
+    }
+    await copyStoreData(bundle.store, target, { entities });
+  } finally {
+    bundle.destroy();
+  }
+}
+
 // Import a `.karta.zip` bundle's data into the matching app (KA-04): pick → unpack → stash the
 // SQLite bytes → reload into that app, where boot() restores them into the durable store.
 async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
@@ -117,10 +147,12 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
   const zip = new Uint8Array(await blob.arrayBuffer());
   let appId: string;
   let sqlite: Uint8Array;
+  let entities: string[];
   try {
     const bundle = unpackBundle(zip);
     appId = bundle.manifest.appId;
     sqlite = bundle.sqlite;
+    entities = bundle.manifest.entities ?? [];
   } catch {
     toaster.push("Not a valid Karta export bundle.");
     return;
@@ -134,7 +166,7 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
     toaster.push(`"${target.name}" is synced; a data import would overwrite what others share.`);
     return;
   }
-  sessionStorage.setItem(IMPORT_KEY, bytesToBase64(sqlite));
+  sessionStorage.setItem(IMPORT_KEY, JSON.stringify({ sqlite: bytesToBase64(sqlite), entities }));
   location.search = `?user=${encodeURIComponent(appId)}`; // reload → boot() detects the pending import
 }
 
@@ -289,8 +321,13 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const pending = sessionStorage.getItem(IMPORT_KEY);
   if (pending && !saved.sync) {
     sessionStorage.removeItem(IMPORT_KEY);
-    rawStore = await importSqliteStore(`user:${id}`, base64ToBytes(pending));
-    toaster.push(`Imported data into ${saved.name}.`);
+    rawStore = await openStore(`user:${id}`, { sync: false });
+    try {
+      await replaceWithBundle(rawStore, pending, id);
+      toaster.push(`Imported data into ${saved.name}.`);
+    } catch (e) {
+      toaster.push(`Could not import that data: ${e instanceof Error ? e.message : String(e)}`);
+    }
   } else {
     rawStore = await openStore(`user:${id}`, { sync: saved.sync });
     await seedIfEmpty(rawStore, id);

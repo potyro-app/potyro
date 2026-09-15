@@ -183,15 +183,23 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   await expect(boSaid).toBeVisible({ timeout: 60_000 });
   await expect(boSaid.locator(".k-chat-who")).toHaveText("Bo", { timeout: 60_000 });
 
-  // The two people are DIFFERENT COLOURS, and the colour is derived from the account id rather than
-  // assigned — so it needs nothing stored and cannot disagree between devices. This is what tells
-  // people apart when the names cannot: nothing stops two members choosing the same one.
+  // A person's colour is DERIVED from their account id rather than assigned, so it needs nothing
+  // stored and cannot disagree between devices — which is what makes it a way to tell people apart
+  // on both screens. That is the property asserted: Ana's colour on Bo's device is Ana's colour on her
+  // own. (Asserting Ana's and Bo's colours differ failed one run in twelve: twelve hues, two random
+  // ids, a collision is nothing wrong — #147.)
   const hueOf = (msg: ReturnType<Page["locator"]>) =>
     msg.evaluate((el) => getComputedStyle(el).getPropertyValue("--k-hue").trim());
-  const anaHue = await hueOf(a.locator(".k-chat-msg", { hasText: "there is no milk in the shop" }));
-  const boHue = await hueOf(boSaid);
-  expect(anaHue).not.toBe("");
-  expect(boHue).not.toBe(anaHue);
+  await b.getByRole("button", { name: /^Chat/ }).click();
+  await expect(b.locator(".k-chat-msg", { hasText: "getting some on the way home" })).toBeVisible({ timeout: 60_000 });
+  const anaHueOnAna = await hueOf(a.locator(".k-chat-msg", { hasText: "there is no milk in the shop" }));
+  const anaHueOnBo = await hueOf(b.locator(".k-chat-msg", { hasText: "there is no milk in the shop" }));
+  const boHueOnAna = await hueOf(boSaid);
+  const boHueOnBo = await hueOf(b.locator(".k-chat-msg", { hasText: "getting some on the way home" }));
+  expect(anaHueOnAna).not.toBe("");
+  expect(anaHueOnBo).toBe(anaHueOnAna);
+  expect(boHueOnBo).toBe(boHueOnAna);
+  await b.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
 
   // ---- a rename reaches an OPEN page, with no reload on either side ----
   //
