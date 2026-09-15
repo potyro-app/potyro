@@ -43,7 +43,7 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreSchema, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
@@ -71,6 +71,8 @@ interface RawMapLike {
    * by-product of the merge strategy, not something we store on the side.
    */
   editsAt?(key: string): Iterable<{ by: string; at: Date; value: unknown }>;
+  /** Every key ever written, deleted ones included (cojson's per-key op log). */
+  ops?: Record<string, unknown>;
 }
 interface RawGroupLike {
   createMap<T = RawMapLike>(init?: Record<string, unknown>): T;
@@ -80,6 +82,8 @@ interface NodeLike {
   load(id: string): Promise<unknown>;
   /** This device+tab's session. Two of them never share a counter key — see `increment`. */
   currentSessionID?: string;
+  /** The account signing this node's writes. */
+  getCurrentAccountOrAgentID?(): string;
 }
 
 export interface JazzStoreDeps {
@@ -202,8 +206,65 @@ export class JazzStore implements Store {
    * Reading does not need this — `foldSetFields` recognises the shape from the keys — so a store
    * that is never described stays correct, it just keeps writing whole arrays.
    */
-  describe(schema: StoreSchema): void {
+  describe(schema: StoreSchema, rules?: StoreRules): void {
     this.setFields = setFieldsOf(schema);
+    this.creatorOnly = new Set(rules?.creatorOnly ?? []);
+  }
+
+  /** Entities whose records only their creator may change (`editableBy: "creator"`, KA-21). */
+  private creatorOnly = new Set<string>();
+
+  /**
+   * A record as its CREATOR left it, and who that is — for a creator-only entity (KA-21).
+   *
+   * Enforced here, on read, because this is where authorship is a fact rather than a claim: every
+   * write is a transaction signed by its account, and the log keeps all of them. Another member's
+   * copy can still write to the record — the group lets any writer — but those writes are simply not
+   * folded in, so everyone keeps seeing the creator's version. Same for a delete: the index entry is
+   * read at the last value its creator wrote.
+   *
+   * The creator is whoever wrote the record's index entry first. Ordering is by the transaction's
+   * own timestamp, which a hand-modified client could backdate; app code — trusted or in the isolate
+   * — cannot, since it only reaches the log through this store.
+   */
+  private async scoped(entity: string, id: Id): Promise<{ m: RawMapLike; creator: string } | null> {
+    const index = await this.entityIndex(entity);
+    const edits = [...(index.editsAt?.(id) ?? [])];
+    const first = edits[0];
+    if (!first) return null;
+    const creator = String(first.by);
+    let ref: unknown;
+    for (const e of edits) if (String(e.by) === creator) ref = e.value;
+    if (typeof ref !== "string") return null;
+    return { m: JazzStore.byAuthor(await this.loadMap(ref), creator), creator };
+  }
+
+  /** A view of `m` holding, for every key, the last value `author` wrote — nobody else's. */
+  private static byAuthor(m: RawMapLike, author: string): RawMapLike {
+    const last = (key: string): unknown => {
+      let value: unknown;
+      for (const e of m.editsAt?.(key) ?? []) if (String(e.by) === author) value = e.value;
+      return value;
+    };
+    const keys = (): string[] => Object.keys(m.ops ?? {}).concat(m.ops ? [] : m.keys()).filter((k) => last(k) !== undefined);
+    return {
+      id: m.id,
+      subscribe: (listener) => m.subscribe(listener),
+      set: (key, value, privacy) => m.set(key, value, privacy),
+      delete: (key, privacy) => m.delete(key, privacy),
+      get: last,
+      keys,
+      toJSON: () => Object.fromEntries(keys().map((k) => [k, last(k)])),
+      editsAt: function* (key: string) {
+        for (const e of m.editsAt?.(key) ?? []) if (String(e.by) === author) yield e;
+      },
+    };
+  }
+
+  /** Refuse an edit to a creator-only record by anyone but its creator, in words for a person. */
+  private assertCreator(creator: string, doing: "change" | "delete"): void {
+    const me = this.node.getCurrentAccountOrAgentID?.();
+    if (me && me !== creator) throw new Error(`Only the person who added this can ${doing} it.`);
   }
 
   constructor(deps: JazzStoreDeps) {
@@ -255,6 +316,7 @@ export class JazzStore implements Store {
   }
 
   private async recordMap(entity: string, id: Id): Promise<RawMapLike | null> {
+    if (this.creatorOnly.has(entity)) return (await this.scoped(entity, id))?.m ?? null;
     const refId = (await this.entityIndex(entity)).get(id);
     return typeof refId === "string" ? this.loadMap(refId) : null;
   }
@@ -267,6 +329,16 @@ export class JazzStore implements Store {
   private async readEntity(entity: string): Promise<KartaRecord[]> {
     const index = await this.entityIndex(entity);
     const rows: KartaRecord[] = [];
+    if (this.creatorOnly.has(entity)) {
+      // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
+      for (const recordId of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
+        const found = await this.scoped(entity, recordId);
+        if (found) rows.push(JazzStore.materialise(found.m) as unknown as KartaRecord);
+      }
+      return rows.sort((a, b) =>
+        a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
+      );
+    }
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
@@ -315,10 +387,24 @@ export class JazzStore implements Store {
     const index = await this.entityIndex(entity);
     const perRecord = new Map<string, () => void>();
 
+    // Which record CoValues to watch. For a creator-only entity that includes records someone else
+    // "deleted" from the index (KA-21): they are still showing, so their creator's edits must still
+    // arrive live.
+    const refsToWatch = (): string[] => {
+      if (!this.creatorOnly.has(entity)) {
+        return index.keys().flatMap((recordId) => {
+          const refId = index.get(recordId);
+          return typeof refId === "string" ? [refId] : [];
+        });
+      }
+      return Object.keys(index.ops ?? {}).flatMap((recordId) =>
+        [...(index.editsAt?.(recordId) ?? [])].flatMap((e) => (typeof e.value === "string" ? [e.value] : [])),
+      );
+    };
+
     const syncRecordWatchers = (): void => {
-      for (const recordId of index.keys()) {
-        const refId = index.get(recordId);
-        if (typeof refId !== "string" || perRecord.has(refId)) continue;
+      for (const refId of refsToWatch()) {
+        if (perRecord.has(refId)) continue;
         void this.loadMap(refId)
           .then((m) => {
             if (!perRecord.has(refId)) {
@@ -659,6 +745,10 @@ export class JazzStore implements Store {
   }
 
   async update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord> {
+    if (this.creatorOnly.has(entity)) {
+      const found = await this.scoped(entity, id);
+      if (found) this.assertCreator(found.creator, "change");
+    }
     const m = await this.recordMap(entity, id);
     if (!m) throw new Error(`update: ${entity}/${id} not found`);
     // Set only the changed keys. Writing the whole record back would make every field a write and
@@ -723,6 +813,10 @@ export class JazzStore implements Store {
    * counter needs no migration, and reading it through `all()`/`get()` gives one number either way.
    */
   async increment(entity: string, id: Id, field: string, delta: number): Promise<number> {
+    if (this.creatorOnly.has(entity)) {
+      const found = await this.scoped(entity, id);
+      if (found) this.assertCreator(found.creator, "change");
+    }
     const m = await this.recordMap(entity, id);
     if (!m) throw new Error(`increment: ${entity}/${id} not found`);
     const session = this.node.currentSessionID ?? "local";
@@ -794,7 +888,11 @@ export class JazzStore implements Store {
 
   async delete(entity: string, id: Id): Promise<void> {
     const index = await this.entityIndex(entity);
-    if (typeof index.get(id) !== "string") return;
+    if (this.creatorOnly.has(entity)) {
+      const found = await this.scoped(entity, id);
+      if (!found) return;
+      this.assertCreator(found.creator, "delete");
+    } else if (typeof index.get(id) !== "string") return;
     // Tombstone by dropping the index entry. The record CoMap itself is left addressable so a
     // concurrent peer editing it does not resurrect a half-record through the index.
     this.local(() => index.delete(id));
