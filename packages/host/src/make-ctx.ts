@@ -4,6 +4,7 @@
 
 import type { Ctx, Field, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "karta";
 import { checkFormFields } from "karta";
+import { assertCountable, assertPatchFits, assertValuesFit } from "./values-gate.js";
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
@@ -96,20 +97,25 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     async create(entity, data) {
       // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18, authorship.ts).
       // Who entered a record is not who it is about (spike F5): that is a `member` field.
-      const row = await store.insert(entity, stampAuthor(data, me.id) as Partial<KartaRecord>);
+      const clean = stampAuthor(data, me.id);
+      assertValuesFit(deps.definition, entity, clean);
+      const row = await store.insert(entity, clean as Partial<KartaRecord>);
       deps.memo.clear(); // data changed → invalidate memoized computed for this pass
       return resolveRecord(deps, entity, row);
     },
 
     async patch(entity, id, data) {
       // Authorship is a fact about the insert, so an edit can never change it (authorship.ts).
-      const row = await store.update(entity, id, stripAuthor(data) as Partial<KartaRecord>);
+      const clean = stripAuthor(data);
+      assertPatchFits(deps.definition, entity, clean, (await store.get(entity, id)) as Record<string, unknown> | null);
+      const row = await store.update(entity, id, clean as Partial<KartaRecord>);
       deps.memo.clear();
       return resolveRecord(deps, entity, row);
     },
 
     async increment(entity, id, field, delta) {
       assertNotAuthor(field);
+      assertCountable(deps.definition, entity, field);
       // Falls back rather than failing: only a CRDT store can add deltas up, and a local-only app is
       // single-writer anyway, so read-modify-write there is correct and has nothing to race with.
       if (store.increment) {
