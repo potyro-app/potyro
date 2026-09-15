@@ -675,6 +675,47 @@ export async function subscribeMemberProfiles(
   };
 }
 
+/**
+ * Remove a person from an app's space (KA-17, #58) — so access can be taken back.
+ *
+ * Three things, in this order, because the order is what makes it real:
+ *
+ * 1. **Every outstanding invite is revoked first.** An invite is a member entry of its own (a
+ *    `writerInvite` / `readerInvite` agent whose secret travelled in a link). Left in place, the
+ *    removed person could simply accept their old link again — and the key rotation below reveals
+ *    the new read key to every member that can still read, invites included.
+ * 2. **The person's role is revoked and the read key rotated** (`removeMember`): they can no longer
+ *    write, and nothing written from now on is readable to them. What already reached their devices
+ *    stays there — encryption cannot reach back into a copy someone already holds.
+ * 3. Only an admin may do this, and not to themselves.
+ *
+ * Returns how many open invites were revoked, so the UI can say a new link is needed.
+ */
+export function removeSpaceMember(handle: JazzStoreHandle, accountId: string): { invitesRevoked: number } {
+  const group = handle.group as {
+    getMemberKeys(): string[];
+    get(key: string): unknown;
+    set(key: string, value: string, privacy: "trusting"): void;
+    removeMember(account: string): void;
+  } | null;
+  if (!group) throw new Error("removeSpaceMember: no group on this handle");
+  if (myRole(handle) !== "admin") throw new Error("Only the person who created this app can remove people from it.");
+  if (accountId === handle.accountID) throw new Error("You can't remove yourself from an app you created.");
+  const role = group.get(accountId);
+  if (role !== "admin" && role !== "writer" && role !== "reader") throw new Error("That person is not in this app's space.");
+
+  let invitesRevoked = 0;
+  for (const key of group.getMemberKeys()) {
+    const r = group.get(key);
+    if (typeof r === "string" && r.endsWith("Invite")) {
+      group.set(key, "revoked", "trusting");
+      invitesRevoked++;
+    }
+  }
+  group.removeMember(accountId);
+  return { invitesRevoked };
+}
+
 /** This device's own role in an app's space. */
 export function myRole(handle: JazzStoreHandle): "admin" | "writer" | "reader" | undefined {
   const group = handle.group as { myRole(): string | undefined } | null;
