@@ -57,6 +57,7 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     kvGet: (k) => store.kvGet(k),
     kvKeys: store.kvKeys ? (prefix) => store.kvKeys!(prefix) : undefined,
     subscribeKv: store.subscribeKv ? (cb) => store.subscribeKv!(cb) : undefined,
+    memberIds: store.memberIds ? () => store.memberIds!() : undefined,
     storedSchemaVersion: () => store.storedSchemaVersion(),
     // Reads of the space's own log. Dropping them made a locked app lose its Changes and Chat
     // buttons, which is the opposite of what someone asking "why can't I edit?" needs.

@@ -120,6 +120,14 @@ export interface Store {
    * the next open — by which time an old copy may have written old-shape records for minutes.
    */
   subscribeKv?(cb: () => void): Unsubscribe;
+  /**
+   * Every account that has ever held a role in this space — people who were removed included (KA-19).
+   *
+   * Optional: only a store with a space has members. It is what a `member` value is checked against
+   * on read, so a forged id never reaches a view while a ledger naming someone who has since left
+   * stays readable. Synchronous because a synced store keeps its group in memory.
+   */
+  memberIds?(): readonly string[];
   storedSchemaVersion(): Promise<number>;
   runMigrations(plan: MigrationPlan): Promise<void>;
 
