@@ -40,7 +40,13 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   ]);
   await chooser.setFiles(bundlePath);
 
-  await page.waitForURL(/app=recipes/);
+  // The import navigates to `?user=recipes` (main.tsx importApp). Waiting for `app=recipes` matched
+  // the page we were ALREADY on, so the checks below could run before the import's reload — the
+  // "passes alone, fails under load" flake in #74. Wait for the URL the import produces, and the load.
+  await page.waitForURL(/\?user=recipes/, { waitUntil: "load" });
+  await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
+  // It says it worked — and the page is the app, not a boot error that also has no "Ephemeral Dish".
+  await expect(page.locator(".k-toast")).toContainText("Imported data into Recipes");
   await expect(page.locator(".k-list-row", { hasText: "Fluffy Pancakes" })).toBeVisible(); // bundle data restored
   await expect(page.locator(".k-list-row", { hasText: "Ephemeral Dish" })).toHaveCount(0); // not in the bundle
 });
