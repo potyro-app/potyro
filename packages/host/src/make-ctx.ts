@@ -4,7 +4,7 @@
 
 import type { Ctx, Field, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "karta";
 import { checkFormFields } from "karta";
-import { assertCountable, assertPatchFits, assertValuesFit } from "./values-gate.js";
+import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
@@ -98,7 +98,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18, authorship.ts).
       // Who entered a record is not who it is about (spike F5): that is a `member` field.
       const clean = stampAuthor(data, me.id);
-      assertValuesFit(deps.definition, entity, clean);
+      assertValuesFit(deps.definition, entity, clean, currentPeople(base.space, me));
       const row = await store.insert(entity, clean as Partial<KartaRecord>);
       deps.memo.clear(); // data changed → invalidate memoized computed for this pass
       return resolveRecord(deps, entity, row);
@@ -107,7 +107,10 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     async patch(entity, id, data) {
       // Authorship is a fact about the insert, so an edit can never change it (authorship.ts).
       const clean = stripAuthor(data);
-      assertPatchFits(deps.definition, entity, clean, (await store.get(entity, id)) as Record<string, unknown> | null);
+      assertPatchFits(deps.definition, entity, clean, (await store.get(entity, id)) as Record<string, unknown> | null, {
+        now: currentPeople(base.space, me),
+        ever: everyone(store),
+      });
       const row = await store.update(entity, id, clean as Partial<KartaRecord>);
       deps.memo.clear();
       return resolveRecord(deps, entity, row);

@@ -54,7 +54,7 @@ describe("the guarded store is a drop-in", () => {
     // rather than as a shared app that quietly stops merging tags.
     const methods = [
       "open", "close", "describe", "all", "get", "byIndex", "insert", "update", "delete", "increment", "transaction",
-      "subscribe", "putBlob", "putBlobWithKey", "getBlob", "kvGet", "kvSet", "kvDelete", "kvKeys", "subscribeKv",
+      "subscribe", "putBlob", "putBlobWithKey", "getBlob", "kvGet", "kvSet", "kvDelete", "kvKeys", "subscribeKv", "memberIds",
       "storedSchemaVersion", "runMigrations", "editHistory", "postMessage", "messages", "subscribeMessages",
     ];
     const full = Object.fromEntries(methods.map((m) => [m, vi.fn(async () => undefined)])) as unknown as import("@karta/store").Store;

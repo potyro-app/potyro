@@ -115,6 +115,8 @@ export async function activitySince(
   const nameOf = (id: string): string => memberName(id, { me, members });
 
   const items: ActivityItem[] = [];
+  // Everyone who has ever been in the space (KA-19); empty = cannot say, so nothing is held back.
+  const everyone = new Set(store.memberIds?.() ?? []);
 
   for (const entity of Object.keys(definition.entities)) {
     const displayField = (definition.entities[entity] as { displayField?: string } | undefined)?.displayField;
@@ -137,6 +139,7 @@ export async function activitySince(
         // did, so the feed must not announce the one that did not — nor use it as a "from".
         const declared = fields[edit.field];
         if (declared && fieldValueProblem(declared, edit.value, "read") !== null) continue;
+        if (declared?.type === "member" && !namesSomeoneWhoWasHere(edit.value, everyone)) continue;
         const had = previous.has(edit.field);
         const before = previous.get(edit.field);
         previous.set(edit.field, edit.value);
@@ -178,4 +181,11 @@ function build(
     at: edit.at,
   };
   return { ...partial, text: sentence(partial) };
+}
+
+/** Does a `member` value name only people who have been in this space? Unknowable → yes. */
+function namesSomeoneWhoWasHere(value: unknown, everyone: ReadonlySet<string>): boolean {
+  if (!everyone.size || value == null) return true;
+  const ids = (Array.isArray(value) ? value : [value]).map((v) => (typeof v === "string" ? v : (v as { id?: unknown } | null)?.id));
+  return ids.every((id) => typeof id === "string" && everyone.has(id));
 }

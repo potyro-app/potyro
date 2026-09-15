@@ -47,6 +47,7 @@ export interface Store {
   putBlob(b: Blob): Promise<MediaRef>;  getBlob(r: MediaRef): Promise<Blob | null>;
   kvGet(k: string): Promise<string | null>;  kvSet(k: string, v: string): Promise<void>;  kvDelete(k: string): Promise<void>;
   subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
+  memberIds?(): readonly string[];  // synced stores: every account ever in the space, removed ones too (KA-19)
   // what the app declared: field types (KA-38 set merge) and who may edit what (KA-21 creatorOnly,
   // enforced by a synced store from its signed log — another member's edit to such a row does not take)
   describe?(schema: StoreSchema, rules?: { creatorOnly?: readonly string[] }): void;
