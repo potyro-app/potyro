@@ -20,10 +20,27 @@ export class SchemaBehindError extends Error {
 
 /** Wrap `store` so every mutating call throws. Reads, subscriptions and blobs pass through. */
 export function readOnlyStore(store: Store, reason: string): Store {
+  return guardedStore(store, () => reason);
+}
+
+/**
+ * Wrap `store` so a mutating call throws WHILE `refusal()` returns a reason, and passes through
+ * otherwise.
+ *
+ * The switch is read per call rather than fixed at wrap time because what it guards changes while
+ * the app is open: a collaborator publishes a newer schema mid-session, and the runtime — already
+ * composed over this store — must stop writing from that moment, not from the next open.
+ */
+export function guardedStore(store: Store, refusal: () => string | null): Store {
   // A REJECTED PROMISE, not a synchronous throw. Every `Store` method is typed as returning a
   // promise, so callers `await` them; throwing synchronously would escape a `.catch()` and blow up
   // in a different place than the one that handles store failures.
-  const refuse = (): Promise<never> => Promise.reject(new SchemaBehindError(reason));
+  const write =
+    <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
+    (...args: A): Promise<R> => {
+      const reason = refusal();
+      return reason ? Promise.reject(new SchemaBehindError(reason)) : fn(...args);
+    };
 
   return {
     open: (appId) => store.open(appId),
@@ -35,17 +52,32 @@ export function readOnlyStore(store: Store, reason: string): Store {
     getBlob: (ref) => store.getBlob(ref),
     kvGet: (k) => store.kvGet(k),
     kvKeys: store.kvKeys ? (prefix) => store.kvKeys!(prefix) : undefined,
+    subscribeKv: store.subscribeKv ? (cb) => store.subscribeKv!(cb) : undefined,
     storedSchemaVersion: () => store.storedSchemaVersion(),
+    // Reads of the space's own log. Dropping them made a locked app lose its Changes and Chat
+    // buttons, which is the opposite of what someone asking "why can't I edit?" needs.
+    editHistory: store.editHistory ? (entity, id, opts) => store.editHistory!(entity, id, opts) : undefined,
+    messages: store.messages ? (thread, opts) => store.messages!(thread, opts) : undefined,
+    subscribeMessages: store.subscribeMessages ? (thread, cb) => store.subscribeMessages!(thread, cb) : undefined,
+    // A message is not app data: it lives outside the entity tree in no schema's shape, so an old
+    // copy cannot corrupt anything by sending one — and "please update" is worth being able to say.
+    postMessage: store.postMessage ? (thread, text) => store.postMessage!(thread, text) : undefined,
 
-    insert: refuse,
-    update: refuse,
-    delete: refuse,
-    putBlob: refuse,
-    putBlobWithKey: refuse,
-    kvSet: refuse,
-    kvDelete: refuse,
-    runMigrations: refuse,
+    insert: write((entity: string, rec: Parameters<Store["insert"]>[1]) => store.insert(entity, rec)),
+    update: write((entity: string, id: string, patch: Parameters<Store["update"]>[2]) => store.update(entity, id, patch)),
+    delete: write((entity: string, id: string) => store.delete(entity, id)),
+    increment: store.increment
+      ? write((entity: string, id: string, field: string, delta: number) => store.increment!(entity, id, field, delta))
+      : undefined,
+    putBlob: write((b: Blob) => store.putBlob(b)),
+    putBlobWithKey: store.putBlobWithKey ? write((key: string, b: Blob) => store.putBlobWithKey!(key, b)) : undefined,
+    kvSet: write((k: string, v: string) => store.kvSet(k, v)),
+    kvDelete: write((k: string) => store.kvDelete(k)),
+    runMigrations: write((plan: Parameters<Store["runMigrations"]>[0]) => store.runMigrations(plan)),
     // A transaction that could only fail should fail immediately, not part-way through.
-    transaction: refuse,
+    transaction: (fn) => {
+      const reason = refusal();
+      return reason ? Promise.reject(new SchemaBehindError(reason)) : store.transaction(fn);
+    },
   } as Store;
 }
