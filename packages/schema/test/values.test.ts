@@ -97,3 +97,18 @@ describe("a record's values", () => {
     expect(recordValueProblem(fields, { description: "Taxi", createdBy: "co_zAna", whatever: { x: 1 } }, "write")).toBeNull();
   });
 });
+
+describe("editableBy (KA-21)", () => {
+  it("accepts anyone or creator, and rejects anything else", async () => {
+    const { structureSchema } = await import("../src/index.js");
+    const app = (editableBy: unknown) => ({
+      id: "t", name: "T", version: "1.0.0", schemaVersion: 1,
+      entities: { e: { fields: { a: { type: "text" } }, editableBy } },
+      pages: [{ id: "p", title: "P", view: { type: "list", entity: "e" } }],
+    });
+    expect(structureSchema.safeParse(app("creator")).success).toBe(true);
+    expect(structureSchema.safeParse(app("anyone")).success).toBe(true);
+    expect(structureSchema.safeParse(app(undefined)).success).toBe(true);
+    expect(structureSchema.safeParse(app("admins")).success).toBe(false);
+  });
+});

@@ -152,6 +152,7 @@ const entitySchema = z.object({
   groups: z.array(fieldGroupSchema).optional(),
   computed: z.record(zFn).optional(),
   actions: z.record(zFn).optional(),
+  editableBy: z.enum(["anyone", "creator"]).optional(),
 });
 
 const quickActionSchema = z.object({

@@ -32,6 +32,18 @@ export interface MigrationPlan {
  */
 export type StoreSchema = Record<string, Record<string, Field>>;
 
+/**
+ * Who may change what, as the app declared it (KA-21).
+ *
+ * `creatorOnly`: entities whose records only their creator may change or delete (`editableBy:
+ * "creator"`). A store with peers enforces it where the authorship is — in its signed log, on read —
+ * so another member's edit simply does not take, whatever their copy did. A store without peers has
+ * nothing to enforce and may ignore it.
+ */
+export interface StoreRules {
+  creatorOnly?: readonly string[];
+}
+
 export interface Store {
   open(appId: string): Promise<void>;
   close(): Promise<void>;
@@ -48,7 +60,7 @@ export interface Store {
    * a set field written by an app that never described itself still READS correctly (the merged
    * shape is recognisable from the data). Calling it only makes future writes merge better.
    */
-  describe?(schema: StoreSchema): void;
+  describe?(schema: StoreSchema, rules?: StoreRules): void;
 
   // reads — return raw records; the runtime resolves relations + computed + JS filters
   all(entity: string, narrow?: Narrow): Promise<KartaRecord[]>;
