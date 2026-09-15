@@ -83,4 +83,26 @@ describe("migrating on load", () => {
 
     expect(await s.kvGet("__appVersion")).toBe("1.0.0");
   });
+
+  it("an OLDER copy leaves data a newer one migrated alone (KA-22)", async () => {
+    // The data says schema 2; this copy knows schema 1. Recording "1.0.0" as the data's version
+    // would make the newer copy run its migrations a second time on its next open.
+    const s = await store();
+    await s.insert("note", { body: "hello" });
+    await s.runMigrations({ fromAppVersion: "1.0.0", toAppVersion: "2.0.0", fromSchemaVersion: 1, toSchemaVersion: 2, migrations: [] });
+
+    const { ran } = await migrateOnLoad(s, def("1.0.0", []));
+
+    expect(ran).toEqual([]);
+    expect(await s.kvGet("__appVersion")).toBe("2.0.0");
+  });
+
+  it("does not record its version when told this copy is not the newest", async () => {
+    const s = await store();
+    await s.kvSet("__appVersion", "1.1.0");
+
+    await migrateOnLoad(s, def("1.0.0", []), { recordVersion: false });
+
+    expect(await s.kvGet("__appVersion")).toBe("1.1.0");
+  });
 });

@@ -46,6 +46,7 @@ export interface Store {
   // blobs (media), kv (ctx.storage), migration support
   putBlob(b: Blob): Promise<MediaRef>;  getBlob(r: MediaRef): Promise<Blob | null>;
   kvGet(k: string): Promise<string | null>;  kvSet(k: string, v: string): Promise<void>;  kvDelete(k: string): Promise<void>;
+  subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
   storedSchemaVersion(): Promise<number>;  runMigrations(plan: MigrationPlan): Promise<void>;
 }
 export type Unsubscribe = () => void;

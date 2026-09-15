@@ -915,6 +915,19 @@ export class JazzStore implements Store {
     await this.whenDurable?.();
   }
 
+  subscribeKv(cb: () => void): Unsubscribe {
+    let stop: (() => void) | null = null;
+    let alive = true;
+    void this.child(this.root, ROOT_KV).then((map) => {
+      if (!alive) return;
+      stop = map.subscribe(() => cb());
+    });
+    return () => {
+      alive = false;
+      stop?.();
+    };
+  }
+
   async kvKeys(prefix?: string): Promise<string[]> {
     const kv = await this.child(this.root, ROOT_KV);
     return kv.keys().filter((k) => kv.get(k) !== undefined && (prefix ? k.startsWith(prefix) : true));

@@ -50,6 +50,7 @@ import { shellDialogs } from "./dialog.js";
 import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
+import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
 
 interface EditorState {
   entity: string;
@@ -130,10 +131,13 @@ interface AppProps {
   onImport?: () => void;
   /** Enables the Studio + launcher (the shell's top-level app only — not the preview). */
   generator?: boolean;
+  /** Set while this copy may not write to the shared data (KA-22, #63). */
+  lock?: AppLock;
 }
 
-export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, questions, navHost }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
   const def = runtime.definition;
+  const locked = useAppLock(lock);
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
   // Detail pages are per-record surfaces reached by tapping a row — not top-level destinations. Keep
@@ -970,7 +974,23 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     : undefined;
 
   return (
-    <div className="k-app" data-provenance={provenance} style={{ ["--accent" as string]: accent }}>
+    <div
+      className="k-app"
+      data-provenance={provenance}
+      data-locked={locked ? "" : undefined}
+      style={{ ["--accent" as string]: accent }}
+      // Locked: a tap on a control that writes explains instead of acting. Capture phase, so it wins
+      // over the control's own handler; the store would refuse the write anyway, but only after a
+      // form had been filled in or a delete confirmed.
+      onClickCapture={(e) => {
+        if (!locked || !lock) return;
+        const target = e.target as Element | null;
+        if (!target?.closest?.(WRITE_CONTROLS)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toaster.push(lock.refusal() ?? "Read-only.");
+      }}
+    >
       <AppChrome
         name={def.name}
         icon={def.icon ?? "◆"}
@@ -1044,7 +1064,9 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
         onBack={isSubPage ? backTo : undefined}
         pageTitle={pageId === HOME ? undefined : titles[pageId] ?? pageId}
         showQuick={!isSubPage}
+        locked={Boolean(locked)}
       >
+      {locked ? <LockBanner state={locked} /> : null}
       {pageId === HOME ? (
         <main className="k-main">
           {editMark("the object grid home", "home")}
