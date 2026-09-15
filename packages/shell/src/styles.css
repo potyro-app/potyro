@@ -4299,6 +4299,77 @@ button.k-switch:focus-visible {
   animation: k-route-in var(--dur) var(--ease);
 }
 
+/* tokens-only: start — people */
+/* Who is in a shared app (#58): a row per person, their role in words, Remove for the owner. */
+.k-people {
+  width: min(30rem, 100%);
+  display: grid;
+  gap: var(--space-2);
+}
+.k-people-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.k-people-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-people-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-people-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line);
+}
+.k-people-row:first-child {
+  border-top: 0;
+}
+.k-people-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.k-people-who b {
+  font-weight: 600;
+}
+.k-people-who .k-muted {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add.k-people-remove {
+  color: var(--danger);
+}
+.k-people-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-people-invite-btn {
+  justify-self: start;
+}
+@media (max-width: 759px) {
+  .k-modal-scrim:has(> .k-people) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .k-people {
+    width: 100%;
+    margin: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
+}
+/* tokens-only: end — people */
+
 /* tokens-only: start — launcher */
 /* Launcher — home surface + slide-in overlay */
 .k-launcher {
@@ -5731,6 +5802,19 @@ button.k-switch:focus-visible {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+/* A member's mark in the People panel (#58): the same per-person hue as chat and the identity panel. */
+.k-person-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  background: oklch(90% 0.08 var(--k-hue, 60));
+  color: oklch(35% 0.13 var(--k-hue, 60));
+  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  font-weight: 700;
 }
 .k-identity-avatar {
   flex: none;

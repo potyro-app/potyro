@@ -49,6 +49,7 @@ import { describeDrift, schemaDrift } from "./schema-drift.js";
 import { shellDialogs } from "./dialog.js";
 import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
+import { PeoplePanel } from "./people-panel.js";
 
 interface EditorState {
   entity: string;
@@ -603,6 +604,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const [editMode, setEditMode] = useState(false);
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
   // app — and the control is hidden rather than showing an empty panel that would claim nothing
   // happened.
@@ -942,6 +944,8 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           } }] : []),
     ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => setEditMode((v) => !v) }] : []),
     ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
+    // Who is in a shared app, and inviting and removing them (#58).
+    ...(sync && appId ? [{ key: "people", label: "People", icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
   ];
@@ -1268,6 +1272,9 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
         />
       ) : null}
 
+      {peopleOpen && appId ? (
+        <PeoplePanel appId={appId} appName={def.name} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
+      ) : null}
       {historyOpen && appId ? (
         <History
           appId={appId}
