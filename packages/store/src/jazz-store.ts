@@ -287,6 +287,13 @@ export class JazzStore implements Store {
     this.localDepth++;
     try {
       return fn();
+    } catch (e) {
+      // The engine's words for "this device may not write here" — after the owner removed you, or
+      // on a view-only invite (#58) — mean nothing to a person looking at a form that won't save.
+      if (e instanceof Error && /does not have write permissions|role of current account is (reader|revoked)/.test(e.message)) {
+        throw new Error("You can't change this app: you were removed from it, or you can only view it.");
+      }
+      throw e;
     } finally {
       this.localDepth--;
     }

@@ -130,6 +130,19 @@ export async function republishName(name: string): Promise<void> {
   await publishName(handle, name);
 }
 
+/**
+ * Remove a person from the open app's space (#58). Refused unless this device is the admin. Revokes
+ * outstanding invites too, so a link shared before stops working. See `removeSpaceMember`.
+ */
+export async function removeMember(accountId: string): Promise<{ invitesRevoked: number }> {
+  const handle = lastSyncHandle;
+  if (!handle) throw new Error("This app is not shared.");
+  const { removeSpaceMember } = await import("@karta/store");
+  const result = removeSpaceMember(handle, accountId);
+  await handle.whenDurable();
+  return result;
+}
+
 /** The space of the app just opened with `{ sync: true }`, or null. See `lastSyncHandle`. */
 export async function currentSpace(): Promise<
   { id: string; role: "admin" | "writer" | "reader"; members: Array<{ id: string; name: string; role: "admin" | "writer" | "reader" }> } | null
