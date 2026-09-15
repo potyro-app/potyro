@@ -20,6 +20,8 @@ export interface DialogRequest {
   /** A confirm's quieter second line, its button's words, and whether that button is the red one (#112). */
   detail?: string;
   ok?: string;
+  /** The other button's words. Shell-only: "Not now" reads better than "Cancel" for a choice that is not undoing anything. */
+  cancel?: string;
   destructive?: boolean;
   /** `true`/`false` for confirm, the string or `null` for prompt, `null` for share. */
   settle: (value: boolean | string | null) => void;
@@ -29,7 +31,7 @@ export class DialogHost {
   private current: DialogRequest | null = null;
   private listeners = new Set<() => void>();
 
-  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "destructive"> = {}): Promise<boolean | string | null> {
+  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive"> = {}): Promise<boolean | string | null> {
     return new Promise((resolve) => {
       // A second request while one is open would strand the first promise. Settle it as declined —
       // never as accepted: an abandoned confirm must not delete anything.
@@ -49,8 +51,8 @@ export class DialogHost {
     });
   }
 
-  confirm = async (message: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean> =>
-    Boolean(await this.open("confirm", message, "", { detail: opts?.detail, ok: opts?.ok, destructive: opts?.destructive }));
+  confirm = async (message: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean> =>
+    Boolean(await this.open("confirm", message, "", { detail: opts?.detail, ok: opts?.ok, cancel: opts?.cancel, destructive: opts?.destructive }));
 
   prompt = async (message: string, opts?: { default?: string }): Promise<string | null> => {
     const value = await this.open("prompt", message, opts?.default ?? "");
@@ -154,7 +156,7 @@ export function Dialogs({ host }: { host: DialogHost }) {
         ) : null}
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={cancel}>
-            Cancel
+            {request.cancel ?? "Cancel"}
           </button>
           <button ref={okRef} type="button" className={`k-add k-primary-action${request.destructive ? " k-dialog-destructive" : ""}`} onClick={accept}>
             {request.ok ?? (request.kind === "confirm" ? "Confirm" : "OK")}

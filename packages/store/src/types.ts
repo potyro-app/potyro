@@ -100,6 +100,14 @@ export interface Store {
   kvDelete(k: string): Promise<void>;
   /** Optional key enumeration (backs `ctx.storage.keys`). Default impls may omit it. */
   kvKeys?(prefix?: string): Promise<string[]>;
+  /**
+   * Fires when any kv entry changes, including from a peer (KA-22).
+   *
+   * Optional: only a synced store has peers whose writes arrive while the app is open. The shell
+   * uses it to notice a newer version of a shared app the moment it is published, instead of on
+   * the next open — by which time an old copy may have written old-shape records for minutes.
+   */
+  subscribeKv?(cb: () => void): Unsubscribe;
   storedSchemaVersion(): Promise<number>;
   runMigrations(plan: MigrationPlan): Promise<void>;
 

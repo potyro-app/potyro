@@ -3,7 +3,7 @@
 
 import type { Id, KartaRecord, MediaRef, Value } from "karta";
 import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
-import { applyMigrationStep } from "./migrate.js";
+import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
 interface BlobEntry {
@@ -175,12 +175,22 @@ export class MemoryStore implements Store {
   }
 
   async runMigrations(plan: MigrationPlan): Promise<void> {
+    // On a COPY, swapped in only once every step has run. Applied to the live maps, a step that threw
+    // left the steps before it applied and the version unchanged — so the next open re-ran them over
+    // half-migrated data. SqliteStore gets the same guarantee from its transaction, JazzStore from
+    // materialising before it writes (KA-22: the refusal path must not leave partial writes).
+    const draft: EntityRecords = new Map(
+      [...this.records].map(([entity, rows]) => [entity, new Map([...rows].map(([id, r]) => [id, structuredClone(r)]))]),
+    );
+    const affected = new Set<string>();
     for (const migration of plan.migrations) {
       for (const step of migration.steps) {
-        const affected = applyMigrationStep(step, this.records, nowIso);
-        for (const entity of affected) this.emit(entity);
+        for (const entity of applyMigrationStep(step, draft, nowIso)) affected.add(entity);
       }
     }
+    this.records.clear();
+    for (const [entity, rows] of draft) this.records.set(entity, rows);
+    for (const entity of affected) this.emit(entity);
     this.schemaVersion = plan.toSchemaVersion;
     this.kv.set("__appVersion", plan.toAppVersion);
     this.changed();

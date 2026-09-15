@@ -111,7 +111,7 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
   // promise that never resolves, i.e. a permanently blank page.
   await expect(b.locator(".k-dialog")).toBeVisible({ timeout: 30_000 });
   await expect(b.locator(".k-dialog")).toContainText("updated");
-  await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: "Update" }).click();
   await expect(b.locator("h1").first()).toHaveText("Shared Todo", { timeout: 60_000 });
   // And the app really did update — the renamed page is the one visible change.
   await expect(b.locator(".k-tab", { hasText: "Journal" })).toBeVisible({ timeout: 30_000 });
