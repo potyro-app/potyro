@@ -6,8 +6,11 @@ export {
   identityAccount,
   recoveryPassphrase,
   signInWithPassphrase,
+  secureIdentitySecrets,
+  IdentityKeysMissingError,
   DEFAULT_NAME,
   type Identity,
   type IdentityAccount,
   type IdentityKeys,
 } from "./identity.js";
+export { browserVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";
