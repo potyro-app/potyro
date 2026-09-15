@@ -31,6 +31,7 @@ import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
+import { setRouteHandler } from "./router.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
 
@@ -238,11 +239,24 @@ async function runMigrationsIfPossible(
   }
 }
 
-async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps: Capabilities): Promise<void> {
+/** How many apps are open and not yet put away — exposed in dev so a spec can see switching leaks nothing. */
+function liveApps(delta: number): void {
+  if (!import.meta.env.DEV) return;
+  const g = globalThis as unknown as { __kartaLiveApps?: number };
+  g.__kartaLiveApps = (g.__kartaLiveApps ?? 0) + delta;
+}
+
+/** An open app, and how to put it away when another route takes the screen (#89). */
+interface Opened {
+  sync: boolean;
+  dispose: () => Promise<void>;
+}
+
+async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps: Capabilities, isCurrent: () => boolean = () => true): Promise<Opened | null> {
   const saved = getUserApp(id);
   if (!saved) {
     mount(root, <Home />); // deleted out from under us → home
-    return;
+    return null;
   }
 
   // Mount BEFORE anything that can ask a question. This is load-bearing, not cosmetic.
@@ -367,7 +381,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
           new Date().toISOString(),
         );
         location.reload();
-        return;
+        return null;
       }
       if (behind) {
         // Declined while behind: readable, not writable, and it says why rather than failing
@@ -418,14 +432,37 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   }
 
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
-  startReminderSync(composed!.runtime, store);
+  // Everything this app started that outlives a render, so switching away can stop it (#89). The
+  // page dying used to do this for free.
+  const stops: Array<() => void> = [];
+  stops.push(startReminderSync(composed!.runtime, store));
   // The launcher badge's reminders (#86): due times, so one that falls due while the app is closed counts.
-  watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due }));
+  stops.push(watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due })));
   await restoreScope(composed!.runtime, id);
+
+  let open = true;
+  liveApps(+1);
+  const opened: Opened = {
+    sync: Boolean(saved.sync),
+    dispose: async () => {
+      if (!open) return;
+      open = false;
+      liveApps(-1);
+      for (const stop of stops.splice(0)) stop();
+      composed!.loaded.dispose();
+      await rawStore.close();
+    },
+  };
+  // Superseded while it was opening (another tap, Back): put it away without showing it.
+  if (!isCurrent()) {
+    await opened.dispose();
+    return null;
+  }
 
   mount(
     root,
     <App
+      key={`${id}:${routeSeq}`}
       navHost={navHost}
       picker={picker}
       questions={questions}
@@ -440,6 +477,57 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       generator
     />,
   );
+  return opened;
+}
+
+// What is on screen now, and the route counter that tells a slow open it has been superseded.
+let current: Opened | null = null;
+let routeSeq = 0;
+
+/**
+ * Put a route on screen (#89). The new surface is mounted FIRST — the previous app's tree unmounts
+ * with it, so nothing reads a store that is about to close — and only then is the previous app's
+ * runtime, isolate, store and watchers put away.
+ */
+async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<void> {
+  const seq = ++routeSeq;
+  const isCurrent = (): boolean => seq === routeSeq;
+  const prev = current;
+  current = null;
+
+  if (r.kind === "home") {
+    mount(root, <Home key={`home:${seq}`} />);
+    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    return;
+  }
+
+  const saved = getUserApp(r.id);
+  mount(
+    root,
+    <div className="k-joining" key={`opening:${seq}`}>
+      <p>Opening “{saved?.name ?? r.id}”…</p>
+    </div>,
+  );
+  await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+  if (!isCurrent()) return;
+
+  // An open is an open however it came about — a tile, a deep link, a reload, Back — so it is
+  // counted here, where every route to an app passes, not on the tile click (#81).
+  recordOpen(appKey(r.kind, r.id), new Date().toISOString());
+  const opened = await bootUserApp(r.id, root, new Toaster(), caps, isCurrent);
+  if (isCurrent()) current = opened;
+  else await opened?.dispose();
+}
+
+/**
+ * Whether a route can replace what is on screen without a page load. Synced apps cannot, yet: the
+ * space they read (`open-store.ts`) is module state that is set up once per page, and a pending data
+ * import is restored on boot. Those keep the full navigation, which is always correct.
+ */
+function canSwitchInPlace(next: Route): boolean {
+  if (current?.sync) return false;
+  if (sessionStorage.getItem(IMPORT_KEY)) return false;
+  return next.kind === "home" || !getUserApp(next.id)?.sync;
 }
 
 async function boot(): Promise<void> {
@@ -454,28 +542,24 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
-  if (joined) {
-    const toaster = new Toaster();
-    const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
-    await bootUserApp(joined, root, toaster, caps);
-    return;
-  }
 
-  const r = route();
-  if (r.kind === "home") {
-    mount(root, <Home />);
-    return;
-  }
-  // An open is an open however it came about — a tile, a deep link, a reload — so it is counted
-  // here, where every route to an app passes, not on the tile click (#81).
-  recordOpen(appKey(r.kind, r.id), new Date().toISOString());
-
-  const toaster = new Toaster();
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
 
-  await bootUserApp(r.id, root, toaster, caps);
+  // Opening an app, going home and Back switch in place from here on (#89).
+  setRouteHandler((next) => {
+    if (!canSwitchInPlace(next)) return false;
+    void show(next, root, caps);
+    return true;
+  });
+  globalThis.addEventListener("popstate", () => {
+    const next = route();
+    if (canSwitchInPlace(next)) void show(next, root, caps);
+    else location.reload();
+  });
+
+  await show(joined ? { kind: "user", id: joined } : route(), root, caps);
 }
 
 /**

@@ -22,14 +22,16 @@ import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
+import { navigateTo } from "./router.js";
 
 export function openUserApp(id: string): void {
-  location.search = `?user=${encodeURIComponent(id)}`;
+  navigateTo({ kind: "user", id });
 }
 export function goHome(): void {
-  location.assign(location.pathname);
+  navigateTo({ kind: "home" });
 }
-/** Open an installed app: a reload into its route, which is how boot() counts an open (#81). */
+/** Open an installed app: in place when the shell can (#89), else a navigation into its route. The
+ *  shell counts the open where every route passes (#81). */
 export function openInstalledApp(app: InstalledApp): void {
   openUserApp(app.id);
 }
