@@ -18,7 +18,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
-import { appKey, recordOpen } from "./launcher-store.js";
+import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
 import { getUserApp } from "./user-apps.js";
@@ -30,7 +30,7 @@ import { Dialogs, shellDialogs } from "./dialog.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
-import { startReminderSync } from "./reminder-sync.js";
+import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
 
@@ -419,6 +419,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   startReminderSync(composed!.runtime, store);
+  // The launcher badge's reminders (#86): due times, so one that falls due while the app is closed counts.
+  watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due }));
   await restoreScope(composed!.runtime, id);
 
   mount(

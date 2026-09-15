@@ -219,6 +219,30 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   await expect(b.locator(".k-chat-modal")).not.toContainText("the oat one");
   await expect(b.locator(".k-chat-modal")).toContainText("there is no milk in the shop");
 
+  // ---- the launcher shows it too (#86): a message Ana has not read is a count on the app's tile ----
+  await say(b, "and bread");
+  await b.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
+  await expect(a.getByRole("button", { name: /^Chat/ })).toHaveAttribute("data-unread", "1", { timeout: 60_000 });
+  await a.goto("/");
+  const tile = a.locator(".k-launch-tile", { hasText: "Chat Pair" });
+  // The count is everything Ana has not seen: the message, plus Bo's edits she has not looked at.
+  await expect(tile).toContainText("1 message", { timeout: 30_000 });
+  const count = Number(await tile.locator(".k-launch-badge").innerText());
+  expect(count).toBeGreaterThanOrEqual(1);
+  // Reading it in the app clears the tile.
+  await tile.click();
+  await expect(a.locator("h1").first()).toHaveText("Chat Pair", { timeout: 60_000 });
+  await a.getByRole("button", { name: /^Chat/ }).click();
+  await expect(a.locator(".k-chat-msg", { hasText: "and bread" })).toBeVisible({ timeout: 60_000 });
+  await a.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
+  await expect(a.getByRole("button", { name: /^Chat/ })).not.toHaveAttribute("data-unread", /.*/);
+  await a.goto("/");
+  const after = a.locator(".k-launch-tile", { hasText: "Chat Pair" });
+  await expect(after).toBeVisible({ timeout: 30_000 });
+  await expect(after).not.toContainText("message");
+  // One fewer than before — the message — whatever unseen changes remain.
+  expect(Number((await after.locator(".k-launch-badge").count()) ? await after.locator(".k-launch-badge").innerText() : "0")).toBe(count - 1);
+
   await ctxA.close();
   await ctxB.close();
 });

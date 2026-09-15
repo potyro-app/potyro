@@ -4811,6 +4811,31 @@ button.k-switch:focus-visible {
   font-size: 0.65rem;
   line-height: 1;
 }
+/* Something wants attention in the app (#86): one count on the icon's top corner, in ink so it reads
+   in both themes and never depends on the app's accent. Zero renders no element at all. */
+.k-launch-badge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.45rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.k-tile-menu-note {
+  padding: 0 0.75rem 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
 .k-launch-mark {
   display: inline-flex;
   align-items: center;

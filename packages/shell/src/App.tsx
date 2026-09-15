@@ -48,6 +48,7 @@ import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { describeDrift, schemaDrift } from "./schema-drift.js";
 import { shellDialogs } from "./dialog.js";
 import { chooseScope } from "./scope.js";
+import { appKey, recordSignals } from "./launcher-store.js";
 
 interface EditorState {
   entity: string;
@@ -615,6 +616,14 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const [chatOpen, setChatOpen] = useState(false);
   const room = useThread(runtime, canChat ? ROOM_THREAD : null);
   const roomUnread = appId ? unreadCount(room.messages, appId, ROOM_THREAD, runtime.ctx.me?.id) : 0;
+  // The launcher badge (#86): the counts this app already shows, kept on its launcher entry as they
+  // change, so the home screen can show them without running the app. Opening the chat or the
+  // changes panel moves the watermarks, which brings these to zero and clears the badge.
+  const changesUnseen = activity?.length ?? 0;
+  useEffect(() => {
+    if (!appId || currentKind !== "user") return;
+    recordSignals(appKey("user", appId), { changes: changesUnseen, chat: roomUnread });
+  }, [appId, currentKind, changesUnseen, roomUnread]);
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
