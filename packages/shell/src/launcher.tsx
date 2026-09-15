@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
-import { setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
+import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "@karta/views";
 import { hueColour, tileIdentity } from "./tile-identity.js";
@@ -57,10 +57,17 @@ interface LauncherProps {
  * "shared" with the initials of the people last seen there. A trusted, local-only app says nothing
  * at all: when every tile said TRUSTED the word carried no information.
  */
-function Avatar({ app, identity }: { app: InstalledApp; identity: ReturnType<typeof tileIdentity> }) {
+function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity: ReturnType<typeof tileIdentity>; attention?: number }) {
   return (
     <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden={app.trusted || undefined}>
       {identity.glyph}
+      {/* One number on the icon's corner (#86): unread chat, unseen changes and due reminders summed.
+          Zero renders nothing at all. The words are read out beside the name. */}
+      {attention > 0 ? (
+        <span className="k-launch-badge" aria-hidden>
+          {attention > 99 ? "99+" : attention}
+        </span>
+      ) : null}
       {!app.trusted ? (
         <span className="k-launch-shield" role="img" aria-label="Runs in a sandbox" title="Runs in a sandbox">
           🛡
@@ -93,18 +100,21 @@ function SyncMark({ app, compact }: { app: InstalledApp; compact?: boolean }) {
   );
 }
 
-function Tile({ app, active, onOpen }: { app: InstalledApp; active: boolean; onOpen: () => void }) {
+function Tile({ app, active, onOpen, now }: { app: InstalledApp; active: boolean; onOpen: () => void; now: number }) {
   const identity = tileIdentity(app);
+  const attention = attentionOf(app.entry, now);
   return (
     <button
       type="button"
       className="k-launch-tile"
       data-active={active}
+      data-attention={attention.total || undefined}
       style={{ "--tile-accent": identity.accent } as CSSProperties}
       onClick={onOpen}
     >
-      <Avatar app={app} identity={identity} />
+      <Avatar app={app} identity={identity} attention={attention.total} />
       <span className="k-launch-name">{app.name}</span>
+      {attention.total ? <span className="k-visually-hidden">, {describeAttention(attention)}</span> : null}
       <SyncMark app={app} />
     </button>
   );
@@ -202,6 +212,9 @@ function TileMenu({
           <div ref={menuRef} className="k-tile-menu" role="menu" aria-label={`Actions for ${app.name}`} onKeyDown={onMenuKey}>
             {/* The menu already says whose it is (aria-label); the title is for the eye. */}
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
+            {attentionOf(app.entry, Date.now()).total ? (
+              <div className="k-tile-menu-note">{describeAttention(attentionOf(app.entry, Date.now()))}</div>
+            ) : null}
             {item("open", "Open", onOpen)}
             {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
             {item("edit-tile", "Edit tile", user.onEditTile)}
@@ -543,7 +556,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
           <div className="k-launch-grid" data-reorderable="true">
             {pinned.map((a) => (
               <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...pinnedReorder.item(a.key)} {...inertUnless(a.key)}>
-                <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} />
+                <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} now={mountedAt} />
                 {menuFor(a)}
               </div>
             ))}
@@ -570,7 +583,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...restReorder.item(a.key)} {...inertUnless(a.key)}>
               {/* The badge reads the record: a Studio-authored app is the user's own and runs
                   trusted. Hardcoding "untrusted" here once reported the opposite of what ran. */}
-              <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} />
+              <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} now={mountedAt} />
               {menuFor(a)}
             </div>
           ))}
@@ -615,8 +628,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             style={{ "--tile-accent": identity.accent } as CSSProperties}
             onClick={() => onOpen(a)}
           >
-            <Avatar app={a} identity={identity} />
+            <Avatar app={a} identity={identity} attention={attentionOf(a.entry, mountedAt).total} />
             <span className="k-launch-name">{a.name}</span>
+            {attentionOf(a.entry, mountedAt).total ? <span className="k-visually-hidden">, {describeAttention(attentionOf(a.entry, mountedAt))}</span> : null}
             <SyncMark app={a} compact />
           </button>
           {menuFor(a)}
