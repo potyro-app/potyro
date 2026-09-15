@@ -46,7 +46,8 @@ const encode = (p: InvitePayload): string => btoa(encodeURIComponent(JSON.string
 const decode = (raw: string): InvitePayload => JSON.parse(decodeURIComponent(atob(raw))) as InvitePayload;
 
 /** Build a `#join=…` link for a synced app. Throws if the app is not synced — there is no space yet. */
-export async function createShareLink(appId: string): Promise<string> {
+/** A link that invites someone into the app: `writer` can edit, `reader` can only view (#58). */
+export async function createShareLink(appId: string, role: "writer" | "reader" = "writer"): Promise<string> {
   const app = getUserApp(appId);
   if (!app) throw new Error("app not found");
   if (!app.sync) throw new Error("Turn sync on for this app first — sharing needs a space to invite into.");
@@ -67,7 +68,7 @@ export async function createShareLink(appId: string): Promise<string> {
   const { publishAppSource } = await import("./app-sync.js");
   await publishAppSource(handle.store, { source: app.source, name: app.name, updatedAt: app.updatedAt });
 
-  const secret = createSpaceInvite(handle, "writer");
+  const secret = createSpaceInvite(handle, role);
   const payload: InvitePayload = {
     appId,
     name: app.name,
