@@ -1013,6 +1013,13 @@ export class JazzStore implements Store {
     await this.whenDurable?.();
   }
 
+  memberIds(): readonly string[] {
+    // Member keys hold every role ever granted, "revoked" included; non-account agents (invites, the
+    // relay's server agent) are not people.
+    const keys = (this.group as { getMemberKeys?(): string[] }).getMemberKeys?.() ?? [];
+    return keys.filter((k) => k.startsWith("co_"));
+  }
+
   subscribeKv(cb: () => void): Unsubscribe {
     let stop: (() => void) | null = null;
     let alive = true;

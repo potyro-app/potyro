@@ -54,6 +54,8 @@ interface Ctx {
   // unchanged only to their shape, so an old record stays saveable after its enum options change.
   // Reads never return a value that does not fit: the record carries the last value that did (from
   // the history, on a synced store) or nothing. Same on the direct ctx and across the isolate.
+  // A `member` value in a shared app must name someone in the app when set, and someone who has ever
+  // been in it when read (a ledger naming a person who left stays readable).
 
   // ---- time (injected once per evaluation pass for determinism) ----
   now(): Date;
