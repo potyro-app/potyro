@@ -203,12 +203,12 @@ describe("JazzStore — two peers through the Store seam", () => {
   // real nodes, so it exercises insert -> sync -> concurrent update -> converge.
   const settle = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 
-  async function pair() {
+  async function pair(role: "writer" | "reader" = "writer") {
     const ana = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Ana" }, crypto });
     const bruno = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Bruno" }, crypto });
 
     const group = ana.node.createGroup();
-    group.addMember(await bruno.node.expectCurrentAccount("bruno"), "writer");
+    group.addMember(await bruno.node.expectCurrentAccount("bruno"), role);
 
     const anaStore = new JazzStore({ node: ana.node as never, group: group as never });
     await anaStore.open("split");
@@ -229,7 +229,7 @@ describe("JazzStore — two peers through the Store seam", () => {
       rootId: anaStore.rootId,
     });
     await brunoStore.open("split");
-    return { anaStore, brunoStore, ana, bruno };
+    return { anaStore, brunoStore, ana, bruno, group };
   }
 
   it("a record written by one peer arrives at the other", async () => {
@@ -240,6 +240,62 @@ describe("JazzStore — two peers through the Store seam", () => {
     const seen = await brunoStore.get("expense", r.id);
     expect(seen?.description).toBe("Dinner");
     expect(seen?.amountCents).toBe(4200);
+  });
+
+  // KA-21: writes a copy was not allowed to make do not surface anywhere else. This is cojson's
+  // guarantee, not Karta's — every transaction is signed and checked against the writer's role AT
+  // THE TIME it was made (cojson permissions.ts `determineValidTransactions`) — but it is the
+  // property shared apps stand on, so it is pinned here through the Store seam.
+  it("a write by someone who was removed while offline never reaches the others (KA-21)", async () => {
+    const { anaStore, brunoStore, ana, bruno, group } = await pair();
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+    expect((await brunoStore.get("expense", r.id))?.description).toBe("Dinner");
+
+    // Bruno drops off. While he is away, Ana removes him.
+    ana.node.syncManager.gracefulShutdown();
+    bruno.node.syncManager.gracefulShutdown();
+    await settle();
+    (group as unknown as { removeMember(a: unknown): void }).removeMember(await bruno.node.expectCurrentAccount("bruno"));
+    await settle();
+
+    // Bruno's copy has not heard, so it lets him write. Then he reconnects.
+    await brunoStore.update("expense", r.id, { description: "Dinner (Bruno didn't pay)" }).catch(() => {});
+    const [forAna, forBruno] = cojsonInternals.connectedPeers("bruno2", "ana2", { peer1role: "server", peer2role: "server" });
+    ana.node.syncManager.addPeer(forBruno);
+    bruno.node.syncManager.addPeer(forAna);
+    await settle(500);
+
+    expect((await anaStore.get("expense", r.id))?.description).toBe("Dinner");
+  });
+
+  it("control: an offline edit by someone still a member DOES arrive on reconnect", async () => {
+    // Without this, the removal test above would pass just as well if reconnecting never synced.
+    const { anaStore, brunoStore, ana, bruno } = await pair();
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+    ana.node.syncManager.gracefulShutdown();
+    bruno.node.syncManager.gracefulShutdown();
+    await settle();
+    await brunoStore.update("expense", r.id, { description: "Dinner with Bruno" });
+    const [forAna, forBruno] = cojsonInternals.connectedPeers("bruno2", "ana2", { peer1role: "server", peer2role: "server" });
+    ana.node.syncManager.addPeer(forBruno);
+    bruno.node.syncManager.addPeer(forAna);
+    await settle(500);
+    expect((await anaStore.get("expense", r.id))?.description).toBe("Dinner with Bruno");
+  });
+
+  it("a view-only member's write reaches nobody else (KA-21)", async () => {
+    const { anaStore, brunoStore } = await pair("reader");
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+    expect((await brunoStore.get("expense", r.id))?.description).toBe("Dinner");
+
+    // Whether their own copy refuses up front or records a no-op is the engine's business; what
+    // matters is that the others never see it.
+    await brunoStore.update("expense", r.id, { amountCents: 1 }).catch(() => {});
+    await settle();
+    expect((await anaStore.get("expense", r.id))?.amountCents).toBe(4200);
   });
 
   it("a kv write by one peer is heard by the other while it is open (KA-22)", async () => {
@@ -398,12 +454,12 @@ describe("JazzStore — attribution across peers (KA-36)", () => {
   // an app-emitted "system message" could. This pins that it survives the trip between peers.
   const settle = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 
-  async function pair() {
+  async function pair(role: "writer" | "reader" = "writer") {
     const ana = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Ana" }, crypto });
     const bruno = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Bruno" }, crypto });
 
     const group = ana.node.createGroup();
-    group.addMember(await bruno.node.expectCurrentAccount("bruno"), "writer");
+    group.addMember(await bruno.node.expectCurrentAccount("bruno"), role);
 
     const anaStore = new JazzStore({ node: ana.node as never, group: group as never });
     await anaStore.open("split");
