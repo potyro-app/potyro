@@ -4285,6 +4285,20 @@ button.k-switch:focus-visible {
   }
 }
 
+/* Switching apps in place (#89): what arrives fades in over the moment the last thing left. Opacity
+   only — a transform on these would become the containing block of their fixed tab bar and floating
+   button for the length of the animation, and the bar would jump. */
+@keyframes k-route-in {
+  from {
+    opacity: 0;
+  }
+}
+.k-app,
+.k-launcher-home,
+.k-joining {
+  animation: k-route-in var(--dur) var(--ease);
+}
+
 /* tokens-only: start — launcher */
 /* Launcher — home surface + slide-in overlay */
 .k-launcher {
