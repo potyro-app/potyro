@@ -3881,10 +3881,19 @@ button.k-switch:focus-visible {
   bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
+  /* A sentence wraps inside the screen rather than running off its edge. */
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   z-index: 57; /* above a form sheet (55/56): a save error must not hide behind the form */
+}
+/* On a phone the tab bar owns the bottom edge and the floating add button sits just above it; a
+   toast lay on top of the bar's labels. Lifted clear of both (bar 4.75rem + button 3.25rem + gap), so
+   it neither hides them nor takes the tap meant for them. */
+body:has(.k-tabbar) .k-toasts {
+  bottom: calc(8.75rem + env(safe-area-inset-bottom));
 }
 .k-toast {
   background: var(--ink);
@@ -5822,7 +5831,9 @@ button.k-switch:focus-visible {
 .k-lock-banner .k-add {
   flex: none;
 }
-[data-locked] :is(.k-quick, .k-fab-other, .k-action) {
+[data-locked] :is(.k-quick, .k-fab-other, .k-action),
+/* A record someone else added, in an app where only its creator may change it (KA-21). */
+:is(.k-add, .k-action, .k-menu-btn)[aria-disabled="true"] {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;

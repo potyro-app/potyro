@@ -13,6 +13,7 @@ import { ActionMenu, type MenuEntry } from "./menu.js";
 import { enumSwatch } from "./enum.js";
 import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
+import { editLockFor } from "./edit-lock.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -53,6 +54,7 @@ export function RowActions({
   onEdit,
   onDelete,
   label,
+  locked,
 }: {
   runtime: BuiltinViewProps["runtime"];
   entity: string;
@@ -61,7 +63,10 @@ export function RowActions({
   onEdit?: (entity: string, id: string) => void;
   onDelete?: () => Promise<void>;
   label: string;
+  /** Set when this row is someone else's to change (`editableBy: "creator"`): Edit and Delete explain instead. */
+  locked?: string | null;
 }) {
+  const explain = (): void => runtime.ctx.ui.toast(locked!);
   if (!actions?.length && !onEdit && !onDelete) return null;
   return (
     <span className="k-row-actions" onClick={(e) => e.stopPropagation()}>
@@ -77,12 +82,18 @@ export function RowActions({
         </button>
       ))}
       {onEdit ? (
-        <button type="button" className="k-action" aria-label="Edit" onClick={() => onEdit(entity, id)}>
+        <button type="button" className="k-action" aria-label="Edit" aria-disabled={locked ? true : undefined} onClick={() => (locked ? explain() : onEdit(entity, id))}>
           Edit
         </button>
       ) : null}
       {onDelete ? (
-        <button type="button" className="k-action k-action-danger" aria-label={`Delete ${label}`} onClick={() => void onDelete()}>
+        <button
+          type="button"
+          className="k-action k-action-danger"
+          aria-label={`Delete ${label}`}
+          aria-disabled={locked ? true : undefined}
+          onClick={() => (locked ? explain() : void onDelete())}
+        >
           Delete
         </button>
       ) : null}
@@ -157,6 +168,7 @@ export function ListView(props: BuiltinViewProps) {
               id={String(row.id)}
               onDelete={hasDetail ? undefined : async () => void (await remove(String(row.id), String(cell.primary ?? "this record")))}
               label={String(cell.primary ?? "this record")}
+              locked={editLockFor(runtime, view.entity, row)}
             />
             {openRow ? (
               <span className="k-row-chevron" aria-hidden>
@@ -318,6 +330,8 @@ export function DetailView(props: BuiltinViewProps) {
   if (!record) return <p className="k-empty">Not found.</p>;
 
   const label = String(record[displayFieldFor(runtime, view.entity)] ?? "this record");
+  const locked = editLockFor(runtime, view.entity, record);
+  const explain = (): void => runtime.ctx.ui.toast(locked!);
   const onDelete = async (): Promise<void> => {
     if (!(await remove(id, label))) return;
     if (listPage) navigate(listPage.id);
@@ -376,10 +390,22 @@ export function DetailView(props: BuiltinViewProps) {
           )}
         {/* No app action at all: Edit is the one thing to do here, so it is the filled button. */}
         {!(view.actions ?? []).length && onEdit ? (
-          <button type="button" className="k-add k-primary-action" onClick={() => onEdit(view.entity, id)}>
+          <button
+            type="button"
+            className="k-add k-primary-action"
+            aria-disabled={locked ? true : undefined}
+            onClick={() => (locked ? explain() : onEdit(view.entity, id))}
+          >
             Edit
           </button>
         ) : null}
+        {locked ? (
+          // Edit and Delete are all this menu holds; someone else's record offers neither, so the
+          // menu is inactive rather than a list of things that would each refuse.
+          <button type="button" className="k-menu-btn" aria-label="More actions" aria-disabled onClick={explain}>
+            ⋯
+          </button>
+        ) : (
         <ActionMenu
           label="More actions"
           title={label}
@@ -389,6 +415,7 @@ export function DetailView(props: BuiltinViewProps) {
             { key: "delete", label: "Delete", icon: "🗑", danger: true, onSelect: () => void onDelete() },
           ]}
         />
+        )}
       </div>
       {groups.map((group, si) =>
         (group.collapsible || group.collapsed) && group.title ? (

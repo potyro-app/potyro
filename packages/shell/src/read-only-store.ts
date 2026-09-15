@@ -43,6 +43,10 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     };
 
   return {
+    // What the app declared. Not a write — and dropped, it silently turned off the CRDT store's
+    // per-element merge of set fields (KA-38) for every shared app, the moment this wrapper started
+    // guarding all of them (#63).
+    describe: store.describe ? (schema, rules) => store.describe!(schema, rules) : undefined,
     open: (appId) => store.open(appId),
     close: () => store.close(),
     all: (entity, narrow) => store.all(entity, narrow),
