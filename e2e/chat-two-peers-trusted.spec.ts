@@ -243,6 +243,12 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   // One fewer than before — the message — whatever unseen changes remain.
   expect(Number((await after.locator(".k-launch-badge").count()) ? await after.locator(".k-launch-badge").innerText() : "0")).toBe(count - 1);
 
+  // ---- and live (#86 phase 2): Bo writes while Ana stays on the home screen, and never reopens the app ----
+  await b.getByRole("button", { name: /^Chat/ }).click();
+  await say(b, "and eggs");
+  await b.locator(".k-chat-modal").getByRole("button", { name: "Close" }).click();
+  await expect(a.locator(".k-launch-tile", { hasText: "Chat Pair" })).toContainText("1 message", { timeout: 60_000 });
+
   await ctxA.close();
   await ctxB.close();
 });
