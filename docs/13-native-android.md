@@ -61,7 +61,11 @@ Shortcut for the whole loop: `pnpm --filter @karta/native android` (build web �
 
 The first schedule/GPS/camera call triggers the Android **permission prompt** — grant it. Exact alarms
 use `USE_EXACT_ALARM` (Android 14+, no prompt) with `SCHEDULE_EXACT_ALARM` as the Android 12/13
-fallback; both are injected by `scripts/patch-manifest.mjs` on every `cap:add`/`cap:sync`.
+fallback. They, the two **location** permissions and **CAMERA** are injected by
+`scripts/patch-manifest.mjs` on every `cap:add`/`cap:sync`: a Capacitor plugin merges some of its
+permissions and leaves the rest to the app, and without the location ones the geolocation plugin does
+not ask the person — it refuses with "Missing the following permissions in AndroidManifest.xml", which
+the geo field swallows, so "Use my location" silently does nothing. Found on a Pixel, 2026-09-16.
 
 ## Build tools: pinned to what Android Studio here can open
 
@@ -83,6 +87,26 @@ On a newer Studio, take the template's own versions instead:
 KARTA_AGP=keep pnpm cap:sync                       # leave whatever Capacitor generated
 KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
 ```
+
+## What has actually been checked on a device
+
+2026-09-16, Pixel 10 / Android 17, debug build:
+
+- **An exact reminder fires with the app closed** — the deciding native feature. A task due at 15:27,
+  the app closed to the home screen, and the notification arrived at 15:27:02 with its title and body.
+  Android held it as `RTC_WAKEUP … window=0 exactAllowReason=policy_permission`, which is the
+  `USE_EXACT_ALARM` permission this script injects.
+  **Force-stopping is not the test**: Android cancels a force-stopped app's alarms
+  (`Reason=alarm_cancelled` in `dumpsys alarm`), so the first attempt "failed" for a reason that has
+  nothing to do with the app. Close it the way a person does.
+- **Location** reads a real position through `ctx.caps.geo` (after the manifest fix above).
+- Still unchecked on a device: taking a photo with the native camera, and store builds.
+
+Useful while checking: `adb shell dumpsys alarm | grep -A3 io.karta.app` for what is scheduled, and
+`adb shell dumpsys notification --noredact | grep -B4 -A10 "<title>"` for what actually fired. The
+WebView can be driven from a laptop over CDP — `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`,
+then connect Playwright to `http://localhost:9222` — which is how the checks above were run. The
+WebView pauses when the app is backgrounded, so keep the app in front while driving it.
 
 ## Local model on Android (the bonus test)
 
