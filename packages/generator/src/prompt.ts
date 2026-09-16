@@ -317,11 +317,8 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   per page): pages are a tab bar on a phone, and four identical icons say nothing.
 - Order a detail page's \`actions\` with the one people came for FIRST: it is the page's one filled
   button; the rest sit beside it, plain. Edit and Delete are the shell's, behind "More actions".
-- MONEY is its own field type: \`{ type: "money", currency: "EUR" }\`, stored as whole minor units
-  (cents), never a float and never a number with a "€" unit. The form takes \`42.00\` and stores
-  \`4200\`; a list shows the amounts down its right with their total underneath. Compute with
-  integers (\`splitEvenly(total, people)\` from \`karta\` divides a bill to the cent), because a
-  fraction of a cent is how two people's copies of a shared ledger drift apart.
+- Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a
+  float; lists total it. Split with \`splitEvenly(total, people)\` from \`karta\`.
 - Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"days"\`) and \`integer: true\` when
   it counts things; the form shows the unit inside the field and a − / + stepper, and the phone opens
   the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
