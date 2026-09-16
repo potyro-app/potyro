@@ -90,7 +90,7 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   const ctxB = await browser.newContext();
   const bruno = await device(ctxB);
   await bruno.goto(link);
-  await bruno.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await bruno.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
   // Joining asks for a name, which is how Ana's copy gets something to render instead of an account
   // id. This used to be a detour through the identity panel plus a reload; the prompt is now on the
   // path, so the detour was removed rather than left as ceremony.

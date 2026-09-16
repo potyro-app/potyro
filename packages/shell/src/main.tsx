@@ -335,7 +335,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   let rawStore: Store;
   const pending = sessionStorage.getItem(IMPORT_KEY);
-  if (pending && !syncAllowed) {
+  if (pending && !(syncAllowed && saved.sync)) {
     sessionStorage.removeItem(IMPORT_KEY);
     rawStore = await openStore(`user:${id}`, { sync: false });
     try {
