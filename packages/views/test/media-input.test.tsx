@@ -123,3 +123,49 @@ describe("the value on a record page", () => {
     expect(container.querySelectorAll(".k-media-x")).toHaveLength(0);
   });
 });
+
+// A photo someone else added, in a shared app (KA-20, #61): it is its own encrypted file, fetched
+// when a view asks for it. So a reference whose bytes have not arrived is normal — and an empty
+// square, which is what this used to draw, reads as a photo that was lost.
+describe("a photo that has not arrived", () => {
+  /** A store that answers "not here yet" until `land()` is called. */
+  function latecomer() {
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    let here = false;
+    let tell: (() => void) | undefined;
+    return {
+      land: () => {
+        here = true;
+        tell?.();
+      },
+      install(store: MemoryStore) {
+        store.getBlob = async () => (here ? new Blob([bytes], { type: "image/png" }) : null);
+        (store as MemoryStore & { subscribeBlob?: unknown }).subscribeBlob = (_r: unknown, cb: () => void) => {
+          tell = cb;
+          return () => (tell = undefined);
+        };
+      },
+    };
+  }
+
+  it("says it is coming, then shows it the moment it lands", async () => {
+    const store = new MemoryStore();
+    await store.open("media-fixture");
+    const late = latecomer();
+    late.install(store);
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    const nav: NavBridge = { navigate: () => {} };
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app });
+    const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav });
+
+    render(<FieldValue runtime={runtime} entity="plant" fieldKey="photo" value={{ key: "k1", mime: "image/png" }} />);
+
+    await waitFor(() => expect(screen.getByText(/Getting the photo/)).toBeTruthy());
+    expect(document.querySelector("img")).toBeNull();
+
+    late.land();
+    await waitFor(() => expect(document.querySelector("img")).not.toBeNull());
+    expect(screen.queryByText(/Getting the photo/)).toBeNull();
+  });
+});

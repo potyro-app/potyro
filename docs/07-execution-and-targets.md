@@ -44,6 +44,13 @@ media area), and whose `caps` are:
   `filesystem` to an app-private folder, `notifications` rate-limited. App code sees the
   standard `ctx.caps.*` interface; the wrapper enforces scope.
 
+`permissions.sync` is the odd one out, and deliberately so: sync is not a call app code makes, it is
+a STORE the composition root does or does not open. So the shell asks (once per app, before an
+untrusted app first syncs — sharing, or turning sync on) rather than the mediation layer prompting on
+first use, and a refusal simply opens the local store: the app keeps working, on this device only.
+Joining a shared link is itself the consent, and the join dialog says what syncing means. Declaring
+`sync` in the manifest changes what the question says, not whether it is asked (KA-23).
+
 Data isolation: an untrusted app can never read another app's records — the `Store` is opened
 per app id, and the isolate only receives a `ctx` bound to that app's store.
 

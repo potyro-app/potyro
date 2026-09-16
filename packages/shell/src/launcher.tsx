@@ -20,6 +20,7 @@ import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
 import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
+import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
@@ -385,6 +386,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
       return;
     }
+    // An app someone else wrote is asked about first (KA-23): sync is what lets its code write into
+    // data that leaves this device.
+    if (on && !(await askToSync(a))) return;
     const ok = await shellDialogs.confirm(
       on
         ? `Turn on sync for "${a.name}"? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off.`
@@ -423,6 +427,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       // Sharing implies sync. Making the user find the sync toggle first was a step that taught
       // them nothing — the reason to turn sync on IS to share.
       if (!a.sync) {
+        if (!(await askToSync(a))) return;
         const ok = await shellDialogs.confirm(
           `Share "${a.name}"? This turns on sync and copies its data into the synced store. You can turn it off again later.`,
         );

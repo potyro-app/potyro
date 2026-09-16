@@ -106,7 +106,16 @@ export interface Store {
    * could not move rather than dropping media quietly.
    */
   putBlobWithKey?(key: string, b: Blob): Promise<MediaRef>;
+  /**
+   * The blob's bytes, or `null` when they are not on this device.
+   *
+   * `null` is not "deleted" (KA-20): in a shared app a photo is its own CoValue, and a device that
+   * has not fetched it yet has the reference without the bytes. Asking is what starts the fetch, so
+   * a caller showing a placeholder and asking again gets the photo when it lands.
+   */
   getBlob(r: MediaRef): Promise<Blob | null>;
+  /** Fires when a blob's bytes arrive. Only a synced store has anything to wait for. */
+  subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;
   kvGet(k: string): Promise<string | null>;
   kvSet(k: string, v: string): Promise<void>;
   kvDelete(k: string): Promise<void>;
