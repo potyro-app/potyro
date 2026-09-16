@@ -26,7 +26,7 @@ export { ChartView, niceMax } from "./chart.js";
 export { computeFigure, computeSummary, figureValue, formatFigure, type SummaryFigure, type CallSummaryValue } from "./summary.js";
 export { DateInput } from "./date-input.js";
 export { EnumInput, EnumPill } from "./enum-input.js";
-export { MediaInput, MediaTile, useMediaUrl, releaseMediaUrl, mediaList, mediaKind } from "./media-input.js";
+export { MediaInput, MediaTile, useMedia, useMediaRetry, useMediaUrl, releaseMediaUrl, mediaList, mediaKind } from "./media-input.js";
 export { enumSwatch, wantsSegmented, filterOptions, SEGMENTED_MAX } from "./enum.js";
 export { formatDateAbsolute, formatDateRelative, formatDateForInput, parseTypedDay, relativeDay, startOfDay } from "./dates.js";
 export { formatValue, formatDateValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
