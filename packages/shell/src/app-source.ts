@@ -160,6 +160,28 @@ function findDefinition(ast: Node): Node | null {
   return found;
 }
 
+/**
+ * Does the app DECLARE that it syncs (`permissions: { sync: true }`)? (KA-23)
+ *
+ * Read from the source rather than from a loaded definition, because the answer is needed before
+ * the app runs: it decides which store to open, and an untrusted app must not be handed a synced
+ * one to find out. `null` means the module could not be read structurally — the app said nothing we
+ * can trust either way, which the caller must treat as "did not ask", never as "asked".
+ */
+export async function declaredSync(source: string): Promise<boolean | null> {
+  const t = await load();
+  if (!t) return null;
+  const ast = parseModule(t, source);
+  if (!ast) return null;
+  const def = findDefinition(ast);
+  if (!def) return null;
+  const permissions = propValue(def, "permissions");
+  if (permissions?.type !== "ObjectExpression") return permissions ? null : false;
+  const sync = propValue(permissions, "sync");
+  if (!sync) return false;
+  return sync.type === "BooleanLiteral" ? Boolean(sync.value) : null;
+}
+
 /** A named property of an object literal, if it is written literally (not spread, not computed). */
 function prop(obj: Node | null, name: string): Node | null {
   if (obj?.type !== "ObjectExpression") return null;
