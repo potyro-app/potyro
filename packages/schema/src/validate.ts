@@ -45,6 +45,14 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     ...common,
   });
   const boolean = z.object({ type: z.literal("boolean"), ...common });
+  // Whole minor units (KA-26): the amount is an integer of cents, and `min`/`max` are too.
+  const money = z.object({
+    type: z.literal("money"),
+    currency: z.string().length(3).optional(),
+    min: z.number().int().optional(),
+    max: z.number().int().optional(),
+    ...common,
+  });
   const enumField = z.object({
     type: z.literal("enum"),
     options: z.array(z.string()).min(1),
@@ -124,6 +132,7 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     richtext,
     number,
     boolean,
+    money,
     enumField,
     tags,
     datetime,
@@ -202,6 +211,7 @@ const listView = z.object({
   filters: z.array(filterChipSchema).optional(),
   group: zBinding.optional(),
   collapsible: z.boolean().optional(),
+  money: z.union([z.string(), z.literal(false)]).optional(),
 });
 
 const galleryView = z.object({
