@@ -2908,6 +2908,50 @@ button.k-fold-head {
 .k-media-glyph {
   font-size: 1.8rem;
 }
+/* A photo whose bytes have not arrived (KA-20). In a shared app the file is fetched when someone
+   looks at it, so this is a normal moment, not a failure — it reads as patient, and it is tappable
+   once the automatic tries have stopped. */
+.k-media-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  text-align: center;
+}
+.k-media-pending span:first-child {
+  font-size: 1.4rem;
+  opacity: 0.75;
+}
+.k-media-pending[data-state="waiting"] {
+  animation: k-media-breathe 1.6s var(--ease) infinite;
+}
+.k-media-pending[data-state="absent"] {
+  cursor: pointer;
+}
+@keyframes k-media-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-media-pending[data-state="waiting"] {
+    animation: none;
+  }
+}
 .k-media-play {
   position: absolute;
   inset: 0;

@@ -176,14 +176,31 @@ export function MediaTile({
   onRemove?: () => void;
   removeLabel?: string;
 }) {
-  const url = useMediaUrl(runtime, mediaRef);
+  const { url, state } = useMedia(runtime, mediaRef);
+  const retry = useMediaRetry(runtime, mediaRef);
   const mime = mediaRef.mime ?? "";
   const isImage = mime.startsWith("image/");
   const isVideo = mime.startsWith("video/");
+  // Bytes still on their way, or not fetched (KA-20). An empty square told nobody anything: it read
+  // as a photo that had been lost, when the truth is it lives on someone else's device for a moment
+  // longer.
+  const pending = !url && (isImage || isVideo) ? state : null;
   return (
     <div className="k-media-tile" data-kind={isImage ? "image" : isVideo ? "video" : "other"}>
       {url && isImage ? <img src={url} alt="" /> : null}
       {url && isVideo ? <video src={url} muted playsInline /> : null}
+      {pending === "waiting" ? (
+        <span className="k-media-pending" data-state="waiting" role="status">
+          <span aria-hidden>🖼</span>
+          <span>Getting the {isVideo ? "video" : "photo"}…</span>
+        </span>
+      ) : null}
+      {pending === "absent" ? (
+        <button type="button" className="k-media-pending" data-state="absent" onClick={retry}>
+          <span aria-hidden>⇣</span>
+          <span>Not downloaded — tap to get it</span>
+        </button>
+      ) : null}
       {!isImage && !isVideo ? (
         <span className="k-media-glyph" aria-hidden>
           {mime.startsWith("audio/") ? "🎙" : "📎"}
@@ -204,38 +221,91 @@ export function MediaTile({
 }
 
 /**
- * The URL for a ref, resolved out of render.
+ * The URL for a ref, resolved out of render — and whether its bytes are here yet (KA-20, #61).
  *
  * `ctx.media.url` mints a fresh object URL per call, so the one this hook asked for is this
  * component's to release — a gallery that scrolls would otherwise hold every blob it ever showed.
+ *
+ * In a shared app a photo is its own encrypted CoValue, fetched only when someone looks at it. So a
+ * ref whose bytes have not arrived is normal, not an error: asking IS the fetch, and asking again a
+ * moment later is how the photo appears without a reload. The retries slow down and then stop, at
+ * which point the tile says so and offers a tap — a photo the other device has not uploaded yet
+ * would otherwise retry forever in everyone's list.
  */
-export function useMediaUrl(runtime: KartaRuntime, ref: MediaRef | null | undefined): string | null {
+const RETRY_MS = [400, 900, 1800, 3000, 5000];
+
+export type MediaState = "ready" | "waiting" | "absent";
+
+export function useMedia(runtime: KartaRuntime, ref: MediaRef | null | undefined): { url: string | null; state: MediaState } {
   const [url, setUrl] = useState<string | null>(null);
+  const [state, setState] = useState<MediaState>("waiting");
+  const [attempt, setAttempt] = useState(0);
   const key = ref?.key;
+
   useEffect(() => {
     if (!ref) {
       setUrl(null);
+      setState("ready");
       return;
     }
     let alive = true;
     let mine: string | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stop: (() => void) | undefined;
+
     void runtime.ctx.media
       .url(ref)
       .then((u) => {
         mine = u;
-        if (alive) setUrl(u || null);
-        else releaseMediaUrl(u);
+        if (!alive) {
+          releaseMediaUrl(u);
+          return;
+        }
+        setUrl(u || null);
+        if (u) {
+          setState("ready");
+          return;
+        }
+        // Not here yet. Ask again on a backing-off schedule; a synced store also tells us the moment
+        // the bytes land, which beats any schedule.
+        const wait = RETRY_MS[attempt];
+        setState(wait === undefined ? "absent" : "waiting");
+        if (wait !== undefined) timer = setTimeout(() => alive && setAttempt((n) => n + 1), wait);
+        stop = runtime.watchMedia(ref, () => alive && setAttempt((n) => n + 1));
       })
       .catch(() => {
-        if (alive) setUrl(null);
+        if (alive) {
+          setUrl(null);
+          setState("absent");
+        }
       });
+
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
+      stop?.();
       if (mine) releaseMediaUrl(mine);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runtime, key]);
-  return url;
+  }, [runtime, key, attempt]);
+
+  return { url, state };
+}
+
+/** Retry now — what the "tap to get it" placeholder does once the automatic tries have stopped. */
+export function useMediaRetry(runtime: KartaRuntime, ref: MediaRef | null | undefined): () => void {
+  const [, force] = useState(0);
+  return () => {
+    void runtime.ctx.media.url(ref as MediaRef).then((u) => {
+      if (u) releaseMediaUrl(u);
+      force((n) => n + 1);
+    });
+  };
+}
+
+/** The URL only, for callers that do not care whether it is still arriving. */
+export function useMediaUrl(runtime: KartaRuntime, ref: MediaRef | null | undefined): string | null {
+  return useMedia(runtime, ref).url;
 }
 
 /** Free an object URL minted by `ctx.media.url`. A data: URL holds nothing, so it is left alone. */
