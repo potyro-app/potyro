@@ -19,10 +19,16 @@ Tests are per-WP and ship in the same PR as the code. Two things need special di
   example a second time via **IsolateHost** to prove parity between trusted and untrusted execution.
 - **View tests** (`views`): render each view against a fixture runtime; assert bindings and,
   for `steps`, the transient done-state behavior.
-- **Conformance suite** (`pnpm conformance`): the same behavioral spec run against **both**
-  `WebCapabilities` and `CapacitorCapabilities` (native via device/emulator or mocked bridge)
-  so the two targets can't silently diverge. Notifications assert the
-  `supportsExactScheduling` contract per platform.
+- **Conformance suite** (`pnpm conformance`): the same behavioural spec run against **both**
+  `WebCapabilities` and `CapacitorCapabilities` (over a mocked bridge), so the two targets cannot
+  silently diverge — a difference between them does not surface as a failing test but as an app that
+  works in the browser and quietly does nothing on a phone. The checks live in
+  `packages/capabilities/src/conformance.ts` and each target runs the list:
+  `capabilities/test/conformance-web.test.ts`, `native/test/conformance-capacitor.test.ts`. A target
+  declares what it legitimately lacks and what it claims about `supportsExactScheduling` (web: no,
+  native: yes) — the difference is asserted rather than papered over. Two tests point the suite at
+  deliberately wrong targets, so a suite nothing can fail would itself fail. What only a device can
+  prove — a notification firing with the app closed — stays the device checklist in docs/13.
 - **E2E smoke** (`shell`): headless load of each example, basic navigation, import/export
   round-trip. (jsdom for logic; a real browser runner for the PWA install/offline path.)
 
