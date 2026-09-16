@@ -13,6 +13,11 @@
 //     Found on a Pixel on 2026-09-16 — "Use my location" did nothing, and nothing in the app said
 //     why, because the refusal arrives as a rejected promise the geo field swallows.
 //   CAMERA — `ctx.caps.camera` taking a new photo (the library picker needs nothing).
+//
+// NOT here: READ_EXTERNAL_STORAGE. The camera plugin asks for it only because
+// `requestPermissions()` with no argument checks every alias it has; the adapter asks for the one
+// alias the capture needs instead (capacitor-capabilities.ts). Declaring a storage permission to
+// take a photo would be asking for every photo on the phone.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 

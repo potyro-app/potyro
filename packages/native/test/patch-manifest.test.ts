@@ -22,6 +22,9 @@ describe("the manifest patch", () => {
   it("adds what a Capacitor plugin does not merge for us", () => {
     const { xml, added } = withPermissions(MANIFEST) as { xml: string; added: string[] };
     expect(added).toEqual(["USE_EXACT_ALARM", "SCHEDULE_EXACT_ALARM", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"]);
+    // No storage permission: the adapter asks the camera plugin for the one alias a capture needs,
+    // rather than declaring access to every photo on the phone (capacitor-capabilities.ts).
+    expect(xml).not.toContain("READ_EXTERNAL_STORAGE");
     expect(names(xml)).toContain("INTERNET"); // what was there already stays
     expect(xml.trimEnd().endsWith("</manifest>")).toBe(true);
     expect(PERMS).toHaveLength(5);
