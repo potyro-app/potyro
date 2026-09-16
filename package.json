@@ -19,7 +19,7 @@
     "e2e": "playwright test",
     "e2e:launcher": "playwright test e2e/launcher",
     "e2e:baselines": "KARTA_BASELINES=1 playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
-    "conformance": "echo \"conformance: not implemented until WP4/WP8\" && exit 0",
+    "conformance": "pnpm --filter @karta/capabilities exec vitest run test/conformance-web.test.ts && pnpm --filter @karta/native exec vitest run test/conformance-capacitor.test.ts",
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @karta/shell dev",
     "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json",
