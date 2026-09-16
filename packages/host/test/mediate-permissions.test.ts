@@ -32,30 +32,30 @@ function setup(permissions: PermissionManifest, answer: boolean | (() => boolean
 describe("the network allow-list", () => {
   it("refuses every host when the manifest does not ask for the network", async () => {
     const { mediated, asked } = setup({});
-    await expect(mediated.network.fetch("https://example.test/x")).rejects.toThrow(/Permission denied/);
+    await expect(mediated.network!.fetch("https://example.test/x")).rejects.toThrow(/Permission denied/);
     expect(asked).toEqual([]); // refused outright: nobody is asked to allow what was never declared
   });
 
   it("allows only the declared hosts", async () => {
     const { mediated, reached } = setup({ network: { hosts: ["api.example.test"] } });
-    await expect(mediated.network.fetch("https://api.example.test/v1/rates")).resolves.toBeDefined();
+    await expect(mediated.network!.fetch("https://api.example.test/v1/rates")).resolves.toBeDefined();
     expect(reached).toEqual(["https://api.example.test/v1/rates"]); // and only that one reached the platform
-    await expect(mediated.network.fetch("https://evil.test/collect")).rejects.toThrow(/network/);
+    await expect(mediated.network!.fetch("https://evil.test/collect")).rejects.toThrow(/network/);
     // A host that merely CONTAINS the allowed one is a different host.
-    await expect(mediated.network.fetch("https://api.example.test.evil.test/x")).rejects.toThrow(/network/);
+    await expect(mediated.network!.fetch("https://api.example.test.evil.test/x")).rejects.toThrow(/network/);
   });
 
   it("treats `true` (and an empty host list) as any host", async () => {
     const open = setup({ network: true });
-    await expect(open.mediated.network.fetch("https://anywhere.test/x")).resolves.toBeDefined();
+    await expect(open.mediated.network!.fetch("https://anywhere.test/x")).resolves.toBeDefined();
     const empty = setup({ network: { hosts: [] } });
-    await expect(empty.mediated.network.fetch("https://anywhere.test/x")).resolves.toBeDefined();
+    await expect(empty.mediated.network!.fetch("https://anywhere.test/x")).resolves.toBeDefined();
   });
 
   it("asks before the first request and not again after a yes", async () => {
     const { mediated, asked } = setup({ network: true });
-    await mediated.network.fetch("https://a.test/1");
-    await mediated.network.fetch("https://a.test/2");
+    await mediated.network!.fetch("https://a.test/1");
+    await mediated.network!.fetch("https://a.test/2");
     expect(asked).toHaveLength(1);
     expect(asked[0]).toContain("Someone's App");
     expect(asked[0]).toContain("network");
@@ -65,18 +65,18 @@ describe("the network allow-list", () => {
 describe("the filesystem", () => {
   it("is denied without the manifest, and asked for with it", async () => {
     const denied = setup({});
-    await expect(denied.mediated.filesystem.pick()).rejects.toThrow(/Permission denied/);
-    await expect(denied.mediated.filesystem.save("x.txt", new Blob(["x"]))).rejects.toThrow(/Permission denied/);
+    await expect(denied.mediated.filesystem!.pick()).rejects.toThrow(/Permission denied/);
+    await expect(denied.mediated.filesystem!.save("x.txt", new Blob(["x"]))).rejects.toThrow(/Permission denied/);
 
     const granted = setup({ filesystem: true });
-    await expect(granted.mediated.filesystem.pick()).resolves.toBeDefined();
+    await expect(granted.mediated.filesystem!.pick()).resolves.toBeDefined();
     expect(granted.asked[0]).toContain("files");
   });
 
   it("scopes what an untrusted app writes to its own name", async () => {
     // Otherwise a shared app could overwrite a file belonging to another app — or to the person.
     const { mediated, caps } = setup({ filesystem: true });
-    await mediated.filesystem.save("notes.txt", new Blob(["x"]));
+    await mediated.filesystem!.save("notes.txt", new Blob(["x"]));
     expect([...caps.savedFiles().keys()]).toEqual(["Someone's App/notes.txt"]);
   });
 });
@@ -130,8 +130,8 @@ describe("a trusted app", () => {
 
     await full.camera!.capture();
     await full.geo!.current();
-    await full.network.fetch("https://anywhere.test/x");
-    await full.filesystem.save("notes.txt", new Blob(["x"]));
+    await full.network!.fetch("https://anywhere.test/x");
+    await full.filesystem!.save("notes.txt", new Blob(["x"]));
 
     expect(asked).toEqual([]);
     expect([...caps.savedFiles().keys()]).toEqual(["notes.txt"]); // unscoped: it is your own app
