@@ -96,6 +96,13 @@ export interface ListView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
+  /**
+   * The `money` field shown down the right of each row, with the rows' total underneath (KA-26).
+   *
+   * Defaults to the entity's first money field, because a list of amounts nobody can add up is not
+   * what anyone came for. Name another, or `false` for a list that should not carry one.
+   */
+  money?: string | false;
 }
 
 export interface GalleryView {

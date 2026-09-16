@@ -46,6 +46,25 @@ export interface BooleanField extends FieldCommon {
   type: "boolean";
 }
 
+/**
+ * An amount of money, stored as WHOLE MINOR UNITS — cents, pence, öre (KA-26).
+ *
+ * Never a float. `0.1 + 0.2` is not `0.3`, and in a shared ledger that difference is written into
+ * the document and merged: two people's copies drift apart by a rounding error nobody can find
+ * afterwards. Integers cannot drift. The form takes `42.00` and stores `4200`; the screen formats
+ * it back the way the reader's own device writes money.
+ *
+ * `currency` is an ISO 4217 code ("EUR", "GBP", "JPY"). It decides the symbol, where it sits, and
+ * how many minor digits there are — a yen has none, so `5` is ¥5 and not ¥0.05.
+ */
+export interface MoneyField extends FieldCommon {
+  type: "money";
+  /** ISO 4217. Defaults to EUR when the app does not say. */
+  currency?: string;
+  min?: number;
+  max?: number;
+}
+
 /** The colours an enum value may be given. A closed set, so a shared app cannot walk off the
  *  palette or land unreadable text on its own background (#98). */
 export const ENUM_COLORS = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"] as const;
@@ -132,6 +151,7 @@ export type Field =
   | RichTextField
   | NumberField
   | BooleanField
+  | MoneyField
   | EnumField
   | TagsField
   | DateTimeField
@@ -149,6 +169,7 @@ export const FIELD_TYPES = [
   "richtext",
   "number",
   "boolean",
+  "money",
   "enum",
   "tags",
   "datetime",

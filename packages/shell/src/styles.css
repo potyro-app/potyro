@@ -2905,6 +2905,55 @@ button.k-fold-head {
   object-fit: cover;
   display: block;
 }
+/* Money (KA-26): amounts line up down a column, and the row's total sits under the list. Tabular
+   figures because a column of amounts that does not align is a column nobody can read. */
+.k-money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.k-list-row .k-money {
+  margin-left: auto;
+  padding-left: var(--space-2);
+}
+.k-money-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.k-money-total b {
+  color: var(--ink);
+}
+.k-money-input {
+  display: inline-flex;
+  align-items: stretch;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+.k-money-sign {
+  display: flex;
+  align-items: center;
+  padding: 0 0.7rem;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+.k-money-input .k-input {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .k-media-glyph {
   font-size: 1.8rem;
 }

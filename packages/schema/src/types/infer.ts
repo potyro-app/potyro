@@ -41,6 +41,8 @@ type FieldValue<Fld, E extends EntitiesShape> = Fld extends { type: "text" }
       ? string
       : Fld extends { type: "enum" }
         ? string
+        : Fld extends { type: "money" }
+          ? number
         : Fld extends { type: "number" }
           ? number
           : Fld extends { type: "duration" }
