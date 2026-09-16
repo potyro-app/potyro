@@ -21,7 +21,7 @@ import { isNativePlatform } from "./index.js";
 
 type Unsubscribe = () => void;
 
-interface CapacitorAppPlugin {
+export interface CapacitorAppPlugin {
   getLaunchUrl(): Promise<{ url: string } | undefined | null>;
   addListener(
     event: "appUrlOpen",
@@ -29,11 +29,20 @@ interface CapacitorAppPlugin {
   ): Promise<{ remove: () => Promise<void> }> | { remove: () => void };
 }
 
-async function plugin(): Promise<CapacitorAppPlugin | null> {
+/**
+ * The plugin, WRAPPED IN A BOX — never returned bare from an async function.
+ *
+ * A Capacitor plugin is a Proxy that answers to any method name by calling native. Returning one
+ * from an `async` function makes the runtime treat it as a thenable and call `App.then(...)`, which
+ * on Android answers `"App.then()" is not implemented on android` — and the promise then never
+ * settles. Boot awaits `getLaunchUrl()` before it renders anything, so the whole app sat on a black
+ * screen, on a device, forever. The box is what keeps `await` away from the proxy.
+ */
+async function plugin(): Promise<{ app: CapacitorAppPlugin } | null> {
   if (!isNativePlatform()) return null;
   try {
     const mod = (await import("@capacitor/app")) as unknown as { App?: CapacitorAppPlugin };
-    return mod.App ?? null;
+    return mod.App ? { app: mod.App } : null;
   } catch {
     // `@capacitor/app` not installed (or not linked into this build). Deep links simply do not
     // arrive; nothing else should break because of it.
@@ -43,19 +52,28 @@ async function plugin(): Promise<CapacitorAppPlugin | null> {
 
 /** The URL this app was launched with, when a link started it. `null` on the web. */
 export async function getLaunchUrl(): Promise<string | null> {
-  const app = await plugin();
-  if (!app) return null;
+  const found = await plugin();
+  return found ? launchUrlFrom(found.app) : null;
+}
+
+/** Call `cb` whenever a link opens the app while it is already running. No-op on the web. */
+export async function onUrlOpen(cb: (url: string) => void): Promise<Unsubscribe> {
+  const found = await plugin();
+  return found ? listenForUrls(found.app, cb) : () => {};
+}
+
+/** Split out from `getLaunchUrl` so a test can hand it a plugin-shaped object. */
+export async function launchUrlFrom(app: CapacitorAppPlugin): Promise<string | null> {
   try {
-    return (await app.getLaunchUrl())?.url ?? null;
+    const launched = await app.getLaunchUrl();
+    return launched?.url ?? null;
   } catch {
     return null;
   }
 }
 
-/** Call `cb` whenever a link opens the app while it is already running. No-op on the web. */
-export async function onUrlOpen(cb: (url: string) => void): Promise<Unsubscribe> {
-  const app = await plugin();
-  if (!app) return () => {};
+/** Split out from `onUrlOpen` for the same reason. */
+export async function listenForUrls(app: CapacitorAppPlugin, cb: (url: string) => void): Promise<Unsubscribe> {
   try {
     const handle = await app.addListener("appUrlOpen", (d) => cb(d.url));
     return () => void handle.remove();
