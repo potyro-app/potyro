@@ -15,6 +15,10 @@ function pluginProxy(impl: Partial<CapacitorAppPlugin>): CapacitorAppPlugin {
     get(_t, name: string) {
       const own = (impl as Record<string, unknown>)[name];
       if (own) return own;
+      // `then` the way the device behaves: the bridge reports "not implemented" to the log and
+      // nobody is ever called back, so whoever awaited the plugin waits forever. Other unknown
+      // methods reject, which is what the real bridge does for a call the caller is awaiting.
+      if (name === "then") return () => new Promise(() => {});
       return () => Promise.reject(new Error(`"App.${name}()" is not implemented on android`));
     },
   });
