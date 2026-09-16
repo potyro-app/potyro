@@ -14,7 +14,17 @@ import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, 
 
 export interface CameraPlugin {
   getPhoto(opts: { resultType: "uri"; source: "CAMERA" | "PHOTOS" }): Promise<{ webPath?: string }>;
-  requestPermissions?(): Promise<unknown>;
+  /**
+   * ASK FOR ONE ALIAS, never for all of them.
+   *
+   * `requestPermissions()` with no argument checks every alias the plugin has — camera AND photos —
+   * and the photos one demands `READ_EXTERNAL_STORAGE` in the manifest. On a phone where that
+   * permission does nothing (Android 13+ hands the photo back through the plugin's own provider),
+   * the call still fails with "Missing the following permissions in AndroidManifest.xml", the
+   * rejection travels back through `ctx.caps.camera`, and the menu simply closes: tapping "Take a
+   * photo" did nothing at all. Found on a Pixel, 2026-09-16.
+   */
+  requestPermissions?(opts?: { permissions?: Array<"camera" | "photos"> }): Promise<unknown>;
 }
 export interface GeolocationPlugin {
   getCurrentPosition(opts?: { enableHighAccuracy?: boolean; timeout?: number }): Promise<{ coords: { latitude: number; longitude: number } }>;
@@ -115,8 +125,11 @@ export class CapacitorCapabilities implements Capabilities {
 
     this.camera = {
       capture: async (o) => {
-        await Camera.requestPermissions?.();
-        const photo = await Camera.getPhoto({ resultType: "uri", source: o?.source === "library" ? "PHOTOS" : "CAMERA" });
+        const fromLibrary = o?.source === "library";
+        // Only what this capture needs: asking for both aliases fails over a storage permission the
+        // camera path never uses (see CameraPlugin above).
+        await Camera.requestPermissions?.({ permissions: [fromLibrary ? "photos" : "camera"] });
+        const photo = await Camera.getPhoto({ resultType: "uri", source: fromLibrary ? "PHOTOS" : "CAMERA" });
         if (!photo.webPath) throw new Error("camera returned no image");
         return (await fetchImpl(photo.webPath)).blob();
       },
