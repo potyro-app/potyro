@@ -100,7 +100,14 @@ KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
   (`Reason=alarm_cancelled` in `dumpsys alarm`), so the first attempt "failed" for a reason that has
   nothing to do with the app. Close it the way a person does.
 - **Location** reads a real position through `ctx.caps.geo` (after the manifest fix above).
-- Still unchecked on a device: taking a photo with the native camera, and store builds.
+- **The camera takes a real photo** — a 3000×4000 JPEG from the phone arrived in the form. This one
+  needed a second fix: the adapter called the plugin's `requestPermissions()` with no argument, which
+  checks EVERY alias it has, and the photos alias demands `READ_EXTERNAL_STORAGE` in the manifest. The
+  call failed, the rejection travelled back through `ctx.caps.camera`, and the menu simply closed —
+  tapping "Take a photo" did nothing at all. It now asks for the one alias the capture needs
+  (`camera`, or `photos` when picking from the library), so no storage permission is declared:
+  declaring one to take a photo would be asking for every photo on the phone.
+- Still unchecked on a device: store builds.
 
 Useful while checking: `adb shell dumpsys alarm | grep -A3 io.karta.app` for what is scheduled, and
 `adb shell dumpsys notification --noredact | grep -B4 -A10 "<title>"` for what actually fired. The

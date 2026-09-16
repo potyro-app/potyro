@@ -95,3 +95,18 @@ describe("CapacitorCapabilities", () => {
     expect(stableNotificationId("plant:42")).toBeGreaterThan(0);
   });
 });
+
+describe("asking for camera permission", () => {
+  it("asks for ONE alias — the whole set fails over a storage permission the camera never uses", async () => {
+    // On a Pixel this was the difference between the camera opening and the menu just closing.
+    const { plugins } = fakePlugins();
+    const caps = new CapacitorCapabilities(plugins, helpers);
+
+    await caps.camera.capture();
+    expect(plugins.Camera.requestPermissions).toHaveBeenCalledWith({ permissions: ["camera"] });
+
+    await caps.camera.capture({ source: "library" });
+    expect(plugins.Camera.requestPermissions).toHaveBeenLastCalledWith({ permissions: ["photos"] });
+  });
+});
+
