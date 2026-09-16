@@ -529,12 +529,14 @@ export type NetworkPermission = boolean | { hosts?: string[] };
 
 export interface PermissionManifest {
   /**
-   * This app writes to a document that leaves the device (ADR D8).
+   * This app writes to a document that leaves the device (ADR D8, KA-23).
    *
-   * **Declared, not yet enforced.** The manifest is the app's own statement of intent; the consent
-   * prompt and the gating that make it *mean* something are KA-23. Recorded here because it is part
-   * of the surface app code is authored against — but nothing today refuses sync to an app that
-   * omits it, and no code should be written as though it does.
+   * The app's own statement of intent, and the shell asks the person before an app it did not write
+   * — one running in the isolate — is allowed to sync. Declaring it changes what that question says,
+   * not whether it is asked: an app that never declared it can still be shared, with a blunter
+   * prompt and the safe answer first. Refusing leaves the app working on this device only.
+   *
+   * Your own apps are not asked about: you wrote them, and they already run directly.
    */
   sync?: boolean;
   camera?: boolean;

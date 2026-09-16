@@ -356,6 +356,55 @@ describe("JazzStore — two peers through the Store seam", () => {
     expect(await anaStore.all("expense")).toEqual([]);
   });
 
+  // KA-20: a photo is its OWN CoValue. Base64 inside the document made every byte a transaction
+  // replicated to everyone forever, whether or not they ever opened the photo.
+  it("a photo reaches the other peer, and its bytes are not in the app's document (KA-20)", async () => {
+    const { anaStore, brunoStore } = await pair();
+    const bytes = new Uint8Array(200_000).map((_, i) => i % 251); // >1 chunk, and compressible-looking
+    const ref = await anaStore.putBlob(new Blob([bytes], { type: "image/png" }));
+    await settle(600);
+
+    const got = await brunoStore.getBlob(ref);
+    expect(got).not.toBeNull();
+    expect(new Uint8Array(await got!.arrayBuffer())).toEqual(bytes);
+    expect(got!.type).toBe("image/png");
+
+    // The document holds a POINTER, not the bytes: what the index entry carries is a CoValue id.
+    const entry = (await (anaStore as unknown as { child(root: unknown, k: string): Promise<{ get(k: string): unknown }> }).child(
+      (anaStore as unknown as { root: unknown }).root,
+      "blobs",
+    )).get(ref.key) as { stream?: string; base64?: string };
+    expect(entry.base64).toBeUndefined();
+    expect(entry.stream).toMatch(/^co_/);
+  });
+
+  it("a photo that has not arrived reads as null, and the view is told when it lands (KA-20)", { timeout: 30_000 }, async () => {
+    const { anaStore, brunoStore, ana, bruno } = await pair();
+    ana.node.syncManager.gracefulShutdown();
+    bruno.node.syncManager.gracefulShutdown();
+    await settle();
+    const ref = await anaStore.putBlob(new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }));
+    await settle();
+
+    // Bruno cannot even see the reference yet, let alone the bytes — null, never a throw.
+    expect(await brunoStore.getBlob(ref)).toBeNull();
+
+    const stop = brunoStore.subscribeBlob(ref, () => {});
+    const [forAna, forBruno] = cojsonInternals.connectedPeers("bruno2", "ana2", { peer1role: "server", peer2role: "server" });
+    ana.node.syncManager.addPeer(forBruno);
+    bruno.node.syncManager.addPeer(forAna);
+    await settle(800);
+
+    // Asking is what fetches it, so the view's own retry is modelled here.
+    let got = await brunoStore.getBlob(ref);
+    for (let i = 0; i < 8 && !got; i++) {
+      await settle(400);
+      got = await brunoStore.getBlob(ref);
+    }
+    expect(got && new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    stop();
+  });
+
   it("a kv write by one peer is heard by the other while it is open (KA-22)", async () => {
     // The version gate watches `__appSource` so a newer version locks an old copy the moment it is
     // published. Hearing it only on the next open is what let an old copy keep writing.

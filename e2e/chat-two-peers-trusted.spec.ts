@@ -152,7 +152,7 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click(); // trust prompt
+  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click(); // trust prompt
   // Joining asks too — and BEFORE the join completes, so the person who invited you never watches a
   // "Me" arrive and then change.
   await answerNamePrompt(b, "Bo");

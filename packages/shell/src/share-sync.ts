@@ -166,6 +166,10 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   );
 
   setUserAppSync(saved.id, true, new Date().toISOString());
+  // Joining answered the sync question (KA-23): the join dialog says the data syncs with the people
+  // sharing it, so the boot guard must not ask again and refuse to open the app they just joined.
+  const { rememberSyncConsent } = await import("./sync-consent.js");
+  rememberSyncConsent(saved.id, true);
   // Promotion stays an explicit, recorded act (CLAUDE.md rule 3) — it is just asked at a moment
   // where the user has the context to answer, instead of after a blank screen.
   if (trust) setUserAppTrusted(saved.id, true, new Date().toISOString());

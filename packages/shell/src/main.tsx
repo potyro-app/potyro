@@ -230,13 +230,18 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
       <p>Joining “{invite.name}”…</p>
     </div>,
   );
-  const trust = await shellDialogs.confirm(
-    `"${invite.name}" was shared with you.\n\n` +
+  // Joining IS the consent sync needs (KA-23): the question says what syncing means before anyone
+  // answers it, and declining trust still joins — sandboxed, which is the safer half, not a refusal.
+  const trust = await shellDialogs.confirm(`“${invite.name}” was shared with you.`, {
+    detail:
+      "Its data syncs with the people sharing it: what the app writes on this device, they can read. " +
       (custom
-        ? "Its screens are built with its own code, so it needs to run trusted to display them. Trust this app?"
-        : "Apps from other people run sandboxed by default. Trust this app so it runs directly?") +
-      "\n\nYou can change this later from the app header.",
-  );
+        ? "Its screens are built with its own code, so it needs to run trusted to display them."
+        : "Apps from other people run sandboxed by default.") +
+      " You can change this later from the app header.",
+    ok: "Join and trust",
+    cancel: "Join, keep sandboxed",
+  });
 
   // Asked after trust and before joining. After, because "do you trust this app?" is the question
   // the user opened the link to answer and nothing should come between them and it. Before, because
@@ -319,9 +324,18 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // A data import (KA-04) lands here after the reload it triggers. Otherwise the store opens, and
   // an empty one gets its first-run rows from `seedIfEmpty` — keyed by app id, so the examples are
   // filled the way they always were, now as ordinary apps (#152).
+  // An app someone else wrote may only open its SYNCED store once this device has agreed to that
+  // (KA-23). Denied, or never asked — an imported app whose `sync` flag came in a bundle — it opens
+  // local-only rather than failing: that is what the permission means.
+  const { syncConsented } = await import("./sync-consent.js");
+  const syncAllowed = !saved.sync || saved.trusted || syncConsented(id);
+  if (saved.sync && !syncAllowed) {
+    toaster.push(`“${saved.name}” runs on this device only: it has not been allowed to sync.`);
+  }
+
   let rawStore: Store;
   const pending = sessionStorage.getItem(IMPORT_KEY);
-  if (pending && !saved.sync) {
+  if (pending && !(syncAllowed && saved.sync)) {
     sessionStorage.removeItem(IMPORT_KEY);
     rawStore = await openStore(`user:${id}`, { sync: false });
     try {
@@ -331,7 +345,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       toaster.push(`Could not import that data: ${e instanceof Error ? e.message : String(e)}`);
     }
   } else {
-    rawStore = await openStore(`user:${id}`, { sync: saved.sync });
+    rawStore = await openStore(`user:${id}`, { sync: syncAllowed && Boolean(saved.sync) });
     await seedIfEmpty(rawStore, id);
   }
 
@@ -344,7 +358,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // The space, for `ctx.space` — only for a synced app. Solo stays `undefined` rather than becoming
   // a one-member space object, so `ctx.space?.members ?? [ctx.me]` reads correctly and app code
   // never has to ask whether sync is on.
-  const space = saved.sync
+  const space = syncAllowed && saved.sync
     ? await (async () => {
         const { currentSpace, liveSpace, watchSpace } = await import("./open-store.js");
         const s = await currentSpace();
@@ -381,7 +395,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let store = rawStore;
   let gate: import("./version-gate.js").GateResult | undefined;
   const canWrite = space ? space().role !== "reader" : true;
-  if (saved.sync) {
+  if (syncAllowed && saved.sync) {
     const { openVersionGate } = await import("./version-gate.js");
     gate = await openVersionGate({ id, saved, rawStore, lock, canWrite });
     if (!gate.proceed) return null;
@@ -418,7 +432,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // Membership changes re-render the app. Wired here because the runtime does not exist when the
   // space is first read, and a view showing "who is in this list" is otherwise stale until some
   // unrelated write happens to refresh it.
-  if (saved.sync) {
+  if (syncAllowed && saved.sync) {
     const { onSpaceChange } = await import("./open-store.js");
     onSpaceChange(() => composed!.runtime.core.invalidate());
   }
@@ -450,7 +464,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let open = true;
   liveApps(+1);
   const opened: Opened = {
-    sync: Boolean(saved.sync),
+    sync: Boolean(syncAllowed && saved.sync),
     dispose: async () => {
       if (!open) return;
       open = false;
@@ -473,13 +487,13 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       navHost={navHost}
       picker={picker}
       questions={questions}
-      sync={saved.sync}
+      sync={syncAllowed && saved.sync}
       runtime={composed!.runtime}
       provenance={provenance}
       toaster={toaster}
       appId={id}
       currentKind="user"
-      lock={saved.sync ? lock : undefined}
+      lock={syncAllowed && saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
       onImport={() => void importApp(caps, toaster)}
       generator

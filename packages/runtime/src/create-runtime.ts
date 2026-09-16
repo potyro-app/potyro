@@ -34,6 +34,14 @@ export interface KartaRuntime extends Runtime {
   viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
   /** A `Dynamic<T>` page option (`title`) — the literal, or the function evaluated with a fresh ctx. */
   pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
+  /**
+   * Be told when a photo's bytes arrive (KA-20).
+   *
+   * In a shared app a photo is its own CoValue, fetched when someone looks at it, so a view can hold
+   * a reference whose bytes are still on their way. Returns a no-op unsubscribe on a store that keeps
+   * everything locally, where there is nothing to wait for.
+   */
+  watchMedia(ref: import("karta").MediaRef, cb: () => void): () => void;
 }
 
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
@@ -60,6 +68,7 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
   );
 
   return {
+    watchMedia: (ref, cb) => deps.store.subscribeBlob?.(ref, cb) ?? (() => {}),
     core,
     get definition(): AppDefinition {
       return core.definition;

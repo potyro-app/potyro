@@ -76,6 +76,18 @@ interface RawMapLike {
 }
 interface RawGroupLike {
   createMap<T = RawMapLike>(init?: Record<string, unknown>): T;
+  /** A binary CoValue: bytes sync on their own, not as transactions in the app's document (KA-20). */
+  createBinaryStream?<T = RawBinaryLike>(): T;
+}
+
+/** cojson's `RawBinaryCoStream`, narrowed to what this store uses. */
+interface RawBinaryLike {
+  id: string;
+  startBinaryStream(settings: { mimeType: string; fileName?: string; totalSizeBytes?: number }): void;
+  pushBinaryStreamChunk(chunk: Uint8Array<ArrayBuffer>): void;
+  endBinaryStream(): void;
+  getBinaryChunks(allowUnfinished?: boolean): { mimeType: string; chunks: Uint8Array<ArrayBuffer>[]; finished: boolean } | undefined;
+  subscribe(listener: (s: RawBinaryLike) => void): () => void;
 }
 interface NodeLike {
   /** Async because a CoValue restored from storage is not in memory until it is loaded. */
@@ -114,6 +126,19 @@ export interface JazzStoreDeps {
 const ROOT_ENTITIES = "entities";
 const ROOT_KV = "kv";
 const ROOT_BLOBS = "blobs";
+
+/** Base64 helpers, kept for blobs written before KA-20 moved bytes into their own CoValue. */
+function base64Of(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+function bytesOf(base64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(base64);
+  const out = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
 const ROOT_META = "meta";
 const ROOT_CHAT = "chat";
 
@@ -302,6 +327,25 @@ export class JazzStore implements Store {
     return v as RawMapLike;
   }
 
+  /**
+   * Resolve a child CoMap held under `key` WITHOUT creating one.
+   *
+   * The creating variant below is a hazard on a read: a guest whose root has not synced yet would
+   * mint its own container and write it over the pointer — two maps, and whichever lost the write is
+   * stranded with the data in it. That is exactly how a photo taken by the person who shared an app
+   * became unreadable on the device that joined it (KA-20). Reads take this one and treat "not
+   * there" as "not here yet".
+   */
+  private async childIfPresent(parent: RawMapLike, key: string): Promise<RawMapLike | null> {
+    const existing = parent.get(key);
+    if (typeof existing !== "string") return null;
+    try {
+      return await this.loadMap(existing);
+    } catch {
+      return null; // pointer known, container not synced yet
+    }
+  }
+
   /** Resolve a child CoMap held by id under `key`, creating it on first use. */
   private async child(parent: RawMapLike, key: string): Promise<RawMapLike> {
     const existing = parent.get(key);
@@ -451,6 +495,11 @@ export class JazzStore implements Store {
     // two peers can make at the same time, and the loser's messages would be stranded in an
     // orphaned CoValue. Apps whose root predates this fall back to lazy creation on first post.
     await this.chat();
+    // Same reason, for the containers a GUEST reads before it has written anything (KA-20): the
+    // blob index and the kv map. Made here by the app's creator, so no second device ever mints a
+    // rival copy of them.
+    await this.child(this.root, ROOT_BLOBS);
+    await this.child(this.root, ROOT_KV);
   }
 
   async close(): Promise<void> {
@@ -959,47 +1008,108 @@ export class JazzStore implements Store {
   // ---- blobs ------------------------------------------------------------------------------
 
   /**
-   * Base64 in a CoMap for now. Deliberately provisional: media belongs in a `FileStream` so bytes
-   * sync out-of-band instead of bloating every peer's transaction log with data most peers never
-   * open (ADR D5). That is KA-20 and it lands with the relay, not before — a local-only store has
-   * nothing to bloat.
+   * A photo is its OWN CoValue, not bytes inside the app's document (KA-20, ADR D5).
+   *
+   * Base64 in a CoMap — what this did before — makes every byte a CRDT transaction: replicated to
+   * everyone in the space whether or not they ever open the photo, kept forever because nothing
+   * compacts the log (KA-30), and counted twice over by base64's third. A `FileStream` is a separate
+   * CoValue that syncs on its own and is fetched when someone actually looks at it. It is owned by
+   * the same group, so its chunks are sealed with the same read key as every other private
+   * transaction: the relay stores ciphertext and can no more read a photo than a record.
+   *
+   * `ROOT_BLOBS` stays, now as an INDEX: `MediaRef.key` -> the stream's CoValue id. The key is what
+   * records already embed and what `copyStoreData` preserves, so it cannot become the stream id.
+   * Entries written by the old build are plain `{ mime, base64 }` objects and are still read.
    */
   async putBlob(b: Blob): Promise<MediaRef> {
-    const key = ulid();
-    const mime = b.type || "application/octet-stream";
-    const bytes = new Uint8Array(await b.arrayBuffer());
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    (await this.child(this.root, ROOT_BLOBS)).set(key, { mime, base64: btoa(binary) });
-    await this.whenDurable?.();
-    return { key, mime };
+    return this.writeBlob(ulid(), b);
   }
 
   async putBlobWithKey(key: string, b: Blob): Promise<MediaRef> {
+    return this.writeBlob(key, b);
+  }
+
+  /** 64 KB: cojson signs roughly per 100 KB transaction and recommends staying under it. */
+  private static readonly CHUNK = 64 * 1024;
+
+  private async writeBlob(key: string, b: Blob): Promise<MediaRef> {
     const mime = b.type || "application/octet-stream";
-    const bytes = new Uint8Array(await b.arrayBuffer());
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    (await this.child(this.root, ROOT_BLOBS)).set(key, { mime, base64: btoa(binary) });
+    const bytes = new Uint8Array(await b.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+    const index = await this.child(this.root, ROOT_BLOBS);
+
+    const stream = this.group.createBinaryStream?.<RawBinaryLike>();
+    if (!stream) {
+      // A group without binary streams (a test double). Keep the old shape rather than lose the file.
+      index.set(key, { mime, base64: base64Of(bytes) });
+      await this.whenDurable?.();
+      return { key, mime };
+    }
+
+    this.local(() => {
+      stream.startBinaryStream({ mimeType: mime, totalSizeBytes: bytes.byteLength });
+      for (let at = 0; at < bytes.byteLength; at += JazzStore.CHUNK) {
+        stream.pushBinaryStreamChunk(bytes.subarray(at, Math.min(at + JazzStore.CHUNK, bytes.byteLength)));
+      }
+      stream.endBinaryStream();
+      // The index entry LAST: a half-written stream nothing points at is invisible, where a pointer
+      // to a half-written stream would render as a broken photo.
+      index.set(key, { mime, stream: stream.id });
+    });
     await this.whenDurable?.();
     return { key, mime };
   }
 
+  /**
+   * The blob, or `null` when its bytes are not here yet.
+   *
+   * `null` is not an error and not "deleted": on a device that just joined, the photo is a CoValue
+   * that has not arrived. Asking for it is what makes cojson fetch it, so a view that renders a
+   * placeholder and asks again gets the photo as soon as it lands (#61).
+   */
   async getBlob(r: MediaRef): Promise<Blob | null> {
-    const entry = (await this.child(this.root, ROOT_BLOBS)).get(r.key) as
-      | { mime: string; base64: string }
+    const entry = (await this.childIfPresent(this.root, ROOT_BLOBS))?.get(r.key) as
+      | { mime: string; base64?: string; stream?: string }
       | undefined;
     if (!entry) return null;
-    const binary = atob(entry.base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: entry.mime });
+    if (typeof entry.base64 === "string") return new Blob([bytesOf(entry.base64)], { type: entry.mime }); // written before KA-20
+    if (typeof entry.stream !== "string") return null;
+
+    const stream = await this.loadBinary(entry.stream);
+    const parts = stream?.getBinaryChunks();
+    if (!parts?.finished) return null; // still arriving — the caller shows "not downloaded yet"
+    return new Blob(parts.chunks as BlobPart[], { type: parts.mimeType || entry.mime });
+  }
+
+  /** Fires when a blob's bytes arrive, so a placeholder can become the photo without a reload. */
+  subscribeBlob(r: MediaRef, cb: () => void): Unsubscribe {
+    let stop: (() => void) | null = null;
+    let alive = true;
+    void (async () => {
+      const entry = (await this.childIfPresent(this.root, ROOT_BLOBS))?.get(r.key) as { stream?: string } | undefined;
+      if (!alive || typeof entry?.stream !== "string") return;
+      const stream = await this.loadBinary(entry.stream);
+      if (!alive || !stream) return;
+      stop = stream.subscribe(() => cb());
+    })();
+    return () => {
+      alive = false;
+      stop?.();
+    };
+  }
+
+  private async loadBinary(id: string): Promise<RawBinaryLike | null> {
+    try {
+      const v = await this.node.load(id);
+      return v && v !== "unavailable" ? (v as RawBinaryLike) : null;
+    } catch {
+      return null;
+    }
   }
 
   // ---- kv ---------------------------------------------------------------------------------
 
   async kvGet(k: string): Promise<string | null> {
-    const v = (await this.child(this.root, ROOT_KV)).get(k);
+    const v = (await this.childIfPresent(this.root, ROOT_KV))?.get(k);
     return typeof v === "string" ? v : null;
   }
 

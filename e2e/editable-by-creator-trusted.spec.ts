@@ -69,7 +69,7 @@ test("on someone else's row, Edit and Delete are inactive and say who can change
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
   await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Trip Costs", { timeout: 60_000 });
   await expect(b.locator(".k-list-row", { hasText: "Dinner" })).toBeVisible({ timeout: 60_000 });
