@@ -46,6 +46,16 @@ export interface BooleanField extends FieldCommon {
   type: "boolean";
 }
 
+/** Money as WHOLE MINOR UNITS — `4200` is €42.00 (KA-26). Never a float; `currency` is ISO 4217 and
+ *  sets the minor digits (a yen has none, so `5` is ¥5). Why, and how to split: docs/03. */
+export interface MoneyField extends FieldCommon {
+  type: "money";
+  /** ISO 4217. Defaults to EUR when the app does not say. */
+  currency?: string;
+  min?: number;
+  max?: number;
+}
+
 /** The colours an enum value may be given. A closed set, so a shared app cannot walk off the
  *  palette or land unreadable text on its own background (#98). */
 export const ENUM_COLORS = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"] as const;
@@ -132,6 +142,7 @@ export type Field =
   | RichTextField
   | NumberField
   | BooleanField
+  | MoneyField
   | EnumField
   | TagsField
   | DateTimeField
@@ -149,6 +160,7 @@ export const FIELD_TYPES = [
   "richtext",
   "number",
   "boolean",
+  "money",
   "enum",
   "tags",
   "datetime",

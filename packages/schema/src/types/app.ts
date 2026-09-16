@@ -52,14 +52,8 @@ export interface EntityDef {
   groups?: FieldGroup[];
   computed?: Record<string, Computed>;
   actions?: Record<string, ActionFn>;
-  /**
-   * Who may change or delete a record once it exists (KA-21). Default `"anyone"` in the app.
-   *
-   * `"creator"`: only the person who added the record. In a shared app, anyone else's edit or delete
-   * simply does not take — everyone keeps seeing the creator's version — and your own copy refuses
-   * such an edit up front. Use it for rows that belong to one person: a ledger entry, a vote, a
-   * signup. It changes nothing in an app nobody else uses.
-   */
+  /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
+   *  else's edit does not take. Default `"anyone"`; means nothing in an app nobody else uses. */
   editableBy?: "anyone" | "creator";
 }
 
@@ -96,6 +90,9 @@ export interface ListView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
+  /** The `money` field shown down each row with the total underneath — the entity's first by
+   *  default (KA-26). Name another, or `false` for none. */
+  money?: string | false;
 }
 
 export interface GalleryView {
@@ -528,16 +525,9 @@ export interface Migration {
 export type NetworkPermission = boolean | { hosts?: string[] };
 
 export interface PermissionManifest {
-  /**
-   * This app writes to a document that leaves the device (ADR D8, KA-23).
-   *
-   * The app's own statement of intent, and the shell asks the person before an app it did not write
-   * — one running in the isolate — is allowed to sync. Declaring it changes what that question says,
-   * not whether it is asked: an app that never declared it can still be shared, with a blunter
-   * prompt and the safe answer first. Refusing leaves the app working on this device only.
-   *
-   * Your own apps are not asked about: you wrote them, and they already run directly.
-   */
+  /** This app writes to a document that leaves the device (ADR D8, KA-23). The shell asks before an
+   *  app you did not write syncs; declaring it changes what that question says, not whether it is
+   *  asked. Refusing leaves the app local-only. Full rules: docs/07. */
   sync?: boolean;
   camera?: boolean;
   filesystem?: boolean;

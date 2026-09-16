@@ -59,6 +59,7 @@ entities: {
       name:       { type: "text", required: true },
       photo:      { type: "media", accept: "image" },
       servings:   { type: "number", default: 2, min: 1, integer: true },
+      price:      { type: "money", currency: "EUR" },  // whole minor units: 4200 is €42.00 (KA-26)
       ingredients:{ type: "list", of: {
         ingredient: { type: "relation", to: "ingredient", required: true },
         quantity:   { type: "number", min: 0, required: true },
@@ -112,11 +113,21 @@ entities: {
 
 ## Field types (declarative, closed set)
 
-`text · richtext · number · boolean · enum · tags · datetime · duration · url · geo · media ·
-relation · list`. (No `computed` field *type* — computed is a function block. This cleanly
+`text · richtext · number · money · boolean · enum · tags · datetime · duration · url · geo · media ·
+member · relation · list`. (No `computed` field *type* — computed is a function block. This cleanly
 separates shape from logic.) Options per type are unchanged from the prior schema draft
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
 `multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
+
+**Money is `money`, never a `number` with a "€" unit** (KA-26). Its value is WHOLE MINOR UNITS — an
+integer of cents, `4200` for €42.00 — because `0.1 + 0.2` is not `0.3`, and in a shared ledger that
+difference is written into the document and merged: two people's copies drift by a rounding error
+nobody can find afterwards. The form takes what a person writes (`42`, `42.5`, `42,50`) and stores
+the integer; the screen formats it the way the reader's own device writes money; a list shows the
+amounts down its right with their total underneath (`money: false` on the view opts out, or name
+another field). `currency` is ISO 4217 and decides the minor digits — a yen has none, so `5` is ¥5.
+Divide with `splitEvenly(total, people)` / `shareOf(total, people, i)` from `karta`: the remainder is
+handed out a cent each, in the caller's order, so every device agrees who pays the extra cent.
 
 A `list` field's rows are cards (#104): the first sub-field is the line you read, the rest sit under
 it, and Remove lives in the card's own menu. `ordered: true` earns a grip — drag it with a pointer or
