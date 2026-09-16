@@ -63,6 +63,27 @@ The first schedule/GPS/camera call triggers the Android **permission prompt** �
 use `USE_EXACT_ALARM` (Android 14+, no prompt) with `SCHEDULE_EXACT_ALARM` as the Android 12/13
 fallback; both are injected by `scripts/patch-manifest.mjs` on every `cap:add`/`cap:sync`.
 
+## Build tools: pinned to what Android Studio here can open
+
+`cap add android` writes whatever the installed Capacitor ships with — currently **AGP 8.13 / Gradle
+8.14** — and a Studio older than that refuses to open the project at all:
+
+> The project is using an incompatible version (AGP 8.13.0) of the Android Gradle plugin. Latest
+> supported version is AGP 8.9.2
+
+So `scripts/pin-gradle.mjs` runs beside the manifest patch on every `cap:add`/`cap:sync` and pins
+**AGP 8.9.2 / Gradle 8.11.1**, plus `android.suppressUnsupportedCompileSdk` (AGP 8.9 predates
+compileSdk 36 and stops the build over it; the warning is the honest state of things, the failure is
+not). `android/` is generated and gitignored, which is why the pin is a script rather than a
+committed file. Both scripts are idempotent.
+
+On a newer Studio, take the template's own versions instead:
+
+```
+KARTA_AGP=keep pnpm cap:sync                       # leave whatever Capacitor generated
+KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
+```
+
 ## Local model on Android (the bonus test)
 
 Once the app is on your device, open **New app → describe → On-device**. That runs **WebLLM** inside
