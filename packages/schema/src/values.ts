@@ -20,6 +20,7 @@
 
 import type { Field } from "./types/fields.js";
 import { humanizeKey } from "./humanize.js";
+import { formatMoney } from "./money.js";
 
 export type ValueCheck = "read" | "write";
 
@@ -70,6 +71,15 @@ export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck
 
     case "duration":
       return isFiniteNumber(value) ? null : `${label} must be a number.`;
+
+    case "money": {
+      // Whole minor units (KA-26). A fraction of a cent is how two copies of a shared ledger drift.
+      if (!isFiniteNumber(value) || !Number.isInteger(value)) return `${label} must be an amount of money.`;
+      if (mode === "read") return null;
+      if (field.min != null && value < field.min) return `${label} must be at least ${formatMoney(field.min, field.currency)}.`;
+      if (field.max != null && value > field.max) return `${label} must be at most ${formatMoney(field.max, field.currency)}.`;
+      return null;
+    }
 
     case "boolean":
       return typeof value === "boolean" ? null : `${label} must be yes or no.`;

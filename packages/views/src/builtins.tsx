@@ -14,6 +14,7 @@ import { enumSwatch } from "./enum.js";
 import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
 import { editLockFor } from "./edit-lock.js";
+import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -111,8 +112,12 @@ export function ListView(props: BuiltinViewProps) {
     onOpen?: { page: string; param?: Record<string, string> };
     group?: unknown;
     collapsible?: boolean;
+    money?: string | false;
   };
   const remove = useDeleteRecord(runtime, view.entity);
+  // Amounts down the right, and what they come to (KA-26). A list of money nobody can add up is not
+  // what anyone came to a ledger for, so the total is the default rather than something to wire.
+  const money = moneyColumn(runtime, view.entity, view.money);
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
   const groups = useRowGroups(runtime, pageId, rows, view);
 
@@ -161,6 +166,7 @@ export function ListView(props: BuiltinViewProps) {
                 </span>
               ) : null}
             </span>
+            {money ? <MoneyValue field={money.field} value={row[money.key]} /> : null}
             <RowActions
               runtime={runtime}
               entity={view.entity}
@@ -180,7 +186,14 @@ export function ListView(props: BuiltinViewProps) {
       })}
     </ul>
   );
-  return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderRows} />;
+  return (
+    <>
+      <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderRows} />
+      {money ? (
+        <MoneyTotal field={money.field} rows={rows} valueKey={money.key} noun={runtime.definition.entities[view.entity]?.label ?? view.entity} />
+      ) : null}
+    </>
+  );
 }
 
 /**

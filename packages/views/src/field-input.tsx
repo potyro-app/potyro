@@ -12,6 +12,7 @@ import { DateInput } from "./date-input.js";
 import { EnumInput } from "./enum-input.js";
 import { ListInput } from "./list-input.js";
 import { MediaInput } from "./media-input.js";
+import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
 
 export interface FieldInputProps {
@@ -36,6 +37,10 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       return <textarea className="k-input" rows={5} placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
     case "url":
       return <input className="k-input" type="url" placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />;
+
+    case "money":
+      // Whole minor units, with the currency beside the box (KA-26).
+      return <MoneyInput field={field} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "number":
       // Unit inside the field, a stepper where the value is nudged, the right phone keyboard (#99).

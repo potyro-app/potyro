@@ -4,13 +4,14 @@
 // computed keys (which have no field definition — their value is already final).
 
 import { useEffect, useState } from "react";
-import type { Field, Geo, MediaRef, DateTimeField } from "karta";
+import type { Field, Geo, MediaRef, DateTimeField, MoneyField } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
 import { EnumPill } from "./enum-input.js";
 import { MediaTile, mediaList } from "./media-input.js";
+import { MoneyValue } from "./money-input.js";
 
 export function FieldValue({
   runtime,
@@ -170,6 +171,9 @@ function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: 
           {String(value)}
         </a>
       );
+    case "money":
+      // Whole minor units, written the way the reader's own device writes money (KA-26).
+      return <MoneyValue field={field as MoneyField} value={value} />;
     case "number":
       // The same formatting the form's suffix uses (#99): "7 days" reads the same everywhere.
       return <>{formatWithUnit(value, field)}</>;
