@@ -27,9 +27,36 @@ function reviveFns(v: unknown): unknown {
   return v;
 }
 
+/**
+ * A LOADED definition back in the shape its author wrote.
+ *
+ * `defineApp` copies a layout page's first item into `view`, so everything that reads a page's view
+ * — the tab bar, the summary strip, the quick action — sees the primary one and never has to know
+ * about layouts (#105). The schema, though, states the AUTHORING rule: a page declares either `view`
+ * or `layout`, never both. Validating the loaded object against it therefore failed every app with a
+ * layout — Studio opened Recipes, Plants or Workout and said "Invalid app structure: pages.2.view: a
+ * page declares either `view` or `layout`" about an app that is perfectly valid and was running in
+ * the preview beside the message.
+ *
+ * So the synthesised view is dropped before checking. A page carrying a layout cannot have authored
+ * a view as well — that is exactly the rule being enforced — so there is nothing here to lose.
+ */
+function asAuthored(def: unknown): unknown {
+  const app = def as { pages?: Array<Record<string, unknown>> };
+  if (!Array.isArray(app?.pages)) return def;
+  return {
+    ...(def as Record<string, unknown>),
+    pages: app.pages.map((page) => {
+      if (!page || !page.layout || !("view" in page)) return page;
+      const { view: _synthesised, ...authored } = page;
+      return authored;
+    }),
+  };
+}
+
 /** Structure issues for a runtime definition (empty = valid). */
 export function validateDefinition(def: unknown): string[] {
-  const revived = reviveFns(def);
+  const revived = reviveFns(asAuthored(def));
   const parsed = structureSchema.safeParse(revived);
   if (!parsed.success) return parsed.error.issues.map((i) => describeIssue(i, revived));
   return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
