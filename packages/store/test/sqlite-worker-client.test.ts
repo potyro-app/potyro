@@ -111,10 +111,10 @@ describe("the storage worker client", () => {
     await expect(pending).rejects.toThrow("the storage worker stopped");
   });
 
-  it("shares one worker per database, because OPFS handles are exclusive", async () => {
-    // Two callers want the same database at boot: an app opening its store, and the account node
-    // the launcher reads. A second worker over the same SAH pool never finishes opening, so the
-    // second caller must get the first worker rather than a new one.
+  it("gives the same database the same connection", async () => {
+    // Two callers want one database at boot: an app opening its store, and the account node the
+    // launcher reads. A second connection over the same SAH pool never finishes opening, so the
+    // second caller must get the first one rather than a new one.
     let spawned = 0;
     const { factory } = fakeWorker();
     const counting: WorkerFactory = () => {
@@ -127,6 +127,31 @@ describe("the storage worker client", () => {
 
     expect(spawned).toBe(1);
     expect(second).toBe(first);
+  });
+
+  it("addresses every statement to the database it belongs to", async () => {
+    // One worker holds one pool and a database per name — apps do not get a pool each, which is how
+    // a device with a handful of them ran out of sync access handles mid-save. That only works if
+    // each statement says which database it is for.
+    const addressed: string[] = [];
+    const factory: WorkerFactory = () => {
+      const w = {
+        onmessage: null as ((e: { data: unknown }) => void) | null,
+        onerror: null as ((e: unknown) => void) | null,
+        postMessage(message: unknown) {
+          const m = message as { id: number; op: string; db?: string };
+          addressed.push(`${m.op}:${m.db ?? "—"}`);
+          setTimeout(() => w.onmessage?.({ data: { id: m.id, ok: true, rows: [] } }), 0);
+        },
+        terminate() {},
+      };
+      return w;
+    };
+
+    const notes = await openWorkerSqlite("user-notes", factory);
+    await notes.driver.run("INSERT INTO records VALUES (?)", ["a"]);
+
+    expect(addressed).toEqual(["open:user-notes", "run:user-notes"]);
   });
 
   it("reads the migration version out of the pragma row", async () => {
