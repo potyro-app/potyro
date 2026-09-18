@@ -250,22 +250,43 @@ export function ChecklistView(props: BuiltinViewProps) {
   // Quick add: the text becomes the entity's display field; every other field takes its default.
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
+  /** Queued adds. One write at a time, so quickly typed items keep the order they were typed in. */
+  const writes = useRef<Promise<void>>(Promise.resolve());
   const input = useRef<HTMLInputElement>(null);
   const textField = typeof view.text === "string" ? view.text : displayFieldFor(runtime, view.entity);
 
-  const add = async (): Promise<void> => {
-    const text = draft.trim();
-    if (!text || adding) return;
-    setAdding(true);
+  const write = async (text: string): Promise<void> => {
     try {
       const made = await runtime.create(view.entity, { ...(await createDefaults(runtime, view.entity)), [textField]: text });
-      setDraft("");
       // Nowhere to put it and somewhere it could go: ask, rather than guess a group for it.
       if (managed && groupField && groupQuery.rows.length > 0 && !relationId((made as Record<string, unknown>)[groupField])) {
         setPending({ id: String(made.id), text });
       }
     } catch (e) {
+      // The item was never written, so the words have to come back — losing what someone typed is
+      // worse than the failure itself. Only into an empty box: anything already typed there is the
+      // next item, and belongs to the person, not to this failure.
+      setDraft((d) => (d ? d : text));
       fail(e, "Could not add that");
+    }
+  };
+
+  const add = async (): Promise<void> => {
+    const text = draft.trim();
+    if (!text) return;
+    // Emptied NOW, not when the store confirms. Typing the next item is the very next thing a
+    // person does — that is what a quick-add list is — and waiting for the write meant the letters
+    // of the next item landed on top of the last one.
+    setDraft("");
+    setAdding(true);
+    // And the next item QUEUES behind this one rather than being refused. Refusing while a write was
+    // in flight was survivable when the box stayed full — you could see your words were still there
+    // — but with the box emptied on enter it would silently swallow the item instead, which is the
+    // one thing a list must never do. One write at a time still, so they land in the typed order.
+    const mine = writes.current.then(() => write(text));
+    writes.current = mine.catch(() => undefined);
+    try {
+      await mine;
     } finally {
       setAdding(false);
       // The input is never disabled, so the focus can go straight back for the next item.

@@ -118,6 +118,72 @@ describe("ChecklistView", () => {
     await screen.findByRole("checkbox", { name: "Bread" });
   });
 
+  it("empties the box the moment you hit enter, without waiting for the store", async () => {
+    // Typing the next item is the very next thing someone does with a quick-add list. Clearing only
+    // once the write was durable meant that on slow storage the next item's letters landed on top of
+    // the last one — "Item 2Item 3" — and neither was what anyone asked for.
+    const { runtime } = await makeRuntime(app({}));
+    const create = runtime.create.bind(runtime);
+    // A store that takes its time, the way a phone's does once the database is big.
+    runtime.create = (async (entity: string, data: Record<string, unknown>) => {
+      await new Promise((r) => setTimeout(r, 50));
+      return create(entity, data as never);
+    }) as typeof runtime.create;
+
+    render(<ChecklistView {...props(runtime)} />);
+    const input = (await screen.findByRole("textbox", { name: "Add an item" })) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Bread" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    // Empty already, with the write still in flight.
+    expect(input.value).toBe("");
+    await screen.findByRole("checkbox", { name: "Bread" });
+  });
+
+  it("puts the words back when the write fails, rather than losing what was typed", async () => {
+    const { runtime } = await makeRuntime(app({}));
+    runtime.create = (async () => {
+      throw new Error("the disk is full");
+    }) as typeof runtime.create;
+
+    render(<ChecklistView {...props(runtime)} />);
+    const input = (await screen.findByRole("textbox", { name: "Add an item" })) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Bread" } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+
+    await waitFor(() => expect(input.value).toBe("Bread"));
+  });
+
+  it("keeps both items when two are typed before the first has been written", async () => {
+    // With the box emptied on enter, a refused second add is an item that vanishes without trace —
+    // type, enter, type, enter, and only one of them exists. They queue instead.
+    const { runtime, store } = await makeRuntime(app({}));
+    const create = runtime.create.bind(runtime);
+    runtime.create = (async (entity: string, data: Record<string, unknown>) => {
+      await new Promise((r) => setTimeout(r, 30));
+      return create(entity, data as never);
+    }) as typeof runtime.create;
+
+    render(<ChecklistView {...props(runtime)} />);
+    const input = (await screen.findByRole("textbox", { name: "Add an item" })) as HTMLInputElement;
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Bread" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      fireEvent.change(input, { target: { value: "Butter" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 150));
+    });
+
+    await waitFor(async () => {
+      const names = (await store.all("item")).map((r) => r.name);
+      expect(names).toContain("Bread");
+      expect(names).toContain("Butter");
+    });
+  });
+
   it("hides done rows when hideDone is true and folds them when it is collapse", async () => {
     const hidden = await makeRuntime(app({ hideDone: true }));
     const view = render(<ChecklistView {...props(hidden.runtime)} />);
