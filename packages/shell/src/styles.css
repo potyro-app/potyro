@@ -412,7 +412,7 @@ button {
   background: var(--accent);
   border: 0;
   border-radius: 999px;
-  box-shadow: var(--shadow-lg, var(--shadow));
+  box-shadow: var(--shadow);
   cursor: pointer;
 }
 .k-map-add:hover,
@@ -4835,8 +4835,8 @@ body:has(.k-tabbar) .k-toasts {
   width: 5rem;
   height: 5rem;
   border-radius: 1.5rem;
-  background: color-mix(in oklab, var(--tile) 18%, var(--surface));
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tile) 35%, transparent), var(--shadow);
+  background: color-mix(in oklab, var(--tile-accent) 18%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tile-accent) 35%, transparent), var(--shadow);
   /* Breathing, not spinning: the tile is the app, and an app does not spin. */
   animation: k-splash-breathe 1.8s var(--ease) infinite;
 }
@@ -4849,7 +4849,7 @@ body:has(.k-tabbar) .k-toasts {
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: color-mix(in oklab, var(--tile) 70%, var(--ink));
+  color: color-mix(in oklab, var(--tile-accent) 70%, var(--ink));
 }
 .k-splash-name {
   margin: var(--space-2) 0 0;
@@ -4870,7 +4870,7 @@ body:has(.k-tabbar) .k-toasts {
   height: 3px;
   margin-top: var(--space-2);
   border-radius: 999px;
-  background: color-mix(in oklab, var(--tile) 20%, transparent);
+  background: color-mix(in oklab, var(--tile-accent) 20%, transparent);
   overflow: hidden;
 }
 .k-splash-bar::after {
@@ -4879,7 +4879,7 @@ body:has(.k-tabbar) .k-toasts {
   inset: 0 auto 0 0;
   width: 40%;
   border-radius: 999px;
-  background: var(--tile);
+  background: var(--tile-accent);
   animation: k-splash-slide 1.2s var(--ease) infinite;
 }
 @keyframes k-splash-breathe {
