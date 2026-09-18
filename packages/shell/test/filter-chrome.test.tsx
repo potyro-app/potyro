@@ -8,8 +8,8 @@ import { createHost, type NavBridge, type UiBridge } from "@karta/host";
 import { createRuntime, type KartaRuntime } from "@karta/runtime";
 import { FilterChrome } from "../src/filter-chrome.js";
 
-// The generic filter-chip chrome (issue #21): field-option chips, a boolean toggle, and a "near me"
-// geo button that reads ctx.caps.geo — all writing into ctx.params.
+// The generic filter-chip chrome (issue #21): option lists behind one Filter button, a boolean
+// toggle and a "near me" geo button beside it — all writing into ctx.params.
 
 const app = defineApp({
   id: "chrome-fixture",
@@ -65,9 +65,13 @@ describe("FilterChrome", () => {
     const setParam = vi.fn();
     render(<FilterChrome runtime={runtime} pageId="map" params={{}} setParam={setParam} />);
 
-    // Field-option chips derived from the `kind` enum.
+    // The options are behind the Filter button now: thirteen chips on a phone was most of the
+    // screen spent on choices nobody had made.
+    expect(screen.queryByRole("button", { name: "bar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
     fireEvent.click(screen.getByRole("button", { name: "bar" }));
     expect(setParam).toHaveBeenCalledWith("kind", "bar");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     // Boolean toggle.
     // A boolean chip is a switch (#97): named by its label, with a state to read.
@@ -128,9 +132,25 @@ describe("FilterChrome record-source chips (pantry)", () => {
     const setParam = vi.fn();
     render(<FilterChrome runtime={runtime} pageId="cook" params={{}} setParam={setParam} />);
 
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
     const eggChip = await screen.findByRole("button", { name: "Egg" });
     expect(screen.getByRole("button", { name: "Flour" })).toBeTruthy();
     fireEvent.click(eggChip);
     expect(setParam).toHaveBeenCalledWith("pantry", [egg.id]);
+  });
+});
+
+// What comes back OUT of the sheet: only what was chosen, each a chip that takes itself off.
+describe("FilterChrome shows what was chosen", () => {
+  it("lists the picked values beside the button, and a tap on one clears it", async () => {
+    const runtime = await makeRuntime(new FakeCapabilities());
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="map" params={{ kind: "bar" }} setParam={setParam} />);
+
+    // The button says how many, and the value is on screen without opening anything.
+    expect(screen.getByRole("button", { name: /Filter/ }).textContent).toContain("1");
+    const picked = screen.getByRole("button", { name: /Category: bar/ });
+    fireEvent.click(picked);
+    expect(setParam).toHaveBeenCalledWith("kind", undefined);
   });
 });

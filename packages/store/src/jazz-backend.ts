@@ -30,7 +30,7 @@
 
 import { LocalNode, getSqliteStorageAsync } from "cojson";
 import { JazzStore } from "./jazz-store.js";
-import { createJazzSqliteDriver } from "./jazz-sqlite-driver.js";
+import { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
 
 /** Where the ids above are remembered. `localStorage` in the browser; a Map in tests. */
@@ -63,8 +63,21 @@ const DEVICE_DB = "karta-jazz";
 const rootKey = (appId: string) => `karta:jazz:root:${appId}`;
 
 export interface CreateJazzStoreOpts {
-  /** An open SQLite handle that cojson may own outright (its own file — see the driver module). */
-  db: SqliteDbHandle;
+  /**
+   * An open SQLite handle that cojson may own outright (its own file — see the driver module).
+   *
+   * Optional only because {@link CreateJazzStoreOpts.driver} can stand in its place: the database
+   * that lives in a worker has no handle to pass. Exactly one of the two is required.
+   */
+  db?: SqliteDbHandle;
+  /**
+   * A ready-made cojson driver, used instead of building one over `db`.
+   *
+   * This is how worker-hosted SQLite reaches cojson (`sqlite-worker-client.ts`). It is the fast
+   * path and the intended one: OPFS only works in a worker, and the main-thread fallbacks either
+   * rewrite the whole database per write or run out of quota.
+   */
+  driver?: SqliteDriverAsync;
   /** A cojson `CryptoProvider` (`WasmCrypto.create()`). Injected so this module picks no platform. */
   crypto: unknown;
   /** Persistence for the device account + this app's group/root ids. Defaults to `localStorage`. */
@@ -173,12 +186,30 @@ function browserKeys(): JazzKeyStore {
  * Every later call reattaches to exactly the same three ids, which is what makes the data durable
  * rather than merely persisted.
  */
-export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts): Promise<JazzStoreHandle> {
+/**
+ * The account half of opening a store: the device's identity, its profile, and the relay — without
+ * any app's space.
+ *
+ * Split out because a device that has just been linked with the recovery words has NO apps yet, and
+ * the one thing it needs before it can have any is to read its own account (see `account-apps.ts`).
+ * Going through `createJazzStore` for that would have meant inventing an app id and leaving a space
+ * behind for an app that does not exist.
+ */
+export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> & { peers?: unknown[] }): Promise<{
+  node: InstanceType<typeof LocalNode>;
+  accountID: string;
+  relay?: RelayConnection;
+  whenDurable: () => Promise<void>;
+}> {
   const keys = opts.keys ?? browserKeys();
   const crypto = opts.crypto as never;
   const peers = (opts.peers ?? []) as never[];
 
-  const storage = await getSqliteStorageAsync(createJazzSqliteDriver(opts.db) as never);
+  // A driver the caller already holds (worker-hosted SQLite) is used as it is; otherwise one is
+  // built over the handle it passed. Only the storage differs — everything below is identical.
+  const driver = opts.driver ?? (opts.db ? createJazzSqliteDriver(opts.db) : null);
+  if (!driver) throw new Error("createJazzStore needs either a database handle or a driver.");
+  const storage = await getSqliteStorageAsync(driver as never);
   const durability = createDurabilityTracker();
 
   // ---- 1. device identity --------------------------------------------------------------------
@@ -280,6 +311,14 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
   let relay: RelayConnection | undefined;
   if (opts.relay) relay = await attachRelay(node, opts.relay);
 
+  return { node, accountID, relay, whenDurable: durability.whenDurable };
+}
+
+export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts): Promise<JazzStoreHandle> {
+  const keys = opts.keys ?? browserKeys();
+  const { node, accountID, relay, whenDurable } = await openAccountNode(opts);
+  const durability = { whenDurable };
+
   // ---- 2. the app's space --------------------------------------------------------------------
   const savedGroup = keys.get(groupKey(appId));
   let group: unknown;
@@ -328,6 +367,102 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
  *
  * Both the engine and its crypto load lazily, so an app without sync never pays for them.
  */
+/**
+ * A node for reading the ACCOUNT in a browser, with no app open — the browser half of
+ * {@link openAccountNode}, wired the way {@link openJazzStore} wires an app.
+ *
+ * Needed at exactly one moment: the first boot after signing in with the recovery words, when the
+ * device is you but has no apps. Opening an app to get a node would create a space for an app that
+ * does not exist, and the shell cannot build a node itself — cojson stays inside this package.
+ */
+/**
+ * Write down where an app's space lives, for an app arriving from somewhere other than this device.
+ *
+ * Three keys, not two. The group and the root are the obvious ones — without them the store mints a
+ * fresh empty space and the data already on the relay is stranded beside it. The third is the
+ * database MARKER, and leaving it out is its own kind of stranding: `openJazzStore` reads "a group
+ * id, but no marker" as an app created before the device database existed, and sends it to a
+ * per-app file that was never there. The app then opens, empty, next to its own data.
+ *
+ * Exported because the two callers that need it — a restored app and a joined space — are in the
+ * shell, and the shape of these keys is this module's business.
+ */
+export function rememberAppSpace(namespace: string, ids: { group: string; root: string }, keys?: JazzKeyStore): void {
+  const store = keys ?? browserKeys();
+  store.set(groupKey(namespace), ids.group);
+  store.set(rootKey(namespace), ids.root);
+  store.set(dbKey(namespace), DEVICE_DB);
+}
+
+/**
+ * Start the device database's worker now, so the first app that syncs does not wait for it.
+ *
+ * Opening it costs a worker spawn plus the SQLite module and its OPFS pool — a second or so, paid
+ * once. Left until an app is opened, that second lands squarely between tapping an app and seeing
+ * it. Called at boot for a device that syncs anything; everyone else spawns nothing, because a
+ * device that has never synced has not asked for a database at all.
+ *
+ * Deliberately swallows failure: this is a head start, and the real open reports its own problems.
+ */
+export async function warmDeviceDatabase(): Promise<void> {
+  try {
+    const { openWorkerSqlite, workersAvailable } = await import("./sqlite-worker-client.js");
+    if (workersAvailable()) await openWorkerSqlite(DEVICE_DB);
+  } catch {
+    /* the fallbacks are still there when the real open happens */
+  }
+}
+
+export async function openAccountNodeInBrowser(opts?: {
+  keys?: JazzKeyStore;
+  profileName?: string;
+  relay?: string;
+  account?: { id: string; secret: string };
+}): Promise<{ node: unknown; accountID: string } | null> {
+  try {
+    const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
+      import("./sqlite-backend.js"),
+      import("./idb-sqlite.js"),
+      import("cojson/crypto/WasmCrypto"),
+      import("./sqlite-worker-client.js"),
+    ]);
+    // The device database, by the same name every app uses — this reads what they wrote.
+    const dbName = "karta-jazz";
+    // Same order as `openJazzStore`, and for the same reason: this must read what the apps wrote,
+    // so it has to open the database the same way they did.
+    let db: SqliteDbHandle | undefined;
+    let driver: SqliteDriverAsync | undefined;
+    if (workersAvailable()) {
+      try {
+        driver = (await openWorkerSqlite(dbName)).driver;
+      } catch {
+        driver = undefined;
+      }
+    }
+    if (!driver) {
+      try {
+        db = await openOpfsDb(dbName);
+      } catch {
+        if (!idbAvailable()) return null;
+        db = (await openIdbSqliteDb(dbName)).db;
+      }
+    }
+    const { node, accountID } = await openAccountNode({
+      db,
+      driver,
+      crypto: await WasmCrypto.create(),
+      keys: opts?.keys,
+      profileName: opts?.profileName,
+      account: opts?.account,
+      relay: opts?.relay,
+    });
+    return { node, accountID };
+  } catch {
+    // A device that cannot open its account simply has nothing to offer; boot carries on.
+    return null;
+  }
+}
+
 export async function openJazzStore(
   appId: string,
   opts?: {
@@ -339,10 +474,11 @@ export async function openJazzStore(
     account?: { id: string; secret: string };
   },
 ): Promise<JazzStoreHandle> {
-  const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }] = await Promise.all([
+  const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
     import("./sqlite-backend.js"),
     import("./idb-sqlite.js"),
     import("cojson/crypto/WasmCrypto"),
+    import("./sqlite-worker-client.js"),
   ]);
 
   // OPFS first (fastest), IndexedDB otherwise. Gating sync on OPFS made it unavailable to most
@@ -381,15 +517,32 @@ export async function openJazzStore(
   const dbName = recorded ?? (predatesMove ? `${appId}-jazz` : DEVICE_DB);
   keys.set(dbKey(appId), dbName);
 
-  let db: Awaited<ReturnType<typeof openOpfsDb>>;
+  // A worker FIRST, and in practice always: `createSyncAccessHandle` is worker-only by
+  // specification, so the main-thread OPFS attempt below has never once succeeded — in any engine.
+  // The fallbacks are what every device used to get, and both are bad in a way that grows: the
+  // IndexedDB one rewrites the entire database after every write.
+  let db: Awaited<ReturnType<typeof openOpfsDb>> | undefined;
+  let driver: SqliteDriverAsync | undefined;
   let whenPersisted: (() => Promise<void>) | undefined;
-  try {
-    db = await openOpfsDb(dbName);
-  } catch {
-    if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
-    const idb = await openIdbSqliteDb(dbName);
-    db = idb.db;
-    whenPersisted = idb.whenPersisted;
+  if (workersAvailable()) {
+    try {
+      driver = (await openWorkerSqlite(dbName)).driver;
+    } catch (err) {
+      // No worker, no OPFS, or another tab holding the pool. Sync matters more than speed.
+      console.info(`[karta] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
+      driver = undefined;
+    }
+  }
+  if (driver) console.info("[karta] storage: SQLite in a worker, on OPFS");
+  if (!driver) {
+    try {
+      db = await openOpfsDb(dbName);
+    } catch {
+      if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
+      const idb = await openIdbSqliteDb(dbName);
+      db = idb.db;
+      whenPersisted = idb.whenPersisted;
+    }
   }
   const crypto = await WasmCrypto.create();
 
@@ -403,6 +556,7 @@ export async function openJazzStore(
 
   const handle = await createJazzStore(appId, {
     db,
+    driver,
     crypto,
     keys,
     profileName: opts?.profileName,

@@ -24,6 +24,7 @@ import type { ViewProps } from "karta";
 // in-progress workout is saved to ctx.storage so leaving/returning the tab doesn't lose it.
 
 const DAYS = ["push", "pull", "legs"] as const;
+/** When an exercise does not say (an older record, or a hand-written one). */
 const REST_SECONDS = 90;
 
 type SetRow = { kg: string; reps: string; done: boolean };
@@ -159,7 +160,10 @@ function LogSession(props: ViewProps) {
     setPlan((p) => ({ ...p, [exId]: rows }));
     if (rows[i]!.done) {
       runtime.ctx.caps.haptics?.vibrate(35); // set logged — quick tick
-      setRest(REST_SECONDS);
+      // The rest this exercise asks for: a heavy squat and a cable fly do not want the same wait.
+      const ex = exercises.find((e: any) => e.id === exId) as { restSec?: number } | undefined;
+      const wait = typeof ex?.restSec === "number" && ex.restSec > 0 ? Math.round(ex.restSec) : REST_SECONDS;
+      setRest(wait);
       if (rows.every((r) => r.done)) {
         const next = exercises.find((e: any) => e.id !== exId && !(plan[e.id] ?? []).every((r) => r.done));
         if (next) setOpenId(next.id);
@@ -281,7 +285,7 @@ function LogSession(props: ViewProps) {
 
       <div className="wk-bar">
         {rest != null ? (
-          <div className="wk-rest">
+          <div className="wk-rest" role="timer" aria-label="Rest">
             <span className="wk-rest-n">{mmss(rest)}</span>
             <button onClick={() => setRest((r) => (r ?? 0) + 30)}>+30s</button>
             <button onClick={() => setRest(null)}>skip</button>
@@ -342,7 +346,7 @@ const CSS = `
 .wk-addset { align-self:flex-start; border:1px dashed var(--line,#ccc); background:transparent; color:var(--ink-soft,#777); border-radius:10px; padding:.5rem .8rem; }
 
 /* ---- fixed bottom bar ---- */
-.wk-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:min(860px, 100%); display:flex; align-items:center; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--surface,#fff); border-top:1px solid var(--line,#eee); z-index:20; }
+.wk-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--k-chrome-bottom, 0px); width:min(860px, 100%); display:flex; align-items:center; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--surface,#fff); border-top:1px solid var(--line,#eee); z-index:20; }
 .wk-bar-hint { color:var(--ink-soft,#999); font-size:.9rem; }
 .wk-rest { display:flex; align-items:center; gap:8px; }
 .wk-rest-n { font-size:1.4rem; font-weight:800; font-variant-numeric: tabular-nums; color:var(--wk-accent); }
@@ -383,7 +387,7 @@ export default defineApp({
   id: "workout",
   name: "PPL Log",
   icon: "🏋",
-  version: "1.0.0",
+  version: "1.1.0",
   schemaVersion: 1,
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
@@ -394,10 +398,10 @@ export default defineApp({
 
   // Quick actions: "Start session" picks the day inline (instant menu → creates + opens the session);
   // "New exercise" opens the form (the exercise has other required fields). Demonstrates KA-04 ④.
-  quickActions: [
-    { id: "start-session", label: "Start session", icon: "▶", entity: "session", mode: "menu", open: true },
-    { id: "new-exercise", label: "New exercise", icon: "＋", entity: "exercise" },
-  ],
+  // No "Start session": a session is written when a workout is FINISHED, so a button that created
+  // an empty one and dropped you on its record page was a second, worse way into the Train tab —
+  // which is the screen that actually starts a workout.
+  quickActions: [{ id: "new-exercise", label: "New exercise", icon: "＋", entity: "exercise" }],
 
   entities: {
     // ---- the PROGRAM: editable exercise records ----
@@ -411,6 +415,7 @@ export default defineApp({
         order: { type: "number", integer: true, default: 0 },
         targetSets: { type: "number", unit: "sets", integer: true, min: 1, default: 3 },
         repRange: { type: "text", default: "8–12" },
+        restSec: { type: "duration", label: "Rest", unit: "s", default: 90, help: "Counted down after each set; you can always skip it" },
         cue: { type: "text", multiline: true },
         bodyweight: { type: "boolean", default: false },
       },

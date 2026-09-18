@@ -4,8 +4,17 @@
 //   • geo     — a "use my location" button (param = { lat, lng } from ctx.caps.geo) → "near me"
 //   • field   — `from` names an enum/tags field; its options become single- or multi-select chips
 // The recipes pantry picker (a record-source picker) stays its own chrome for now.
+//
+// Every option, always on screen, does not survive contact with a real app: Places' two lists come
+// to thirteen chips, which on a phone is most of the screen spent on choices nobody has made yet.
+// So the option lists live behind ONE Filter button, and what comes back out is only what was
+// chosen — each chosen value a chip that takes itself off when tapped.
+//
+// A boolean and a "near me" stay where they are: each is already one tap and already says what it
+// does, so burying them would only add a tap on the way to a switch.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { KartaRuntime } from "@karta/runtime";
 import type { FilterChip } from "karta";
 
@@ -24,19 +33,156 @@ interface ChipProps {
   setParam: (key: string, value: unknown) => void;
 }
 
+/** The values chosen for one chip, as a list — a single-select holds one, a multi holds several. */
+function chosen(chip: FilterChip, params: Record<string, unknown>): string[] {
+  const value = params[chip.param];
+  if (value == null) return [];
+  if (chip.type === "boolean" || chip.type === "geo") return [];
+  return Array.isArray(value) ? value.map(String) : [String(value)];
+}
+
+const isOptionChip = (chip: FilterChip): boolean => chip.type !== "boolean" && chip.type !== "geo";
+
 export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps) {
   const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
     | { entity?: string; filters?: FilterChip[] }
     | undefined;
   const filters = view?.filters;
+  const [open, setOpen] = useState(false);
+  // Navigating away with the sheet open would otherwise bring it back on the next page with filters.
+  useEffect(() => setOpen(false), [pageId]);
   if (!filters?.length) return null;
+
+  const entity = view!.entity ?? "";
+  const options = filters.filter(isOptionChip);
+  const direct = filters.filter((c) => !isOptionChip(c));
+  const picked = options.flatMap((chip) => chosen(chip, params).map((value) => ({ chip, value })));
+
+  const drop = (chip: FilterChip, value: string): void => {
+    const rest = chosen(chip, params).filter((v) => v !== value);
+    setParam(chip.param, chip.multi && rest.length ? rest : undefined);
+  };
 
   return (
     <section className="k-chrome" aria-label="Filters">
-      {filters.map((chip) => (
-        <ChipControl key={chip.param} chip={chip} entity={view!.entity ?? ""} runtime={runtime} params={params} setParam={setParam} />
+      {options.length ? (
+        <button
+          type="button"
+          className="k-filter-open"
+          data-on={picked.length > 0 || undefined}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          <span aria-hidden>⚟</span> Filter
+          {picked.length ? <span className="k-filter-count">{picked.length}</span> : null}
+        </button>
+      ) : null}
+
+      {/* What was chosen, and nothing else. A tap on one takes it off. */}
+      {picked.map(({ chip, value }) => (
+        <button
+          key={`${chip.param}:${value}`}
+          type="button"
+          className="k-chip k-chip-picked"
+          data-on
+          aria-label={`${chip.label}: ${value} — remove`}
+          onClick={() => drop(chip, value)}
+        >
+          <ValueLabel chip={chip} runtime={runtime} value={value} />
+          <span className="k-chip-x" aria-hidden>
+            ✕
+          </span>
+        </button>
       ))}
+
+      {direct.map((chip) => (
+        <ChipControl key={chip.param} chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />
+      ))}
+
+      {open ? (
+        <FilterSheet
+          filters={options}
+          entity={entity}
+          runtime={runtime}
+          params={params}
+          setParam={setParam}
+          picked={picked.length}
+          onClose={() => setOpen(false)}
+          onClear={() => options.forEach((chip) => setParam(chip.param, undefined))}
+        />
+      ) : null}
     </section>
+  );
+}
+
+/** A chosen value's name: an option speaks for itself, a record id has to be looked up. */
+function ValueLabel({ chip, runtime, value }: { chip: FilterChip; runtime: KartaRuntime; value: string }) {
+  const fromEntity = chip.from && runtime.definition.entities[chip.from] ? chip.from : "";
+  const { rows } = runtime.useQuery(fromEntity);
+  if (!fromEntity) return <>{value}</>;
+  const field = (runtime.definition.entities[fromEntity]?.displayField as string | undefined) ?? "id";
+  const row = rows.find((r) => String(r.id) === value);
+  return <>{row ? String(row[field] ?? value) : value}</>;
+}
+
+/** The options, all of them, on demand — a bottom sheet on a phone, a small panel on a wide screen. */
+function FilterSheet({
+  filters,
+  entity,
+  runtime,
+  params,
+  setParam,
+  picked,
+  onClose,
+  onClear,
+}: {
+  filters: FilterChip[];
+  entity: string;
+  runtime: KartaRuntime;
+  params: Record<string, unknown>;
+  setParam: (key: string, value: unknown) => void;
+  picked: number;
+  onClose: () => void;
+  onClear: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Through a portal: the chrome that owns this button floats over the map with a z-index of its
+  // own, and a sheet rendered inside it can never rise above the tab bar, whatever z-index it asks
+  // for — it is trapped in its parent's stacking context.
+  //
+  // Into the APP's root, not the document body: the app's accent is a custom property set there, and
+  // a sheet outside it comes out wearing the shell's default colour instead of the app's.
+  const host = document.querySelector(".k-app") ?? document.body;
+  return createPortal(
+    <div className="k-modal-scrim k-filter-scrim" onClick={onClose}>
+      <div className="k-filter-sheet" role="dialog" aria-label="Filter" onClick={(e) => e.stopPropagation()}>
+        <header className="k-filter-head">
+          <h2 className="k-filter-title">Filter</h2>
+          <button type="button" className="k-filter-clear" disabled={picked === 0} onClick={onClear}>
+            Clear
+          </button>
+        </header>
+        <div className="k-filter-body">
+          {filters.map((chip) => (
+            <ChipControl key={chip.param} chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />
+          ))}
+        </div>
+        <div className="k-filter-foot">
+          <button type="button" className="k-add k-primary-action" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>,
+    host,
   );
 }
 

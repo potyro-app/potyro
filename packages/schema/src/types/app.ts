@@ -195,6 +195,13 @@ export interface MapView {
   /** Where tapping a marker goes. Without it a marker only shows its `title` in a popup. */
   onOpen?: OnOpen;
   camera?: Dynamic<MapCamera>;
+  /**
+   * What a pin's popup shows besides its title — the same shape a list row uses: a photo, a second
+   * line, tags. A name on its own rarely answers "is this the one I meant?"; the photo usually does.
+   * The popup also offers the whole record, which opens OVER the map rather than navigating away
+   * from it, so you never lose the place you were looking at.
+   */
+  display?: ListDisplay;
 }
 
 export interface StepsView {
@@ -232,8 +239,20 @@ export interface ChecklistView {
   filters?: FilterChip[];
   /** `true`: done rows disappear. `"collapse"`: they fold into a "Done (n)" section. Default: listed under "Done". */
   hideDone?: boolean | "collapse";
+  /** Where a ticked row goes. `"sink"` (default) keeps it in its own group, at the bottom, so what is
+   *  left to do stays together. `"stay"` leaves it exactly where it is. `hideDone` still wins. */
+  donePlacement?: "sink" | "stay";
   /** An input at the bottom: type, Enter, next — creates a record with the text as its display field. */
   quickAdd?: boolean;
+  /** Tap a row's text to rename it in place. Off by default: a row whose text is computed is not editable. */
+  editText?: boolean;
+  /** The number field holding a row's position; with it, rows can be dragged (within a group and into
+   *  another one, which sets `group`). Without it, order is `sort`'s business and rows do not drag. */
+  reorder?: string;
+  /** When `group` names a RELATION field, the groups are records: their headings can be renamed,
+   *  reordered and deleted from the list, and a new one added — `groupOrder` is the number field on
+   *  that entity holding a group's position. */
+  groupOrder?: string;
   rowActions?: string[];
   /** Where the row's chevron goes. Without it a row has no detail. */
   onOpen?: OnOpen;

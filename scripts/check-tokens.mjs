@@ -18,7 +18,14 @@ const css = readFileSync(file, "utf8");
 const lines = css.split("\n");
 
 /** Tokens the markup sets on an element rather than the stylesheet. */
-const INLINE = new Set(["--accent", "--tile-accent", "--k-hue", "--swatch"]);
+const INLINE = new Set([
+  "--accent",
+  "--tile-accent",
+  "--k-hue",
+  "--swatch",
+  // Where a balloon's tail sits, measured against the button it hangs off (`useAnchored`).
+  "--k-tail",
+]);
 
 const problems = [];
 

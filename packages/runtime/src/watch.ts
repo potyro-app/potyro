@@ -39,11 +39,41 @@ function watch<T>(
   emit: (value: T) => void,
 ): Unsubscribe {
   let alive = true;
+  // ONE read at a time, and at most one more waiting behind it.
+  //
+  // A change used to start its own read, immediately. That is fine when changes arrive one at a
+  // time, and ruinous when they arrive in a burst — which is precisely what opening a synced list
+  // is: every record the relay hands back notifies separately, so a 90-item list asked for ~2,200
+  // full re-reads, each of them re-reading all 90 records, before it could settle. It also let an
+  // older read finish last and leave the view showing fewer rows than it had, permanently.
+  //
+  // Collapsing the burst fixes both: a read in flight is enough, whatever else arrives while it
+  // runs is covered by the single catch-up read that follows it, and results can no longer overtake
+  // each other because only one is ever outstanding.
+  let reading = false;
+  let again = false;
   const run = (): void => {
-    void read().then((value) => {
-      // A late-arriving result after unsubscribe would push state into a torn-down consumer.
-      if (alive) emit(value);
-    });
+    if (reading) {
+      again = true;
+      return;
+    }
+    reading = true;
+    const settle = (): void => {
+      reading = false;
+      if (!alive || !again) return;
+      again = false;
+      run();
+    };
+    void read().then(
+      (value) => {
+        // A late result after unsubscribe would push state into a torn-down consumer.
+        if (alive) emit(value);
+        settle();
+      },
+      // A failed read must not wedge the watcher shut: whatever it was reading may be readable by
+      // the time the next change arrives.
+      settle,
+    );
   };
   run();
   // Both sources: writes to this entity, and anything else that changes what a view would render —

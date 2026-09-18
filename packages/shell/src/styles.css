@@ -10,6 +10,11 @@
 :root {
   color-scheme: light;
 
+  /* How much room the app's chrome takes at the bottom of the screen. The phone chrome overrides
+     this with its tab bar's height; a view drawing its own bottom bar reads it instead of guessing
+     (see `.wk-bar` in the workout example). */
+  --k-chrome-bottom: 0px;
+
   /* Surfaces: paper is the ground, surface sits on it, raised floats above, sunken recedes. */
   --paper: oklch(97% 0.012 85);
   --surface: oklch(99% 0.006 85);
@@ -21,6 +26,21 @@
   --ink-soft: oklch(45% 0.02 60);
   --ink-faint: oklch(60% 0.015 60);
   --line: oklch(89% 0.01 70);
+
+  /* One person's colour, in the four places it appears: a chat bubble, an avatar's fill, ink and
+     ring, and their name. `--k-hue` is set per element from the account id, so each of these
+     resolves per person — and because the LIGHTNESS and CHROMA are tokens, the dark theme restates
+     them. Written as literals in the rules, they were a 97%-light bubble under 93%-light ink: a
+     message nobody could read in the dark.
+
+     Lightness and chroma only, with the hue left to the element: a custom property holding a whole
+     `oklch(… var(--k-hue) …)` is substituted where it is DECLARED — at `:root`, where there is no
+     hue — so every person would come out the same colour. */
+  --person-bubble: 97% 0.03;
+  --person-avatar: 90% 0.08;
+  --person-avatar-ink: 35% 0.13;
+  --person-avatar-line: 75% 0.11;
+  --person-name: 40% 0.13;
 
   /* The one accent an app supplies (`theme.accent`, set on `.k-app`). What must read on it, and the
      tints derived from it, are declared again on `.k-app` below so they follow the override. */
@@ -105,6 +125,11 @@
     --scrim: oklch(8% 0.01 60 / 0.6);
     --scrim-soft: oklch(8% 0.01 60 / 0.5);
     --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
+    --person-bubble: 30% 0.04;
+    --person-avatar: 40% 0.09;
+    --person-avatar-ink: 95% 0.04;
+    --person-avatar-line: 52% 0.1;
+    --person-name: 83% 0.12;
   }
 }
 :root[data-theme="dark"] {
@@ -129,6 +154,11 @@
   --scrim: oklch(8% 0.01 60 / 0.6);
   --scrim-soft: oklch(8% 0.01 60 / 0.5);
   --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
+  --person-bubble: 30% 0.04;
+  --person-avatar: 40% 0.09;
+  --person-avatar-ink: 95% 0.04;
+  --person-avatar-line: 52% 0.1;
+  --person-name: 83% 0.12;
 }
 
 * {
@@ -339,17 +369,60 @@ button {
   line-height: 1.5;
 }
 
-/* Map chrome: arming a placement, and what a pin says when you tap it. */
+/* Map chrome: arming a placement, and what a pin says when you tap it. Both float ON the map — it
+   fills its page, so anything that sat above it would be taking a bite out of the map. */
+/* At the BOTTOM, where the button that armed it was, and clear of the filters at the top. */
 .k-map-bar {
+  position: absolute;
+  z-index: 3;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.6rem;
   flex-wrap: wrap;
-  margin-bottom: 0.5rem;
+  padding: var(--space-2) var(--space-3);
+  background: var(--paper);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 .k-map-hint {
   font-size: 0.86rem;
   color: color-mix(in oklab, var(--ink) 75%, var(--accent));
+}
+/* The map's own add: it puts the record where you tap, so it IS the page's add button — the shell
+   drops the floating one on a map page rather than offering the same act twice. */
+.k-map-add {
+  position: absolute;
+  z-index: 3;
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 3rem;
+  padding: 0 var(--space-4);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.k-map-add:hover,
+.k-map-add:focus-visible {
+  filter: brightness(1.05);
+}
+/* On a phone the map runs under the fixed tab bar — that is the look — so its chrome clears it. */
+.k-app-phone .k-page[data-full] .k-map-add,
+.k-app-phone .k-page[data-full] .k-map-bar {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {
@@ -357,22 +430,122 @@ button {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+/* MapLibre paints its popup white and its text near-black, from its own stylesheet. In dark mode
+   that is a white card with our light ink on it — a name you cannot read. The popup wears the
+   app's paper and ink instead, tip included (the tip is a CSS triangle, one border per anchor).
+   Scoped under `.k-map` deliberately: MapLibre's stylesheet is imported lazily, so it lands AFTER
+   this one and a bare `.maplibregl-popup-content` here would lose the tie. */
+.k-map .maplibregl-popup-content {
+  padding: var(--space-3);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.k-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.k-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.k-map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--paper);
+}
+.k-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.k-map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.k-map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--paper);
+}
+.k-map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--paper);
+}
+.k-map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--paper);
+}
 .k-map-popup {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  min-width: 8rem;
+  min-width: 10rem;
+  max-width: 15rem;
+}
+.k-map-popup-media {
+  width: 100%;
+  height: 7rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
 }
 .k-map-popup-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1rem;
   line-height: 1.3;
+  color: var(--ink);
+}
+.k-map-popup-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-map-popup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+}
+.k-map-popup-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
 }
 .k-map-popup-open {
-  padding: 0.3rem 0.7rem;
+  padding: 0.35rem 0.75rem;
   font-size: 0.82rem;
-  align-self: flex-start;
+}
+/* The whole record, over the map: a sheet from the bottom on a phone, a panel on a wide screen. */
+.k-map-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--scrim);
+}
+.k-map-sheet {
+  position: relative;
+  width: min(34rem, 100%);
+  max-height: 88%;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+}
+/* The map runs under the phone's tab bar, so a sheet filling it would end underneath one too. */
+.k-app-phone .k-map-sheet {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+.k-map-sheet-close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  cursor: pointer;
+}
+@media (min-width: 760px) {
+  .k-map-sheet-scrim {
+    align-items: center;
+  }
+  .k-map-sheet {
+    max-height: 82%;
+    border-radius: var(--radius);
+  }
 }
 
 /* tokens-only: start — dialogs */
@@ -739,6 +912,127 @@ button {
   border-color: var(--accent);
   color: oklch(22% 0.04 70);
   font-weight: 600;
+}
+/* The one button that stands for every option list, and the chips for what was actually chosen. */
+.k-filter-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-filter-open:hover,
+.k-filter-open:focus-visible {
+  border-color: var(--accent);
+}
+.k-filter-open[data-on] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-filter-count {
+  min-width: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent, oklch(22% 0.04 70));
+  font-size: 0.75rem;
+  line-height: 1.3rem;
+  text-align: center;
+}
+.k-chip-picked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+.k-chip-x {
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+/* The options themselves: a bottom sheet on a phone, a small panel in the middle on a wide screen.
+   Written against `.k-modal-scrim` too, so it beats that rule's own top alignment. */
+.k-modal-scrim.k-filter-scrim {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.k-filter-sheet {
+  width: min(32rem, 100%);
+  max-height: 80vh;
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+}
+.k-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+.k-filter-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-filter-clear {
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.k-filter-clear:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.k-filter-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  overflow: auto;
+}
+.k-filter-body .k-chip-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.k-filter-body .k-chip {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.8rem;
+}
+.k-filter-foot {
+  display: flex;
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.k-filter-foot .k-add {
+  flex: 1;
+  min-height: 2.75rem;
+}
+@media (min-width: 760px) {
+  .k-modal-scrim.k-filter-scrim {
+    align-items: center;
+    padding: 4vh 1rem;
+  }
+  .k-filter-sheet {
+    border-radius: var(--radius);
+  }
 }
 
 /* List */
@@ -3817,6 +4111,123 @@ details.k-check-done[open] > summary::before {
   flex: none;
   min-height: 2.75rem;
 }
+/* A heading that is a record (an aisle, a shelf) is a control: its name is a button that opens an
+   in-place rename with a Delete beside it, and while a new item waits for a home every heading
+   lights up as a target. A heading that is only a value stays plain text. */
+.k-check-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+}
+.k-check-heading-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-check-heading-name:hover,
+.k-check-heading-name:focus-visible {
+  background: var(--accent-tint);
+  color: var(--ink);
+}
+.k-check-heading[data-target] .k-check-heading-name {
+  background: var(--accent-tint);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.k-check-del {
+  flex: none;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  font-size: 0.85rem;
+  border: 1px solid var(--k-danger);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--k-danger);
+  cursor: pointer;
+}
+.k-check-del:hover,
+.k-check-del:focus-visible {
+  background: var(--k-danger);
+  color: var(--paper);
+}
+/* Renaming in place: the row's own text becomes the input, so nothing moves when it does. */
+.k-check-rename {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: text;
+}
+.k-inline-edit {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+}
+.k-check-row[data-dragging],
+.k-check-heading[data-dragging] {
+  box-shadow: var(--shadow);
+  border-color: var(--accent-line);
+  cursor: grabbing;
+}
+.k-check-row[data-over] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-check-heading[data-over],
+.k-check-heading[data-over] .k-check-heading-name {
+  color: var(--accent);
+}
+.k-check-newgroup {
+  display: flex;
+}
+.k-check-newgroup .k-add {
+  min-height: 2.5rem;
+}
+/* The question the quick-add asks, asked where the answer is: right above the box just typed in. */
+.k-check-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  position: sticky;
+  bottom: 4.25rem;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.k-check-hint-close {
+  margin-left: auto;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.k-check-hint-close:hover,
+.k-check-hint-close:focus-visible {
+  background: var(--surface);
+  color: var(--ink);
+}
 @media (prefers-reduced-motion: reduce) {
   .k-check-row,
   .k-check-mark,
@@ -4397,8 +4808,103 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-app,
 .k-launcher-home,
-.k-joining {
+.k-splash {
   animation: k-route-in var(--dur) var(--ease);
+}
+
+/* Opening an app (#89). Centred, in the app's own colours, because this is the app arriving — not
+   a page that failed to load, which is what a line of text in the corner looked like. */
+.k-splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--paper);
+}
+.k-splash-body {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: min(18rem, 100%);
+  text-align: center;
+}
+.k-splash-tile {
+  display: grid;
+  place-items: center;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1.5rem;
+  background: color-mix(in oklab, var(--tile-accent) 18%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tile-accent) 35%, transparent), var(--shadow);
+  /* Breathing, not spinning: the tile is the app, and an app does not spin. */
+  animation: k-splash-breathe 1.8s var(--ease) infinite;
+}
+.k-splash-tile-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.k-splash-tile-monogram {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklab, var(--tile-accent) 70%, var(--ink));
+}
+.k-splash-name {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.k-splash-verb {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.k-splash-bar {
+  position: relative;
+  width: 7rem;
+  height: 3px;
+  margin-top: var(--space-2);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--tile-accent) 20%, transparent);
+  overflow: hidden;
+}
+.k-splash-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--tile-accent);
+  animation: k-splash-slide 1.2s var(--ease) infinite;
+}
+@keyframes k-splash-breathe {
+  50% {
+    transform: scale(1.06);
+  }
+}
+@keyframes k-splash-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still says it is working — the bar stays, it just stops travelling. */
+  .k-splash-tile,
+  .k-splash-bar::after {
+    animation: none;
+  }
+  .k-splash-bar::after {
+    width: 100%;
+    opacity: 0.6;
+  }
 }
 
 /* tokens-only: start — people */
@@ -4760,6 +5266,11 @@ body:has(.k-tabbar) .k-toasts {
     border-radius: var(--radius) var(--radius) 0 0;
     padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
     animation: k-sheet-up var(--dur) var(--ease);
+    min-width: 0;
+  }
+  .k-tile-menu-item {
+    min-height: 3rem;
+    font-size: 1rem;
   }
   .k-tile-menu-scrim {
     background: var(--scrim-soft);
@@ -5073,8 +5584,13 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--ink-soft);
 }
 .k-switcher .k-tile-menu-host {
-  top: 50%;
-  transform: translateY(-50%);
+  /* Centred by box, NOT by transform: a transformed ancestor becomes the containing block for
+     `position: fixed` inside it, which quietly turned the menu's bottom sheet into a 208px panel
+     hanging off the right edge of the screen. */
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
 }
 .k-switcher-sep {
   height: 1px;
@@ -5203,6 +5719,7 @@ body:has(.k-tabbar) .k-toasts {
 /* Map view (M3) */
 .k-map {
   position: relative;
+  height: 100%;
 }
 .k-map-canvas {
   width: 100%;
@@ -5212,12 +5729,63 @@ body:has(.k-tabbar) .k-toasts {
   overflow: hidden;
   background: var(--surface);
 }
+/* A page that IS its view (a map): no padding, nothing above it, and the filters float on top. */
+.k-page[data-full],
+.k-content[data-full] {
+  padding: 0;
+  gap: 0;
+  position: relative;
+}
+/* Flex the whole way down rather than percentage heights: a percentage needs a parent with a
+   SPECIFIED height, and every box here is sized by what is around it. */
+.k-page[data-full] > .k-main,
+.k-content[data-full] > .k-main,
+.k-page[data-full] .k-map,
+.k-content[data-full] .k-map {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+.k-page[data-full] .k-map-canvas,
+.k-content[data-full] .k-map-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+/* On a phone the filters float on the map — there is no room to spend a row on them. On a wide
+   screen they stay in flow beside the page's title, which floating would sit on top of. */
+.k-page[data-full] > .k-chrome {
+  position: absolute;
+  z-index: 4;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  margin: 0;
+}
+.k-content[data-full] > .k-page-head,
+.k-content[data-full] > .k-chrome {
+  padding: var(--space-2) var(--space-3);
+}
+.k-content[data-full] > .k-page-head {
+  padding-bottom: 0;
+}
+/* Over a map, bare words land on streets and become unreadable: this one sits on something. */
 .k-map-empty {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--ink-soft);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
   pointer-events: none;
 }
 
@@ -5948,9 +6516,9 @@ body:has(.k-tabbar) .k-toasts {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 999px;
-  background: oklch(90% 0.08 var(--k-hue, 60));
-  color: oklch(35% 0.13 var(--k-hue, 60));
-  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  background: oklch(var(--person-avatar) var(--k-hue, 60));
+  color: oklch(var(--person-avatar-ink) var(--k-hue, 60));
+  border: 1px solid oklch(var(--person-avatar-line) var(--k-hue, 60));
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -5963,9 +6531,9 @@ body:has(.k-tabbar) .k-toasts {
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 999px;
-  background: oklch(90% 0.08 var(--k-hue, 60));
-  color: oklch(35% 0.13 var(--k-hue, 60));
-  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  background: oklch(var(--person-avatar) var(--k-hue, 60));
+  color: oklch(var(--person-avatar-ink) var(--k-hue, 60));
+  border: 1px solid oklch(var(--person-avatar-line) var(--k-hue, 60));
   font-weight: 700;
 }
 .k-identity-avatar {
@@ -5975,9 +6543,9 @@ body:has(.k-tabbar) .k-toasts {
   width: 3.4rem;
   height: 3.4rem;
   border-radius: 999px;
-  background: oklch(90% 0.08 var(--k-hue, 60));
-  color: oklch(35% 0.13 var(--k-hue, 60));
-  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  background: oklch(var(--person-avatar) var(--k-hue, 60));
+  color: oklch(var(--person-avatar-ink) var(--k-hue, 60));
+  border: 1px solid oklch(var(--person-avatar-line) var(--k-hue, 60));
   font-weight: 700;
   font-size: 1.15rem;
 }
@@ -6035,6 +6603,25 @@ body:has(.k-tabbar) .k-toasts {
 .k-aggregate-error {
   color: #b4762a;
 }
+
+/* Something in here is new. On a phone "Changes" lives in the ⋯ menu, so the dot is the only thing
+   that can say so from the outside; on a wide screen the tool itself wears it beside its count. */
+.k-topbar-btn.k-has-news {
+  position: relative;
+}
+.k-topbar-btn.k-has-news::after {
+  content: "";
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--paper);
+}
+/* On a wide screen the tool is visible in the sidebar and already says "3 new" beside its name, so
+   a dot there would be the same sentence twice. */
 
 /* What changed (KA-36). Always visible when the app can answer — never hover-gated, because a
    hover-only control does not exist on a phone (docs/15 D1). */
@@ -6094,6 +6681,96 @@ body:has(.k-tabbar) .k-toasts {
   align-items: center;
   gap: 0.4rem;
 }
+/* The balloon: what was just said, hanging off the button that opens the conversation, with a tail
+   pointing back at it. It stays until it is answered or dismissed — a preview that vanishes on a
+   timer is one you read half of. */
+.k-chat-host {
+  position: relative;
+  display: inline-flex;
+}
+.k-chat-peek {
+  /* Fixed and placed by measurement (`useAnchored`): the button it hangs off may live in a sidebar
+     that scrolls, and an absolutely-placed balloon there is clipped at the sidebar's edge. */
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: peek-in var(--dur) var(--ease);
+}
+@keyframes peek-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem);
+  }
+}
+/* The tail, under the button it belongs to: a rotated square with the balloon's own edges. */
+.k-chat-peek::before {
+  content: "";
+  position: absolute;
+  top: -0.4rem;
+  left: var(--k-tail, 1.25rem);
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.k-chat-peek-body {
+  min-width: 0;
+}
+.k-chat-peek-who {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.k-chat-peek-when {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.k-chat-peek-text {
+  margin: 0.15rem 0 0;
+  color: var(--ink);
+  line-height: 1.35;
+  /* Three lines of someone's message, then an ellipsis: the rest is what Open is for. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.k-chat-peek-open {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: var(--space-2);
+  min-height: 2.25rem;
+}
+.k-chat-peek-close {
+  grid-row: 1;
+  grid-column: 3;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.k-chat-peek-close:hover,
+.k-chat-peek-close:focus-visible {
+  background: var(--surface);
+  color: var(--ink);
+}
+
 .k-chat-modal { max-width: 34rem; }
 .k-chat {
   display: flex;
@@ -6122,7 +6799,7 @@ body:has(.k-tabbar) .k-toasts {
   border-radius: 0.7rem;
   /* Tinted by the author, faintly: enough to group a run of messages at a glance without turning
      the panel into a colour chart. `--k-hue` is set per message from the account id. */
-  background: oklch(97% 0.03 var(--k-hue, 60) / 0.9);
+  background: oklch(var(--person-bubble) var(--k-hue, 60) / 0.9);
   /* Yours sit off to the right: whose message it is has to be legible before a word is read. */
   align-self: flex-start;
   max-width: 85%;
@@ -6147,9 +6824,9 @@ body:has(.k-tabbar) .k-toasts {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 999px;
-  background: oklch(90% 0.08 var(--k-hue, 60));
-  color: oklch(35% 0.13 var(--k-hue, 60));
-  border: 1px solid oklch(75% 0.11 var(--k-hue, 60));
+  background: oklch(var(--person-avatar) var(--k-hue, 60));
+  color: oklch(var(--person-avatar-ink) var(--k-hue, 60));
+  border: 1px solid oklch(var(--person-avatar-line) var(--k-hue, 60));
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -6165,7 +6842,7 @@ body:has(.k-tabbar) .k-toasts {
 .k-chat-who {
   font-weight: 600;
   /* Same hue as the avatar, darkened for text contrast — the name and the mark read as one person. */
-  color: oklch(40% 0.13 var(--k-hue, 60));
+  color: oklch(var(--person-name) var(--k-hue, 60));
 }
 .k-chat-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .k-chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -6576,4 +7253,87 @@ body:has(.k-tabbar) .k-toasts {
   border-left: 3px solid var(--k-danger, #c0392b);
   padding-left: 0.6rem;
   font-weight: 500;
+}
+
+/* Bundled examples this device does not have: one button each, quiet, at the end of the list. */
+.k-launch-gone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-launch-restore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+}
+
+/* "Load your apps?" — the first boot after signing in with the recovery words. */
+.k-restore {
+  width: min(26rem, 100%);
+  display: grid;
+  gap: var(--space-3);
+}
+.k-restore-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-restore-lede {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.k-restore-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+  max-height: 50vh;
+  overflow: auto;
+}
+.k-restore-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-restore-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.k-restore-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+/* The number that decides it: a phone should know an app is 400 MB before it agrees to carry it. */
+.k-restore-size {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.k-restore-shared {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+}
+.k-restore-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.k-restore-actions .k-add {
+  min-height: 2.75rem;
 }

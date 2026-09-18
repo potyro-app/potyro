@@ -11,6 +11,16 @@ async function openApp(page: Page, app: string, title: string): Promise<void> {
   await expect(page.locator("h1").first()).toHaveText(title, { timeout: 30_000 });
 }
 
+/**
+ * Places lands on the Map, and a map page adds inline — you arm placement and tap, which puts the
+ * new record where you pointed — so the shell drops the floating quick action on that page rather
+ * than offering two buttons for one act. These tests are about the form's enum control, not about
+ * where the form was opened from, so they go to the list page, where adding is still a button.
+ */
+async function goToAllPlaces(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
+}
+
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -49,6 +59,7 @@ test.describe("desktop", () => {
 
   test("six options open a searchable list in a popover", async ({ page }) => {
     await openApp(page, "places", "Places");
+    await goToAllPlaces(page);
     await page.getByRole("button", { name: /New Place/ }).click();
     const form = page.locator(".k-form");
     await expect(form.locator("select")).toHaveCount(0);
@@ -85,6 +96,7 @@ test.describe("phone", () => {
 
   test("the long list is a bottom sheet", async ({ page }) => {
     await openApp(page, "places", "Places");
+    await goToAllPlaces(page);
     await page.getByRole("button", { name: /New Place/ }).tap();
     const form = page.locator(".k-form");
     await form.getByRole("button", { name: "Kind: choose" }).tap();

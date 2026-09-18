@@ -50,6 +50,10 @@ test.describe("phone", () => {
   test("Places: the Create button is on screen when the form opens and after scrolling to the end", async ({ page }) => {
     await page.goto("/?user=places");
     await expect(page.locator("h1").first()).toHaveText("Places", { timeout: 30_000 });
+    // Places lands on the Map, and a map page adds inline (you arm placement and tap), so the shell
+    // drops the floating quick action there rather than showing two buttons for one act. The list is
+    // where adding is still a button, and a form opened from it is the same sheet either way.
+    await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
     await page.getByRole("button", { name: "New Place" }).click();
     const dialog = page.getByRole("dialog", { name: "New Place" });
     await expect(dialog).toBeVisible();
