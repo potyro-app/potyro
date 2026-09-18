@@ -56,20 +56,19 @@ test("map reopens where the user left it", async ({ page }) => {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -400);
 
-  // The gesture is only recorded on moveend, so wait for the write rather than a fixed timeout.
-  await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const raw = localStorage.getItem("karta:user:places");
-        return raw ? ((JSON.parse(raw) as { kv?: Record<string, string> }).kv?.["kv:map:map:camera"] ?? null) : null;
-      }),
-    )
-    .not.toBeNull();
-  const zoomedTo = await page.evaluate(() => {
-    const kv = (JSON.parse(localStorage.getItem("karta:user:places")!) as { kv: Record<string, string> }).kv;
-    return (JSON.parse(kv["kv:map:map:camera"]!) as { zoom: number }).zoom;
-  });
-  expect(zoomedTo).toBeGreaterThan(6);
+  // How far in the gesture actually got, read from the map rather than from storage.
+  //
+  // This used to reach into `localStorage` for the saved camera. That was always a claim about
+  // where the store keeps things, not about the map, and it stopped being true when local apps
+  // moved off localStorage into a real database. The tiles the map asks for say the same thing and
+  // are the user-visible version of it.
+  await expect.poll(() => (zooms.length ? Math.max(...zooms) : 0), { timeout: 15_000 }).toBeGreaterThan(6);
+  const zoomedTo = Math.max(...zooms);
+
+  // The camera is saved when the movement ends, and the save does not block the gesture. A reload
+  // fired in the same breath can beat it — which is a race a person could lose too, at the cost of
+  // the map opening on the world instead of where they left it. Let it land.
+  await page.waitForTimeout(1_000);
 
   // Reload and come back: the map must open at that framing, not on the world.
   zooms.length = 0;

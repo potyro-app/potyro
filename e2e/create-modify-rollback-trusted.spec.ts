@@ -185,6 +185,19 @@ async function closeHistory(page: Page): Promise<void> {
   await expect(timeline(page)).toHaveCount(0);
 }
 
+/**
+ * Save, and wait until it has been saved.
+ *
+ * Writing a version is a round trip to the storage worker now, not a synchronous poke at
+ * localStorage, so clicking Save and navigating in the same breath can outrun the write — the app
+ * keeps the old source and history never hears about the change. The toast is the product's own
+ * word that it is done, which is the thing a person waits for too.
+ */
+async function saveChanges(page: Page): Promise<void> {
+  await studioOf(page).getByRole("button", { name: "Save changes" }).click();
+  await expect(studioOf(page).locator(".k-studio-saved")).toHaveText(/Saved/, { timeout: 30_000 });
+}
+
 /** Open a saved app in the Studio, so `currentId` is set and History/Save changes apply to it. */
 async function reopenInStudio(page: Page): Promise<void> {
   await openStudio(page);
@@ -222,9 +235,9 @@ test.describe("create, change twice, and get back", () => {
     // ---- 3. two source-changing modifications, through the product path ----------------------
     await reopenInStudio(page);
     await askFor(page, MOD_1, "Notes & tags");
-    await studio.getByRole("button", { name: "Save changes" }).click();
+    await saveChanges(page);
     await askFor(page, MOD_2, "Pinned first");
-    await studio.getByRole("button", { name: "Save changes" }).click();
+    await saveChanges(page);
     expect(generator.calls(), "one call to generate, one per modification").toBe(3);
 
     // Both migrations run on the real app, and both notes come through them.
