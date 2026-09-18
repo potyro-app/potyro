@@ -128,17 +128,27 @@ export async function seedExamples(opts: { trusted: boolean; now: string }): Pro
     if (known === undefined) continue;
 
     // A copy whose bytes are no longer the ones we wrote is someone's work, whatever the version
-    // says. Devices from before fingerprints were kept record one now and are updated from here on,
-    // rather than having this build guess whether they had edited it.
+    // says.
+    //
+    // A device seeded before fingerprints were recorded knows WHICH examples it was given but not
+    // what they looked like. Refusing to touch those meant every example fix stopped at the door of
+    // every device that had ever used Karta — which is not caution, it is the feature not working.
+    // So they are updated when the app has no HISTORY: the Studio records a version on every save,
+    // so an app with none has never been edited here, and replacing it takes nothing from anybody.
     if (known.hash === undefined) {
-      state.set(id, { hash: fingerprint(installed.source), version: declaredVersion(installed.source) });
-      changed = true;
+      const { listVersions } = await import("./app-history.js");
+      const edited = (await listVersions(id)).length > 0;
+      if (edited) {
+        state.set(id, { hash: fingerprint(installed.source), version: declaredVersion(installed.source) });
+        changed = true;
+        continue;
+      }
+    } else if (known.hash !== fingerprint(installed.source)) {
       continue;
     }
-    if (known.hash !== fingerprint(installed.source)) continue;
 
     const source = await load();
-    if (fingerprint(source) === known.hash) continue;
+    if (fingerprint(source) === fingerprint(installed.source)) continue;
     // Same bytes as we seeded, and the build has a NEWER version: replace it. Records are untouched
     // — the store is keyed by app id, and a schema change travels as the app's own migrations.
     if (!isNewer(declaredVersion(source), declaredVersion(installed.source))) continue;

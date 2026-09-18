@@ -1,3 +1,4 @@
+import { chooseFilter } from "./filters.js";
 import { test, expect, type Page } from "@playwright/test";
 
 // KA-24, sandbox path: a page summary's `value` FUNCTION computed by an app running UNTRUSTED in
@@ -41,18 +42,18 @@ test("the isolate-computed figure tracks the filter chips", async ({ page }) => 
 
   // Each chip toggle re-runs the function across the marshalling boundary with the newly filtered
   // rows. A figure that went stale here would disagree with the rows beneath it.
-  await page.locator(".k-chip", { hasText: "cafe" }).click();
+  await chooseFilter(page, "cafe");
   await expect(page.locator(".k-list-row")).toHaveCount(1);
   await expect(figure(page, "Visited")).toHaveText("1");
 
-  await page.locator(".k-chip", { hasText: "cafe" }).click();
+  await chooseFilter(page, "cafe");
   await expect(figure(page, "Visited")).toHaveText("2");
 });
 
 test("an empty set still distinguishes a true zero from an unanswerable average", async ({ page }) => {
   await openList(page);
 
-  await page.locator(".k-chip", { hasText: "pizza" }).click();
+  await chooseFilter(page, "pizza");
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
   // Zero visited places is true; an average rating over nothing is not zero, it is unanswerable.

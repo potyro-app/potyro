@@ -591,9 +591,14 @@ async function offerAccountApps(root: HTMLElement): Promise<void> {
     if (!linked && !listUserApps().some((a) => a.sync)) return;
 
     const { readAccountApps } = await import("@karta/store");
-    const { openAccountNodeForDevice } = await import("./open-store.js");
+    const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
     if (!node) return;
+
+    // Publish before reading. Every synced app this device has goes onto the account now, from the
+    // ids already written down — so the list is current whether or not those apps were opened, and
+    // a device that dies tonight has left behind everything it could.
+    await publishAppListToAccount(node);
     // Give the relay a moment: this device may have signed in seconds ago, and the account's
     // own copy of the list travels the same way any other CoValue does.
     const mine = await readAccountApps(node, { waitMs: 8_000 });

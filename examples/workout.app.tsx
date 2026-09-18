@@ -387,7 +387,7 @@ export default defineApp({
   id: "workout",
   name: "PPL Log",
   icon: "🏋",
-  version: "1.0.0",
+  version: "1.1.0",
   schemaVersion: 1,
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end

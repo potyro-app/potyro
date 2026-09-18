@@ -6,7 +6,14 @@ import { ensureIdentities, listInstalledApps } from "../src/launcher-store.js";
 
 // The examples are ordinary apps (#152): seeded once into the same registry as everything else.
 
-vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
+// `listVersions` is how an update tells a copy you have edited from one you have merely had:
+// an app with no recorded version has never been saved here.
+const history = vi.hoisted(() => ({ versions: [] as unknown[] }));
+vi.mock("../src/app-history.js", () => ({
+  recordVersion: async () => {},
+  clearHistory: async () => {},
+  listVersions: async () => history.versions,
+}));
 vi.mock("../src/app-diagnoses.js", () => ({ clearDiagnoses: async () => {} }));
 vi.mock("../src/app-cases.js", () => ({ clearCases: async () => {} }));
 
@@ -99,18 +106,28 @@ describe("keeping the examples up to date", () => {
     expect(getUserApp("split")!.source).toBe(mine);
   });
 
-  it("leaves a device seeded before fingerprints alone, and records one for next time", async () => {
+  it("updates an untouched copy on a device seeded before fingerprints, and leaves an edited one", async () => {
+    // Every device that had ever used Karta was in this state, so refusing to touch any of them
+    // meant the update mechanism reached nobody. An app with no history has never been saved here.
     await seedExamples({ trusted: true, now: NOW });
-    const mine = `${getUserApp("split")!.source}\n// edited before this build existed\n`;
-    await saveUserApp({ ...getUserApp("split")!, source: mine }, NOW);
-    // The old shape of the record: ids only, no fingerprints.
-    localStorage.setItem(SEEDED_KEY, JSON.stringify(EXAMPLE_IDS));
+    const shipped = getUserApp("split")!.source;
+    await saveUserApp({ ...getUserApp("split")!, source: older(shipped) }, NOW);
+    localStorage.setItem(SEEDED_KEY, JSON.stringify(EXAMPLE_IDS)); // the old shape: ids only
 
-    await seedExamples({ trusted: true, now: "2026-09-18T00:00:00.000Z" });
-    // Untouched, because this build cannot tell an edit from a stale copy...
+    history.versions = [];
+    await seedExamples({ trusted: true, now: "2026-09-19T00:00:00.000Z" });
+    expect(getUserApp("split")!.source).toBe(shipped);
+
+    // Now the same device, but the app HAS been edited in the Studio: left exactly as it is.
+    const mine = `${older(shipped)}\n// my own note\n`;
+    await saveUserApp({ ...getUserApp("split")!, source: mine }, NOW);
+    localStorage.setItem(SEEDED_KEY, JSON.stringify(EXAMPLE_IDS));
+    history.versions = [{ seq: 1 }];
+
+    await seedExamples({ trusted: true, now: "2026-09-20T00:00:00.000Z" });
     expect(getUserApp("split")!.source).toBe(mine);
     const state = JSON.parse(localStorage.getItem(SEEDED_KEY)!) as Record<string, { hash?: string }>;
-    // ...and from now on it can.
+    // And a fingerprint is recorded either way, so this guesswork happens once.
     expect(state.split?.hash).toEqual(expect.any(String));
   });
 });

@@ -62,6 +62,11 @@ test("a device signed in with the words is offered the apps on the account, with
   await a.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(a.locator(".k-detail-title")).toHaveText("Buy stamps", { timeout: 30_000 });
 
+  // Home, and a reload: A is NOT sitting in the app when B asks. A backup that only happens while
+  // you have the app open is a backup you have to remember to make.
+  await a.goto("/");
+  await expect(a.locator(".k-launcher-home")).toBeVisible({ timeout: 30_000 });
+
   // Its words.
   await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
   await a.getByRole("button", { name: "You and your devices" }).click();
