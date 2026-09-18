@@ -173,7 +173,21 @@ function browserKeys(): JazzKeyStore {
  * Every later call reattaches to exactly the same three ids, which is what makes the data durable
  * rather than merely persisted.
  */
-export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts): Promise<JazzStoreHandle> {
+/**
+ * The account half of opening a store: the device's identity, its profile, and the relay — without
+ * any app's space.
+ *
+ * Split out because a device that has just been linked with the recovery words has NO apps yet, and
+ * the one thing it needs before it can have any is to read its own account (see `account-apps.ts`).
+ * Going through `createJazzStore` for that would have meant inventing an app id and leaving a space
+ * behind for an app that does not exist.
+ */
+export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> & { peers?: unknown[] }): Promise<{
+  node: InstanceType<typeof LocalNode>;
+  accountID: string;
+  relay?: RelayConnection;
+  whenDurable: () => Promise<void>;
+}> {
   const keys = opts.keys ?? browserKeys();
   const crypto = opts.crypto as never;
   const peers = (opts.peers ?? []) as never[];
@@ -279,6 +293,14 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
   // Between the account and the group, for the reasons on `CreateJazzStoreOpts.relay`.
   let relay: RelayConnection | undefined;
   if (opts.relay) relay = await attachRelay(node, opts.relay);
+
+  return { node, accountID, relay, whenDurable: durability.whenDurable };
+}
+
+export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts): Promise<JazzStoreHandle> {
+  const keys = opts.keys ?? browserKeys();
+  const { node, accountID, relay, whenDurable } = await openAccountNode(opts);
+  const durability = { whenDurable };
 
   // ---- 2. the app's space --------------------------------------------------------------------
   const savedGroup = keys.get(groupKey(appId));
