@@ -171,8 +171,29 @@ export function ChecklistView(props: BuiltinViewProps) {
   // A row just ticked keeps its place for a beat, struck through, before it sinks: the eye follows
   // the change instead of losing the row.
   const [held, setHeld] = useState<Map<string, boolean>>(new Map());
+  /**
+   * What a tick means RIGHT NOW, before the store has said anything back.
+   *
+   * Without this the row's state is whatever the store last reported, so on a synced list every tick
+   * waited for a CRDT write to be applied, notified and re-queried before the row even looked
+   * ticked — seconds, on a phone, for a tap. The patch still decides in the end: an entry is dropped
+   * the moment the store agrees, and dropped if the write fails.
+   */
+  const [justTicked, setJustTicked] = useState<Map<string, unknown>>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    setJustTicked((t) => {
+      if (t.size === 0) return t;
+      const m = new Map(t);
+      for (const row of rows) {
+        const id = String(row.id);
+        if (m.has(id) && row[view.done] === m.get(id)) m.delete(id);
+      }
+      return m.size === t.size ? t : m;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
 
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
@@ -180,7 +201,10 @@ export function ChecklistView(props: BuiltinViewProps) {
   /** An item added with nowhere to put it, waiting for someone to tap a heading. */
   const [pending, setPending] = useState<{ id: string; text: string } | null>(null);
 
-  const isDone = (row: Resolved): boolean => (field?.type === "enum" ? row[view.done] === view.doneValue : Boolean(row[view.done]));
+  const doneValueOf = (row: Resolved): unknown =>
+    justTicked.has(String(row.id)) ? justTicked.get(String(row.id)) : row[view.done];
+  const isDone = (row: Resolved): boolean =>
+    field?.type === "enum" ? doneValueOf(row) === view.doneValue : Boolean(doneValueOf(row));
   /** Where the row sits: by its state before the tick while it is held. */
   const placedDone = (row: Resolved): boolean => {
     const id = String(row.id);
@@ -195,6 +219,8 @@ export function ChecklistView(props: BuiltinViewProps) {
     let next: unknown = !was;
     if (field?.type === "enum") next = was ? (field.options.find((o) => o !== view.doneValue) ?? null) : view.doneValue;
     setHeld((h) => new Map(h).set(id, was));
+    // The tick is true on screen immediately; the store confirms it in its own time.
+    setJustTicked((t) => new Map(t).set(id, next));
     const old = timers.current.get(id);
     if (old) clearTimeout(old);
     timers.current.set(
@@ -212,6 +238,12 @@ export function ChecklistView(props: BuiltinViewProps) {
       await runtime.patch(view.entity, id, { [view.done]: next });
     } catch (e) {
       fail(e, "Could not save that");
+      // It did not happen, so the row must stop claiming it did.
+      setJustTicked((t) => {
+        const m = new Map(t);
+        m.delete(id);
+        return m;
+      });
     }
   };
 
