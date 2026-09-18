@@ -7267,3 +7267,73 @@ body:has(.k-tabbar) .k-toasts {
   gap: 0.35rem;
   min-height: 2.5rem;
 }
+
+/* "Load your apps?" — the first boot after signing in with the recovery words. */
+.k-restore {
+  width: min(26rem, 100%);
+  display: grid;
+  gap: var(--space-3);
+}
+.k-restore-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-restore-lede {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.k-restore-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+  max-height: 50vh;
+  overflow: auto;
+}
+.k-restore-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-restore-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.k-restore-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+/* The number that decides it: a phone should know an app is 400 MB before it agrees to carry it. */
+.k-restore-size {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.k-restore-shared {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+}
+.k-restore-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.k-restore-actions .k-add {
+  min-height: 2.75rem;
+}
