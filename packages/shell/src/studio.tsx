@@ -513,6 +513,13 @@ export function Studio({
 
   // --- My Apps ----------------------------------------------------------------------------------
 
+  // Saving is a round trip to the storage worker, so "did that work?" is a real question now — and
+  // the only answer was a toast on the preview, which a phone shows below the fold or not at all.
+  //
+  // Held with the source it describes, so it stops being shown the moment the source moves on: a
+  // note saying "saved" above an edited draft would be worse than no note at all.
+  const [saved, setSaved] = useState<{ name: string; source: string } | null>(null);
+
   const save = async (): Promise<void> => {
     // Saving an app the preview already flagged is how invalid apps reached My Apps and only
     // surfaced much later, once validation existed. Confirm rather than block: an author may still
@@ -528,6 +535,7 @@ export function Studio({
     const steps = chain.filter((step, i) => i === 0 || step.source !== chain[i - 1]!.source);
     let id = currentId ?? undefined;
     let record = null as Awaited<ReturnType<typeof saveUserApp>> | null;
+    const step0 = steps[steps.length - 1]?.source ?? source;
     for (const step of steps) {
       record = await saveUserApp(
         { id, name: appName ?? description, source: step.source, note: step.note },
@@ -540,6 +548,7 @@ export function Studio({
     setCurrentId(record.id);
     setSavedApps(listUserApps());
     preview?.toaster.push(`Saved "${record.name}" to My Apps`);
+    setSaved({ name: record.name, source: step0 });
     // Re-open on the durable store so edits made from here persist.
     void buildPreview(source, record.id);
   };
@@ -681,6 +690,11 @@ export function Studio({
             </button>
             <button type="button" className="k-add" onClick={() => void newDraft()}>New draft</button>
           </div>
+          {/* Said where the button is, not only in the preview's corner: on a phone the preview is a
+              scroll away, and "is it saved?" is the question you have while looking at the button. */}
+          <p className="k-studio-saved k-muted" role="status" aria-live="polite">
+            {saved && saved.source === source ? `Saved "${saved.name}"` : ""}
+          </p>
 
           <h4 className="k-myapps-title">My Apps</h4>
           {savedApps.length === 0 ? (

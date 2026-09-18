@@ -34,35 +34,58 @@ interface Sqlite3Db {
 }
 
 export type WorkerRequest =
-  | { id: number; op: "open"; name: string; directory?: string }
-  | { id: number; op: "run"; sql: string; params?: unknown[] }
-  | { id: number; op: "query"; sql: string; params?: unknown[] }
-  | { id: number; op: "get"; sql: string; params?: unknown[] }
-  | { id: number; op: "close" };
+  | { id: number; op: "open"; db: string }
+  | { id: number; op: "run"; db: string; sql: string; params?: unknown[] }
+  | { id: number; op: "query"; db: string; sql: string; params?: unknown[] }
+  | { id: number; op: "get"; db: string; sql: string; params?: unknown[] }
+  | { id: number; op: "close"; db: string };
 
 export type WorkerReply = { id: number; ok: true; rows?: Record<string, unknown>[] } | { id: number; ok: false; error: string };
 
-let db: Sqlite3Db | null = null;
+/**
+ * ONE pool, many databases.
+ *
+ * The SAH pool preallocates a set of sync access handles over its directory, and each app asking
+ * for a pool of its own is how a device with a handful of apps ran out of them — an open that
+ * cannot take a handle does not fail, it waits, so the app simply stopped part-way through saving.
+ * A pool holds as many database FILES as you like, so every app's database lives in this one.
+ */
+let pool: { OpfsSAHPoolDb: new (f: string) => Sqlite3Db } | null = null;
+let installing: Promise<void> | null = null;
+const dbs = new Map<string, Sqlite3Db>();
 
 /** The module's own types do not describe its config argument; `sqlite-backend.ts` narrows it the
  *  same way, for the same reason. */
 type InitFn = (config: { print?(): void; printErr?(): void }) => Promise<{
-  installOpfsSAHPoolVfs?(opts: { name?: string; directory?: string }): Promise<{ OpfsSAHPoolDb: new (f: string) => Sqlite3Db }>;
+  installOpfsSAHPoolVfs?(opts: {
+    name?: string;
+    directory?: string;
+    initialCapacity?: number;
+  }): Promise<{ OpfsSAHPoolDb: new (f: string) => Sqlite3Db }>;
 }>;
 
-async function open(name: string, directory?: string): Promise<void> {
-  const init = sqlite3InitModule as unknown as InitFn;
-  const sqlite3 = await init({ print: () => {}, printErr: () => {} });
-  if (!sqlite3.installOpfsSAHPoolVfs) throw new Error("this worker has no OPFS SAH-pool VFS");
-  const pool = await sqlite3.installOpfsSAHPoolVfs({
-    name: `karta-${name}`,
-    directory: directory ?? `/karta/${name}`,
+async function open(name: string): Promise<void> {
+  // Installed once, however many databases are asked for. `installing` is awaited rather than
+  // re-entered: two apps opening at the same moment must not install two pools over one directory.
+  installing ??= (async () => {
+    const init = sqlite3InitModule as unknown as InitFn;
+    const sqlite3 = await init({ print: () => {}, printErr: () => {} });
+    if (!sqlite3.installOpfsSAHPoolVfs) throw new Error("this worker has no OPFS SAH-pool VFS");
+    // Room for the device database, every app's, and the shell's own — with space to grow. The pool
+    // preallocates this many handles; running out is the failure this file exists to avoid.
+    pool = await sqlite3.installOpfsSAHPoolVfs({ name: "karta", directory: "/karta", initialCapacity: 32 });
+  })().catch((err: unknown) => {
+    installing = null; // a failed install must be retryable, not remembered
+    throw err;
   });
-  db = new pool.OpfsSAHPoolDb(`/${name}.sqlite3`);
+  await installing;
+  if (!pool) throw new Error("the storage pool did not install");
+  if (!dbs.has(name)) dbs.set(name, new pool.OpfsSAHPoolDb(`/${name}.sqlite3`));
 }
 
 function handle(msg: WorkerRequest): Record<string, unknown>[] | undefined {
-  if (!db) throw new Error("the database is not open");
+  const db = dbs.get(msg.db);
+  if (!db) throw new Error(`the database "${msg.db}" is not open`);
   switch (msg.op) {
     case "run":
       db.exec({ sql: msg.sql, bind: msg.params ?? [] });
@@ -73,7 +96,7 @@ function handle(msg: WorkerRequest): Record<string, unknown>[] | undefined {
       return db.selectObjects(msg.sql, msg.params ?? []).slice(0, 1);
     case "close":
       db.close();
-      db = null;
+      dbs.delete(msg.db);
       return undefined;
     default:
       throw new Error(`unknown op`);
@@ -85,7 +108,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const reply = (r: WorkerReply): void => self.postMessage(r);
   try {
     if (msg.op === "open") {
-      await open(msg.name, msg.directory);
+      await open(msg.db);
       reply({ id: msg.id, ok: true });
       return;
     }
