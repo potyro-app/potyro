@@ -38,11 +38,16 @@ test.describe("phone", () => {
     await expect(page.locator(".k-detail-title")).toHaveText("Sun-lover");
     await page.getByRole("button", { name: "Back" }).tap();
     await expect(page.locator(".k-list-row", { hasText: "Sun-lover" })).toBeVisible();
-    // The value went into the record, not just the row's look. (Headless Chromium has no OPFS, so
-    // the app's store is the localStorage fallback and the record is readable there.)
-    await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("karta:user:plants") ?? ""))
-      .toMatch(/"needsDirectSun":true/);
+    // The value went into the record, not just the row's look — asked of the record itself, after a
+    // reload, rather than of the storage it happens to live in. It used to read the app's JSON out
+    // of localStorage, which stopped being where records are kept once local apps got a database.
+    await page.reload();
+    await page.locator(".k-list-row", { hasText: "Sun-lover" }).click();
+    await expect(page.locator(".k-detail-title")).toHaveText("Sun-lover");
+    // The record page states the value in words, which is the form the claim takes here: the
+    // switch was on when it was saved, so the plant needs direct sun after a reload.
+    const sunField = page.locator(".k-detail .k-field", { hasText: "Needs Direct Sun" }).first();
+    await expect(sunField).toContainText("Yes");
   });
 });
 
