@@ -375,6 +375,44 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
  * device is you but has no apps. Opening an app to get a node would create a space for an app that
  * does not exist, and the shell cannot build a node itself — cojson stays inside this package.
  */
+/**
+ * Write down where an app's space lives, for an app arriving from somewhere other than this device.
+ *
+ * Three keys, not two. The group and the root are the obvious ones — without them the store mints a
+ * fresh empty space and the data already on the relay is stranded beside it. The third is the
+ * database MARKER, and leaving it out is its own kind of stranding: `openJazzStore` reads "a group
+ * id, but no marker" as an app created before the device database existed, and sends it to a
+ * per-app file that was never there. The app then opens, empty, next to its own data.
+ *
+ * Exported because the two callers that need it — a restored app and a joined space — are in the
+ * shell, and the shape of these keys is this module's business.
+ */
+export function rememberAppSpace(namespace: string, ids: { group: string; root: string }, keys?: JazzKeyStore): void {
+  const store = keys ?? browserKeys();
+  store.set(groupKey(namespace), ids.group);
+  store.set(rootKey(namespace), ids.root);
+  store.set(dbKey(namespace), DEVICE_DB);
+}
+
+/**
+ * Start the device database's worker now, so the first app that syncs does not wait for it.
+ *
+ * Opening it costs a worker spawn plus the SQLite module and its OPFS pool — a second or so, paid
+ * once. Left until an app is opened, that second lands squarely between tapping an app and seeing
+ * it. Called at boot for a device that syncs anything; everyone else spawns nothing, because a
+ * device that has never synced has not asked for a database at all.
+ *
+ * Deliberately swallows failure: this is a head start, and the real open reports its own problems.
+ */
+export async function warmDeviceDatabase(): Promise<void> {
+  try {
+    const { openWorkerSqlite, workersAvailable } = await import("./sqlite-worker-client.js");
+    if (workersAvailable()) await openWorkerSqlite(DEVICE_DB);
+  } catch {
+    /* the fallbacks are still there when the real open happens */
+  }
+}
+
 export async function openAccountNodeInBrowser(opts?: {
   keys?: JazzKeyStore;
   profileName?: string;

@@ -23,7 +23,7 @@ import { Launcher, openInstalledApp } from "./launcher.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
-import { getUserApp } from "./user-apps.js";
+import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -579,7 +579,10 @@ setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? bro
  * Reads the account with no app open (`openAccountNode` exists for exactly this moment), and does
  * nothing at all when there is nothing to offer — which is every boot but the first after linking.
  */
-async function offerAccountApps(root: HTMLElement): Promise<void> {
+/** Set once the account has been read on this device, so the wait below happens only the first time. */
+const OFFERED = "karta:account:offered";
+
+async function offerAccountApps(): Promise<void> {
   try {
     // Only for a device that was LINKED, or one that already syncs something. Reading the account
     // means opening a connection to the relay, and a person who has never synced anything has not
@@ -588,7 +591,16 @@ async function offerAccountApps(root: HTMLElement): Promise<void> {
     // and by nothing else, so it is exactly "this device was told it is someone".
     const linked = globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
     const { listUserApps } = await import("./user-apps.js");
-    if (!linked && !listUserApps().some((a) => a.sync)) return;
+    const syncs = listUserApps().some((a) => a.sync);
+    if (!linked && !syncs) return;
+
+    // The database's worker takes a moment to spawn and open its OPFS pool. Started here, that
+    // moment overlaps the launcher; left until an app is tapped, it sits between the tap and the
+    // app appearing. Not awaited — nothing below needs it, and the real open shares this one.
+    if (syncs) {
+      const { warmDeviceDatabase } = await import("@karta/store");
+      void warmDeviceDatabase();
+    }
 
     const { readAccountApps } = await import("@karta/store");
     const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
@@ -602,24 +614,38 @@ async function offerAccountApps(root: HTMLElement): Promise<void> {
     // Give the relay a moment: this device may have signed in seconds ago, and the account's
     // own copy of the list travels the same way any other CoValue does.
     const mine = await readAccountApps(node, { waitMs: 8_000 });
+    globalThis.localStorage?.setItem(OFFERED, "1");
     const missing = mine.filter((a) => !getUserApp(a.id));
     if (missing.length === 0) return;
 
     const { RestoreApps, installFromAccount } = await import("./restore-apps.js");
+    // Its own React root, over the launcher rather than in place of it. The shell renders every
+    // route through ONE root, so mounting the panel there replaces whatever is on screen — which was
+    // invisible while this ran before the first paint, and blanks the launcher now that it does not.
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const panel = createRoot(host);
+    let installed = 0;
     await new Promise<void>((done) => {
-      mount(
-        root,
+      panel.render(
         <RestoreApps
           apps={missing}
           onClose={done}
           onRestore={async (chosen) => {
             const now = new Date().toISOString();
             for (const app of chosen) await installFromAccount(app, now);
+            installed = chosen.length;
             done();
           }}
         />,
       );
     });
+    panel.unmount();
+    host.remove();
+    // The launcher was drawn before these apps existed and does not re-read the registry on its own.
+    // Only after something was actually installed: reloading on "Not now" would offer the same apps
+    // again on the next boot, and again, which is nagging rather than offering.
+    if (installed > 0) globalThis.location.reload();
   } catch (e) {
     // Never block boot on it: the apps already on this device are what someone came for.
     console.warn("[karta] could not read the apps on your account:", e);
@@ -647,7 +673,24 @@ async function boot(): Promise<void> {
   // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
   // never forced — a phone is not a laptop, and an app whose photos run to hundreds of megabytes is
   // a decision, not a default.
-  if (!joined) await offerAccountApps(root);
+  //
+  // Awaited for exactly one device: the one that has just been told who it is and owns nothing yet.
+  // That person typed twenty-four words a second ago and is waiting to be handed their apps, so the
+  // launcher may as well wait too — and it arrives with the apps already on it.
+  //
+  // Every other boot does NOT wait. Asking the account means asking the relay, and that answer is
+  // allowed to take seconds; awaited on every boot it sat between opening Karta and seeing anything
+  // at all, for anyone who syncs even one app.
+  if (!joined) {
+    // "Linked, and not asked yet." Not "has no apps": every device is seeded with the examples, so
+    // an empty list never happens. Not "linked" alone either, or the wait would come back on every
+    // boot of that device forever.
+    const justLinked =
+      globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase" &&
+      !globalThis.localStorage?.getItem(OFFERED);
+    if (justLinked) await offerAccountApps();
+    else void offerAccountApps();
+  }
 
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
