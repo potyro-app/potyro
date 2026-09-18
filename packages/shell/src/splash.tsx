@@ -46,7 +46,7 @@ export function Splash({ id, name, source, icon, verb = "Opening" }: SplashProps
 
   return (
     <div className="k-splash" role="status" aria-live="polite">
-      <div className="k-splash-body" style={{ ["--tile" as string]: identity.accent }}>
+      <div className="k-splash-body" style={{ ["--tile-accent" as string]: identity.accent }}>
         <span className={`k-splash-tile k-splash-tile-${identity.kind}`} aria-hidden>
           {identity.glyph}
         </span>
