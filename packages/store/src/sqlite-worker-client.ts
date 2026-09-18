@@ -41,12 +41,13 @@ export function workersAvailable(): boolean {
  * is worse than losing the fast path.
  */
 export function openWorkerSqlite(name: string, factory?: WorkerFactory): Promise<WorkerSqlite> {
-  // ONE worker per database, shared by everyone who asks for that name.
+  // ONE worker for everything, holding one pool and a database per name.
   //
-  // The SAH pool takes exclusive sync access handles over its directory, so a second worker on the
-  // same database does not merely duplicate work — it never finishes opening. Two callers do ask:
-  // an app opening its store, and the account node the launcher reads at boot. Both want
-  // `karta-jazz`, and before this they each spawned a worker and the second one hung.
+  // The SAH pool takes exclusive sync access handles over its directory, so a second worker over
+  // the same storage does not merely duplicate work — it never finishes opening. That is true both
+  // of two callers wanting the same database (an app's store and the account node the launcher
+  // reads both want `karta-jazz`) and of one pool per app, which is how a device with a handful of
+  // apps ran out of handles and simply stopped part-way through a save.
   const open = openings.get(name) ?? spawn(name, factory);
   openings.set(name, open);
   // A failed open must not be remembered, or one bad boot poisons every later attempt.
@@ -58,7 +59,13 @@ export function openWorkerSqlite(name: string, factory?: WorkerFactory): Promise
 
 const openings = new Map<string, Promise<WorkerSqlite>>();
 
-async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlite> {
+/** The one worker, and the calls waiting on it. Shared by every database. */
+let shared: { worker: ReturnType<WorkerFactory>; send: Sender } | null = null;
+
+type Sender = (message: Record<string, unknown>) => Promise<Record<string, unknown>[] | undefined>;
+
+function connect(factory?: WorkerFactory): { worker: ReturnType<WorkerFactory>; send: Sender } {
+  if (shared && !factory) return shared;
   const worker = factory
     ? factory()
     : (new Worker(new URL("./sqlite-worker.ts", import.meta.url), { type: "module" }) as unknown as ReturnType<WorkerFactory>);
@@ -85,7 +92,7 @@ async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlit
     };
   }
 
-  const send = (message: Record<string, unknown>): Promise<Record<string, unknown>[] | undefined> => {
+  const send: Sender = (message) => {
     const id = nextId++;
     return new Promise((resolve, reject) => {
       waiting.set(id, { resolve, reject });
@@ -93,9 +100,19 @@ async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlit
     });
   };
 
-  await send({ op: "open", name });
+  const connection = { worker, send };
+  if (!factory) shared = connection;
+  return connection;
+}
 
-  // One transaction at a time, across everyone using this database.
+async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlite> {
+  const { worker, send: post } = connect(factory);
+  const send: Sender = (message) => post({ ...message, db: name });
+
+  await send({ op: "open" });
+
+  // One transaction at a time, across everyone using this database. Per database, not per worker:
+  // two apps writing at once are two SQLite connections and have nothing to serialise between them.
   //
   // cojson serialises its own transactions (`SQLiteClientAsync.enqueueTx`), so a single node never
   // overlaps them — but TWO nodes share this worker: an app's store and the account node the
