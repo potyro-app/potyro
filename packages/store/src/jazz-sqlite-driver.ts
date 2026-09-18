@@ -49,11 +49,11 @@ export function createJazzSqliteDriver(db: SqliteDbHandle): SqliteDriverAsync {
     },
 
     async query<T>(sql: string, params: unknown[]): Promise<T[]> {
-      return db.selectObjects(sql, params) as T[];
+      return (await db.selectObjects(sql, params)) as T[];
     },
 
     async get<T>(sql: string, params: unknown[]): Promise<T | undefined> {
-      return db.selectObjects(sql, params)[0] as T | undefined;
+      return (await db.selectObjects(sql, params))[0] as T | undefined;
     },
 
     async transaction(callback) {

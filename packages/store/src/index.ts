@@ -7,6 +7,7 @@ export { LocalStore, QuotaError, type StorageLike } from "./local-store.js";
 export { publishAppToAccount, readAccountApps, removeAppFromAccount, type AccountApp } from "./account-apps.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
+export { openWorkerSqliteHandle, workersAvailable } from "./sqlite-worker-client.js";
 export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
 export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
