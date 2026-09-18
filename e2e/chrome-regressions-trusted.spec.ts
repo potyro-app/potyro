@@ -156,7 +156,11 @@ test("the AI button appears only when there is something to send", async ({ page
 test("detail actions are labelled, not keyed", async ({ page }) => {
   await open(page);
   await page.locator(".k-list-row .k-list-text").first().click();
-  const labels = await page.locator(".k-detail-actions button").allInnerTexts();
+  // Waited for, not read on the spot: the record's actions are rendered once it has loaded, and the
+  // store answers asynchronously now.
+  const buttons = page.locator(".k-detail-actions button");
+  await expect(buttons.first()).toBeVisible();
+  const labels = await buttons.allInnerTexts();
 
   expect(labels).toContain("Snap Photo");
   expect(labels).toContain("Pin Here");
