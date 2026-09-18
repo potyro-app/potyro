@@ -23,6 +23,11 @@ test("a place takes its position from the device's own location, and a real phot
   await page.goto("/?user=places");
   await expect(page.locator("h1").first()).toHaveText("Places", { timeout: 30_000 });
 
+  // Places lands on the Map, which adds inline by arming placement and tapping — so the shell drops
+  // the floating quick action there. This test is about the capability reaching the FIELD, and a
+  // form opened by tapping the map arrives with the point already filled, which would prove nothing.
+  // The list page still adds with a button, and opens the geo field empty.
+  await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
   await page.getByRole("button", { name: /New Place/i }).first().click();
   const form = page.getByRole("dialog", { name: "New Place" });
   await expect(form).toBeVisible({ timeout: 30_000 });

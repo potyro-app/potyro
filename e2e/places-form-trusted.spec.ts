@@ -59,11 +59,24 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+/**
+ * Open the blank create form the way a user reaches it now.
+ *
+ * The landing page is the Map, and a map page adds inline — you arm placement and tap, which is
+ * better than a floating button because the new record lands where you pointed. The shell therefore
+ * drops the "New place" quick action on that page. These tests are about what the FORM does, not
+ * about where the location came from, and a tapped-out form arrives with the geo field already
+ * filled — so they go to the Places list, where adding is still a button and the form opens empty.
+ */
+async function openBlankForm(page: import("@playwright/test").Page): Promise<void> {
+  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
+  await page.getByRole("tab", { name: "Places" }).or(page.getByRole("button", { name: "Places", exact: true })).first().click();
+  await page.getByRole("button", { name: /New place/ }).click();
+}
+
 test("a geo field is a map you tap, not two number boxes", async ({ page }) => {
   await page.goto("/?user=places-form");
-  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
-
-  await page.getByRole("button", { name: /New place/ }).click();
+  await openBlankForm(page);
   const form = page.locator(".k-modal");
   await expect(form).toBeVisible();
 
@@ -95,9 +108,7 @@ test("a geo field is a map you tap, not two number boxes", async ({ page }) => {
 
 test("a relation to an empty entity can create its first record inline", async ({ page }) => {
   await page.goto("/?user=places-form");
-  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
-
-  await page.getByRole("button", { name: /New place/ }).click();
+  await openBlankForm(page);
   const form = page.locator(".k-modal").first();
   await expect(form).toBeVisible();
   await form.getByLabel(/^Name/).first().fill("Parque Ibirapuera");
@@ -141,8 +152,7 @@ test("a blocked tile host degrades to a visible message, not an empty area", asy
   await page.route("**tile.openstreetmap.org/**", (r) => r.abort());
 
   await page.goto("/?user=places-form");
-  await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
-  await page.getByRole("button", { name: /New place/ }).click();
+  await openBlankForm(page);
   const form = page.locator(".k-modal");
   await expect(form).toBeVisible();
 
@@ -211,6 +221,11 @@ test("tapping an existing marker shows which place it is, not a new form", async
   // …and no create form opened.
   await expect(page.locator(".k-modal")).toHaveCount(0);
 
-  await popup.getByRole("button", { name: "Open" }).click();
-  await expect(page.getByRole("heading", { name: "Place", exact: true })).toBeVisible();
+  // "Details" rather than "Open": the record's own page now arrives as a sheet over the map, so the
+  // framing you navigated to survives reading one pin. The claim is unchanged — the popup is a way
+  // into THIS place — so the sheet has to be showing the record we just tapped.
+  await popup.getByRole("button", { name: "Details" }).click();
+  const sheet = page.getByRole("dialog", { name: "Place" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Bar do Zé" })).toBeVisible();
 });
