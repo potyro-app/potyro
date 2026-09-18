@@ -58,7 +58,9 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   const sheet = page.locator(".k-filter-sheet");
   await expect(sheet.getByText("In my pantry:")).toBeVisible();
   const chips = sheet.locator(".k-chip");
-  expect(await chips.count()).toBeGreaterThan(0);
+  // Waited for, not counted on the spot: the pantry chips are built from records, and a store that
+  // answers asynchronously (SQLite in a worker) has them a moment after the sheet is on screen.
+  await expect(chips.first()).toBeVisible();
   const ingredient = ((await chips.first().textContent()) ?? "").trim();
   await chips.first().click();
   await expect(sheet.locator(".k-chip[data-on='true']").first()).toBeVisible(); // filter state applied
