@@ -1,10 +1,15 @@
 // The page's summary figures, rendered above its view — alongside the filter chips, because they
 // answer the same question: "what am I looking at, and what does it add up to?"
 //
-// It runs the page query itself rather than receiving rows, which costs a second query per write at
-// personal scale. That is the price of the figures tracking the filter chips exactly: a total that
-// disagreed with the rows beneath it would read as a bug, and threading rows up from inside the view
-// would mean every view type had to cooperate.
+// It runs the page query itself rather than receiving rows, which costs a second query per write on
+// a page that HAS figures. That is the price of the figures tracking the filter chips exactly: a
+// total that disagreed with the rows beneath it would read as a bug, and threading rows up from
+// inside the view would mean every view type had to cooperate.
+//
+// A page with no `summary` pays none of it. The query used to run there too — every record read a
+// second time, on every change, to render nothing — which is why the strip is split in two: the
+// component that decides calls no hooks, so the one that queries only exists when there is a figure
+// to compute.
 
 import { useEffect, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
@@ -20,7 +25,13 @@ interface SummaryStripProps {
 export function SummaryStrip({ runtime, pageId, params }: SummaryStripProps) {
   const page = runtime.definition.pages.find((p) => p.id === pageId);
   const specs = page?.summary as SummaryValue[] | undefined;
-  const { rows, loading } = runtime.usePageQuery(pageId, specs?.length ? params : undefined);
+  if (!specs?.length) return null;
+  return <Figures runtime={runtime} pageId={pageId} params={params} specs={specs} />;
+}
+
+function Figures({ runtime, pageId, params, specs }: SummaryStripProps & { specs: SummaryValue[] }) {
+  const page = runtime.definition.pages.find((p) => p.id === pageId);
+  const { rows, loading } = runtime.usePageQuery(pageId, params);
   // Figures became async when the `value` form started going through the host (so it works for
   // untrusted apps too — the function lives in the isolate). Hooks stay above every early return.
   const [figures, setFigures] = useState<SummaryFigure[]>([]);
@@ -28,7 +39,6 @@ export function SummaryStrip({ runtime, pageId, params }: SummaryStripProps) {
   const entity = (page?.view as { entity?: string } | undefined)?.entity;
 
   useEffect(() => {
-    if (!specs?.length) return;
     let alive = true;
     const unitFor = (field: string): string | undefined => {
       const def = entity ? runtime.definition.entities[entity] : undefined;
@@ -45,8 +55,6 @@ export function SummaryStrip({ runtime, pageId, params }: SummaryStripProps) {
       alive = false;
     };
   }, [specs, rows, entity, pageId, runtime]);
-
-  if (!specs?.length) return null;
 
   return (
     <section className="k-summary" aria-label="Summary">
