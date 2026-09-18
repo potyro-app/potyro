@@ -9,7 +9,7 @@
 // leave stay on the list to pull later rather than disappearing.
 
 import { useState } from "react";
-import type { AccountApp } from "@karta/store";
+import { rememberAppSpace, type AccountApp } from "@karta/store";
 import { saveUserApp, getUserApp } from "./user-apps.js";
 
 export interface RestoreAppsProps {
@@ -96,11 +96,10 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
  */
 export async function installFromAccount(app: AccountApp, now: string): Promise<void> {
   if (getUserApp(app.id)) return;
-  // The store finds an app's space through these two keys; without them it would create a second,
-  // empty space and the data on the relay would be stranded (exactly what a share link avoids by
-  // carrying the ids).
-  globalThis.localStorage?.setItem(`karta:jazz:group:user:${app.id}`, app.group);
-  globalThis.localStorage?.setItem(`karta:jazz:root:user:${app.id}`, app.root);
+  // Where its space is, in the form the store looks for. Without this the app would open a second,
+  // empty space and the data on the relay would be stranded — exactly what a share link avoids by
+  // carrying the ids.
+  rememberAppSpace(`user:${app.id}`, { group: app.group, root: app.root });
   await saveUserApp(
     { id: app.id, name: app.name, source: app.source, trusted: true, origin: "created", note: "from your account" },
     now,

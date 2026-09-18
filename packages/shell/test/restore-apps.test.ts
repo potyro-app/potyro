@@ -41,6 +41,10 @@ describe("loading an app from your account", () => {
     // records on the relay become unreachable — the app would look like it had lost everything.
     expect(localStorage.getItem("karta:jazz:group:user:split")).toBe("co_zGROUP");
     expect(localStorage.getItem("karta:jazz:root:user:split")).toBe("co_zROOT");
+    // And WHICH database that space is in. Without this marker the store reads "a group id and no
+    // marker" as an app older than the device database, opens a per-app file that never existed,
+    // and the app arrives empty beside its own data — which is how it failed in two real browsers.
+    expect(localStorage.getItem("karta:jazz:db:user:split")).toBe("karta-jazz");
   });
 
   it("leaves an app this device already has alone", async () => {

@@ -67,9 +67,11 @@ test("a device signed in with the words is offered the apps on the account, with
   await a.goto("/");
   await expect(a.locator(".k-launcher-home")).toBeVisible({ timeout: 30_000 });
 
-  // Its words.
-  await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
-  await a.getByRole("button", { name: "You and your devices" }).click();
+  // Its words. The launcher is where they live, and on the home screen it may be showing already —
+  // opening it again would be a click with nothing to click.
+  const devices = a.getByRole("button", { name: "You and your devices" });
+  if (!(await devices.isVisible())) await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+  await devices.click();
   await a.getByRole("button", { name: /Add a device/ }).click();
   const words = (await a.locator(".k-passphrase").innerText({ timeout: 30_000 })).trim();
   expect(words.split(/\s+/)).toHaveLength(24);
