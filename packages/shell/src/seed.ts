@@ -4,31 +4,81 @@ import type { Store } from "@karta/store";
 
 const DAY = 86_400_000;
 
-export async function seedIfEmpty(store: Store, appId = "recipes"): Promise<void> {
+export async function seedIfEmpty(store: Store, appId = "recipes", me?: string): Promise<void> {
   const seeder = SEEDERS[appId];
-  if (seeder) await seeder(store);
+  if (seeder) await seeder(store, me);
 }
 
-const SEEDERS: Record<string, (store: Store) => Promise<void>> = {
+/** `me` is this device's account id — what a seeded row can say about who paid, or did, something. */
+const SEEDERS: Record<string, (store: Store, me?: string) => Promise<void>> = {
   recipes: seedRecipes,
   plants: seedPlants,
   places: seedPlaces,
   workout: seedWorkout,
   groceries: seedGroceries,
+  split: seedSplit,
 };
+
+async function seedSplit(store: Store, me?: string): Promise<void> {
+  const existing = await store.all("group");
+  if (existing.length > 0) return;
+  // One group, because the app asks for a selection before it shows anything and an app that opens
+  // on "choose a group" with no group to choose is a dead end.
+  const group = String((await store.insert("group", { name: "Flat", note: "Shared costs at home" })).id);
+  if (!me) return;
+  // Two expenses so the balances have something to say on the first run. Both are yours, split
+  // between you alone until someone else is in the app — which is the honest picture: this app is
+  // about the people you share it with, and until you do, everything is simply yours.
+  const day = (back: number): Date => new Date(Date.now() - back * 86_400_000);
+  await store.insert("expense", {
+    description: "Groceries",
+    amount: 4285,
+    paidBy: me,
+    when: day(2),
+    split: "equally",
+    between: [me],
+    shares: [],
+    note: "",
+    group,
+  });
+  await store.insert("expense", {
+    description: "Internet",
+    amount: 3900,
+    paidBy: me,
+    when: day(9),
+    split: "equally",
+    between: [me],
+    shares: [],
+    note: "",
+    group,
+  });
+}
 
 async function seedGroceries(store: Store): Promise<void> {
   const existing = await store.all("item");
   if (existing.length > 0) return;
-  const item = (name: string, aisle: string, over: Record<string, unknown> = {}) =>
-    store.insert("item", { name, aisle, bought: false, quantity: "", note: "", ...over });
-  await item("Milk", "dairy", { quantity: "2 × 1 l" });
-  await item("Yoghurt", "dairy");
-  await item("Apples", "produce", { quantity: "1 kg" });
-  await item("Spinach", "produce", { bought: true });
-  await item("Sourdough", "bakery");
-  await item("Rice", "pantry", { quantity: "1 kg", bought: true });
-  await item("Dish soap", "household");
+  // Aisles are records now, in the order you walk the shop — renamed, reordered and deleted from
+  // the list itself. These five are a place to start, not the app's opinion of a supermarket.
+  const aisle = async (name: string, order: number): Promise<string> => String((await store.insert("aisle", { name, order })).id);
+  const produce = await aisle("Produce", 0);
+  const bakery = await aisle("Bakery", 1);
+  const dairy = await aisle("Dairy", 2);
+  const pantry = await aisle("Pantry", 3);
+  const household = await aisle("Household", 4);
+
+  const seen = new Map<string, number>();
+  const item = (name: string, at: string, over: Record<string, unknown> = {}) => {
+    const position = seen.get(at) ?? 0;
+    seen.set(at, position + 1);
+    return store.insert("item", { name, aisle: at, position, bought: false, quantity: "", note: "", ...over });
+  };
+  await item("Apples", produce, { quantity: "1 kg" });
+  await item("Spinach", produce, { bought: true });
+  await item("Sourdough", bakery);
+  await item("Milk", dairy, { quantity: "2 × 1 l" });
+  await item("Yoghurt", dairy);
+  await item("Rice", pantry, { quantity: "1 kg", bought: true });
+  await item("Dish soap", household);
 }
 
 async function seedPlaces(store: Store): Promise<void> {
@@ -125,14 +175,16 @@ async function seedWorkout(store: Store): Promise<void> {
   const existing = await store.all("exercise");
   if (existing.length > 0) return;
 
+  // `restSec` per exercise: the tracker counts it down after each set, and a heavy compound asks
+  // for longer than an accessory.
   const ex = (name: string, day: string, order: number, extra: Record<string, unknown> = {}) =>
-    store.insert("exercise", { name, day, order, targetSets: 3, repRange: "8–12", bodyweight: false, ...extra });
+    store.insert("exercise", { name, day, order, targetSets: 3, repRange: "8–12", bodyweight: false, restSec: 90, ...extra });
 
-  const bench = await ex("Bench Press", "push", 0, { repRange: "6–10" });
-  const ohp = await ex("Overhead Press", "push", 1);
-  const row = await ex("Barbell Row", "pull", 0, { repRange: "6–10" });
-  const pullup = await ex("Pull-up", "pull", 1, { bodyweight: true, repRange: "AMRAP" });
-  const squat = await ex("Squat", "legs", 0, { targetSets: 4, repRange: "5–8" });
+  const bench = await ex("Bench Press", "push", 0, { repRange: "6–10", restSec: 150 });
+  const ohp = await ex("Overhead Press", "push", 1, { restSec: 120 });
+  const row = await ex("Barbell Row", "pull", 0, { repRange: "6–10", restSec: 120 });
+  const pullup = await ex("Pull-up", "pull", 1, { bodyweight: true, repRange: "AMRAP", restSec: 120 });
+  const squat = await ex("Squat", "legs", 0, { targetSets: 4, repRange: "5–8", restSec: 180 });
   void pullup;
 
   // A little history so `history`, `totalVolume`, and the async `lastBest` have data.

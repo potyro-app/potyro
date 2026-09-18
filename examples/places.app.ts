@@ -25,7 +25,7 @@ export default defineApp({
   id: "places",
   name: "Places",
   icon: "📍",
-  version: "1.0.0",
+  version: "1.1.0",
   schemaVersion: 1,
   theme: { accent: "#5FB0E4" },
   permissions: { camera: true, geo: true },
@@ -71,6 +71,15 @@ export default defineApp({
         geo: "location",
         title: (p) => p.name,
         color: (p) => (p.kind === "bar" ? "#E4A93C" : p.kind === "pizza" ? "#C0574D" : "#5FB0E4"),
+        // What a pin says when you tap it. The photo comes first: it, not the name, is what tells
+        // you whether this is the place you meant. "Details" opens the record's own page over the
+        // map, so reading one never costs you the view you navigated to.
+        display: {
+          primary: "name",
+          secondary: (p) => `${p.kind} · ${p.openNow ? "open now" : "closed"}`,
+          media: "photo",
+          badges: ["vibes"],
+        },
         // filter chips in the view chrome write into ctx.params
         filters: [
           { label: "Category", param: "kind", from: "kind" },

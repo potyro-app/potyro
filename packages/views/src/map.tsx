@@ -7,8 +7,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { MapCamera, Resolved } from "karta";
-import type { BuiltinViewProps } from "./types.js";
+import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
+import { useDisplayCells } from "./cells.js";
+import { DetailView } from "./builtins.js";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -108,25 +110,68 @@ export function useMapMarkers(runtime: KartaRuntime, pageId: string, rows: Resol
 }
 
 /**
- * A pin's popup: what this place is, and a way to open it.
+ * A pin's popup: what this place is, and what you can do about it.
+ *
+ * A name alone is rarely the answer to "is this the one I meant?" — the photo is. So the popup
+ * carries the view's `display`: the photo, a second line, its tags, then the actions.
  *
  * Plain DOM because MapLibre owns the node — rendering a React tree into a popup it can destroy at
- * any time is a lifetime problem for no gain, and the content here is a heading and a button.
+ * any time is a lifetime problem for no gain.
  */
-function popupContent(title: string, onOpen: (() => void) | null): HTMLElement {
+function popupContent(
+  title: string,
+  cell: DisplayCell | undefined,
+  actions: { label: string; primary?: boolean; run: () => void }[],
+): HTMLElement {
   const el = document.createElement("div");
   el.className = "k-map-popup";
+
+  if (cell?.mediaUrl) {
+    const img = document.createElement("img");
+    img.className = "k-map-popup-media";
+    img.src = cell.mediaUrl;
+    img.alt = "";
+    el.append(img);
+  }
+
   const name = document.createElement("p");
   name.className = "k-map-popup-title";
-  name.textContent = title || "Untitled";
+  name.textContent = cell?.primary || title || "Untitled";
   el.append(name);
-  if (onOpen) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "k-add k-map-popup-open";
-    button.textContent = "Open";
-    button.addEventListener("click", onOpen);
-    el.append(button);
+
+  if (cell?.secondary) {
+    const line = document.createElement("p");
+    line.className = "k-map-popup-detail";
+    line.textContent = cell.secondary;
+    el.append(line);
+  }
+
+  if (cell?.badges?.length) {
+    const tags = document.createElement("p");
+    tags.className = "k-map-popup-tags";
+    for (const badge of cell.badges) {
+      const tag = document.createElement("span");
+      tag.className = "k-badge";
+      const colour = badge.field?.colors?.[badge.text];
+      if (colour) tag.style.setProperty("--badge", colour);
+      tag.textContent = badge.text;
+      tags.append(tag);
+    }
+    el.append(tags);
+  }
+
+  if (actions.length) {
+    const bar = document.createElement("p");
+    bar.className = "k-map-popup-actions";
+    for (const action of actions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `k-add k-map-popup-open${action.primary ? " k-primary-action" : ""}`;
+      button.textContent = action.label;
+      button.addEventListener("click", action.run);
+      bar.append(button);
+    }
+    el.append(bar);
   }
   return el;
 }
@@ -148,9 +193,16 @@ async function resolveCamera(runtime: BuiltinViewProps["runtime"], pageId: strin
 }
 
 export function MapView(props: BuiltinViewProps) {
-  const { runtime, pageId, params, onCreate } = props;
+  const { runtime, pageId, params, onCreate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const markers = useMapMarkers(runtime, pageId, rows);
+  // The view's `display`, resolved the same way a list resolves its rows — so a popup can show the
+  // photo and the tags without the map growing bindings of its own.
+  const cells = useDisplayCells(runtime, pageId, rows);
+  const cellsRef = useRef(cells);
+  cellsRef.current = cells;
+  /** The record whose full page is open over the map. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
   // Bumped once the map object exists. The marker sync bails when there is no map yet, and marker
   // resolution routinely wins the race against the lazy MapLibre import — so without a dependency
@@ -164,7 +216,7 @@ export function MapView(props: BuiltinViewProps) {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   // MapLibre types are only available after the lazy import, so these refs are intentionally loose.
-  const mapRef = useRef<{ remove?: () => void; fitBounds?: (...a: unknown[]) => void } | null>(null);
+  const mapRef = useRef<{ remove?: () => void; fitBounds?: (...a: unknown[]) => void; resize?: () => void } | null>(null);
   const markerObjs = useRef<{ remove: () => void }[]>([]);
   // A remembered camera was applied, so auto-fitting to the markers would undo the user's framing.
   const restoredRef = useRef(false);
@@ -178,6 +230,8 @@ export function MapView(props: BuiltinViewProps) {
   // The map is created once; these keep its click handler current without re-creating it.
   const onCreateRef = useRef(onCreate);
   onCreateRef.current = onCreate;
+  const onEditRef = useRef(onEdit);
+  onEditRef.current = onEdit;
   const view = getView(runtime, pageId) as unknown as { entity?: string; geo?: string; camera?: unknown } | undefined;
   // What the app declared (a mode, a position, or a function of ctx — or, for an untrusted app, the
   // sentinel where the function was), and what it resolved to once the map was created.
@@ -192,6 +246,14 @@ export function MapView(props: BuiltinViewProps) {
   onOpenRef.current = (view as { onOpen?: { page: string; param?: Record<string, string> } } | undefined)?.onOpen;
   const navigateRef = useRef(props.navigate);
   navigateRef.current = props.navigate;
+  // The record's own page, if the app has one for this entity — rendered OVER the map rather than
+  // navigated to, so tapping a pin never costs you the position you spent a minute finding.
+  const detailPage = runtime.definition.pages.find((p) => {
+    const v = p.view as { type?: string; entity?: string } | undefined;
+    return v?.type === "detail" && v.entity === (view?.entity ?? "");
+  });
+  const detailPageRef = useRef(detailPage);
+  detailPageRef.current = detailPage;
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -264,6 +326,15 @@ export function MapView(props: BuiltinViewProps) {
         onCreateRef.current(entityRef.current, { [geoKey]: { lat: e.lngLat.lat, lng: e.lngLat.lng } });
       });
 
+      // Measure again now that the map exists. MapLibre takes the container's size once, at
+      // construction, and a container that fills its page is laid out by what surrounds it — so the
+      // size it read can already be stale by the time the first frame is drawn, and the map is then
+      // painted into part of its canvas with paper in the rest.
+      created.resize();
+      requestAnimationFrame(() => {
+        if (!disposed) created.resize();
+      });
+
       // There is a map now — re-run the marker sync, which bailed if it got here first.
       setMapReady((n) => n + 1);
     })();
@@ -290,16 +361,29 @@ export function MapView(props: BuiltinViewProps) {
         // Tapping a pin shows WHICH place it is, and offers a way in. Navigating straight off the
         // tap gave no way to just look at the map: every touch left the page.
         const onOpen = onOpenRef.current;
+        const index = rowsRef.current.findIndex((r) => String(r.id) === mk.id);
+        const actions: { label: string; primary?: boolean; run: () => void }[] = [];
+        // The whole record, over the map. Leaving the page to read a record's own page means losing
+        // the framing you navigated to — and on a map that framing is half of what you were doing.
+        if (detailPageRef.current) actions.push({ label: "Details", primary: true, run: () => setOpenId(mk.id) });
+        else if (onOpen) {
+          actions.push({
+            label: "Open",
+            primary: true,
+            run: () => {
+              const row = rowsRef.current.find((r) => String(r.id) === mk.id);
+              const param: Record<string, string> = {};
+              for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) {
+                param[target] = String((row?.[sourceKey] as unknown) ?? "");
+              }
+              navigateRef.current(onOpen.page, param);
+            },
+          });
+        }
+        if (onEditRef.current) actions.push({ label: "Edit", run: () => onEditRef.current?.(entityRef.current, mk.id) });
         marker.getElement().style.cursor = "pointer";
         marker.setPopup(new maplibre.Popup({ offset: 24, closeButton: false }).setDOMContent(
-          popupContent(mk.title, onOpen ? () => {
-            const row = rowsRef.current.find((r) => String(r.id) === mk.id);
-            const param: Record<string, string> = {};
-            for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) {
-              param[target] = String((row?.[sourceKey] as unknown) ?? "");
-            }
-            navigateRef.current(onOpen.page, param);
-          } : null),
+          popupContent(mk.title, cellsRef.current[index], actions),
         ) as never);
         marker.addTo(map as never);
         markerObjs.current.push(marker);
@@ -322,31 +406,61 @@ export function MapView(props: BuiltinViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [markers, mapReady]);
+  }, [markers, mapReady, cells]);
+
+  // MapLibre sizes its canvas in pixels when it is created and only watches the WINDOW after that.
+  // A map that fills its page is sized by everything around it — the chrome above, the bar below,
+  // a sidebar appearing — and every one of those leaves the canvas at its old size, drawing the map
+  // into part of the box and paper into the rest.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver !== "function") return;
+    const ro = new ResizeObserver(() => mapRef.current?.resize?.());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady]);
 
   const entityLabel = runtime.definition.entities[view?.entity ?? ""]?.label ?? view?.entity ?? "record";
   const canPlace = Boolean(onCreate && geoFieldKey.current);
+  const detailParam = (detailPage?.view as { param?: string } | undefined)?.param ?? "id";
 
   return (
+    // The map comes first and its chrome sits ON it. A map is the page — the way it is in every map
+    // app on a phone — and a bar above it is a bar taking a bite out of the thing you came to see.
     <div className="k-map" data-placing={placing || undefined}>
-      {canPlace ? (
-        <div className="k-map-bar">
-          {placing ? (
-            <>
-              <span className="k-map-hint" role="status">Tap the map to place the {entityLabel.toLowerCase()}.</span>
-              <button type="button" className="k-add" onClick={() => setPlacing(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button type="button" className="k-add k-primary-action" onClick={() => setPlacing(true)}>
-              ＋ Add {entityLabel.toLowerCase()} here
-            </button>
-          )}
-        </div>
-      ) : null}
       <div ref={containerRef} className="k-map-canvas" role="application" aria-label="Map" />
       {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">No places to show.</p> : null}
+      {canPlace ? (
+        placing ? (
+          <div className="k-map-bar">
+            <span className="k-map-hint" role="status">
+              Tap the map to place the {entityLabel.toLowerCase()}.
+            </span>
+            <button type="button" className="k-add" onClick={() => setPlacing(false)}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="k-map-add" onClick={() => setPlacing(true)}>
+            <span className="k-fab-plus" aria-hidden>
+              ＋
+            </span>
+            Add {entityLabel.toLowerCase()} here
+          </button>
+        )
+      ) : null}
+      {openId && detailPage ? (
+        <div className="k-map-sheet-scrim" onClick={() => setOpenId(null)}>
+          <section className="k-map-sheet" role="dialog" aria-label={entityLabel} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="k-map-sheet-close" aria-label="Close" onClick={() => setOpenId(null)}>
+              ✕
+            </button>
+            {/* The app's OWN record page, with whatever it declares on it — sections, photos,
+                actions — rather than a second rendering of a record that would drift from it. */}
+            <DetailView {...props} pageId={detailPage.id} params={{ ...params, [detailParam]: openId }} />
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

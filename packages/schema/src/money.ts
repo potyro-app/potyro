@@ -54,6 +54,39 @@ export function splitEvenly(total: number, people: number): number[] {
   return Array.from({ length: people }, (_, i) => sign * (each + (i < remainder ? 1 : 0)));
 }
 
+/**
+ * Split `total` by `weights` — two shares for the couple sharing a room, one each for the rest.
+ *
+ * Largest remainder, ties broken by order, for the same reason {@link splitEvenly} hands its
+ * remainder out in the caller's: every copy of a shared ledger must land on the same cents. Compute
+ * each share independently and three devices can disagree about a bill by a cent each, permanently.
+ *
+ * A weight that is not a positive number counts as zero, and all-zero weights split nothing — a
+ * split nobody is in is not an error, it is an expense still being filled in.
+ */
+export function splitByShares(total: number, weights: readonly number[]): number[] {
+  if (!Number.isInteger(total)) return [];
+  const w = weights.map((x) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0));
+  const sum = w.reduce((s, x) => s + x, 0);
+  if (sum <= 0) return w.map(() => 0);
+
+  const sign = total < 0 ? -1 : 1;
+  const amount = Math.abs(total);
+  const exact = w.map((x) => (amount * x) / sum);
+  const out = exact.map(Math.floor);
+  let left = amount - out.reduce((s, x) => s + x, 0);
+  // Whoever is furthest short of their exact share takes the next unit; ties go to the earlier one.
+  const order = exact
+    .map((e, i) => ({ i, under: e - out[i]! }))
+    .sort((a, b) => b.under - a.under || a.i - b.i);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    out[i]! += 1;
+    left -= 1;
+  }
+  return out.map((x) => sign * x);
+}
+
 /** One person's share of `total` — the same arithmetic as {@link splitEvenly}, for one index. */
 export function shareOf(total: number, people: number, index: number): number {
   return splitEvenly(total, people)[index] ?? 0;

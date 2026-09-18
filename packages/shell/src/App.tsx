@@ -22,7 +22,7 @@ import { AppChrome, type ChromePage, type ChromeQuick, type ChromeTool } from ".
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
-import { ChatPanel, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
+import { ChatPanel, ChatPeek, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
 import { ROOM_THREAD } from "@karta/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import {
@@ -622,6 +622,18 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const [chatOpen, setChatOpen] = useState(false);
   const room = useThread(runtime, canChat ? ROOM_THREAD : null);
   const roomUnread = appId ? unreadCount(room.messages, appId, ROOM_THREAD, runtime.ctx.me?.id) : 0;
+  // What the balloon says, and when it stops saying it.
+  //
+  // A count says there is something to read and nothing about whether it can wait. Most messages in
+  // a shared app are one line — "got the milk", "running late" — so the line IS the notification,
+  // and the chat only has to be opened when there is something to say back.
+  //
+  // Dismissal is remembered by MESSAGE id, not as a flag: closing this one must not silence the
+  // next one, which is a different thing someone said.
+  const [peeked, setPeeked] = useState<string | null>(null);
+  const chatBtnRef = useRef<HTMLButtonElement>(null);
+  const lastFromOther = roomUnread > 0 ? [...room.messages].reverse().find((m) => m.by !== runtime.ctx.me?.id) : undefined;
+  const peekMessage = !chatOpen && lastFromOther && lastFromOther.id !== peeked ? lastFromOther : undefined;
   // The launcher badge (#86): the counts this app already shows, kept on its launcher entry as they
   // change, so the home screen can show them without running the app. Opening the chat or the
   // changes panel moves the watermarks, which brings these to zero and clears the badge.
@@ -922,15 +934,26 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
     ...(navMode === "grid" ? [{ id: HOME, title: "Home", icon: "⊞", active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
     ...visiblePages.map((p) => ({ id: p.id, title: titles[p.id] ?? p.id, icon: pageIcon(p), active: p.id === pageId, onOpen: () => navigate(p.id) })),
   ];
-  const chromeQuick: ChromeQuick[] = quickActions.map((qa) => ({
-    id: qa.id,
-    label: qa.label,
-    icon: qa.icon ?? def.entities[qa.entity]?.icon ?? "＋",
-    entity: qa.entity,
-    onRun: () => triggerQuick(qa),
-  }));
   const currentPage = def.pages.find((p) => p.id === pageId);
   const currentEntity = (currentPage?.view as { entity?: string } | undefined)?.entity;
+  // A view with its own way to add (the checklist's "Add an item…", the map's "Add place here")
+  // already does the one thing the floating button would, and better — the map's puts the new record
+  // where you tapped. Two buttons for one act is one too many, so the page's own wins and the
+  // floating one drops. Other entities' actions stay; only the one this page adds inline goes.
+  const pageView = currentPage?.view as { type?: string; quickAdd?: boolean; geo?: unknown } | undefined;
+  const addsInline = pageView?.quickAdd === true || (pageView?.type === "map" && typeof pageView.geo === "string") ? currentEntity : undefined;
+  // A custom view is a screen the app drew itself, with its own controls and often its own bottom
+  // bar: a floating button of ours lands on top of them. The app can put its own there.
+  const ownsScreen = pageView?.type === "custom";
+  const chromeQuick: ChromeQuick[] = quickActions
+    .filter((qa) => qa.entity !== addsInline)
+    .map((qa) => ({
+      id: qa.id,
+      label: qa.label,
+      icon: qa.icon ?? def.entities[qa.entity]?.icon ?? "＋",
+      entity: qa.entity,
+      onRun: () => triggerQuick(qa),
+    }));
   // A hidden page (a record's detail, a custom walk-through) is a sub-page: the top bar gets a back
   // control to the entity's list, and the floating quick action stays out of the page's own actions.
   const isSubPage = Boolean(currentPage?.hidden);
@@ -948,6 +971,12 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
           } }] : []),
     ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => setEditMode((v) => !v) }] : []),
     ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
+    // What other people changed. In the menu with the rest of the shell's own tools rather than a
+    // button in the top bar: it is read occasionally, the chat is read constantly, and on a phone
+    // the two of them together left no room for the app's own name.
+    ...(activity
+      ? [{ key: "changes", label: "Changes", icon: "✻", hint: activity.length ? `${activity.length} new` : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
+      : []),
     // Who is in a shared app, and inviting and removing them (#58).
     ...(sync && appId ? [{ key: "people", label: "People", icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
@@ -1030,24 +1059,12 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
         trust={chromeTrust}
         onApps={generator ? () => setLauncherOpen(true) : undefined}
         extras={
-          <>
-            {activity ? (
+          canChat ? (
+            // The balloon hangs off the button it is about, so it needs the button's box to hang from.
+            <span className="k-chat-host">
               <button
+                ref={chatBtnRef}
                 type="button"
-                className="k-add k-activity-btn"
-                aria-label={activity.length ? `What changed — ${activity.length} since you last looked` : "What changed"}
-                data-unread={activity.length || undefined}
-                onClick={() => setActivityOpen(true)}
-              >
-                ✻ Changes
-                {activity.length ? <span className="k-activity-count">{activity.length}</span> : null}
-              </button>
-            ) : null}
-            {canChat ? (
-              <button
-                type="button"
-                // Its own class, not `k-activity-btn`: that one is how the activity spec finds the
-                // Changes button, and sharing it made the selector ambiguous.
                 className="k-add k-chat-btn"
                 aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
                 data-unread={roomUnread || undefined}
@@ -1056,14 +1073,29 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
                 💬 Chat
                 {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
               </button>
-            ) : null}
-          </>
+              {peekMessage ? (
+                <ChatPeek
+                  runtime={runtime}
+                  message={peekMessage}
+                  anchor={chatBtnRef}
+                  onOpen={() => {
+                    setPeeked(peekMessage.id);
+                    setChatOpen(true);
+                  }}
+                  onDismiss={() => setPeeked(peekMessage.id)}
+                />
+              ) : null}
+            </span>
+          ) : null
         }
         navMark={editMark("the navigation / tabs", "nav")}
         quickMark={editMark("the quick action buttons", "quickActions")}
         onBack={isSubPage ? backTo : undefined}
         pageTitle={pageId === HOME ? undefined : titles[pageId] ?? pageId}
-        showQuick={!isSubPage}
+        showQuick={!isSubPage && !ownsScreen}
+        // A map fills the page: it is the thing you came to look at, and every phone map app shows
+        // it edge to edge with the controls on top.
+        fullBleed={pageView?.type === "map" && !currentPage?.layout}
         locked={Boolean(locked)}
       >
       {locked ? <LockBanner state={locked} /> : null}

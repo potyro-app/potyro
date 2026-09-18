@@ -62,6 +62,9 @@ export interface ChromeTool {
   onSelect: () => void;
   /** A tool that is on or off (Edit mode). */
   active?: boolean;
+  /** Something inside is waiting to be read. On a phone the `⋯` that hides it wears a dot, or a
+   *  tool moved into the menu would be a tool nobody learns has news. */
+  news?: boolean;
   className?: string;
   danger?: boolean;
 }
@@ -95,6 +98,9 @@ export interface AppChromeProps {
   pageTitle?: string;
   /** False on a page that has its own actions (a detail): no floating button over them. */
   showQuick?: boolean;
+  /** This page's view IS the page (a map): it fills the area between the bars, edge to edge, and
+   *  the chrome — filters, the view's own add button — floats on top of it rather than above it. */
+  fullBleed?: boolean;
   /** This copy may not write (KA-22): quick actions are announced as unavailable. */
   locked?: boolean;
   children: ReactNode;
@@ -122,7 +128,7 @@ function toolEntry(t: ChromeTool): MenuEntry {
   return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger };
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, showQuick = true, locked, children }: AppChromeProps) {
+function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const [dial, setDial] = useState(false);
@@ -167,9 +173,20 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
 
   const shown = pages.slice(0, pages.length > TAB_SLOTS + 1 ? TAB_SLOTS : TAB_SLOTS + 1);
   const more = pages.slice(shown.length);
+  // A menu that hides something new says so on the outside.
+  const news = [...tools, ...report].some((t) => t.news);
 
+  // How much room the chrome takes at the bottom of the screen, as a custom property the PAGE can
+  // read. A view that draws its own bottom bar — the workout tracker's rest timer — otherwise has
+  // to guess the tab bar's height, and a wrong guess puts its bar underneath it, where the workout's
+  // rest countdown sat unseen.
+  const tabs = pages.length > 1 || navMark;
   return (
-    <div className="k-app-phone" data-recording={recording || undefined}>
+    <div
+      className="k-app-phone"
+      data-recording={recording || undefined}
+      style={{ ["--k-chrome-bottom" as string]: tabs ? "calc(4.75rem + env(safe-area-inset-bottom))" : "env(safe-area-inset-bottom)" }}
+    >
       <header className="k-topbar">
         {onBack ? (
           <button type="button" className="k-topbar-btn k-topbar-back" aria-label="Back" onClick={onBack}>
@@ -187,7 +204,9 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
         {scope}
         {status}
         {extras}
-        {menu.length ? <ActionMenu label="More" title={name} entries={menu} buttonClassName="k-topbar-btn" /> : null}
+        {menu.length ? (
+          <ActionMenu label={news ? "More — something new" : "More"} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
+        ) : null}
       </header>
       {recording ? (
         <div className="k-recbar" role="status">
@@ -200,7 +219,9 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
           ))}
         </div>
       ) : null}
-      <div className="k-page">{children}</div>
+      <div className="k-page" data-full={fullBleed || undefined}>
+        {children}
+      </div>
 
       {primary && showQuick ? (
         <>
@@ -235,44 +256,48 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
         </>
       ) : null}
 
-      <nav className="k-nav k-tabbar" aria-label="Pages">
-        {navMark}
-        {shown.map((p) => (
-          <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
-            <span className="k-tab-icon" aria-hidden>
-              {p.icon}
-            </span>
-            <span className="k-tab-label">{p.title}</span>
-          </button>
-        ))}
-        {more.length ? (
-          <ActionMenu
-            label="More pages"
-            trigger={
-              <>
-                <span className="k-tab-icon" aria-hidden>
-                  ⋯
-                </span>
-                <span className="k-tab-label">More</span>
-              </>
-            }
-            buttonClassName={`k-tab${more.some((p) => p.active) ? " k-tab-more-active" : ""}`}
-            entries={more.map((p): MenuEntry => ({ key: p.id, label: p.title, icon: p.icon, hint: p.active ? "here" : undefined, onSelect: p.onOpen, className: "k-tab k-tab-in-menu" }))}
-          />
-        ) : null}
-      </nav>
+      {/* A tab bar with one tab is a label for where you already are, and it takes a phone-sized
+          bite out of the list above it. One page, no bar: the top bar already carries the name. */}
+      {tabs ? (
+        <nav className="k-nav k-tabbar" aria-label="Pages">
+          {navMark}
+          {shown.map((p) => (
+            <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
+              <span className="k-tab-icon" aria-hidden>
+                {p.icon}
+              </span>
+              <span className="k-tab-label">{p.title}</span>
+            </button>
+          ))}
+          {more.length ? (
+            <ActionMenu
+              label="More pages"
+              trigger={
+                <>
+                  <span className="k-tab-icon" aria-hidden>
+                    ⋯
+                  </span>
+                  <span className="k-tab-label">More</span>
+                </>
+              }
+              buttonClassName={`k-tab${more.some((p) => p.active) ? " k-tab-more-active" : ""}`}
+              entries={more.map((p): MenuEntry => ({ key: p.id, label: p.title, icon: p.icon, hint: p.active ? "here" : undefined, onSelect: p.onOpen, className: "k-tab k-tab-in-menu" }))}
+            />
+          ) : null}
+        </nav>
+      ) : null}
     </div>
   );
 }
 
-function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, pageTitle, locked, children }: AppChromeProps) {
+function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, pageTitle, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
   const toolButton = (t: ChromeTool) => (
     <button
       key={t.key}
       type="button"
-      className={`k-tool${t.className ? ` ${t.className}` : ""}${t.danger ? " k-danger" : ""}`}
+      className={`k-tool${t.className ? ` ${t.className}` : ""}${t.danger ? " k-danger" : ""}${t.news ? " k-has-news" : ""}`}
       data-active={t.active}
       // The same accessible names as the phone's controls, whatever the visible word.
       aria-label={t.key === "edit-mode" ? "Edit mode" : t.key === "apps" ? "Switch app" : t.hint ? t.label : undefined}
@@ -344,7 +369,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
           </div>
         ) : null}
       </aside>
-      <div className="k-content">
+      <div className="k-content" data-full={fullBleed || undefined}>
         {pageTitle ? (
           <div className="k-page-head">
             {onBack ? (

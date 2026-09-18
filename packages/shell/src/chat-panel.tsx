@@ -35,7 +35,8 @@
 // empty CoMap and add a switch whose "off" position means "the people you share with cannot reach
 // you", which is not a setting worth offering.
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { KartaRuntime } from "@karta/runtime";
 import { memberName, personHue, personInitials } from "@karta/runtime";
 import type { ChatMessage, Store } from "@karta/store";
@@ -164,6 +165,105 @@ function when(at: Date): string {
   return sameDay
     ? at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : `${at.toLocaleDateString()} ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+/**
+ * What just arrived, beside the button that opens it (#chat preview).
+ *
+ * A number on a button says there is something to read and nothing about whether it can wait. A
+ * shared app's messages are mostly one line — "got the milk", "running late", "which aisle?" — so
+ * the line itself is the notification, and the chat has to be opened only when there is something
+ * to say back.
+ *
+ * Two ways out, both of them explicit: read it here and dismiss, or open the conversation. It does
+ * not fade on a timer — a message that disappears while you are reading it is worse than no preview.
+ */
+export function ChatPeek({
+  runtime,
+  message,
+  anchor,
+  onOpen,
+  onDismiss,
+}: {
+  runtime: KartaRuntime;
+  message: ChatMessage;
+  /** The Chat button. The balloon is measured against it and points back at it. */
+  anchor: RefObject<HTMLElement | null>;
+  onOpen: () => void;
+  onDismiss: () => void;
+}) {
+  const { me, members } = useLiveMembers(runtime);
+  const who = memberName(message.by, { me, members });
+  const at = useAnchored(anchor);
+  if (!at) return null;
+
+  // Fixed and portalled, not absolute beside the button: on a wide screen that button lives in a
+  // sidebar that scrolls, and a balloon inside it is cut off at the sidebar's edge — which is
+  // exactly where the message was.
+  return createPortal(
+    <div
+      className="k-chat-peek"
+      role="status"
+      style={{
+        ["--k-hue" as string]: personHue(message.by),
+        top: `${at.top}px`,
+        left: `${at.left}px`,
+        width: `${at.width}px`,
+        ["--k-tail" as string]: `${at.tail}px`,
+      }}
+    >
+      <span className="k-avatar" aria-hidden>
+        {personInitials(who, message.by)}
+      </span>
+      <div className="k-chat-peek-body">
+        <p className="k-chat-peek-who">
+          {who} <span className="k-chat-peek-when">{when(message.at)}</span>
+        </p>
+        <p className="k-chat-peek-text">{message.text}</p>
+      </div>
+      <button type="button" className="k-add k-primary-action k-chat-peek-open" onClick={onOpen}>
+        Open
+      </button>
+      <button type="button" className="k-chat-peek-close" aria-label="Dismiss this message" onClick={onDismiss}>
+        ✕
+      </button>
+    </div>,
+    document.querySelector(".k-app") ?? document.body,
+  );
+}
+
+/**
+ * Where to put a balloon hanging off `anchor`: under it, right-aligned with it, and pulled back
+ * inside the window if that would put it over an edge. `tail` is where the arrow goes, measured
+ * from the balloon's own left edge so it still points at the button after that clamping.
+ */
+function useAnchored(anchor: RefObject<HTMLElement | null>): { top: number; left: number; width: number; tail: number } | null {
+  const [at, setAt] = useState<{ top: number; left: number; width: number; tail: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = (): void => {
+      const el = anchor.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const room = window.innerWidth;
+      const width = Math.min(336, room - 16);
+      // Opens to the RIGHT of the button by default, because that is where the space is: on a wide
+      // screen the button sits in the left sidebar, and a balloon hanging leftwards from it runs off
+      // the app's column and out of the window. It flips to the left only when opening right would
+      // not fit — which is the phone, where the button is up in the right corner.
+      const rightwards = r.left + width <= room - 8;
+      const left = Math.max(8, Math.min(room - width - 8, rightwards ? r.left : r.right - width));
+      setAt({ top: r.bottom + 10, left, width, tail: Math.max(12, Math.min(width - 24, r.left + r.width / 2 - left - 6)) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    // Capture: the scroller is whatever the button happens to sit in (a sidebar, the page).
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchor]);
+  return at;
 }
 
 /**

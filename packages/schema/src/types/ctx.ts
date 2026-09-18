@@ -124,8 +124,13 @@ export interface UiProgress {
 
 export interface CtxUi {
   toast(msg: string): void;
-  /** `ok` names the button ("Delete"); `destructive` makes it red; `detail` is a quieter second line. */
-  confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
+  /**
+   * `ok` names the button ("Delete"); `destructive` makes it red; `detail` is a quieter second line.
+   *
+   * `cancel` names the other button — worth naming whenever both answers are real choices ("Delete
+   * them" / "Move them up") rather than an action and a way out of it.
+   */
+  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean>;
   prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
   /** A short list of choices: a bottom sheet on a phone, a small dialog on a wide screen. Null when dismissed. */

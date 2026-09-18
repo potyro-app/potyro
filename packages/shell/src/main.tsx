@@ -32,6 +32,7 @@ import { Dialogs, shellDialogs } from "./dialog.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
+import { Splash } from "./splash.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 import { setRouteHandler } from "./router.js";
 
@@ -226,9 +227,7 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   const custom = invite.custom ?? (invite.source ? usesCustomViews(invite.source) : false);
   mount(
     root,
-    <div className="k-joining">
-      <p>Joining “{invite.name}”…</p>
-    </div>,
+    <Splash name={invite.name} source={invite.source} verb="Joining" />,
   );
   // Joining IS the consent sync needs (KA-23): the question says what syncing means before anyone
   // answers it, and declining trust still joins — sandboxed, which is the safer half, not a refusal.
@@ -314,9 +313,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // the honest thing to show while a CRDT store, an identity and a space are being opened.
   mount(
     root,
-    <div className="k-joining">
-      <p>Opening “{saved.name}”…</p>
-    </div>,
+    <Splash id={id} name={saved.name} source={saved.source} />,
   );
 
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
@@ -333,6 +330,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     toaster.push(`“${saved.name}” runs on this device only: it has not been allowed to sync.`);
   }
 
+  // Who this device is (KA-18), before the store: minted on first run with crypto alone — no
+  // database, no network — so seed rows can be attributed to the person using the app.
+  const { ensureIdentity } = await import("@karta/identity");
+  const me = await ensureIdentity();
+
   let rawStore: Store;
   const pending = sessionStorage.getItem(IMPORT_KEY);
   if (pending && !(syncAllowed && saved.sync)) {
@@ -346,14 +348,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     }
   } else {
     rawStore = await openStore(`user:${id}`, { sync: syncAllowed && Boolean(saved.sync) });
-    await seedIfEmpty(rawStore, id);
+    await seedIfEmpty(rawStore, id, me.id);
   }
 
-  // Who this device is (KA-18). Minted on first run with crypto alone — no database, no network —
-  // so it is the same person whether or not this app has ever synced. `ctx.me` is always present,
-  // which is what lets app code stop branching on whether identity exists.
-  const { ensureIdentity } = await import("@karta/identity");
-  const me = await ensureIdentity();
+  // `ctx.me` is always present, which is what lets app code stop branching on whether identity
+  // exists; the same person whether or not this app has ever synced.
 
   // The space, for `ctx.space` — only for a synced app. Solo stays `undefined` rather than becoming
   // a one-member space object, so `ctx.space?.members ?? [ctx.me]` reads correctly and app code
@@ -526,9 +525,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   const saved = getUserApp(r.id);
   mount(
     root,
-    <div className="k-joining" key={`opening:${seq}`}>
-      <p>Opening “{saved?.name ?? r.id}”…</p>
-    </div>,
+    <Splash key={`opening:${seq}`} id={r.id} name={saved?.name ?? r.id} source={saved?.source} />,
   );
   await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
   if (!isCurrent()) return;

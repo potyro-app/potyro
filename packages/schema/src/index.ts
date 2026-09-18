@@ -3,7 +3,7 @@
 export { defineApp, isKartaApp } from "./defineApp.js";
 export { f } from "./fields.js";
 export { humanizeKey } from "./humanize.js";
-export { formatMoney, parseMoney, splitEvenly, shareOf, minorDigits } from "./money.js";
+export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";
 export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueError, type ValueCheck } from "./values.js";
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
