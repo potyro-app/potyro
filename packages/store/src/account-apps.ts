@@ -89,18 +89,23 @@ function parse(id: string, raw: unknown): AccountApp | null {
  * Its id is kept on the account CoMap, which is the only thing a new device can reach knowing just
  * the words.
  */
-async function registry(node: Nodeish, create: boolean): Promise<CoMapish | null> {
-  const account = await node.expectCurrentAccount("karta apps");
-  const existing = account.get(REGISTRY);
-  if (typeof existing === "string") {
-    const loaded = await node.load(existing);
-    if (loaded && loaded !== "unavailable") return loaded;
-    // Named but unreachable: this device cannot see it yet (offline, or still syncing). Creating a
-    // second one here would split the list in two, and the copy a later device found would be
-    // whichever won the race — so this is a "not now", never a "make another".
-    return null;
+async function registry(node: Nodeish, create: boolean, waitMs = 0): Promise<CoMapish | null> {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    const account = await node.expectCurrentAccount("karta apps");
+    const existing = account.get(REGISTRY);
+    if (typeof existing === "string") {
+      const loaded = await node.load(existing);
+      if (loaded && loaded !== "unavailable") return loaded;
+      // Named but not here YET. Creating a second one would split the list in two and leave a later
+      // device reading whichever won the race — so this waits, and never makes another.
+    }
+    if (Date.now() >= deadline) break;
+    await new Promise((r) => setTimeout(r, 250));
   }
-  if (!create) return null;
+
+  const account = await node.expectCurrentAccount("karta apps");
+  if (typeof account.get(REGISTRY) === "string" || !create) return null;
   const map = node.createGroup().createMap();
   account.set(REGISTRY, map.id, "private");
   return map;
@@ -131,10 +136,16 @@ export async function removeAppFromAccount(node: unknown, appId: string): Promis
   }
 }
 
-/** Every app your account knows about. Empty when there is no registry yet, or it has not arrived. */
-export async function readAccountApps(node: unknown): Promise<AccountApp[]> {
+/**
+ * Every app your account knows about. Empty when there is no registry, or it has not arrived.
+ *
+ * `waitMs` is why this takes an option at all: a device that has just signed in with the words
+ * materialises its account locally and only then does the relay's copy — the one with this list in
+ * it — reach it. Reading once, immediately, is reading before the post has arrived.
+ */
+export async function readAccountApps(node: unknown, opts?: { waitMs?: number }): Promise<AccountApp[]> {
   try {
-    const map = await registry(node as Nodeish, false);
+    const map = await registry(node as Nodeish, false, opts?.waitMs ?? 0);
     if (!map) return [];
     const out: AccountApp[] = [];
     const keys = typeof map.keys === "function" ? map.keys() : [];

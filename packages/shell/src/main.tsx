@@ -594,7 +594,9 @@ async function offerAccountApps(root: HTMLElement): Promise<void> {
     const { openAccountNodeForDevice } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
     if (!node) return;
-    const mine = await readAccountApps(node);
+    // Give the relay a moment: this device may have signed in seconds ago, and the account's
+    // own copy of the list travels the same way any other CoValue does.
+    const mine = await readAccountApps(node, { waitMs: 8_000 });
     const missing = mine.filter((a) => !getUserApp(a.id));
     if (missing.length === 0) return;
 
