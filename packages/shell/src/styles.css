@@ -4535,6 +4535,14 @@ body:has(.k-tabbar) .k-toasts {
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
 }
+
+/* The "Saved" line under the save button. Always in the DOM so a screen reader announces it when it
+   fills, and out of the way — no margin — while it is empty. */
+.k-studio-saved {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  min-height: 1.1em;
+}
 .k-myapps-title {
   margin: 0.5rem 0 0;
   font-size: 0.9rem;
