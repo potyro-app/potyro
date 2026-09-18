@@ -581,6 +581,15 @@ setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? bro
  */
 async function offerAccountApps(root: HTMLElement): Promise<void> {
   try {
+    // Only for a device that was LINKED, or one that already syncs something. Reading the account
+    // means opening a connection to the relay, and a person who has never synced anything has not
+    // asked for their apps to be anywhere but here — starting a socket for them would be helping
+    // ourselves to a device that never opted in. `origin: passphrase` is set by `signInWithPassphrase`
+    // and by nothing else, so it is exactly "this device was told it is someone".
+    const linked = globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
+    const { listUserApps } = await import("./user-apps.js");
+    if (!linked && !listUserApps().some((a) => a.sync)) return;
+
     const { readAccountApps } = await import("@karta/store");
     const { openAccountNodeForDevice } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
