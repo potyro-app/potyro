@@ -53,6 +53,18 @@ async function device(context: BrowserContext, opts?: { app?: boolean }): Promis
   return context.newPage();
 }
 
+/** "Changes" lives with the shell's other tools now (#chat preview): the sidebar on a wide screen,
+ *  the ⋯ menu on a phone. Both render a button with that name. */
+const openChanges = async (page: Page): Promise<void> => {
+  const inline = page.getByRole("button", { name: /^Changes/ });
+  if (await inline.count()) {
+    await inline.first().click();
+    return;
+  }
+  await page.getByRole("button", { name: /^More/ }).first().click();
+  await page.getByRole("menuitem", { name: /^Changes/ }).click();
+};
+
 test("a peer's change is reported by name, with what it changed from", async ({ browser }) => {
   test.slow();
 
@@ -82,8 +94,8 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await ana.goto("/?user=shoplist");
   // Ana has now seen everything up to here — including her own edits, which must not be reported
   // back to her as news.
-  await expect(ana.locator(".k-activity-btn")).toBeVisible({ timeout: 30_000 });
-  await ana.locator(".k-activity-btn").click();
+  await expect(ana.getByRole("button", { name: /^Changes/ })).toBeVisible({ timeout: 30_000 });
+  await openChanges(ana);
   await ana.locator(".k-activity").getByRole("button", { name: "Close" }).click();
 
   // ---- Bruno joins and changes the quantity. An ordinary edit; no activity API involved. ----
@@ -107,10 +119,11 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await bruno.getByRole("button", { name: "Save changes" }).first().click();
 
   // ---- THE POINT: Ana is told what changed, by whom, and what from ----
-  const count = ana.locator(".k-activity-count");
-  await expect(count).toBeVisible({ timeout: 60_000 }); // arrives without a reload
+  // The tool says how many, beside its own name, and arrives there without a reload.
+  const count = ana.getByRole("button", { name: /^Changes/ }).locator(".k-tool-hint");
+  await expect(count).toHaveText(/1 new/, { timeout: 60_000 });
 
-  await ana.locator(".k-activity-btn").click();
+  await openChanges(ana);
   const panel = ana.locator(".k-activity");
   await expect(panel).toBeVisible();
 
@@ -129,8 +142,8 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await panel.getByRole("button", { name: "Close" }).click();
   await expect(count).toHaveCount(0);
   await ana.goto("/?user=shoplist");
-  await expect(ana.locator(".k-activity-btn")).toBeVisible({ timeout: 30_000 });
-  await expect(ana.locator(".k-activity-count")).toHaveCount(0);
+  await expect(ana.getByRole("button", { name: /^Changes/ })).toBeVisible({ timeout: 30_000 });
+  await expect(ana.getByRole("button", { name: /^Changes/ }).locator(".k-tool-hint")).toHaveCount(0);
 
   await ctxA.close();
   await ctxB.close();
@@ -145,6 +158,6 @@ test("a local-only app offers no activity at all", async ({ browser }) => {
   await expect(page.locator("h1").first()).toHaveText("Shoplist", { timeout: 30_000 });
   await expect(page.locator(".k-list-row, .k-empty").first()).toBeVisible({ timeout: 30_000 });
 
-  await expect(page.locator(".k-activity-btn")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Changes/ })).toHaveCount(0);
   await ctx.close();
 });

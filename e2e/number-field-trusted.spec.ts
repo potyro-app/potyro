@@ -3,9 +3,14 @@ import { test, expect, type Page } from "@playwright/test";
 // Number fields show their unit and get a stepper and the right phone keyboard (#99). Plants'
 // watering interval was a bare "7" in a full-width box; Workout's sets and reps the same.
 
-async function openForm(page: Page, app: string, title: string, button: string) {
+async function openForm(page: Page, app: string, title: string, button: string, via?: string) {
   await page.goto(`/?user=${app}`);
   await expect(page.locator("h1").first()).toHaveText(title, { timeout: 30_000 });
+  // `via` is the page to stand on first. A map page adds inline — you arm placement and tap, which
+  // puts the record where you pointed — so the shell drops the floating quick action there rather
+  // than showing two buttons for one act. Places lands on its Map, so its form is reached from the
+  // list; the form itself is the same one either way, and the number field is what is under test.
+  if (via) await page.getByRole("tab", { name: via }).or(page.getByRole("button", { name: via })).first().click();
   await page.getByRole("button", { name: button }).click();
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
@@ -55,7 +60,7 @@ test.describe("desktop", () => {
     await sets.fill("1");
     await expect(wrap.getByRole("button", { name: /Decrease/ })).toBeDisabled();
 
-    const place = await openForm(page, "places", "Places", "New Place");
+    const place = await openForm(page, "places", "Places", "New Place", "All places");
     const rating = place.getByRole("spinbutton", { name: "Rating" });
     await expect(rating).toHaveAttribute("inputmode", "decimal");
     const rwrap = place.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Rating" }) });

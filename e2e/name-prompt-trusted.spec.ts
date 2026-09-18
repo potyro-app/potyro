@@ -22,6 +22,17 @@ export default defineApp({
 
 const nameDialog = (page: Page) => page.locator(".k-dialog", { hasText: "see you as" });
 
+/**
+ * Show the launcher, where an app's tile keeps its actions.
+ *
+ * Needed again between two shares: finishing a share puts you back in the app rather than leaving
+ * the launcher hanging open behind the dialogs, so the second share starts from the app the way the
+ * first one did.
+ */
+async function showLauncher(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+}
+
 async function open(page: Page): Promise<void> {
   await page.addInitScript(
     ([source]) => {
@@ -36,7 +47,7 @@ async function open(page: Page): Promise<void> {
   );
   await page.goto("/?user=namecheck");
   await expect(page.locator("h1").first()).toHaveText("Name Check", { timeout: 30_000 });
-  await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+  await showLauncher(page);
 }
 
 test("naming yourself first means sharing does not ask again", async ({ page }) => {
@@ -75,6 +86,7 @@ test("sharing asks once, and not on every share after", async ({ page }) => {
   await page.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
 
   // Share again: straight to the link.
+  await showLauncher(page);
   await tileAction(page, "Name Check", "share");
   await page.locator(".k-dialog").waitFor({ timeout: 60_000 });
   await expect(nameDialog(page)).toHaveCount(0);

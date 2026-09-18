@@ -103,6 +103,16 @@ export interface MediaField extends FieldCommon {
   type: "media";
   accept?: "image" | "video" | "audio" | "any";
   multiple?: boolean;
+  /**
+   * Keep a photo exactly as the camera took it. Off by default: a phone camera makes a 4000-pixel,
+   * four-megabyte JPEG, and an app holding a few dozen of those fills the device — and, in a shared
+   * app, pushes every one of those megabytes to every person in it. Photos are stored at 2048
+   * pixels on their longest edge instead, which is more than a screen shows and still prints small.
+   *
+   * Turn it on where the pixels ARE the point: a scanned document, a receipt to be read back later,
+   * a photo meant to be cropped hard. Re-encoding also drops the file's EXIF data.
+   */
+  full?: boolean;
 }
 
 export interface RelationField extends FieldCommon {

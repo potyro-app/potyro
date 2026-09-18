@@ -23,7 +23,7 @@ import { Launcher, openInstalledApp } from "./launcher.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
-import { getUserApp } from "./user-apps.js";
+import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -32,6 +32,7 @@ import { Dialogs, shellDialogs } from "./dialog.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { seedIfEmpty } from "./seed.js";
+import { Splash } from "./splash.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 import { setRouteHandler } from "./router.js";
 
@@ -226,9 +227,7 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   const custom = invite.custom ?? (invite.source ? usesCustomViews(invite.source) : false);
   mount(
     root,
-    <div className="k-joining">
-      <p>Joining “{invite.name}”…</p>
-    </div>,
+    <Splash name={invite.name} source={invite.source} verb="Joining" />,
   );
   // Joining IS the consent sync needs (KA-23): the question says what syncing means before anyone
   // answers it, and declining trust still joins — sandboxed, which is the safer half, not a refusal.
@@ -314,9 +313,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // the honest thing to show while a CRDT store, an identity and a space are being opened.
   mount(
     root,
-    <div className="k-joining">
-      <p>Opening “{saved.name}”…</p>
-    </div>,
+    <Splash id={id} name={saved.name} source={saved.source} />,
   );
 
   // Sync is per app (ADR 0001 D3): a Jazz-backed CRDT store when the user opted in, otherwise
@@ -333,6 +330,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     toaster.push(`“${saved.name}” runs on this device only: it has not been allowed to sync.`);
   }
 
+  // Who this device is (KA-18), before the store: minted on first run with crypto alone — no
+  // database, no network — so seed rows can be attributed to the person using the app.
+  const { ensureIdentity } = await import("@karta/identity");
+  const me = await ensureIdentity();
+
   let rawStore: Store;
   const pending = sessionStorage.getItem(IMPORT_KEY);
   if (pending && !(syncAllowed && saved.sync)) {
@@ -346,14 +348,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     }
   } else {
     rawStore = await openStore(`user:${id}`, { sync: syncAllowed && Boolean(saved.sync) });
-    await seedIfEmpty(rawStore, id);
+    await seedIfEmpty(rawStore, id, me.id);
   }
 
-  // Who this device is (KA-18). Minted on first run with crypto alone — no database, no network —
-  // so it is the same person whether or not this app has ever synced. `ctx.me` is always present,
-  // which is what lets app code stop branching on whether identity exists.
-  const { ensureIdentity } = await import("@karta/identity");
-  const me = await ensureIdentity();
+  // `ctx.me` is always present, which is what lets app code stop branching on whether identity
+  // exists; the same person whether or not this app has ever synced.
 
   // The space, for `ctx.space` — only for a synced app. Solo stays `undefined` rather than becoming
   // a one-member space object, so `ctx.space?.members ?? [ctx.me]` reads correctly and app code
@@ -400,6 +399,25 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     gate = await openVersionGate({ id, saved, rawStore, lock, canWrite });
     if (!gate.proceed) return null;
     store = guardedStore(rawStore, lock.refusal);
+
+    // Tell your ACCOUNT this app exists and where its data is, so a device linked with the recovery
+    // words can find it. Written on every open, not once: the name, the icon and the source all
+    // change, and the space this points at is what a new device asks the relay for.
+    //
+    // Not awaited and never fatal — a backup that cannot be written is not a reason to fail opening
+    // an app you are looking at right now.
+    void (async () => {
+      const { rememberAppOnAccount } = await import("./open-store.js");
+      const { getEntry, appKey } = await import("./launcher-store.js");
+      const entry = getEntry(appKey("user", id));
+      await rememberAppOnAccount({
+        id,
+        name: entry.displayName ?? saved.name,
+        icon: entry.icon ?? entry.identity?.icon,
+        source: saved.source,
+        shared: (space?.().members.length ?? 1) > 1,
+      });
+    })().catch((e: unknown) => console.warn("[karta] could not record this app on your account:", e));
   }
   const picker = new PickerHost();
   const questions = new UiHost();
@@ -526,9 +544,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   const saved = getUserApp(r.id);
   mount(
     root,
-    <div className="k-joining" key={`opening:${seq}`}>
-      <p>Opening “{saved?.name ?? r.id}”…</p>
-    </div>,
+    <Splash key={`opening:${seq}`} id={r.id} name={saved?.name ?? r.id} source={saved?.source} />,
   );
   await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
   if (!isCurrent()) return;
@@ -557,6 +573,85 @@ function canSwitchInPlace(next: Route): boolean {
 // before anything below can read identity; which one is decided on first use.
 setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? browserVault()));
 
+/**
+ * Offer the apps on your account that are missing here.
+ *
+ * Reads the account with no app open (`openAccountNode` exists for exactly this moment), and does
+ * nothing at all when there is nothing to offer — which is every boot but the first after linking.
+ */
+/** Set once the account has been read on this device, so the wait below happens only the first time. */
+const OFFERED = "karta:account:offered";
+
+async function offerAccountApps(): Promise<void> {
+  try {
+    // Only for a device that was LINKED, or one that already syncs something. Reading the account
+    // means opening a connection to the relay, and a person who has never synced anything has not
+    // asked for their apps to be anywhere but here — starting a socket for them would be helping
+    // ourselves to a device that never opted in. `origin: passphrase` is set by `signInWithPassphrase`
+    // and by nothing else, so it is exactly "this device was told it is someone".
+    const linked = globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
+    const { listUserApps } = await import("./user-apps.js");
+    const syncs = listUserApps().some((a) => a.sync);
+    if (!linked && !syncs) return;
+
+    // The database's worker takes a moment to spawn and open its OPFS pool. Started here, that
+    // moment overlaps the launcher; left until an app is tapped, it sits between the tap and the
+    // app appearing. Not awaited — nothing below needs it, and the real open shares this one.
+    if (syncs) {
+      const { warmDeviceDatabase } = await import("@karta/store");
+      void warmDeviceDatabase();
+    }
+
+    const { readAccountApps } = await import("@karta/store");
+    const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
+    const node = await openAccountNodeForDevice();
+    if (!node) return;
+
+    // Publish before reading. Every synced app this device has goes onto the account now, from the
+    // ids already written down — so the list is current whether or not those apps were opened, and
+    // a device that dies tonight has left behind everything it could.
+    await publishAppListToAccount(node);
+    // Give the relay a moment: this device may have signed in seconds ago, and the account's
+    // own copy of the list travels the same way any other CoValue does.
+    const mine = await readAccountApps(node, { waitMs: 8_000 });
+    globalThis.localStorage?.setItem(OFFERED, "1");
+    const missing = mine.filter((a) => !getUserApp(a.id));
+    if (missing.length === 0) return;
+
+    const { RestoreApps, installFromAccount } = await import("./restore-apps.js");
+    // Its own React root, over the launcher rather than in place of it. The shell renders every
+    // route through ONE root, so mounting the panel there replaces whatever is on screen — which was
+    // invisible while this ran before the first paint, and blanks the launcher now that it does not.
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const panel = createRoot(host);
+    let installed = 0;
+    await new Promise<void>((done) => {
+      panel.render(
+        <RestoreApps
+          apps={missing}
+          onClose={done}
+          onRestore={async (chosen) => {
+            const now = new Date().toISOString();
+            for (const app of chosen) await installFromAccount(app, now);
+            installed = chosen.length;
+            done();
+          }}
+        />,
+      );
+    });
+    panel.unmount();
+    host.remove();
+    // The launcher was drawn before these apps existed and does not re-read the registry on its own.
+    // Only after something was actually installed: reloading on "Not now" would offer the same apps
+    // again on the next boot, and again, which is nagging rather than offering.
+    if (installed > 0) globalThis.location.reload();
+  } catch (e) {
+    // Never block boot on it: the apps already on this device are what someone came for.
+    console.warn("[karta] could not read the apps on your account:", e);
+  }
+}
+
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
@@ -573,6 +668,29 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
+
+  // Apps your ACCOUNT knows about that this device does not (KA-16 follow-up). This is what typing
+  // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
+  // never forced — a phone is not a laptop, and an app whose photos run to hundreds of megabytes is
+  // a decision, not a default.
+  //
+  // Awaited for exactly one device: the one that has just been told who it is and owns nothing yet.
+  // That person typed twenty-four words a second ago and is waiting to be handed their apps, so the
+  // launcher may as well wait too — and it arrives with the apps already on it.
+  //
+  // Every other boot does NOT wait. Asking the account means asking the relay, and that answer is
+  // allowed to take seconds; awaited on every boot it sat between opening Karta and seeing anything
+  // at all, for anyone who syncs even one app.
+  if (!joined) {
+    // "Linked, and not asked yet." Not "has no apps": every device is seeded with the examples, so
+    // an empty list never happens. Not "linked" alone either, or the wait would come back on every
+    // boot of that device forever.
+    const justLinked =
+      globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase" &&
+      !globalThis.localStorage?.getItem(OFFERED);
+    if (justLinked) await offerAccountApps();
+    else void offerAccountApps();
+  }
 
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.

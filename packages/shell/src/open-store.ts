@@ -261,3 +261,113 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     return store;
   }
 }
+
+
+/**
+ * Record an app on your ACCOUNT, so a device linked with the recovery words can find it.
+ *
+ * Only a synced app can be recorded: what is written is where its DATA lives, and a local-only app's
+ * data lives nowhere but this device. (That is the next piece — every app on the CRDT store, so
+ * every app qualifies.) Best-effort throughout: a backup that cannot be written is not a reason to
+ * fail opening an app.
+ *
+ * See `publishAppListToAccount` for the list as a whole, which is what actually keeps a new device
+ * useful: recording only the app you happen to open would mean a backup that depends on remembering
+ * to open things.
+ */
+export async function rememberAppOnAccount(app: { id: string; name: string; icon?: string; source: string; shared?: boolean }): Promise<boolean> {
+  const handle = lastSyncHandle;
+  if (!handle) return false;
+  try {
+    const { publishAppToAccount } = await import("@karta/store");
+    return await publishAppToAccount(handle.node, {
+      id: app.id,
+      name: app.name,
+      icon: app.icon,
+      source: app.source,
+      group: handle.groupID,
+      root: handle.store.rootId,
+      shared: app.shared,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch {
+    return false;
+  }
+}
+
+/** Forget an app you deleted, so a new device is not offered it back. */
+export async function forgetAppOnAccount(appId: string): Promise<boolean> {
+  const handle = lastSyncHandle;
+  if (!handle) return false;
+  try {
+    const { removeAppFromAccount } = await import("@karta/store");
+    return await removeAppFromAccount(handle.node, appId);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A node for reading your ACCOUNT, with no app open.
+ *
+ * The one moment this is needed is the first boot after signing in with the recovery words: there is
+ * no app to hang a node off. `null` where this device cannot sync, or has no identity yet.
+ */
+export async function openAccountNodeForDevice(): Promise<unknown | null> {
+  if (!canSync()) return null;
+  try {
+    const [{ openAccountNodeInBrowser }, identity] = await Promise.all([import("@karta/store"), import("@karta/identity")]);
+    const saved = identity.peekIdentity();
+    if (!saved) return null;
+    const opened = await openAccountNodeInBrowser({
+      account: await identity.identityAccount(),
+      relay: syncRelayUrl(),
+      profileName: saved.name,
+    });
+    return opened?.node ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Publish EVERY synced app this device has to your account, without opening any of them.
+ *
+ * The first version of this recorded an app when that app was opened, which is a backup you have to
+ * remember to make: a laptop with four synced apps that had opened one of them this month put one of
+ * them on the account, and a new device — or a replacement for a laptop that died — was offered that
+ * one. The space ids are already written down per app (`karta:jazz:group:user:<id>`), so the whole
+ * list can be published in a single pass from what the device already knows.
+ *
+ * Returns how many were recorded. Best-effort: never throws, never blocks boot.
+ */
+export async function publishAppListToAccount(node: unknown): Promise<number> {
+  try {
+    const [{ publishAppToAccount }, { listUserApps }] = await Promise.all([import("@karta/store"), import("./user-apps.js")]);
+    const { getEntry, appKey } = await import("./launcher-store.js");
+    const now = new Date().toISOString();
+    let recorded = 0;
+    for (const app of listUserApps()) {
+      if (!app.sync) continue;
+      const group = globalThis.localStorage?.getItem(`karta:jazz:group:user:${app.id}`);
+      const root = globalThis.localStorage?.getItem(`karta:jazz:root:user:${app.id}`);
+      // No ids means this device has never actually opened its space — there is nothing to point a
+      // new device at, and pointing it at a space that does not exist is worse than not listing it.
+      if (!group || !root) continue;
+      const entry = getEntry(appKey("user", app.id));
+      const ok = await publishAppToAccount(node, {
+        id: app.id,
+        name: entry.displayName ?? app.name,
+        icon: entry.icon ?? entry.identity?.icon,
+        source: app.source,
+        group,
+        root,
+        updatedAt: app.updatedAt ?? now,
+      });
+      if (ok) recorded += 1;
+    }
+    return recorded;
+  } catch {
+    return 0;
+  }
+}

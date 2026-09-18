@@ -58,6 +58,11 @@ export class LocalStore extends MemoryStore {
   private load(): void {
     const raw = this.backend.getItem(this.storageKey);
     if (!raw) {
+      // Nothing stored means nothing is in this store — which matters on the path back from a
+      // failed write, where memory is ahead of storage and has to be put back.
+      this.records = new Map();
+      this.blobs = new Map();
+      this.kv = new Map();
       this.loaded = true;
       return;
     }
@@ -80,6 +85,41 @@ export class LocalStore extends MemoryStore {
     const blobs: Persisted["blobs"] = {};
     for (const [key, b] of this.blobs) blobs[key] = { mime: b.mime, base64: bytesToBase64(b.bytes) };
     const data: Persisted = { records, blobs, kv: Object.fromEntries(this.kv), schemaVersion: this.schemaVersion };
-    this.backend.setItem(this.storageKey, JSON.stringify(data));
+    try {
+      this.backend.setItem(this.storageKey, JSON.stringify(data));
+    } catch (e) {
+      if (!isQuotaError(e)) throw e;
+      // Everything lives under one key, so a write that does not fit leaves memory holding a change
+      // storage never took. Left alone, the store is then wrong AND every later write fails on the
+      // same overflowing photo — the app stops being able to save anything at all. So put memory
+      // back to what is actually stored, and say something a person can act on: the browser's own
+      // "The quota has been exceeded" names neither what failed nor what to do about it.
+      this.load();
+      throw new QuotaError(
+        "There is no room left for that on this device. This browser keeps the whole app in a small store (a few megabytes), and one photo from a camera usually fills it.",
+      );
+    }
   }
+}
+
+/** Thrown when a write does not fit in the browser's storage. Named so callers can tell it apart. */
+export class QuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuotaError";
+  }
+}
+
+/** Every browser signals a full store differently; none of them agree on a name or a code. */
+function isQuotaError(e: unknown): boolean {
+  if (e instanceof QuotaError) return true;
+  const err = e as { name?: string; code?: number; message?: string } | null;
+  if (!err) return false;
+  return (
+    err.name === "QuotaExceededError" ||
+    err.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    err.code === 22 ||
+    err.code === 1014 ||
+    /quota/i.test(err.message ?? "")
+  );
 }

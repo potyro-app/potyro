@@ -1,3 +1,4 @@
+import { chooseFilter } from "./filters.js";
 import { test, expect, type Page } from "@playwright/test";
 
 // Summary figures — the shape no built-in view could express. `computed` is per-record and every
@@ -31,7 +32,7 @@ test("figures follow the filter chips", async ({ page }) => {
 
   // Narrow to one category. Every figure must move with the rows — the declarative `count`/`avg`
   // and the `value` function alike.
-  await page.locator(".k-chip", { hasText: "cafe" }).click();
+  await chooseFilter(page, "cafe");
   await expect(page.locator(".k-list-row")).toHaveCount(1);
 
   await expect(figure(page, "Places")).toHaveText("1");
@@ -39,7 +40,7 @@ test("figures follow the filter chips", async ({ page }) => {
   await expect(figure(page, "Visited")).toHaveText("1");
 
   // ...and back again when the filter is released.
-  await page.locator(".k-chip", { hasText: "cafe" }).click();
+  await chooseFilter(page, "cafe");
   await expect(figure(page, "Places")).toHaveText("3");
   await expect(figure(page, "Visited")).toHaveText("2");
 });
@@ -49,7 +50,7 @@ test("an empty set reports zero for a count but not for an average", async ({ pa
 
   // A filter matching nothing: "0 places" is true, but "average rating 0" would be a wrong answer
   // rather than an empty one.
-  await page.locator(".k-chip", { hasText: "pizza" }).click();
+  await chooseFilter(page, "pizza");
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
   await expect(figure(page, "Places")).toHaveText("0");

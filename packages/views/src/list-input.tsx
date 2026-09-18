@@ -138,8 +138,15 @@ function RowCard({
 }) {
   const swipe = useSwipeAway(phone);
   // A freshly added row puts the caret in its first box, so you can start typing where you tapped.
+  //
+  // ONCE, and this is the whole reason for the flag: React calls an inline ref callback on every
+  // render, and a row re-renders on every keystroke. Without it, typing "0" in an opening hour sent
+  // the caret back to the row's first control — the day of the week — and no one could write 09:00.
+  const focused = useRef(false);
   const focusFirst = (el: HTMLDivElement | null): void => {
-    if (autoFocus && el) el.querySelector<HTMLElement>("input, textarea, button, [tabindex]")?.focus();
+    if (!autoFocus || !el || focused.current) return;
+    focused.current = true;
+    el.querySelector<HTMLElement>("input, textarea, button, [tabindex]")?.focus();
   };
 
   const sub = (key: string, field: Field): ReactNode => (

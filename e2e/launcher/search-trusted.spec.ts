@@ -15,7 +15,10 @@ test.describe("desktop", () => {
 
   test("typing on the home screen filters to the match; Enter opens it", async ({ page }) => {
     const home = await openHome(page);
-    await expect(home.locator(".k-launch-item")).toHaveCount(12);
+    // Eight seeded apps plus the bundled examples — a number that moves whenever an example is
+    // added, which is why what follows filters rather than counts.
+    const all = await home.locator(".k-launch-item").count();
+    expect(all).toBeGreaterThanOrEqual(12);
     await page.keyboard.type("gro");
     await expect(home.getByRole("searchbox", { name: "Find an app" })).toHaveValue("gro");
     await expect(home.locator(".k-launch-item")).toHaveCount(1);

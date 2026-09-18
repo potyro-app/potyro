@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LocalStore, type StorageLike } from "../src/index.js";
+import { LocalStore, QuotaError, type StorageLike } from "../src/index.js";
 
 function fakeBackend(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -40,5 +40,39 @@ describe("LocalStore persistence", () => {
     const b = new LocalStore(backend);
     await b.open("appB");
     expect(await b.all("x")).toEqual([]);
+  });
+
+  // A full store used to break the app permanently: the write threw the browser's own "The quota
+  // has been exceeded", memory kept the photo storage had refused, and every later save then failed
+  // on the same overflowing bytes — nothing could be saved again until a reload.
+  it("a write that does not fit is refused with a message, and leaves the store usable", async () => {
+    const backend = fakeBackend();
+    let full = false;
+    const capped: StorageLike = {
+      getItem: backend.getItem,
+      removeItem: backend.removeItem,
+      setItem: (k, v) => {
+        if (full && v.length > 1200) {
+          const e = new Error("The quota has been exceeded.");
+          e.name = "QuotaExceededError";
+          throw e;
+        }
+        backend.setItem(k, v);
+      },
+    };
+
+    const store = new LocalStore(capped);
+    await store.open("places");
+    const place = await store.insert("place", { name: "Nachtbar" });
+    full = true;
+
+    await expect(store.putBlob(new Blob(["x".repeat(4000)], { type: "image/jpeg" }))).rejects.toBeInstanceOf(QuotaError);
+
+    // The photo is not in the store, and the store still works: the record that was there is intact
+    // and a small write still goes through.
+    expect(await store.all("place")).toHaveLength(1);
+    await store.update("place", place.id, { name: "Nachtbar 2" });
+    const rows = await store.all("place");
+    expect(rows[0]!.name).toBe("Nachtbar 2");
   });
 });

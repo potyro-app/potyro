@@ -253,6 +253,8 @@ test("tapping a pin shows which place it is, with a way in", async ({ page }) =>
   // Still on the map — looking at a pin is not navigation.
   await expect(page.locator(".k-map-canvas")).toBeVisible();
 
-  await popup.getByRole("button", { name: "Open" }).click();
+  // The way in is labelled "Details" now, and it brings the record's own page over the map instead
+  // of navigating away — so the framing you built up by panning survives reading one pin.
+  await popup.getByRole("button", { name: "Details" }).click();
   await expect(page.locator(".k-detail")).toBeVisible();
 });
