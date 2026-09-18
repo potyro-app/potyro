@@ -399,6 +399,25 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     gate = await openVersionGate({ id, saved, rawStore, lock, canWrite });
     if (!gate.proceed) return null;
     store = guardedStore(rawStore, lock.refusal);
+
+    // Tell your ACCOUNT this app exists and where its data is, so a device linked with the recovery
+    // words can find it. Written on every open, not once: the name, the icon and the source all
+    // change, and the space this points at is what a new device asks the relay for.
+    //
+    // Not awaited and never fatal — a backup that cannot be written is not a reason to fail opening
+    // an app you are looking at right now.
+    void (async () => {
+      const { rememberAppOnAccount } = await import("./open-store.js");
+      const { getEntry, appKey } = await import("./launcher-store.js");
+      const entry = getEntry(appKey("user", id));
+      await rememberAppOnAccount({
+        id,
+        name: entry.displayName ?? saved.name,
+        icon: entry.icon ?? entry.identity?.icon,
+        source: saved.source,
+        shared: (space?.().members.length ?? 1) > 1,
+      });
+    })().catch((e: unknown) => console.warn("[karta] could not record this app on your account:", e));
   }
   const picker = new PickerHost();
   const questions = new UiHost();
@@ -554,6 +573,43 @@ function canSwitchInPlace(next: Route): boolean {
 // before anything below can read identity; which one is decided on first use.
 setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? browserVault()));
 
+/**
+ * Offer the apps on your account that are missing here.
+ *
+ * Reads the account with no app open (`openAccountNode` exists for exactly this moment), and does
+ * nothing at all when there is nothing to offer — which is every boot but the first after linking.
+ */
+async function offerAccountApps(root: HTMLElement): Promise<void> {
+  try {
+    const { readAccountApps } = await import("@karta/store");
+    const { openAccountNodeForDevice } = await import("./open-store.js");
+    const node = await openAccountNodeForDevice();
+    if (!node) return;
+    const mine = await readAccountApps(node);
+    const missing = mine.filter((a) => !getUserApp(a.id));
+    if (missing.length === 0) return;
+
+    const { RestoreApps, installFromAccount } = await import("./restore-apps.js");
+    await new Promise<void>((done) => {
+      mount(
+        root,
+        <RestoreApps
+          apps={missing}
+          onClose={done}
+          onRestore={async (chosen) => {
+            const now = new Date().toISOString();
+            for (const app of chosen) await installFromAccount(app, now);
+            done();
+          }}
+        />,
+      );
+    });
+  } catch (e) {
+    // Never block boot on it: the apps already on this device are what someone came for.
+    console.warn("[karta] could not read the apps on your account:", e);
+  }
+}
+
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
@@ -570,6 +626,12 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
+
+  // Apps your ACCOUNT knows about that this device does not (KA-16 follow-up). This is what typing
+  // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
+  // never forced — a phone is not a laptop, and an app whose photos run to hundreds of megabytes is
+  // a decision, not a default.
+  if (!joined) await offerAccountApps(root);
 
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.

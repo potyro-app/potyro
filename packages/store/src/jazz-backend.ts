@@ -350,6 +350,50 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
  *
  * Both the engine and its crypto load lazily, so an app without sync never pays for them.
  */
+/**
+ * A node for reading the ACCOUNT in a browser, with no app open — the browser half of
+ * {@link openAccountNode}, wired the way {@link openJazzStore} wires an app.
+ *
+ * Needed at exactly one moment: the first boot after signing in with the recovery words, when the
+ * device is you but has no apps. Opening an app to get a node would create a space for an app that
+ * does not exist, and the shell cannot build a node itself — cojson stays inside this package.
+ */
+export async function openAccountNodeInBrowser(opts?: {
+  keys?: JazzKeyStore;
+  profileName?: string;
+  relay?: string;
+  account?: { id: string; secret: string };
+}): Promise<{ node: unknown; accountID: string } | null> {
+  try {
+    const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }] = await Promise.all([
+      import("./sqlite-backend.js"),
+      import("./idb-sqlite.js"),
+      import("cojson/crypto/WasmCrypto"),
+    ]);
+    // The device database, by the same name every app uses — this reads what they wrote.
+    const dbName = "karta-jazz";
+    let db: SqliteDbHandle;
+    try {
+      db = await openOpfsDb(dbName);
+    } catch {
+      if (!idbAvailable()) return null;
+      db = (await openIdbSqliteDb(dbName)).db;
+    }
+    const { node, accountID } = await openAccountNode({
+      db,
+      crypto: await WasmCrypto.create(),
+      keys: opts?.keys,
+      profileName: opts?.profileName,
+      account: opts?.account,
+      relay: opts?.relay,
+    });
+    return { node, accountID };
+  } catch {
+    // A device that cannot open its account simply has nothing to offer; boot carries on.
+    return null;
+  }
+}
+
 export async function openJazzStore(
   appId: string,
   opts?: {
