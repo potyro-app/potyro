@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 //
-// The checklist view (#106): rows under their group headings, a tick that patches the record and
-// moves the row to Done after a beat, quick add that creates a record and keeps the focus, and an
-// enum `done` that flips between its options.
+// The checklist view (#106): rows under their group headings, a tick that patches the record and —
+// after a beat, so the eye can follow it — sinks the row to the bottom of ITS OWN group, where what
+// is left to buy stays together. Quick add creates a record and keeps the focus, and an enum `done`
+// flips between its options. `hideDone: "collapse"` still folds everything ticked into one section.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -52,17 +53,20 @@ const props = (runtime: KartaRuntime) => ({ runtime, pageId: "list", params: {},
 afterEach(cleanup);
 
 describe("ChecklistView", () => {
-  it("lists open rows under their headings and done rows under Done, with text and detail", async () => {
+  it("lists rows under their headings, in the order the enum declares, with text and detail", async () => {
     const { runtime } = await makeRuntime(app({}));
     render(<ChecklistView {...props(runtime)} />);
     await screen.findByRole("heading", { name: "dairy" });
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["dairy", "produce", "Done (1)"]);
+    // The enum's own order — "produce" before "dairy" because the app said so, not the alphabet and
+    // not whichever row happened to load first. No global Done section: a ticked row stays in its
+    // aisle (`donePlacement: "sink"`, the default).
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["produce", "dairy"]);
     expect(screen.getByText("1 l")).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "Rice" }).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("checkbox", { name: "Milk" }).getAttribute("aria-checked")).toBe("false");
   });
 
-  it("ticking patches the record, keeps the row in place for a beat, then moves it to Done", async () => {
+  it("ticking patches the record, keeps the row in place for a beat, then sinks it in its own group", async () => {
     const { runtime, store } = await makeRuntime(app({}));
     render(<ChecklistView {...props(runtime)} />);
     const milk = await screen.findByRole("checkbox", { name: "Milk" });
@@ -78,22 +82,19 @@ describe("ChecklistView", () => {
       },
       { timeout: 5000 },
     );
-    // Struck through and checked; while held it is still under "dairy", then it moves to Done.
+    // Struck through and checked, and still under "dairy" — it never leaves its aisle.
     await waitFor(
       () => {
         const row = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
         expect(row.getAttribute("data-done")).toBe("true");
+        expect(row.closest("section")?.getAttribute("aria-label")).toBe("dairy");
       },
       { timeout: 5000 },
     );
-    await waitFor(
-      () => {
-        const moved = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
-        expect(moved.closest("section")?.getAttribute("aria-label")).toBe("Done");
-      },
-      { timeout: 5000 },
-    );
-    expect(screen.getByRole("heading", { name: "Done (2)" })).toBeTruthy();
+    // And in "produce", where one row is already ticked, the ticked one is last.
+    const produce = screen.getByRole("heading", { name: "produce" }).closest("section")!;
+    const names = [...produce.querySelectorAll(".k-check-label")].map((el) => el.textContent);
+    expect(names).toEqual(["Apples", "Rice"]);
   });
 
   it("quick add creates a record with the text as its display field and keeps the focus", async () => {
