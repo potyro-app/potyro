@@ -330,9 +330,11 @@ export function MapView(props: BuiltinViewProps) {
       // construction, and a container that fills its page is laid out by what surrounds it — so the
       // size it read can already be stale by the time the first frame is drawn, and the map is then
       // painted into part of its canvas with paper in the rest.
-      created.resize();
+      // Optional, like `fitBounds` below: a test double — or a MapLibre older than this — is not a
+      // reason to take the whole map down.
+      created.resize?.();
       requestAnimationFrame(() => {
-        if (!disposed) created.resize();
+        if (!disposed) created.resize?.();
       });
 
       // There is a map now — re-run the marker sync, which bailed if it got here first.
