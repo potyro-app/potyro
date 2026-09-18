@@ -73,6 +73,7 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     type: z.literal("media"),
     accept: z.enum(["image", "video", "audio", "any"]).optional(),
     multiple: z.boolean().optional(),
+    full: z.boolean().optional(),
     ...common,
   });
   const relation = z.object({
@@ -288,6 +289,7 @@ const mapView = z.object({
   filters: z.array(filterChipSchema).optional(),
   onOpen: onOpenSchema.optional(),
   camera: cameraSchema.optional(),
+  display: listDisplaySchema.optional(),
 });
 
 const stepsView = z.object({
@@ -324,7 +326,11 @@ const checklistView = z.object({
   sort: zFn.optional(),
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
+  donePlacement: z.enum(["sink", "stay"]).optional(),
   quickAdd: z.boolean().optional(),
+  editText: z.boolean().optional(),
+  reorder: z.string().min(1).optional(),
+  groupOrder: z.string().min(1).optional(),
   rowActions: z.array(z.string()).optional(),
   onOpen: onOpenSchema.optional(),
   emptyText: zDynamicString.optional(),

@@ -25,6 +25,7 @@ import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
+import { addExample, exampleNames, missingExamples } from "./examples.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -373,13 +374,73 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
   // undo. It asked for nothing at all before.
   const del = async (a: UserApp): Promise<void> => {
-    if (!(await shellDialogs.confirm(`Delete "${a.name}" and everything in it?`, { detail: "This can't be undone.", ok: "Delete", destructive: true }))) return;
+    // A SHARED app is not yours alone, and deleting it here is not the same act as deleting a
+    // private one: it takes this device out of the space. The others keep the app and everything in
+    // it, and getting back in means someone sending a new invite — so the question has to say that
+    // rather than "this can't be undone", which reads as "you will lose the data" and is the one
+    // thing that does not happen.
+    const detail = a.sync
+      ? "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
+      : "This can't be undone.";
+    const ok = await shellDialogs.confirm(a.sync ? `Leave "${a.name}"?` : `Delete "${a.name}" and everything in it?`, {
+      detail,
+      ok: a.sync ? "Leave" : "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     await removeUserApp(a.id);
   };
   // Sync moves the app's data between two stores that keep it in DIFFERENT files, so this is a
   // migration, not a checkbox. It says what it will do, reports anything it could not move, and
   // never deletes the old copy — flipping back is the way out if it was a mistake.
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Which bundled examples this device does not have. Read after every change to the app list, so
+  // deleting one puts it here and restoring it takes it away again.
+  const [gone, setGone] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const missing = new Set(missingExamples());
+    if (missing.size === 0) {
+      setGone([]);
+      return;
+    }
+    void exampleNames().then((all) => {
+      if (alive) setGone(all.filter((e) => missing.has(e.id)));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [installed]);
+
+  const restore = async (id: string): Promise<void> => {
+    setBusy(id);
+    try {
+      await addExample(id, { trusted: true, now: new Date().toISOString() });
+    } catch (e) {
+      await shellDialogs.confirm(`Could not add it back: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Re-open the app whose store has just changed underneath it.
+   *
+   * Turning sync on MOVES an app into a different store, but the copy on screen was built on the old
+   * one: its runtime, its space and its version gate were all made when it opened. Until it is
+   * rebuilt, that copy goes on reading — and writing — the store nobody is syncing. So a peer's
+   * changes never arrive, and yours never leave: it reads as "sync is broken", and switching to
+   * another app and back appears to fix it, because that is what rebuilds everything.
+   *
+   * A page load, because that is how a synced app is built: the space is module state set up once
+   * per page, the same reason `canSwitchInPlace` refuses to swap a synced app in place.
+   */
+  const reopenIfOpen = (a: UserApp): void => {
+    if (selected?.kind !== "user" || selected.id !== a.id) return;
+    location.reload();
+  };
+
   const toggleSync = async (a: UserApp): Promise<void> => {
     const on = !a.sync;
     if (on && !canSync()) {
@@ -409,6 +470,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       // recovery words are TRUE — before that they restore nothing, because the data has never left
       // this device — but stacking the question on top of the result reads as one confusing dialog.
       if (on) await offerBackupOnFirstSync(() => setIdentity(true));
+      reopenIfOpen(a);
     } catch (e) {
       await shellDialogs.confirm(`Could not change sync: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -426,6 +488,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
     try {
       // Sharing implies sync. Making the user find the sync toggle first was a step that taught
       // them nothing — the reason to turn sync on IS to share.
+      const turnedOn = !a.sync;
       if (!a.sync) {
         if (!(await askToSync(a))) return;
         const ok = await shellDialogs.confirm(
@@ -463,6 +526,10 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       // After the link, not before it: the user came here to share, and interrupting that with a
       // question about recovery words buries the thing they actually asked for.
       await offerBackupOnFirstSync(() => setIdentity(true));
+      // Sharing turned sync on for this app, so the open copy is on the wrong store as well. Last,
+      // not at the toggle: the person came here for the link, and a reload before they have it
+      // takes the link away with it.
+      if (turnedOn) reopenIfOpen(a);
     } catch (e) {
       setBusy(null);
       await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
@@ -610,6 +677,25 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         <p className="k-visually-hidden" aria-live="polite">{restReorder.announcement}</p>
         {!installed.length ? <p className="k-muted k-launch-empty">No apps yet — press New app to make one.</p> : null}
       </section>
+
+      {/* A bundled example you deleted is gone for good, which is right — until you want it back.
+          Nothing brings one back on its own; this is how you ask. */}
+      {gone.length ? (
+        <section className="k-launch-section" aria-labelledby="k-launch-gone">
+          <div className="k-launch-section-head">
+            <h3 className="k-launch-title" id="k-launch-gone">
+              Bundled examples
+            </h3>
+          </div>
+          <div className="k-launch-gone">
+            {gone.map((e) => (
+              <button key={e.id} type="button" className="k-add k-launch-restore" disabled={busy === e.id} onClick={() => void restore(e.id)}>
+                <span aria-hidden>＋</span> {e.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {variant === "home" ? (
         <button type="button" className="k-launch-fab" onClick={() => onNewApp()}>
           <span aria-hidden>＋</span> New app

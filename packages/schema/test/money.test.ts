@@ -6,7 +6,7 @@
 // everyone follows lands on the same cent on every device.
 
 import { describe, expect, it } from "vitest";
-import { formatMoney, minorDigits, parseMoney, shareOf, splitEvenly } from "../src/index.js";
+import { formatMoney, minorDigits, parseMoney, shareOf, splitByShares, splitEvenly } from "../src/index.js";
 
 describe("how many digits a currency has", () => {
   it("knows a euro has two and a yen none", () => {
@@ -69,5 +69,36 @@ describe("splitting a bill", () => {
   it("refuses what is not a whole amount between whole people", () => {
     expect(splitEvenly(10.5, 3)).toEqual([]);
     expect(splitEvenly(1000, 0)).toEqual([]);
+  });
+});
+
+describe("splitting a bill by shares", () => {
+  it("weights the split and still adds back up to the total", () => {
+    // A couple and two others on a €100 bill: two shares against one and one.
+    expect(splitByShares(10000, [2, 1, 1])).toEqual([5000, 2500, 2500]);
+    const awkward = splitByShares(10000, [1, 1, 1]);
+    expect(awkward).toEqual([3334, 3333, 3333]);
+    expect(awkward.reduce((a, b) => a + b, 0)).toBe(10000);
+  });
+
+  it("gives the spare unit to whoever is furthest short of their exact share", () => {
+    // Exact shares are 16.66, 33.33 and 50.00; the two-thirds of a cent short is the first one.
+    const out = splitByShares(10000, [1, 2, 3]);
+    expect(out).toEqual([1667, 3333, 5000]);
+    expect(out.reduce((a, b) => a + b, 0)).toBe(10000);
+  });
+
+  it("treats a weight that is not a positive number as nobody's share", () => {
+    expect(splitByShares(900, [1, 0, 2])).toEqual([300, 0, 600]);
+    expect(splitByShares(900, [Number.NaN, 1])).toEqual([0, 900]);
+    expect(splitByShares(900, [0, 0])).toEqual([0, 0]);
+  });
+
+  it("splits a refund the same way it splits a bill", () => {
+    expect(splitByShares(-10000, [2, 1, 1])).toEqual([-5000, -2500, -2500]);
+  });
+
+  it("refuses an amount that is not whole minor units", () => {
+    expect(splitByShares(10.5, [1, 1])).toEqual([]);
   });
 });

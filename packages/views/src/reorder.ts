@@ -10,10 +10,19 @@
 // Two callers, two shapes: a tile is dragged from anywhere on itself, a row card only by its
 // handle. `handle` says which, and `ignore` keeps a menu button from starting a drag.
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 const HOLD_MS = 220;
 const SLOP_PX = 6;
+/** How long after a drop a click is still the drop's own echo rather than a new tap. */
+const CLICK_AFTER_DROP_MS = 300;
 
 /** The list with `key` moved to index `to`, clamped. Pure, and the only place order changes. */
 export function moveKey(list: readonly { key: string }[], key: string, to: number): string[] {
@@ -50,6 +59,7 @@ export interface ReorderProps {
     onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
     onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
     onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
+    onClickCapture: (e: ReactMouseEvent<HTMLElement>) => void;
     onKeyDown: (e: ReactKeyboardEvent<HTMLElement>) => void;
   };
   /** What the last move did, for an aria-live region. */
@@ -63,6 +73,12 @@ export interface ReorderOptions {
   names: (key: string) => string;
   /** Receives the keys in their new order. */
   onReorder: (keys: string[]) => void;
+  /**
+   * Handle the drop yourself, given what was dragged and what it landed on, instead of receiving a
+   * reordered list. For lists that are not ONE sequence: the checklist's rows live in groups, and
+   * where a row landed decides which group it joins, which no flat array of keys can say.
+   */
+  onDrop?: (key: string, over: string) => void;
   /** false renders inert props (the "Recent" and "A–Z" sorts are not yours to drag). */
   enabled: boolean;
   /** CSS selector a drag must start inside — a grip. Omitted, the whole item is the handle. */
@@ -76,10 +92,11 @@ export interface ReorderOptions {
   keyboard?: "alt" | "plain";
 }
 
-export function useReorder({ keys, names, onReorder, enabled, handle, ignore, keyboard = "alt" }: ReorderOptions): ReorderProps {
+export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ignore, keyboard = "alt" }: ReorderOptions): ReorderProps {
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropped = useRef(0);
   const [announcement, setAnnouncement] = useState("");
 
   const update = (next: Drag | null): void => {
@@ -101,6 +118,11 @@ export function useReorder({ keys, names, onReorder, enabled, handle, ignore, ke
 
   const commit = (d: Drag): void => {
     if (d.over && d.over !== d.key) {
+      if (onDrop) {
+        onDrop(d.key, d.over);
+        setAnnouncement(`Moved ${names(d.key)} to ${names(d.over)}.`);
+        return;
+      }
       const to = keys.indexOf(d.over);
       const next = moveKey(keys.map((key) => ({ key })), d.key, to);
       onReorder(next);
@@ -122,6 +144,13 @@ export function useReorder({ keys, names, onReorder, enabled, handle, ignore, ke
     const from = keys.indexOf(key);
     const to = from + by;
     if (to < 0 || to >= keys.length) return;
+    // The keyboard drops onto the neighbour, so a grouped list moves by keyboard exactly as it
+    // moves by finger — including across a group boundary.
+    if (onDrop) {
+      onDrop(key, keys[to]!);
+      setAnnouncement(`Moved ${names(key)} to ${names(keys[to]!)}.`);
+      return;
+    }
     onReorder(moveKey(keys.map((k) => ({ key: k })), key, to));
     setAnnouncement(`Moved ${names(key)} to position ${to + 1} of ${keys.length}.`);
   };
@@ -175,9 +204,18 @@ export function useReorder({ keys, names, onReorder, enabled, handle, ignore, ke
       if (!cur || cur.pointerId !== e.pointerId) return;
       if (!cur.armed) {
         e.preventDefault();
+        // The browser still sends a click after the drag, to whatever the pointer came to rest on.
+        // Left alone it opens the thing that was just dragged — the row you moved starts renaming
+        // itself. `preventDefault` on pointerup does not stop it; only swallowing the click does.
+        dropped.current = Date.now();
         commit({ ...cur, over: under(e.clientX, e.clientY, cur.key) ?? cur.over });
       }
       update(null);
+    },
+    onClickCapture: (e) => {
+      if (Date.now() - dropped.current > CLICK_AFTER_DROP_MS) return;
+      e.preventDefault();
+      e.stopPropagation();
     },
     onPointerCancel: () => {
       clearHold();

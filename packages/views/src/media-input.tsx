@@ -15,6 +15,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import type { MediaField, MediaRef } from "karta";
 import { ActionMenu, type MenuEntry } from "./menu.js";
 import { usePhone } from "./media.js";
+import { shrinkImage } from "./image-scale.js";
 
 export interface MediaInputProps {
   runtime: KartaRuntime;
@@ -53,7 +54,10 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
     setFailed(null);
     setAdding(true);
     try {
-      const ref = await runtime.ctx.media.put(blob);
+      // A camera photo is re-encoded to something a personal app can keep, unless the field says it
+      // needs the original (`full`). Everything else — video, audio, a PDF — passes through.
+      const stored = field.full === true ? blob : await shrinkImage(blob);
+      const ref = await runtime.ctx.media.put(stored);
       write(many ? [...refs, ref] : [ref]);
     } catch (err) {
       // Never swallowed: the person chose a file and must be told it did not land.

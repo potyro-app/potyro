@@ -79,3 +79,27 @@ test("swipe down, the scrim and Escape each close it", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.locator(".k-launcher-overlay")).toHaveCount(0);
 });
+
+test("a tile's menu is a sheet inside the screen, not a panel off its edge", async ({ page }) => {
+  // It was the last menu in the app still hanging off a corner: anchored to the right of a row that
+  // already ends at the screen's edge, so "Rename" and "Delete" ran off the side. The cause was one
+  // line of CSS — the row centred the menu's host with a transform, and a transformed ancestor
+  // becomes the containing block for `position: fixed`, which quietly shrank the sheet to that box.
+  await openApp(page, "groceries", "Groceries");
+  const overlay = await openSwitcher(page);
+  await overlay.getByRole("button", { name: "Actions for Places" }).tap();
+
+  const menu = page.locator(".k-tile-menu");
+  await expect(menu).toBeVisible();
+  // It slides up; measured while it is still moving, the bottom edge is wherever it got to.
+  await menu.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const box = (await menu.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(PHONE.width + 0.5);
+  // A sheet, so it spans the screen and sits at the bottom of it.
+  expect(box.width).toBe(PHONE.width);
+  expect(box.y + box.height).toBeGreaterThanOrEqual(PHONE.height - 1);
+  // Every row is reachable and readable, Delete last.
+  await expect(menu.getByRole("menuitem").last()).toHaveText(/Delete/);
+});
+
