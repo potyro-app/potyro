@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { chosenFilter } from "./filters.js";
 
 // M1 DoD, trusted path: browse recipes, open the custom cook-along view and tick a step, see
 // computed macros, add a recipe, exercise the "ingredients I have" JS filter, and confirm the new
@@ -49,12 +50,23 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await expect(page.locator(".k-list-row", { hasText: unique })).toBeVisible();
 
   // "Ingredients I have" JS predicate filter: the pantry chrome + chips drive an app filter fn.
+  // The options sit behind one Filter button now rather than a row of chips across the page, so the
+  // pantry is reached through the sheet — the chips themselves, and what picking one does, are the
+  // same claim as before.
   await page.getByRole("button", { name: "What can I cook?" }).click();
-  await expect(page.getByText("In my pantry:")).toBeVisible();
-  const chips = page.locator(".k-chip");
+  await page.getByRole("button", { name: /Filter/ }).first().click();
+  const sheet = page.locator(".k-filter-sheet");
+  await expect(sheet.getByText("In my pantry:")).toBeVisible();
+  const chips = sheet.locator(".k-chip");
   expect(await chips.count()).toBeGreaterThan(0);
+  const ingredient = ((await chips.first().textContent()) ?? "").trim();
   await chips.first().click();
-  await expect(page.locator(".k-chip[data-on='true']").first()).toBeVisible(); // filter state applied
+  await expect(sheet.locator(".k-chip[data-on='true']").first()).toBeVisible(); // filter state applied
+  // …and it is still applied once the sheet is out of the way: the page keeps the chosen ingredient
+  // as a chip beside the Filter button, which is how you can tell the list you are looking at is
+  // narrowed rather than empty.
+  await sheet.getByRole("button", { name: "Done" }).click();
+  await expect(chosenFilter(page, ingredient)).toBeVisible();
 });
 
 test("edits an existing record in place from the list (universal edit)", async ({ page }) => {
