@@ -14,16 +14,24 @@ import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
 /**
- * The minimal synchronous SQLite surface SqliteStore needs. `@sqlite.org/sqlite-wasm`'s `oo1.DB`
- * satisfies this structurally; declaring it here keeps the store free of `any` and testable with a
- * fake. All calls are synchronous (the wasm module is already initialised by the factory).
+ * The minimal SQLite surface SqliteStore needs. `@sqlite.org/sqlite-wasm`'s `oo1.DB` satisfies this
+ * structurally; declaring it here keeps the store free of `any` and testable with a fake.
+ *
+ * Every call MAY return a promise, and the store awaits all of them. That is not ceremony: the only
+ * place a browser will open OPFS is a Web Worker (see `sqlite-worker.ts`), and a database on the
+ * other side of a worker answers asynchronously. A synchronous handle — in-memory, or the engine
+ * loaded directly — still satisfies this, because awaiting a plain value costs a microtask and
+ * nothing else.
  */
 export interface SqliteDbHandle {
   exec(sqlOrOpts: string | { sql: string; bind?: readonly unknown[] }): unknown;
-  selectValue(sql: string, bind?: readonly unknown[]): unknown;
-  selectObjects(sql: string, bind?: readonly unknown[]): Array<Record<string, unknown>>;
+  selectValue(sql: string, bind?: readonly unknown[]): unknown | Promise<unknown>;
+  selectObjects(
+    sql: string,
+    bind?: readonly unknown[],
+  ): Array<Record<string, unknown>> | Promise<Array<Record<string, unknown>>>;
   /** Release the database (OPFS file handle / memory). Optional so fakes may omit it. */
-  close?(): void;
+  close?(): void | Promise<void>;
 }
 
 const SCHEMA = [
@@ -63,7 +71,7 @@ export class SqliteStore implements Store {
 
   async open(appId: string): Promise<void> {
     this.appId = appId;
-    for (const stmt of SCHEMA) this.db.exec(stmt);
+    for (const stmt of SCHEMA) await this.db.exec(stmt);
   }
 
   /** Serialize the whole database to a standalone `.sqlite` file (opens in any SQLite tool). */
@@ -76,14 +84,14 @@ export class SqliteStore implements Store {
     if (this.closed) return; // idempotent; double-close of the wasm DB would throw
     this.closed = true;
     this.appId = null;
-    this.db.close?.();
+    await this.db.close?.();
   }
 
   // ── reads ──────────────────────────────────────────────────────────────────
   async all(entity: string, narrow?: Narrow): Promise<KartaRecord[]> {
-    const rows = this.db
-      .selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])
-      .map((r) => JSON.parse(r.doc as string) as KartaRecord);
+    const rows = (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map(
+      (r) => JSON.parse(r.doc as string) as KartaRecord,
+    );
 
     let out = rows;
     if (narrow?.ids) {
@@ -96,7 +104,7 @@ export class SqliteStore implements Store {
   }
 
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
-    const doc = this.db.selectValue("SELECT doc FROM records WHERE entity=? AND id=?", [entity, id]);
+    const doc = await this.db.selectValue("SELECT doc FROM records WHERE entity=? AND id=?", [entity, id]);
     return doc == null ? null : (JSON.parse(doc as string) as KartaRecord);
   }
 
@@ -117,7 +125,7 @@ export class SqliteStore implements Store {
       createdAt: (data.createdAt as string) ?? ts,
       updatedAt: ts,
     };
-    this.db.exec({
+    await this.db.exec({
       sql: "INSERT INTO records(entity, id, doc) VALUES(?, ?, ?) ON CONFLICT(entity, id) DO UPDATE SET doc=excluded.doc",
       bind: [entity, id, JSON.stringify(record)],
     });
@@ -135,30 +143,30 @@ export class SqliteStore implements Store {
       createdAt: existing.createdAt,
       updatedAt: nowIso(),
     };
-    this.db.exec({ sql: "UPDATE records SET doc=? WHERE entity=? AND id=?", bind: [JSON.stringify(next), entity, id] });
+    await this.db.exec({ sql: "UPDATE records SET doc=? WHERE entity=? AND id=?", bind: [JSON.stringify(next), entity, id] });
     this.emit(entity);
     return structuredClone(next);
   }
 
   async delete(entity: string, id: Id): Promise<void> {
-    this.db.exec({ sql: "DELETE FROM records WHERE entity=? AND id=?", bind: [entity, id] });
-    if (Number(this.db.selectValue("SELECT changes()")) > 0) this.emit(entity);
+    await this.db.exec({ sql: "DELETE FROM records WHERE entity=? AND id=?", bind: [entity, id] });
+    if (Number(await this.db.selectValue("SELECT changes()")) > 0) this.emit(entity);
   }
 
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
     const name = `karta_tx_${++this.txCounter}`;
     const mark = this.pendingEmits.length; // notifications buffered before this (nested) level
-    this.db.exec(`SAVEPOINT ${name}`);
+    await this.db.exec(`SAVEPOINT ${name}`);
     this.txDepth++;
     try {
       const out = await fn(this);
-      this.db.exec(`RELEASE ${name}`);
+      await this.db.exec(`RELEASE ${name}`);
       this.txDepth--;
       if (this.txDepth === 0) this.flushPending();
       return out;
     } catch (err) {
-      this.db.exec(`ROLLBACK TO ${name}`);
-      this.db.exec(`RELEASE ${name}`);
+      await this.db.exec(`ROLLBACK TO ${name}`);
+      await this.db.exec(`RELEASE ${name}`);
       this.txDepth--;
       this.pendingEmits.length = mark; // discard notifications from the rolled-back level(s)
       throw err;
@@ -199,14 +207,14 @@ export class SqliteStore implements Store {
     const bytes = new Uint8Array(await b.arrayBuffer());
     const key = ulid();
     const mime = b.type || "application/octet-stream";
-    this.db.exec({ sql: "INSERT INTO blobs(key, mime, bytes) VALUES(?, ?, ?)", bind: [key, mime, bytes] });
+    await this.db.exec({ sql: "INSERT INTO blobs(key, mime, bytes) VALUES(?, ?, ?)", bind: [key, mime, bytes] });
     return { key, mime };
   }
 
   async putBlobWithKey(key: string, b: Blob): Promise<MediaRef> {
     const bytes = new Uint8Array(await b.arrayBuffer());
     const mime = b.type || "application/octet-stream";
-    this.db.exec({
+    await this.db.exec({
       sql: "INSERT INTO blobs(key, mime, bytes) VALUES(?, ?, ?) ON CONFLICT(key) DO UPDATE SET mime=excluded.mime, bytes=excluded.bytes",
       bind: [key, mime, bytes],
     });
@@ -214,7 +222,7 @@ export class SqliteStore implements Store {
   }
 
   async getBlob(r: MediaRef): Promise<Blob | null> {
-    const row = this.db.selectObjects("SELECT mime, bytes FROM blobs WHERE key=?", [r.key])[0];
+    const row = (await this.db.selectObjects("SELECT mime, bytes FROM blobs WHERE key=?", [r.key]))[0];
     if (!row) return null;
     // Copy into a standalone ArrayBuffer. The wasm layer may hand back a Uint8Array (over a
     // possibly-shared buffer) or a raw ArrayBuffer depending on version — handle both explicitly
@@ -233,42 +241,42 @@ export class SqliteStore implements Store {
 
   // ── kv ──────────────────────────────────────────────────────────────────────
   async kvGet(k: string): Promise<string | null> {
-    const v = this.db.selectValue("SELECT v FROM kv WHERE k=?", [k]);
+    const v = await this.db.selectValue("SELECT v FROM kv WHERE k=?", [k]);
     return v == null ? null : (v as string);
   }
 
   async kvSet(k: string, v: string): Promise<void> {
-    this.db.exec({ sql: "INSERT INTO kv(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", bind: [k, v] });
+    await this.db.exec({ sql: "INSERT INTO kv(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", bind: [k, v] });
   }
 
   async kvDelete(k: string): Promise<void> {
-    this.db.exec({ sql: "DELETE FROM kv WHERE k=?", bind: [k] });
+    await this.db.exec({ sql: "DELETE FROM kv WHERE k=?", bind: [k] });
   }
 
   async kvKeys(prefix?: string): Promise<string[]> {
-    const rows = this.db.selectObjects("SELECT k FROM kv ORDER BY k");
+    const rows = await this.db.selectObjects("SELECT k FROM kv ORDER BY k");
     const keys = rows.map((r) => r.k as string);
     return prefix ? keys.filter((k) => k.startsWith(prefix)) : keys;
   }
 
   // ── migrations ───────────────────────────────────────────────────────────────
   async storedSchemaVersion(): Promise<number> {
-    return Number(this.db.selectValue("SELECT v FROM meta WHERE k='schemaVersion'") ?? 0);
+    return Number((await this.db.selectValue("SELECT v FROM meta WHERE k='schemaVersion'")) ?? 0);
   }
 
   async runMigrations(plan: MigrationPlan): Promise<void> {
     // Atomic: the DELETE-then-reinsert in writeBack + the version bump run inside one SAVEPOINT, so
     // a crash mid-migration rolls back cleanly instead of leaving an emptied, un-versioned table.
     await this.transaction(async () => {
-      const records = this.loadAll();
+      const records = await this.loadAll();
       const affected = new Set<string>();
       for (const migration of plan.migrations) {
         for (const step of migration.steps) {
           for (const entity of applyMigrationStep(step, records, nowIso)) affected.add(entity);
         }
       }
-      this.writeBack(records);
-      this.db.exec({
+      await this.writeBack(records);
+      await this.db.exec({
         sql: "INSERT INTO meta(k, v) VALUES('schemaVersion', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
         bind: [String(plan.toSchemaVersion)],
       });
@@ -278,9 +286,9 @@ export class SqliteStore implements Store {
   }
 
   /** Load every record into an in-memory set, preserving per-entity creation order (by `seq`). */
-  private loadAll(): EntityRecords {
+  private async loadAll(): Promise<EntityRecords> {
     const records: EntityRecords = new Map();
-    const rows = this.db.selectObjects("SELECT entity, doc FROM records ORDER BY seq");
+    const rows = await this.db.selectObjects("SELECT entity, doc FROM records ORDER BY seq");
     for (const row of rows) {
       const entity = row.entity as string;
       let m = records.get(entity);
@@ -295,11 +303,11 @@ export class SqliteStore implements Store {
   }
 
   /** Replace the entire record table from an in-memory set, re-establishing creation order. */
-  private writeBack(records: EntityRecords): void {
-    this.db.exec("DELETE FROM records");
+  private async writeBack(records: EntityRecords): Promise<void> {
+    await this.db.exec("DELETE FROM records");
     for (const [entity, m] of records) {
       for (const [id, rec] of m) {
-        this.db.exec({
+        await this.db.exec({
           sql: "INSERT INTO records(entity, id, doc) VALUES(?, ?, ?)",
           bind: [entity, id, JSON.stringify(rec)],
         });

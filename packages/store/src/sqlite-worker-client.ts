@@ -10,6 +10,7 @@
 // that order without the client having to hold a lock across the callback.
 
 import type { SqliteDriverAsync } from "./jazz-sqlite-driver.js";
+import type { SqliteDbHandle } from "./sqlite-store.js";
 
 export interface WorkerSqlite {
   driver: SqliteDriverAsync;
@@ -171,4 +172,32 @@ async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlit
   };
 
   return { driver, terminate: () => worker.terminate() };
+}
+
+/**
+ * The same worker database, in the shape `SqliteStore` takes.
+ *
+ * cojson has its own driver interface; `SqliteStore` has `exec`/`selectValue`/`selectObjects`. Both
+ * end up at the same three worker operations, so this is an adapter and nothing more — it exists so
+ * an ordinary local-only app can have real OPFS storage too, instead of the `localStorage` fallback
+ * it got when the main-thread OPFS open failed (five megabytes, and a photo would not fit).
+ *
+ * The name is used as a file name in OPFS, and app namespaces contain characters ("user:groceries")
+ * that have no business in one.
+ */
+export async function openWorkerSqliteHandle(name: string): Promise<SqliteDbHandle> {
+  const { driver } = await openWorkerSqlite(name.replace(/[^A-Za-z0-9._-]+/g, "-"));
+  return {
+    exec: (sqlOrOpts) =>
+      typeof sqlOrOpts === "string"
+        ? driver.run(sqlOrOpts, [])
+        : driver.run(sqlOrOpts.sql, [...(sqlOrOpts.bind ?? [])]),
+    selectValue: async (sql, bind) => {
+      const rows = await driver.query<Record<string, unknown>>(sql, [...(bind ?? [])]);
+      // `selectValue` is the first column of the first row — SQLite's own definition of it.
+      return rows[0] ? Object.values(rows[0])[0] : undefined;
+    },
+    selectObjects: (sql, bind) => driver.query<Record<string, unknown>>(sql, [...(bind ?? [])]),
+    close: () => driver.closeDb().then(() => undefined),
+  };
 }

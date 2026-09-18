@@ -15,7 +15,7 @@
 // degrade that way, because LocalStore has no CRDT: rather than silently drop the guarantee the
 // user switched on, it fails loudly and the caller decides.
 
-import { createSqliteStore, LocalStore, type Store } from "@karta/store";
+import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type Store } from "@karta/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -251,6 +251,21 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     return handle.store;
   }
 
+  // A worker first, because it is the only place OPFS opens at all (see `sqlite-worker.ts`). The
+  // two paths below it are what every local app used to get: a main-thread OPFS open that has never
+  // succeeded in any browser, and then `localStorage` — five megabytes shared with everything else
+  // the app remembers, which is why adding a photo reported "the quota has been exceeded".
+  if (workersAvailable()) {
+    try {
+      const store = new SqliteStore(await openWorkerSqliteHandle(namespace));
+      await store.open(namespace);
+      await adoptLocalStorageData(store, namespace);
+      return store;
+    } catch (err) {
+      console.info(`[karta] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
+    }
+  }
+
   try {
     return await createSqliteStore(namespace);
   } catch {
@@ -260,6 +275,43 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     await store.open(namespace);
     return store;
   }
+}
+
+/** Where `LocalStore` keeps an app, and the note saying its contents have been moved out. */
+const localKey = (namespace: string) => `karta:${namespace}`;
+const movedKey = (namespace: string) => `karta:moved:${namespace}`;
+
+/**
+ * Bring across what an app wrote while it was living in `localStorage`.
+ *
+ * Every local-only app has been storing there — the OPFS path it was supposed to use could never
+ * open — so switching to a real database without this would show people an empty app and leave
+ * years of notes in a key nothing reads. Runs once, guarded by a marker, and only into a database
+ * with nothing in it.
+ *
+ * The old copy is NOT deleted. It costs nothing to leave (nothing writes there any more) and it is
+ * the only copy of that data until someone is sure this worked.
+ */
+export async function adoptLocalStorageData(store: Store, namespace: string): Promise<void> {
+  const raw = globalThis.localStorage?.getItem(localKey(namespace));
+  if (!raw || globalThis.localStorage?.getItem(movedKey(namespace))) return;
+
+  let entities: string[];
+  try {
+    entities = Object.keys((JSON.parse(raw) as { records?: Record<string, unknown> }).records ?? {});
+  } catch {
+    return; // not something this wrote; leave it alone
+  }
+  if (entities.length === 0) {
+    globalThis.localStorage?.setItem(movedKey(namespace), new Date().toISOString());
+    return;
+  }
+
+  const old = new LocalStore();
+  await old.open(namespace);
+  const moved = await copyStoreData(old, store, { entities });
+  globalThis.localStorage?.setItem(movedKey(namespace), new Date().toISOString());
+  console.info(`[karta] moved "${namespace}" out of local storage: ${moved.records} records, ${moved.blobs} files.`);
 }
 
 
