@@ -48,14 +48,17 @@ export interface LauncherEntry {
 }
 
 /**
- * The three "something happened" counts, written by the running app whenever they change. The launcher
- * cannot run every app to ask, so it shows the last known numbers. Changes and chat can only go stale
- * upward while the app is closed; reminders are stored as due TIMES, so one that falls due after the
- * app was closed is still counted.
+ * The "something happened" counts, written by the running app whenever they change. The launcher
+ * cannot run every app to ask, so it shows the last known numbers. Chat can only go stale upward
+ * while the app is closed; reminders are stored as due TIMES, so one that falls due after the app
+ * was closed is still counted.
+ *
+ * Edits used to be counted here too, and were removed: a badge has to mean "someone did something
+ * you would want to know about", and a record count does not. Dragging one item up a list patches
+ * every item it passed, so a single move read as five changes; loading a backup read as hundreds.
+ * A number nobody can act on is noise on top of the thing they can. Messages are the signal.
  */
 export interface AppSignals {
-  /** Edits by other people since you last looked. */
-  changes: number;
   /** Unread chat messages. */
   chat: number;
   /** When each of the app's reminders falls due (ISO), past ones included, earliest first. */
@@ -64,7 +67,6 @@ export interface AppSignals {
 
 export interface Attention {
   total: number;
-  changes: number;
   chat: number;
   due: number;
 }
@@ -72,21 +74,21 @@ export interface Attention {
 /** The badge's numbers for an entry at `now`: a reminder counts once its time has come. */
 export function attentionOf(entry: LauncherEntry, now: number): Attention {
   const s = entry.signals;
-  const changes = Math.max(0, s?.changes ?? 0);
   const chat = Math.max(0, s?.chat ?? 0);
   const due = (s?.due ?? []).filter((t) => Date.parse(t) <= now).length;
-  return { total: changes + chat + due, changes, chat, due };
+  return { total: chat + due, chat, due };
 }
 
-/** "2 messages · 1 change · 1 due" — the badge in words. Empty when there is nothing. */
+/** "2 messages · 1 due" — the badge in words. Empty when there is nothing. */
 export function describeAttention(a: Attention): string {
   const part = (n: number, one: string, many: string): string | null => (n ? `${n} ${n === 1 ? one : many}` : null);
-  return [part(a.chat, "message", "messages"), part(a.changes, "change", "changes"), part(a.due, "due", "due")].filter(Boolean).join(" · ");
+  return [part(a.chat, "message", "messages"), part(a.due, "due", "due")].filter(Boolean).join(" · ");
 }
 
 /** Merge new signal values into the app's entry — only when something changed, so a re-render does not write. */
 export function recordSignals(key: AppKey, patch: Partial<AppSignals>): void {
-  const prev = getEntry(key).signals ?? { changes: 0, chat: 0, due: [] };
+  // A `changes` left on an entry by an older build is simply not read — see `AppSignals`.
+  const prev = getEntry(key).signals ?? { chat: 0, due: [] };
   const next: AppSignals = { ...prev, ...patch };
   if (JSON.stringify(next) === JSON.stringify(prev) && getEntry(key).signals) return;
   updateEntry(key, { signals: next });
