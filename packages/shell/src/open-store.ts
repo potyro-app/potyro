@@ -125,9 +125,23 @@ export async function watchSpace(): Promise<void> {
  */
 export async function republishName(name: string): Promise<void> {
   const handle = lastSyncHandle;
-  if (!handle) return;
-  const { publishName } = await import("@karta/store");
-  await publishName(handle, name);
+  if (handle) {
+    const { publishName, publishNameToAccount } = await import("@karta/store");
+    await publishName(handle, name);
+    // And on the account's registry, which is the copy a device linked later actually finds.
+    const node = await openAccountNodeForDevice();
+    if (node) await publishNameToAccount(node, name);
+    return;
+  }
+  // No app open — which is the usual case, since the control that renames you lives on the launcher.
+  // The name belongs to the ACCOUNT, so it goes there directly; otherwise it reaches this browser
+  // and nothing else, and the next device to be linked introduces you as "Me".
+  const node = await openAccountNodeForDevice();
+  if (!node) return;
+  const { publishAccountName, publishNameToAccount } = await import("@karta/store");
+  // Both channels: the profile, which is what members of a shared space read, and the account's own
+  // registry, which is what a newly linked device reads before it has anything else.
+  await publishAccountName(node, name);
 }
 
 /**
@@ -212,6 +226,11 @@ export function syncRelayUrl(): string | undefined {
  * without this check they got a raw `Missing required OPFS APIs` from deep inside sqlite-wasm.
  * Callers use it to say something true instead.
  */
+/** Was this device told who it is with the recovery words? Then its account exists somewhere else. */
+function linkedDevice(): boolean {
+  return globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
+}
+
 export function canSync(): boolean {
   // OPFS is preferred but no longer required: the store falls back to an IndexedDB-backed SQLite.
   // The previous check demanded `createSyncAccessHandle`, which is worker-only in many Chrome
@@ -243,6 +262,9 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     const handle = await openJazzStore(namespace, {
       relay: syncRelayUrl(),
       account,
+      // Told who it is by the recovery words: its account exists elsewhere, so "not in this
+      // browser" must not be read as "does not exist" — see `expectExisting`.
+      expectExisting: linkedDevice(),
       // Your display name, so peers see a person rather than a truncated account id. Passed on
       // EVERY open, because renaming yourself must reach people you already share with.
       profileName: identity.peekIdentity()?.name,
@@ -394,6 +416,7 @@ export async function openAccountNodeForDevice(): Promise<unknown | null> {
       account: await identity.identityAccount(),
       relay: syncRelayUrl(),
       profileName: saved.name,
+      expectExisting: linkedDevice(),
     });
     return opened?.node ?? null;
   } catch {

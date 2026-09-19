@@ -39,6 +39,9 @@ export interface JazzKeyStore {
   set(key: string, value: string): void;
 }
 
+/** What cojson calls someone who has not named themselves. A placeholder, not a name. */
+const DEFAULT_PROFILE_NAME = "Me";
+
 const ACCOUNT_ID = "karta:jazz:accountID";
 const ACCOUNT_SECRET = "karta:jazz:accountSecret";
 /**
@@ -99,6 +102,15 @@ export interface CreateJazzStoreOpts {
    * store did on its own, kept so the store's tests stay independent of identity.
    */
   account?: { id: string; secret: string };
+  /**
+   * This account already exists somewhere else — do not mint a local one without asking the relay.
+   *
+   * Set by a device linked with the recovery words. Without it such a device loads the account with
+   * no peers, fails (it has never seen it), and creates a fresh account CoValue from the same
+   * secret: the same id, but its own profile, named "Me". The person then exists twice — their
+   * laptop's name on one side and "Me" on the other — and nothing they rename later reconciles it.
+   */
+  expectExisting?: boolean;
   /**
    * Relay URL. Attached INSIDE this function, between resolving the account and loading the app's
    * group — the only window that works. Later is too late: joining a space fetches the group over
@@ -187,6 +199,52 @@ function browserKeys(): JazzKeyStore {
  * rather than merely persisted.
  */
 /**
+ * Fetch an account that exists elsewhere, through a relay connection made only for that.
+ *
+ * The relay is normally attached AFTER the node exists, because the node's sync manager is what it
+ * attaches to — which is fine until the thing you need from the relay is the account itself. A
+ * device linked with the recovery words has never seen its own account, and without asking the relay
+ * it concludes there is none and mints a second one: same id, new profile, called "Me".
+ *
+ * So: a throwaway connection, a bounded wait, and the peer handed straight to the load. It is
+ * disabled afterwards whatever happens — the real one is attached in the usual place, in the usual
+ * way, and reconnects on its own.
+ */
+async function loadAccountThroughRelay<T>(
+  url: string,
+  load: (peers: never[]) => Promise<T>,
+  waitMs = 8_000,
+): Promise<T | null> {
+  const { WebSocketPeerWithReconnection } = await import("cojson-transport-ws");
+  const peers: unknown[] = [];
+  let arrived: () => void = () => {};
+  const connected = new Promise<void>((r) => (arrived = r));
+  const temporary = new WebSocketPeerWithReconnection({
+    peer: url,
+    reconnectionTimeout: undefined,
+    addPeer: (peer: unknown) => {
+      peers.push(peer);
+      arrived();
+    },
+    removePeer: () => {},
+  } as never) as unknown as { enable(): void; disable(): void };
+
+  temporary.enable();
+  try {
+    await Promise.race([connected, new Promise((r) => setTimeout(r, 3_000))]);
+    if (peers.length === 0) return null; // nothing answered; the caller falls back
+    return await Promise.race([
+      load(peers as never[]).catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), waitMs)),
+    ]);
+  } catch {
+    return null;
+  } finally {
+    temporary.disable();
+  }
+}
+
+/**
  * The account half of opening a store: the device's identity, its profile, and the relay — without
  * any app's space.
  *
@@ -247,8 +305,15 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
     // unreachable relay turned "turn sync on" into a stall of tens of seconds, and the first sync on
     // a flaky network is exactly when that is least forgivable. Locally it fails in milliseconds.
     accountID = opts.account.id;
+    // A device that was linked asks the relay FIRST, because for it "not here" means "not yet",
+    // never "does not exist". Bounded, so a dead relay costs seconds rather than the tens of seconds
+    // the no-peers path exists to avoid — and if the wait runs out, the paths below still apply.
+    const fromPeers =
+      opts.expectExisting && opts.relay
+        ? await loadAccountThroughRelay(opts.relay, (p) => loadAccount(opts.account!.id, opts.account!.secret, p))
+        : null;
     try {
-      node = await loadAccount(opts.account.id, opts.account.secret, [] as never[]);
+      node = fromPeers ?? (await loadAccount(opts.account.id, opts.account.secret, [] as never[]));
     } catch (e) {
       // Narrow on purpose: only "there is no account here" is a reason to create one. Any other
       // failure (corrupt storage, bad secret) must surface rather than silently mint a second
@@ -418,6 +483,8 @@ export async function openAccountNodeInBrowser(opts?: {
   profileName?: string;
   relay?: string;
   account?: { id: string; secret: string };
+  /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
+  expectExisting?: boolean;
 }): Promise<{ node: unknown; accountID: string } | null> {
   try {
     const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
@@ -455,6 +522,7 @@ export async function openAccountNodeInBrowser(opts?: {
       profileName: opts?.profileName,
       account: opts?.account,
       relay: opts?.relay,
+      expectExisting: opts?.expectExisting,
     });
     return { node, accountID };
   } catch {
@@ -472,6 +540,8 @@ export async function openJazzStore(
     relay?: string;
     /** The device account from `@karta/identity`. See `CreateJazzStoreOpts.account`. */
     account?: { id: string; secret: string };
+    /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
+    expectExisting?: boolean;
   },
 ): Promise<JazzStoreHandle> {
   const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
@@ -562,6 +632,7 @@ export async function openJazzStore(
     profileName: opts?.profileName,
     account: opts?.account,
     relay: opts?.relay,
+    expectExisting: opts?.expectExisting,
     peers,
   });
   if (!whenPersisted) return handle;
@@ -705,9 +776,54 @@ async function publishProfileName(node: unknown, name: string): Promise<void> {
     // Written `trusting` (plaintext): a display name has to be readable by members of every space
     // you are in, and they do not share one key. This is the same metadata visibility recorded in
     // KA-33 — it is a name, not content.
-    if (profile.get("name") !== name) profile.set("name", name, "trusting");
-  } catch {
+    // "Me" is the ABSENCE of a name, so it never replaces one. Every open republishes this device's
+    // name, and a device just linked has no name of its own yet — without this, linking a second
+    // device renamed the person to "Me" for everyone they had ever shared with.
+    const current = profile.get("name");
+    if (name === DEFAULT_PROFILE_NAME && typeof current === "string" && current && current !== DEFAULT_PROFILE_NAME) return;
+    if (current !== name) profile.set("name", name, "trusting");
+  } catch (e) {
     // Never block opening an app on this.
+  }
+}
+
+/**
+ * Put a display name on this account, given only a node.
+ *
+ * `publishName` needs an open app; naming yourself does not. Someone who renames themselves on the
+ * launcher — with no app open, which is exactly where that control lives — was writing the name to
+ * this browser and nowhere else, so a device linked later came up as "Me" and the people shared with
+ * saw the same person under two names.
+ */
+export async function publishAccountName(node: unknown, name: string): Promise<void> {
+  await publishProfileName(node, name);
+}
+
+/**
+ * The display name already on this account, if it has one.
+ *
+ * The counterpart to publishing it. A device that signs in with the recovery words is the same
+ * person, but the name lived only in the localStorage of whichever device set it — so a linked
+ * phone called itself "Me" while the laptop had a name, and everyone shared with saw both. The
+ * account profile is the copy that syncs; this reads it.
+ *
+ * Best-effort, like its twin: a profile that has not arrived yet is a name that stays as it was.
+ */
+export async function readProfileName(node: unknown): Promise<string | null> {
+  try {
+    const n = node as {
+      expectCurrentAccount(hint: string): Promise<{ get(k: string): unknown }>;
+      load(id: string): Promise<unknown>;
+    };
+    const account = await n.expectCurrentAccount("profile");
+    const profileId = account.get("profile");
+    if (typeof profileId !== "string") return null;
+    const profile = (await n.load(profileId)) as { get(k: string): unknown } | "unavailable";
+    if (!profile || profile === "unavailable") return null;
+    const name = profile.get("name");
+    return typeof name === "string" && name.trim() ? name : null;
+  } catch {
+    return null;
   }
 }
 

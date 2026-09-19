@@ -95,17 +95,30 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
  * empty one beside it.
  */
 export async function installFromAccount(app: AccountApp, now: string): Promise<void> {
-  if (getUserApp(app.id)) return;
+  const here = getUserApp(app.id);
+  // An app of this id already syncing on this device is already pointed at a space, and a second
+  // space cannot be grafted onto it — that one is left alone.
+  if (here?.sync) return;
+  // Anything else of that id is either an example this device seeded for itself or a local-only app
+  // that happens to share the name, and the account's copy is the one with the person's data in it.
+  // Its records stay in their own database, untouched; they are simply no longer what the app opens.
   // Where its space is, in the form the store looks for. Without this the app would open a second,
   // empty space and the data on the relay would be stranded — exactly what a share link avoids by
   // carrying the ids.
   rememberAppSpace(`user:${app.id}`, { group: app.group, root: app.root });
   await saveUserApp(
-    { id: app.id, name: app.name, source: app.source, trusted: true, origin: "created", note: "from your account" },
+    {
+      id: app.id,
+      name: app.name,
+      source: app.source,
+      trusted: true,
+      origin: "created",
+      note: here ? "from your account, replacing this device's copy" : "from your account",
+      // Synced, because that is where its data is — written WITH the app, not after it. Set in a
+      // second call it lands after this function's history write, and an app that opened in between
+      // would open the local copy and look empty.
+      sync: true,
+    },
     now,
   );
-  // Synced, because that is where its data is. `saveUserApp` does not take the flag (it is not a
-  // property of the source), so it is set straight after, before anything opens the app.
-  const { setUserAppSync } = await import("./user-apps.js");
-  setUserAppSync(app.id, true, now);
 }

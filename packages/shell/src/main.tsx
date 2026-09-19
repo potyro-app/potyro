@@ -602,7 +602,7 @@ async function offerAccountApps(): Promise<void> {
       void warmDeviceDatabase();
     }
 
-    const { readAccountApps } = await import("@karta/store");
+    const { readAccountApps, readAccountName, readProfileName } = await import("@karta/store");
     const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
     if (!node) return;
@@ -615,7 +615,38 @@ async function offerAccountApps(): Promise<void> {
     // own copy of the list travels the same way any other CoValue does.
     const mine = await readAccountApps(node, { waitMs: 8_000 });
     globalThis.localStorage?.setItem(OFFERED, "1");
-    const missing = mine.filter((a) => !getUserApp(a.id));
+
+    // Your name, if the account already has one and this device does not.
+    //
+    // The name lived only in the localStorage of whichever device set it, so a device linked with
+    // the recovery words called itself "Me" while the other one had a name — and the people shared
+    // with saw the same person twice. The account profile is the copy that syncs.
+    //
+    // Read here, AFTER the account's own data has been waited for: the profile is its own CoValue
+    // and arrives over the same relay, so asking the moment the node opens reliably finds nothing.
+    // A device that HAS been named keeps its own — being renamed from elsewhere without asking
+    // would be worse than the inconsistency.
+    try {
+      const { peekIdentity, renameIdentity, DEFAULT_NAME } = await import("@karta/identity");
+      const here = peekIdentity();
+      if (here && (!here.name || here.name === DEFAULT_NAME)) {
+        // The registry first — it is the copy that arrives with the apps — then the profile.
+        // The registry first — it arrives with the apps — then the profile, which is the copy the
+        // people in a shared space read.
+        const theirs = (await readAccountName(node, { waitMs: 4_000 })) ?? (await readProfileName(node));
+        if (theirs && theirs !== here.name) renameIdentity(theirs);
+      }
+    } catch {
+      /* a name is a nicety; never hold up the apps for it */
+    }
+    // Offered: everything on the account this device is not ALREADY syncing.
+    //
+    // It used to be "everything this device does not have", by id — which quietly excluded the very
+    // apps people test this with. Every device seeds the examples for itself, so a linked phone
+    // already had a Groceries of its own and the Groceries with the shopping list in it was never
+    // offered: "groceries is not with sync on and with the same data as before". A factory example
+    // is not a reason to withhold someone's own app.
+    const missing = mine.filter((a) => !getUserApp(a.id)?.sync);
     if (missing.length === 0) return;
 
     const { RestoreApps, installFromAccount } = await import("./restore-apps.js");
