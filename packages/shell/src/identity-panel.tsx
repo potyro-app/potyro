@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import { StorageReport } from "./storage-report.js";
+import { BackupSwitch } from "./backup-switch.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
@@ -204,6 +205,13 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
             {named ? "Rename" : "Set a name"}
           </button>
         </div>
+
+        {/* Before the devices, deliberately: linking one is only worth doing if there is something
+            for it to bring back. */}
+        <section aria-labelledby="k-backup-h">
+          <h3 id="k-backup-h">Backup</h3>
+          <BackupSwitch />
+        </section>
 
         <section aria-labelledby="k-devices-h">
           <h3 id="k-devices-h">Your devices</h3>

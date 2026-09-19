@@ -12,6 +12,7 @@
 import { clearHistory, recordVersion, type VersionOrigin } from "./app-history.js";
 import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
+import { backupEnabled } from "./backup-setting.js";
 
 const KEY = "karta:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -102,7 +103,18 @@ export async function saveUserApp(
   // arriving from your account: it is synced BECAUSE that is where its data is, and setting the flag
   // in a second call afterwards puts it behind this function's history write — which is a write to
   // another database, and an app that never got the flag opens the empty local copy instead.
-  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted, sync: input.sync ?? prev?.sync };
+  // A NEW app on a device that backs everything up is backed up too. A switch that covered only
+  // what existed when it was flipped would quietly stop being true, and the app you write tomorrow
+  // is exactly the one you would miss when the laptop dies.
+  const backedUpByDefault = !prev && backupEnabled();
+  const record: UserApp = {
+    id,
+    name,
+    source: input.source,
+    updatedAt: now,
+    trusted,
+    sync: input.sync ?? prev?.sync ?? (backedUpByDefault || undefined),
+  };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
   // first diff needs. A brand-new app has none — its first version IS the creation.
