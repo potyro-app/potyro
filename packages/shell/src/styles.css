@@ -7345,3 +7345,23 @@ body:has(.k-tabbar) .k-toasts {
 .k-restore-actions .k-add {
   min-height: 2.75rem;
 }
+
+/* The storage speed readout in the identity panel: a definition list of plain numbers, meant to be
+   read aloud to someone who cannot see the device. */
+.k-storage-report {
+  margin-top: 0.75rem;
+}
+.k-storage-figures {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+.k-storage-figures dt {
+  color: var(--muted);
+}
+.k-storage-figures dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
