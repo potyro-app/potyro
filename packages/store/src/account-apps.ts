@@ -111,6 +111,40 @@ async function registry(node: Nodeish, create: boolean, waitMs = 0): Promise<CoM
   return map;
 }
 
+/**
+ * Your display name, kept beside your apps.
+ *
+ * It belongs in the account profile, and it is published there — but that profile is a CoValue of
+ * cojson's own, and on a device that has just been linked it arrives late or not at all, so a phone
+ * introduced itself as "Me" while the laptop had a name. This registry is the channel that demonstrably
+ * reaches a new device, because it is how the apps get there. Written here as well, read here first.
+ *
+ * Prefixed so it cannot collide with an app id, which is what every other key here is.
+ */
+const NAME_KEY = "\u0000name";
+
+export async function publishNameToAccount(node: unknown, name: string): Promise<boolean> {
+  try {
+    const map = await registry(node as Nodeish, true);
+    if (!map) return false;
+    map.set(NAME_KEY, name, "private");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The name on this account, or null when it has never been set (or has not arrived). */
+export async function readAccountName(node: unknown, opts?: { waitMs?: number }): Promise<string | null> {
+  try {
+    const map = await registry(node as Nodeish, false, opts?.waitMs ?? 0);
+    const value = map?.get(NAME_KEY);
+    return typeof value === "string" && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Record (or update) one app on your account. Best-effort: never fail an app over its backup. */
 export async function publishAppToAccount(node: unknown, app: AccountApp): Promise<boolean> {
   try {
@@ -150,6 +184,7 @@ export async function readAccountApps(node: unknown, opts?: { waitMs?: number })
     const out: AccountApp[] = [];
     const keys = typeof map.keys === "function" ? map.keys() : [];
     for (const key of keys) {
+      if (key === NAME_KEY) continue; // your name lives here too; it is not an app
       const app = parse(key, map.get(key));
       if (app) out.push(app);
     }

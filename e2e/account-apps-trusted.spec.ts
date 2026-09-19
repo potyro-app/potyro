@@ -101,3 +101,94 @@ test("a device signed in with the words is offered the apps on the account, with
   await ctxA.close();
   await ctxB.close();
 });
+
+test("an app the new device already seeded for itself is still offered, with the data from the account", async ({ browser }) => {
+  test.slow();
+  // The scenario people actually test this with, and the one that failed: Groceries is an example,
+  // so EVERY device seeds a copy for itself. Offering only apps the new device was missing meant the
+  // Groceries with the shopping list in it was silently skipped — "groceries is not with sync on and
+  // with the same data as before". A factory example is not a reason to withhold someone's own app.
+
+  // ---- A: the seeded Groceries, with something added, synced ----
+  const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctxA.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  const a = await ctxA.newPage();
+  await a.goto("/?user=groceries");
+  await expect(a.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
+
+  const unique = `Cardamom ${Date.now()}`;
+  const add = a.getByRole("textbox", { name: "Add an item" });
+  await add.click();
+  await add.pressSequentially(unique, { delay: 5 });
+  await a.keyboard.press("Enter");
+  await expect(a.getByRole("checkbox", { name: unique })).toBeVisible({ timeout: 30_000 });
+
+  // Sync it on, from the launcher, the way a person does.
+  await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+  await tileAction(a, "Groceries", "sync");
+  await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await expect(a.locator(".k-dialog")).toContainText("Moved", { timeout: 60_000 });
+  await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  // Name yourself on this device. The answer belongs to the ACCOUNT, not to this browser — the
+  // other device should not have to be told again.
+  await a.goto("/");
+  await a.getByRole("button", { name: "You and your devices" }).click();
+  await a.getByRole("button", { name: /^(Set a name|Rename)$/ }).click();
+  const nameField = a.locator(".k-dialog input");
+  await expect(nameField).toBeVisible({ timeout: 30_000 });
+  await nameField.fill("Ana");
+  await a.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+  await expect(a.locator(".k-identity-name")).toHaveText("Ana", { timeout: 30_000 });
+  await a.keyboard.press("Escape");
+  // The backup offer this device gets the first time it syncs anything.
+  const laterA = a.locator(".k-restore").getByRole("button", { name: /Not now/ });
+  if (await laterA.count()) await laterA.click();
+
+  // Its words.
+  await a.goto("/");
+  await expect(a.locator(".k-launcher-home")).toBeVisible({ timeout: 30_000 });
+  const devices = a.getByRole("button", { name: "You and your devices" });
+  if (!(await devices.isVisible())) await a.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();
+  await devices.click();
+  await a.getByRole("button", { name: /Add a device/ }).click();
+  const words = (await a.locator(".k-passphrase").innerText({ timeout: 30_000 })).trim();
+  expect(words.split(/\s+/)).toHaveLength(24);
+
+  // ---- B: a second browser, which has seeded its OWN Groceries ----
+  const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
+  await ctxB.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  const b = await ctxB.newPage();
+  await b.goto("/?user=groceries");
+  await expect(b.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
+  // Its own copy: the example's items, not A's.
+  await expect(b.getByRole("checkbox", { name: unique })).toHaveCount(0);
+
+  await b.goto("/");
+  await b.getByRole("button", { name: "You and your devices" }).click();
+  await b.getByRole("button", { name: /This is my second device/ }).click();
+  const field = b.locator(".k-dialog input");
+  await expect(field).toBeVisible({ timeout: 30_000 });
+  await field.fill(words);
+  await b.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+
+  // ---- THE CLAIM: Groceries is offered, and loading it brings A's list ----
+  const offer = b.locator(".k-restore");
+  await expect(offer).toBeVisible({ timeout: 60_000 });
+  await expect(offer).toContainText("Groceries");
+  await offer.getByRole("button", { name: /^Load/ }).click();
+
+  await b.goto("/?user=groceries");
+  await expect(b.getByRole("checkbox", { name: unique })).toBeVisible({ timeout: 60_000 });
+  // And it is syncing here, not a local copy that merely looks right.
+  await expect(b.locator(".k-sync-status")).toContainText("Synced", { timeout: 60_000 });
+
+  // And this device knows who it is: the name was set on A, and it is the account's, not that
+  // browser's. It used to stay behind, so a linked phone called itself "Me" and the people shared
+  // with saw the same person twice, under two names.
+  await b.goto("/");
+  await b.getByRole("button", { name: "You and your devices" }).click();
+  await expect(b.locator(".k-identity-name")).toHaveText("Ana", { timeout: 30_000 });
+
+  await ctxA.close();
+  await ctxB.close();
+});
