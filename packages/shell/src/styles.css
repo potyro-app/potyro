@@ -3998,6 +3998,28 @@ details.k-check-done[open] > summary::before {
 .k-check-row[data-held] {
   opacity: 1;
 }
+
+/* Where it went. The row used to sit still for 700ms so the eye could keep up, which read as the
+   app being slow; it moves promptly now and says where it landed instead. A tinted sweep that
+   fades out, so the eye is led rather than made to wait. */
+@keyframes k-check-landed {
+  from {
+    background: color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+.k-check-row[data-landed] {
+  animation: k-check-landed 600ms ease-out;
+  border-radius: var(--radius-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep for someone who asked for less motion — the strike-through already says it is done. */
+  .k-check-row[data-landed] {
+    animation: none;
+  }
+}
 .k-check {
   flex: none;
   width: 2.75rem;

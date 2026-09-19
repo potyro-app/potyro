@@ -29,8 +29,21 @@ import { createDefaults } from "./record-form.js";
 import { useRowGroups } from "./row-groups.js";
 import { useReorder } from "./reorder.js";
 
-/** How long a ticked row stays where it is before it moves — long enough to see the strike. */
-const HOLD_MS = 700;
+/**
+ * How long a ticked row stays where it is before it sinks.
+ *
+ * It was 700ms, on the reasoning that the eye needs to see the strike land before the row moves.
+ * Measured end to end, that made a tick take ~750ms to finish — the tick itself paints in under
+ * 80ms — and it was reported, correctly, as the app being slow: "it takes around one second to
+ * change position".
+ *
+ * A pause is a poor way to let the eye follow something; movement it can watch is better. So the
+ * hold is now just long enough to register the strike, and the row marks where it landed
+ * (`data-landed`) so the eye is led to its new place rather than made to wait for it.
+ */
+const HOLD_MS = 180;
+/** How long the landed row stays marked. Long enough to notice, short enough not to linger. */
+const LANDED_MS = 600;
 
 interface ChecklistDef {
   entity: string;
@@ -171,6 +184,7 @@ export function ChecklistView(props: BuiltinViewProps) {
   // A row just ticked keeps its place for a beat, struck through, before it sinks: the eye follows
   // the change instead of losing the row.
   const [held, setHeld] = useState<Map<string, boolean>>(new Map());
+  const [landed, setLanded] = useState<Set<string>>(new Set());
   /**
    * What a tick means RIGHT NOW, before the store has said anything back.
    *
@@ -232,6 +246,13 @@ export function ChecklistView(props: BuiltinViewProps) {
           m.delete(id);
           return m;
         });
+        // It moves now, so mark where it went.
+        setLanded((l) => new Set(l).add(id));
+        setTimeout(() => setLanded((l) => {
+          const next = new Set(l);
+          next.delete(id);
+          return next;
+        }), LANDED_MS);
       }, HOLD_MS),
     );
     try {
@@ -532,7 +553,14 @@ export function ChecklistView(props: BuiltinViewProps) {
     const editing = editingRow === id;
     const drag = canDragRows && !editing ? reorder.item(key) : { "data-key": key };
     return (
-      <li key={id} className="k-check-row" data-done={ticked || undefined} data-held={held.has(id) || undefined} {...drag}>
+      <li
+        key={id}
+        className="k-check-row"
+        data-done={ticked || undefined}
+        data-held={held.has(id) || undefined}
+        data-landed={landed.has(id) || undefined}
+        {...drag}
+      >
         <button type="button" role="checkbox" aria-checked={ticked} aria-label={t.text} className="k-check" onClick={() => void toggle(r)}>
           <span className="k-check-mark" aria-hidden />
         </button>

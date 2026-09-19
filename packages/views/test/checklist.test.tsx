@@ -118,6 +118,28 @@ describe("ChecklistView", () => {
     await screen.findByRole("checkbox", { name: "Bread" });
   });
 
+  it("moves the ticked row promptly, and marks where it landed", async () => {
+    // It used to sit still for 700ms first, so the eye could follow it. End to end that made a tick
+    // take about a second, and it was reported as the app being slow. The row moves in a fifth of
+    // that now and marks its new place instead, which is a better way to be followed than a wait.
+    const { runtime } = await makeRuntime(app({}));
+    render(<ChecklistView {...props(runtime)} />);
+    const milk = await screen.findByRole("checkbox", { name: "Milk" });
+    await act(async () => {
+      fireEvent.click(milk);
+    });
+
+    await waitFor(
+      () => {
+        const row = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
+        // Held is over: it has moved, and it is marked where it landed.
+        expect(row.getAttribute("data-held")).toBeNull();
+        expect(row.getAttribute("data-landed")).toBe("true");
+      },
+      { timeout: 3000 },
+    );
+  });
+
   it("empties the box the moment you hit enter, without waiting for the store", async () => {
     // Typing the next item is the very next thing someone does with a quick-add list. Clearing only
     // once the write was durable meant that on slow storage the next item's letters landed on top of
