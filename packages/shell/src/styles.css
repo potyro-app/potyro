@@ -1146,6 +1146,14 @@ button {
 }
 
 /* Table */
+/* A table is the one thing an app can declare that is wider than a phone. It scrolls in here, so the
+   page does not: a page wider than the screen slides the whole app sideways — header off the top,
+   and on Firefox for Android the bottom bar with it. */
+.k-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
 .k-table {
   width: 100%;
   border-collapse: collapse;
@@ -3998,6 +4006,28 @@ details.k-check-done[open] > summary::before {
 .k-check-row[data-held] {
   opacity: 1;
 }
+
+/* Where it went. The row used to sit still for 700ms so the eye could keep up, which read as the
+   app being slow; it moves promptly now and says where it landed instead. A tinted sweep that
+   fades out, so the eye is led rather than made to wait. */
+@keyframes k-check-landed {
+  from {
+    background: color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+.k-check-row[data-landed] {
+  animation: k-check-landed 600ms ease-out;
+  border-radius: var(--radius-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep for someone who asked for less motion — the strike-through already says it is done. */
+  .k-check-row[data-landed] {
+    animation: none;
+  }
+}
 .k-check {
   flex: none;
   width: 2.75rem;
@@ -4177,6 +4207,38 @@ details.k-check-done[open] > summary::before {
   min-width: 0;
   min-height: 2.5rem;
 }
+/* The drag grips.
+   `touch-action: none` is the whole point of them: it tells the browser not to treat a gesture that
+   starts here as a scroll. It cannot go on the row itself, because on a phone the rows ARE the
+   scrolling surface — and without it on anything, Firefox on Android cancels the drag mid-hold and
+   the row simply refuses to move. */
+.k-check-grip::before,
+.k-check-heading-grip::before {
+  content: "⠿";
+}
+.k-check-grip,
+.k-check-heading-grip {
+  flex: none;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.k-check-grip:active,
+.k-check-heading-grip:active {
+  cursor: grabbing;
+  color: var(--ink-soft);
+}
+.k-check-heading-grip {
+  align-self: center;
+}
+
 .k-check-row[data-dragging],
 .k-check-heading[data-dragging] {
   box-shadow: var(--shadow);
@@ -7344,4 +7406,24 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-restore-actions .k-add {
   min-height: 2.75rem;
+}
+
+/* The storage speed readout in the identity panel: a definition list of plain numbers, meant to be
+   read aloud to someone who cannot see the device. */
+.k-storage-report {
+  margin-top: 0.75rem;
+}
+.k-storage-figures {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+.k-storage-figures dt {
+  color: var(--muted);
+}
+.k-storage-figures dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }
