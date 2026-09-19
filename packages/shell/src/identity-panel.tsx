@@ -15,6 +15,7 @@
 // find it whenever you want".
 
 import { useState } from "react";
+import { StorageReport } from "./storage-report.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
@@ -257,6 +258,9 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               Identity <code>{me.id}</code>
             </p>
           ) : null}
+          {/* What this device's storage is actually doing. Every fallback in `openStore` is silent,
+              so without this the only way to know is to ask someone to open a console. */}
+          <StorageReport />
         </details>
       </div>
     </div>

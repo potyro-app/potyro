@@ -248,6 +248,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       profileName: identity.peekIdentity()?.name,
     });
     lastSyncHandle = handle;
+    modes.set(namespace, "crdt-worker");
     return handle.store;
   }
 
@@ -260,6 +261,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       const store = new SqliteStore(await openWorkerSqliteHandle(namespace));
       await store.open(namespace);
       await adoptLocalStorageData(store, namespace);
+      modes.set(namespace, "worker");
       return store;
     } catch (err) {
       console.info(`[karta] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
@@ -267,14 +269,31 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
   }
 
   try {
-    return await createSqliteStore(namespace);
+    const store = await createSqliteStore(namespace);
+    modes.set(namespace, "opfs");
+    return store;
   } catch {
     // Expected on Firefox / no-OPFS browsers — data still persists via localStorage.
     console.info(`[karta] Using local storage for "${namespace}" (OPFS SQLite unavailable in this browser).`);
     const store = new LocalStore();
     await store.open(namespace);
+    modes.set(namespace, "local-storage");
     return store;
   }
+}
+
+/**
+ * Which storage each namespace actually got.
+ *
+ * Every fallback here is silent by design — losing speed beats losing the app — which is exactly how
+ * "OPFS never opens on the main thread" went unnoticed for so long. Recording the answer means a
+ * device can be asked what it is really using instead of being assumed.
+ */
+const modes = new Map<string, StorageMode>();
+export type StorageMode = "worker" | "opfs" | "indexeddb-snapshot" | "local-storage" | "crdt-worker";
+
+export function storageModes(): ReadonlyMap<string, StorageMode> {
+  return modes;
 }
 
 /** Where `LocalStore` keeps an app, and the note saying its contents have been moved out. */
