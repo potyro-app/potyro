@@ -634,14 +634,17 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
   const chatBtnRef = useRef<HTMLButtonElement>(null);
   const lastFromOther = roomUnread > 0 ? [...room.messages].reverse().find((m) => m.by !== runtime.ctx.me?.id) : undefined;
   const peekMessage = !chatOpen && lastFromOther && lastFromOther.id !== peeked ? lastFromOther : undefined;
-  // The launcher badge (#86): the counts this app already shows, kept on its launcher entry as they
-  // change, so the home screen can show them without running the app. Opening the chat or the
-  // changes panel moves the watermarks, which brings these to zero and clears the badge.
-  const changesUnseen = activity?.length ?? 0;
+  // The launcher badge (#86): the count this app already shows, kept on its launcher entry as it
+  // changes, so the home screen can show it without running the app. Opening the chat moves the
+  // watermark, which brings this to zero and clears the badge.
+  //
+  // Edits are deliberately NOT counted. Dragging one item up a list patches every item it passed, so
+  // one move read as five changes and loading a backup read as hundreds — a number nobody can act on,
+  // sitting on top of the one they can. The changes panel still lists them, for anyone who looks.
   useEffect(() => {
     if (!appId || currentKind !== "user") return;
-    recordSignals(appKey("user", appId), { changes: changesUnseen, chat: roomUnread });
-  }, [appId, currentKind, changesUnseen, roomUnread]);
+    recordSignals(appKey("user", appId), { chat: roomUnread });
+  }, [appId, currentKind, roomUnread]);
   const [modifyTarget, setModifyTarget] = useState<string | null>(null);
   const [modifyText, setModifyText] = useState("");
   const [modifyBusy, setModifyBusy] = useState(false);
