@@ -5,14 +5,12 @@
 // you opened the app. For a shared list that is the one number the home screen exists to answer.
 //
 // A synced app's CRDT store can be opened without its runtime. On the home screen this opens the
-// stores of the most recently opened synced apps, counts unread chat and unseen changes exactly the
-// way the running app does (the same watermarks, the same functions), recounts on every change, and
-// writes the result to the launcher entry — the tile re-renders from there. Leaving the home screen
-// closes them. Capped, so thirty synced apps do not open thirty stores.
+// stores of the most recently opened synced apps, counts unread chat exactly the way the running app
+// does (the same watermark, the same function), recounts when a message arrives, and writes the
+// result to the launcher entry — the tile re-renders from there. Leaving the home screen closes
+// them. Capped, so thirty synced apps do not open thirty stores.
 
-import { activitySince, activitySupported } from "@karta/runtime";
 import { ROOM_THREAD, type Store } from "@karta/store";
-import type { AppDefinition } from "karta";
 import { appKey, recordSignals, type InstalledApp } from "./launcher-store.js";
 
 /** How many synced apps are watched at once: the most recently opened. */
@@ -34,10 +32,8 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
 
   for (const app of apps) {
     void (async () => {
-      const [{ openStore }, { inspect }, { lastSeen }, { unreadCount }, { peekIdentity }] = await Promise.all([
+      const [{ openStore }, { unreadCount }, { peekIdentity }] = await Promise.all([
         import("./open-store.js"),
-        import("./app-source.js"),
-        import("./activity-panel.js"),
         import("./chat-panel.js"),
         import("@karta/identity"),
       ]);
@@ -48,18 +44,17 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
         return;
       }
       stores.push(store);
-      const shape = await inspect(app.user.source);
-      // Entity names are all the count needs; labels only word the feed, which is not shown here.
-      const definition = { entities: Object.fromEntries(shape.entities.map((e) => [e.key, { fields: {} }])) } as unknown as AppDefinition;
       const me = peekIdentity() ?? undefined;
 
       let timer: ReturnType<typeof setTimeout> | null = null;
       const count = async (): Promise<void> => {
-        const [changes, chat] = await Promise.all([
-          activitySupported(store) ? activitySince({ store, definition, me }, lastSeen(app.id), { limit: 100 }).then((items) => items.length) : Promise.resolve(0),
-          store.messages ? store.messages(ROOM_THREAD).then((messages) => unreadCount(messages, app.id, ROOM_THREAD, me?.id)) : Promise.resolve(0),
-        ]);
-        if (!stopped) recordSignals(appKey("user", app.id), { changes, chat });
+        // Messages only. Counting edits meant walking up to a hundred activity items per app on
+        // every change, to produce a number that went up when someone dragged a row — see
+        // `AppSignals`.
+        const chat = store.messages
+          ? await store.messages(ROOM_THREAD).then((messages) => unreadCount(messages, app.id, ROOM_THREAD, me?.id))
+          : 0;
+        if (!stopped) recordSignals(appKey("user", app.id), { chat });
       };
       const recount = (): void => {
         if (timer) clearTimeout(timer);
@@ -68,7 +63,9 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
       stops.push(() => {
         if (timer) clearTimeout(timer);
       });
-      for (const entity of Object.keys(definition.entities)) stops.push(store.subscribe(entity, recount));
+      // Only the chat is watched. Subscribing to every entity existed to recount edits, which meant
+      // the home screen did work on every record anyone changed anywhere — to produce a number that
+      // has since been removed for saying nothing.
       const unsubChat = store.subscribeMessages?.(ROOM_THREAD, recount);
       if (unsubChat) stops.push(unsubChat);
       recount();
