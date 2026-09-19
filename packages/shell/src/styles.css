@@ -7427,3 +7427,20 @@ body:has(.k-tabbar) .k-toasts {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* The backup switch: a claim about where your apps are, the control that changes it, and what it is
+   doing while it moves them. */
+.k-backup {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+.k-backup-head {
+  display: grid;
+  gap: 0.15rem;
+}
+.k-backup-progress,
+.k-backup-outcome {
+  margin: 0;
+  font-size: 0.9rem;
+}
