@@ -289,30 +289,38 @@ export function TableView(props: BuiltinViewProps) {
   if (!rows.length) return <p className="k-empty">No matching rows.</p>;
 
   const renderTable = (list: Resolved[]) => (
-    <table className="k-table">
-      <thead>
-        <tr>
-          {columns.map((c) => (
-            <th key={c}>{c}</th>
-          ))}
-          {onEdit ? <th aria-label="Edit" /> : null}
-        </tr>
-      </thead>
-      <tbody>
-        {list.map((row) => (
-          <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
+    // The table scrolls INSIDE this, so a table wider than the phone does not make the PAGE wider
+    // than the phone. It did: the whole app slid sideways, taking the header with it and, on
+    // Firefox for Android, the bottom bar — reported as "the bottom menu disappears".
+    <div className="k-table-scroll">
+      <table className="k-table">
+        <thead>
+          <tr>
             {columns.map((c) => (
-              <td key={c}>{formatValue(row[c])}</td>
+              // The field's own label, or its key made readable. Printed raw, `caloriesPerServing`
+              // becomes one twenty-character word that cannot wrap, which is most of what made these
+              // tables too wide in the first place.
+              <th key={c}>{fieldLabel(runtime, view.entity, c)}</th>
             ))}
-            {onEdit ? (
-              <td>
-                <button type="button" className="k-action" onClick={(e) => { e.stopPropagation(); onEdit(view.entity, String(row.id)); }}>Edit</button>
-              </td>
-            ) : null}
+            {onEdit ? <th aria-label="Edit" /> : null}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {list.map((row) => (
+            <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
+              {columns.map((c) => (
+                <td key={c}>{formatValue(row[c])}</td>
+              ))}
+              {onEdit ? (
+                <td>
+                  <button type="button" className="k-action" onClick={(e) => { e.stopPropagation(); onEdit(view.entity, String(row.id)); }}>Edit</button>
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
   return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderTable} />;
 }

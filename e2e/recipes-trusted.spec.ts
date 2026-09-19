@@ -104,3 +104,35 @@ test("captures responsive screenshots of the recipes list", async ({ page }) => 
     await page.screenshot({ path: `test-results/recipes-${width}.png`, fullPage: true });
   }
 });
+
+test("a table wider than the phone scrolls itself, and the page does not", async ({ page }) => {
+  // "Why on the app recipe when I click high protein the bottom menu disappear": the table's columns
+  // made the PAGE wider than the screen, so the whole app slid sideways — the header off the top,
+  // and with it, on Firefox for Android, the bottom bar. A table is the one thing an app can declare
+  // that is wider than a phone; it has to scroll inside itself.
+  await page.setViewportSize({ width: 390, height: 780 });
+  await openRecipes(page);
+  await page.getByRole("button", { name: /High protein/ }).first().click();
+  await expect(page.locator(".k-table")).toBeVisible();
+
+  const overflow = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    table: (() => {
+      const el = document.querySelector(".k-table-scroll");
+      return el ? el.scrollWidth - el.clientWidth : 0;
+    })(),
+  }));
+  // The page fits. The table does not, which is exactly why it has its own scroll.
+  expect(overflow.page).toBe(0);
+  expect(overflow.table).toBeGreaterThan(0);
+
+  // And the bottom bar is where it belongs, at the bottom of the screen.
+  const bar = page.locator("nav").first();
+  const box = (await bar.boundingBox())!;
+  expect(Math.round(box.y + box.height)).toBeLessThanOrEqual(780);
+  expect(box.x).toBe(0);
+
+  // The columns are named, not keyed: "Calories Per Serving", not "caloriesPerServing" — which is
+  // also a twenty-character word that cannot wrap, and half of why this was ever too wide.
+  await expect(page.locator(".k-table th").nth(2)).toHaveText(/Calories Per Serving/i);
+});
