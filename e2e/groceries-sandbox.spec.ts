@@ -16,7 +16,8 @@ test("groceries checklist runs untrusted in the isolate: rows, headings, a tick"
   await expect(milk).toHaveAttribute("aria-checked", "false");
   await milk.click();
   await expect(milk).toHaveAttribute("aria-checked", "true");
-  // It sinks to the bottom of its own aisle instead of leaving for a Done section.
+  // It stays where it is — not sunk to the bottom of its aisle, and not moved to a Done section.
   const dairy = page.locator("section", { has: page.getByRole("heading", { name: "Dairy" }) });
-  await expect(dairy.locator(".k-check-label")).toHaveText(["Yoghurt", "Milk"], { timeout: 10_000 });
+  await page.waitForTimeout(1_000);
+  await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt"]);
 });

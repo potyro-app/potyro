@@ -4199,6 +4199,38 @@ details.k-check-done[open] > summary::before {
   min-width: 0;
   min-height: 2.5rem;
 }
+/* The drag grips.
+   `touch-action: none` is the whole point of them: it tells the browser not to treat a gesture that
+   starts here as a scroll. It cannot go on the row itself, because on a phone the rows ARE the
+   scrolling surface — and without it on anything, Firefox on Android cancels the drag mid-hold and
+   the row simply refuses to move. */
+.k-check-grip::before,
+.k-check-heading-grip::before {
+  content: "⠿";
+}
+.k-check-grip,
+.k-check-heading-grip {
+  flex: none;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.k-check-grip:active,
+.k-check-heading-grip:active {
+  cursor: grabbing;
+  color: var(--ink-soft);
+}
+.k-check-heading-grip {
+  align-self: center;
+}
+
 .k-check-row[data-dragging],
 .k-check-heading[data-dragging] {
   box-shadow: var(--shadow);

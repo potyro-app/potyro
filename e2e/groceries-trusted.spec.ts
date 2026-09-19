@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("ticking an item patches the record and sinks it in its aisle; quick add keeps the focus", async ({ page }) => {
+  test("ticking an item patches the record and leaves it where it is; quick add keeps the focus", async ({ page }) => {
     await page.goto("/?user=groceries");
     await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
 
@@ -26,9 +26,11 @@ test.describe("phone", () => {
 
     await milk.tap();
     await expect(milk).toHaveAttribute("aria-checked", "true");
-    // Struck through where it was for a beat, then LAST IN ITS OWN AISLE — never out of it.
+    // Struck through WHERE IT IS. It used to sink to the bottom of its aisle, which moved the line
+    // under the finger that had just touched it; that is opt-in now (`donePlacement: "sink"`).
     await expect(milk.locator("xpath=ancestor::li")).toHaveAttribute("data-done", "true");
-    await expect(dairy.locator(".k-check-label")).toHaveText(["Yoghurt", "Milk"], { timeout: 10_000 });
+    await page.waitForTimeout(1_000);
+    await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt"]);
 
     // Persisted: still bought after a reload.
     await page.reload();
