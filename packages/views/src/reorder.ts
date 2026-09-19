@@ -24,6 +24,26 @@ const SLOP_PX = 6;
 /** How long after a drop a click is still the drop's own echo rather than a new tap. */
 const CLICK_AFTER_DROP_MS = 300;
 
+/**
+ * Keep the pointer's events coming to this element — and carry on if the browser says no.
+ *
+ * `setPointerCapture` THROWS when the pointer is no longer active, and it was called on the line
+ * before the drag was armed: one throw and the drag never started, which is a row that will not move
+ * however long you hold it. Firefox is the strict one here — it was reported on Firefox for Android,
+ * on the top row, where a hold that the browser has decided to treat as an overscroll leaves exactly
+ * that dead pointer behind.
+ *
+ * Capture is an optimisation: without it the events still arrive through the element under the
+ * finger. Arming the drag is not optional, so it no longer depends on this succeeding.
+ */
+function capture(el: HTMLElement, pointerId: number): void {
+  try {
+    el.setPointerCapture?.(pointerId);
+  } catch {
+    /* the drag works without it */
+  }
+}
+
 /** The list with `key` moved to index `to`, clamped. Pure, and the only place order changes. */
 export function moveKey(list: readonly { key: string }[], key: string, to: number): string[] {
   const keys = list.map((a) => a.key);
@@ -171,7 +191,7 @@ export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ig
         hold.current = setTimeout(() => {
           const cur = dragRef.current;
           if (cur && cur.pointerId === d.pointerId) {
-            target.setPointerCapture?.(d.pointerId);
+            capture(target, d.pointerId);
             update({ ...cur, armed: false });
           }
         }, HOLD_MS);
@@ -191,7 +211,7 @@ export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ig
           update(null);
           return;
         }
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        capture(e.target as HTMLElement, e.pointerId);
         update({ ...cur, armed: false, dx, dy, over: under(e.clientX, e.clientY, cur.key) });
         return;
       }

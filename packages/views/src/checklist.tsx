@@ -3,8 +3,13 @@
 // A `list` view's rows open a detail page where a boolean is edited in a form and saved: three taps
 // and a modal for what should be one tap on the row. Here the row's check flips the record's `done`
 // field through `ctx.patch` — rows in, patches out, so it renders untrusted like every declarative
-// view — and the row strikes through, holds for a beat, then sinks to the bottom of its own group,
-// so what is still to buy stays together. `quickAdd` is what makes it a list app: type, Enter, next.
+// view — and the row strikes through where it stands. `quickAdd` is what makes it a list app: type,
+// Enter, next.
+//
+// Ticked rows used to sink to the bottom of their group, so what was left to buy stayed together.
+// That is a real benefit and it lost to a plainer one: the line you just touched should not move,
+// and on a list you are working down, neither should the line you are about to read. Apps that want
+// the old behaviour ask for `donePlacement: "sink"`.
 //
 // Everything a shopping list needs beyond that is declared, never coded, because an app that needs a
 // custom React view to rename a row is an app most people cannot write:
@@ -186,6 +191,15 @@ export function ChecklistView(props: BuiltinViewProps) {
   const [held, setHeld] = useState<Map<string, boolean>>(new Map());
   const [landed, setLanded] = useState<Set<string>>(new Set());
   /**
+   * Does a ticked row move?
+   *
+   * It used to, by default: to the bottom of its group, so what was left to buy stayed together.
+   * In use that turned out to be the wrong trade — the thing you just touched leaves from under
+   * your finger, and on a list you are working down, the line you are reading moves. A row now
+   * stays where it is unless an app asks for `donePlacement: "sink"`.
+   */
+  const sinks = view.donePlacement === "sink" && view.hideDone !== "collapse";
+  /**
    * What a tick means RIGHT NOW, before the store has said anything back.
    *
    * Without this the row's state is whatever the store last reported, so on a synced list every tick
@@ -232,12 +246,13 @@ export function ChecklistView(props: BuiltinViewProps) {
     const was = isDone(row);
     let next: unknown = !was;
     if (field?.type === "enum") next = was ? (field.options.find((o) => o !== view.doneValue) ?? null) : view.doneValue;
-    setHeld((h) => new Map(h).set(id, was));
+    if (sinks) setHeld((h) => new Map(h).set(id, was));
     // The tick is true on screen immediately; the store confirms it in its own time.
     setJustTicked((t) => new Map(t).set(id, next));
     const old = timers.current.get(id);
     if (old) clearTimeout(old);
-    timers.current.set(
+    if (sinks)
+      timers.current.set(
       id,
       setTimeout(() => {
         timers.current.delete(id);
@@ -333,10 +348,10 @@ export function ChecklistView(props: BuiltinViewProps) {
     return typeof v === "number" && Number.isFinite(v) ? v : Number.MAX_SAFE_INTEGER;
   };
 
-  /** Inside a group: the app's order, then the ticked ones at the bottom unless told to stay. */
+  /** Inside a group: the app's order, and the ticked ones sink to the bottom only if asked. */
   const arrange = (list: Resolved[]): Resolved[] => {
     const ordered = view.reorder ? [...list].sort((a, b) => posOf(a) - posOf(b)) : list;
-    if (view.donePlacement === "stay" || view.hideDone === "collapse") return ordered;
+    if (!sinks) return ordered;
     return [...ordered].sort((a, b) => Number(placedDone(a)) - Number(placedDone(b)));
   };
 
@@ -448,6 +463,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     onReorder: () => {},
     onDrop: (key, over) => void (key.startsWith("g:") ? moveGroup(key, over) : moveRow(key, over)),
     enabled: canDragRows || canDragGroups,
+    handle: ".k-check-grip, .k-check-heading-grip",
     ignore: ".k-check, .k-check-open, .k-inline-edit, .k-check-del",
     keyboard: "alt",
   });
@@ -564,6 +580,19 @@ export function ChecklistView(props: BuiltinViewProps) {
         <button type="button" role="checkbox" aria-checked={ticked} aria-label={t.text} className="k-check" onClick={() => void toggle(r)}>
           <span className="k-check-mark" aria-hidden />
         </button>
+        {canDragRows && !editing ? (
+          // Dragged by this, not by the whole row.
+          //
+          // A row IS the scrolling surface on a phone — the list is nothing but rows — so a row that
+          // takes the gesture away from the browser cannot be scrolled past, and a row that leaves
+          // it with the browser gets the drag cancelled mid-hold. Firefox on Android does exactly
+          // that, which is why the top row would not move however long you held it. A grip is the
+          // one part that says `touch-action: none`, so the browser never claims a drag that starts
+          // here, and everywhere else on the row still scrolls.
+          // The dots are drawn by CSS, not written here: a glyph in the markup joins the row's text,
+          // where it would be read out with the item's name and counted as part of a heading.
+          <span className="k-check-grip" aria-hidden="true" title="Drag to reorder" />
+        ) : null}
         {editing ? (
           <InlineText value={t.text} label={`Rename ${t.text}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
         ) : view.editText ? (
@@ -596,6 +625,10 @@ export function ChecklistView(props: BuiltinViewProps) {
     if (s.key === "" && !s.label) return null;
     return (
       <h3 className="k-check-heading" data-target={pending ? true : undefined} {...drag}>
+        {canDragGroups && s.record && !editing ? (
+          // The same reason as a row's grip: the heading is part of what a finger scrolls past.
+          <span className="k-check-heading-grip" aria-hidden="true" title="Drag to reorder" />
+        ) : null}
         {editing && s.record ? (
           <>
             <InlineText value={s.label} label={`Rename ${s.label}`} onSave={(text) => void renameGroup(s.record!, text)} onCancel={() => setEditingGroup(null)} />
