@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFromAccount } from "../src/restore-apps.js";
-import { getUserApp, listUserApps, saveUserApp } from "../src/user-apps.js";
+import { getUserApp, listUserApps, saveUserApp, setUserAppSync } from "../src/user-apps.js";
 import type { AccountApp } from "@karta/store";
 
 vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
@@ -47,9 +47,27 @@ describe("loading an app from your account", () => {
     expect(localStorage.getItem("karta:jazz:db:user:split")).toBe("karta-jazz");
   });
 
-  it("leaves an app this device already has alone", async () => {
-    // Its own copy may be edited, or simply newer. The account's list is an offer, not an authority.
+  it("replaces a copy this device only has because it seeded one", async () => {
+    // Every device seeds the examples for itself, so a newly linked phone already has a Groceries —
+    // and that is not a reason to withhold the Groceries with the shopping list in it. The local one
+    // is a factory default; the account's is the person's.
+    await saveUserApp({ id: "split", name: "Split", source: "// the seeded one\n", trusted: true }, NOW);
+
+    await installFromAccount(APP, "2026-09-19T00:00:00.000Z");
+
+    const app = getUserApp("split")!;
+    expect(app.source).toContain("defineApp"); // the account's code, not the seed's
+    expect(app.sync).toBe(true);
+    expect(localStorage.getItem("karta:jazz:group:user:split")).toBe("co_zGROUP");
+    expect(localStorage.getItem("karta:jazz:db:user:split")).toBe("karta-jazz");
+    expect(listUserApps()).toHaveLength(1);
+  });
+
+  it("leaves an app this device is already syncing alone", async () => {
+    // That one is already pointed at a space of its own, and a second space cannot be grafted onto
+    // it. Whatever it is, it is not this device's to overwrite.
     await saveUserApp({ id: "split", name: "My Split", source: "// mine\n", trusted: true }, NOW);
+    setUserAppSync("split", true, NOW);
     localStorage.setItem("karta:jazz:group:user:split", "co_zMINE");
 
     await installFromAccount(APP, "2026-09-19T00:00:00.000Z");

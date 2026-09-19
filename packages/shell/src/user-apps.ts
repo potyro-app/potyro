@@ -76,7 +76,7 @@ export function getUserApp(id: string): UserApp | undefined {
  *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
  *  where the new source came from; they are what the History panel shows next to each version. */
 export async function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
+  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
   now: string,
 ): Promise<UserApp> {
   const apps = read();
@@ -98,7 +98,11 @@ export async function saveUserApp(
   // `sync` is carried over explicitly: this function REBUILDS the record, so any field not listed
   // here is silently dropped. Losing it would switch an app back to the non-CRDT store on the next
   // edit and open it empty — indistinguishable from data loss.
-  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted, sync: prev?.sync };
+  // `sync` is carried over unless the caller says otherwise. Saying otherwise matters for an app
+  // arriving from your account: it is synced BECAUSE that is where its data is, and setting the flag
+  // in a second call afterwards puts it behind this function's history write — which is a write to
+  // another database, and an app that never got the flag opens the empty local copy instead.
+  const record: UserApp = { id, name, source: input.source, updatedAt: now, trusted, sync: input.sync ?? prev?.sync };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
   // first diff needs. A brand-new app has none — its first version IS the creation.
