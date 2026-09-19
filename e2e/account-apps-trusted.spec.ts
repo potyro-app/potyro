@@ -192,3 +192,72 @@ test("an app the new device already seeded for itself is still offered, with the
   await ctxA.close();
   await ctxB.close();
 });
+
+test("an app that was never synced is backed up by one switch, and a linked device brings it back", async ({ browser }) => {
+  test.slow();
+  // "If my laptop dies I just lost all my apps and data!" — the case the recovery words did nothing
+  // for. An app nobody turned sync on for has no space and nothing on the relay, so a new device got
+  // a name and an empty launcher. One switch now puts every app there, including this one.
+
+  // ---- A: a local-only app with something in it ----
+  const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctxA.addInitScript(
+    ([source]) => {
+      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
+      localStorage.setItem(
+        "karta:user-apps",
+        JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
+      );
+    },
+    [SOURCE] as const,
+  );
+  const a = await ctxA.newPage();
+  await a.goto("/?user=notes");
+  await expect(a.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+
+  await a.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await a.getByLabel(/title/i).fill("Ship the thing");
+  await a.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
+  await expect(a.locator(".k-detail-title")).toHaveText("Ship the thing", { timeout: 30_000 });
+
+  // Never synced: no tile action, no share, nothing on the relay.
+  await a.goto("/");
+  await a.getByRole("button", { name: "You and your devices" }).click();
+  const backup = a.locator(".k-backup");
+  await expect(backup).toContainText(/live only on this device/);
+
+  // ---- The switch ----
+  await backup.getByRole("button", { name: "Back up my apps" }).click();
+  await a.locator(".k-dialog").getByRole("button", { name: "Confirm" }).click();
+  await expect(backup).toContainText(/Moved 1 app/, { timeout: 120_000 });
+  await expect(backup).toContainText(/can bring them all back/);
+
+  // Its words.
+  await a.getByRole("button", { name: /Add a device/ }).click();
+  const words = (await a.locator(".k-passphrase").innerText({ timeout: 30_000 })).trim();
+  expect(words.split(/\s+/)).toHaveLength(24);
+
+  // ---- B: a second browser that has never seen this app ----
+  const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
+  await ctxB.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  const b = await ctxB.newPage();
+  await b.goto("/");
+  await b.getByRole("button", { name: "You and your devices" }).click();
+  await b.getByRole("button", { name: /This is my second device/ }).click();
+  const field = b.locator(".k-dialog input");
+  await expect(field).toBeVisible({ timeout: 30_000 });
+  await field.fill(words);
+  await b.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
+
+  // ---- THE CLAIM: the app nobody ever synced is offered, with its note ----
+  const offer = b.locator(".k-restore");
+  await expect(offer).toBeVisible({ timeout: 60_000 });
+  await expect(offer).toContainText("Notes");
+  await offer.getByRole("button", { name: /^Load/ }).click();
+
+  await b.goto("/?user=notes");
+  await expect(b.locator(".k-list-row", { hasText: "Ship the thing" })).toBeVisible({ timeout: 60_000 });
+
+  await ctxA.close();
+  await ctxB.close();
+});
