@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 //
-// The checklist view (#106): rows under their group headings, a tick that patches the record and —
-// after a beat, so the eye can follow it — sinks the row to the bottom of ITS OWN group, where what
-// is left to buy stays together. Quick add creates a record and keeps the focus, and an enum `done`
-// flips between its options. `hideDone: "collapse"` still folds everything ticked into one section.
+// The checklist view (#106): rows under their group headings, and a tick that patches the record and
+// strikes the row through WHERE IT IS. Sinking a ticked row to the bottom of its group is opt-in
+// (`donePlacement: "sink"`) and covered below. Quick add creates a record and keeps the focus, and an
+// enum `done` flips between its options. `hideDone: "collapse"` still folds everything ticked into
+// one section.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -66,7 +67,7 @@ describe("ChecklistView", () => {
     expect(screen.getByRole("checkbox", { name: "Milk" }).getAttribute("aria-checked")).toBe("false");
   });
 
-  it("ticking patches the record, keeps the row in place for a beat, then sinks it in its own group", async () => {
+  it("ticking patches the record and strikes the row through, in its own aisle", async () => {
     const { runtime, store } = await makeRuntime(app({}));
     render(<ChecklistView {...props(runtime)} />);
     const milk = await screen.findByRole("checkbox", { name: "Milk" });
@@ -91,7 +92,7 @@ describe("ChecklistView", () => {
       },
       { timeout: 5000 },
     );
-    // And in "produce", where one row is already ticked, the ticked one is last.
+    // And nothing else was rearranged by the tick: "produce" is in the order it was seeded in.
     const produce = screen.getByRole("heading", { name: "produce" }).closest("section")!;
     const names = [...produce.querySelectorAll(".k-check-label")].map((el) => el.textContent);
     expect(names).toEqual(["Apples", "Rice"]);
@@ -116,6 +117,47 @@ describe("ChecklistView", () => {
     await waitFor(() => expect(input.value).toBe(""));
     expect(document.activeElement).toBe(input);
     await screen.findByRole("checkbox", { name: "Bread" });
+  });
+
+  it("leaves a ticked row exactly where it is", async () => {
+    // Ticked rows used to sink to the bottom of their group. That moved the line you had just
+    // touched out from under your finger, and the next line you were about to read with it.
+    const { runtime } = await makeRuntime(app({}));
+    render(<ChecklistView {...props(runtime)} />);
+    await screen.findByRole("checkbox", { name: "Apples" });
+    const order = () => [...screen.getByRole("heading", { name: "produce" }).closest("section")!.querySelectorAll(".k-check-label")].map((el) => el.textContent);
+    expect(order()).toEqual(["Apples", "Rice"]);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Apples" }));
+    });
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Apples" }).getAttribute("aria-checked")).toBe("true"));
+
+    // Struck through, and still first.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(order()).toEqual(["Apples", "Rice"]);
+  });
+
+  it("sinks it promptly, and marks where it landed, for an app that asks", async () => {
+    // `donePlacement: "sink"` is the old behaviour, kept for lists where what is left to do staying
+    // together matters more. It used to hold the row still for 700ms first so the eye could follow
+    // it, which made a tick take about a second end to end; it moves in a fifth of that now and
+    // says where it went instead.
+    const { runtime } = await makeRuntime(app({ donePlacement: "sink" }));
+    render(<ChecklistView {...props(runtime)} />);
+    const milk = await screen.findByRole("checkbox", { name: "Milk" });
+    await act(async () => {
+      fireEvent.click(milk);
+    });
+
+    await waitFor(
+      () => {
+        const row = screen.getByRole("checkbox", { name: "Milk" }).closest("li")!;
+        expect(row.getAttribute("data-held")).toBeNull();
+        expect(row.getAttribute("data-landed")).toBe("true");
+      },
+      { timeout: 3000 },
+    );
   });
 
   it("empties the box the moment you hit enter, without waiting for the store", async () => {
