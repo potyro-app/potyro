@@ -1146,6 +1146,14 @@ button {
 }
 
 /* Table */
+/* A table is the one thing an app can declare that is wider than a phone. It scrolls in here, so the
+   page does not: a page wider than the screen slides the whole app sideways — header off the top,
+   and on Firefox for Android the bottom bar with it. */
+.k-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
 .k-table {
   width: 100%;
   border-collapse: collapse;
