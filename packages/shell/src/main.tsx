@@ -505,11 +505,6 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     return null;
   }
 
-  // What this person calls the app. Read here rather than in `App`, which also renders previews and
-  // fixtures that have no launcher entry to read.
-  const { getEntry: entryFor, appKey: keyFor } = await import("./launcher-store.js");
-  const launcherEntry = entryFor(keyFor("user", id));
-
   mount(
     root,
     <App
@@ -522,8 +517,10 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       provenance={provenance}
       toaster={toaster}
       appId={id}
-      // What the person calls it: the tile's name if they edited one, else the app's saved name.
-      name={launcherEntry.displayName ?? saved.name}
+      // The app's own name — the one Rename sets. NOT the tile's `displayName`: editing a tile is
+      // labelling a shortcut on this device ("Mum's recipes"), and the app goes on saying what it
+      // says. That line is drawn in `tile-edit-trusted.spec.ts`, and it is a good one.
+      name={saved.name}
       currentKind="user"
       lock={syncAllowed && saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}

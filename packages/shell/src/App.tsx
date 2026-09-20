@@ -131,8 +131,11 @@ interface AppProps {
    * Three names exist and they were not agreed: the definition's `name` (what the model wrote),
    * the saved app's `name` (Rename, in the tile menu) and the launcher tile's `displayName` (Edit
    * tile). The top bar read the first, so renaming a copy of Groceries to "Todo" left the app
-   * still calling itself Groceries on every screen. Absent — a preview, a fixture — the
-   * definition's name stands.
+   * still calling itself Groceries on every screen.
+   *
+   * This is the SAVED app's name. The tile's `displayName` is deliberately not it: editing a tile
+   * labels a shortcut on this device, and the app goes on saying what it says. Absent — a preview,
+   * a fixture — the definition's name stands.
    */
   name?: string;
   /** How the current app was launched — for highlighting it in the launcher. */
