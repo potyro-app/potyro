@@ -959,6 +959,51 @@ button {
   color: oklch(22% 0.04 70);
   font-weight: 600;
 }
+/* The Studio as a conversation: what was asked, and what came back. Scrolls on its own so the box
+   and its one action never leave the screen — the thread is context, not the controls. */
+.k-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 34vh;
+  margin: 0 0 var(--space-3);
+  padding: 0 var(--space-1) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.k-thread-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.k-thread-ask {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border-radius: var(--radius) var(--radius) var(--radius) 0.2rem;
+}
+.k-thread-answer {
+  margin: 0;
+  padding: 0 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--line);
+}
+/* A turn that changed nothing — a refusal, a question, a failure — reads differently from one that
+   did something. Not red: being told "that needs the platform" is an answer, not an error. */
+.k-thread-answer[data-refused] {
+  border-left-color: var(--accent);
+  color: var(--ink);
+}
+.k-thread-seq {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
 /* A chip you type into — search, or a figure picked at view time. Chip-shaped so it belongs in the
    row, but it is an input: it wears the ink of typed text and lights up when it is holding one. */
 .k-value-chip {

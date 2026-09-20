@@ -187,6 +187,28 @@ export function freeAppId(name: string): string {
   return `${base}-${n}`;
 }
 
+/**
+ * A second app with the same source, under a new id — the fork that had to be done by hand.
+ *
+ * The copy starts EMPTY. Duplicating is how you take an app someone sent you and make it yours to
+ * fill in; carrying their records across is a different thing, and a slow one for an app with
+ * photos in it.
+ *
+ * Trust is NOT granted here (CLAUDE.md rule 3: provenance decides execution). Copying someone
+ * else's code does not make it yours to run with ambient authority — the copy keeps running in the
+ * isolate until it is promoted deliberately, exactly as the original did. Neither does the copy
+ * inherit `sync` or `joined`: it is a new app on this device, in nobody's space.
+ */
+export async function duplicateUserApp(id: string, now: string): Promise<UserApp | null> {
+  const app = read().find((a) => a.id === id);
+  if (!app) return null;
+  const name = `${app.name} (copy)`;
+  return saveUserApp(
+    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, origin: "created", note: `copied from “${app.name}”` },
+    now,
+  );
+}
+
 /** Rename a saved app in place (keeps its id, source, and data namespace). */
 export function renameUserApp(id: string, name: string, now: string): void {
   const trimmed = name.trim();
