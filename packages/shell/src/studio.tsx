@@ -32,7 +32,8 @@ import { backendFor, modifyTurn } from "./model-turn.js";
 import { UiHost } from "./ui-host.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
-import { getUserApp, listUserApps, saveUserApp, removeUserApp, type UserApp } from "./user-apps.js";
+import { duplicateUserApp, getUserApp, listUserApps, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { confirmAndRemoveApp } from "./remove-app.js";
 import { History } from "./history.js";
 import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineReady } from "./engines.js";
@@ -672,9 +673,31 @@ export function Studio({
   };
 
   const deleteSaved = async (app: UserApp): Promise<void> => {
-    await removeUserApp(app.id);
+    // It used to just go. The question is the same one the launcher asks, from the same place.
+    if (!(await confirmAndRemoveApp(app))) return;
     setSavedApps(listUserApps());
     if (currentId === app.id) setCurrentId(null);
+  };
+
+  /** Rename here as well as in the launcher — this is where you are when you are working on it. */
+  const renameSaved = async (app: UserApp): Promise<void> => {
+    const next = await shellDialogs.prompt("Rename app", { default: app.name });
+    if (!next?.trim()) return;
+    renameUserApp(app.id, next, new Date().toISOString());
+    setSavedApps(listUserApps());
+  };
+
+  /**
+   * A copy to work on, opened straight away.
+   *
+   * Opening it is the difference from the launcher's Duplicate: in the Studio a copy is something
+   * you made in order to change it, so it becomes what the editor is pointed at.
+   */
+  const duplicateSaved = async (app: UserApp): Promise<void> => {
+    const copy = await duplicateUserApp(app.id, new Date().toISOString());
+    if (!copy) return;
+    setSavedApps(listUserApps());
+    openSaved(copy);
   };
 
   /**
@@ -850,7 +873,9 @@ export function Studio({
                     {a.name}
                   </button>
                   <button type="button" className="k-myapp-del" aria-label={`History of ${a.name}`} title="History" onClick={() => setHistoryFor(a)}>⟲</button>
-                  <button type="button" className="k-myapp-del" aria-label={`Delete ${a.name}`} onClick={() => void deleteSaved(a)}>✕</button>
+                  <button type="button" className="k-myapp-del" aria-label={`Rename ${a.name}`} title="Rename" onClick={() => void renameSaved(a)}>✎</button>
+                  <button type="button" className="k-myapp-del" aria-label={`Duplicate ${a.name}`} title="Duplicate — the app, not its data" onClick={() => void duplicateSaved(a)}>⧉</button>
+                  <button type="button" className="k-myapp-del" aria-label={`Delete ${a.name}`} title="Delete" onClick={() => void deleteSaved(a)}>✕</button>
                 </li>
               ))}
             </ul>
