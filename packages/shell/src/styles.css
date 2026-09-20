@@ -419,10 +419,56 @@ button {
 .k-map-add:focus-visible {
   filter: brightness(1.05);
 }
+/* "Where am I in this?" — a quiet round control, not a second call to action: the add pill is the
+   accent, this is the map's own furniture, so it wears the surface and sits above it. */
+.k-map-locate {
+  position: absolute;
+  z-index: 3;
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+/* Above the "add here" pill when there is one, so the thumb reads them as one stack. */
+.k-map-locate[data-stacked] {
+  bottom: calc(var(--space-3) + 3.5rem + env(safe-area-inset-bottom));
+}
+.k-map-locate:hover,
+.k-map-locate:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.k-map-locate:active {
+  transform: scale(0.94);
+}
+.k-map-locate[aria-busy] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 /* On a phone the map runs under the fixed tab bar — that is the look — so its chrome clears it. */
 .k-app-phone .k-page[data-full] .k-map-add,
 .k-app-phone .k-page[data-full] .k-map-bar {
   bottom: calc(4.75rem + env(safe-area-inset-bottom));
+}
+.k-app-phone .k-page[data-full] .k-map-locate {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+}
+.k-app-phone .k-page[data-full] .k-map-locate[data-stacked] {
+  bottom: calc(4.75rem + 3.5rem + env(safe-area-inset-bottom));
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {
