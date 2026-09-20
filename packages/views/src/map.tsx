@@ -224,6 +224,9 @@ export function MapView(props: BuiltinViewProps) {
     flyTo?: (opts: { center: [number, number]; zoom: number }) => void;
   } | null>(null);
   const markerObjs = useRef<{ remove: () => void }[]>([]);
+  // The last framing of everything pinned, kept so `ctx.views.map(page).fit()` can ask for it long
+  // after the marker sync that computed it.
+  const boundsRef = useRef<unknown>(null);
   // A remembered camera was applied, so auto-fitting to the markers would undo the user's framing.
   const restoredRef = useRef(false);
   // Auto-fit is a first-open convenience, not a rule: re-fitting on every marker change would yank
@@ -403,6 +406,7 @@ export function MapView(props: BuiltinViewProps) {
       // camera: fitting on every marker change would fight the user, re-framing the map under them
       // whenever a filter chip is touched and overriding the position they deliberately left it at.
       // An app that asks for `camera: "fit"` is asking for exactly that re-framing, every time.
+      boundsRef.current = bounds.isEmpty() ? null : bounds;
       const mayFit = cameraModeRef.current === "fit" || (!restoredRef.current && !fittedRef.current);
       if (mayFit && markers.length > 0 && !bounds.isEmpty()) {
         map.fitBounds?.(bounds, { padding: 48, maxZoom: 14, animate: false });
@@ -434,6 +438,57 @@ export function MapView(props: BuiltinViewProps) {
   const canPlace = Boolean(onCreate && geoFieldKey.current);
   const detailParam = (detailPage?.view as { param?: string } | undefined)?.param ?? "id";
 
+  /**
+   * Move the map, and remember it — the one path every deliberate move takes, whether it came from
+   * the button below or from an app calling `ctx.views.map(page).flyTo(...)`.
+   *
+   * Remembered only where the app left the framing to the person (`camera: "remember"`): a map told
+   * to open somewhere fixed opens there. `flyTo` carries no `originalEvent`, so the move handler
+   * that records a drag never sees this one.
+   */
+  const moveTo = (center: [number, number], zoom: number): boolean => {
+    const map = mapRef.current;
+    if (!map) return false;
+    map.flyTo?.({ center, zoom });
+    if (cameraModeRef.current === "remember") {
+      restoredRef.current = true;
+      void runtimeRef.current.ctx.storage
+        .set(cameraKey(pageIdRef.current), { center, zoom })
+        .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+    }
+    return true;
+  };
+
+  // The app's own way in (#216): a view on screen, addressed by its page, told what to do.
+  //
+  // Registered rather than exported, and dropped on unmount, because "the map on page X" is only
+  // answerable while that page is open — an app holding a handle would be holding something that has
+  // since been taken off the screen. A verb this view does not know is declined, not thrown: a page
+  // can show several views at once and the call is offered to each of them.
+  useEffect(() => {
+    return runtime.registerViewControl(pageId, (verb, arg) => {
+      const map = mapRef.current;
+      if (!map) return false;
+      if (verb === "map.flyTo") {
+        const to = arg as { center?: [number, number]; zoom?: number } | undefined;
+        const center = to?.center;
+        if (!Array.isArray(center) || center.length !== 2 || center.some((n) => typeof n !== "number")) return false;
+        // Left alone when unasked-for, so "go here" can pan without throwing away the scale.
+        return moveTo(center, typeof to?.zoom === "number" ? to.zoom : (map.getZoom?.() ?? 12));
+      }
+      if (verb === "map.fit") {
+        const bounds = boundsRef.current;
+        if (!bounds) return false;
+        map.fitBounds?.(bounds, { padding: 48, maxZoom: 14 });
+        // A deliberate re-frame outranks a remembered position, the same as a drag would.
+        restoredRef.current = true;
+        return true;
+      }
+      return false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime, pageId, mapReady]);
+
   // "Where am I in this?" — the button every phone map has.
   //
   // It has to live here, in the host, because an app cannot reach the camera: `camera` is read when
@@ -451,17 +506,7 @@ export function MapView(props: BuiltinViewProps) {
       const pos = await geo.current();
       // Zoom in only if we are further out than street level; someone already close in asked to be
       // moved, not to be zoomed somewhere else.
-      const zoom = Math.max(map.getZoom?.() ?? 0, 15);
-      map.flyTo?.({ center: [pos.lng, pos.lat], zoom });
-      // Deliberate, so it is where the map opens next time — the same rule a drag follows. Only
-      // where the app left the framing to the person: a map told to open somewhere fixed opens
-      // there, and `flyTo` carries no `originalEvent`, so the move handler would not have saved it.
-      if (cameraModeRef.current === "remember") {
-        restoredRef.current = true;
-        void runtimeRef.current.ctx.storage
-          .set(cameraKey(pageIdRef.current), { center: [pos.lng, pos.lat], zoom })
-          .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
-      }
+      moveTo([pos.lng, pos.lat], Math.max(map.getZoom?.() ?? 0, 15));
     } catch {
       // Denied, or the device cannot say. The map is still a map.
       runtime.ctx.ui.toast("Could not get your location.");

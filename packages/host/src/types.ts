@@ -56,12 +56,27 @@ export interface NavBridge {
   navigate(pageId: string, params?: Record<string, string>): void;
 }
 
+/**
+ * What the shell provides to build `ctx.views` — a way to reach a view that is mounted right now.
+ *
+ * One verb-and-payload call rather than a method per control: the views that can be driven will grow
+ * (a list's scroll position, a form's focus), and each one should be a case in the view's own
+ * handler, not another function threaded through the host, the isolate harness and its op table.
+ *
+ * `false` means nobody was listening — that page's view is not on screen — which is an answer, not
+ * an error. Optional so a headless bridge (validation, tests) need not stand up any views.
+ */
+export interface ViewBridge {
+  call?(pageId: string, verb: string, arg?: unknown): Promise<boolean>;
+}
+
 /** Inputs to build a `ctx` (docs/02 composition root). */
 export interface MakeCtxBase {
   store: Store;
   caps: Capabilities;
   ui: UiBridge;
   nav: NavBridge;
+  views?: ViewBridge;
   params?: Record<string, unknown>;
   /** Fixed evaluation time; defaults to now. Injected once so computed values are stable. */
   now?: Date;
@@ -102,6 +117,14 @@ export interface LoadedApp {
   callViewOption(pageId: string, key: string, ctx: Ctx): Promise<Value>;
   /** The same for a PAGE's own options (`title`). */
   callPageOption(pageId: string, key: string, ctx: Ctx): Promise<Value>;
+  /**
+   * Run a page's button (`Page.actions[index].run`).
+   *
+   * By index, because the function is the declaration — there is no key to name it by — and through
+   * the host for the reason every app function goes through the host: an untrusted app's `run`
+   * never leaves the isolate.
+   */
+  callPageAction(pageId: string, index: number, ctx: Ctx): Promise<void>;
   /**
    * Compute a page summary figure's `value` function over the page's filtered rows.
    *

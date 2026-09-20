@@ -45,7 +45,7 @@ async function mediaUrl(store: Store, ref: MediaRef): Promise<string> {
 }
 
 export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
-  const { store, caps, ui, nav } = base;
+  const { store, caps, ui, nav, views } = base;
   const fixedNow = base.now ?? new Date();
   const me = base.me ?? ANONYMOUS;
 
@@ -201,6 +201,20 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         return ((await ui.form?.({ ...opts, initial: opts.initial as Record<string, unknown> | undefined })) ?? null) as T | null;
       },
       progress: (label) => ui.progress?.(label) ?? { update: () => {}, done: () => {} },
+    },
+
+    // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is
+    // why a "centre on me" button could not be written by an app before it existed.
+    //
+    // The page is resolved when the method is called, never held: a view is a thing on screen, and
+    // an app that kept a handle would be holding a reference to something that has since been
+    // unmounted. Nobody listening is `false` — a page that is not open cannot be moved, and that is
+    // an answer rather than a crash in the middle of someone's action.
+    views: {
+      map: (pageId: string) => ({
+        flyTo: (to) => views?.call?.(pageId, "map.flyTo", to) ?? Promise.resolve(false),
+        fit: () => views?.call?.(pageId, "map.fit") ?? Promise.resolve(false),
+      }),
     },
 
     navigate: (pageId, params) => nav.navigate(pageId, params),

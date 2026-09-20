@@ -959,6 +959,36 @@ button {
   color: oklch(22% 0.04 70);
   font-weight: 600;
 }
+/* An app's own button (#216). Chip-shaped, because it sits in the row of chips — but a chip reports
+   a STATE and this does something, so it carries the ink of a control rather than the grey of a
+   label, and it presses. */
+.k-page-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-page-action:hover:not(:disabled),
+.k-page-action:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.k-page-action:active:not(:disabled) {
+  transform: scale(0.97);
+}
+/* Mid-run: a `run` that awaits the position or the network takes a moment, and a button that looks
+   inert while it works gets pressed again. */
+.k-page-action[aria-busy] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.k-page-action:disabled {
+  opacity: 0.5;
+}
+
 /* The one button that stands for every option list, and the chips for what was actually chosen. */
 .k-filter-open {
   display: inline-flex;
