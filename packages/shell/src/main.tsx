@@ -505,6 +505,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     return null;
   }
 
+  // What this person calls the app. Read here rather than in `App`, which also renders previews and
+  // fixtures that have no launcher entry to read.
+  const { getEntry: entryFor, appKey: keyFor } = await import("./launcher-store.js");
+  const launcherEntry = entryFor(keyFor("user", id));
+
   mount(
     root,
     <App
@@ -517,6 +522,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       provenance={provenance}
       toaster={toaster}
       appId={id}
+      // What the person calls it: the tile's name if they edited one, else the app's saved name.
+      name={launcherEntry.displayName ?? saved.name}
       currentKind="user"
       lock={syncAllowed && saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
