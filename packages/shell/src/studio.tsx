@@ -209,6 +209,23 @@ export function Studio({
   const note = (text: string, refused = false): void => {
     outcomeRef.current = { text, refused };
     setModifyNote(text);
+    // The turn is answered HERE, in the same breath as the note — not after the generation returns.
+    // Set apart, the two disagreed for a moment: the note appeared, then vanished as the turn took
+    // over the same sentence, and anything watching for one or the other saw whichever it happened
+    // to look at first.
+    setTurns((all) => {
+      // The newest turn still waiting for an answer. (`findLastIndex` needs a newer lib target than
+      // this package builds against.)
+      let i = -1;
+      for (let at = all.length - 1; at >= 0; at--) {
+        if (all[at]!.outcome === undefined) {
+          i = at;
+          break;
+        }
+      }
+      if (i < 0) return all;
+      return all.map((t, at) => (at === i ? { ...t, outcome: text, refused } : t));
+    });
   };
 
   // Read the thread back whenever the Studio is pointed at a different app. Newest-first on disk,
@@ -457,8 +474,10 @@ export function Studio({
     setLastPrompt(asked);
     setDescription("");
     await (hasApp ? modify(asked) : create(asked));
+    // Whatever `note` did not answer — a path that reports nothing, or an error thrown before it
+    // got that far. A turn with no answer under it reads as still running, for ever.
     const { text, refused } = outcomeRef.current;
-    setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, outcome: text ?? "Done.", refused } : turn)));
+    setTurns((t) => t.map((turn) => (turn.id === id && turn.outcome === undefined ? { ...turn, outcome: text ?? "Done.", refused } : turn)));
   };
 
   // Repair a source given the validator's issues — through the SAME gate as a modify. Before this,
