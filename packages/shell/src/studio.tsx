@@ -79,6 +79,18 @@ interface Preview {
   provenance: Provenance;
 }
 
+/** One exchange in the Studio: what was asked, and what came back. */
+interface Turn {
+  id: string;
+  prompt: string;
+  /** What the app did about it, once it is known — absent while the model is still working. */
+  outcome?: string;
+  /** A turn that changed nothing: a refusal, a question, or a failure. Shown differently. */
+  refused?: boolean;
+  /** The version this became, for turns read back from history. */
+  seq?: number;
+}
+
 export function Studio({
   onClose,
   initialDescription,
@@ -167,6 +179,61 @@ export function Studio({
   const hasApp = currentId !== null || source !== STARTER;
   const canDescribe = description.trim().length > 0 && !genBusy;
   const appName = preview?.composed.runtime.definition.name;
+
+  /**
+   * What has been asked of this app, and what came back — the Studio as a conversation (#218).
+   *
+   * Seeded from the app's own history, because every version already records the prompt that
+   * produced it and the model's account of what it changed. Nothing new is stored: this is the same
+   * material the History panel diffs, read as a thread instead of a list of versions.
+   *
+   * Turns from THIS session are appended as they happen, since a change that has not been saved yet
+   * has no version to have been recorded in — and "I asked for that a minute ago" is exactly what a
+   * transcript is for.
+   */
+  const [turns, setTurns] = useState<Turn[]>([]);
+  /**
+   * The last thing asked for, kept because the box is now cleared on submit.
+   *
+   * A new app is NAMED from the description until the model's own `name` is known, and clearing the
+   * box without this saved every freshly created app as "Untitled app".
+   */
+  const [lastPrompt, setLastPrompt] = useState("");
+  /** What the last generation did, for the transcript — a ref because it is read after an await. */
+  const outcomeRef = useRef<{ text?: string; refused?: boolean }>({});
+  /**
+   * Say what happened, once, to both places that show it: the note under the prompt box and the
+   * transcript. They used to be able to disagree — the note is React state the next generation
+   * clears, while a turn is a thing that happened and stays said.
+   */
+  const note = (text: string, refused = false): void => {
+    outcomeRef.current = { text, refused };
+    setModifyNote(text);
+  };
+
+  // Read the thread back whenever the Studio is pointed at a different app. Newest-first on disk,
+  // oldest-first here: a conversation reads downwards.
+  useEffect(() => {
+    if (!currentId) {
+      setTurns([]);
+      return;
+    }
+    let alive = true;
+    void import("./app-history.js").then(async ({ listVersions }) => {
+      const versions = await listVersions(currentId);
+      if (!alive) return;
+      setTurns(
+        versions
+          .slice()
+          .reverse()
+          .filter((v) => v.note)
+          .map((v) => ({ id: `v${v.seq}`, prompt: v.note!, outcome: v.rationale, seq: v.seq })),
+      );
+    });
+    return () => {
+      alive = false;
+    };
+  }, [currentId]);
 
   // Build (or rebuild) the live app from `source` and VALIDATE its structure. Returns the validation
   // issues (empty = valid). Drafts use an ephemeral MemoryStore; a saved app (storeNamespace) uses its
@@ -261,6 +328,7 @@ export function Studio({
     // anything the run itself reports (below, and in `repairSource`) still stands.
     setModifyLoss(null);
     setModifyNote(null);
+    outcomeRef.current = {};
     try {
       const next = await run();
       if (next === null) return;
@@ -278,7 +346,9 @@ export function Studio({
         setDrafts((d) => [...d, { source: next, note: note ?? label }]);
       }
     } catch (e) {
-      setError(`${label} failed: ${e instanceof Error ? e.message : String(e)}`);
+      const message = `${label} failed: ${e instanceof Error ? e.message : String(e)}`;
+      outcomeRef.current = { text: message, refused: true };
+      setError(message);
       setTab("source");
     } finally {
       setGenBusy(false);
@@ -359,17 +429,37 @@ export function Studio({
    * longer implied by which of four buttons you pressed, which is what made an edit reach a
    * different engine than the one on screen.
    */
-  const create = (): Promise<void> =>
+  const create = (asked = description): Promise<void> =>
     withGen(
       label,
       () =>
         withTick("Generating", async () => {
-          if (engine === "cli") return runCli(buildUserMessage({ id: "studio", description }));
-          return (await engineBackend()).generate({ id: "studio", description });
+          if (engine === "cli") return runCli(buildUserMessage({ id: "studio", description: asked }));
+          return (await engineBackend()).generate({ id: "studio", description: asked });
         }),
       true,
-      description.trim() || undefined,
+      asked.trim() || undefined,
     );
+
+  /**
+   * One turn: the thing asked for goes into the thread, the box empties, and the answer lands under
+   * it when it arrives.
+   *
+   * The box is cleared here rather than after the model answers, because the point of clearing it is
+   * to be able to type the next thing — and a box that empties only on success leaves you selecting
+   * and deleting a failed prompt, which is what it did before.
+   */
+  const submit = async (): Promise<void> => {
+    const asked = description.trim();
+    if (!asked) return;
+    const id = `t${Date.now()}`;
+    setTurns((t) => [...t, { id, prompt: asked }]);
+    setLastPrompt(asked);
+    setDescription("");
+    await (hasApp ? modify(asked) : create(asked));
+    const { text, refused } = outcomeRef.current;
+    setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, outcome: text ?? "Done.", refused } : turn)));
+  };
 
   // Repair a source given the validator's issues — through the SAME gate as a modify. Before this,
   // a repair asked for the whole file again, so a good edit followed by one validation slip
@@ -393,8 +483,8 @@ export function Studio({
   // Adapt the CURRENT app with the agent (KA-07 "modify"): the description is read as a change to
   // apply, and the model sends SEARCH/REPLACE edits which `guardedModify` applies — so the lines it
   // does not mention cannot be damaged. Same engine as create, because there is now only one.
-  const modify = (): Promise<void> => {
-    const instruction = description.trim();
+  const modify = (asked = description): Promise<void> => {
+    const instruction = asked.trim();
     if (!instruction || !preview) return Promise.resolve();
     // One model turn, returning the model's REPLY (not source): `guardedModify` reads it, and may
     // call this up to three times (a no-match retry, then a loss retry).
@@ -422,11 +512,11 @@ export function Studio({
             },
           });
           if (result.kind === "diagnosis") {
-            setModifyNote(`Not changed — the model says this is not the app's to change: ${result.text}`);
+            note(`Not changed — the model says this is not the app's to change: ${result.text}`, true);
             return null;
           }
           if (result.kind === "question") {
-            setModifyNote(`The model needs to know: ${result.text}`);
+            note(`The model needs to know: ${result.text}`, true);
             return null;
           }
           if (result.kind === "failed" || result.kind === "stopped") {
@@ -435,13 +525,13 @@ export function Studio({
           }
           const applied = result.via === "edits" ? `Applied ${result.applied} edit${result.applied === 1 ? "" : "s"}.` : "The model sent the whole file back instead of edits.";
           if (result.notDone?.length) {
-            setModifyNote(`${applied} Not done yet: ${result.notDone.join("; ")}`);
+            note(`${applied} Not done yet: ${result.notDone.join("; ")}`);
             if (currentId) {
               const now = new Date().toISOString();
               for (const part of result.notDone) void recordDiagnosis(currentId, { complaint: instruction, text: part }, now);
             }
           } else {
-            setModifyNote(applied);
+            note(applied);
           }
           return result.source;
         },
@@ -469,7 +559,7 @@ export function Studio({
           if (result.kind === "diagnosis") {
             // An answer, not a failure. Edit mode renders one in neutral style for the same reason:
             // red reads as "retry me", which is how the same wrong edit gets asked for five times.
-            setModifyNote(`Not changed — the model says this is not the app's to change: ${result.text}`);
+            note(`Not changed — the model says this is not the app's to change: ${result.text}`, true);
             return null;
           }
           if (result.kind === "failed") {
@@ -485,13 +575,13 @@ export function Studio({
           // could not are said in full — each one is a host gap, so it is filed with the app's
           // diagnoses too, where Edit mode reads them back as "already reported as host-side".
           if (result.notDone?.length) {
-            setModifyNote(`${applied} Not done yet: ${result.notDone.join("; ")}`);
+            note(`${applied} Not done yet: ${result.notDone.join("; ")}`);
             if (currentId) {
               const now = new Date().toISOString();
               for (const part of result.notDone) void recordDiagnosis(currentId, { complaint: instruction, text: part }, now);
             }
           } else {
-            setModifyNote(applied);
+            note(applied);
           }
           return result.source;
         }),
@@ -538,7 +628,9 @@ export function Studio({
     const step0 = steps[steps.length - 1]?.source ?? source;
     for (const step of steps) {
       record = await saveUserApp(
-        { id, name: appName ?? description, source: step.source, note: step.note },
+        // `lastPrompt` because the box is emptied on submit: before this, a freshly created app
+        // whose source had no name yet was saved as "Untitled app".
+        { id, name: appName ?? lastPrompt ?? description, source: step.source, note: step.note },
         new Date().toISOString(),
       );
       id = record.id;
@@ -636,6 +728,25 @@ export function Studio({
 
       <div className="k-studio-body">
         <aside className="k-studio-controls">
+          {turns.length ? (
+            <ol className="k-thread" aria-label="What has been asked of this app">
+              {turns.map((turn) => (
+                <li key={turn.id} className="k-thread-turn">
+                  <p className="k-thread-ask">{turn.prompt}</p>
+                  {turn.outcome ? (
+                    <p className="k-thread-answer" data-refused={turn.refused || undefined}>
+                      {turn.outcome}
+                      {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
+                    </p>
+                  ) : (
+                    <p className="k-thread-answer k-muted" aria-live="polite">
+                      Working…
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          ) : null}
           <label className="k-field-label" htmlFor="k-studio-desc">Describe an app — or a change to make</label>
           <textarea
             id="k-studio-desc"
@@ -659,7 +770,7 @@ export function Studio({
                   ? `${hasApp ? "Send the whole current source and your change" : "Write a new app"} to ${label}.`
                   : `${label} needs an API key — open Model settings.`
               }
-              onClick={() => void (hasApp ? modify() : create())}
+              onClick={() => void submit()}
             >
               {genBusy ? "Working…" : hasApp ? "✎ Modify the app" : "✨ Create the app"}
             </button>
@@ -760,7 +871,12 @@ export function Studio({
               you had — or try a smaller, more specific change.
             </p>
           ) : null}
-          {modifyNote ? <p className="k-muted k-modify-note">{modifyNote}</p> : null}
+          {/* Not when the thread already says it. The note and the newest turn carry the same
+              sentence, and printing it twice on one screen reads as two things having happened.
+              A note with no turn behind it — a repair, an Edit-mode change — still shows. */}
+          {modifyNote && modifyNote !== turns[turns.length - 1]?.outcome ? (
+            <p className="k-muted k-modify-note">{modifyNote}</p>
+          ) : null}
           {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
 
           {tab === "preview" ? (
