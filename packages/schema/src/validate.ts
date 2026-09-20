@@ -193,7 +193,8 @@ const filterChipSchema = z.object({
   param: z.string(),
   from: z.string().optional(),
   multi: z.boolean().optional(),
-  type: z.enum(["boolean", "geo"]).optional(),
+  type: z.enum(["boolean", "geo", "text", "number"]).optional(),
+  placeholder: z.string().optional(),
 });
 
 /** `Dynamic<string>` (#133): a literal, or a function of ctx the host evaluates. */
