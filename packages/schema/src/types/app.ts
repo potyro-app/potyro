@@ -156,6 +156,11 @@ export interface CalendarView {
 /** A filter chip surfaced in a map/list view chrome; writes into `ctx.params[param]`.
  *  - `type: "boolean"` → a toggle (param = true | undefined).
  *  - `type: "geo"` → a "use my location" button (param = { lat, lng } from `ctx.caps.geo`).
+ *  - `type: "text"` → a box to type in (param = the string, undefined when empty). THIS IS SEARCH:
+ *    the chip collects what was typed, the view's `filter` decides what matching means. With
+ *    `filters: [{ label: "Search", param: "q", type: "text" }]`:
+ *    `filter: (r, ctx) => !ctx.params.q || r.name.toLowerCase().includes(String(ctx.params.q).toLowerCase())`
+ *  - `type: "number"` → the same for a figure picked at view time ("under 30 minutes").
  *  - `from` naming an ENTITY → record chips: one chip per record of that entity (its `displayField`),
  *    param = the selected record ids (string[]). This is how a list or map is narrowed to "the
  *    trip / the project / the person" chosen by the user.
@@ -166,7 +171,9 @@ export interface FilterChip {
   param: string;
   from?: string;
   multi?: boolean;
-  type?: "boolean" | "geo";
+  type?: "boolean" | "geo" | "text" | "number";
+  /** Greyed-out hint inside a `text`/`number` box ("Name or aisle"). */
+  placeholder?: string;
 }
 
 /**

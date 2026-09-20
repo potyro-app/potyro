@@ -70,7 +70,14 @@ describe("SYSTEM_PROMPT", () => {
     // the reasoning belongs anyway. The next raise should come with the same kind of note — and if
     // the prompt ever approaches 100k, the answer is not a bigger number but splitting the reference
     // so a generation reads the views it is actually using.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(70_000);
+    //
+    // Raised 70k -> 72k on 2026-09-20 (#216), for three things the model could not do at all before:
+    // a page's own buttons (`Page.actions`), reaching a view that is on screen (`ctx.views`), and
+    // chips that take a typed value — which is how an app gets SEARCH. Trimming instead was tried
+    // first and is what the budget was buying: the cuts landed on the examples that show the model
+    // how to USE these, which is the documentation that decides whether a capability gets reached
+    // for at all. ~500 cached tokens against apps that can be searched.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(72_000);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {
