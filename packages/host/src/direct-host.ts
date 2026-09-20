@@ -100,6 +100,13 @@ export class DirectLoadedApp implements LoadedApp {
     return resolveOption(page?.[key], ctx);
   }
 
+  async callPageAction(pageId: string, index: number, ctx: unknown): Promise<void> {
+    const page = this.definition.pages.find((p) => p.id === pageId);
+    const action = page?.actions?.[index];
+    if (!action || typeof action.run !== "function") throw new Error(`page action ${pageId}[${index}] not found`);
+    await action.run(ctx as never);
+  }
+
   async callBinding(ref: BindingRef, record: Resolved, ctx: unknown): Promise<Value> {
     const b = bindingFn(this.definition, ref);
     if (typeof b !== "function") {

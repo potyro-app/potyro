@@ -227,6 +227,22 @@ class IsolateLoadedApp implements LoadedApp {
         return nul;
       case "media.url":
         return serialize((await this.ctxHost?.media.url(op.ref as { key: string; mime: string })) ?? "");
+      // Move a view that is on screen (`ctx.views`). One op for every verb on purpose: the set of
+      // things a view can be told will grow, and each addition should be a case in the view's own
+      // handler rather than another op here, another method in the harness, and a release of both.
+      //
+      // No permission gate: a map this app declared, on a page this app declared, showing this app's
+      // records. Nothing crosses the app's boundary, so there is nothing to ask about.
+      case "views.call": {
+        const ctx = this.ctxHost;
+        if (!ctx) return serialize(false);
+        const page = op.page as string;
+        const verb = op.verb as string;
+        const arg = op.arg ?? undefined;
+        if (verb === "map.flyTo") return serialize(await ctx.views.map(page).flyTo(arg as { center: [number, number]; zoom?: number }));
+        if (verb === "map.fit") return serialize(await ctx.views.map(page).fit());
+        return serialize(false);
+      }
       default:
         throw new Error(`isolate bridge: unknown op ${kind}`);
     }
@@ -417,6 +433,9 @@ class IsolateLoadedApp implements LoadedApp {
     // The whole filtered set crosses in one payload. At personal scale (docs/01: thousands, not
     // millions) that is cheaper than N per-row round trips through the string bridge.
     return this.invoke({ kind: "summary", pageId, index, rows, ...this.base(ctx) }, ctx);
+  }
+  async callPageAction(pageId: string, index: number, ctx: Ctx): Promise<void> {
+    await this.invoke({ kind: "pageAction", pageId, index, ...this.base(ctx) }, ctx);
   }
   async callAggregate(pageId: string, rows: Resolved[], ctx: Ctx): Promise<Value> {
     // Same one-payload trade as `callSummary`: the whole filtered set crosses once rather than N

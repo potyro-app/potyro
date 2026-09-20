@@ -452,7 +452,7 @@ const viewSchema = z.discriminatedUnion("type", [
  * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
  * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
  */
-export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?", "layout?"]);
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?", "actions?", "layout?"]);
 
 export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   Object.fromEntries(
@@ -533,6 +533,13 @@ function customViewIssue(view: unknown): string | null {
     : null;
 }
 
+/** A button in the page's chrome: its own label, and a real function to run (hard rule #1). */
+const pageActionSchema = z.object({
+  label: z.string().min(1),
+  icon: z.string().min(1).max(8).optional(),
+  run: zFn,
+});
+
 const pageSchema = z
   .object({
     id: z.string().min(1),
@@ -540,6 +547,7 @@ const pageSchema = z
     icon: z.string().min(1).max(8).optional(),
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
+    actions: z.array(pageActionSchema).optional(),
     view: viewSchema.optional(),
     layout: layoutSchema.optional(),
   })

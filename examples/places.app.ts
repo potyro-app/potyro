@@ -65,6 +65,10 @@ export default defineApp({
     {
       id: "map",
       title: "Map",
+      // A button the APP puts on the page, running an ordinary function (#216). "Show me all of
+      // them" is the other half of the built-in "where am I" — and it is app code, not a host
+      // feature, which is the point: `ctx.views` reaches the map that is on screen.
+      actions: [{ label: "Show all", icon: "⤢", run: (ctx) => void ctx.views.map("map").fit() }],
       view: {
         type: "map",
         entity: "place",
