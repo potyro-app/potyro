@@ -433,7 +433,7 @@ button {
   height: 2.75rem;
   font-size: 1.25rem;
   line-height: 1;
-  color: var(--text);
+  color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
