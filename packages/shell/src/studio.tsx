@@ -871,7 +871,12 @@ export function Studio({
               you had — or try a smaller, more specific change.
             </p>
           ) : null}
-          {modifyNote ? <p className="k-muted k-modify-note">{modifyNote}</p> : null}
+          {/* Not when the thread already says it. The note and the newest turn carry the same
+              sentence, and printing it twice on one screen reads as two things having happened.
+              A note with no turn behind it — a repair, an Edit-mode change — still shows. */}
+          {modifyNote && modifyNote !== turns[turns.length - 1]?.outcome ? (
+            <p className="k-muted k-modify-note">{modifyNote}</p>
+          ) : null}
           {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
 
           {tab === "preview" ? (
