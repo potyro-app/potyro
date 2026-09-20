@@ -216,7 +216,13 @@ export function MapView(props: BuiltinViewProps) {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   // MapLibre types are only available after the lazy import, so these refs are intentionally loose.
-  const mapRef = useRef<{ remove?: () => void; fitBounds?: (...a: unknown[]) => void; resize?: () => void } | null>(null);
+  const mapRef = useRef<{
+    remove?: () => void;
+    fitBounds?: (...a: unknown[]) => void;
+    resize?: () => void;
+    getZoom?: () => number;
+    flyTo?: (opts: { center: [number, number]; zoom: number }) => void;
+  } | null>(null);
   const markerObjs = useRef<{ remove: () => void }[]>([]);
   // A remembered camera was applied, so auto-fitting to the markers would undo the user's framing.
   const restoredRef = useRef(false);
@@ -232,7 +238,9 @@ export function MapView(props: BuiltinViewProps) {
   onCreateRef.current = onCreate;
   const onEditRef = useRef(onEdit);
   onEditRef.current = onEdit;
-  const view = getView(runtime, pageId) as unknown as { entity?: string; geo?: string; camera?: unknown } | undefined;
+  const view = getView(runtime, pageId) as unknown as
+    | { entity?: string; geo?: string; camera?: unknown; locate?: boolean }
+    | undefined;
   // What the app declared (a mode, a position, or a function of ctx — or, for an untrusted app, the
   // sentinel where the function was), and what it resolved to once the map was created.
   const declaredCameraRef = useRef<unknown>(view?.camera);
@@ -426,12 +434,61 @@ export function MapView(props: BuiltinViewProps) {
   const canPlace = Boolean(onCreate && geoFieldKey.current);
   const detailParam = (detailPage?.view as { param?: string } | undefined)?.param ?? "id";
 
+  // "Where am I in this?" — the button every phone map has.
+  //
+  // It has to live here, in the host, because an app cannot reach the camera: `camera` is read when
+  // the view opens and there is no runtime affordance to move it afterwards. Asked for exactly that
+  // ("a small button on the map that centers the map in my current location"), the generator
+  // correctly answered that the platform could not do it. This is the platform doing it.
+  const canLocate = view?.locate !== false && Boolean(runtime.ctx.caps.geo);
+  const [locating, setLocating] = useState(false);
+  const centreOnMe = async (): Promise<void> => {
+    const geo = runtime.ctx.caps.geo;
+    const map = mapRef.current;
+    if (!geo || !map) return;
+    setLocating(true);
+    try {
+      const pos = await geo.current();
+      // Zoom in only if we are further out than street level; someone already close in asked to be
+      // moved, not to be zoomed somewhere else.
+      const zoom = Math.max(map.getZoom?.() ?? 0, 15);
+      map.flyTo?.({ center: [pos.lng, pos.lat], zoom });
+      // Deliberate, so it is where the map opens next time — the same rule a drag follows. Only
+      // where the app left the framing to the person: a map told to open somewhere fixed opens
+      // there, and `flyTo` carries no `originalEvent`, so the move handler would not have saved it.
+      if (cameraModeRef.current === "remember") {
+        restoredRef.current = true;
+        void runtimeRef.current.ctx.storage
+          .set(cameraKey(pageIdRef.current), { center: [pos.lng, pos.lat], zoom })
+          .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+      }
+    } catch {
+      // Denied, or the device cannot say. The map is still a map.
+      runtime.ctx.ui.toast("Could not get your location.");
+    } finally {
+      setLocating(false);
+    }
+  };
+
   return (
     // The map comes first and its chrome sits ON it. A map is the page — the way it is in every map
     // app on a phone — and a bar above it is a bar taking a bite out of the thing you came to see.
     <div className="k-map" data-placing={placing || undefined}>
       <div ref={containerRef} className="k-map-canvas" role="application" aria-label="Map" />
       {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">No places to show.</p> : null}
+      {canLocate ? (
+        <button
+          type="button"
+          className="k-map-locate"
+          data-stacked={canPlace || undefined}
+          aria-label="Centre the map on my location"
+          aria-busy={locating || undefined}
+          disabled={locating}
+          onClick={() => void centreOnMe()}
+        >
+          <span aria-hidden>◎</span>
+        </button>
+      ) : null}
       {canPlace ? (
         placing ? (
           <div className="k-map-bar">
