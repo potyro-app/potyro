@@ -56,9 +56,11 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("add a 5-star rating field");
   await go.click();
-  // The h1 already reads "Reader" before the modify, so wait for the modify's own note (the stub
-  // answers with the whole file, which the loop accepts and labels) rather than racing the source.
-  await expect(studio.locator(".k-modify-note")).toHaveText(/whole file|Applied/, { timeout: 60_000 });
+  // The h1 already reads "Reader" before the modify, so wait for what the Studio SAYS it did (the
+  // stub answers with the whole file, which the loop accepts and labels) rather than racing the
+  // source. That answer lives in the thread now (#219): the note under the box is not printed when
+  // the thread is already carrying the same sentence.
+  await expect(studio.locator(".k-thread-answer").last()).toHaveText(/whole file|Applied/, { timeout: 60_000 });
   await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
 
   await studio.getByRole("tab", { name: "Source" }).click();
@@ -132,7 +134,8 @@ test("an edit-block reply changes only the lines it names, and the Studio says h
   await studio.getByRole("button", { name: /Modify the app/ }).click();
 
   // How the change arrived, in the neutral note rather than as an error.
-  await expect(studio.locator(".k-modify-note")).toHaveText("Applied 1 edit.", { timeout: 60_000 });
+  // In the thread, like every other answer to something you asked for (#219).
+  await expect(studio.locator(".k-thread-answer").last()).toHaveText("Applied 1 edit.", { timeout: 60_000 });
   await expect(studio.locator(".k-modify-loss")).toHaveCount(0);
 
   await studio.getByRole("tab", { name: "Source" }).click();

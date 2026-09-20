@@ -150,7 +150,16 @@ export default defineApp({
           // — and an expense that starts with nobody in it credits whoever paid and charges no one,
           // which is how two people who each paid for dinner end up both being "owed" in full.
           // Captured at creation: someone who joins next month was not at this dinner.
-          default: (ctx) => (ctx.space?.members ?? []).map((m) => m.id) ?? [],
+          //
+          // EXCEPT when you are the only one here. "Split between me" is not a split — you cannot
+          // owe yourself — so it is left unset, which `sharesOf` reads as "everyone, whoever that
+          // is when the maths runs". Otherwise every expense written before you shared the app is
+          // invisible to the person you shared it with: they see it in the list with a share of
+          // €0.00, which reads as a broken app rather than as a decision about who was there.
+          default: (ctx) => {
+            const ids = (ctx.space?.members ?? []).map((m) => m.id).filter(Boolean);
+            return ids.length > 1 ? ids : [];
+          },
         },
         shares: {
           type: "list",
