@@ -213,6 +213,12 @@ export class JazzStore implements Store {
   /** cojson subscriptions per entity, so remote changes reach `Store.subscribe`. */
   private watched = new Map<string, () => void>();
   /**
+   * Entities being watched by a PLACEHOLDER — subscribed to the container the index will appear in,
+   * because the index itself is not here yet and making one to subscribe to is how records end up
+   * stranded in a rival container.
+   */
+  private pending = new Set<string>();
+  /**
    * Depth of the local mutation currently running.
    *
    * cojson notifies synchronously when THIS device writes, which would double-fire alongside the
@@ -253,7 +259,8 @@ export class JazzStore implements Store {
    * — cannot, since it only reaches the log through this store.
    */
   private async scoped(entity: string, id: Id): Promise<{ m: RawMapLike; creator: string } | null> {
-    const index = await this.entityIndex(entity);
+    const index = await this.entityIndexIfPresent(entity);
+    if (!index) return null;
     const edits = [...(index.editsAt?.(id) ?? [])];
     const first = edits[0];
     if (!first) return null;
@@ -355,13 +362,30 @@ export class JazzStore implements Store {
     return created;
   }
 
+  /**
+   * The entity's index, CREATING it (and the entities container) if absent. Writes only.
+   *
+   * A read must never take this path. A guest whose root has not replicated yet would mint its own
+   * container and write it over the pointer — two maps, and whichever lost the write is stranded
+   * with the records in it. That is the defect `childIfPresent` was introduced for, on blobs and
+   * kv (KA-20); entity data was left on the creating variant for reads as well as writes, which is
+   * the same bug against the one thing an app is actually made of.
+   */
   private async entityIndex(entity: string): Promise<RawMapLike> {
     return this.child(await this.child(this.root, ROOT_ENTITIES), entity);
   }
 
+  /** The entity's index if it is here, without making one. `null` means "no records yet, or not
+   *  replicated yet" — which a read must treat as empty rather than as a reason to create. */
+  private async entityIndexIfPresent(entity: string): Promise<RawMapLike | null> {
+    const entities = await this.childIfPresent(this.root, ROOT_ENTITIES);
+    return entities ? this.childIfPresent(entities, entity) : null;
+  }
+
   private async recordMap(entity: string, id: Id): Promise<RawMapLike | null> {
     if (this.creatorOnly.has(entity)) return (await this.scoped(entity, id))?.m ?? null;
-    const refId = (await this.entityIndex(entity)).get(id);
+    const index = await this.entityIndexIfPresent(entity);
+    const refId = index?.get(id);
     return typeof refId === "string" ? this.loadMap(refId) : null;
   }
 
@@ -371,7 +395,8 @@ export class JazzStore implements Store {
    * so two devices list the same rows in the same order.
    */
   private async readEntity(entity: string): Promise<KartaRecord[]> {
-    const index = await this.entityIndex(entity);
+    const index = await this.entityIndexIfPresent(entity);
+    if (!index) return [];
     const rows: KartaRecord[] = [];
     if (this.creatorOnly.has(entity)) {
       // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
@@ -428,7 +453,53 @@ export class JazzStore implements Store {
    */
   private async watchEntity(entity: string): Promise<void> {
     if (this.watched.has(entity)) return;
-    const index = await this.entityIndex(entity);
+    const index = await this.entityIndexIfPresent(entity);
+    if (!index) {
+      // Not here yet: an entity nothing has written, or a guest whose space is still replicating.
+      // Creating the index to have something to subscribe to is exactly what strands records in a
+      // rival container — so wait for the real one and attach when it lands.
+      let cancelled = false;
+      const unsubs: Array<() => void> = [];
+      let entities = await this.childIfPresent(this.root, ROOT_ENTITIES);
+      /**
+       * Has THIS entity's index appeared?
+       *
+       * Decided synchronously, from the pointer, and latched before anything is awaited. Both
+       * matter: the container fires for every entity written into it, so an async check would emit
+       * for someone else's insert — a contract break ("notify on entity change") — and two checks
+       * in flight would both pass and attach two watchers.
+       */
+      const attach = (): void => {
+        if (cancelled) return;
+        if (!entities) {
+          // The container itself is what has not arrived yet; pick it up and watch it too.
+          void this.childIfPresent(this.root, ROOT_ENTITIES).then((found) => {
+            if (cancelled || !found || entities) return;
+            entities = found;
+            unsubs.push(found.subscribe(attach));
+            attach();
+          });
+          return;
+        }
+        if (typeof entities.get(entity) !== "string") return;
+        cancelled = true;
+        for (const un of unsubs) un();
+        this.watched.delete(entity);
+        this.pending.delete(entity);
+        // Watch it for real, then tell anyone listening — their first read found nothing.
+        void this.watchEntity(entity).then(() => this.emit(entity));
+      };
+      unsubs.push(this.root.subscribe(attach));
+      if (entities) unsubs.push(entities.subscribe(attach));
+      this.pending.add(entity);
+      this.watched.set(entity, () => {
+        cancelled = true;
+        this.pending.delete(entity);
+        for (const un of unsubs) un();
+      });
+      attach();
+      return;
+    }
     const perRecord = new Map<string, () => void>();
 
     // Which record CoValues to watch. For a creator-only entity that includes records someone else
@@ -500,6 +571,10 @@ export class JazzStore implements Store {
     // rival copy of them.
     await this.child(this.root, ROOT_BLOBS);
     await this.child(this.root, ROOT_KV);
+    // And the entities container — the one that was left lazy, and the one that holds the data.
+    // Every read below takes the non-creating path now, so without this a brand-new app would have
+    // nowhere to put its first record until something wrote one.
+    await this.child(this.root, ROOT_ENTITIES);
   }
 
   async close(): Promise<void> {
@@ -784,6 +859,14 @@ export class JazzStore implements Store {
     } as KartaRecord;
     // One CoMap per record — this is what makes concurrent edits to different fields merge.
     const index = await this.entityIndex(entity);
+    // This write may be what creates the index. A watcher parked on the container would notice and
+    // announce it — a second notification for a write that announces itself below. Upgrade it here,
+    // quietly, so the placeholder only ever speaks for a container that arrived from a PEER.
+    if (this.pending.has(entity)) {
+      this.watched.get(entity)?.();
+      this.watched.delete(entity);
+      await this.watchEntity(entity);
+    }
     this.local(() => {
       const created = this.group.createMap<RawMapLike>(record as unknown as Record<string, unknown>);
       index.set(id, created.id);
@@ -936,7 +1019,8 @@ export class JazzStore implements Store {
   }
 
   async delete(entity: string, id: Id): Promise<void> {
-    const index = await this.entityIndex(entity);
+    const index = await this.entityIndexIfPresent(entity);
+    if (!index) return;
     if (this.creatorOnly.has(entity)) {
       const found = await this.scoped(entity, id);
       if (!found) return;
@@ -957,14 +1041,15 @@ export class JazzStore implements Store {
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
     // Compensating write, not a rollback — see the header. Snapshot every entity's rows, and on
     // failure restore them.
-    const entityNames = (await this.child(this.root, ROOT_ENTITIES)).keys();
+    const entityNames = (await this.childIfPresent(this.root, ROOT_ENTITIES))?.keys() ?? [];
     const snapshot = new Map<string, KartaRecord[]>();
     for (const entity of entityNames) snapshot.set(entity, await this.readEntity(entity));
     try {
       return await fn(this);
     } catch (err) {
       for (const [entity, rows] of snapshot) {
-        const index = await this.entityIndex(entity);
+        const index = await this.entityIndexIfPresent(entity);
+        if (!index) continue;
         const keep = new Set(rows.map((r) => r.id));
         for (const id of index.keys()) {
           if (!keep.has(id) && typeof index.get(id) === "string") index.delete(id);
@@ -1165,7 +1250,7 @@ export class JazzStore implements Store {
    */
   async runMigrations(plan: MigrationPlan): Promise<void> {
     const records = new Map<string, Map<Id, KartaRecord>>();
-    for (const entity of (await this.child(this.root, ROOT_ENTITIES)).keys()) {
+    for (const entity of (await this.childIfPresent(this.root, ROOT_ENTITIES))?.keys() ?? []) {
       records.set(entity, new Map((await this.readEntity(entity)).map((r) => [r.id, r])));
     }
 
@@ -1177,7 +1262,8 @@ export class JazzStore implements Store {
     }
 
     for (const [entity, rows] of records) {
-      const index = await this.entityIndex(entity);
+      const index = await this.entityIndexIfPresent(entity);
+      if (!index) continue;
       const live = new Set(rows.keys());
       for (const id of index.keys()) {
         if (!live.has(id) && typeof index.get(id) === "string") index.delete(id);
