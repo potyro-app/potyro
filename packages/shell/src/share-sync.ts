@@ -22,7 +22,7 @@
 
 import { createSpaceInvite, joinSpace, openJazzStore } from "@karta/store";
 import { syncRelayUrl } from "./open-store.js";
-import { getUserApp, listUserApps, saveUserApp, setUserAppSync, setUserAppTrusted } from "./user-apps.js";
+import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 
 interface InvitePayload {
   appId: string;
@@ -112,7 +112,24 @@ export function usesCustomViews(source: string): boolean {
  * whether to accept a stranger's app, which is when the question actually means something.
  */
 export async function acceptInvite(payload: InvitePayload, trust = false): Promise<string> {
+  // Where this app is going to live on THIS device — decided before joining, because the space is
+  // remembered under `user:<id>` and the decision cannot wait until the record is written.
+  //
+  // The collision is not hypothetical: every device that has ever opened the PWA owns the seeded
+  // examples under their declared ids, so a shared "split" lands on top of the Split its recipient
+  // already has, with their own records in it. That used to overwrite the record in place and flip
+  // `sync` — which strands those records in the local database the app no longer opens, the one
+  // thing `setUserAppSync` says must never be done on its own ("silently showing an empty app reads
+  // as data loss").
+  //
+  // So: the same id only when nothing is there, or when what is there is already THIS space (the
+  // same link opened twice must not breed a second copy). Otherwise the shared app arrives beside
+  // the one you have, and yours is untouched.
+  const { peekAppSpace } = await import("@karta/store");
   const existing = listUserApps().find((a) => a.id === payload.appId);
+  const here = existing ? peekAppSpace(`user:${payload.appId}`) : null;
+  const rejoining = Boolean(here && here.group === payload.group && here.root === payload.root);
+  const appId = !existing || rejoining ? payload.appId : freeAppId(payload.name || payload.appId);
 
   // Join first, then read the source out of the space. A legacy link carries it inline; a modern
   // one does not, so the space is the source of truth either way.
@@ -129,7 +146,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // `identityAccount()` is awaited first because it MINTS the identity on a device that has never
   // had one; `peekIdentity` answers null before that.
   const account = await identityAccount();
-  const joined = await joinSpace(`user:${payload.appId}`, payload, {
+  const joined = await joinSpace(`user:${appId}`, payload, {
     relay: syncRelayUrl(),
     account,
     profileName: peekIdentity()?.name,
@@ -155,17 +172,24 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
       // Invisible for a long time because the fixtures were named so their slug matched their id
       // ("Sync Pair" -> `sync-pair`). "Share Flow" -> `share-flow` does not match `shareflow`, which
       // is what finally exposed it.
-      id: payload.appId,
-      name: published?.name ?? payload.name,
+      id: appId,
+      // Two apps called "Split" in one launcher is a puzzle every time it is opened. The one that
+      // arrived says where it came from.
+      name: appId === payload.appId ? (published?.name ?? payload.name) : `${published?.name ?? payload.name} (shared)`,
       source,
       trusted: false, // arrived from someone else — runs in the isolate (rule 3)
+      // Both written HERE rather than in a call afterwards: `saveUserApp` records a version, which
+      // is a write to another database, and a second call lands behind it. An app that opened
+      // before its `sync` flag arrived would open the empty local copy instead of the space it just
+      // joined — and one that opened before `joined` arrived would seed the owner's space.
+      sync: true,
+      joined: true,
       origin: "imported",
       note: "shared with you",
     },
     new Date().toISOString(),
   );
 
-  setUserAppSync(saved.id, true, new Date().toISOString());
   // Joining answered the sync question (KA-23): the join dialog says the data syncs with the people
   // sharing it, so the boot guard must not ask again and refuse to open the app they just joined.
   const { rememberSyncConsent } = await import("./sync-consent.js");

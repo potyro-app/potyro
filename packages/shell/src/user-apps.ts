@@ -32,6 +32,18 @@ export interface UserApp {
    *  composition root opens, and the two stores hold data in different files — so a flip does NOT
    *  migrate existing records. See `setUserAppSync`. */
   sync?: boolean;
+  /**
+   * This app's data lives in a space that came from ELSEWHERE — someone's invite, or this user's own
+   * account on another device — rather than one this device created.
+   *
+   * It exists to stop the first-run seeder writing into it. The seeders are keyed on the app id, so
+   * a guest who joined "split" ran `seedSplit` against the space they had just joined: if the
+   * owner's records had not replicated in that instant the store looked empty, and a rival "Flat"
+   * group was written into someone else's app. Both people then saw only their own rows, because
+   * Split scopes every view by the selected group — while the chat, which is one unscoped thread,
+   * worked perfectly and made it look like a sync bug.
+   */
+  joined?: boolean;
 }
 
 function read(): UserApp[] {
@@ -77,7 +89,7 @@ export function getUserApp(id: string): UserApp | undefined {
  *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
  *  where the new source came from; they are what the History panel shows next to each version. */
 export async function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
+  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; joined?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
   now: string,
 ): Promise<UserApp> {
   const apps = read();
@@ -114,6 +126,10 @@ export async function saveUserApp(
     updatedAt: now,
     trusted,
     sync: input.sync ?? prev?.sync ?? (backedUpByDefault || undefined),
+    // Carried like `sync`, and for the same reason: this function REBUILDS the record, so a field
+    // left out is dropped — and an app that forgot it had joined someone's space would be seeded
+    // into that space on its next open.
+    joined: input.joined ?? prev?.joined,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
@@ -154,6 +170,21 @@ export function setUserAppTrusted(id: string, trusted: boolean, now: string): vo
  *  rows across is tracked with KA-08's remaining work. */
 export function setUserAppSync(id: string, sync: boolean, now: string): void {
   write(read().map((a) => (a.id === id ? { ...a, sync, updatedAt: now } : a)));
+}
+
+/**
+ * An id nothing on this device is using, derived from a name.
+ *
+ * Exported because joining a space has to know the id BEFORE it joins — the space is remembered
+ * under `user:<id>`, so the decision cannot wait until the record is saved.
+ */
+export function freeAppId(name: string): string {
+  const base = slug(name) || "app";
+  const taken = new Set(read().map((a) => a.id));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
 }
 
 /** Rename a saved app in place (keeps its id, source, and data namespace). */

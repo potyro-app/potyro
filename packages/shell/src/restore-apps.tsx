@@ -118,6 +118,11 @@ export async function installFromAccount(app: AccountApp, now: string): Promise<
       // second call it lands after this function's history write, and an app that opened in between
       // would open the local copy and look empty.
       sync: true,
+      // Its space came from the account, not from this device — so the first-run seeder must not
+      // run against it. A space still replicating looks exactly like an empty one, and an example's
+      // seed rows written into it are real records in the user's own data, on every other device
+      // too.
+      joined: true,
     },
     now,
   );
