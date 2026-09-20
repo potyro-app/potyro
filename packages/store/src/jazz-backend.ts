@@ -452,6 +452,13 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
  * Exported because the two callers that need it — a restored app and a joined space — are in the
  * shell, and the shape of these keys is this module's business.
  */
+export function peekAppSpace(namespace: string, keys?: JazzKeyStore): { group: string; root: string } | null {
+  const store = keys ?? browserKeys();
+  const group = store.get(groupKey(namespace));
+  const root = store.get(rootKey(namespace));
+  return group && root ? { group, root } : null;
+}
+
 export function rememberAppSpace(namespace: string, ids: { group: string; root: string }, keys?: JazzKeyStore): void {
   const store = keys ?? browserKeys();
   store.set(groupKey(namespace), ids.group);

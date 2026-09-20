@@ -8,7 +8,7 @@ export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccount
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
 export { openWorkerSqliteHandle, workersAvailable } from "./sqlite-worker-client.js";
-export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, publishAccountName, readProfileName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
+export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, peekAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, publishAccountName, readProfileName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
 export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
   createSqliteStore,

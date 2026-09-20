@@ -350,7 +350,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     }
   } else {
     rawStore = await openStore(`user:${id}`, { sync: syncAllowed && Boolean(saved.sync) });
-    await seedIfEmpty(rawStore, id, me.id);
+    // Never into a space that came from somewhere else. The seeders are keyed on the app id, so a
+    // guest who joined a shared "split" ran `seedSplit` against the space they had just joined —
+    // and a space whose records have not replicated yet is indistinguishable from an empty one. The
+    // result was a second "Flat" group inside the owner's app, with both people writing to one
+    // space and each seeing only their own rows (Split scopes its views by the selected group).
+    if (!saved.joined) await seedIfEmpty(rawStore, id, me.id);
   }
 
   // `ctx.me` is always present, which is what lets app code stop branching on whether identity
