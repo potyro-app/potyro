@@ -796,10 +796,23 @@ export function Studio({
             BELOW the preview — the prompt and its one action are what a phone shows first (#80). */}
         <aside className="k-studio-side">
           <div className="k-studio-savebar">
-            <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void save()}>
+            {/* Not while the model is mid-answer. Saving then saves the source it has NOT changed
+                yet — the version records the prompt that produced it, so the app is left with a
+                version claiming a change it does not contain, and the change itself lands in the
+                editor afterwards with nothing saying so. (Caught by a test of mine doing exactly
+                this; a person clicking Save while the spinner runs does the same thing.) */}
+            <button
+              type="button"
+              className="k-add k-primary-action"
+              disabled={busy || genBusy}
+              title={genBusy ? "Wait for the change to land — saving now would save the app as it was." : undefined}
+              onClick={() => void save()}
+            >
               {currentId ? "Save changes" : "Save to My Apps"}
             </button>
-            <button type="button" className="k-add" onClick={() => void newDraft()}>New draft</button>
+            <button type="button" className="k-add" disabled={genBusy} onClick={() => void newDraft()}>
+              New draft
+            </button>
           </div>
           {/* Said where the button is, not only in the preview's corner: on a phone the preview is a
               scroll away, and "is it saved?" is the question you have while looking at the button. */}
