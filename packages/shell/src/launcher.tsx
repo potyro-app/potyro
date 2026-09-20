@@ -8,7 +8,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { shellDialogs } from "./dialog.js";
-import { duplicateUserApp, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { duplicateUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { confirmAndRemoveApp } from "./remove-app.js";
 import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "@karta/views";
@@ -375,23 +376,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   };
   // Deleting an app takes its records, its version history and its diagnoses with it, and there is no
   // undo. It asked for nothing at all before.
-  const del = async (a: UserApp): Promise<void> => {
-    // A SHARED app is not yours alone, and deleting it here is not the same act as deleting a
-    // private one: it takes this device out of the space. The others keep the app and everything in
-    // it, and getting back in means someone sending a new invite — so the question has to say that
-    // rather than "this can't be undone", which reads as "you will lose the data" and is the one
-    // thing that does not happen.
-    const detail = a.sync
-      ? "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
-      : "This can't be undone.";
-    const ok = await shellDialogs.confirm(a.sync ? `Leave "${a.name}"?` : `Delete "${a.name}" and everything in it?`, {
-      detail,
-      ok: a.sync ? "Leave" : "Delete",
-      destructive: true,
-    });
-    if (!ok) return;
-    await removeUserApp(a.id);
-  };
+  // The question itself lives in `remove-app.ts`: the Studio can delete an app too, and the two
+  // asked very differently — one carefully, one not at all.
+  const del = async (a: UserApp): Promise<void> => void (await confirmAndRemoveApp(a));
   // Sync moves the app's data between two stores that keep it in DIFFERENT files, so this is a
   // migration, not a checkbox. It says what it will do, reports anything it could not move, and
   // never deletes the old copy — flipping back is the way out if it was a mistake.
