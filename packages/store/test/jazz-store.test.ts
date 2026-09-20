@@ -258,7 +258,7 @@ describe("JazzStore — two peers through the Store seam", () => {
 
     // And he left nothing behind: no index for `expense` exists yet, in anyone's copy.
     const entitiesOf = async (node: typeof ana.node, rootId: string): Promise<Record<string, unknown>> => {
-      const root = (await node.load(rootId)) as unknown as { get(k: string): unknown };
+      const root = (await node.load(rootId as never)) as unknown as { get(k: string): unknown };
       const id = root.get("entities") as string;
       const map = (await node.load(id as never)) as unknown as { get(k: string): unknown };
       return map as unknown as Record<string, unknown>;
