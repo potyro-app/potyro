@@ -221,6 +221,17 @@ export default defineApp({
             view: {
               type: "list",
               entity: "recipe",
+              // Search, and what searching MEANS is the app's own rule: the chip only collects what
+              // was typed (#216). Here it is the name or any tag — for a different app it might be
+              // the notes, or a spelling normalised for accents. A host that decided this for
+              // everyone would be wrong somewhere.
+              filters: [{ label: "Search", param: "q", type: "text", placeholder: "Name or tag" }],
+              filter: (r, ctx) => {
+                const q = String(ctx.params.q ?? "").trim().toLowerCase();
+                if (!q) return true;
+                const tags = (r.tags as string[] | undefined) ?? [];
+                return r.name.toLowerCase().includes(q) || tags.some((t) => t.toLowerCase().includes(q));
+              },
               sort: (a, b) => a.name.localeCompare(b.name),
               display: {
                 primary: (r) => r.name,

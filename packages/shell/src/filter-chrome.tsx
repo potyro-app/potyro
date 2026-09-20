@@ -13,7 +13,7 @@
 // A boolean and a "near me" stay where they are: each is already one tap and already says what it
 // does, so burying them would only add a tap on the way to a switch.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { KartaRuntime } from "@karta/runtime";
 import type { FilterChip } from "karta";
@@ -33,15 +33,25 @@ interface ChipProps {
   setParam: (key: string, value: unknown) => void;
 }
 
+/**
+ * Chips whose values come from a fixed list, which is what the Filter sheet is for.
+ *
+ * The others are CONTROLS — a switch, a "use my location" button, a box to type in — and they live
+ * in the row itself: hiding a search box inside a sheet called "Filter" is hiding the one thing
+ * someone with three hundred rows came to the page to use.
+ */
+const DIRECT_TYPES = new Set(["boolean", "geo", "text", "number"]);
+
 /** The values chosen for one chip, as a list — a single-select holds one, a multi holds several. */
 function chosen(chip: FilterChip, params: Record<string, unknown>): string[] {
   const value = params[chip.param];
   if (value == null) return [];
-  if (chip.type === "boolean" || chip.type === "geo") return [];
+  // A control shows its own value (a switch, a box with text in it); it is not a pill to remove.
+  if (DIRECT_TYPES.has(chip.type ?? "")) return [];
   return Array.isArray(value) ? value.map(String) : [String(value)];
 }
 
-const isOptionChip = (chip: FilterChip): boolean => chip.type !== "boolean" && chip.type !== "geo";
+const isOptionChip = (chip: FilterChip): boolean => !DIRECT_TYPES.has(chip.type ?? "");
 
 /**
  * The app's own buttons for this page (#216).
@@ -235,6 +245,7 @@ function FilterSheet({
 function ChipControl({ chip, entity, runtime, params, setParam }: ChipProps) {
   if (chip.type === "boolean") return <BooleanChip chip={chip} params={params} setParam={setParam} />;
   if (chip.type === "geo") return <GeoChip chip={chip} runtime={runtime} params={params} setParam={setParam} />;
+  if (chip.type === "text" || chip.type === "number") return <ValueChip chip={chip} params={params} setParam={setParam} />;
   // `from` naming an entity → record-source chips (the values are record ids, e.g. the recipes
   // pantry picking ingredients); otherwise it names an enum/tags field → option chips.
   if (chip.from && runtime.definition.entities[chip.from]) {
@@ -267,6 +278,70 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
         ))}
         {rows.length === 0 ? <span className="k-muted">Nothing to pick yet.</span> : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A value the person types, held in `ctx.params` for the view's `filter` to read (#216).
+ *
+ * This is how an app gets SEARCH — and it deliberately is not a search engine. The chip collects the
+ * text; what matching means is the app's own function, so an app can search a name, a name and its
+ * notes, or a normalised spelling, and the rule is visible in the app rather than buried in the
+ * host. `number` is the same mechanism for "over £20" / "under 30 minutes".
+ *
+ * The box keeps its own value and writes the param on a short delay. Every keystroke re-runs the
+ * page's query, and a query per letter is how a list of a few hundred rows starts feeling slow on
+ * a phone; a controlled input written straight through also fights the keyboard on Android.
+ */
+function ValueChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "runtime">) {
+  const live = params[chip.param];
+  const [text, setText] = useState(live == null ? "" : String(live));
+  // Re-sync when the param changes from somewhere else (a cleared filter, a navigation), but never
+  // while typing — that is what would fight the keyboard.
+  const typed = useRef(false);
+  useEffect(() => {
+    if (!typed.current) setText(live == null ? "" : String(live));
+  }, [live]);
+
+  useEffect(() => {
+    if (!typed.current) return;
+    const id = setTimeout(() => {
+      typed.current = false;
+      const trimmed = text.trim();
+      if (trimmed === "") return setParam(chip.param, undefined);
+      setParam(chip.param, chip.type === "number" ? Number(trimmed) : trimmed);
+    }, 150);
+    return () => clearTimeout(id);
+  }, [text, chip.param, chip.type, setParam]);
+
+  return (
+    <div className="k-chip-group k-value-chip" data-on={text.trim() !== "" || undefined}>
+      <input
+        type={chip.type === "number" ? "number" : "search"}
+        className="k-chip-input"
+        value={text}
+        aria-label={chip.label}
+        placeholder={chip.placeholder ?? chip.label}
+        inputMode={chip.type === "number" ? "decimal" : undefined}
+        onChange={(e) => {
+          typed.current = true;
+          setText(e.target.value);
+        }}
+      />
+      {text !== "" ? (
+        <button
+          type="button"
+          className="k-chip-x-button"
+          aria-label={`Clear ${chip.label}`}
+          onClick={() => {
+            typed.current = true;
+            setText("");
+          }}
+        >
+          ✕
+        </button>
+      ) : null}
     </div>
   );
 }

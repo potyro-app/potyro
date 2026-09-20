@@ -959,6 +959,58 @@ button {
   color: oklch(22% 0.04 70);
   font-weight: 600;
 }
+/* A chip you type into — search, or a figure picked at view time. Chip-shaped so it belongs in the
+   row, but it is an input: it wears the ink of typed text and lights up when it is holding one. */
+.k-value-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 2.25rem;
+  padding: 0 0.4rem 0 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.k-value-chip:focus-within,
+.k-value-chip[data-on] {
+  border-color: var(--accent);
+}
+.k-chip-input {
+  width: 8.5rem;
+  min-width: 0;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+.k-chip-input::placeholder {
+  color: var(--ink-faint);
+}
+/* The browser's own clear affordance, which is a different size on every platform. */
+.k-chip-input::-webkit-search-cancel-button {
+  display: none;
+}
+.k-chip-x-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.k-chip-x-button:hover,
+.k-chip-x-button:focus-visible {
+  color: var(--accent);
+}
+
 /* An app's own button (#216). Chip-shaped, because it sits in the row of chips — but a chip reports
    a STATE and this does something, so it carries the ink of a control rather than the grey of a
    label, and it presses. */
