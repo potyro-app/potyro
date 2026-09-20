@@ -143,6 +143,37 @@ export interface CtxUi {
   progress(label: string): UiProgress;
 }
 
+/**
+ * A map that is on screen right now.
+ *
+ * Every method answers whether it happened: `false` when that page is not the one open (its view is
+ * not mounted, so there is nothing to move) — never a crash, and never silence.
+ */
+export interface MapViewControl {
+  /** Move the map. `zoom` is left alone when omitted, so this pans without throwing away the scale. */
+  flyTo(to: { center: [number, number]; zoom?: number }): Promise<boolean>;
+  /** Frame everything currently pinned — the "show me all of it" button. */
+  fit(): Promise<boolean>;
+}
+
+/**
+ * Reach a view that is open and change what it is showing.
+ *
+ * A map opens on its `camera`, read ONCE when the view opens — the right default, and a dead end for
+ * everything afterwards. This is how an app moves one later. Addressed by PAGE id and resolved when
+ * called, never held. Pair it with the page's `actions` to get a button that does something:
+ *
+ * ```ts
+ * // { id: "map", actions: [{ label: "Centre on me", run: async (ctx) => {
+ * //     const here = await ctx.caps.geo!.current();
+ * //     await ctx.views.map("map").flyTo({ center: [here.lng, here.lat], zoom: 15 });
+ * // } }], view: { type: "map", entity: "place", geo: "where" } }
+ * ```
+ */
+export interface CtxViews {
+  map(pageId: string): MapViewControl;
+}
+
 /** Media helpers (docs/04). */
 export interface CtxMedia {
   put(bytes: Blob): Promise<MediaRef>;
@@ -223,6 +254,9 @@ export interface Ctx {
 
   // ---- UI affordances provided by the shell ----
   ui: CtxUi;
+
+  // ---- the views that are on screen (what `camera` cannot do, because it is read only at open) ----
+  views: CtxViews;
 
   // ---- navigation (in view/action contexts) ----
   navigate(pageId: string, params?: Record<string, string>): void;
