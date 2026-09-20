@@ -111,7 +111,9 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await tileAction(overlay, "My App", "delete");
   const confirmDialog = page.locator(".k-dialog");
   await expect(confirmDialog).toBeVisible();
-  await expect(confirmDialog).toContainText("can't be undone");
+  // The warning says what it costs now, not only that it is final (#223).
+  await expect(confirmDialog).toContainText("deletes the app AND its data");
+  await expect(confirmDialog).toContainText("cannot be undone");
   await confirmDialog.getByRole("button", { name: "Delete" }).click();
   await expect(overlay.locator(".k-launch-tile", { hasText: "My App" })).toHaveCount(0);
 });
