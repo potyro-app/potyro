@@ -18,22 +18,37 @@ import { fileURLToPath } from "node:url";
 const SW = readFileSync(fileURLToPath(new URL("../public/sw.js", import.meta.url)), "utf8");
 
 /** The pieces of the service worker global the script actually touches. */
-function runWorker(): {
+interface Worker {
   fetchHandler: (event: FakeEvent) => void;
-  cache: Map<string, { status: number; body: string }>;
-} {
-  const store = new Map<string, { status: number; body: string }>();
+  cache: Map<string, unknown>;
+  /** The bodies the worker answered navigations with, in order. */
+  answers: string[];
+  /** Did it hand the navigation back to the browser? */
+  unregistered: boolean;
+}
+
+function runWorker(): Worker {
+  const store = new Map<string, unknown>();
+  const key = (req: { url: string } | string): string => (typeof req === "string" ? req : req.url);
   const cache = {
     add: async () => undefined,
-    put: async (req: { url: string }, res: { status: number; body: string }) => void store.set(req.url, res),
-    delete: async (req: { url: string }) => store.delete(req.url),
-    match: async (req: { url: string } | string) => store.get(typeof req === "string" ? req : req.url),
+    put: async (req: { url: string } | string, res: unknown) => void store.set(key(req), res),
+    delete: async (req: { url: string } | string) => store.delete(key(req)),
+    match: async (req: { url: string } | string) => store.get(key(req)),
   };
   const listeners = new Map<string, (event: FakeEvent) => void>();
+  const worker = { cache: store, answers: [] as string[], unregistered: false } as Worker;
   const self = {
     addEventListener: (name: string, fn: (event: FakeEvent) => void) => void listeners.set(name, fn),
     skipWaiting: () => {},
     clients: { claim: async () => {} },
+    // Letting go of the navigation is the fix for an auth gate, so it is part of the contract here.
+    registration: {
+      unregister: async () => {
+        worker.unregistered = true;
+        return true;
+      },
+    },
   };
   const caches = {
     open: async () => cache,
@@ -45,7 +60,8 @@ function runWorker(): {
   // The script is plain JS written for a worker global; give it one.
   const run = new Function("self", "caches", "fetch", SW) as (s: unknown, c: unknown, f: unknown) => void;
   run(self, caches, fetchImpl);
-  return { fetchHandler: listeners.get("fetch")!, cache: store };
+  worker.fetchHandler = listeners.get("fetch")!;
+  return worker;
 }
 
 interface FakeEvent {
@@ -77,7 +93,10 @@ async function request(
     respondWith: (p) => void (answered = p),
     waitUntil: () => {},
   });
-  await answered;
+  const answer = await answered;
+  if (answer && typeof (answer as Response).text === "function") {
+    worker.answers.push(await (answer as Response).clone().text());
+  }
   await new Promise((r) => setTimeout(r, 0)); // the cache write is deliberately not awaited
 }
 
@@ -91,7 +110,7 @@ describe("the service worker's cache", () => {
   it("keeps a successful response", async () => {
     const worker = runWorker();
     await request(worker, asset, 200);
-    expect(worker.cache.get(asset)?.status).toBe(200);
+    expect((worker.cache.get(asset) as { status: number } | undefined)?.status).toBe(200);
   });
 
   it("never keeps an Unauthorized", async () => {
@@ -106,6 +125,29 @@ describe("the service worker's cache", () => {
     await request(worker, asset, 404);
     await request(worker, "https://apps.vaz.io/assets/other.js", 500);
     expect(worker.cache.size).toBe(0);
+  });
+
+  it("gets out of the way when a navigation comes back Unauthorized, so the browser can ask", async () => {
+    // The reported symptom, twice over: "I was greeted by Unauthorized … why doesn't it ask for the
+    // password?" A worker's fetch has no UI to ask with, and a navigation the WORKER performs is not
+    // one the browser will prompt for — so it must hand the navigation back by unregistering, and
+    // send a page that reloads into the browser's own prompt.
+    const worker = runWorker();
+    await request(worker, "https://apps.vaz.io/", 401, "navigate");
+
+    expect(worker.unregistered).toBe(true);
+    expect(worker.answers.at(-1)).toContain("http-equiv=\"refresh\"");
+  });
+
+  it("does not reload for ever when the password is refused as well", async () => {
+    // A gate that says no to the credentials too would otherwise spin: reload, 401, reload.
+    const worker = runWorker();
+    await request(worker, "https://apps.vaz.io/", 401, "navigate");
+    await request(worker, "https://apps.vaz.io/", 401, "navigate");
+
+    const last = worker.answers.at(-1)!;
+    expect(last).not.toContain("http-equiv=\"refresh\"");
+    expect(last).toContain("needs a password");
   });
 
   it("throws away the cached page when a navigation comes back Unauthorized", async () => {
@@ -126,6 +168,6 @@ describe("the service worker's cache", () => {
     const worker = runWorker();
     await request(worker, asset, 200);
     await request(worker, asset, 401);
-    expect(worker.cache.get(asset)?.status).toBe(200);
+    expect((worker.cache.get(asset) as { status: number } | undefined)?.status).toBe(200);
   });
 });
