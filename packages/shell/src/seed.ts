@@ -26,9 +26,14 @@ async function seedSplit(store: Store, me?: string): Promise<void> {
   // on "choose a group" with no group to choose is a dead end.
   const group = String((await store.insert("group", { name: "Flat", note: "Shared costs at home" })).id);
   if (!me) return;
-  // Two expenses so the balances have something to say on the first run. Both are yours, split
-  // between you alone until someone else is in the app — which is the honest picture: this app is
-  // about the people you share it with, and until you do, everything is simply yours.
+  // Two expenses so the balances have something to say on the first run. Nobody is named in them:
+  // an empty list reads as "everyone in the group, whoever that is when the maths runs", so while
+  // you are alone they are simply yours, and the moment you share the app they split with the
+  // person you shared it with.
+  //
+  // They used to name you alone, which is true but unhelpful — the person who joined saw two of
+  // the four expenses sitting there with a share of €0.00 next to them, which reads as a broken
+  // app rather than as a statement about who was at the shop.
   const day = (back: number): Date => new Date(Date.now() - back * 86_400_000);
   await store.insert("expense", {
     description: "Groceries",
@@ -36,7 +41,7 @@ async function seedSplit(store: Store, me?: string): Promise<void> {
     paidBy: me,
     when: day(2),
     split: "equally",
-    between: [me],
+    between: [],
     shares: [],
     note: "",
     group,
@@ -47,7 +52,7 @@ async function seedSplit(store: Store, me?: string): Promise<void> {
     paidBy: me,
     when: day(9),
     split: "equally",
-    between: [me],
+    between: [],
     shares: [],
     note: "",
     group,
