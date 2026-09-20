@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { shellDialogs } from "./dialog.js";
-import { removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { duplicateUserApp, removeUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "@karta/views";
@@ -138,6 +138,7 @@ interface UserActions {
   onSync: () => void;
   onShare: () => void;
   onRename: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -227,6 +228,7 @@ function TileMenu({
             {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
             {item("share", "Share", user.onShare)}
             {item("rename", "Rename", user.onRename)}
+            {item("duplicate", "Duplicate", user.onDuplicate)}
             <div className="k-tile-menu-sep" role="separator" />
             {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
           </div>
@@ -543,6 +545,20 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
     }
   };
 
+  /**
+   * A second copy of an app, empty, under its own name.
+   *
+   * The way to take an app someone shared with you and make it yours — before this the only route
+   * was opening the Studio, copying the source out and pasting it back as a new app, which is what
+   * the owner's friend had to do. The copy carries no records and no space: it is a new app here.
+   */
+  const duplicate = async (a: UserApp): Promise<void> => {
+    const copy = await duplicateUserApp(a.id, new Date().toISOString());
+    // Said out loud, with the name: the copy lands wherever this launcher's sort puts it, which on
+    // a long list is not necessarily anywhere you are looking.
+    if (copy) await shellDialogs.confirm(`Copied to “${copy.name}”. It starts empty — the app, not the data.`);
+  };
+
   const isSelected = (a: InstalledApp): boolean => selected?.kind === a.kind && selected.id === a.id;
   // While one tile's menu is open the other tiles are inert: a popover that sits over the tile
   // below it must not leave that tile's button half-reachable, by pointer or by Tab.
@@ -564,6 +580,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         onSync: () => void toggleSync(a.user),
         onShare: () => void share(a.user),
         onRename: () => void rename(a.user),
+        onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
       }}
     />
