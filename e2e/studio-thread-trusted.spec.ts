@@ -113,6 +113,29 @@ test("reopening an app shows what was asked of it before", async ({ page }) => {
   await expect(studio(page).locator(".k-thread")).toContainText("rename the page to Jotter", { timeout: 30_000 });
 });
 
+test("Save is refused while the model is still working", async ({ page }) => {
+  // Saving mid-answer saves the app as it WAS, under a version that records the prompt — so the app
+  // is left with a version claiming a change it does not contain. My own test did this by accident;
+  // a person clicking Save while the spinner runs does the same thing.
+  test.slow();
+  await seedApp(page);
+  await stubGenerator(page, [APP("Jotter")]);
+
+  await page.goto("/?user=notes");
+  await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await studio(page).getByRole("textbox", { name: "Describe the app" }).fill("rename the page to Jotter");
+
+  const save = studio(page).getByRole("button", { name: /Save changes/ }).first();
+  await expect(save).toBeEnabled();
+  await studio(page).getByRole("button", { name: /Modify the app/ }).click();
+  await expect(save).toBeDisabled();
+
+  // And it comes back once the answer has landed.
+  await expect(studio(page).locator(".k-thread-answer").last()).not.toHaveText("Working…", { timeout: 60_000 });
+  await expect(save).toBeEnabled({ timeout: 30_000 });
+});
+
 test("an app can be duplicated from the launcher", async ({ page }) => {
   await seedApp(page);
   await page.goto("/?user=notes");
