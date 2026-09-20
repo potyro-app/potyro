@@ -117,6 +117,34 @@ export class RuntimeCore {
   private readonly invalidators = new Set<() => void>();
 
   /** Re-run every live watcher. Called by whoever owns the thing that changed. */
+  /**
+   * Views that are mounted right now and can be told to do something (`ctx.views`).
+   *
+   * A SET per page, not one handler: a layout page (#105) shows several views at once, and two of
+   * them may be maps. The call goes to each until one takes it, which also means a view that does
+   * not know a verb simply declines rather than having to know about the others.
+   */
+  private readonly viewControls = new Map<string, Set<(verb: string, arg?: unknown) => boolean | Promise<boolean>>>();
+
+  /** A mounted view offers itself. The returned function takes it back out — call it on unmount. */
+  registerViewControl(pageId: string, handle: (verb: string, arg?: unknown) => boolean | Promise<boolean>): () => void {
+    const set = this.viewControls.get(pageId) ?? new Set();
+    set.add(handle);
+    this.viewControls.set(pageId, set);
+    return () => {
+      set.delete(handle);
+      if (set.size === 0) this.viewControls.delete(pageId);
+    };
+  }
+
+  /** `false` when that page has no view on screen to take it — an answer, not an error. */
+  async callView(pageId: string, verb: string, arg?: unknown): Promise<boolean> {
+    for (const handle of this.viewControls.get(pageId) ?? []) {
+      if (await handle(verb, arg)) return true;
+    }
+    return false;
+  }
+
   invalidate(): void {
     for (const cb of this.invalidators) cb();
   }
@@ -137,6 +165,7 @@ export class RuntimeCore {
       caps: this.caps,
       ui: this.ui,
       nav: this.nav,
+      views: { call: (pageId, verb, arg) => this.callView(pageId, verb, arg) },
       params,
       now: this.now,
       me: this.me,
@@ -145,6 +174,15 @@ export class RuntimeCore {
       scope: this.scope,
     };
     return this.host.makeCtx(this.app, base);
+  }
+
+  /**
+   * Run a page's button. Errors surface the way an action's do — the shell shows them; a button that
+   * did nothing and said nothing is the worst of both.
+   */
+  async runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void> {
+    await this.app.callPageAction(pageId, index, this.ctxFor(params));
+    this.invalidate();
   }
 
   entityForPage(pageId: string): string {

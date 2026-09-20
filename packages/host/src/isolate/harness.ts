@@ -115,6 +115,14 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
           };
         }
       },
+      views: {
+        map: function(page){
+          return {
+            flyTo: function(to){ return bridge({op:"views.call", page:String(page), verb:"map.flyTo", arg:to}); },
+            fit: function(){ return bridge({op:"views.call", page:String(page), verb:"map.fit", arg:null}); }
+          };
+        }
+      },
       navigate: function(page, params){ bridgeSync({op:"nav", page:page, params:params||{}}); },
       caps: {}
     };
@@ -178,6 +186,14 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             var spec = (pg && pg.summary) ? pg.summary[p.index] : null;
             if (!spec || typeof spec.value !== "function") throw new Error("summary " + p.pageId + "[" + p.index + "] has no value function");
             result = await spec.value(p.rows || [], ctx);
+            break;
+          }
+          case "pageAction": {
+            var apg = (app.pages||[]).find(function(x){ return x.id === p.pageId; });
+            var pact = (apg && apg.actions) ? apg.actions[p.index] : null;
+            if (!pact || typeof pact.run !== "function") throw new Error("page action " + p.pageId + "[" + p.index + "] has no run function");
+            await pact.run(ctx);
+            result = null;
             break;
           }
           case "aggregate": {

@@ -42,6 +42,14 @@ export interface KartaRuntime extends Runtime {
    * everything locally, where there is nothing to wait for.
    */
   watchMedia(ref: import("karta").MediaRef, cb: () => void): () => void;
+  /**
+   * A view says it is on screen and can be driven (`ctx.views`); the returned function takes it back
+   * out on unmount. `verb` is namespaced by view type ("map.flyTo"), and a handler returns whether
+   * it took the call, so a page showing several views can be addressed by page id alone.
+   */
+  registerViewControl(pageId: string, handle: (verb: string, arg?: unknown) => boolean | Promise<boolean>): () => void;
+  /** Run a page's declared button (`Page.actions[index]`), with the page's current params in ctx. */
+  runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void>;
 }
 
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
@@ -69,6 +77,18 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
 
   return {
     watchMedia: (ref, cb) => deps.store.subscribeBlob?.(ref, cb) ?? (() => {}),
+    registerViewControl: (pageId, handle) => core.registerViewControl(pageId, handle),
+    async runPageAction(pageId, index, params) {
+      // The same catch `runAction` needs, for the same reason: a button fires this from a click
+      // handler, so an escaping rejection would be invisible to the person who pressed it.
+      try {
+        await core.runPageAction(pageId, index, params);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        deps.ui.toast(message);
+        console.warn(`[karta] page action ${pageId}[${index}] failed:`, e);
+      }
+    },
     core,
     get definition(): AppDefinition {
       return core.definition;

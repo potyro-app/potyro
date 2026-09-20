@@ -43,15 +43,59 @@ function chosen(chip: FilterChip, params: Record<string, unknown>): string[] {
 
 const isOptionChip = (chip: FilterChip): boolean => chip.type !== "boolean" && chip.type !== "geo";
 
+/**
+ * The app's own buttons for this page (#216).
+ *
+ * Here, in the page's chrome, rather than inside each view: a button belongs to the page, every view
+ * type gets it from one place, and the alternative was fourteen view components each growing their
+ * own toolbar. The label is the app's — unlike an action named by key, nothing is guessed from an
+ * identifier.
+ */
+function PageActions({ runtime, pageId, params }: { runtime: KartaRuntime; pageId: string; params: Record<string, unknown> }) {
+  const actions = runtime.definition.pages.find((p) => p.id === pageId)?.actions;
+  // Which button is mid-run — a `run` that awaits the position or the network takes a moment, and a
+  // button that looks inert while it works gets pressed again.
+  const [busy, setBusy] = useState<number | null>(null);
+  if (!actions?.length) return null;
+  return (
+    <>
+      {actions.map((action, index) => (
+        <button
+          key={`${action.label}:${index}`}
+          type="button"
+          className="k-chip k-page-action"
+          disabled={busy !== null}
+          aria-busy={busy === index || undefined}
+          onClick={() => {
+            setBusy(index);
+            void runtime.runPageAction(pageId, index, params).finally(() => setBusy(null));
+          }}
+        >
+          {action.icon ? <span aria-hidden>{action.icon}</span> : null}
+          {action.label}
+        </button>
+      ))}
+    </>
+  );
+}
+
 export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps) {
   const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
     | { entity?: string; filters?: FilterChip[] }
     | undefined;
   const filters = view?.filters;
+  const hasActions = Boolean(runtime.definition.pages.find((p) => p.id === pageId)?.actions?.length);
   const [open, setOpen] = useState(false);
   // Navigating away with the sheet open would otherwise bring it back on the next page with filters.
   useEffect(() => setOpen(false), [pageId]);
-  if (!filters?.length) return null;
+  // A page with buttons and no chips still has chrome to draw.
+  if (!filters?.length) {
+    return hasActions ? (
+      <section className="k-chrome" aria-label="Page actions">
+        <PageActions runtime={runtime} pageId={pageId} params={params} />
+      </section>
+    ) : null;
+  }
 
   const entity = view!.entity ?? "";
   const options = filters.filter(isOptionChip);
@@ -99,6 +143,8 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
       {direct.map((chip) => (
         <ChipControl key={chip.param} chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />
       ))}
+
+      <PageActions runtime={runtime} pageId={pageId} params={params} />
 
       {open ? (
         <FilterSheet

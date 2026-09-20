@@ -491,6 +491,25 @@ export interface PageLayout {
 
 export const LAYOUT_TYPES = ["stack", "grid", "split", "tabs"] as const;
 
+/**
+ * A button the app puts on a page, beside its filter chips.
+ *
+ * This is how an app adds something to TAP that is not "open a record" or "make a record". It runs
+ * an ordinary function with `ctx` — no record, because a page is not a record — so it can do
+ * anything `ctx` can: read the position, create something, move the map that is on screen
+ * (`ctx.views`), tell the person something with `ctx.ui`.
+ *
+ * Unlike an action named by key (`rowActions`, a detail view's `actions`), it carries its own
+ * `label`: the button says what the app wants it to say, not a prettified identifier. See
+ * `CtxViews` for the one that moves a map.
+ */
+export interface PageAction {
+  label: string;
+  /** One emoji or short glyph, shown before the label. */
+  icon?: string;
+  run: (ctx: Ctx) => void | Promise<void>;
+}
+
 export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
@@ -500,6 +519,8 @@ export interface Page {
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
   summary?: SummaryValue[];
+  /** Buttons in the page's own chrome, beside its filter chips. */
+  actions?: PageAction[];
   /** The page's view — or, for a page with a `layout`, its first item's view (filled in by `defineApp`). */
   view: View;
   /** Several views on one page (#105). A page declares EITHER `view` OR `layout`. */
