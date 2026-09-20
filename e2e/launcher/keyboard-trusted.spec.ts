@@ -89,7 +89,9 @@ test("Enter on a menu item acts: Rename opens the dialog with the name selected 
   await page.getByRole("button", { name: "Actions for Books" }).focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("End");
-  await page.keyboard.press("ArrowUp"); // Rename sits just above Delete
+  // Up past Duplicate to Rename — the two app-level items sit together above Delete.
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("Enter");
   const dialog = page.locator(".k-dialog", { hasText: "Rename app" });
