@@ -66,9 +66,11 @@ async function exportApp(
 
   const snapshot = await createMemorySqliteStore(def.id);
   try {
-    for (const [entity, rows] of Object.entries(rowsByEntity)) {
-      for (const row of rows) await snapshot.store.insert(entity, row);
-    }
+    // `copyStoreData`, not a loop of inserts. The loop copied RECORDS, and a record's photo is a
+    // reference — `{key, mime}` — to bytes held beside it. So an export of an app full of pictures
+    // was a few kilobytes of pointers to nothing, and importing it gave you records whose images
+    // would not load. Measured before the fix: a 1MB photo exported as a 3KB bundle.
+    await copyStoreData(store, snapshot.store, { entities: Object.keys(def.entities) });
     const zip = packBundle({
       sqlite: snapshot.export(),
       manifest: {
