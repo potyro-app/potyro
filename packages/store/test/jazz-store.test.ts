@@ -101,6 +101,15 @@ describe("JazzStore reactivity", () => {
     await s.insert("task", { title: "a" });
     expect(cb.mock.calls.length).toBeGreaterThanOrEqual(1);
 
+    // Let the echoes of THAT write land before taking the baseline. cojson delivers its own echo
+    // asynchronously, and the index watcher now attaches when the index appears rather than when
+    // `subscribe` was called — it cannot attach earlier without creating the container, which is
+    // what strands a guest's records in a rival map. So the echoes arrive a beat later than they
+    // used to, and a baseline taken before they settle counts them against the next write.
+    //
+    // The contract this test is here for is untouched: after settling, a write to a DIFFERENT
+    // entity must not notify this one.
+    await new Promise((r) => setTimeout(r, 50));
     const afterOwnEntity = cb.mock.calls.length;
     await s.insert("other", { title: "x" });
     await new Promise((r) => setTimeout(r, 50)); // let any async notification land
@@ -231,6 +240,37 @@ describe("JazzStore — two peers through the Store seam", () => {
     await brunoStore.open("split");
     return { anaStore, brunoStore, ana, bruno, group };
   }
+
+  /**
+   * A READ must never mint a container (#220).
+   *
+   * Reading an entity resolved its index with the CREATING helper, so a guest looking at an app
+   * before its data had replicated wrote its own container over the pointer. Two maps, and whichever
+   * lost the write is stranded with the records in it — the defect `childIfPresent` was introduced
+   * for on blobs and photos (KA-20), left in place on the one thing an app is made of.
+   */
+  it("a guest reading an entity that has no records yet does not mint a rival container", async () => {
+    const { anaStore, brunoStore, ana } = await pair();
+
+    // Bruno looks first — at an entity nobody has written. Empty is the right answer.
+    expect(await brunoStore.all("expense")).toEqual([]);
+    await settle();
+
+    // And he left nothing behind: no index for `expense` exists yet, in anyone's copy.
+    const entitiesOf = async (node: typeof ana.node, rootId: string): Promise<Record<string, unknown>> => {
+      const root = (await node.load(rootId as never)) as unknown as { get(k: string): unknown };
+      const id = root.get("entities") as string;
+      const map = (await node.load(id as never)) as unknown as { get(k: string): unknown };
+      return map as unknown as Record<string, unknown>;
+    };
+    const anaEntities = await entitiesOf(ana.node, anaStore.rootId);
+    expect((anaEntities as unknown as { get(k: string): unknown }).get("expense")).toBeUndefined();
+
+    // Now Ana writes one. It has to reach him — which is exactly what a rival container prevented.
+    const r = await anaStore.insert("expense", { description: "Dinner", amountCents: 4200 });
+    await settle();
+    expect((await brunoStore.get("expense", r.id))?.description).toBe("Dinner");
+  });
 
   it("a record written by one peer arrives at the other", async () => {
     const { anaStore, brunoStore } = await pair();
