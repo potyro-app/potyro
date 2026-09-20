@@ -42,6 +42,15 @@ const pickPerson = async (row: Locator, who: RegExp): Promise<void> => {
   await select.selectOption({ label: match! });
 };
 
+/**
+ * The halves of the two expenses the app comes with that belong to whoever joins (#222).
+ *
+ * They used to name the owner alone and so contributed nothing to a second person's balance —
+ * which is what made them read as broken ("your share €0.00") the moment the app was shared. Now
+ * they split like any other expense, so every balance in this file carries them: (42.85 + 39.00)/2.
+ */
+const SEEDED_HALF = 40.92;
+
 const openSplit = async (page: Page): Promise<void> => {
   await page.goto("/?user=split");
   // The app asks which group before it shows anything; the seed leaves exactly one.
@@ -101,13 +110,15 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   // ---- What each of them is told ----
   // Back on the group, wherever creating happened to leave her.
   await ana.getByRole("button", { name: "Expenses" }).first().click();
+  // €33.33 of this bill, plus Bo's halves of the two the app came with.
+  const owed = `€${(33.33 + SEEDED_HALF).toFixed(2)}`;
   const balances = ana.locator(".k-aggregate");
-  await expect(balances).toContainText("€33.33", { timeout: 60_000 });
+  await expect(balances).toContainText(owed, { timeout: 60_000 });
   await expect(balances).toContainText("you are owed");
 
   // Bo's copy agrees, without a reload, and says it from his side.
   const boBalances = bo.locator(".k-aggregate");
-  await expect(boBalances).toContainText("€33.33", { timeout: 60_000 });
+  await expect(boBalances).toContainText(owed, { timeout: 60_000 });
   await expect(boBalances).toContainText("you owe");
   // And the way out of it, in one payment.
   await expect(boBalances).toContainText(/You → Ana/);
@@ -162,12 +173,14 @@ test("two people who each paid for something owe the difference, not the whole",
   await addExpense(ana, "Taxi", "65");
   await addExpense(bo, "Drinks", "35");
 
-  // €65 split two ways is €32.50 each; €35 is €17.50 each. Ana is out €15, Bo is up €15.
+  // €65 split two ways is €32.50 each; €35 is €17.50 each. Ana is out €15 on these two — plus Bo's
+  // halves of the two the app came with, which are hers as well.
+  const owed = `€${(15 + SEEDED_HALF).toFixed(2)}`;
   const balances = ana.locator(".k-aggregate");
-  await expect(balances).toContainText("€15.00", { timeout: 60_000 });
+  await expect(balances).toContainText(owed, { timeout: 60_000 });
   await expect(balances).toContainText("you are owed");
   await expect(balances).not.toContainText("€65.00");
-  await expect(bo.locator(".k-aggregate")).toContainText("€15.00", { timeout: 60_000 });
+  await expect(bo.locator(".k-aggregate")).toContainText(owed, { timeout: 60_000 });
   await expect(bo.locator(".k-aggregate")).toContainText("you owe");
 
   await ctxA.close();
@@ -209,8 +222,9 @@ test("an expense with nobody named is still split between the people in the grou
   await addExpense(ana, "Taxi", "65", { clearBetween: true });
   await addExpense(bo, "Drinks", "35", { clearBetween: true });
 
+  // Same €15 as above, and the same two seeded halves alongside it.
   const balances = ana.locator(".k-aggregate");
-  await expect(balances).toContainText("€15.00", { timeout: 60_000 });
+  await expect(balances).toContainText(`€${(15 + SEEDED_HALF).toFixed(2)}`, { timeout: 60_000 });
   await expect(balances).toContainText("you are owed");
   await expect(balances).not.toContainText("Nobody owes anybody");
   await expect(bo.locator(".k-aggregate")).toContainText("you owe", { timeout: 60_000 });
