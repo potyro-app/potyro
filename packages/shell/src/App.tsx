@@ -125,6 +125,16 @@ interface AppProps {
   provenance: Provenance;
   toaster: Toaster;
   appId?: string;
+  /**
+   * What to CALL this app here — the name the person gave it, not the one written in its source.
+   *
+   * Three names exist and they were not agreed: the definition's `name` (what the model wrote),
+   * the saved app's `name` (Rename, in the tile menu) and the launcher tile's `displayName` (Edit
+   * tile). The top bar read the first, so renaming a copy of Groceries to "Todo" left the app
+   * still calling itself Groceries on every screen. Absent — a preview, a fixture — the
+   * definition's name stands.
+   */
+  name?: string;
   /** How the current app was launched — for highlighting it in the launcher. */
   currentKind?: "user";
   onExport?: () => void;
@@ -135,8 +145,9 @@ interface AppProps {
   lock?: AppLock;
 }
 
-export function App({ runtime, provenance, toaster, appId, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
   const def = runtime.definition;
+  const appLabel = name?.trim() || def.name;
   const locked = useAppLock(lock);
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -1024,7 +1035,7 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       }}
     >
       <AppChrome
-        name={def.name}
+        name={appLabel}
         icon={def.icon ?? "◆"}
         scope={
           scopeDef ? (
@@ -1330,12 +1341,12 @@ export function App({ runtime, provenance, toaster, appId, currentKind, sync, on
       ) : null}
 
       {peopleOpen && appId ? (
-        <PeoplePanel appId={appId} appName={def.name} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
+        <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
       ) : null}
       {historyOpen && appId ? (
         <History
           appId={appId}
-          appName={def.name}
+          appName={appLabel}
           onClose={() => setHistoryOpen(false)}
           onRestored={() => location.reload()}
         />
