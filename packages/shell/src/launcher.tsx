@@ -19,6 +19,7 @@ import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
+import { LookPanel } from "./look-panel.js";
 import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
@@ -242,6 +243,15 @@ function TileMenu({
 const WELCOME_KEY = "karta:welcome:dismissed";
 
 /** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
+/** Light or dark, and the colour the shell wears. A device thing, so it lives with the device. */
+function LookButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="k-add k-look-btn" aria-label="Look — appearance and colour" title="Look" onClick={onClick}>
+      <span aria-hidden>◐</span>
+    </button>
+  );
+}
+
 function YouButton({ onClick }: { onClick: () => void }) {
   const me = peekIdentity();
   const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
@@ -337,6 +347,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const [editing, setEditing] = useState<InstalledApp | null>(null);
   // You and your other devices — reachable from every launcher, nagged from none.
   const [identity, setIdentity] = useState(false);
+  const [lookOpen, setLookOpen] = useState(false);
 
   // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
   // bottom edge, inside the thumb's reach; on a desktop a drawer. Both are a compact list, not the
@@ -589,6 +600,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               ＋ New app
             </button>
           ) : null}
+          <LookButton onClick={() => setLookOpen(true)} />
           <YouButton onClick={() => setIdentity(true)} />
           {onClose ? (
             <>
@@ -599,6 +611,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         </div>
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+      {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -777,6 +790,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
             </header>
           </div>
           {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+          {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
           <div className="k-switcher-list">
             {rows.map(row)}
             {rows.length === 0 ? <p className="k-muted k-switcher-empty">No app called “{query.trim()}”.</p> : null}

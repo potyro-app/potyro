@@ -45,6 +45,9 @@
   /* The one accent an app supplies (`theme.accent`, set on `.k-app`). What must read on it, and the
      tints derived from it, are declared again on `.k-app` below so they follow the override. */
   --accent: #e4a93c;
+  /* Karta's own, kept under its own name so the Look panel can offer it back as a swatch after you
+     have chosen another — `--accent` by then IS the other one. */
+  --accent-karta: #e4a93c;
   --on-accent: oklch(22% 0.04 70);
 
   /* Semantic colours: a state is a word AND a colour, never a colour alone. */
@@ -97,6 +100,10 @@
    app that set its own accent. */
 :root,
 .k-app {
+  /* How much of an app's own colour shows in its avatar and splash. A fixed 26% was tuned on paper
+     and disappears on a dark ground — the colour you picked for an app was invisible in dark mode,
+     which is most of why choosing one felt like it did nothing. */
+  --tile-tint: 26%;
   --accent-tint: color-mix(in oklab, var(--accent) 14%, var(--surface));
   --accent-line: color-mix(in oklab, var(--accent) 45%, var(--line));
 }
@@ -105,6 +112,8 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
+    /* Against near-black, a tint has to be much stronger to read as a colour at all. */
+    --tile-tint: 52%;
     --paper: oklch(18% 0.012 70);
     --surface: oklch(22% 0.012 70);
     --surface-raised: oklch(26% 0.012 70);
@@ -134,6 +143,8 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
+  /* Against near-black, a tint has to be much stronger to read as a colour at all. */
+  --tile-tint: 52%;
   --paper: oklch(18% 0.012 70);
   --surface: oklch(22% 0.012 70);
   --surface-raised: oklch(26% 0.012 70);
@@ -1002,6 +1013,68 @@ button {
   margin-left: 0.4rem;
   font-size: 0.75rem;
   color: var(--ink-faint);
+}
+
+/* The Look panel: appearance, and the colour the shell wears. */
+.k-look {
+  max-width: 26rem;
+}
+.k-look-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.k-look-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.k-look-mode[data-on] strong {
+  color: var(--on-accent);
+}
+/* The second line goes with it. Muted ink on the accent fill was the one unreadable thing on the
+   panel — grey chosen for paper, sitting on gold. */
+.k-look-mode[data-on] .k-muted {
+  color: color-mix(in oklab, var(--on-accent) 80%, transparent);
+}
+.k-look-hues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+/* A swatch IS its colour, so it gets no border until it is the chosen one — then a ring in the ink
+   of the surface it sits on, which reads on either ground. */
+.k-look-hue {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.k-look-hue:hover,
+.k-look-hue:focus-visible {
+  transform: scale(1.08);
+}
+.k-look-hue[data-on] {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+}
+.k-look-hue-default {
+  background: var(--accent-karta);
+}
+/* Appearance and colour, from the launcher — a device's look, kept with the device. */
+.k-look-btn {
+  min-width: 2.5rem;
+  padding: 0 0.6rem;
+  font-size: 1.05rem;
 }
 
 /* A chip you type into — search, or a figure picked at view time. Chip-shaped so it belongs in the
@@ -5078,7 +5151,7 @@ body:has(.k-tabbar) .k-toasts {
   width: 5rem;
   height: 5rem;
   border-radius: 1.5rem;
-  background: color-mix(in oklab, var(--tile-accent) 18%, var(--surface));
+  background: color-mix(in oklab, var(--tile-accent) var(--tile-tint), var(--surface));
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--tile-accent) 35%, transparent), var(--shadow);
   /* Breathing, not spinning: the tile is the app, and an app does not spin. */
   animation: k-splash-breathe 1.8s var(--ease) infinite;
@@ -5295,7 +5368,7 @@ body:has(.k-tabbar) .k-toasts {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: color-mix(in oklab, var(--tile-accent, var(--accent)) 26%, var(--paper));
+  background: color-mix(in oklab, var(--tile-accent, var(--accent)) var(--tile-tint), var(--paper));
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 1.2rem;

@@ -20,6 +20,7 @@ import type { KartaRuntime } from "@karta/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
+import { applyLook } from "./look.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
@@ -505,6 +506,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     return null;
   }
 
+  // What this device calls this app and what colour it gave it.
+  const { getEntry: entryFor, appKey: keyFor } = await import("./launcher-store.js");
+  const { hueColour } = await import("./tile-identity.js");
+  const appHue = entryFor(keyFor("user", id)).hue;
+
   mount(
     root,
     <App
@@ -521,6 +527,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       // labelling a shortcut on this device ("Mum's recipes"), and the app goes on saying what it
       // says. That line is drawn in `tile-edit-trusted.spec.ts`, and it is a good one.
       name={saved.name}
+      // The colour IS the tile's, though: it was picked for the app, and stopping at the tile is
+      // what made choosing one feel like it did nothing.
+      appAccent={appHue === undefined ? undefined : hueColour(appHue)}
       currentKind="user"
       lock={syncAllowed && saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
@@ -697,6 +706,10 @@ async function offerAccountApps(): Promise<void> {
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
+
+  // Before anything paints. A light flash on a device set to dark is the whole feature failing in
+  // the one moment it is most visible.
+  applyLook();
 
   // Move secrets an older build left in plain storage into the vault. Not awaited: nothing on screen
   // waits on it, and every read of a secret performs the same move if this has not finished.
