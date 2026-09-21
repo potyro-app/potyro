@@ -138,6 +138,8 @@ interface AppProps {
    * a fixture — the definition's name stands.
    */
   name?: string;
+  /** The colour this device gave this app (its tile's hue), if any. */
+  appAccent?: string;
   /** How the current app was launched — for highlighting it in the launcher. */
   currentKind?: "user";
   onExport?: () => void;
@@ -148,7 +150,7 @@ interface AppProps {
   lock?: AppLock;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
   const def = runtime.definition;
   const appLabel = name?.trim() || def.name;
   const locked = useAppLock(lock);
@@ -936,7 +938,17 @@ export function App({ runtime, provenance, toaster, appId, name, currentKind, sy
     location.reload();
   };
 
-  const accent = def.theme?.accent ?? "#E4A93C";
+  /**
+   * What colour this app is.
+   *
+   * In order: the colour you gave THIS app (Edit tile — which until now tinted the tile and nothing
+   * else, so a choice made there was invisible the moment the app opened), then the colour the app
+   * declares for itself, then your accent for everything that has none, then Karta's own gold.
+   *
+   * Yours outranks the app's on purpose: you chose it for this app, knowing what the app looks
+   * like. The app's `theme.accent` is a default from whoever wrote it.
+   */
+  const accent = appAccent ?? def.theme?.accent ?? "#E4A93C";
 
   // What the chrome shows (#111). Pages carry an icon — the entity's, else one for the view type —
   // because a tab bar without icons is a row of truncated words. Through `navigate`, NOT
