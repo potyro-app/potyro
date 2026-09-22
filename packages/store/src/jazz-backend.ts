@@ -686,14 +686,82 @@ async function attachRelay(node: unknown, url: string): Promise<RelayConnection>
   };
 
   relay.enable();
+  const stopReviving = reviveOnResume(relay);
   return {
     get connected() {
       return relay.connected;
     },
     subscribe: (l) => relay.subscribe(l),
     unsubscribe: (l) => relay.unsubscribe(l),
-    disable: () => relay.disable(),
+    disable: () => {
+      stopReviving();
+      relay.disable();
+    },
   };
+}
+
+/** The part of a relay connection that resuming needs. */
+export interface Revivable {
+  connected: boolean;
+  enable(): void;
+  disable(): void;
+}
+
+/**
+ * Bring the relay back when the page does.
+ *
+ * A phone browser that is open but not in front is FROZEN by Android: its socket is torn down and
+ * every reconnection attempt fails while it cannot run. `WebSocketPeerWithReconnection` backs off
+ * linearly per attempt, so by the time someone switches back the next try can be a long way off —
+ * and nothing was listening for the page becoming visible to bring it forward. Reported as "the
+ * browser is open but not on focus: no balloon, no notification; if I close it and open it again
+ * the messages are there" — a reload reconnects, returning to a backgrounded tab did not.
+ *
+ * Cycling rather than waiting, because a socket that survived the freeze may be half-open: the OS
+ * dropped the connection without the page ever seeing a close, so `connected` still says true and
+ * nothing will ever arrive on it. A reconnect costs a resync the library already does on every
+ * reconnection; a zombie socket costs every message from here on.
+ *
+ * Only after a real absence (`MIN_AWAY_MS`), so flicking between tabs does not churn the connection.
+ */
+const MIN_AWAY_MS = 3_000;
+
+export function reviveOnResume(relay: Revivable, scope: EventTargetish = globalThis as EventTargetish): () => void {
+  const doc = (scope as { document?: EventTargetish & { visibilityState?: string } }).document;
+  if (!doc?.addEventListener) return () => {};
+  let hiddenAt: number | null = null;
+
+  const onVisibility = (): void => {
+    if (doc.visibilityState === "hidden") {
+      hiddenAt = Date.now();
+      return;
+    }
+    const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+    hiddenAt = null;
+    if (away < MIN_AWAY_MS) return;
+    relay.disable();
+    relay.enable();
+  };
+  // `online` matters on its own: a phone that regained signal while in the foreground gets the same
+  // treatment, and the backoff is just as stale there.
+  const onOnline = (): void => {
+    if (relay.connected) return;
+    relay.disable();
+    relay.enable();
+  };
+
+  doc.addEventListener("visibilitychange", onVisibility);
+  scope.addEventListener?.("online", onOnline);
+  return () => {
+    doc.removeEventListener?.("visibilitychange", onVisibility);
+    scope.removeEventListener?.("online", onOnline);
+  };
+}
+
+/** The slice of `window`/`document` this needs — so a test can hand it a fake. */
+export interface EventTargetish {
+  addEventListener?(type: string, fn: () => void): void;
+  removeEventListener?(type: string, fn: () => void): void;
 }
 
 /** Mint an invite to this app's space. `writer` lets the guest edit; `reader` is read-only. */
