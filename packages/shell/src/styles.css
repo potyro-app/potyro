@@ -1071,10 +1071,377 @@ button {
   background: var(--accent-karta);
 }
 /* Appearance and colour, from the launcher — a device's look, kept with the device. */
-.k-look-btn {
+.k-look-btn,
+.k-data-btn {
   min-width: 2.5rem;
   padding: 0 0.6rem;
   font-size: 1.05rem;
+}
+
+/* The Data page: a ledger, not a dashboard. The whole screen — a bar, the apps down the side, and a
+   table that takes every pixel left over and scrolls inside itself, header and first column pinned.
+   On a phone the apps become one scrolling row under the bar. */
+.k-db-icon {
+  flex: none;
+  vertical-align: -0.14em;
+}
+.k-data-btn .k-db-icon {
+  vertical-align: middle;
+}
+.k-datapage {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--paper);
+  color: var(--ink);
+}
+.k-datapage-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.7rem var(--space);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.k-datapage-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+.k-datapage-title .k-db-icon {
+  color: var(--accent);
+}
+.k-datapage-body {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 0;
+}
+.k-datapage-apps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  background: color-mix(in oklab, var(--surface-sunken) 45%, var(--paper));
+}
+.k-datapage-apps-head {
+  margin: 0 0 var(--space-2) 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-datapage-app {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-datapage-app:hover {
+  background: color-mix(in oklab, var(--tile-accent) 10%, transparent);
+  color: var(--ink);
+}
+.k-datapage-app:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-datapage-app[aria-current="true"] {
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: var(--shadow), inset 3px 0 0 var(--tile-accent);
+}
+.k-datapage-app-glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--tile-accent) 22%, var(--surface));
+  font-size: 1rem;
+}
+.k-datapage-app-glyph[data-kind="monogram"] {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.k-datapage-app-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-datapage-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-4) var(--space) var(--space);
+}
+.k-datapage-apphead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.k-datapage-apphead h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.k-data-shared {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-data-tabs {
+  display: flex;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.k-data-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.55rem 0 0.6rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-data-tab:hover {
+  color: var(--ink);
+}
+.k-data-tab[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.k-data-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.k-data-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.k-data-table-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.k-data-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.k-data-shown {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.k-data-search {
+  max-width: 22rem;
+}
+.k-data-note {
+  margin: var(--space-4) 0;
+}
+.k-data-error {
+  color: var(--danger);
+}
+.k-data-scroll {
+  /* As tall as its rows, and no taller than the space left: then it scrolls inside itself. */
+  flex: 0 1 auto;
+  min-height: 0;
+  align-self: stretch;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.k-data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+}
+.k-data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.k-data-table td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  vertical-align: top;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--surface-raised);
+  transition: background var(--dur-fast) var(--ease);
+}
+/* The first column names the row; it stays in view while the rest scroll past. */
+.k-data-table th:first-child,
+.k-data-table td:first-child {
+  position: sticky;
+  left: 0;
+}
+.k-data-table th:first-child {
+  z-index: 2;
+}
+.k-data-table td:first-child {
+  z-index: 1;
+  font-weight: 600;
+  color: var(--ink);
+}
+.k-data-table tbody tr {
+  cursor: pointer;
+}
+.k-data-table tbody tr:hover td {
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface-raised));
+}
+.k-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.k-data-raw {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+th.k-data-raw {
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  font-style: italic;
+}
+.k-data-when {
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+/* The row at the end that draws the next rows: not a record, so no pointer, hover or pinned cell. */
+.k-data-table tbody tr.k-data-more {
+  cursor: default;
+}
+.k-data-table tbody tr.k-data-more td {
+  position: static;
+  max-width: none;
+  padding: 0.8rem;
+  text-align: center;
+  font-weight: normal;
+  background: var(--surface-raised);
+}
+.k-data-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.k-data-actions .k-add {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.k-data-actions .k-add + .k-add {
+  margin-left: 0.3rem;
+}
+.k-data-table tbody tr:hover .k-data-actions .k-add,
+.k-data-actions .k-add:focus-visible {
+  opacity: 1;
+}
+/* No hover on a touchscreen: the buttons are simply there. */
+@media (hover: none) {
+  .k-data-actions .k-add {
+    opacity: 1;
+  }
+}
+@media (max-width: 720px) {
+  .k-datapage-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .k-datapage-apps {
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: var(--space-2) 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .k-datapage-apps-head {
+    display: none;
+  }
+  .k-datapage-app {
+    width: auto;
+    flex: none;
+    padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .k-datapage-app[aria-current="true"] {
+    box-shadow: inset 0 0 0 1.5px var(--tile-accent);
+  }
+  .k-datapage-app-glyph {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+  }
+  .k-datapage-main {
+    padding: var(--space-3) 1rem 1rem;
+  }
+  .k-datapage-apphead h2 {
+    font-size: 1.6rem;
+  }
+  .k-data-search {
+    flex: 1;
+    max-width: none;
+  }
 }
 
 /* A chip you type into — search, or a figure picked at view time. Chip-shaped so it belongs in the
