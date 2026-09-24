@@ -9,6 +9,7 @@
 import { useState, type CSSProperties } from "react";
 import { updateEntry, type InstalledApp } from "./launcher-store.js";
 import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
+import { askEnabled, setAskEnabled } from "./ask-setting.js";
 
 /** A curated grid; free text takes anything else. No dependency, no picker to load. */
 const ICONS = ["🍳", "🥘", "🛒", "🌱", "🪴", "📍", "🗺️", "🏋", "🏃", "🚴", "📚", "✏️", "💰", "🧾", "✈️", "🏡", "🐶", "🐱", "🎹", "🎵", "🎬", "📷", "☕", "🧘", "💊", "🗓️", "✅", "🎁"];
@@ -24,6 +25,8 @@ export function TileEditor({ app, onClose }: Props) {
   const [name, setName] = useState(app.entry.displayName ?? "");
   const [icon, setIcon] = useState(app.entry.icon ?? "");
   const [hue, setHue] = useState<number | undefined>(app.entry.hue);
+  // Ask (#213) is turned off from inside the app; this is where it comes back.
+  const [ask, setAsk] = useState(() => askEnabled(app.id));
 
   const preview = tileIdentity({ key: app.key, name: name.trim() || declaredName, icon: icon.trim() || declaredIcon, accent: app.accent, hue });
 
@@ -33,6 +36,7 @@ export function TileEditor({ app, onClose }: Props) {
       icon: icon.trim() || undefined,
       hue,
     });
+    setAskEnabled(app.id, ask);
     onClose();
   };
 
@@ -104,6 +108,14 @@ export function TileEditor({ app, onClose }: Props) {
             ))}
           </div>
         </div>
+
+        <label className="k-tile-editor-ask">
+          <input type="checkbox" checked={ask} onChange={(e) => setAsk(e.target.checked)} />
+          <span>
+            <span className="k-field-label">Ask</span>
+            <span className="k-muted">Offer “Ask” in this app, to add records with AI.</span>
+          </span>
+        </label>
 
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={onClose}>
