@@ -2,6 +2,7 @@
 // active view, an add-recipe panel, and toasts. Renders whatever app the composition root
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
+import { DatabaseIcon } from "./data-icon.js";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
 import type { Provenance } from "@karta/host";
@@ -133,13 +134,15 @@ interface AppProps {
   currentKind?: "user";
   onExport?: () => void;
   onImport?: () => void;
+  /** This app's records, on the Data page. */
+  onData?: () => void;
   /** Enables the Studio + launcher (the shell's top-level app only — not the preview). */
   generator?: boolean;
   /** Set while this copy may not write to the shared data (KA-22, #63). */
   lock?: AppLock;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, generator, picker, questions, navHost, lock }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock }: AppProps) {
   const def = runtime.definition;
   const appLabel = name?.trim() || def.name;
   const locked = useAppLock(lock);
@@ -787,6 +790,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
     ...(sync && appId ? [{ key: "people", label: "People", icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    ...(onData ? [{ key: "data", label: "Data", icon: <DatabaseIcon />, hint: "every record", onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
   ];
