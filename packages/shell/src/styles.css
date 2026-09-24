@@ -316,27 +316,6 @@ button {
 .k-main {
   position: relative;
 }
-.k-editmark {
-  border: 1px dashed var(--accent);
-  background: color-mix(in oklab, var(--accent) 12%, var(--paper));
-  color: var(--ink);
-  border-radius: 8px;
-  width: 1.7rem;
-  height: 1.7rem;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.85rem;
-  animation: k-fade 150ms var(--ease);
-}
-.k-editmark:hover {
-  background: var(--accent);
-}
-.k-main > .k-editmark {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 5;
-}
 
 /* --- ViewErrorBoundary fallback: the current page crashed, the shell around it did not ---------
    Genuinely a failure (unlike `.k-diagnosis`/`.k-fix-exhausted`'s neutral cousins above) — same red
@@ -368,16 +347,6 @@ button {
 }
 .k-view-crash button {
   align-self: flex-start;
-}
-.k-modifydialog {
-  width: min(520px, 94vw);
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.k-modify-text {
-  resize: vertical;
-  line-height: 1.5;
 }
 
 /* Map chrome: arming a placement, and what a pin says when you tap it. Both float ON the map — it
@@ -764,104 +733,196 @@ button {
   opacity: 0.45;
 }
 
-/* Direct structural controls, above the describe-a-change box. Visually the primary path: these are
-   instant and exact, where the box below costs a minute and rewrites the file. */
-.k-structure {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid var(--line);
+/* --- Edit mode (inline-edit.tsx) ---------------------------------------------------------------
+   The app's own words, marked where they stand: a tint and a dotted rule under each piece of text
+   that can be changed in place. Custom highlights, so nothing in the app's DOM is touched. */
+::highlight(k-editable) {
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent);
+  text-decoration: underline dotted color-mix(in oklab, var(--accent) 80%, var(--ink));
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
-.k-structure-row {
-  display: grid;
-  grid-template-columns: 6.5rem 1fr;
+::highlight(k-editable-active) {
+  background-color: color-mix(in oklab, var(--accent) 48%, transparent);
+  color: var(--ink);
+}
+
+/* One line saying what edit mode does, floating clear of the tab bar. */
+.k-inline-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + var(--space-4));
+  transform: translateX(-50%);
+  z-index: 85;
+  display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  font-size: 0.875rem;
+  animation: k-inline-rise var(--dur-slow) var(--ease);
 }
-.k-structure-label {
-  font-size: 0.82rem;
+body:has(.k-app-phone .k-tabbar) .k-inline-bar {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom) + var(--space-3));
+}
+.k-inline-bar-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  flex: none;
+}
+.k-inline-bar-text {
   color: var(--ink-soft);
-}
-.k-structure-heading {
-  margin: 0.2rem 0 0;
-  font-size: 0.82rem;
-  color: var(--ink-soft);
-}
-.k-structure-fields {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  max-height: 15rem;
-  overflow-y: auto;
-}
-.k-structure-field {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.5rem;
-}
-/* A group's fields under its title (#100); the runs stack, and one list scrolls as before. */
-.k-structure-fields + .k-structure-fields {
-  margin-top: 0.4rem;
-}
-.k-structure-group {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.k-structure-computed {
-  font-size: 0.88rem;
-  color: var(--ink-soft);
-  padding: 0.35rem 0.5rem;
-}
-.k-structure-computed small {
-  font-size: 0.72rem;
-  opacity: 0.8;
-}
-.k-structure-order {
-  display: flex;
-  gap: 0.15rem;
-}
-.k-structure-move {
-  padding: 0.2rem 0.4rem;
-  line-height: 1;
-  border-radius: 7px;
-}
-.k-structure-move:disabled {
-  opacity: 0.35;
-  cursor: default;
-  transform: none;
-  box-shadow: none;
-  border-color: var(--line);
-}
-.k-structure-name {
   min-width: 0;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.88rem;
 }
-.k-structure-hide {
+.k-inline-bar-btn {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-inline-bar-btn:hover {
+  background: var(--surface-sunken);
+}
+.k-inline-bar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-inline-bar-done {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-inline-bar-done:hover {
+  background: color-mix(in oklab, var(--accent) 85%, var(--ink));
+}
+@media (max-width: 480px) {
+  .k-inline-bar {
+    width: calc(100vw - 2rem);
+    flex-wrap: wrap;
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  }
+  .k-inline-bar-text {
+    flex: 1 1 60%;
+  }
+}
+
+/* The editor, anchored to the text it changes. */
+.k-inline-pop {
+  position: fixed;
+  z-index: 95;
+  width: min(340px, calc(100vw - 2rem));
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  animation: k-fade var(--dur) var(--ease);
+}
+.k-inline-pop form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-inline-pop-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.k-inline-pop-label > span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-inline-pop-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.k-inline-pop-moves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+.k-inline-pop-move {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.k-inline-pop-move:hover:not(:disabled) {
+  border-color: var(--accent-line);
+  background: var(--accent-tint);
+}
+.k-inline-pop-move:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.k-inline-pop-hide {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
+  gap: var(--space-1);
+  margin-left: auto;
+  font-size: 0.85rem;
   color: var(--ink-soft);
-  white-space: nowrap;
 }
-/* Not an error — the app simply isn't written in a shape this can reach, and the agent below is the
-   way through. Same register as a NOT-IN-APP diagnosis. */
-.k-structure-blocked {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.45;
+.k-inline-pop-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.k-inline-pop-ask {
+  margin-right: auto;
+  border: 0;
+  padding: 0;
+  background: none;
   color: var(--ink-soft);
-  border-left: 2px solid color-mix(in oklab, var(--ink) 25%, var(--line));
-  padding-left: 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.k-inline-pop-ask:hover {
+  color: var(--ink);
+}
+@keyframes k-inline-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-inline-bar,
+  .k-inline-pop {
+    animation: none;
+  }
 }
 
 /* Object grid (grid nav home) */
@@ -2102,11 +2163,6 @@ details.k-form-group > summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
 }
-.k-tabbar > .k-editmark {
-  position: absolute;
-  top: -1.9rem;
-  right: 0.5rem;
-}
 
 /* The floating quick action, above the tab bar in thumb reach; held, the others rise above it. */
 .k-fab {
@@ -2290,11 +2346,6 @@ details.k-form-group > summary:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.k-sidenav > .k-editmark {
-  position: absolute;
-  top: -0.2rem;
-  right: 0;
-}
 .k-quickbar {
   display: flex;
   flex-direction: column;
@@ -2307,11 +2358,6 @@ details.k-form-group > summary:focus-visible {
   gap: var(--space-2);
   min-height: 2.6rem;
   text-align: left;
-}
-.k-quickbar > .k-editmark {
-  position: absolute;
-  top: -0.4rem;
-  right: -0.4rem;
 }
 .k-tools {
   margin-top: auto;

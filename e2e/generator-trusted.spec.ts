@@ -85,22 +85,13 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
 
-  // ⑤ Edit mode: toggle it, click a UI element's ✎, and get a targeted Modify dialog (no live call).
+  // ⑤ Edit mode: toggle it and the app's own words are editable in place (no model involved —
+  // inline-edit-trusted.spec.ts covers the editing itself); Done turns it off.
   await page.getByRole("button", { name: "Edit mode" }).click();
-  const mark = page.locator(".k-editmark").first();
-  await expect(mark).toBeVisible();
-  await mark.click();
-  const dialog = page.locator(".k-modifydialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("textbox", { name: "Describe the change" })).toBeVisible();
-  // Absent, not disabled. With direct structural controls in the same dialog, an "Apply with AI"
-  // button sitting there is the only thing that looks like "save" — so a rename reads as needing a
-  // model call it does not need. It appears once there is something to send.
-  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toHaveCount(0);
-  await dialog.getByRole("textbox", { name: "Describe the change" }).fill("make it a gallery");
-  await expect(dialog.getByRole("button", { name: "Apply with AI" })).toBeEnabled();
-  await dialog.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("button", { name: "Edit mode" }).click(); // toggle off before switching apps
+  const bar = page.locator(".k-inline-bar");
+  await expect(bar).toBeVisible();
+  await bar.getByRole("button", { name: "Done" }).click();
+  await expect(bar).toHaveCount(0);
 
   // The ⊞ Apps launcher lists the saved app under My Apps, and can delete it inline.
   await page.getByRole("button", { name: "Switch app" }).click();
