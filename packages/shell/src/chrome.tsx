@@ -89,13 +89,12 @@ export interface AppChromeProps {
   onApps?: () => void;
   /** The Changes and Chat buttons of a synced app, with their counts. */
   extras?: ReactNode;
-  /** Edit-mode marks for the navigation and the quick actions. */
-  navMark?: ReactNode;
-  quickMark?: ReactNode;
   /** On a sub-page (a record's detail): where the top bar's back control goes. */
   onBack?: () => void;
   /** The open page's title, shown above the content on a wide screen. */
   pageTitle?: string;
+  /** Its page id — edit mode renames the page when that title is tapped. */
+  pageKey?: string;
   /** False on a page that has its own actions (a detail): no floating button over them. */
   showQuick?: boolean;
   /** This page's view IS the page (a map): it fills the area between the bars, edge to edge, and
@@ -128,7 +127,7 @@ function toolEntry(t: ChromeTool): MenuEntry {
   return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger };
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
+function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const [dial, setDial] = useState(false);
@@ -180,7 +179,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
   // read. A view that draws its own bottom bar — the workout tracker's rest timer — otherwise has
   // to guess the tab bar's height, and a wrong guess puts its bar underneath it, where the workout's
   // rest countdown sat unseen.
-  const tabs = pages.length > 1 || navMark;
+  const tabs = pages.length > 1;
   return (
     <div
       className="k-app-phone"
@@ -251,7 +250,6 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
               ＋
             </span>
             {primary.label}
-            {quickMark}
           </button>
         </>
       ) : null}
@@ -260,13 +258,14 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
           bite out of the list above it. One page, no bar: the top bar already carries the name. */}
       {tabs ? (
         <nav className="k-nav k-tabbar" aria-label="Pages">
-          {navMark}
           {shown.map((p) => (
             <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
               <span className="k-tab-icon" aria-hidden>
                 {p.icon}
               </span>
-              <span className="k-tab-label">{p.title}</span>
+              <span className="k-tab-label" data-k-page={p.id}>
+                {p.title}
+              </span>
             </button>
           ))}
           {more.length ? (
@@ -290,7 +289,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
   );
 }
 
-function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, navMark, quickMark, onBack, pageTitle, fullBleed, locked, children }: AppChromeProps) {
+function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
   const toolButton = (t: ChromeTool) => (
@@ -333,13 +332,14 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
         ) : null}
         <nav className="k-nav k-sidenav" aria-label="Pages">
           <h5 className="k-sidebar-heading">Pages</h5>
-          {navMark}
           {pages.map((p) => (
             <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
               <span className="k-tab-icon" aria-hidden>
                 {p.icon}
               </span>
-              <span className="k-tab-label">{p.title}</span>
+              <span className="k-tab-label" data-k-page={p.id}>
+                {p.title}
+              </span>
             </button>
           ))}
         </nav>
@@ -350,7 +350,6 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
                 <span aria-hidden>{q.icon}</span> {q.label}
               </button>
             ))}
-            {quickMark}
           </div>
         ) : null}
         {tools.length || report.length || trust || onApps ? (
@@ -377,7 +376,9 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
                 ‹
               </button>
             ) : null}
-            <h2 className="k-page-title">{pageTitle}</h2>
+            <h2 className="k-page-title" data-k-page={pageKey}>
+              {pageTitle}
+            </h2>
           </div>
         ) : null}
         {children}
