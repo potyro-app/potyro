@@ -305,6 +305,107 @@ export async function inspect(source: string): Promise<AppShape> {
   return { entities, pages, ...(name ? { name } : {}), ...(icon ? { icon } : {}), ...(accent ? { accent } : {}) };
 }
 
+/** One entity's declared data shape: the literal parts of each field, and nothing that would run. */
+export interface DeclaredEntity {
+  label?: string;
+  displayField?: string;
+  editableBy?: string;
+  /** Field key → the field's literal properties (`type`, `options`, `to`, `currency`…). A property
+   *  written as anything but a literal — `default: () => …` — is left out, never evaluated. */
+  fields: Record<string, Record<string, JsonLiteral>>;
+  /** Fields declared as something this can't read (a helper call, a shared const). */
+  opaque: string[];
+}
+
+export type JsonLiteral = string | number | boolean | null | JsonLiteral[] | { [k: string]: JsonLiteral };
+
+/**
+ * The entities an app declares, read from its source WITHOUT running it.
+ *
+ * The data panel needs each field's type to show and edit a stored value, and the app that declared
+ * it may be someone else's: evaluating the module to find out would run untrusted code with the
+ * shell's authority. The fields are plain data (docs/03), so the literal parts are all there is to
+ * know — anything computed is skipped rather than guessed.
+ */
+export async function declaredEntities(source: string): Promise<Record<string, DeclaredEntity> | null> {
+  const t = await load();
+  if (!t) return null;
+  const ast = parseModule(t, source);
+  if (!ast) return null;
+  const def = findDefinition(ast);
+  const entitiesNode = propValue(def, "entities");
+  if (entitiesNode?.type !== "ObjectExpression") return null;
+
+  const out: Record<string, DeclaredEntity> = {};
+  for (const ep of asArray(entitiesNode.properties)) {
+    if (ep.type !== "ObjectProperty" || ep.computed === true) continue;
+    const name = keyOf(ep);
+    if (!name) continue;
+    const entityNode = ep.value as Node;
+    const fields: DeclaredEntity["fields"] = {};
+    const opaque: string[] = [];
+    const fieldsNode = propValue(entityNode, "fields");
+    for (const fp of fieldsNode?.type === "ObjectExpression" ? asArray(fieldsNode.properties) : []) {
+      const key = fp.type === "ObjectProperty" && fp.computed !== true ? keyOf(fp) : undefined;
+      if (!key) continue;
+      const value = literalOf(fp.value as Node);
+      if (value && typeof value === "object" && !Array.isArray(value) && typeof value.type === "string") fields[key] = value;
+      else opaque.push(key);
+    }
+    const label = literalString(propValue(entityNode, "label"));
+    const displayField = literalString(propValue(entityNode, "displayField"));
+    const editableBy = literalString(propValue(entityNode, "editableBy"));
+    out[name] = {
+      fields,
+      opaque,
+      ...(label ? { label } : {}),
+      ...(displayField ? { displayField } : {}),
+      ...(editableBy ? { editableBy } : {}),
+    };
+  }
+  return out;
+}
+
+/** A node's value when it is written as a literal; `undefined` for anything that would need running.
+ *  Object members that aren't literal are dropped, so `{ type: "text", default: () => "" }` reads as
+ *  `{ type: "text" }`. */
+function literalOf(node: Node | null | undefined): JsonLiteral | undefined {
+  if (!node) return undefined;
+  switch (node.type) {
+    case "StringLiteral":
+    case "NumericLiteral":
+    case "BooleanLiteral":
+      return node.value as JsonLiteral;
+    case "NullLiteral":
+      return null;
+    case "TemplateLiteral":
+      return asArray(node.expressions).length === 0 ? asArray(node.quasis).map((q) => (q.value as { cooked: string }).cooked).join("") : undefined;
+    case "UnaryExpression": {
+      const arg = literalOf(node.argument as Node);
+      return node.operator === "-" && typeof arg === "number" ? -arg : undefined;
+    }
+    case "TSAsExpression":
+    case "TSSatisfiesExpression":
+      return literalOf(node.expression as Node);
+    case "ArrayExpression": {
+      const items = asArray(node.elements).map((el) => literalOf(el));
+      return items.every((v) => v !== undefined) ? (items as JsonLiteral[]) : undefined;
+    }
+    case "ObjectExpression": {
+      const obj: Record<string, JsonLiteral> = {};
+      for (const p of asArray(node.properties)) {
+        if (p.type !== "ObjectProperty" || p.computed === true) continue;
+        const key = keyOf(p);
+        const value = literalOf(p.value as Node);
+        if (key && value !== undefined) obj[key] = value;
+      }
+      return obj;
+    }
+    default:
+      return undefined;
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Writing
 

@@ -57,7 +57,8 @@ export interface ChromeQuick {
 export interface ChromeTool {
   key: string;
   label: string;
-  icon?: string;
+  /** A glyph, or a drawn icon where no glyph says it (Data's database). */
+  icon?: ReactNode;
   hint?: string;
   onSelect: () => void;
   /** A tool that is on or off (Edit mode). */
