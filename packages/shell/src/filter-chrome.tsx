@@ -74,6 +74,7 @@ function PageActions({ runtime, pageId, params }: { runtime: KartaRuntime; pageI
           key={`${action.label}:${index}`}
           type="button"
           className="k-chip k-page-action"
+          data-k-wording
           disabled={busy !== null}
           aria-busy={busy === index || undefined}
           onClick={() => {
@@ -101,7 +102,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   // A page with buttons and no chips still has chrome to draw.
   if (!filters?.length) {
     return hasActions ? (
-      <section className="k-chrome" aria-label="Page actions">
+      <section className="k-chrome" aria-label="Page actions" data-k-view>
         <PageActions runtime={runtime} pageId={pageId} params={params} />
       </section>
     ) : null;
@@ -118,7 +119,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   };
 
   return (
-    <section className="k-chrome" aria-label="Filters">
+    <section className="k-chrome" aria-label="Filters" data-k-view>
       {options.length ? (
         <button
           type="button"
@@ -219,7 +220,7 @@ function FilterSheet({
   const host = document.querySelector(".k-app") ?? document.body;
   return createPortal(
     <div className="k-modal-scrim k-filter-scrim" onClick={onClose}>
-      <div className="k-filter-sheet" role="dialog" aria-label="Filter" onClick={(e) => e.stopPropagation()}>
+      <div className="k-filter-sheet" role="dialog" aria-label="Filter" data-k-view onClick={(e) => e.stopPropagation()}>
         <header className="k-filter-head">
           <h2 className="k-filter-title">Filter</h2>
           <button type="button" className="k-filter-clear" disabled={picked === 0} onClick={onClear}>
@@ -269,7 +270,9 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
 
   return (
     <div className="k-chip-group" role="group" aria-label={chip.label}>
-      <span className="k-chrome-label">{chip.label}:</span>
+      <span className="k-chrome-label" data-k-wording>
+        {chip.label}:
+      </span>
       <div className="k-chips">
         {rows.map((r) => (
           <button key={r.id} type="button" className="k-chip" data-on={selected.has(r.id)} onClick={() => toggle(r.id)}>
@@ -352,7 +355,7 @@ function BooleanChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "run
   const on = Boolean(params[chip.param]);
   return (
     <div className="k-chip-group">
-      <button type="button" role="switch" aria-checked={on} className="k-chip k-chip-switch" data-on={on} onClick={() => setParam(chip.param, on ? undefined : true)}>
+      <button type="button" role="switch" aria-checked={on} className="k-chip k-chip-switch" data-on={on} data-k-wording onClick={() => setParam(chip.param, on ? undefined : true)}>
         {chip.label}
         <span className="k-switch" aria-hidden>
           <span className="k-switch-knob" />
@@ -384,7 +387,9 @@ function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
 
   return (
     <div className="k-chip-group" role="group" aria-label={chip.label}>
-      <span className="k-chrome-label">{chip.label}:</span>
+      <span className="k-chrome-label" data-k-wording>
+        {chip.label}:
+      </span>
       <div className="k-chips">
         {options.map((opt) => (
           <button key={opt} type="button" className="k-chip" data-on={isSelected(opt)} onClick={() => toggle(opt)}>

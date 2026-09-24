@@ -65,7 +65,7 @@ export function LayoutHost(props: LayoutHostProps) {
   );
   const titled = (it: LayoutItem, i: number, body: ReactNode, span?: number): ReactNode => (
     <section key={i} className="k-layout-item" data-span={span} aria-label={it.title || undefined}>
-      {it.title ? <h3 className="k-layout-title">{it.title}</h3> : null}
+      {it.title ? <h3 className="k-layout-title" data-k-wording>{it.title}</h3> : null}
       {body}
     </section>
   );
@@ -158,7 +158,7 @@ function Fold({ appId, pageId, index, title, children }: { appId: string; pageId
         }
       }}
     >
-      <summary className="k-layout-title">{title}</summary>
+      <summary className="k-layout-title" data-k-wording>{title}</summary>
       {children}
     </details>
   );

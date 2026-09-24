@@ -441,12 +441,16 @@ function literalOf(node: Node | null | undefined): JsonLiteral | undefined {
 // Text the app shows
 
 /**
- * Keys whose string value is something a person reads — in the definition (`label`, `title`,
- * `help`…) and as props in a custom view (`<Button label="…">`, `placeholder="…"`).
+ * Keys whose string value is TEXT ON SCREEN — in the definition (`label`, `title`, `help`…) and as
+ * props of an app's own component (`<Step label="…">`).
+ *
+ * Not `placeholder`, `alt` or `aria-label`: those are never a text node, so pairing them with the
+ * text on screen can only ever match something else — a record called "Milk" matched the name
+ * field's `placeholder: "Milk"` and was offered for renaming.
  */
 const DISPLAY_KEYS = new Set([
-  "label", "title", "name", "help", "placeholder", "text", "description", "subtitle", "heading",
-  "caption", "hint", "message", "empty", "emptyText", "emptyLabel", "alt", "aria-label",
+  "label", "title", "name", "help", "text", "description", "subtitle", "heading",
+  "caption", "hint", "message", "empty", "emptyText", "emptyLabel",
 ]);
 
 /** Nodes a display string can sit inside and still be what renders: `{done ? "A" : "B"}`. */
@@ -475,13 +479,24 @@ function inDisplayPosition(node: Node, ancestors: readonly Node[]): boolean {
     const key = keyOf(parent);
     return parent.value === child && parent.computed !== true && key !== undefined && DISPLAY_KEYS.has(key);
   }
-  if (parent.type === "JSXAttribute") return DISPLAY_KEYS.has(attrName(parent) ?? "");
+  if (parent.type === "JSXAttribute") return renderedProp(parent, ancestors[i - 1]);
   if (parent.type === "JSXExpressionContainer") {
     const holder = ancestors[i - 1];
-    if (holder?.type === "JSXAttribute") return DISPLAY_KEYS.has(attrName(holder) ?? "");
+    if (holder?.type === "JSXAttribute") return renderedProp(holder, ancestors[i - 2]);
     return holder?.type === "JSXElement" || holder?.type === "JSXFragment";
   }
   return false;
+}
+
+/**
+ * Does this JSX attribute's string end up as text? On an HTML element, never: `<button title="…">`
+ * is a tooltip, `<input placeholder="…">` sits inside an empty box. On the app's own component a
+ * display-named prop is what that component prints.
+ */
+function renderedProp(attr: Node, opening: Node | undefined): boolean {
+  const tag = (opening?.name as { type?: string; name?: unknown } | undefined) ?? undefined;
+  const intrinsic = tag?.type === "JSXIdentifier" && typeof tag.name === "string" && /^[a-z]/.test(tag.name);
+  return !intrinsic && DISPLAY_KEYS.has(attrName(attr) ?? "");
 }
 
 /**
