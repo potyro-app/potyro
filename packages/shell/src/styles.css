@@ -8030,3 +8030,18 @@ body:has(.k-tabbar) .k-toasts {
 .k-ask-question p {
   margin: 0;
 }
+.k-ask-fetched {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.k-ask-fetched > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.k-ask-fetched ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}

@@ -120,13 +120,26 @@ test("an app's source and the person's own: keys stored safely, sent only where 
   await dialog.getByRole("textbox", { name: "What to add" }).fill("dog spots");
   await dialog.getByRole("button", { name: "Ask", exact: true }).click();
 
-  // The model wants the person's key sent somewhere new: they are asked first.
+  // Even the app's own source asks before its first request: a shared app cannot make Ask call a
+  // server behind the person's back.
   const question = dialog.getByRole("alertdialog");
+  await expect(question).toContainText("Send your Places search key to api.places.test?");
+  await expect(question).toContainText("which this app names");
+  expect(apiCalls).toEqual([]);
+  await question.getByRole("button", { name: "Allow", exact: true }).click();
+
+  // The model wants the person's own key sent somewhere new: they are asked first.
   await expect(question).toContainText("Send your My maps key to maps.mine.test?");
   expect(apiCalls.map((c) => new URL(c.url).host)).toEqual(["api.places.test"]);
   await question.getByRole("button", { name: "Allow", exact: true }).click();
 
   await expect(dialog.getByText("Two spots.")).toBeVisible();
+  // Everything Ask read is listed with the proposal, and the list carries no key.
+  const read = dialog.locator(".k-ask-fetched");
+  await read.locator("summary").click();
+  await expect(read).toContainText("Read from 2 addresses");
+  await expect(read).toContainText("https://maps.mine.test/v2/near?q=dog");
+  await expect(read).not.toContainText(MY_KEY);
   expect(apiCalls).toEqual([
     { url: "https://api.places.test/v1/search?q=dog", key: APP_KEY },
     { url: `https://maps.mine.test/v2/near?q=dog&apikey=${MY_KEY}`, key: MY_KEY },

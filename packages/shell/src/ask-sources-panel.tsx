@@ -89,8 +89,8 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
       ...(ep ? { endpoint: ep.toString() } : {}),
       ...(dc ? { docs: dc.toString() } : {}),
       ...(auth ? { auth } : {}),
-      // The endpoint the person typed is theirs to allow; any other origin is asked about when used.
-      origins: ep ? [ep.origin] : [],
+      // The addresses the person typed are theirs to allow; any other origin is asked about when used.
+      origins: [...new Set([ep?.origin, dc?.origin].filter((o): o is string => Boolean(o)))],
     };
     if (auth) await keys.set(myKeyId(id), key.trim());
     saveMySource(source);
