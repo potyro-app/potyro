@@ -6,7 +6,7 @@
 // Where a key is kept is said in plain words next to the field that takes it: this device's secure
 // store, or — where there is none — only until the page closes.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { myKeyId, removeMySource, saveMySource, type KeyPlace, type KeyStore, type PersonSource, type ResolvedSource, type SourceAuth } from "./ask-sources.js";
 
 export interface SourcesState {
@@ -149,6 +149,13 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
 
 export function SourcesSection({ state, keys, onChange }: { state: SourcesState; keys: KeyStore; onChange: () => void }) {
   const [adding, setAdding] = useState(false);
+  // Opens itself when a source is waiting for a key, then stays as the person leaves it: saving the
+  // last key must not fold the section away from under them.
+  const [open, setOpen] = useState(false);
+  const waitingCount = state.needKey.length;
+  useEffect(() => {
+    if (waitingCount) setOpen(true);
+  }, [waitingCount]);
   const all = [...state.usable, ...state.needKey].sort((a, b) => (a.pin === b.pin ? 0 : a.pin === "endpoint" ? -1 : 1));
   const count = state.usable.length;
 
@@ -159,7 +166,7 @@ export function SourcesSection({ state, keys, onChange }: { state: SourcesState;
   };
 
   return (
-    <details className="k-ask-sources" open={state.needKey.length > 0 || undefined}>
+    <details className="k-ask-sources" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
         Sources <span className="k-ask-group-count">{count ? `${count} ready` : "none yet"}</span>
       </summary>
