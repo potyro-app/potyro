@@ -79,6 +79,7 @@ export type {
   MapCamera,
   Dynamic,
   ScopeDef,
+  SourceDef,
   SummaryValue,
   SummaryOp,
   StepsView,

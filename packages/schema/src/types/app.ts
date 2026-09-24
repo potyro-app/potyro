@@ -638,6 +638,26 @@ export interface ScopeDef {
   required?: boolean;
 }
 
+/**
+ * Outside data the app's Ask can read (#213): a places API, a search engine, a weather service.
+ *
+ * NEVER A KEY. A shared app hands every person this declaration, and each of them brings their own
+ * key, which the shell keeps in the device's secret vault. The shell attaches it to requests itself,
+ * only to `endpoint`'s origin; neither the app's code nor the model ever sees it.
+ */
+export interface SourceDef {
+  label?: string;
+  /** What it answers, in a sentence the model reads to decide when to use it. */
+  description?: string;
+  /** Base URL, https. Requests stay under it, and a key is only ever sent there. */
+  endpoint: string;
+  /** Documentation the model may read to learn the API. */
+  docs?: string;
+  /** How the person's key is sent: a header (`prefix` before the key, e.g. "Bearer "), or a query
+   *  parameter. Absent: the source needs no key. */
+  auth?: { header: string; prefix?: string } | { query: string };
+}
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -660,6 +680,8 @@ export interface AppDefinition {
   pages: Page[];
   reminders?: Reminder[];
   migrations?: Migration[];
+  /** Outside data the app's Ask can read, by name (#213). See `SourceDef`. */
+  sources?: Record<string, SourceDef>;
 }
 
 /**

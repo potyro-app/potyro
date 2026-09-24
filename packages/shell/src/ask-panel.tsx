@@ -15,6 +15,20 @@ import { ApplyError, applyProposal, markDuplicates, type ReviewRow } from "./ask
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
+import { currentVault } from "@karta/identity";
+import { allowOrigin, keyStore, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
+import { SourcesSection, type SourcesState } from "./ask-sources-panel.js";
+
+/** One key store for the page, so a key kept in memory (no vault here) outlives the dialog. */
+let pageKeys: KeyStore | null = null;
+const keysForPage = (): KeyStore => (pageKeys ??= keyStore(currentVault()));
+
+/** The model wants a source's request to go somewhere the person has not allowed yet. */
+interface OriginQuestion {
+  source: ResolvedSource;
+  origin: string;
+  answer: (yes: boolean) => void;
+}
 
 type Phase =
   | { kind: "compose" }
@@ -160,8 +174,16 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [request, setRequest] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
   const [tries, setTries] = useState(0);
+  const [reading, setReading] = useState<string | null>(null);
+  const [question, setQuestion] = useState<OriginQuestion | null>(null);
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
+  const keys = keysForPage();
+  const [sources, setSources] = useState<SourcesState>({ usable: [], needKey: [], place: "vault" });
+  const loadSources = (): void => {
+    void Promise.all([resolveSources(def, appId, listMySources(), keys), keys.place()]).then(([r, place]) => setSources({ ...r, place }));
+  };
+  useEffect(loadSources, [def, appId, keys]);
 
   useEffect(() => () => abort.current?.abort(), []);
   const closeRef = useRef<() => void>(() => undefined);
@@ -175,6 +197,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
   const close = (): void => {
     abort.current?.abort();
+    question?.answer(false);
     onClose();
   };
   closeRef.current = close;
@@ -202,11 +225,34 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     const controller = new AbortController();
     abort.current = controller;
     setTries(0);
+    setReading(null);
     setPhase({ kind: "working" });
+    const labels = new Map(sources.usable.map((s) => [s.ask.id, s.ask.label]));
     const onStep = (s: AskStep): void => {
       if (s.kind === "proposal" && !s.ok) setTries((n) => n + 1);
+      if (s.kind === "fetch") setReading(labels.get(s.source) ?? s.source);
     };
-    void startAsk({ definition: def, request: text, engine, onStep, signal: controller.signal }).then((o) => {
+    const fetchSource = makeSourceFetcher({
+      sources: sources.usable,
+      keys,
+      fetch: (input, init) => globalThis.fetch(input, init),
+      confirmOrigin: (source, origin) =>
+        controller.signal.aborted
+          ? Promise.resolve(false)
+          : new Promise<boolean>((resolve) =>
+              setQuestion({
+                source,
+                origin,
+                answer: (yes) => {
+                  setQuestion(null);
+                  resolve(yes);
+                },
+              }),
+            ),
+      onAllowed: (id, origin) => allowOrigin(id.slice("mine:".length), origin),
+    });
+    void startAsk({ definition: def, request: text, engine, sources: sources.usable.map((s) => s.ask), fetchSource, onStep, signal: controller.signal }).then((o) => {
+      loadSources(); // an origin allowed during the run is remembered from now on
       if (abort.current === controller) void land(o);
     });
   };
@@ -268,6 +314,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
                 {engineLabel(engine)} sees how this app is organised and what you type here. Nothing already in the app is sent. You choose what gets added.
               </p>
             )}
+            <SourcesSection state={sources} keys={keys} onChange={loadSources} />
             <footer className="k-ask-actions">
               <button type="button" className="k-ask-off" onClick={turnOff}>
                 Turn off Ask for this app
@@ -282,12 +329,46 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
         {phase.kind === "working" || phase.kind === "saving" ? (
           <div className="k-ask-working" role="status">
             <span className="k-ask-pulse" aria-hidden />
-            <p>{phase.kind === "saving" ? "Adding…" : tries ? `Fitting it to ${def.name}’s fields (try ${tries + 1})…` : "Working on it…"}</p>
+            <p>
+              {phase.kind === "saving"
+                ? "Adding…"
+                : tries
+                  ? `Fitting it to ${def.name}’s fields (try ${tries + 1})…`
+                  : reading
+                    ? `Reading ${reading}…`
+                    : "Working on it…"}
+            </p>
             {phase.kind === "working" ? (
-              <button type="button" className="k-add" onClick={() => abort.current?.abort()}>
+              <button
+                type="button"
+                className="k-add"
+                onClick={() => {
+                  abort.current?.abort();
+                  question?.answer(false);
+                }}
+              >
                 Stop
               </button>
             ) : null}
+          </div>
+        ) : null}
+
+        {phase.kind === "working" && question ? (
+          <div className="k-ask-question" role="alertdialog" aria-label="Allow this address?">
+            <p className="k-ask-note-head">
+              {question.source.auth ? `Send your ${question.source.ask.label} key to ${new URL(question.origin).host}?` : `Let Ask read from ${new URL(question.origin).host}?`}
+            </p>
+            <p className="k-ask-privacy">
+              It is for {question.source.ask.label}. {question.source.auth ? "Only allow an address that belongs to that service." : "Your request goes there; nothing from the app does."} Your answer is remembered for this source.
+            </p>
+            <div className="k-ask-actions">
+              <button type="button" className="k-add" onClick={() => question.answer(false)}>
+                Don’t allow
+              </button>
+              <button type="button" className="k-add k-primary-action" onClick={() => question.answer(true)}>
+                Allow
+              </button>
+            </div>
           </div>
         ) : null}
 
