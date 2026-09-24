@@ -161,6 +161,24 @@ describe("page order", () => {
     expect(next.length).toBe(APP.length);
   });
 
+  it("keeps a same-line comment with the page it is written after", async () => {
+    // Babel hands `}, // x` to the NEXT page as a leading comment; moving pages must not re-home it.
+    const commented = APP.replace(
+      `view: { type: "map", entity: "item", geo: "where", title: "title" } },`,
+      `view: { type: "map", entity: "item", geo: "where", title: "title" } }, // the main list`,
+    ).replace(`view: { type: "custom", component: Board } },`, `view: { type: "custom", component: Board } }, /* the board */`);
+    const next = await apply(commented, { kind: "page-order", order: ["board", "one", "all"] });
+    expect(next).toMatch(/id: "board".*}, \/\* the board \*\/\n/);
+    expect(next).toMatch(/id: "all".*}, \/\/ the main list\n/);
+    expect((await inspect(next)).pages.map((p) => p.id)).toEqual(["board", "one", "all"]);
+  });
+
+  it("keeps a same-line comment with the field it is written after", async () => {
+    const commented = APP.replace(`title: { type: "text", required: true },`, `title: { type: "text", required: true }, // what it's called`);
+    const next = await apply(commented, { kind: "field-order", entity: "item", order: ["status", "title"] });
+    expect(next).toMatch(/status: \{[^\n]*\},\n\s+title: \{[^\n]*\}, \/\/ what it's called\n/);
+  });
+
   it("refuses an order that isn't the same pages", async () => {
     expect((await applyEdit(APP, { kind: "page-order", order: ["board", "all"] })).ok).toBe(false);
   });
