@@ -31,6 +31,25 @@ function fakeWorker(): { factory: WorkerFactory; sql: string[]; terminated: () =
   return { factory, sql, terminated: () => stopped };
 }
 
+/** A worker that records every operation, `open` and `close` included, and answers each one. */
+function opsWorker(): { factory: WorkerFactory; ops: string[] } {
+  const ops: string[] = [];
+  const factory: WorkerFactory = () => {
+    const w = {
+      onmessage: null as ((e: { data: unknown }) => void) | null,
+      onerror: null as ((e: unknown) => void) | null,
+      postMessage(message: unknown) {
+        const m = message as { id: number; op: string };
+        ops.push(m.op);
+        setTimeout(() => w.onmessage?.({ data: { id: m.id, ok: true, rows: [] } }), 0);
+      },
+      terminate() {},
+    };
+    return w;
+  };
+  return { factory, ops };
+}
+
 describe("the storage worker client", () => {
   it("wraps the caller's statements in one transaction, in order", async () => {
     const { factory, sql } = fakeWorker();
@@ -126,7 +145,37 @@ describe("the storage worker client", () => {
     const second = await openWorkerSqlite("shared-db", counting);
 
     expect(spawned).toBe(1);
-    expect(second).toBe(first);
+    // One connection, but a handle each: closing is per caller (below).
+    expect(second).not.toBe(first);
+  });
+
+  it("keeps a database open while anyone still holds it", async () => {
+    // An app has its store open and the Data panel opens the same one. Whichever closes first must
+    // not close the database under the other: the worker's `close` shuts it for everyone, and every
+    // statement after that failed with "is not open".
+    const { factory, ops } = opsWorker();
+    const app = await openWorkerSqlite("held-twice", factory);
+    const panel = await openWorkerSqlite("held-twice", factory);
+    await panel.driver.closeDb();
+    await panel.driver.closeDb(); // twice from one holder is still one release
+    await app.driver.run("INSERT INTO records VALUES (?)", ["a"]);
+    expect(ops).toEqual(["open", "run"]);
+
+    await app.driver.closeDb();
+    expect(ops).toEqual(["open", "run", "close"]);
+  });
+
+  it("opens a closed database again instead of handing out the closed one", async () => {
+    // Going home closes an app's store; opening the app again in place asked for the same name and
+    // got the cached connection to a database the worker had already closed. The store then fell
+    // back to localStorage — and showed none of the records in the real database.
+    const { factory, ops } = opsWorker();
+    const first = await openWorkerSqlite("reopened", factory);
+    await first.driver.closeDb();
+    const again = await openWorkerSqlite("reopened", factory);
+    await again.driver.run("SELECT 1", []);
+
+    expect(ops).toEqual(["open", "close", "open", "run"]);
   });
 
   it("addresses every statement to the database it belongs to", async () => {
