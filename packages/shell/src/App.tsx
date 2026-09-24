@@ -34,6 +34,8 @@ import { VIEW_FIELDS, PAGE_FIELDS, type Resolved } from "karta";
 import { listVersions } from "./app-history.js";
 import { listDiagnoses, recordDiagnosis } from "./app-diagnoses.js";
 import { StructurePanel } from "./structure-panel.js";
+import { AskPanel } from "./ask-panel.js";
+import { useAskEnabled } from "./ask-setting.js";
 import type { Edit } from "./app-source.js";
 import type { StructureTarget } from "./structure-panel.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
@@ -630,6 +632,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // happened.
   const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  // Ask (#213): a model adds records in this app's own shape. Offered until the person turns it off
+  // for this app, and never in a read-only one — everything it does is a write.
+  const [askOpen, setAskOpen] = useState(false);
+  const askOn = useAskEnabled(appId) && !locked;
   // Talking to the people you share with (KA-35). Only a CRDT store can carry it, and only a synced
   // app has a CRDT store — so on a local-only app the control is absent rather than present and
   // pointing at nobody. The room is loaded whether or not the panel is open, because the unread
@@ -991,6 +997,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     navigate(list?.id ?? landingPage());
   };
   const chromeTools: ChromeTool[] = [
+    ...(askOn ? [{ key: "ask", label: "Ask", icon: "✧", hint: "add with AI", onSelect: () => setAskOpen(true) }] : []),
     // The Studio needs no model: its source editor and History are how a broken app gets repaired
     // on a build with no engine at all.
     ...(generator ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
@@ -1366,6 +1373,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           onRestored={() => location.reload()}
         />
       ) : null}
+
+      {askOpen && askOn && appId ? <AskPanel appId={appId} runtime={runtime} engine={engineCfg} onClose={() => setAskOpen(false)} /> : null}
 
       {activityOpen && activity && appId ? (
         <ActivityPanel
