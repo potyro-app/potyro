@@ -21,9 +21,6 @@ test("an edit is still there after going home and opening the app again in place
   await expect(milk).toBeVisible({ timeout: 30_000 });
   await milk.click();
   await expect(milk).toHaveAttribute("aria-checked", "true");
-  // Give the tick time to be written. Leaving the app within a moment of a tick loses it — a separate
-  // problem from the one pinned here, and not what this spec is about.
-  await page.waitForTimeout(2000);
 
   await page.goBack(); // home, in place
   await expect(tile).toBeVisible({ timeout: 30_000 });
