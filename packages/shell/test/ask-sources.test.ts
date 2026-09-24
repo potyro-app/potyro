@@ -88,15 +88,16 @@ describe("resolveSources", () => {
 });
 
 describe("makeSourceFetcher", () => {
-  async function setup(mine: PersonSource[] = [], confirm = async () => false) {
+  async function setup(mine: PersonSource[] = [], confirm: (s: unknown, origin: string) => Promise<boolean> = async () => true) {
     const keys = keyStore(memoryVault());
     await keys.set("karta:source-key:app:places:places", KEY);
     for (const m of mine) await keys.set(`karta:source-key:mine:${m.id}`, KEY);
     const { usable } = await resolveSources(DEF, "places", mine, keys);
     const rec = recorder(`{"echo":"https://api.example.com/v1/x?key=${KEY}"}`);
     const allowed: string[] = [];
-    const fetchSource = makeSourceFetcher({ sources: usable, keys, fetch: rec.fetchImpl, confirmOrigin: confirm, onAllowed: (_id, o) => allowed.push(o) });
-    return { fetchSource, rec, allowed };
+    const seen: string[] = [];
+    const fetchSource = makeSourceFetcher({ sources: usable, keys, fetch: rec.fetchImpl, confirmOrigin: confirm, onAllowed: (_id, o) => allowed.push(o), onFetched: (_id, url) => seen.push(url) });
+    return { fetchSource, rec, allowed, seen };
   }
 
   it("sends an app source's key, as declared, to its endpoint, GET without cookies or redirects", async () => {
@@ -108,6 +109,46 @@ describe("makeSourceFetcher", () => {
     expect(rec.calls[0]!.init.method ?? "GET").toBe("GET");
     expect(rec.calls[0]!.init.credentials).toBe("omit");
     expect(rec.calls[0]!.init.redirect).toBe("error");
+  });
+
+  it("asks before an app's source is first used, even without a key, and fetches nothing on a no", async () => {
+    const asked: string[] = [];
+    const { fetchSource, rec, allowed } = await setup([], async (_s, origin) => (asked.push(origin), false));
+    expect((await fetchSource({ source: "app:osm", kind: "data", url: "interpreter" })).ok).toBe(false);
+    expect((await fetchSource({ source: "app:places", kind: "docs" })).ok).toBe(false);
+    expect(rec.calls).toHaveLength(0);
+    expect(asked).toEqual(["https://overpass.example.org", "https://docs.example.com"]);
+    expect(allowed).toEqual([]);
+  });
+
+  it("does not ask again for a host the person allowed for that source", async () => {
+    const asked: string[] = [];
+    const { fetchSource, allowed } = await setup([], async (_s, origin) => (asked.push(origin), true));
+    await fetchSource({ source: "app:osm", kind: "data", url: "a" });
+    await fetchSource({ source: "app:osm", kind: "data", url: "b" });
+    expect(asked).toEqual(["https://overpass.example.org"]);
+    expect(allowed).toEqual(["https://overpass.example.org"]);
+  });
+
+  it("reports each URL it read, without the key", async () => {
+    const mine: PersonSource = { id: "w", label: "Weather", endpoint: "https://weather.example/", origins: ["https://weather.example"], auth: { query: "appid" } };
+    const { fetchSource, seen } = await setup([mine]);
+    await fetchSource({ source: "mine:w", kind: "data", url: "now?q=Lisbon" });
+    expect(seen).toEqual(["https://weather.example/now?q=Lisbon"]);
+  });
+
+  it("scrubs the key in its encoded forms too", async () => {
+    const keys = keyStore(memoryVault());
+    const odd = "k+y/=9 z";
+    await keys.set("karta:source-key:app:places:places", odd);
+    const { usable } = await resolveSources(DEF, "places", [], keys);
+    const body = `${odd} ${encodeURIComponent(odd)} ${btoa(odd)}`;
+    const rec = recorder(body);
+    const fetchSource = makeSourceFetcher({ sources: usable, keys, fetch: rec.fetchImpl, confirmOrigin: async () => true, onAllowed: () => undefined });
+    const res = await fetchSource({ source: "app:places", kind: "data", url: "x" });
+    expect(res.detail).not.toContain(odd);
+    expect(res.detail).not.toContain(encodeURIComponent(odd));
+    expect(res.detail).not.toContain(btoa(odd));
   });
 
   it("scrubs the key from what comes back", async () => {
@@ -154,7 +195,7 @@ describe("makeSourceFetcher", () => {
     const failing = (async () => {
       throw new TypeError("Failed to fetch");
     }) as unknown as typeof fetch;
-    const fetchSource = makeSourceFetcher({ sources: usable, keys, fetch: failing, confirmOrigin: async () => false, onAllowed: () => undefined });
+    const fetchSource = makeSourceFetcher({ sources: usable, keys, fetch: failing, confirmOrigin: async () => true, onAllowed: () => undefined });
     const res = await fetchSource({ source: "app:osm", kind: "data", url: "interpreter?data=x" });
     expect(res.ok).toBe(false);
     expect(res.detail).toMatch(/Failed to fetch/);

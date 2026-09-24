@@ -16,7 +16,7 @@ import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
 import { currentVault } from "@karta/identity";
-import { allowOrigin, keyStore, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
+import { allowOrigin, approveAppSource, keyStore, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
 import { SourcesSection, type SourcesState } from "./ask-sources-panel.js";
 
 /** One key store for the page, so a key kept in memory (no vault here) outlives the dialog. */
@@ -27,6 +27,7 @@ const keysForPage = (): KeyStore => (pageKeys ??= keyStore(currentVault()));
 interface OriginQuestion {
   source: ResolvedSource;
   origin: string;
+  sendsKey: boolean;
   answer: (yes: boolean) => void;
 }
 
@@ -176,6 +177,8 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [tries, setTries] = useState(0);
   const [reading, setReading] = useState<string | null>(null);
   const [question, setQuestion] = useState<OriginQuestion | null>(null);
+  /** Every URL Ask read in this run, shown with the proposal: nothing it looked at is hidden. */
+  const [fetched, setFetched] = useState<string[]>([]);
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
   const keys = keysForPage();
@@ -226,6 +229,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     abort.current = controller;
     setTries(0);
     setReading(null);
+    setFetched([]);
     setPhase({ kind: "working" });
     const labels = new Map(sources.usable.map((s) => [s.ask.id, s.ask.label]));
     const onStep = (s: AskStep): void => {
@@ -236,20 +240,22 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
       sources: sources.usable,
       keys,
       fetch: (input, init) => globalThis.fetch(input, init),
-      confirmOrigin: (source, origin) =>
+      confirmOrigin: (source, origin, sendsKey) =>
         controller.signal.aborted
           ? Promise.resolve(false)
           : new Promise<boolean>((resolve) =>
               setQuestion({
                 source,
                 origin,
+                sendsKey,
                 answer: (yes) => {
                   setQuestion(null);
                   resolve(yes);
                 },
               }),
             ),
-      onAllowed: (id, origin) => allowOrigin(id.slice("mine:".length), origin),
+      onAllowed: (id, origin) => (id.startsWith("app:") ? approveAppSource(appId, id.slice("app:".length), origin) : allowOrigin(id.slice("mine:".length), origin)),
+      onFetched: (_id, url) => setFetched((prev) => [...prev, url]),
     });
     void startAsk({ definition: def, request: text, engine, sources: sources.usable.map((s) => s.ask), fetchSource, onStep, signal: controller.signal }).then((o) => {
       loadSources(); // an origin allowed during the run is remembered from now on
@@ -356,10 +362,11 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
         {phase.kind === "working" && question ? (
           <div className="k-ask-question" role="alertdialog" aria-label="Allow this address?">
             <p className="k-ask-note-head">
-              {question.source.auth ? `Send your ${question.source.ask.label} key to ${new URL(question.origin).host}?` : `Let Ask read from ${new URL(question.origin).host}?`}
+              {question.sendsKey ? `Send your ${question.source.ask.label} key to ${new URL(question.origin).host}?` : `Let Ask read from ${new URL(question.origin).host}?`}
             </p>
             <p className="k-ask-privacy">
-              It is for {question.source.ask.label}. {question.source.auth ? "Only allow an address that belongs to that service." : "Your request goes there; nothing from the app does."} Your answer is remembered for this source.
+              For {question.source.ask.label}
+              {question.source.pin === "endpoint" ? ", which this app names" : ""}. {question.sendsKey ? "Only allow an address that belongs to that service." : "What you asked for may go there; nothing already in the app does."} Your answer is remembered for this source.
             </p>
             <div className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => question.answer(false)}>
@@ -373,7 +380,21 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
         ) : null}
 
         {phase.kind === "review" ? (
-          <Review def={def} summary={phase.summary} rows={phase.rows} onAdd={add} onDiscard={() => setPhase({ kind: "compose" })} />
+          <>
+            <Review def={def} summary={phase.summary} rows={phase.rows} onAdd={add} onDiscard={() => setPhase({ kind: "compose" })} />
+            {fetched.length ? (
+              <details className="k-ask-fetched">
+                <summary>
+                  Read from {fetched.length} {fetched.length === 1 ? "address" : "addresses"}
+                </summary>
+                <ul>
+                  {fetched.map((u, i) => (
+                    <li key={i}>{u}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </>
         ) : null}
 
         {phase.kind === "added" ? (

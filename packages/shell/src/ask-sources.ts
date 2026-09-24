@@ -11,8 +11,11 @@
 //                       this page only. NEVER localStorage: unlike the identity, a source key has no
 //                       plain-storage fallback, because losing it costs a re-paste, not an account.
 //   Where it goes       Only where this module sends it. An app's source: URLs under its declared
-//                       endpoint. The person's own: origins they allowed, asked the first time the
-//                       model wants one ("Send your Maps key to maps.example.com?").
+//                       endpoint. The person's own: origins they allowed.
+//   Asked first         Every source, keyed or not, the app's or the person's: the first request to a
+//                       host asks the person ("Send your Maps key to maps.example.com?", "Let Ask read
+//                       from overpass-api.de?"), and a yes is remembered for that source. A shared app
+//                       cannot make Ask call its own server behind the person's back.
 //   Who sees it         Nobody else. The model is told a source's id, label, endpoint and docs link
 //                       (`AskSource`); app code is never involved. A key echoed back by an API is
 //                       scrubbed before the response reaches the model.
@@ -71,6 +74,30 @@ export function saveMySource(source: PersonSource): void {
 
 export function removeMySource(id: string): void {
   writeMine(listMySources().filter((s) => s.id !== id));
+}
+
+/** Hosts the person allowed for an app's declared sources, per app, on this device. */
+const APP_OK = (appId: string): string => `karta:ask-source-ok:${appId}`;
+
+function appApprovals(appId: string): Record<string, string[]> {
+  try {
+    const raw = globalThis.localStorage?.getItem(APP_OK(appId));
+    const v: unknown = raw ? JSON.parse(raw) : {};
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, string[]>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function approveAppSource(appId: string, name: string, origin: string): void {
+  const all = appApprovals(appId);
+  const list = Array.isArray(all[name]) ? all[name]! : [];
+  if (list.includes(origin)) return;
+  try {
+    globalThis.localStorage?.setItem(APP_OK(appId), JSON.stringify({ ...all, [name]: [...list, origin] }));
+  } catch {
+    // Not remembered: the person is asked again next time, which is the safe side.
+  }
 }
 
 export function allowOrigin(id: string, origin: string): void {
@@ -151,6 +178,7 @@ export async function resolveSources(
   mine: PersonSource[],
   keys: KeyStore,
 ): Promise<{ usable: ResolvedSource[]; needKey: ResolvedSource[] }> {
+  const approved = appApprovals(appId);
   const all: ResolvedSource[] = [
     ...Object.entries(def.sources ?? {}).map(([name, s]): ResolvedSource => ({
       ask: { id: `app:${name}`, label: s.label ?? name, description: s.description, endpoint: s.endpoint, docs: s.docs },
@@ -159,7 +187,7 @@ export async function resolveSources(
       endpoint: s.endpoint,
       docs: s.docs,
       pin: "endpoint",
-      origins: [],
+      origins: Array.isArray(approved[name]) ? approved[name]! : [],
     })),
     ...mine.map((s): ResolvedSource => ({
       ask: { id: `mine:${s.id}`, label: s.label, description: s.description, endpoint: s.endpoint, docs: s.docs },
@@ -213,10 +241,23 @@ export interface SourceFetcherDeps {
   sources: ResolvedSource[];
   keys: KeyStore;
   fetch: typeof fetch;
-  /** Ask the person: may requests for this source go to `origin`? */
-  confirmOrigin: (source: ResolvedSource, origin: string) => Promise<boolean>;
+  /** Ask the person: may requests for this source go to `origin`? `sendsKey`: this one carries their key. */
+  confirmOrigin: (source: ResolvedSource, origin: string, sendsKey: boolean) => Promise<boolean>;
   /** A yes, to remember for next time. */
   onAllowed: (sourceId: string, origin: string) => void;
+  /** Each URL actually requested, before any key is added to it — for the person to see. */
+  onFetched?: (sourceId: string, url: string) => void;
+}
+
+/** The key as a response might echo it: as sent, URL-encoded, or base64. */
+function keyForms(key: string): string[] {
+  const forms = new Set([key, encodeURIComponent(key), encodeURIComponent(key).replace(/%20/g, "+")]);
+  try {
+    forms.add(btoa(key));
+  } catch {
+    // not Latin-1: no base64 form to look for
+  }
+  return [...forms].filter((f) => f.length >= 4);
 }
 
 /** The host's `SourceFetch` for Ask: every rule in the file header, and never a thrown error. */
@@ -224,24 +265,22 @@ export function makeSourceFetcher(deps: SourceFetcherDeps): SourceFetch {
   const allowed = new Map(deps.sources.map((s) => [s.ask.id, new Set(s.origins)]));
 
   const target = async (src: ResolvedSource, req: SourceRequest): Promise<URL | string> => {
+    let url: URL;
     if (req.kind === "docs") {
       if (!src.docs) return `${src.ask.label} has no documentation link.`;
-      return new URL(src.docs);
-    }
-    let url: URL;
-    try {
-      url = src.endpoint ? new URL(req.url, src.endpoint) : new URL(req.url);
-    } catch {
-      return `"${req.url}" is not a URL${src.endpoint ? "" : " (this source has no endpoint, so give a full https URL)"}.`;
+      url = new URL(src.docs);
+    } else {
+      try {
+        url = src.endpoint ? new URL(req.url, src.endpoint) : new URL(req.url);
+      } catch {
+        return `"${req.url}" is not a URL${src.endpoint ? "" : " (this source has no endpoint, so give a full https URL)"}.`;
+      }
+      if (src.pin === "endpoint" && (!src.endpoint || !under(url, src.endpoint))) return `${src.ask.label} only answers under ${src.endpoint}.`;
     }
     if (url.protocol !== "https:") return "Only https URLs.";
-    if (src.pin === "endpoint") {
-      if (!src.endpoint || !under(url, src.endpoint)) return `${src.ask.label} only answers under ${src.endpoint}.`;
-      return url;
-    }
     const origins = allowed.get(src.ask.id)!;
     if (!origins.has(url.origin)) {
-      const yes = await deps.confirmOrigin(src, url.origin);
+      const yes = await deps.confirmOrigin(src, url.origin, req.kind === "data" && Boolean(src.auth));
       if (!yes) return `The person did not allow requests to ${url.origin} for ${src.ask.label}.`;
       origins.add(url.origin);
       deps.onAllowed(src.ask.id, url.origin);
@@ -254,6 +293,7 @@ export function makeSourceFetcher(deps: SourceFetcherDeps): SourceFetch {
     if (!src) return { ok: false, detail: `No source "${req.source}".` };
     const url = await target(src, req);
     if (typeof url === "string") return { ok: false, detail: url };
+    deps.onFetched?.(src.ask.id, url.toString());
 
     const headers = new Headers({ Accept: req.kind === "docs" ? "text/html, text/plain, */*" : "application/json, text/*;q=0.9, */*;q=0.5" });
     const key = req.kind === "data" && src.auth ? await deps.keys.get(src.keyId) : null;
@@ -261,7 +301,8 @@ export function makeSourceFetcher(deps: SourceFetcherDeps): SourceFetch {
     if (key && src.auth && "header" in src.auth) headers.set(src.auth.header, `${src.auth.prefix ?? ""}${key}`);
     if (key && src.auth && "query" in src.auth) url.searchParams.set(src.auth.query, key);
 
-    const scrub = (text: string): string => (key ? text.split(key).join("[key]") : text);
+    const forms = key ? keyForms(key) : [];
+    const scrub = (text: string): string => forms.reduce((t, f) => t.split(f).join("[key]"), text);
     try {
       const res = await deps.fetch(url.toString(), {
         method: "GET",
