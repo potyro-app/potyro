@@ -6,8 +6,6 @@ import { test, expect, type Page } from "@playwright/test";
 //  • header controls at 41px and 64px in the same row, because a squeezed row wrapped text INSIDE
 //    the buttons that had an icon
 //  • the whole page scrolling sideways on a phone, because that row never wrapped
-//  • Edit mode showing the open page's entity fields no matter which ✎ you clicked
-//  • "Apply with AI" being the only save-looking button, next to controls that need no model
 //  • detail buttons labelled with raw action keys — `snapPhoto`, not "Snap Photo"
 
 const APP_SOURCE = `import { defineApp } from "karta";
@@ -77,37 +75,21 @@ test("the page never scrolls sideways on a phone", async ({ page }) => {
   expect(scrollW, "something is wider than the viewport").toBeLessThanOrEqual(clientW);
 });
 
-test("each edit mark offers controls for what it points at", async ({ page }) => {
-  await open(page);
-  await page.getByRole("button", { name: "Edit mode" }).click();
-
-  // The navigation → tab names. Not the open page's fields, which is what it used to show.
-  await page.getByRole("button", { name: "Edit the navigation / tabs" }).click();
-  await expect(page.locator(".k-structure-heading")).toHaveText("Tab names");
-  await expect(page.getByLabel("Name for the All tab")).toBeVisible();
-  await expect(page.locator(".k-structure-field")).toHaveCount(0);
-  await page.locator(".k-modifydialog").getByRole("button", { name: /Cancel|Close/ }).click();
-
-  // The page → that page's name and its entity's fields.
-  await page.locator(".k-editmark").last().click();
-  await expect(page.locator(".k-structure-heading")).toContainText("Fields of place");
-  await expect(page.getByLabel("Page name")).toBeVisible();
-  await expect(page.getByLabel("Label for name")).toBeVisible();
-});
-
-test("the tab list offers exactly the tabs that are on screen", async ({ page }) => {
+test("edit mode marks exactly the tabs that are on screen", async ({ page }) => {
   // The app has three pages but only two tabs: `one` is `hidden` AND a per-record `detail`, so the
-  // shell keeps it out of the tab bar. The panel listed every page with a title and offered to
-  // rename five "tabs" on an app showing three.
+  // shell keeps it out of the tab bar. The old panel listed every page with a title and offered to
+  // rename five "tabs" on an app showing three. Marking what is on screen can't drift that way —
+  // this holds it there.
   await open(page);
-  const onScreen = await page.locator(".k-tab .k-tab-label").allInnerTexts();
+  const onScreen = await page.locator(".k-nav .k-tab-label").allInnerTexts();
 
   await page.getByRole("button", { name: "Edit mode" }).click();
-  await page.getByRole("button", { name: "Edit the navigation / tabs" }).click();
-  await expect(page.locator(".k-structure-heading")).toHaveText("Tab names");
-
-  const offered = await page.locator(".k-structure-row .k-structure-label").allInnerTexts();
-  expect(offered.sort(), `panel offers ${offered.length} tabs, screen shows ${onScreen.length}`).toEqual(onScreen.sort());
+  const markedTabs = () =>
+    page.evaluate(() => {
+      const h = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get("k-editable");
+      return h ? [...h].filter((r) => r.startContainer.parentElement?.closest(".k-nav")).map((r) => r.toString().trim()) : [];
+    });
+  await expect.poll(async () => (await markedTabs()).sort()).toEqual(onScreen.map((t) => t.trim()).sort());
 });
 
 test("an action that fails tells the user instead of failing silently", async ({ page }) => {
@@ -137,20 +119,6 @@ test("an action that fails tells the user instead of failing silently", async ({
 
   await expect(page.getByText("camera is not available")).toBeVisible();
   expect(crashes, "the failure escaped as an unhandled rejection").toHaveLength(0);
-});
-
-test("the AI button appears only when there is something to send", async ({ page }) => {
-  await open(page);
-  await page.getByRole("button", { name: "Edit mode" }).click();
-  await page.locator(".k-editmark").last().click();
-
-  // With direct controls right there and nothing typed, an "Apply with AI" button is the only thing
-  // that looks like "save" — so a rename reads as needing a model call it does not need.
-  const actions = page.locator(".k-modifydialog .k-form-actions button");
-  await expect(actions).toHaveText(["Cancel"]);
-
-  await page.getByLabel("Describe the change").fill("make it a gallery");
-  await expect(actions).toHaveText(["Cancel", "Apply with AI"]);
 });
 
 test("detail actions are labelled, not keyed", async ({ page }) => {
