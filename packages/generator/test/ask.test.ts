@@ -25,7 +25,7 @@ const PLACES = {
         city: { type: "relation", to: "city" },
         photo: { type: "media" },
         addedBy: { type: "member" },
-        tips: { type: "list", of: { text: { type: "text" } } },
+        tips: { type: "list", of: { text: { type: "text", required: true }, votes: { type: "number" }, by: { type: "relation", to: "city" } } },
         note: { type: "text", default: "none", required: true },
       },
       computed: { stars: () => 1 },
@@ -118,6 +118,24 @@ describe("checkProposedRows", () => {
     const all = !bad.ok ? bad.problems.join("\n") : "";
     expect(all).toMatch(/@p1/);
     expect(all).toMatch(/rec_123/);
+  });
+
+  it("holds list rows to their own fields: no undeclared keys, required sub-fields present", () => {
+    const out = checkProposedRows(PLACES, [
+      { entity: "place", ref: "a", values: { name: "A", tips: [{ text: "go early", secret: 1 }] } },
+      { entity: "place", ref: "b", values: { name: "B", tips: [{ votes: 3 }] } },
+      { entity: "place", ref: "d", values: { name: "D", tips: [{ text: "x", by: "rec_9" }] } },
+    ]);
+    const all = !out.ok ? out.problems.join("\n") : "";
+    expect(all).toMatch(/secret/);
+    expect(all).toMatch(/Text/);
+    expect(all).toMatch(/By \(by\) cannot be set/);
+    expect(checkProposedRows(PLACES, [{ entity: "place", ref: "c", values: { name: "C", tips: [{ text: "ok", votes: 2 }] } }]).ok).toBe(true);
+  });
+
+  it("ignores rows that are not objects instead of failing on them", () => {
+    const out = checkProposedRows(PLACES, [null as unknown as never, "x" as unknown as never]);
+    expect(out.ok).toBe(false);
   });
 
   it("refuses repeated refs and an empty proposal", () => {

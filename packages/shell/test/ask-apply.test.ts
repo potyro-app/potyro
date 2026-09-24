@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AppDefinition, KartaRecord } from "karta";
-import { applyProposal, markDuplicates } from "../src/ask-apply.js";
+import { ApplyError, applyProposal, markDuplicates } from "../src/ask-apply.js";
 import { askEnabled, setAskEnabled } from "../src/ask-setting.js";
 
 // Ask (#213), the shell's half: which proposed rows the person already has (decided HERE, on the
@@ -81,6 +81,27 @@ describe("applyProposal", () => {
     await applyProposal(rt, DEF, [{ entity: "place", ref: "p", values: { name: "Park", city: "@lx", near: ["@gone"] } }]);
     expect(rt.created[0]!.data).toEqual({ name: "Park" });
     expect(rt.patched).toEqual([]);
+  });
+});
+
+describe("applyProposal when a write fails", () => {
+  it("says how many were saved before it stopped", async () => {
+    const rt = fakeRuntime();
+    const create = rt.create;
+    let n = 0;
+    rt.create = async (entity, data) => {
+      if (++n === 2) throw new Error("disk full");
+      return create(entity, data);
+    };
+    const rows = [
+      { entity: "note", ref: "a", values: { body: "1" } },
+      { entity: "note", ref: "b", values: { body: "2" } },
+      { entity: "note", ref: "c", values: { body: "3" } },
+    ];
+    const err = await applyProposal(rt, DEF, rows).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApplyError);
+    expect((err as ApplyError).created).toBe(1);
+    expect((err as ApplyError).message).toMatch(/disk full/);
   });
 });
 
