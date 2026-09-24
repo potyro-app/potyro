@@ -138,14 +138,44 @@ function relationProblem(value: unknown, to: string, many: boolean, refs: Map<st
 }
 
 /**
+ * Why rows of a `list` field do not fit its `of`, beyond the value rules `fieldValueProblem` already
+ * applies: a key the list does not declare, or a required sub-field left empty. The value rules only
+ * walk the declared keys, so without this an extra key inside a row would be stored as-is.
+ */
+function listRowProblems(of: Record<string, Field>, value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  value.forEach((row, i) => {
+    if (!isObject(row)) return; // fieldValueProblem already says it must be a list of rows
+    const at = `${label} › row ${i + 1}`;
+    for (const key of Object.keys(row)) if (!of[key]) out.push(`${at}: there is no "${key}" here; it has ${Object.keys(of).join(", ")}.`);
+    for (const [key, sub] of Object.entries(of)) {
+      const v = row[key];
+      // Inside a list row there is no "@ref" to resolve, so a link, a photo or a person would be an id
+      // the model made up.
+      if (v != null && (UNSETTABLE.has(sub.type) || sub.type === "relation")) out.push(`${at}: ${labelOf(key, sub)} (${key}) cannot be set here; leave it out.`);
+      if (sub.required && sub.default === undefined && (v == null || v === "")) out.push(`${at}: ${labelOf(key, sub)} (${key}) is required.`);
+    }
+  });
+  return out;
+}
+
+/**
  * Do these rows fit the app? Every problem at once, so the model can fix them in one go.
  *
  * The value rules are the store's own (`fieldValueProblem`, write mode) — a proposal is held to what
  * a save would be. On top of them: the entity exists, no undeclared field, required fields present,
  * nothing Ask cannot set, and relations point inside the proposal.
  */
-export function checkProposedRows(def: AppDefinition, rows: ProposedRow[]): { ok: true; rows: ProposedRow[] } | { ok: false; problems: string[] } {
+export function checkProposedRows(def: AppDefinition, given: readonly unknown[]): { ok: true; rows: ProposedRow[] } | { ok: false; problems: string[] } {
   const problems: string[] = [];
+  // The model's JSON, not yet a row: anything that is not an object is reported, never dereferenced.
+  const rows: ProposedRow[] = [];
+  given.forEach((row, i) => {
+    if (isObject(row)) rows.push(row as unknown as ProposedRow);
+    else problems.push(`Row ${i + 1} is not an object { entity, ref, values }.`);
+  });
+  if (problems.length) return { ok: false, problems };
   if (!rows.length) problems.push("The proposal has no rows.");
   if (rows.length > MAX_ROWS) problems.push(`At most ${MAX_ROWS} rows in one proposal.`);
 
@@ -180,6 +210,7 @@ export function checkProposedRows(def: AppDefinition, rows: ProposedRow[]): { ok
           ? relationProblem(value, field.to, Boolean(field.many), refs, label)
           : fieldValueProblem(field, value, "write", label);
       if (problem) problems.push(`${at}: ${problem}`);
+      else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`));
     }
     for (const [key, field] of Object.entries(entity.fields)) {
       if (!field.required || field.default !== undefined || UNSETTABLE.has(field.type)) continue;
@@ -234,7 +265,7 @@ function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTo
       required: ["summary", "rows"],
     },
     run: async (args) => {
-      const rows = (Array.isArray(args.rows) ? args.rows : []) as ProposedRow[];
+      const rows: unknown[] = Array.isArray(args.rows) ? args.rows : [];
       const checked = checkProposedRows(def, rows);
       if (!checked.ok) return { ok: false, detail: `Not saved, fix these and call again:\n${checked.problems.map((p) => `- ${p}`).join("\n")}` };
       accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows });

@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { humanizeKey, type AppDefinition, type Field } from "karta";
 import type { KartaRuntime } from "@karta/runtime";
 import type { AskStep, Proposal } from "@karta/generator/agent";
-import { applyProposal, markDuplicates, type ReviewRow } from "./ask-apply.js";
+import { ApplyError, applyProposal, markDuplicates, type ReviewRow } from "./ask-apply.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
@@ -164,18 +164,20 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const refused = askRefusal(engine);
 
   useEffect(() => () => abort.current?.abort(), []);
+  const closeRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") closeRef.current();
     };
     globalThis.addEventListener?.("keydown", onKey);
     return () => globalThis.removeEventListener?.("keydown", onKey);
-  });
+  }, []);
 
   const close = (): void => {
     abort.current?.abort();
     onClose();
   };
+  closeRef.current = close;
 
   const land = async (outcome: StartAskOutcome): Promise<void> => {
     if (outcome.kind === "proposal") {
@@ -213,7 +215,15 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     setPhase({ kind: "saving" });
     void applyProposal(runtime, def, rows).then(
       (count) => setPhase({ kind: "added", count }),
-      (e: unknown) => setPhase({ kind: "note", head: "Not everything was added", text: e instanceof Error ? e.message : String(e) }),
+      (e: unknown) => {
+        const saved = e instanceof ApplyError ? e.created : 0;
+        const why = e instanceof Error ? e.message : String(e);
+        setPhase({
+          kind: "note",
+          head: saved ? `Added ${saved} of ${rows.length}, then it stopped` : "Nothing was added",
+          text: `${why}${saved ? " The ones already added are in the app; asking again will mark them as already there." : ""}`,
+        });
+      },
     );
   };
 

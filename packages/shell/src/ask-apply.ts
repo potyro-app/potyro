@@ -44,8 +44,29 @@ function relationKeys(def: AppDefinition, entity: string): Array<[string, Field 
   return Object.entries(def.entities[entity]?.fields ?? {}).filter((e): e is [string, Field & { type: "relation" }] => e[1].type === "relation");
 }
 
-/** Save the accepted rows. Returns how many records were created. */
+/** A save that stopped partway. The records before it ARE saved: `created` says how many, so the
+ *  person is told the truth rather than "nothing happened". */
+export class ApplyError extends Error {
+  constructor(
+    readonly created: number,
+    cause: unknown,
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "ApplyError";
+  }
+}
+
+/** Save the accepted rows. Returns how many records were created; throws `ApplyError` if a write fails. */
 export async function applyProposal(runtime: Writer, def: AppDefinition, rows: ProposedRow[]): Promise<number> {
+  let created = 0;
+  try {
+    return await saveRows(runtime, def, rows, () => (created += 1));
+  } catch (e) {
+    throw new ApplyError(created, e);
+  }
+}
+
+async function saveRows(runtime: Writer, def: AppDefinition, rows: ProposedRow[], onCreated: () => void): Promise<number> {
   const accepted = new Set(rows.map((r) => r.ref));
   const ids = new Map<string, string>();
   const later: Array<{ row: ProposedRow; id: string; links: Record<string, unknown> }> = [];
@@ -73,9 +94,10 @@ export async function applyProposal(runtime: Writer, def: AppDefinition, rows: P
       if (refs.every((r) => ids.has(r))) data[key] = field.many ? refs.map((r) => ids.get(r)) : ids.get(refs[0]!);
       else links[key] = refs;
     }
-    const created = await runtime.create(row.entity, data as Partial<KartaRecord>);
-    ids.set(row.ref, created.id);
-    if (Object.keys(links).length) later.push({ row, id: created.id, links });
+    const record = await runtime.create(row.entity, data as Partial<KartaRecord>);
+    onCreated();
+    ids.set(row.ref, record.id);
+    if (Object.keys(links).length) later.push({ row, id: record.id, links });
   }
 
   for (const { row, id, links } of later) {
