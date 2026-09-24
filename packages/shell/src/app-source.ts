@@ -566,13 +566,35 @@ function removeProperty(source: string, ms: MagicStringType, obj: Node, name: st
  *
  * Reordering has to carry a field's comment with it, or the explanation ends up above whatever field
  * happens to land in that slot next — worse than no comment at all.
+ *
+ * Which comment is whose goes by LINE, not by the parser: Babel hands `{ … }, // the main list` to
+ * the NEXT sibling as a leading comment. So a leading comment only counts when it starts its own
+ * line, and a comment after the element on its last line is carried as the element's own.
  */
-function extentOf(source: string, node: Node): { start: number; end: number; text: string } {
+function extentOf(source: string, node: Node): { start: number; end: number; text: string; comment: string } {
   let start = node.start;
-  for (const c of asArray(node.leadingComments)) if (c.start < start) start = c.start;
+  for (const c of asArray(node.leadingComments)) {
+    const ownLine = /^[ \t]*$/.test(source.slice(source.lastIndexOf("\n", c.start - 1) + 1, c.start));
+    if (ownLine && c.start < start) start = c.start;
+  }
   let end = node.end;
   if (source[end] === ",") end += 1;
-  return { start, end, text: source.slice(start, end) };
+  const text = source.slice(start, end);
+  const trailing = /^[ \t]*(\/\/[^\n]*|\/\*[^\n]*?\*\/)[ \t]*(?=\n|$)/.exec(source.slice(end));
+  if (trailing) end += trailing[0].length;
+  return { start, end, text, comment: trailing?.[1] ?? "" };
+}
+
+/** Elements in their new order, one per line: a comma after each (the last only if `lastComma`),
+ *  and each element's same-line comment after its comma, where it was. */
+function joinRun(parts: readonly { text: string; comment: string }[], indent: string, lastComma: boolean): string {
+  return parts
+    .map(({ text, comment }, i) => {
+      const body = text.trim().replace(/,$/, "");
+      const comma = i < parts.length - 1 || lastComma ? "," : "";
+      return `${body}${comma}${comment ? ` ${comment}` : ""}`;
+    })
+    .join(`\n${indent}`);
 }
 
 /** The indentation of the line `index` sits on. */
@@ -633,11 +655,7 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     const last = byId.get(ids[ids.length - 1]!)!;
     // Keep the array's own trailing-comma style: only the last page decides whether there is one.
     const trailing = last.text.trimEnd().endsWith(",");
-    const rewritten = edit.order
-      .map((id) => byId.get(id)!.text.trim().replace(/,$/, ""))
-      .map((text, i) => (i < edit.order.length - 1 || trailing ? `${text},` : text))
-      .join(`\n${indent}`);
-    ms.overwrite(first.start, last.end, rewritten);
+    ms.overwrite(first.start, last.end, joinRun(edit.order.map((id) => byId.get(id)!), indent, trailing));
     return finish(t, ms, "reordered the pages");
   }
 
@@ -677,11 +695,8 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     // overlapping ranges, and this is a handful of lines of text.
     const first = byKey.get(currentKeys[0]!)!;
     const last = byKey.get(currentKeys[currentKeys.length - 1]!)!;
-    const rewritten = edit.order
-      .map((k) => byKey.get(k)!.text.trim())
-      .map((text, i) => (text.endsWith(",") || i === edit.order.length - 1 ? text : `${text},`))
-      .join(`\n${indent}`);
-    ms.overwrite(first.start, last.end, rewritten);
+    const lastComma = last.text.trimEnd().endsWith(",");
+    ms.overwrite(first.start, last.end, joinRun(edit.order.map((k) => byKey.get(k)!), indent, lastComma));
     return finish(t, ms, `reordered ${edit.entity} fields`);
   }
 

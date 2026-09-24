@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { AppShape, TextSite } from "../src/app-source.js";
-import { collectTargets, sameThing } from "../src/inline-targets.js";
+import { appRoots, collectTargets, sameThing } from "../src/inline-targets.js";
 
 const SHAPE: AppShape = {
   entities: [
@@ -31,6 +31,15 @@ function render(html: string): Element {
 
 const summary = (root: Element) =>
   collectTargets([root], SITES, SHAPE).map((t) => `${t.kind}:${t.text}`);
+
+describe("appRoots", () => {
+  it("is the topmost sheet while one is open — the page behind it is not tappable", () => {
+    document.body.innerHTML = `<div class="k-app-chrome"></div><div class="k-sheet" id="a"></div><div class="k-sheet" id="b"></div>`;
+    expect(appRoots().map((r) => r.id)).toEqual(["b"]);
+    document.body.innerHTML = `<div class="k-app-chrome" id="c"></div>`;
+    expect(appRoots().map((r) => r.id)).toEqual(["c"]);
+  });
+});
 
 describe("collectTargets", () => {
   it("pairs literal text, including text split around an expression", () => {

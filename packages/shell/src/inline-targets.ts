@@ -42,9 +42,15 @@ const NOT_THE_APP = [
 /** Text the way JSX renders it and `textSites` reports it: whitespace runs as one space, trimmed. */
 export const normalizeText = (s: string): string => s.replace(/\s+/g, " ").trim();
 
-/** Where the app is on screen: its chrome, plus the sheets views portal to <body>. */
+/**
+ * Where the app is on screen: the topmost sheet when one is open (views portal them to <body>,
+ * stacked in DOM order), otherwise the chrome. Only one root, because the page behind a sheet still
+ * lays out under it — marking it too would let a tap on the sheet land on a label hidden beneath.
+ */
 export function appRoots(doc: Document = document): Element[] {
-  return [...doc.querySelectorAll(".k-app-chrome, .k-sheet")];
+  const sheets = doc.querySelectorAll(".k-sheet");
+  const top = sheets[sheets.length - 1] ?? doc.querySelector(".k-app-chrome");
+  return top ? [top] : [];
 }
 
 export function collectTargets(roots: readonly Element[], sites: readonly TextSite[], shape: AppShape): InlineTarget[] {
