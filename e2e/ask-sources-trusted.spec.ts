@@ -124,7 +124,7 @@ test("an app's source and the person's own: keys stored safely, sent only where 
   const question = dialog.getByRole("alertdialog");
   await expect(question).toContainText("Send your My maps key to maps.mine.test?");
   expect(apiCalls.map((c) => new URL(c.url).host)).toEqual(["api.places.test"]);
-  await question.getByRole("button", { name: "Allow" }).click();
+  await question.getByRole("button", { name: "Allow", exact: true }).click();
 
   await expect(dialog.getByText("Two spots.")).toBeVisible();
   expect(apiCalls).toEqual([
