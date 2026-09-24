@@ -86,7 +86,7 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
   if (error) {
     return (
       <section className="k-aggregate" aria-labelledby="k-agg-h">
-        {title ? <h2 id="k-agg-h">{title}</h2> : null}
+        {title ? <h2 id="k-agg-h" data-k-wording>{title}</h2> : null}
         <p className="k-aggregate-error" role="status">
           This screen could not be worked out: {error}
         </p>
@@ -97,8 +97,8 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
   if (!derived.length) {
     return (
       <section className="k-aggregate" aria-labelledby="k-agg-h">
-        {title ? <h2 id="k-agg-h">{title}</h2> : null}
-        <p className="k-muted">{emptyText}</p>
+        {title ? <h2 id="k-agg-h" data-k-wording>{title}</h2> : null}
+        <p className="k-muted" data-k-wording>{emptyText}</p>
       </section>
     );
   }
@@ -114,7 +114,7 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
 
   return (
     <section className="k-aggregate" aria-labelledby={title ? "k-agg-h" : undefined}>
-      {title ? <h2 id="k-agg-h">{title}</h2> : null}
+      {title ? <h2 id="k-agg-h" data-k-wording>{title}</h2> : null}
       {sections.map((section, i) => (
         <div key={section.group ?? i} className="k-aggregate-section">
           {section.group ? <h3 className="k-aggregate-group">{section.group}</h3> : null}

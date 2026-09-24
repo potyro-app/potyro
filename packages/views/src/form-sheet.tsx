@@ -124,6 +124,9 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        // Record data like any built-in view (a relation's chosen record, a list's rows); its field
+        // labels are tagged `data-k-field` for edit mode.
+        data-k-view
         tabIndex={-1}
         data-dragging={dragY > 0 ? "true" : undefined}
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
