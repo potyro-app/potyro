@@ -7918,3 +7918,109 @@ body:has(.k-tabbar) .k-toasts {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Ask's sources (#213): a quiet disclosure under the request. A source waiting for a key is the one
+   thing here that needs the person, so it wears the accent edge; the rest read as a plain list. */
+.k-ask-sources {
+  border-top: 1px dashed var(--line);
+  padding-top: 0.6rem;
+}
+.k-ask-sources > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  list-style-position: outside;
+}
+.k-ask-sources[open] > summary {
+  margin-bottom: 0.6rem;
+}
+.k-ask-source-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.k-ask-source {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-source[data-waiting] {
+  border-left-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-ask-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
+}
+.k-ask-source-name {
+  font-weight: 600;
+}
+.k-ask-source-host {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+.k-ask-source-from {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-ask-source-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-ask-source .k-ask-off {
+  justify-self: start;
+  margin: 0;
+}
+.k-ask-key,
+.k-ask-auth {
+  display: flex;
+  gap: 0.4rem;
+}
+.k-ask-key .k-input,
+.k-ask-auth .k-input {
+  flex: 1;
+  min-width: 0;
+}
+.k-ask-add-source {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  margin-bottom: 0.6rem;
+}
+.k-ask-field {
+  display: grid;
+  gap: 0.25rem;
+}
+.k-ask-add-btn {
+  margin-bottom: 0.5rem;
+}
+.k-ask-question {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--accent-line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-tint);
+}
+.k-ask-question p {
+  margin: 0;
+}

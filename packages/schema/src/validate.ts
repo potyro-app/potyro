@@ -654,6 +654,28 @@ const permissionSchema = z.object({
 });
 
 
+const httpsUrl = z
+  .string()
+  .url("must be a full URL")
+  .refine((u) => u.startsWith("https://"), "must be an https URL");
+
+// Strict: an unknown key is an error, not dropped. The one thing that must never be written here is
+// a key (#213), and "apiKey: …" silently ignored would still be a key sitting in the app's source.
+const sourceSchema = z
+  .object({
+    label: z.string().optional(),
+    description: z.string().optional(),
+    endpoint: httpsUrl,
+    docs: httpsUrl.optional(),
+    auth: z
+      .union([
+        z.object({ header: z.string().min(1), prefix: z.string().optional() }).strict(),
+        z.object({ query: z.string().min(1) }).strict(),
+      ])
+      .optional(),
+  })
+  .strict();
+
 export const structureSchema = z.object({
   id: z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/, "id must be a lowercase slug"),
   name: z.string().min(1),
@@ -669,6 +691,7 @@ export const structureSchema = z.object({
   pages: z.array(pageSchema),
   reminders: z.array(reminderSchema).optional(),
   migrations: z.array(migrationSchema).optional(),
+  sources: z.record(z.string().regex(/^[a-z][a-zA-Z0-9_-]*$/, "a source name is a short key, like places"), sourceSchema).optional(),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

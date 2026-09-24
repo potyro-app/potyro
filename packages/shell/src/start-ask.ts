@@ -5,10 +5,11 @@
 // as an outcome, never a throw, so the panel renders one shape for "this cannot run".
 //
 // Only the DEFINITION goes in. No store, no runtime, no records: the model sees how the app is
-// organised and nothing that is in it (packages/generator/src/agent/ask.ts).
+// organised and nothing that is in it (packages/generator/src/agent/ask.ts). Outside data comes
+// through `fetchSource`, which holds the keys; the loop only ever sees what came back.
 
 import type { AppDefinition } from "karta";
-import { runAskLoop, type AskOutcome, type AskStep } from "@karta/generator/agent";
+import { runAskLoop, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@karta/generator/agent";
 import { createOpenRouterEngine } from "@karta/generator/backends";
 import type { EngineConfig } from "./engines.js";
 
@@ -25,6 +26,9 @@ export async function startAsk(opts: {
   definition: AppDefinition;
   request: string;
   engine: EngineConfig;
+  /** Outside data the model may read, and the host that fetches it (ask-sources.ts). */
+  sources?: AskSource[];
+  fetchSource?: SourceFetch;
   onStep?: (step: AskStep) => void;
   signal?: AbortSignal;
 }): Promise<StartAskOutcome> {
@@ -36,6 +40,8 @@ export async function startAsk(opts: {
       model: opts.engine.openrouterModel,
       definition: opts.definition,
       request: opts.request,
+      sources: opts.sources,
+      fetchSource: opts.fetchSource,
       onStep: opts.onStep,
       signal: opts.signal,
     });

@@ -36,4 +36,4 @@ export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAcces
 export { runModifyLoop, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
-export { runAskLoop, checkProposedRows, describeStructure, ASK_SYSTEM_PROMPT, type AskLoopDeps, type AskOutcome, type AskStep, type Proposal, type ProposedRow } from "./ask.js";
+export { runAskLoop, checkProposedRows, describeStructure, ASK_SYSTEM_PROMPT, type AskLoopDeps, type AskOutcome, type AskStep, type Proposal, type ProposedRow, type AskSource, type SourceFetch, type SourceRequest } from "./ask.js";
