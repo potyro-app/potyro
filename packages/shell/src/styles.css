@@ -7024,6 +7024,20 @@ body:has(.k-tabbar) .k-toasts {
 .k-sync-status[data-state="connecting"] { color: var(--ink-faint); }
 .k-sync-status[data-state="offline"],
 .k-sync-status[data-state="local"] { color: var(--warn); }
+/* On a phone's top bar the pill is its icon: the words would push the menu off the screen. They stay
+   in the page — read out, and in the tooltip — just not drawn. */
+.k-topbar .k-sync-status {
+  flex: none;
+  padding: 0.15em 0.45em;
+}
+.k-topbar .k-sync-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 /* Person chips — `member` fields (KA-19). A person reads as a person, not as an opaque id:
    the chip is the same shape whether it is being displayed or picked, so the picker looks like

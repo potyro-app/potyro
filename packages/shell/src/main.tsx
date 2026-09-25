@@ -493,6 +493,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       open = false;
       liveApps(-1);
       for (const stop of stops.splice(0)) stop();
+      // Writes still on their way land first — a tick then Home used to close the store under its
+      // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
+      await composed!.runtime.settle();
       composed!.loaded.dispose();
       await rawStore.close();
     },

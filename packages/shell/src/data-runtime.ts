@@ -102,5 +102,10 @@ export async function openDataSession(app: UserApp, caps: Capabilities): Promise
       opaque: [...decl.opaque, ...(rejected[key] ?? [])],
     };
   });
-  return { runtime, store, entities, close: () => store.close() };
+  // An edit saved just before switching app lands before the store is let go.
+  const close = async (): Promise<void> => {
+    await runtime.settle();
+    await store.close();
+  };
+  return { runtime, store, entities, close };
 }

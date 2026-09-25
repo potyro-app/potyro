@@ -50,6 +50,11 @@ export interface KartaRuntime extends Runtime {
   registerViewControl(pageId: string, handle: (verb: string, arg?: unknown) => boolean | Promise<boolean>): () => void;
   /** Run a page's declared button (`Page.actions[index]`), with the page's current params in ctx. */
   runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void>;
+  /**
+   * Resolves once every write this runtime started has landed (or failed). Await it before closing
+   * the store: a write still on its way would otherwise land on a closed database and be lost.
+   */
+  settle(): Promise<void>;
 }
 
 export function createRuntime(deps: RuntimeDeps): KartaRuntime {
@@ -78,6 +83,7 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
   return {
     watchMedia: (ref, cb) => deps.store.subscribeBlob?.(ref, cb) ?? (() => {}),
     registerViewControl: (pageId, handle) => core.registerViewControl(pageId, handle),
+    settle: () => core.settle(),
     async runPageAction(pageId, index, params) {
       // The same catch `runAction` needs, for the same reason: a button fires this from a click
       // handler, so an escaping rejection would be invisible to the person who pressed it.
