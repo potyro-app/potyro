@@ -1075,6 +1075,27 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   font-size: 0.75rem;
   color: var(--ink-faint);
 }
+/* Something that happened to the app rather than something asked of it — it arrived from someone,
+   was rolled back, was changed by hand. One quiet line between the exchanges, never a question. */
+.k-thread-event {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+.k-thread-event::before {
+  content: "";
+  flex: none;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--line);
+  transform: translateY(-0.1rem);
+}
+.k-thread-event .k-thread-seq {
+  margin-left: 0;
+}
 
 /* The Look panel: appearance, and the colour the shell wears. */
 .k-look {

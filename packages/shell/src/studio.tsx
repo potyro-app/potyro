@@ -33,6 +33,7 @@ import { UiHost } from "./ui-host.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { duplicateUserApp, getUserApp, listUserApps, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { turnsFromHistory, type Turn } from "./studio-thread.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { History } from "./history.js";
 import { EngineSettings } from "./engine-settings.js";
@@ -78,18 +79,6 @@ interface Preview {
   questions: UiHost;
   /** Which path actually ran — the isolate fallback is only taken if the trusted load throws. */
   provenance: Provenance;
-}
-
-/** One exchange in the Studio: what was asked, and what came back. */
-interface Turn {
-  id: string;
-  prompt: string;
-  /** What the app did about it, once it is known — absent while the model is still working. */
-  outcome?: string;
-  /** A turn that changed nothing: a refusal, a question, or a failure. Shown differently. */
-  refused?: boolean;
-  /** The version this became, for turns read back from history. */
-  seq?: number;
 }
 
 export function Studio({
@@ -240,13 +229,7 @@ export function Studio({
     void import("./app-history.js").then(async ({ listVersions }) => {
       const versions = await listVersions(currentId);
       if (!alive) return;
-      setTurns(
-        versions
-          .slice()
-          .reverse()
-          .filter((v) => v.note)
-          .map((v) => ({ id: `v${v.seq}`, prompt: v.note!, outcome: v.rationale, seq: v.seq })),
-      );
+      setTurns(turnsFromHistory(versions));
     });
     return () => {
       alive = false;
@@ -774,21 +757,28 @@ export function Studio({
         <aside className="k-studio-controls">
           {turns.length ? (
             <ol className="k-thread" aria-label="What has been asked of this app">
-              {turns.map((turn) => (
-                <li key={turn.id} className="k-thread-turn">
-                  <p className="k-thread-ask">{turn.prompt}</p>
-                  {turn.outcome ? (
-                    <p className="k-thread-answer" data-refused={turn.refused || undefined}>
-                      {turn.outcome}
-                      {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
-                    </p>
-                  ) : (
-                    <p className="k-thread-answer k-muted" aria-live="polite">
-                      Working…
-                    </p>
-                  )}
-                </li>
-              ))}
+              {turns.map((turn) =>
+                turn.event ? (
+                  <li key={turn.id} className="k-thread-event">
+                    {turn.prompt}
+                    {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
+                  </li>
+                ) : (
+                  <li key={turn.id} className="k-thread-turn">
+                    <p className="k-thread-ask">{turn.prompt}</p>
+                    {turn.outcome ? (
+                      <p className="k-thread-answer" data-refused={turn.refused || undefined}>
+                        {turn.outcome}
+                        {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
+                      </p>
+                    ) : (
+                      <p className="k-thread-answer k-muted" aria-live="polite">
+                        Working…
+                      </p>
+                    )}
+                  </li>
+                ),
+              )}
             </ol>
           ) : null}
           <label className="k-field-label" htmlFor="k-studio-desc">Describe an app — or a change to make</label>
