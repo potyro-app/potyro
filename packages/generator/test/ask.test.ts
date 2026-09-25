@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppDefinition } from "karta";
-import { checkProposedRows, describeStructure, runAskLoop, type AskLoopDeps } from "../src/agent/ask.js";
+import { checkProposal, checkProposedRows, describeStructure, runAskLoop, type AskLoopDeps } from "../src/agent/ask.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
 // Ask (#213): the model works on an app's data in the app's own shape. It sees the app's STRUCTURE
@@ -157,7 +157,7 @@ describe("runAskLoop", () => {
     const rows = [{ entity: "place", ref: "p1", values: { name: "Jardim da Estrela", kind: "park" } }];
     const { engine } = scripted([propose("t1", { summary: "One park.", rows })]);
     const out = await runAskLoop(deps({ engine }));
-    expect(out).toEqual({ kind: "proposal", proposal: { summary: "One park.", rows } });
+    expect(out).toEqual({ kind: "proposal", proposal: { summary: "One park.", rows, actions: [] } });
   });
 
   it("sends a proposal that does not fit back to the model with the reasons", async () => {
@@ -235,5 +235,75 @@ describe("runAskLoop with data sources", () => {
     await runAskLoop(deps({ engine, sources, fetchSource: async () => ((called = true), { ok: true, detail: "" }) }));
     expect(called).toBe(false);
     expect(seen[1]!.messages.find((m) => m.role === "tool")!.content).toMatch(/app:places/);
+  });
+});
+
+describe("actions in a proposal", () => {
+  const PLANTS = {
+    id: "plants",
+    name: "Plants",
+    entities: {
+      room: { displayField: "name", fields: { name: { type: "text" } } },
+      plant: {
+        displayField: "name",
+        fields: { name: { type: "text", required: true }, room: { type: "relation", to: "room" } },
+        actions: {
+          water: () => undefined,
+          feed: { run: () => undefined, label: "Feed", description: "Log a feeding", input: { grams: { type: "number", min: 0, required: true } } },
+          move: { run: () => undefined, input: { to: { type: "relation", to: "room" } } },
+        },
+      },
+    },
+    pages: [],
+  } as unknown as AppDefinition;
+
+  it("describes each action: what it does and what it takes", () => {
+    const text = describeStructure(PLANTS);
+    expect(text).toMatch(/water.*takes nothing/);
+    expect(text).toMatch(/feed.*Log a feeding.*grams/);
+    expect(text).toMatch(/match/);
+  });
+
+  it("accepts runs on a new row, or on records named by the person, with input that fits", () => {
+    const out = checkProposal(
+      PLANTS,
+      [{ entity: "plant", ref: "b", values: { name: "Basil", room: { match: "Kitchen" } } }],
+      [
+        { entity: "plant", action: "water", on: "@b" },
+        { entity: "plant", action: "water", match: "fern" },
+        { entity: "plant", action: "feed", match: "monstera", input: { grams: 10 } },
+        { entity: "plant", action: "move", match: "monstera", input: { to: { match: "Bedroom" } } },
+      ],
+    );
+    expect(out.ok).toBe(true);
+  });
+
+  it("refuses an action the entity lacks, a missing or bad input, input to an action that takes none, and a run with no target", () => {
+    const out = checkProposal(PLANTS, [], [
+      { entity: "plant", action: "prune", match: "fern" },
+      { entity: "plant", action: "feed", match: "fern" },
+      { entity: "plant", action: "feed", match: "fern", input: { grams: -1 } },
+      { entity: "plant", action: "water", match: "fern", input: { litres: 1 } },
+      { entity: "plant", action: "water" },
+      { entity: "plant", action: "water", on: "@nothing" },
+    ]);
+    const all = !out.ok ? out.problems.join("\n") : "";
+    expect(all).toMatch(/prune/);
+    expect(all).toMatch(/Grams.*required/);
+    expect(all).toMatch(/at least 0/);
+    expect(all).toMatch(/takes nothing/);
+    expect(all).toMatch(/on.*or.*match/);
+    expect(all).toMatch(/@nothing/);
+  });
+
+  it("a relation may name a record the person has: { match }", () => {
+    expect(checkProposedRows(PLANTS, [{ entity: "plant", ref: "b", values: { name: "Basil", room: { match: "" } } }]).ok).toBe(false);
+    expect(checkProposedRows(PLANTS, [{ entity: "plant", ref: "b", values: { name: "Basil", room: { match: "Kitchen" } } }]).ok).toBe(true);
+  });
+
+  it("an actions-only proposal is a proposal", async () => {
+    const { engine } = scripted([propose("t1", { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] })]);
+    const out = await runAskLoop(deps({ engine, definition: PLANTS }));
+    expect(out).toEqual({ kind: "proposal", proposal: { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] } });
   });
 });

@@ -154,6 +154,17 @@ const fieldGroupSchema = z.object({
   collapsible: z.boolean().optional(),
 });
 
+// `run` may be the isolate's placeholder for a function the host cannot see (a definition read out
+// of the sandbox carries "__karta_fn__" there); everywhere else it must be a real function.
+const actionDefSchema = z
+  .object({
+    run: z.union([zFn, z.literal("__karta_fn__")]),
+    label: z.string().min(1).optional(),
+    description: z.string().optional(),
+    input: z.record(fieldSchema).optional(),
+  })
+  .strict();
+
 const entitySchema = z.object({
   label: z.string().optional(),
   icon: z.string().optional(),
@@ -161,7 +172,7 @@ const entitySchema = z.object({
   fields: z.record(fieldSchema),
   groups: z.array(fieldGroupSchema).optional(),
   computed: z.record(zFn).optional(),
-  actions: z.record(zFn).optional(),
+  actions: z.record(z.union([zFn, actionDefSchema])).optional(),
   editableBy: z.enum(["anyone", "creator"]).optional(),
 });
 

@@ -1,4 +1,4 @@
-import { resolveView } from "karta";
+import { actionInfo, actionInputProblem, FieldValueError, resolveView } from "karta";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
@@ -223,7 +223,20 @@ export class RuntimeCore {
     const ctx = this.ctxFor(params);
     const record = await ctx.get(entity, id);
     if (!record) throw new Error(`runAction: ${entity}/${id} not found`);
-    await this.app.callAction(entity, key, record, ctx, input);
+    // An action that declares its input (#213) gets it checked here, whoever runs it; a button that
+    // brings none gets a form of those fields, titled with the action's label.
+    const info = actionInfo(this.definition.entities[entity], key);
+    let given = input;
+    if (info?.input) {
+      if (given === undefined) {
+        const filled = await ctx.ui.form({ title: info.label, submit: info.label, fields: info.input });
+        if (filled == null) return;
+        given = filled;
+      }
+      const problem = actionInputProblem(info.input, given);
+      if (problem) throw new FieldValueError(problem);
+    }
+    await this.app.callAction(entity, key, record, ctx, given);
   }
 
   async create(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {

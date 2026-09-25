@@ -8045,3 +8045,74 @@ body:has(.k-tabbar) .k-toasts {
   font-size: 0.72rem;
   overflow-wrap: anywhere;
 }
+
+/* Ask's actions in the review (#213): what runs, then on which records. A run on a record this
+   proposal adds says "new" and follows that row's tick. */
+.k-ask-action {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-action-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+}
+.k-ask-action-name {
+  font-weight: 600;
+}
+.k-ask-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--warn);
+}
+.k-ask-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.k-ask-target label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-ask-target[data-ticked] label {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-ask-target input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+.k-ask-target input:disabled + span {
+  color: var(--ink-faint);
+}
+.k-ask-target label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-ask-target-new {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.k-ask-row-body .k-ask-note {
+  display: block;
+}

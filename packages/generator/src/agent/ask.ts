@@ -13,7 +13,7 @@
 // that the model cannot link to a record that already exists or know what is already there; the
 // shell de-duplicates against the person's records, locally, after the proposal comes back.
 
-import { fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "karta";
+import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "karta";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 
@@ -24,10 +24,24 @@ export interface ProposedRow {
   values: Record<string, unknown>;
 }
 
+/**
+ * One run of an app's action the model proposes: on a row of this proposal (`on: "@ref"`), or on the
+ * person's records whose name matches (`match`), found on the device, since the model never sees
+ * them. `input` fills the fields the action declares.
+ */
+export interface ProposedAction {
+  entity: string;
+  action: string;
+  on?: string;
+  match?: string;
+  input?: Record<string, unknown>;
+}
+
 export interface Proposal {
   /** One or two sentences for the person: what this is. */
   summary: string;
   rows: ProposedRow[];
+  actions: ProposedAction[];
 }
 
 export type AskStep =
@@ -108,7 +122,10 @@ function describeField(key: string, field: Field): string {
       rules.push('place: { "lat": number, "lng": number, "label"?: string }');
       break;
     case "relation":
-      rules.push(`relation to ${field.to}${field.many ? " (a list)" : ""}: "@<ref>" of a ${field.to} row in this same proposal`);
+      rules.push(
+        `relation to ${field.to}${field.many ? " (a list)" : ""}: "@<ref>" of a ${field.to} row in this proposal, ` +
+          `or { "match": "<its name>" } for one the person already has`,
+      );
       break;
     case "list": {
       const sub = Object.entries(field.of).map(([k, f]) => describeField(k, f)).join("; ");
@@ -138,6 +155,15 @@ export function describeStructure(def: AppDefinition): string {
     }
     const computed = Object.keys(entity.computed ?? {});
     if (computed.length) lines.push(`  computed by the app, never set: ${computed.join(", ")}`);
+    const actions = Object.keys(entity.actions ?? {});
+    if (actions.length) lines.push("  actions (run on a record):");
+    for (const a of actions) {
+      const info = actionInfo(entity, a)!;
+      const takes = info.input
+        ? `takes { ${Object.entries(info.input).map(([k, f]) => describeField(k, f)).join("; ")} }`
+        : "takes nothing";
+      lines.push(`    - ${a}${info.label !== a ? ` ("${info.label}")` : ""}${info.description ? `: ${info.description}` : ""}; ${takes}`);
+    }
   }
   return lines.join("\n");
 }
@@ -151,8 +177,12 @@ function relationProblem(value: unknown, to: string, many: boolean, refs: Map<st
   const values = many ? (Array.isArray(value) ? value : [value]) : [value];
   if (!many && Array.isArray(value)) return `${label} takes one "@ref", not a list.`;
   for (const v of values) {
+    if (isObject(v) && "match" in v) {
+      if (typeof v.match !== "string" || !v.match.trim() || Object.keys(v).length !== 1) return `${label}: { "match": … } takes the name of a ${to} the person has, and nothing else.`;
+      continue;
+    }
     const m = typeof v === "string" ? REF.exec(v) : null;
-    if (!m) return `${label}: ${JSON.stringify(v)} is not "@<ref>". Existing records cannot be linked; link to a ${to} row you propose.`;
+    if (!m) return `${label}: ${JSON.stringify(v)} is neither "@<ref>" of a ${to} row you propose nor { "match": "<name>" } of one the person has.`;
     const entity = refs.get(m[1]!);
     if (entity !== to) return `${label}: ${v} is ${entity ? `a ${entity}` : "not a ref in this proposal"}; it must be a ${to} row you propose.`;
   }
@@ -182,24 +212,85 @@ function listRowProblems(of: Record<string, Field>, value: unknown, label: strin
   return out;
 }
 
-/**
- * Do these rows fit the app? Every problem at once, so the model can fix them in one go.
- *
- * The value rules are the store's own (`fieldValueProblem`, write mode) — a proposal is held to what
- * a save would be. On top of them: the entity exists, no undeclared field, required fields present,
- * nothing Ask cannot set, and relations point inside the proposal.
- */
-export function checkProposedRows(def: AppDefinition, given: readonly unknown[]): { ok: true; rows: ProposedRow[] } | { ok: false; problems: string[] } {
+/** Problems with a set of values against `fields` (a row's, or an action's input). */
+function valuesProblems(fields: Record<string, Field>, values: Record<string, unknown>, refs: Map<string, string>, at: string, owner: string): string[] {
   const problems: string[] = [];
-  // The model's JSON, not yet a row: anything that is not an object is reported, never dereferenced.
-  const rows: ProposedRow[] = [];
-  given.forEach((row, i) => {
-    if (isObject(row)) rows.push(row as unknown as ProposedRow);
-    else problems.push(`Row ${i + 1} is not an object { entity, ref, values }.`);
+  for (const [key, value] of Object.entries(values)) {
+    const field = fields[key];
+    if (!field) {
+      problems.push(`${at}: ${owner} has no "${key}".`);
+      continue;
+    }
+    const label = labelOf(key, field);
+    if (UNSETTABLE.has(field.type)) {
+      problems.push(`${at}: ${label} (${key}) cannot be set here; leave it out.`);
+      continue;
+    }
+    const problem =
+      field.type === "relation"
+        ? relationProblem(value, field.to, Boolean(field.many), refs, label)
+        : fieldValueProblem(field, value, "write", label);
+    if (problem) problems.push(`${at}: ${problem}`);
+    else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`));
+  }
+  for (const [key, field] of Object.entries(fields)) {
+    if (!field.required || field.default !== undefined || UNSETTABLE.has(field.type)) continue;
+    const v = values[key];
+    if (v == null || v === "") problems.push(`${at}: ${labelOf(key, field)} (${key}) is required.`);
+  }
+  return problems;
+}
+
+function actionProblems(def: AppDefinition, actions: ProposedAction[], refs: Map<string, string>): string[] {
+  const problems: string[] = [];
+  actions.forEach((run, i) => {
+    const at = `Action ${i + 1} (${run.entity}.${run.action})`;
+    const entity = def.entities[run.entity];
+    if (!entity) return void problems.push(`${at}: this app has no entity "${run.entity}".`);
+    const info = actionInfo(entity, run.action);
+    if (!info) {
+      const has = Object.keys(entity.actions ?? {});
+      return void problems.push(`${at}: ${run.entity} has no action "${run.action}".${has.length ? ` It has: ${has.join(", ")}.` : ""}`);
+    }
+    const on = typeof run.on === "string" && run.on ? run.on : null;
+    const match = typeof run.match === "string" && run.match.trim() ? run.match : null;
+    if (!on === !match) problems.push(`${at}: give either on ("@<ref>" of a row you propose) or match (the name of a record the person has).`);
+    if (on) {
+      const ref = REF.exec(on)?.[1];
+      const target = ref ? refs.get(ref) : undefined;
+      if (target !== run.entity) problems.push(`${at}: on ${on} is ${target ? `a ${target}` : "not a ref in this proposal"}; it must be a ${run.entity} row you propose.`);
+    }
+    if (!info.input) {
+      if (run.input !== undefined && !(isObject(run.input) && !Object.keys(run.input).length)) problems.push(`${at}: this action takes nothing; leave input out.`);
+      return;
+    }
+    if (run.input !== undefined && !isObject(run.input)) return void problems.push(`${at}: this action takes { ${Object.keys(info.input).join(", ")} } as input.`);
+    problems.push(...valuesProblems(info.input, isObject(run.input) ? run.input : {}, refs, at, `${run.action}'s input`));
   });
+  return problems;
+}
+
+/**
+ * Does this proposal fit the app? Every problem at once, so the model can fix them in one go.
+ *
+ * The value rules are the store's own (`fieldValueProblem`, write mode), so a proposal is held to what
+ * a save would be. On top of them: entities and actions exist, no undeclared field, required fields
+ * present, nothing Ask cannot set, and links point at a proposed row or name a record by `match`.
+ */
+export function checkProposal(
+  def: AppDefinition,
+  givenRows: readonly unknown[],
+  givenActions: readonly unknown[] = [],
+): { ok: true; rows: ProposedRow[]; actions: ProposedAction[] } | { ok: false; problems: string[] } {
+  const problems: string[] = [];
+  // The model's JSON, not yet rows: anything that is not an object is reported, never dereferenced.
+  const rows: ProposedRow[] = [];
+  const actions: ProposedAction[] = [];
+  givenRows.forEach((row, i) => (isObject(row) ? rows.push(row as unknown as ProposedRow) : problems.push(`Row ${i + 1} is not an object { entity, ref, values }.`)));
+  givenActions.forEach((a, i) => (isObject(a) ? actions.push(a as unknown as ProposedAction) : problems.push(`Action ${i + 1} is not an object { entity, action, on | match, input? }.`)));
   if (problems.length) return { ok: false, problems };
-  if (!rows.length) problems.push("The proposal has no rows.");
-  if (rows.length > MAX_ROWS) problems.push(`At most ${MAX_ROWS} rows in one proposal.`);
+  if (!rows.length && !actions.length) problems.push("The proposal has no rows and no actions.");
+  if (rows.length + actions.length > MAX_ROWS) problems.push(`At most ${MAX_ROWS} rows and actions in one proposal.`);
 
   const refs = new Map<string, string>();
   for (const row of rows) {
@@ -211,45 +302,31 @@ export function checkProposedRows(def: AppDefinition, given: readonly unknown[])
   rows.forEach((row, i) => {
     const at = `Row ${i + 1} (${row.ref})`;
     const entity = def.entities[row.entity];
-    if (!entity) {
-      problems.push(`${at}: this app has no entity "${row.entity}". It has: ${Object.keys(def.entities).join(", ")}.`);
-      return;
-    }
-    const values = isObject(row.values) ? row.values : {};
-    for (const [key, value] of Object.entries(values)) {
-      const field = entity.fields[key];
-      if (!field) {
-        problems.push(`${at}: ${row.entity} has no field "${key}".`);
-        continue;
-      }
-      const label = labelOf(key, field);
-      if (UNSETTABLE.has(field.type)) {
-        problems.push(`${at}: ${label} (${key}) cannot be set here; leave it out.`);
-        continue;
-      }
-      const problem =
-        field.type === "relation"
-          ? relationProblem(value, field.to, Boolean(field.many), refs, label)
-          : fieldValueProblem(field, value, "write", label);
-      if (problem) problems.push(`${at}: ${problem}`);
-      else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`));
-    }
-    for (const [key, field] of Object.entries(entity.fields)) {
-      if (!field.required || field.default !== undefined || UNSETTABLE.has(field.type)) continue;
-      const v = values[key];
-      if (v == null || v === "") problems.push(`${at}: ${labelOf(key, field)} (${key}) is required.`);
-    }
+    if (!entity) return void problems.push(`${at}: this app has no entity "${row.entity}". It has: ${Object.keys(def.entities).join(", ")}.`);
+    problems.push(...valuesProblems(entity.fields, isObject(row.values) ? row.values : {}, refs, at, row.entity));
   });
+  problems.push(...actionProblems(def, actions, refs));
 
-  return problems.length ? { ok: false, problems } : { ok: true, rows };
+  return problems.length ? { ok: false, problems } : { ok: true, rows, actions };
+}
+
+/** `checkProposal` for rows alone. */
+export function checkProposedRows(def: AppDefinition, given: readonly unknown[]): { ok: true; rows: ProposedRow[] } | { ok: false; problems: string[] } {
+  const out = checkProposal(def, given);
+  return out.ok ? { ok: true, rows: out.rows } : out;
 }
 
 export const ASK_SYSTEM_PROMPT = [
-  "You add data to a person's app. The app's structure is below; its records are not shown to you.",
-  "Answer by calling `propose_records` with every row at once. Each row is { entity, ref, values }:",
+  "You work on a person's app for them. The app's structure is below; its records are not shown to you.",
+  "Answer by calling `propose_records` once with everything: new `rows`, and `actions` to run.",
+  "A row is { entity, ref, values }:",
   "- `ref` is a short name you choose, unique in the proposal;",
   "- `values` uses the field keys exactly, and each value must follow that field's rule;",
-  '- a relation holds "@" plus the ref of another row in the same proposal; existing records cannot be linked.',
+  '- a relation holds "@" plus the ref of another row in this proposal, or { "match": "<name>" } for a record the person',
+  "  already has, named the way the person named it.",
+  "An action run is { entity, action, on | match, input? }: `on` is \"@<ref>\" of a row you propose; `match` is the name",
+  "of the person's record(s) as they said it (\"the fern\" → \"fern\"); `input` fills what the action takes, and is left",
+  "out when it takes nothing. Use actions for things the person did or wants done to records they already have.",
   "Leave out fields you have no good value for, unless they are required.",
   "The person reviews the proposal before anything is saved. If the tool reports problems, fix all of them and call it again.",
   "If the request cannot be done with this app's fields, or you need to know something first, reply in plain words instead,",
@@ -321,7 +398,7 @@ export interface AskLoopDeps {
 function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTool {
   return {
     name: "propose_records",
-    description: "Propose records to add to the app. The person reviews them before anything is saved.",
+    description: "Propose records to add and actions to run. The person reviews them before anything happens.",
     parameters: {
       type: "object",
       properties: {
@@ -334,15 +411,24 @@ function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTo
             required: ["entity", "ref", "values"],
           },
         },
+        actions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { entity: { type: "string" }, action: { type: "string" }, on: { type: "string" }, match: { type: "string" }, input: { type: "object" } },
+            required: ["entity", "action"],
+          },
+        },
       },
       required: ["summary", "rows"],
     },
     run: async (args) => {
       const rows: unknown[] = Array.isArray(args.rows) ? args.rows : [];
-      const checked = checkProposedRows(def, rows);
+      const actions: unknown[] = Array.isArray(args.actions) ? args.actions : [];
+      const checked = checkProposal(def, rows, actions);
       if (!checked.ok) return { ok: false, detail: `Not saved, fix these and call again:\n${checked.problems.map((p) => `- ${p}`).join("\n")}` };
-      accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows });
-      return { ok: true, detail: `${rows.length} row${rows.length === 1 ? "" : "s"} proposed.` };
+      accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows, actions: checked.actions });
+      return { ok: true, detail: `${rows.length} row${rows.length === 1 ? "" : "s"} and ${actions.length} action${actions.length === 1 ? "" : "s"} proposed.` };
     },
   };
 }

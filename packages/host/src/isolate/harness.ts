@@ -175,7 +175,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         var result = null;
         switch (p.kind){
           case "computed": result = await app.entities[p.entity].computed[p.key](record, ctx); break;
-          case "action": await app.entities[p.entity].actions[p.key](record, ctx, p.input); result = null; break;
+          case "action": { var act = app.entities[p.entity].actions[p.key]; await (typeof act === "function" ? act : act.run)(record, ctx, p.input); result = null; break; }
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
           case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b, ctx)) : 0; break; }
           case "viewOption": { var vo = findView(app, p.pageId); var opt = vo ? vo[p.key] : undefined; result = (opt === undefined) ? null : (typeof opt === "function" ? await opt(ctx) : opt); break; }

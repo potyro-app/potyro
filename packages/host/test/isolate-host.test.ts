@@ -28,7 +28,8 @@ globalThis.__kartaApp = {
         caloriesPerServing: function(r){ return r.calories / Math.max(r.servings, 1); }
       },
       actions: {
-        markCooked: async function(r, ctx){ await ctx.patch("recipe", r.id, { timesCooked: (r.timesCooked||0) + 1 }); ctx.ui.toast("cooked"); }
+        markCooked: async function(r, ctx){ await ctx.patch("recipe", r.id, { timesCooked: (r.timesCooked||0) + 1 }); ctx.ui.toast("cooked"); },
+        cookFor: { label: "Cook for", input: { people: { type: "number", required: true } }, run: async function(r, ctx, input){ await ctx.patch("recipe", r.id, { servings: input.people }); } }
       }
     }
   },
@@ -86,6 +87,17 @@ describe("IsolateHost — marshalled function execution", () => {
     const short = await setup(RECIPE_BUNDLE, { min: 100 });
     expect(await short.loaded.callFilter("all", record, short.ctx)).toBe(false);
     short.loaded.dispose();
+  });
+
+  it("runs a declared action ({ run, input }) with its input, and reads its label and input as data", async () => {
+    const { loaded, ctx, store } = await setup(RECIPE_BUNDLE);
+    const action = loaded.definition.entities.recipe!.actions!.cookFor as unknown as Record<string, unknown>;
+    expect(action.label).toBe("Cook for");
+    expect(action.input).toEqual({ people: { type: "number", required: true } });
+    const seeded = await store.insert("recipe", { name: "Pancake", servings: 2, ingredients: [], timesCooked: 0 });
+    await loaded.callAction("recipe", "cookFor", { ...seeded } as never, ctx, { people: 6 });
+    expect((await store.get("recipe", seeded.id))!.servings).toBe(6);
+    loaded.dispose();
   });
 
   it("runs an action that patches + toasts through the mediated ctx", async () => {

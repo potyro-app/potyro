@@ -7,11 +7,11 @@
 // The dialog also says, before anyone types, what leaves the device: how the app is organised and the
 // request, never what is in it. And it holds the one switch that makes Ask go away for this app.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { humanizeKey, type AppDefinition, type Field } from "karta";
+import { useEffect, useRef, useState } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { AskStep, Proposal } from "@karta/generator/agent";
-import { ApplyError, applyProposal, markDuplicates, type ReviewRow } from "./ask-apply.js";
+import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
+import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
@@ -34,9 +34,9 @@ interface OriginQuestion {
 type Phase =
   | { kind: "compose" }
   | { kind: "working" }
-  | { kind: "review"; summary: string; rows: ReviewRow[] }
+  | { kind: "review"; review: Review; names: Map<string, string> }
   | { kind: "saving" }
-  | { kind: "added"; count: number }
+  | { kind: "added"; created: number; ran: number }
   | { kind: "note"; head: string; text: string };
 
 export interface AskPanelProps {
@@ -44,123 +44,6 @@ export interface AskPanelProps {
   runtime: KartaRuntime;
   engine: EngineConfig;
   onClose: () => void;
-}
-
-/** What a proposed row is called: its display field, else its first text value. */
-function titleOf(def: AppDefinition, row: ReviewRow): string {
-  const entity = def.entities[row.entity];
-  const by = entity?.displayField;
-  const v = by ? row.values[by] : Object.values(row.values).find((x) => typeof x === "string");
-  return typeof v === "string" && v.trim() ? v : entity?.label ?? row.entity;
-}
-
-function showValue(field: Field, value: unknown, refs: Map<string, string>): string | null {
-  if (value == null || value === "") return null;
-  switch (field.type) {
-    case "geo": {
-      const g = value as { lat: number; lng: number; label?: string };
-      return g.label ? `📍 ${g.label}` : `📍 ${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`;
-    }
-    case "relation": {
-      const list = Array.isArray(value) ? value : [value];
-      return list.map((v) => refs.get(String(v).slice(1)) ?? "").filter(Boolean).join(", ") || null;
-    }
-    case "list":
-      return Array.isArray(value) ? `${value.length} ${field.label ?? "item"}${value.length === 1 ? "" : "s"}` : null;
-    case "tags":
-      return Array.isArray(value) ? value.join(", ") : null;
-    case "boolean":
-      return value ? field.label ?? "yes" : null;
-    case "number":
-      return `${String(value)}${field.unit ? ` ${field.unit}` : ""}`;
-    default:
-      return typeof value === "string" || typeof value === "number" ? String(value) : null;
-  }
-}
-
-/** A few of the row's other values, so the person can judge it without opening anything. */
-function detailsOf(def: AppDefinition, row: ReviewRow, refs: Map<string, string>): string[] {
-  const entity = def.entities[row.entity];
-  if (!entity) return [];
-  const out: string[] = [];
-  for (const [key, field] of Object.entries(entity.fields)) {
-    if (key === entity.displayField || out.length >= 4) continue;
-    const shown = showValue(field, row.values[key], refs);
-    if (shown) out.push(field.type === "text" && shown.length > 90 ? `${shown.slice(0, 88)}…` : shown);
-  }
-  return out;
-}
-
-function Review({
-  def,
-  summary,
-  rows,
-  onAdd,
-  onDiscard,
-}: {
-  def: AppDefinition;
-  summary: string;
-  rows: ReviewRow[];
-  onAdd: (rows: ReviewRow[]) => void;
-  onDiscard: () => void;
-}) {
-  const [ticked, setTicked] = useState(() => new Set(rows.filter((r) => !r.duplicate).map((r) => r.ref)));
-  const refs = useMemo(() => new Map(rows.map((r) => [r.ref, titleOf(def, r)])), [def, rows]);
-  const groups = useMemo(() => {
-    const by = new Map<string, ReviewRow[]>();
-    for (const r of rows) by.set(r.entity, [...(by.get(r.entity) ?? []), r]);
-    return [...by];
-  }, [rows]);
-  const toggle = (ref: string): void =>
-    setTicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(ref)) next.delete(ref);
-      else next.add(ref);
-      return next;
-    });
-  const count = ticked.size;
-
-  return (
-    <>
-      {summary ? <p className="k-ask-summary">{summary}</p> : null}
-      <div className="k-ask-review">
-        {groups.map(([entity, list]) => (
-          <section key={entity} className="k-ask-group" aria-label={def.entities[entity]?.label ?? humanizeKey(entity)}>
-            <h3 className="k-ask-group-head">
-              {def.entities[entity]?.icon ? <span aria-hidden>{def.entities[entity]!.icon} </span> : null}
-              {def.entities[entity]?.label ?? humanizeKey(entity)}
-              <span className="k-ask-group-count">{list.length}</span>
-            </h3>
-            <ul className="k-ask-rows">
-              {list.map((row) => {
-                const details = detailsOf(def, row, refs);
-                return (
-                  <li key={row.ref} className="k-ask-row" data-duplicate={row.duplicate || undefined} data-ticked={ticked.has(row.ref) || undefined}>
-                    <label>
-                      <input type="checkbox" checked={ticked.has(row.ref)} onChange={() => toggle(row.ref)} />
-                      <span className="k-ask-row-body">
-                        <span className="k-ask-row-title">{titleOf(def, row)}</span>
-                        {row.duplicate ? <span className="k-ask-row-dup">already in your app</span> : null}
-                        {details.length ? <span className="k-ask-row-details">{details.join(" · ")}</span> : null}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
-      </div>
-      <footer className="k-ask-actions">
-        <button type="button" className="k-add" onClick={onDiscard}>
-          Discard
-        </button>
-        <button type="button" className="k-add k-primary-action" disabled={count === 0} onClick={() => onAdd(rows.filter((r) => ticked.has(r.ref)))}>
-          {count === 0 ? "Nothing ticked" : `Add ${count}`}
-        </button>
-      </footer>
-    </>
-  );
 }
 
 const NOTE_HEAD: Record<string, string> = {
@@ -207,19 +90,23 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
   const land = async (outcome: StartAskOutcome): Promise<void> => {
     if (outcome.kind === "proposal") {
-      setPhase({ kind: "review", summary: outcome.proposal.summary, rows: await review(outcome.proposal) });
+      setPhase({ kind: "review", ...(await review(outcome.proposal)) });
       return;
     }
     const text = outcome.kind === "answer" || outcome.kind === "refused" ? outcome.text : outcome.kind === "failed" ? outcome.reason : "You stopped it before it finished.";
     setPhase({ kind: "note", head: NOTE_HEAD[outcome.kind]!, text });
   };
 
-  /** Duplicates are judged here, against this device's records — the model never saw them. */
-  const review = async (proposal: Proposal): Promise<ReviewRow[]> => {
-    const entities = [...new Set(proposal.rows.map((r) => r.entity))];
+  /** Names, links and duplicates are judged here, against this device's records — the model never saw them. */
+  const review = async (proposal: Proposal): Promise<{ review: Review; names: Map<string, string> }> => {
     const existing: Record<string, Array<Record<string, unknown>>> = {};
-    for (const e of entities) existing[e] = (await runtime.ctx.query(e)) as Array<Record<string, unknown>>;
-    return markDuplicates(def, proposal.rows, existing);
+    const names = new Map<string, string>();
+    for (const e of entitiesToLoad(def, proposal)) {
+      existing[e] = (await runtime.ctx.query(e)) as Array<Record<string, unknown>>;
+      const by = def.entities[e]?.displayField;
+      for (const r of existing[e]!) if (by && typeof r[by] === "string") names.set(String(r.id), r[by] as string);
+    }
+    return { review: prepareReview(def, proposal, existing), names };
   };
 
   const ask = (): void => {
@@ -263,20 +150,37 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     });
   };
 
-  const add = (rows: ReviewRow[]): void => {
+  const add = async (rows: ReviewRow[], runs: AcceptedRun[]): Promise<void> => {
     setPhase({ kind: "saving" });
-    void applyProposal(runtime, def, rows).then(
-      (count) => setPhase({ kind: "added", count }),
-      (e: unknown) => {
-        const saved = e instanceof ApplyError ? e.created : 0;
-        const why = e instanceof Error ? e.message : String(e);
-        setPhase({
-          kind: "note",
-          head: saved ? `Added ${saved} of ${rows.length}, then it stopped` : "Nothing was added",
-          text: `${why}${saved ? " The ones already added are in the app; asking again will mark them as already there." : ""}`,
-        });
-      },
-    );
+    let created = 0;
+    let stage: "rows" | "actions" = "rows";
+    try {
+      const saved = await applyProposal(runtime, def, rows);
+      created = saved.created;
+      stage = "actions";
+      // Actions run after the rows exist, through the same path as a button: checked input, the
+      // sandbox for a shared app. `core`, not `runtime.runAction`, so a failure reaches this dialog
+      // instead of becoming a toast behind it.
+      const ran = await runActions(
+        { runAction: (entity, action, id, input) => runtime.core.runAction(entity, action, id, input) },
+        runs.flatMap((r) => {
+          const id = r.target.kind === "new" ? saved.ids.get(r.target.ref) : r.target.id;
+          return id ? [{ entity: r.entity, action: r.action, id, input: r.input }] : [];
+        }),
+      );
+      setPhase({ kind: "added", created, ran });
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e);
+      const partial = e instanceof ApplyError ? e.created : 0;
+      const doneRows = stage === "rows" ? partial : created;
+      const doneRuns = stage === "actions" ? partial : 0;
+      const done = doneRows || doneRuns ? doneText(doneRows, doneRuns).replace(/\.$/, "") : "";
+      setPhase({
+        kind: "note",
+        head: done ? `${done}, then it stopped` : "Nothing was done",
+        text: `${why}${done ? " What was already done is in the app; asking again will mark what is already there." : ""}`,
+      });
+    }
   };
 
   const turnOff = (): void => {
@@ -381,7 +285,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
         {phase.kind === "review" ? (
           <>
-            <Review def={def} summary={phase.summary} rows={phase.rows} onAdd={add} onDiscard={() => setPhase({ kind: "compose" })} />
+            <ReviewPanel def={def} review={phase.review} names={phase.names} onAccept={(rows, runs) => void add(rows, runs)} onDiscard={() => setPhase({ kind: "compose" })} />
             {fetched.length ? (
               <details className="k-ask-fetched">
                 <summary>
@@ -399,9 +303,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
         {phase.kind === "added" ? (
           <div className="k-ask-done" role="status">
-            <p className="k-ask-done-count">
-              Added {phase.count} {phase.count === 1 ? "record" : "records"}.
-            </p>
+            <p className="k-ask-done-count">{doneText(phase.created, phase.ran)}</p>
             <footer className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => setPhase({ kind: "compose" })}>
                 Ask for more
