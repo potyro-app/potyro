@@ -31,6 +31,15 @@ export function mapOnOpen(onOpen: { page: string; param?: Record<string, string>
  * (there is no undo yet), which is exactly why it asks first, through the host's own `ctx.ui.confirm`
  * rather than `window.confirm`.
  */
+/** A page whose data could not be read says so, instead of loading forever. */
+function LoadError({ message }: { message: string }) {
+  return (
+    <p className="k-load-error" role="alert">
+      This page could not load: {message}
+    </p>
+  );
+}
+
 export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<boolean> {
   // Resolves to whether the record is gone: a caller that leaves the page afterwards must not
   // leave it on "no" — declining used to send you back to the list as if you had deleted.
@@ -104,7 +113,7 @@ export function RowActions({
 
 export function ListView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as {
     entity: string;
@@ -129,6 +138,7 @@ export function ListView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) {
     return (
@@ -246,7 +256,7 @@ function Grouped({
 
 export function GalleryView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; group?: unknown; collapsible?: boolean };
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
@@ -258,6 +268,7 @@ export function GalleryView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) {
     return (
@@ -292,11 +303,12 @@ export function GalleryView(props: BuiltinViewProps) {
 
 export function TableView(props: BuiltinViewProps) {
   const { runtime, pageId, params, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
   const columns = view.display?.columns ?? [];
   const groups = useRowGroups(runtime, pageId, rows, view);
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">No matching rows.</p>;
 
