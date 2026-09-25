@@ -14,7 +14,7 @@
 // shell de-duplicates against the person's records, locally, after the proposal comes back.
 
 import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "karta";
-import type { ChatEngine, ChatMessage } from "../chat-backend.js";
+import type { ChatEngine, ChatMessage, Citation } from "../chat-backend.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 
 /** One record the model proposes. `ref` names it inside the proposal, so another row can link to it. */
@@ -42,17 +42,22 @@ export interface Proposal {
   summary: string;
   rows: ProposedRow[];
   actions: ProposedAction[];
+  /** Pages a web search read on the way, for the person to check. */
+  citations?: Citation[];
 }
 
 export type AskStep =
   | { kind: "thinking" }
   | { kind: "proposal"; ok: boolean; detail: string }
-  | { kind: "fetch"; source: string; ok: boolean };
+  | { kind: "fetch"; source: string; ok: boolean }
+  /** The web search failed upstream; the request goes on without it. */
+  | { kind: "search-unavailable" };
 
 export type AskOutcome =
   | { kind: "proposal"; proposal: Proposal }
-  /** The model answered in words: a question back, or why it cannot do this in this app. */
-  | { kind: "answer"; text: string }
+  /** The model answered in words: a question back, or why it cannot do this in this app. `transcript`
+   *  continues the conversation: pass it back as `resumeFrom` with the person's reply. */
+  | { kind: "answer"; text: string; transcript: ChatMessage[] }
   | { kind: "failed"; reason: string }
   | { kind: "stopped" };
 
@@ -135,7 +140,13 @@ function describeField(key: string, field: Field): string {
     default:
       rules.push(field.type);
   }
-  if (field.required) rules.push(field.default !== undefined ? "required, has a default" : "required");
+  if (field.required) rules.push("required");
+  // A default the model cannot see is one it cannot overrule: the Places app's `visited` defaults to
+  // yes, so every place Ask added was marked visited when the model left the field out.
+  if (field.default !== undefined) {
+    const d = typeof field.default === "function" ? "set by the app" : JSON.stringify(field.default);
+    rules.push(`defaults to ${d} when left out`);
+  }
   if (field.help) rules.push(`hint: ${field.help}`);
   const label = labelOf(key, field);
   return `${key}${label !== key ? ` ("${label}")` : ""}: ${rules.join(", ")}`;
@@ -194,7 +205,7 @@ function relationProblem(value: unknown, to: string, many: boolean, refs: Map<st
  * applies: a key the list does not declare, or a required sub-field left empty. The value rules only
  * walk the declared keys, so without this an extra key inside a row would be stored as-is.
  */
-function listRowProblems(of: Record<string, Field>, value: unknown, label: string): string[] {
+function listRowProblems(of: Record<string, Field>, value: unknown, label: string, refs: Map<string, string>): string[] {
   if (!Array.isArray(value)) return [];
   const out: string[] = [];
   value.forEach((row, i) => {
@@ -203,13 +214,30 @@ function listRowProblems(of: Record<string, Field>, value: unknown, label: strin
     for (const key of Object.keys(row)) if (!of[key]) out.push(`${at}: there is no "${key}" here; it has ${Object.keys(of).join(", ")}.`);
     for (const [key, sub] of Object.entries(of)) {
       const v = row[key];
-      // Inside a list row there is no "@ref" to resolve, so a link, a photo or a person would be an id
-      // the model made up.
-      if (v != null && (UNSETTABLE.has(sub.type) || sub.type === "relation")) out.push(`${at}: ${labelOf(key, sub)} (${key}) cannot be set here; leave it out.`);
+      // A link inside a row is written like any other: "@ref" or { match }. A photo or a person
+      // would be something the model made up.
+      if (v != null && UNSETTABLE.has(sub.type)) out.push(`${at}: ${labelOf(key, sub)} (${key}) cannot be set here; leave it out.`);
+      if (v != null && sub.type === "relation") {
+        const problem = relationProblem(v, sub.to, Boolean(sub.many), refs, `${at}: ${labelOf(key, sub)}`);
+        if (problem) out.push(problem);
+      }
       if (sub.required && sub.default === undefined && (v == null || v === "")) out.push(`${at}: ${labelOf(key, sub)} (${key}) is required.`);
     }
   });
   return out;
+}
+
+/** A list's rows without their links, which are "@ref" / { match } here and checked separately. */
+function withoutLinks(of: Record<string, Field>, value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  const links = Object.entries(of).filter(([, f]) => f.type === "relation").map(([k]) => k);
+  if (!links.length) return value;
+  return value.map((row) => {
+    if (!isObject(row)) return row;
+    const copy = { ...row };
+    for (const k of links) delete copy[k];
+    return copy;
+  });
 }
 
 /** Problems with a set of values against `fields` (a row's, or an action's input). */
@@ -229,9 +257,9 @@ function valuesProblems(fields: Record<string, Field>, values: Record<string, un
     const problem =
       field.type === "relation"
         ? relationProblem(value, field.to, Boolean(field.many), refs, label)
-        : fieldValueProblem(field, value, "write", label);
+        : fieldValueProblem(field, field.type === "list" ? withoutLinks(field.of, value) : value, "write", label);
     if (problem) problems.push(`${at}: ${problem}`);
-    else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`));
+    else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`, refs));
   }
   for (const [key, field] of Object.entries(fields)) {
     if (!field.required || field.default !== undefined || UNSETTABLE.has(field.type)) continue;
@@ -271,6 +299,29 @@ function actionProblems(def: AppDefinition, actions: ProposedAction[], refs: Map
 }
 
 /**
+ * Where proposed places sit. Two runs showed the failure: a model with only an address, or none,
+ * put every place on one point, or on the centre of the area it was given. A person reviewing five
+ * pins in one spot has no way to tell, so it is sent back instead.
+ */
+function placementProblems(def: AppDefinition, rows: ProposedRow[], area: AskContext["area"] | undefined): string[] {
+  const problems: string[] = [];
+  const seen = new Map<string, string>();
+  const key = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  const centre = area ? key(area.lat, area.lng) : null;
+  for (const row of rows) {
+    for (const [field, f] of Object.entries(def.entities[row.entity]?.fields ?? {})) {
+      const v = row.values?.[field] as { lat?: unknown; lng?: unknown } | undefined;
+      if (f.type !== "geo" || typeof v?.lat !== "number" || typeof v?.lng !== "number") continue;
+      const k = key(v.lat, v.lng);
+      if (k === centre) problems.push(`Row ${row.ref}: ${labelOf(field, f)} is the centre of the area you were given, not where this is. Use its own coordinates.`);
+      else if (seen.has(k)) problems.push(`Rows ${seen.get(k)} and ${row.ref} are at exactly the same point (${k}). Give each its own coordinates, from the source or its address.`);
+      else seen.set(k, row.ref);
+    }
+  }
+  return problems;
+}
+
+/**
  * Does this proposal fit the app? Every problem at once, so the model can fix them in one go.
  *
  * The value rules are the store's own (`fieldValueProblem`, write mode), so a proposal is held to what
@@ -281,6 +332,7 @@ export function checkProposal(
   def: AppDefinition,
   givenRows: readonly unknown[],
   givenActions: readonly unknown[] = [],
+  opts?: { area?: AskContext["area"] },
 ): { ok: true; rows: ProposedRow[]; actions: ProposedAction[] } | { ok: false; problems: string[] } {
   const problems: string[] = [];
   // The model's JSON, not yet rows: anything that is not an object is reported, never dereferenced.
@@ -306,6 +358,7 @@ export function checkProposal(
     problems.push(...valuesProblems(entity.fields, isObject(row.values) ? row.values : {}, refs, at, row.entity));
   });
   problems.push(...actionProblems(def, actions, refs));
+  if (!problems.length) problems.push(...placementProblems(def, rows, opts?.area));
 
   return problems.length ? { ok: false, problems } : { ok: true, rows, actions };
 }
@@ -316,22 +369,69 @@ export function checkProposedRows(def: AppDefinition, given: readonly unknown[])
   return out.ok ? { ok: true, rows: out.rows } : out;
 }
 
-export const ASK_SYSTEM_PROMPT = [
-  "You work on a person's app for them. The app's structure is below; its records are not shown to you.",
-  "Answer by calling `propose_records` once with everything: new `rows`, and `actions` to run.",
-  "A row is { entity, ref, values }:",
-  "- `ref` is a short name you choose, unique in the proposal;",
-  "- `values` uses the field keys exactly, and each value must follow that field's rule;",
-  '- a relation holds "@" plus the ref of another row in this proposal, or { "match": "<name>" } for a record the person',
-  "  already has, named the way the person named it.",
-  "An action run is { entity, action, on | match, input? }: `on` is \"@<ref>\" of a row you propose; `match` is the name",
-  "of the person's record(s) as they said it (\"the fern\" → \"fern\"); `input` fills what the action takes, and is left",
-  "out when it takes nothing. Use actions for things the person did or wants done to records they already have.",
-  "Leave out fields you have no good value for, unless they are required.",
-  "The person reviews the proposal before anything is saved. If the tool reports problems, fix all of them and call it again.",
-  "If the request cannot be done with this app's fields, or you need to know something first, reply in plain words instead,",
-  "briefly, in the language the person wrote in.",
-].join("\n");
+/**
+ * The instructions. Measured, not guessed (scripts/run-ask-eval.ts): the first version said "if you
+ * need to know something first, reply in words", and every model — DeepSeek and Claude alike — met
+ * "add vegetarian restaurants" with a question. People ask Ask so that something gets done.
+ */
+export function askSystemPrompt(opts: { canLookUp: boolean }): string {
+  return [
+    "You do things in a person's app for them: add records and run the app's actions. The app's structure is below;",
+    "its records are not shown to you.",
+    "",
+    "Do the task. The person asked so that it gets done, not to start a conversation.",
+    "- Decide the details yourself, as a knowledgeable friend would: which ones, how many (exactly the number the person",
+    "  gave; 3 to 8 when unsaid), sensible values. Do not ask about taste, quantities or options; choose, and say what you",
+    "  chose in the summary.",
+    "- Reply in words instead only when the request cannot be done with this app at all, or when every answer would",
+    "  be a guess about the person themselves (\"add my usual order\"). Then ask one short question.",
+    '- "Here", "near me", "around", or no place at all means the area in the context, when there is one. When the area',
+    "  has no name, find out which town those coordinates are in before searching, and stay in it.",
+    "",
+    "Facts about the real world (businesses, addresses, opening hours, coordinates, prices, events) come from a search",
+    "or a source, never from memory.",
+    opts.canLookUp
+      ? "Look them up before proposing. Propose only what you found, and name where you found it in the summary."
+      : "You cannot look anything up for this request. Propose only well-known things you are sure exist, never invent a " +
+        "name, and say in the summary that it comes from memory and is worth checking.",
+    "General knowledge (recipes, exercises, plant care, shopping lists) is yours to use freely.",
+    "Coordinates: take them from your source. With only an address, give your best estimate and put the address in the",
+    "location's label. Never put different places on the same point.",
+    "Fields about the person's own experience (their rating, whether they visited, tried or did it, their notes on how",
+    "it was): they have not experienced what you propose. Set yes/no ones to no, even when the field's default says yes,",
+    "and leave the rest empty. A public rating or review belongs in a plain notes or description field, not their rating.",
+    "",
+    "Answer by calling `propose_records` once with everything: new `rows`, and `actions` to run.",
+    "A row is { entity, ref, values }:",
+    "- `ref` is a short name you choose, unique in the proposal;",
+    "- `values` uses the field keys exactly, and each value must follow that field's rule;",
+    '- a relation, also inside list rows, holds "@" plus the ref of another row in this proposal, or { "match": "<name>" }',
+    "  for a record the person may already have. When they have none by that name the device offers to create it, so",
+    "  match everyday things (a category, an aisle, an ingredient) by their ordinary name rather than proposing them.",
+    'An action run is { entity, action, on | match, input? }: `on` is "@<ref>" of a row you propose; `match` is the name',
+    'of the person\'s record(s) as they said it ("the fern" → "fern"); `input` fills what the action takes, and is left',
+    "out when it takes nothing. Use actions for things the person did or wants done to records they already have.",
+    "The person reviews the proposal before anything is saved. If the tool reports problems, fix all of them and call it",
+    "again. Write the summary, and any words, in the person's language.",
+  ].join("\n");
+}
+
+/** The prompt with nothing to look things up with; kept for callers that print it. */
+export const ASK_SYSTEM_PROMPT = askSystemPrompt({ canLookUp: false });
+
+function describeContext(c: AskContext | undefined): string {
+  if (!c) return "";
+  const lines = ["", "Context, from the person's device (not the app's data):"];
+  if (c.today) lines.push(`- Today: ${c.today}`);
+  if (c.language) lines.push(`- Their language: ${c.language}`);
+  if (c.area) {
+    lines.push(
+      `- Area: around ${c.area.lat.toFixed(4)}, ${c.area.lng.toFixed(4)}${c.area.radiusKm ? ` (within about ${c.area.radiusKm} km)` : ""}` +
+        `${c.area.label ? `: ${c.area.label}` : ""}.`,
+    );
+  }
+  return lines.length > 2 ? lines.join("\n") : "";
+}
 
 function describeSources(sources: AskSource[]): string {
   const lines = [
@@ -381,6 +481,19 @@ function sourceTools(sources: AskSource[], fetchSource: SourceFetch): AgentTool[
   ];
 }
 
+/**
+ * What the device knows about the moment of asking, beside the app's structure: never a record.
+ * Shown to the person in the dialog before anything is sent.
+ */
+export interface AskContext {
+  /** ISO date, the person's day. */
+  today?: string;
+  /** The language the person uses (BCP 47), for any prose back. */
+  language?: string;
+  /** Where the person is looking or standing: the map on screen, or the device's location. */
+  area?: { lat: number; lng: number; radiusKm?: number; label?: string };
+}
+
 export interface AskLoopDeps {
   engine: ChatEngine;
   model?: string;
@@ -388,6 +501,11 @@ export interface AskLoopDeps {
   /** What the person asked, in their words. */
   request: string;
   maxSteps?: number;
+  context?: AskContext;
+  /** Let the model search the web (OpenRouter's server-side search), when it decides it needs to. */
+  webSearch?: boolean;
+  /** Continue a conversation: an `answer`'s transcript with the person's reply appended. */
+  resumeFrom?: ChatMessage[];
   /** Outside data the model may read; with `fetchSource`, the host that reads it. */
   sources?: AskSource[];
   fetchSource?: SourceFetch;
@@ -395,7 +513,7 @@ export interface AskLoopDeps {
   signal?: AbortSignal;
 }
 
-function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTool {
+function proposeTool(def: AppDefinition, accept: (p: Proposal) => void, area?: AskContext["area"]): AgentTool {
   return {
     name: "propose_records",
     description: "Propose records to add and actions to run. The person reviews them before anything happens.",
@@ -423,9 +541,30 @@ function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTo
       required: ["summary", "rows"],
     },
     run: async (args) => {
-      const rows: unknown[] = Array.isArray(args.rows) ? args.rows : [];
-      const actions: unknown[] = Array.isArray(args.actions) ? args.actions : [];
-      const checked = checkProposal(def, rows, actions);
+      // Some models send an array as a JSON string of it (Claude Haiku, every time). Read it, rather
+      // than answer "no rows" to a proposal that has fifteen of them.
+      const list = (v: unknown): unknown[] | string => {
+        if (v === undefined || v === null) return [];
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") {
+          try {
+            const parsed: unknown = JSON.parse(v);
+            if (Array.isArray(parsed)) return parsed;
+          } catch (e) {
+            const at = Number(/position (\d+)/.exec(e instanceof Error ? e.message : "")?.[1] ?? NaN);
+            const near = Number.isFinite(at) ? ` near …${v.slice(Math.max(0, at - 60), at + 20)}…` : "";
+            return `arrived as text that is not valid JSON${near}; send it as an array, not a string`;
+          }
+        }
+        return `must be an array of objects, not ${typeof v}`;
+      };
+      const rows = list(args.rows);
+      const actions = list(args.actions);
+      if (typeof rows === "string" || typeof actions === "string") {
+        const problems = [typeof rows === "string" ? `rows ${rows}` : "", typeof actions === "string" ? `actions ${actions}` : ""].filter(Boolean);
+        return { ok: false, detail: `Not saved: ${problems.join("; ")}.` };
+      }
+      const checked = checkProposal(def, rows, actions, { area });
       if (!checked.ok) return { ok: false, detail: `Not saved, fix these and call again:\n${checked.problems.map((p) => `- ${p}`).join("\n")}` };
       accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows, actions: checked.actions });
       return { ok: true, detail: `${rows.length} row${rows.length === 1 ? "" : "s"} and ${actions.length} action${actions.length === 1 ? "" : "s"} proposed.` };
@@ -433,34 +572,64 @@ function proposeTool(def: AppDefinition, accept: (p: Proposal) => void): AgentTo
   };
 }
 
+/** Searches per request, and results per search: enough to find a handful of real places. */
+const WEB_SEARCH = { type: "openrouter:web_search", parameters: { max_results: 6, max_uses: 3 } };
+
 /** Run Ask until the model proposes rows that fit, answers in words, or runs out of steps. */
 export async function runAskLoop(deps: AskLoopDeps): Promise<AskOutcome> {
   const sources = deps.fetchSource && deps.sources?.length ? deps.sources : [];
-  const maxSteps = deps.maxSteps ?? (sources.length ? MAX_STEPS_WITH_SOURCES : DEFAULT_MAX_STEPS);
+  const canLookUp = Boolean(deps.webSearch) || sources.length > 0;
+  let searching = Boolean(deps.webSearch);
+  const maxSteps = deps.maxSteps ?? (canLookUp ? MAX_STEPS_WITH_SOURCES : DEFAULT_MAX_STEPS);
   let accepted: Proposal | null = null;
-  const tools = [proposeTool(deps.definition, (p) => (accepted = p)), ...(sources.length ? sourceTools(sources, deps.fetchSource!) : [])];
-  const messages: ChatMessage[] = [
-    { role: "system", content: `${ASK_SYSTEM_PROMPT}${sources.length ? describeSources(sources) : ""}\n\n${describeStructure(deps.definition)}` },
-    { role: "user", content: deps.request },
-  ];
+  const citations = new Map<string, Citation>();
+  const tools = [proposeTool(deps.definition, (p) => (accepted = p), deps.context?.area), ...(sources.length ? sourceTools(sources, deps.fetchSource!) : [])];
+  const messages: ChatMessage[] = deps.resumeFrom
+    ? [...deps.resumeFrom]
+    : [
+        {
+          role: "system",
+          content:
+            `${askSystemPrompt({ canLookUp })}${sources.length ? describeSources(sources) : ""}${describeContext(deps.context)}` +
+            `\n\n${describeStructure(deps.definition)}`,
+        },
+        { role: "user", content: deps.request },
+      ];
+  const done = (): AskOutcome => ({ kind: "proposal", proposal: { ...accepted!, ...(citations.size ? { citations: [...citations.values()] } : {}) } });
 
   for (let step = 0; step < maxSteps; step += 1) {
     if (deps.signal?.aborted) return { kind: "stopped" };
     deps.onStep?.({ kind: "thinking" });
-    const res = await deps.engine.chat.completions.create({
+    const request = {
       ...(deps.model ? { model: deps.model } : {}),
       messages,
       tools: toolSpecs(tools),
-      tool_choice: "auto",
+      tool_choice: "auto" as const,
       temperature: 0.2,
-    });
+    };
+    let res;
+    try {
+      res = await deps.engine.chat.completions.create({ ...request, ...(searching ? { serverTools: [WEB_SEARCH] } : {}) });
+    } catch (e) {
+      // The search service being down is not a reason to fail the request: answer without it, and
+      // let the prompt's "from memory" rule apply from here on.
+      if (!searching || !/web_search/i.test(e instanceof Error ? e.message : String(e))) throw e;
+      searching = false;
+      deps.onStep?.({ kind: "search-unavailable" });
+      messages[0] = { ...messages[0]!, content: String(messages[0]!.content).replace(askSystemPrompt({ canLookUp: true }), askSystemPrompt({ canLookUp: sources.length > 0 })) };
+      res = await deps.engine.chat.completions.create(request);
+    }
     if (deps.signal?.aborted) return { kind: "stopped" };
     const choice = res.choices[0]?.message;
+    for (const c of choice?.citations ?? []) citations.set(c.url, c);
     const calls = choice?.tool_calls ?? [];
     const text = choice?.content ?? "";
 
     if (!calls.length) {
-      if (text.trim()) return { kind: "answer", text: text.trim() };
+      if (text.trim()) {
+        messages.push({ role: "assistant", content: text });
+        return { kind: "answer", text: text.trim(), transcript: [...messages] };
+      }
       messages.push({ role: "assistant", content: text }, { role: "user", content: "Call `propose_records`, or reply in words." });
       continue;
     }
@@ -477,7 +646,7 @@ export async function runAskLoop(deps: AskLoopDeps): Promise<AskOutcome> {
       if (result.name === "propose_records") deps.onStep?.({ kind: "proposal", ok: result.ok, detail: result.detail });
       else deps.onStep?.({ kind: "fetch", source: String(args.source ?? ""), ok: result.ok });
       messages.push({ role: "tool", tool_call_id: c.id, content: result.detail });
-      if (accepted) return { kind: "proposal", proposal: accepted };
+      if (accepted) return done();
     }
   }
   return { kind: "failed", reason: `No proposal that fits this app after ${maxSteps} tries.` };

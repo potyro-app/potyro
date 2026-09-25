@@ -18,7 +18,8 @@
     "eval:openrouter": "vite-node scripts/run-cli-eval.ts -- --backend openrouter",
     "eval:modify": "vite-node scripts/run-modify-eval.ts --",
     "eval:modify:fixture": "vite-node scripts/fixture-review-sheet.ts --",
-    "eval:modify:edits": "vite-node scripts/run-modify-edits-eval.ts --"
+    "eval:modify:edits": "vite-node scripts/run-modify-edits-eval.ts --",
+    "eval:ask": "vite-node scripts/run-ask-eval.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
