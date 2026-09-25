@@ -10,7 +10,7 @@
 // computed evaluation, every page's filter/sort, display bindings, entity actions, and reminder
 // `when`. That is where hallucinated `ctx` APIs and unguarded field access actually surface.
 
-import type { AppDefinition, Field, Id, Resolved } from "karta";
+import { actionInfo, type AppDefinition, type Field, type Id, type Resolved } from "karta";
 import { FakeCapabilities } from "@karta/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@karta/host";
 import { createRuntime } from "@karta/runtime";
@@ -260,7 +260,19 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
       const id = created[name]?.[0];
       if (!id) continue;
       try {
-        await runtime.runAction(name, key, id);
+        // A declared action (#213) runs with seeded input: with none it would ask with a form, which
+        // nobody answers here, and its code would never run — the thing this gate exists to run.
+        const declared = actionInfo(entity, key)?.input;
+        const input = declared
+          ? Object.fromEntries(
+              Object.entries(declared)
+                .map(([k, f]) => [k, f.type === "relation" ? created[f.to]?.[0] : seedValue(f, 0, k)])
+                .filter(([, v]) => v !== undefined),
+            )
+          : undefined;
+        // `core`, not `runtime.runAction`: the latter turns a failure into a toast (right for a button,
+        // wrong here) and this bridge drops toasts, so a hallucinated ctx method passed silently.
+        await runtime.core.runAction(name, key, id, input);
         ran.actions++;
       } catch (e) {
         actionsOk = false;

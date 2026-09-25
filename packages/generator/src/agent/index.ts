@@ -21,6 +21,8 @@
 //   discovery-tools.ts -> ../reference.generated.js (a string), ../prompt.js (the examples), karta
 //                       (VIEW_FIELDS), and `import type` from tools.ts
 //   modify-system-prompt.ts -> ../prompt.js (SYSTEM_PROMPT)
+//   ask.ts           -> karta (fieldValueProblem, humanizeKey), tools.ts, and `import type` from
+//                       ../chat-backend.js — Ask (#213)
 //
 // Along every one of those, each cross-package import is either `import type` (erased at build
 // time) or a real value import that bottoms out in `karta` (zod only) or `react` — nothing here
@@ -34,3 +36,4 @@ export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAcces
 export { runModifyLoop, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
+export { runAskLoop, checkProposal, checkProposedRows, describeStructure, ASK_SYSTEM_PROMPT, type AskLoopDeps, type AskOutcome, type AskStep, type Proposal, type ProposedRow, type ProposedAction, type AskSource, type SourceFetch, type SourceRequest } from "./ask.js";

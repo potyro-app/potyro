@@ -13,4 +13,4 @@ export {
   type IdentityAccount,
   type IdentityKeys,
 } from "./identity.js";
-export { browserVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";
+export { browserVault, currentVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";

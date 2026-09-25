@@ -3,6 +3,7 @@
 export { defineApp, isKartaApp } from "./defineApp.js";
 export { f } from "./fields.js";
 export { humanizeKey } from "./humanize.js";
+export { actionInfo, actionInputProblem, actionRun, type ActionInfo } from "./actions.js";
 export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";
 export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueError, type ValueCheck } from "./values.js";
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
@@ -79,6 +80,7 @@ export type {
   MapCamera,
   Dynamic,
   ScopeDef,
+  SourceDef,
   SummaryValue,
   SummaryOp,
   StepsView,
@@ -105,6 +107,7 @@ export type {
   Theme,
   Computed,
   ActionFn,
+  ActionDef,
   FilterFn,
   SortFn,
   BindingFn,

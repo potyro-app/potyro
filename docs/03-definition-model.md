@@ -111,6 +111,23 @@ entities: {
 - **`actions`** are functions `(record, ctx, input?) => void | Promise<void>`. They do whatever
   you want through `ctx` (patch, create, call caps, prompt the user…).
 
+  An action may instead say what it is and what it takes (#213):
+
+  ```ts
+  feed: {
+    label: "Feed",
+    description: "Log a feeding",                         // Ask reads this
+    input: { grams: { type: "number", min: 0, required: true } },
+    run: async (plant, ctx, input) => { await ctx.patch("plant", plant.id, { fed: input.grams }); },
+  },
+  ```
+
+  `input` uses the ordinary field types. Whoever runs the action (a button, Ask), the values are
+  checked against those fields before `run` sees them, and a button that brings no values opens a
+  form of them. Ask can fill `input` from what the person said ("feed the monstera 12 g"). An action
+  that asks for things with its own `ctx.ui.form` still works from a button, but Ask cannot fill that
+  form; declare `input` to make it something Ask can do.
+
 ## Field types (declarative, closed set)
 
 `text · richtext · number · money · boolean · enum · tags · datetime · duration · url · geo · media ·
@@ -407,6 +424,30 @@ reminders: [
 
 The runtime reconciles reminders on writes and schedules future ones via
 `ctx.caps.notifications` (see docs/07 for platform limits).
+
+## Sources — outside data for Ask (#213)
+
+An app may declare `sources`: outside data its **Ask** can read when a person asks for records (a
+places API for "dog-friendly spots near here", a search engine, a weather service). Declarative and
+validated like the rest of the structure:
+
+```ts
+sources: {
+  places: {
+    label: "Places search",
+    description: "Finds places near a point",   // the model reads this to decide when to use it
+    endpoint: "https://api.example.com/v1/",    // https; requests stay under it
+    docs: "https://docs.example.com/places",    // optional; the model may read it
+    auth: { header: "X-Api-Key" },              // or { header, prefix: "Bearer " }, or { query: "key" }
+  },
+},
+```
+
+**Never a key.** The schema is strict, so `apiKey: "…"` is a validation error rather than a silently
+dropped field. A shared app hands everyone the declaration; each person pastes their own key, which the
+shell keeps in the device's secret vault and attaches to requests itself, only under `endpoint`. App
+code never sees it, and neither does the model. A person can also add sources of their own from the Ask
+dialog. Neither kind is reachable from `ctx`: sources are Ask's, not the app's.
 
 ## What the runtime does with a module
 

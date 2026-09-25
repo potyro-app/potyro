@@ -1,4 +1,4 @@
-import { resolveView } from "karta";
+import { actionInfo, actionInputProblem, FieldValueError, resolveView } from "karta";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
@@ -266,8 +266,22 @@ export class RuntimeCore {
     return this.ctxFor(params).get(entity, id);
   }
 
-  runAction(entity: string, key: string, id: Id, input?: unknown, params?: Record<string, unknown>): Promise<void> {
-    // Tracked from the call, not from when the action begins: the record is read first, and leaving
+  async runAction(entity: string, key: string, id: Id, input?: unknown, params?: Record<string, unknown>): Promise<void> {
+    // An action that declares its input (#213) gets it checked here, whoever runs it; a button that
+    // brings none gets a form of those fields, titled with the action's label. The form is asked
+    // BEFORE tracking starts: an open form writes nothing, and must not hold up leaving the app.
+    const info = actionInfo(this.definition.entities[entity], key);
+    let given = input;
+    if (info?.input) {
+      if (given === undefined) {
+        const filled = await this.ctxFor(params).ui.form({ title: info.label, submit: info.label, fields: info.input });
+        if (filled == null) return;
+        given = filled;
+      }
+      const problem = actionInputProblem(info.input, given);
+      if (problem) throw new FieldValueError(problem);
+    }
+    // Tracked from here, not from when the action begins: the record is read first, and leaving
     // during that read must still wait. The whole action, too — an untrusted app writes from inside
     // its isolate, where no ctx of ours sees it.
     return this.track(
@@ -275,7 +289,7 @@ export class RuntimeCore {
         const ctx = this.ctxFor(params);
         const record = await ctx.get(entity, id);
         if (!record) throw new Error(`runAction: ${entity}/${id} not found`);
-        await this.app.callAction(entity, key, record, ctx, input);
+        await this.app.callAction(entity, key, record, ctx, given);
       })(),
     );
   }
