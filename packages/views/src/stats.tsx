@@ -81,7 +81,7 @@ export function StatsView({ runtime, pageId, params }: BuiltinViewProps) {
     <ul className="k-stats">
       {tiles.map((t, i) => (
         <li key={i} className="k-stat">
-          <span className="k-stat-label">{t.label}</span>
+          <span className="k-stat-label" data-k-wording>{t.label}</span>
           <span className="k-stat-value" title={t.error}>
             {t.text}
           </span>

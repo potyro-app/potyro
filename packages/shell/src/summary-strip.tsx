@@ -57,10 +57,12 @@ function Figures({ runtime, pageId, params, specs }: SummaryStripProps & { specs
   }, [specs, rows, entity, pageId, runtime]);
 
   return (
-    <section className="k-summary" aria-label="Summary">
+    <section className="k-summary" aria-label="Summary" data-k-view>
       {figures.map((figure, i) => (
         <div key={i} className="k-summary-figure">
-          <span className="k-summary-label">{figure.label}</span>
+          <span className="k-summary-label" data-k-wording>
+              {figure.label}
+            </span>
           {/* A figure that failed shows a dash with the reason on hover — one bad summary must not
               blank the page it sits above. */}
           <span className="k-summary-value" title={figure.error} data-loading={loading || undefined}>
