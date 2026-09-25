@@ -206,14 +206,41 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## Redeploying
 
+**It is automatic:** every commit that lands on `main` goes live once it passes the local CI — see
+[§8](#8-automatic-deploy-from-the-ci-machine). By hand, from a clean checkout of `origin/main`:
+
 ```bash
-pnpm --filter @karta/shell exec vite build
-rsync -az --delete packages/shell/dist/ e@vaz.io:/var/www/karta/
+pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
+pnpm ci:local deploy         # build, rsync to e@vaz.io:/var/www/karta/, write version.json
 ```
 
-That is all — no restart, no reload. The relay only needs touching when `cojson` changes version, in
+`deploy` refuses a commit that is not `origin/main` or has not passed every step, so what is live is
+always something the gate passed. `https://apps.vaz.io/version.json` names the live commit.
+
+No restart, no reload. The relay only needs touching when `cojson` changes version, in
 which case bump the pin in `/opt/karta-relay/package.json`, re-run the `npm install` container, and
 `docker restart karta-relay`.
+
+## 8. Automatic deploy from the CI machine
+
+GitHub Actions is unavailable, so the CI machine (`vazio`) does it from cron. Every five minutes
+`scripts/ci-watch.mjs` fetches `origin/main`. When there is a new commit, it runs the full local CI
+on it, posts `local-ci` on the commit, and, when the commit is green, runs `ci-local.mjs deploy`.
+A red commit leaves the site on the last green one. A run cut short resumes on the next tick: the
+machine slept, or another checkout's suite held the test ports. **While vazio sleeps, nothing
+deploys.** It catches up when it wakes (`~/bin/wake-vazio` on the laptop).
+
+The pieces on `vazio`:
+
+| | |
+|---|---|
+| Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at `origin/main` on every tick, so nothing is ever edited there. |
+| Key | `~/.ssh/karta_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
+| ssh alias | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` with that key. |
+| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin KARTA_DEPLOY_TARGET=karta-deploy: flock -n /tmp/karta-ci-watch.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+
+`KARTA_DEPLOY_TARGET=karta-deploy:` is relative to the web root, because `rrsync` anchors every path
+there. Follow a run with `tail -f ~/ci-watch.log` on vazio.
 
 ## The agent
 
