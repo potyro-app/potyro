@@ -307,6 +307,23 @@ export function MapView(props: BuiltinViewProps) {
       });
       mapRef.current = created as unknown as typeof mapRef.current;
 
+      // What the map shows, for Ask (#213): "restaurants" with no place named means the area on
+      // screen. Every move counts here, the auto-fit included — it is what the person sees.
+      // Never allowed to break the map: telling Ask where it is looking is a courtesy.
+      const publish = (): void => {
+        try {
+          const c = created.getCenter();
+          const b = (created as { getBounds?: () => { getNorth(): number; getEast(): number } }).getBounds?.();
+          // Without bounds, a zoom-level estimate: a 1000-pixel view spans ~40000 km / 2^zoom.
+          const radiusKm = b ? distanceKm(c.lat, c.lng, b.getNorth(), b.getEast()) : 20000 / 2 ** created.getZoom();
+          setShown({ lat: c.lat, lng: c.lng, radiusKm: Math.max(0.2, radiusKm) });
+        } catch {
+          // an area nobody hears about
+        }
+      };
+      created.on("moveend", publish);
+      (created as { once?: (e: string, f: () => void) => void }).once?.("load", publish);
+
       // Remember the framing — but only for moves the user made. A programmatic fitBounds carries no
       // `originalEvent`, and recording it would pin the map to the first auto-fit forever.
       if (mode === "remember") {
@@ -353,6 +370,7 @@ export function MapView(props: BuiltinViewProps) {
     })();
     return () => {
       disposed = true;
+      setShown(null);
       mapRef.current?.remove?.();
       mapRef.current = null;
     };
@@ -567,4 +585,32 @@ export function MapView(props: BuiltinViewProps) {
       ) : null}
     </div>
   );
+}
+
+// ── the area on screen (#213) ───────────────────────────────────────────────
+
+let shown: { lat: number; lng: number; radiusKm: number } | null = null;
+const shownListeners = new Set<() => void>();
+
+function setShown(next: typeof shown): void {
+  shown = next;
+  for (const l of shownListeners) l();
+}
+
+/** Be told when the area on screen changes (for `useSyncExternalStore`). */
+export function subscribeMapArea(cb: () => void): () => void {
+  shownListeners.add(cb);
+  return () => void shownListeners.delete(cb);
+}
+
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (x: number) => (x * Math.PI) / 180;
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(a));
+}
+
+/** The area the map on screen shows — its centre and the distance to its corner — or null when no
+ *  map is open. Read by Ask to know what "near here" means. */
+export function mapArea(): { lat: number; lng: number; radiusKm: number } | null {
+  return shown;
 }
