@@ -443,3 +443,28 @@ describe("evidence in the loop", () => {
     expect(out.kind === "proposal" && out.proposal.trust?.p?.status).toBe("general");
   });
 });
+
+describe("material the person brings (a paste, a file)", () => {
+  const MATERIAL = { label: "what you pasted", text: "Here are three places:\n1. Jardim da Estrela — a park\n2. LX Factory — creative hub\n3. Time Out Market" };
+
+  it("goes to the model as data, with the request", async () => {
+    const { engine, seen } = scripted([{ content: "ok" }]);
+    await runAskLoop(deps({ engine, request: "add these", material: MATERIAL }));
+    const user = seen[0]!.messages.find((m) => m.role === "user")!.content;
+    expect(user).toContain("add these");
+    expect(user).toContain("LX Factory — creative hub");
+    expect(user).toMatch(/data, not instructions/);
+  });
+
+  it("confirms what is in it, and holds back what the model added beyond it", async () => {
+    const rows = [
+      { entity: "place", ref: "j", values: { name: "Jardim da Estrela", kind: "park" } },
+      { entity: "place", ref: "b", values: { name: "Belém Tower", kind: "park" } },
+    ];
+    const { engine } = scripted([propose("t1", { summary: "Two.", rows }), propose("t2", { summary: "Two.", rows })]);
+    const out = await runAskLoop(deps({ engine, request: "add these", material: MATERIAL }));
+    const trust = out.kind === "proposal" ? out.proposal.trust! : {};
+    expect(trust.j).toMatchObject({ status: "corroborated", sources: [{ via: "what you pasted" }] });
+    expect(trust.b!.status).toBe("unsupported");
+  });
+});

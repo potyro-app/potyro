@@ -55,7 +55,7 @@ async function runCase(model: string, c: AskCase, reasoning: ReasoningEffort, ou
   const started = Date.now();
   let outcome: AskOutcome;
   try {
-    outcome = await runAskLoop({ engine, model, definition, request: c.request, context: c.context as AskContext | undefined, webSearch });
+    outcome = await runAskLoop({ engine, model, definition, request: c.request, context: c.context as AskContext | undefined, webSearch, material: c.material });
   } catch (e) {
     outcome = { kind: "failed", reason: e instanceof Error ? e.message : String(e) };
   }
