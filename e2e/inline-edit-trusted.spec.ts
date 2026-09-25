@@ -263,3 +263,17 @@ export default defineApp({
   await page.locator(".k-inline-bar").getByRole("button", { name: "Ask the Studio" }).click();
   await expect(page.getByRole("textbox", { name: "Describe the app" })).toHaveValue(/^On the "Only" page: $/);
 });
+
+test("a record's text is never offered, even when a placeholder or label reads the same (Groceries)", async ({ page }) => {
+  // The seeded Groceries has an item "Milk" and an aisle "Produce" — and its source has
+  // `placeholder: "Milk"` and `placeholder: "Produce"`. Both rows were highlighted as editable.
+  await page.goto("/?user=groceries");
+  await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
+  await expect(page.locator(".k-checklist").getByRole("checkbox", { name: "Milk" })).toBeVisible();
+  await editMode(page);
+  // The tab is the app's own word, so it is offered — which also proves the marks are in.
+  await expect.poll(() => marked(page)).toContain("Shopping");
+  const words = await marked(page);
+  expect(words).not.toContain("Milk");
+  expect(words).not.toContain("Produce");
+});
