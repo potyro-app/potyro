@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AppDefinition } from "karta";
 import { memoryVault, type SecretVault } from "@karta/identity";
-import { keyStore, listMySources, makeSourceFetcher, removeMySource, resolveSources, saveMySource, type PersonSource } from "../src/ask-sources.js";
+import { keyStore, listMySources, makeSourceFetcher, removeMySource, resolveSources, saveMySource, setSourceHttp, sourceHttp, type PersonSource } from "../src/ask-sources.js";
 
 // Data sources for Ask (#213), the part that holds keys. The rules under test:
 //   - a key lives in the secret vault, and when there is none, in memory for this page only —
@@ -199,5 +199,14 @@ describe("makeSourceFetcher", () => {
     const res = await fetchSource({ source: "app:osm", kind: "data", url: "interpreter?data=x" });
     expect(res.ok).toBe(false);
     expect(res.detail).toMatch(/Failed to fetch/);
+  });
+});
+
+describe("sourceHttp", () => {
+  it("uses the HTTP the platform registered (the native app's has no CORS)", async () => {
+    const seen: string[] = [];
+    setSourceHttp(async (url) => (seen.push(url), new Response("native")));
+    expect(await (await sourceHttp("https://api.example.com/v1/x", {})).text()).toBe("native");
+    expect(seen).toEqual(["https://api.example.com/v1/x"]);
   });
 });
