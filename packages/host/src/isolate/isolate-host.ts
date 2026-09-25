@@ -6,7 +6,7 @@
 import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiProgress, Value } from "karta";
 import type { Store } from "@karta/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
-import { resolveRecord, type ResolveDeps } from "../resolve.js";
+import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "../values-gate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
@@ -110,7 +110,11 @@ class IsolateLoadedApp implements LoadedApp {
         return nul;
       case "data.all": {
         const rows = await this.store.all(op.entity as string);
-        const resolved = await Promise.all(rows.map((r) => resolveRecord(this.resolveDeps, op.entity as string, r, false)));
+        // A cache for this one call: these deps live as long as the isolate, and a cache that did
+        // too would serve rows from before any later write.
+        const deps = { ...this.resolveDeps, records: new Map() };
+        await prefetchRelated(deps, op.entity as string, rows);
+        const resolved = await Promise.all(rows.map((r) => resolveRecord(deps, op.entity as string, r, false)));
         return serialize(resolved);
       }
       case "data.get": {

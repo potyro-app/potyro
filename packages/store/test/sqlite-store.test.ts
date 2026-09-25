@@ -45,6 +45,35 @@ describe("SqliteStore CRUD", () => {
     expect((await s.all("task", { ids: [b.id] })).map((r) => r.title)).toEqual(["b"]);
   });
 
+  it("all() by ids reads only those rows, through the index", async () => {
+    // The runtime resolves a list's relations with one `all(entity, { ids })` per related entity.
+    // Answering it by reading and parsing the whole entity would make a batch of 5 cost as much as
+    // the entire table; the (entity, id) key already indexes exactly this lookup.
+    const { store: s } = await seeded();
+    const rows = [];
+    for (let i = 0; i < 1000; i++) rows.push(await s.insert("task", { title: `t${i}` }));
+    const wanted = [rows[900]!.id, rows[3]!.id, "missing", rows[3]!.id];
+
+    const parse = vi.spyOn(JSON, "parse");
+    const got = await s.all("task", { ids: wanted });
+    const parsed = parse.mock.calls.length;
+    parse.mockRestore();
+
+    // Creation order, as `all` always returns; an id that is not there is simply absent.
+    expect(got.map((r) => r.title)).toEqual(["t3", "t900"]);
+    expect(parsed).toBe(2);
+    expect(await s.all("task", { ids: [] })).toEqual([]);
+  });
+
+  it("all() by ids copes with more ids than SQLite takes in one statement", async () => {
+    const { store: s } = await seeded();
+    const ids = [];
+    for (let i = 0; i < 1200; i++) ids.push((await s.insert("task", { title: `t${i}` })).id);
+    const got = await s.all("task", { ids, offset: 10, limit: 5 });
+    expect(got.map((r) => r.title)).toEqual(["t10", "t11", "t12", "t13", "t14"]);
+    expect((await s.all("task", { ids })).length).toBe(1200);
+  });
+
   it("delete removes the record", async () => {
     const { store: s } = await seeded();
     const r = await s.insert("task", { title: "a" });

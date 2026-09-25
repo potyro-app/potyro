@@ -119,3 +119,21 @@ test("an app opened from the switcher keeps the switcher reachable", async ({ pa
   await overlay.getByRole("button", { name: "Close launcher" }).tap();
   await expect(overlay).toHaveCount(0);
 });
+
+test("offline, a synced app's header still fits the phone, and still says it is offline", async ({ page }) => {
+  // The relay cannot be reached — a train, a dead router. The status then says the most it ever
+  // says ("Offline · changes saved here"), and on a 375-pixel phone that pushed the ⋯ menu past the
+  // edge: the page scrolled sideways and the app's name was squeezed to nothing.
+  await page.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://127.0.0.1:9"));
+  await openApp(page, "garden", "Garden");
+  const status = page.locator(".k-topbar .k-sync-status");
+  await expect(status).toHaveAttribute("data-state", "offline", { timeout: 20_000 });
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  await expectTappable(page.locator(".k-topbar .k-menu-btn"));
+  // The name keeps room to be read.
+  expect((await page.locator(".k-topbar-name").boundingBox())!.width).toBeGreaterThan(40);
+  // Short on screen, whole for anyone who asks: the words are still there to be read out and hovered.
+  await expect(status).toHaveAccessibleName(/Offline · changes saved here/);
+  await expect(status).toHaveAttribute("title", "Offline · changes saved here");
+});
