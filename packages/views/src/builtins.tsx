@@ -154,8 +154,8 @@ export function ListView(props: BuiltinViewProps) {
           >
             {cell.mediaUrl ? <img className="k-thumb" src={cell.mediaUrl} alt="" width={48} height={48} /> : null}
             <span className="k-list-text">
-              <span className="k-primary">{cell.primary ?? String(row.id)}</span>
-              {cell.secondary ? <span className="k-secondary">{cell.secondary}</span> : null}
+              <span className="k-primary" data-k-value>{cell.primary ?? String(row.id)}</span>
+              {cell.secondary ? <span className="k-secondary" data-k-value>{cell.secondary}</span> : null}
               {cell.badges?.length ? (
                 <span className="k-badges">
                   {cell.badges.map((b) => (
@@ -268,8 +268,8 @@ export function GalleryView(props: BuiltinViewProps) {
             onClick={openCard ? () => openCard(row) : undefined}
           >
             {cell.mediaUrl ? <img className="k-card-media" src={cell.mediaUrl} alt="" /> : <div className="k-card-media k-placeholder" />}
-            <span className="k-primary">{cell.primary ?? String(row.id)}</span>
-            {cell.secondary ? <span className="k-secondary">{cell.secondary}</span> : null}
+            <span className="k-primary" data-k-value>{cell.primary ?? String(row.id)}</span>
+            {cell.secondary ? <span className="k-secondary" data-k-value>{cell.secondary}</span> : null}
           </button>
         );
       })}
@@ -299,8 +299,11 @@ export function TableView(props: BuiltinViewProps) {
             {columns.map((c) => (
               // The field's own label, or its key made readable. Printed raw, `caloriesPerServing`
               // becomes one twenty-character word that cannot wrap, which is most of what made these
-              // tables too wide in the first place.
-              <th key={c}>{fieldLabel(runtime, view.entity, c)}</th>
+              // tables too wide in the first place. `data-k-field` is how the shell's edit mode finds
+              // it to rename in place; `data-k-value` marks a record's own text, which it never offers.
+              <th key={c} data-k-field={`${view.entity}.${c}`}>
+                {fieldLabel(runtime, view.entity, c)}
+              </th>
             ))}
             {onEdit ? <th aria-label="Edit" /> : null}
           </tr>
@@ -309,7 +312,9 @@ export function TableView(props: BuiltinViewProps) {
           {list.map((row) => (
             <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
               {columns.map((c) => (
-                <td key={c}>{formatValue(row[c])}</td>
+                <td key={c} data-k-value>
+                  {formatValue(row[c])}
+                </td>
               ))}
               {onEdit ? (
                 <td>
@@ -374,10 +379,13 @@ export function DetailView(props: BuiltinViewProps) {
         <div className="k-field" key={f}>
           {/* A section that is one field already says its name in the heading; saying it again
               under the heading ("Ingredients / Ingredients") is noise. It stays for assistive tech. */}
-          <dt className={group.fields.length === 1 && group.title === fieldLabel(runtime, view.entity, f) ? "k-visually-hidden" : undefined}>
+          <dt
+            className={group.fields.length === 1 && group.title === fieldLabel(runtime, view.entity, f) ? "k-visually-hidden" : undefined}
+            data-k-field={`${view.entity}.${f}`}
+          >
             {fieldLabel(runtime, view.entity, f)}
           </dt>
-          <dd>
+          <dd data-k-value>
             <FieldValue runtime={runtime} entity={view.entity} fieldKey={f} value={record[f]} />
           </dd>
         </div>

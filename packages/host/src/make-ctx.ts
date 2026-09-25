@@ -8,7 +8,7 @@ import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, every
 import type { Store } from "@karta/store";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
-import { resolveRecord, type ResolveDeps } from "./resolve.js";
+import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase } from "./types.js";
 
 const KV_PREFIX = "kv:";
@@ -58,6 +58,12 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     ctx: undefined as unknown as Ctx,
     memo: new Map(),
     computing: new Set(),
+    records: new Map(),
+  };
+  // Data changed: nothing this pass has read may be served again.
+  const forget = (): void => {
+    deps.memo.clear();
+    deps.records?.clear();
   };
 
   // Resolve rows sequentially (not Promise.all): computed may call ctx.query and resolve shared
@@ -65,6 +71,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
   // valid stack (concurrent resolution of the same computed would look like a false cycle).
   // Memoization makes the repeated work cheap; personal scale makes the lost parallelism moot.
   const resolveMany = async (entity: string, rows: KartaRecord[]): Promise<Resolved[]> => {
+    await prefetchRelated(deps, entity, rows);
     const out: Resolved[] = [];
     for (const r of rows) out.push(await resolveRecord(deps, entity, r));
     return out;
@@ -100,7 +107,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       const clean = stampAuthor(data, me.id);
       assertValuesFit(deps.definition, entity, clean, currentPeople(base.space, me));
       const row = await store.insert(entity, clean as Partial<KartaRecord>);
-      deps.memo.clear(); // data changed → invalidate memoized computed for this pass
+      forget(); // data changed → invalidate memoized computed and related rows for this pass
       return resolveRecord(deps, entity, row);
     },
 
@@ -112,7 +119,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         ever: everyone(store),
       });
       const row = await store.update(entity, id, clean as Partial<KartaRecord>);
-      deps.memo.clear();
+      forget();
       return resolveRecord(deps, entity, row);
     },
 
@@ -128,7 +135,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         const base = Number((current as Record<string, unknown> | null)?.[field] ?? 0);
         await store.update(entity, id, { [field]: base + delta } as Partial<KartaRecord>);
       }
-      deps.memo.clear();
+      forget();
       const row = await store.get(entity, id);
       if (!row) throw new Error(`increment: ${entity}/${id} not found`);
       return resolveRecord(deps, entity, row);
@@ -136,7 +143,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
 
     async delete(entity, id) {
       await store.delete(entity, id);
-      deps.memo.clear();
+      forget();
     },
 
     async transaction(fn) {

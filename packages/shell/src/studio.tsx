@@ -329,7 +329,8 @@ export function Studio({
   // Preview-first, nothing to click: the app it was opened for, or else the starter.
   useEffect(() => {
     const app = initialAppId ? getUserApp(initialAppId) : undefined;
-    if (app) openSaved(app);
+    // The request it was opened with (edit mode's "Ask the Studio") stays; only switching apps clears it.
+    if (app) openSaved(app, initialDescription);
     else void buildPreview(STARTER, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -665,9 +666,10 @@ export function Studio({
     void buildPreview(source, record.id);
   };
 
-  const openSaved = (app: UserApp): void => {
+  /** `description` is what to ask for next — empty, unless the Studio was opened with a request. */
+  const openSaved = (app: UserApp, description = ""): void => {
     setSource(app.source);
-    setDescription("");
+    setDescription(description);
     setCurrentId(app.id);
     void buildPreview(app.source, app.id);
   };
