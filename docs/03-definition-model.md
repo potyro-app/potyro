@@ -111,6 +111,23 @@ entities: {
 - **`actions`** are functions `(record, ctx, input?) => void | Promise<void>`. They do whatever
   you want through `ctx` (patch, create, call caps, prompt the user…).
 
+  An action may instead say what it is and what it takes (#213):
+
+  ```ts
+  feed: {
+    label: "Feed",
+    description: "Log a feeding",                         // Ask reads this
+    input: { grams: { type: "number", min: 0, required: true } },
+    run: async (plant, ctx, input) => { await ctx.patch("plant", plant.id, { fed: input.grams }); },
+  },
+  ```
+
+  `input` uses the ordinary field types. Whoever runs the action (a button, Ask), the values are
+  checked against those fields before `run` sees them, and a button that brings no values opens a
+  form of them. Ask can fill `input` from what the person said ("feed the monstera 12 g"). An action
+  that asks for things with its own `ctx.ui.form` still works from a button, but Ask cannot fill that
+  form; declare `input` to make it something Ask can do.
+
 ## Field types (declarative, closed set)
 
 `text · richtext · number · money · boolean · enum · tags · datetime · duration · url · geo · media ·
