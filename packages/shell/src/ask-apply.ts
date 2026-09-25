@@ -16,7 +16,7 @@
 
 import type { AppDefinition, Field, KartaRecord } from "karta";
 import { actionInfo, humanizeKey } from "karta";
-import type { Proposal, ProposedAction, ProposedRow } from "@karta/generator/agent";
+import type { Proposal, ProposedAction, ProposedRow, Trust } from "@karta/generator/agent";
 
 type Records = Record<string, ReadonlyArray<Record<string, unknown>>>;
 
@@ -25,6 +25,8 @@ export interface ReviewRow extends ProposedRow {
   duplicate: boolean;
   /** What the person should know about this row: a link that found nothing, or found something close. */
   notes: string[];
+  /** How far what it says was confirmed by what was read. Absent for records the device made itself. */
+  trust?: Trust;
 }
 
 export type ReviewTarget =
@@ -246,6 +248,7 @@ export function prepareReview(def: AppDefinition, proposal: Proposal, existing: 
     ...row,
     values: retarget(def.entities[row.entity]?.fields ?? {}, row.values, dup),
     notes: [...row.notes, ...(opts.area ? areaNotes(def, row, opts.area) : [])],
+    ...(proposal.trust?.[row.ref] ? { trust: proposal.trust[row.ref] } : {}),
   }));
   return {
     summary: proposal.summary,

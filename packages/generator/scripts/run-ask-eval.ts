@@ -51,7 +51,7 @@ async function runCase(model: string, c: AskCase, reasoning: ReasoningEffort, ou
       return new Response(text, { status: res.status, headers: res.headers });
     },
   });
-  const definition = await loadExample(c.app);
+  const definition = typeof c.app === "string" ? await loadExample(c.app) : c.app;
   const started = Date.now();
   let outcome: AskOutcome;
   try {
@@ -70,7 +70,12 @@ async function runCase(model: string, c: AskCase, reasoning: ReasoningEffort, ou
 }
 
 function describe(o: AskOutcome): string {
-  if (o.kind === "proposal") return `proposal: ${o.proposal.rows.length} rows, ${o.proposal.actions.length} actions, ${o.proposal.citations?.length ?? 0} cited`;
+  if (o.kind === "proposal") {
+    const counts: Record<string, number> = {};
+    for (const t of Object.values(o.proposal.trust ?? {})) counts[t.status] = (counts[t.status] ?? 0) + 1;
+    const trust = Object.entries(counts).map(([k, n]) => `${k} ${n}`).join(", ");
+    return `proposal: ${o.proposal.rows.length} rows, ${o.proposal.citations?.length ?? 0} cited | ${trust}`;
+  }
   if (o.kind === "answer") return `ANSWER: ${o.text.replace(/\s+/g, " ").slice(0, 110)}`;
   if (o.kind === "failed") return `FAILED: ${o.reason.slice(0, 110)}`;
   return o.kind;
