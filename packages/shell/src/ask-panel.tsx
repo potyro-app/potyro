@@ -7,9 +7,10 @@
 // The dialog also says, before anyone types, what leaves the device: how the app is organised and the
 // request, never what is in it. And it holds the one switch that makes Ask go away for this app.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KartaRuntime } from "@karta/runtime";
-import type { AskStep, Proposal } from "@karta/generator/agent";
+import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@karta/generator/agent";
+import { mapArea, subscribeMapArea } from "@karta/views";
 import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
 import { setAskEnabled } from "./ask-setting.js";
@@ -34,7 +35,9 @@ interface OriginQuestion {
 type Phase =
   | { kind: "compose" }
   | { kind: "working" }
-  | { kind: "review"; review: Review; names: Map<string, string> }
+  | { kind: "review"; review: Review; names: Map<string, string>; citations: Citation[] }
+  /** The model needs one thing from the person; their reply carries the conversation on. */
+  | { kind: "question"; text: string; transcript: ChatMessage[] }
   | { kind: "saving" }
   | { kind: "added"; created: number; ran: number }
   | { kind: "note"; head: string; text: string };
@@ -46,12 +49,55 @@ export interface AskPanelProps {
   onClose: () => void;
 }
 
+/** Web search is a person's choice, per device: it costs a few cents a request on their own key. */
+const WEB_KEY = "karta:ask-web";
+function webPreference(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(WEB_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+function rememberWeb(on: boolean): void {
+  try {
+    globalThis.localStorage?.setItem(WEB_KEY, on ? "1" : "0");
+  } catch {
+    // remembered for this dialog only
+  }
+}
+
+/** Today in the person's own calendar, not UTC's. */
+function localDay(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const NOTE_HEAD: Record<string, string> = {
-  answer: "It replied",
   refused: "Ask can’t run yet",
   failed: "It couldn’t make this fit",
   stopped: "Stopped",
 };
+
+/** Where the web search looked: the sites, then every page, so a person can check a place is real. */
+function Found({ citations }: { citations: Citation[] }) {
+  const hosts = [...new Set(citations.map((c) => { try { return new URL(c.url).host.replace(/^www\./, ""); } catch { return ""; } }).filter(Boolean))];
+  return (
+    <details className="k-ask-found">
+      <summary>
+        Found on {hosts.slice(0, 3).join(", ")}
+        {hosts.length > 3 ? ` and ${hosts.length - 3} more` : ""}
+      </summary>
+      <ul>
+        {citations.map((c) => (
+          <li key={c.url}>
+            <a href={c.url} target="_blank" rel="noreferrer noopener">
+              {c.title || c.url}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 
 export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const def = runtime.definition;
@@ -62,6 +108,12 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [question, setQuestion] = useState<OriginQuestion | null>(null);
   /** Every URL Ask read in this run, shown with the proposal: nothing it looked at is hidden. */
   const [fetched, setFetched] = useState<string[]>([]);
+  // What goes with the request besides the app's structure, shown before sending and removable.
+  const area = useSyncExternalStore(subscribeMapArea, mapArea);
+  const [sendArea, setSendArea] = useState(true);
+  const [web, setWeb] = useState(webPreference);
+  const [searchDown, setSearchDown] = useState(false);
+  const [reply, setReply] = useState("");
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
   const keys = keysForPage();
@@ -90,10 +142,15 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
   const land = async (outcome: StartAskOutcome): Promise<void> => {
     if (outcome.kind === "proposal") {
-      setPhase({ kind: "review", ...(await review(outcome.proposal)) });
+      setPhase({ kind: "review", ...(await review(outcome.proposal)), citations: outcome.proposal.citations ?? [] });
       return;
     }
-    const text = outcome.kind === "answer" || outcome.kind === "refused" ? outcome.text : outcome.kind === "failed" ? outcome.reason : "You stopped it before it finished.";
+    if (outcome.kind === "answer") {
+      setReply("");
+      setPhase({ kind: "question", text: outcome.text, transcript: outcome.transcript });
+      return;
+    }
+    const text = outcome.kind === "refused" ? outcome.text : outcome.kind === "failed" ? outcome.reason : "You stopped it before it finished.";
     setPhase({ kind: "note", head: NOTE_HEAD[outcome.kind]!, text });
   };
 
@@ -106,22 +163,30 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
       const by = def.entities[e]?.displayField;
       for (const r of existing[e]!) if (by && typeof r[by] === "string") names.set(String(r.id), r[by] as string);
     }
-    return { review: prepareReview(def, proposal, existing), names };
+    return { review: prepareReview(def, proposal, existing, { area: context().area }), names };
   };
 
-  const ask = (): void => {
+  const context = (): AskContext => ({
+    today: localDay(),
+    language: globalThis.navigator?.language,
+    ...(area && sendArea ? { area: { ...area, label: "the map on the person's screen" } } : {}),
+  });
+
+  const ask = (resumeFrom?: ChatMessage[]): void => {
     const text = request.trim();
-    if (!text) return;
+    if (!text && !resumeFrom) return;
     const controller = new AbortController();
     abort.current = controller;
     setTries(0);
     setReading(null);
-    setFetched([]);
+    if (!resumeFrom) setFetched([]);
+    setSearchDown(false);
     setPhase({ kind: "working" });
     const labels = new Map(sources.usable.map((s) => [s.ask.id, s.ask.label]));
     const onStep = (s: AskStep): void => {
       if (s.kind === "proposal" && !s.ok) setTries((n) => n + 1);
       if (s.kind === "fetch") setReading(labels.get(s.source) ?? s.source);
+      if (s.kind === "search-unavailable") setSearchDown(true);
     };
     const fetchSource = makeSourceFetcher({
       sources: sources.usable,
@@ -144,7 +209,18 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
       onAllowed: (id, origin) => (id.startsWith("app:") ? approveAppSource(appId, id.slice("app:".length), origin) : allowOrigin(id.slice("mine:".length), origin)),
       onFetched: (_id, url) => setFetched((prev) => [...prev, url]),
     });
-    void startAsk({ definition: def, request: text, engine, sources: sources.usable.map((s) => s.ask), fetchSource, onStep, signal: controller.signal }).then((o) => {
+    void startAsk({
+      definition: def,
+      request: text,
+      engine,
+      sources: sources.usable.map((s) => s.ask),
+      fetchSource,
+      context: context(),
+      webSearch: web,
+      resumeFrom,
+      onStep,
+      signal: controller.signal,
+    }).then((o) => {
       loadSources(); // an origin allowed during the run is remembered from now on
       if (abort.current === controller) void land(o);
     });
@@ -221,15 +297,37 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
               </p>
             ) : (
               <p className="k-ask-privacy">
-                {engineLabel(engine)} sees how this app is organised and what you type here. Nothing already in the app is sent. You choose what gets added.
+                {engineLabel(engine)} sees how this app is organised, what you type{area && sendArea ? ", and the area on your map" : ""}. Nothing already in the app is sent.
+                You choose what gets added.
               </p>
             )}
+            <div className="k-ask-context" aria-label="Sent with your request">
+              {area && sendArea ? (
+                <span className="k-ask-chip">
+                  <span aria-hidden>📍</span> Area on your map · {area.lat.toFixed(3)}, {area.lng.toFixed(3)} · {area.radiusKm < 1 ? "<1" : Math.round(area.radiusKm)} km
+                  <button type="button" className="k-ask-chip-x" aria-label="Don’t send the map area" onClick={() => setSendArea(false)}>
+                    ✕
+                  </button>
+                </span>
+              ) : null}
+              <label className="k-ask-chip k-ask-chip-toggle" data-on={web || undefined}>
+                <input
+                  type="checkbox"
+                  checked={web}
+                  onChange={(e) => {
+                    setWeb(e.target.checked);
+                    rememberWeb(e.target.checked);
+                  }}
+                />
+                <span aria-hidden>🔎</span> Search the web when needed · about 2¢
+              </label>
+            </div>
             <SourcesSection state={sources} keys={keys} onChange={loadSources} />
             <footer className="k-ask-actions">
               <button type="button" className="k-ask-off" onClick={turnOff}>
                 Turn off Ask for this app
               </button>
-              <button type="button" className="k-add k-primary-action" disabled={!request.trim() || Boolean(refused)} onClick={ask}>
+              <button type="button" className="k-add k-primary-action" disabled={!request.trim() || Boolean(refused)} onClick={() => ask()}>
                 Ask
               </button>
             </footer>
@@ -283,8 +381,35 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
           </div>
         ) : null}
 
+        {phase.kind === "question" ? (
+          <div className="k-ask-note k-ask-asks">
+            <p className="k-ask-note-head">It needs to know one thing</p>
+            <p>{phase.text}</p>
+            <textarea className="k-input" aria-label="Your answer" rows={2} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
+            <footer className="k-ask-actions">
+              <button type="button" className="k-add" onClick={() => setPhase({ kind: "compose" })}>
+                Start over
+              </button>
+              <button
+                type="button"
+                className="k-add k-primary-action"
+                disabled={!reply.trim()}
+                onClick={() => ask([...phase.transcript, { role: "user", content: reply.trim() }])}
+              >
+                Send
+              </button>
+            </footer>
+          </div>
+        ) : null}
+
         {phase.kind === "review" ? (
           <>
+            {searchDown ? (
+              <p className="k-ask-note" role="note">
+                The web search was unavailable, so this comes from the model’s memory. Check it before you rely on it.
+              </p>
+            ) : null}
+            {phase.citations.length ? <Found citations={phase.citations} /> : null}
             <ReviewPanel def={def} review={phase.review} names={phase.names} onAccept={(rows, runs) => void add(rows, runs)} onDiscard={() => setPhase({ kind: "compose" })} />
             {fetched.length ? (
               <details className="k-ask-fetched">

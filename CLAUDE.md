@@ -101,6 +101,10 @@ pnpm --filter @karta/generator gen:reference
 # does changing an app that holds records keep the records? (docs/12 §8)
 pnpm --filter @karta/generator eval:modify:fixture   # no model, no money — sample review sheet
 pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+
+# does Ask do what people ask? real requests against the example apps; READ the transcripts (paid,
+# ~2¢ a request with --web on DeepSeek V4 Flash)
+OPENROUTER_API_KEY=… pnpm --filter @karta/generator eval:ask -- --web --model deepseek/deepseek-v4-flash-0731
 ```
 
 **On Windows** call `pnpm.cmd`: PowerShell blocks `pnpm.ps1` under the default execution policy and

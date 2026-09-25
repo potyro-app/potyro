@@ -129,7 +129,8 @@ describe("checkProposedRows", () => {
     const all = !out.ok ? out.problems.join("\n") : "";
     expect(all).toMatch(/secret/);
     expect(all).toMatch(/Text/);
-    expect(all).toMatch(/By \(by\) cannot be set/);
+    // A link inside a row is "@ref" or { match }, never an id the model made up.
+    expect(all).toMatch(/rec_9.*neither/);
     expect(checkProposedRows(PLACES, [{ entity: "place", ref: "c", values: { name: "C", tips: [{ text: "ok", votes: 2 }] } }]).ok).toBe(true);
   });
 
@@ -174,7 +175,10 @@ describe("runAskLoop", () => {
 
   it("a reply with no proposal is an answer for the person", async () => {
     const { engine } = scripted([{ content: "This app has no field for opening hours." }]);
-    expect(await runAskLoop(deps({ engine }))).toEqual({ kind: "answer", text: "This app has no field for opening hours." });
+    const out = await runAskLoop(deps({ engine }));
+    expect(out).toMatchObject({ kind: "answer", text: "This app has no field for opening hours." });
+    // The conversation can go on: the transcript ends with the model's words.
+    expect(out.kind === "answer" && out.transcript.at(-1)).toEqual({ role: "assistant", content: "This app has no field for opening hours." });
   });
 
   it("gives up after its step budget", async () => {
@@ -305,5 +309,95 @@ describe("actions in a proposal", () => {
     const { engine } = scripted([propose("t1", { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] })]);
     const out = await runAskLoop(deps({ engine, definition: PLANTS }));
     expect(out).toEqual({ kind: "proposal", proposal: { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] } });
+  });
+});
+
+describe("model quirks and outages", () => {
+  it("reads rows sent as a JSON string of the array", async () => {
+    const rows = [{ entity: "place", ref: "p1", values: { name: "Jardim", kind: "park" } }];
+    const { engine } = scripted([propose("t1", { summary: "One.", rows: JSON.stringify(rows) })]);
+    expect(await runAskLoop(deps({ engine }))).toMatchObject({ kind: "proposal", proposal: { rows } });
+  });
+
+  it("says rows must be an array when they are not, instead of 'no rows'", async () => {
+    const { engine, seen } = scripted([propose("t1", { summary: "x", rows: "fifteen exercises" }), { content: "ok" }]);
+    await runAskLoop(deps({ engine }));
+    expect(seen[1]!.messages.find((m) => m.role === "tool")!.content).toMatch(/rows arrived as text that is not valid JSON.*send it as an array/);
+  });
+
+  it("goes on without the web when the search service fails, and says so", async () => {
+    const steps: string[] = [];
+    let calls = 0;
+    const seen: Array<Record<string, unknown>> = [];
+    const engine = {
+      chat: {
+        completions: {
+          create: async (req: Record<string, unknown>) => {
+            calls += 1;
+            seen.push({ ...req });
+            if (req.serverTools) throw new Error('OpenRouter 502: Server tool "openrouter:web_search" failed: upstream returned 502');
+            return { choices: [{ message: propose("t1", { summary: "From memory.", rows: [{ entity: "place", ref: "p", values: { name: "X", kind: "park" } }] }) }] };
+          },
+        },
+      },
+    } as unknown as ChatEngine;
+    const out = await runAskLoop(deps({ engine, webSearch: true, onStep: (s) => steps.push(s.kind) }));
+    expect(out.kind).toBe("proposal");
+    expect(calls).toBe(2);
+    expect(steps).toContain("search-unavailable");
+    expect(String((seen[1]!.messages as Array<{ content: string }>)[0]!.content)).toMatch(/cannot look anything up/);
+  });
+
+  it("offers the web search to the model only when asked to", async () => {
+    const a = scripted([{ content: "ok" }]);
+    await runAskLoop(deps({ engine: a.engine }));
+    expect(a.seen[0]!.serverTools).toBeUndefined();
+    const b = scripted([{ content: "ok" }]);
+    await runAskLoop(deps({ engine: b.engine, webSearch: true }));
+    expect(b.seen[0]!.serverTools).toEqual([{ type: "openrouter:web_search", parameters: { max_results: 6, max_uses: 3 } }]);
+    expect(b.seen[0]!.messages[0]!.content).toMatch(/Look them up before proposing/);
+  });
+
+  it("tells the model the date, language and area from the device", async () => {
+    const { engine, seen } = scripted([{ content: "ok" }]);
+    await runAskLoop(deps({ engine, context: { today: "2026-09-25", language: "pt", area: { lat: 44.3845, lng: 7.5427, radiusKm: 3 } } }));
+    const system = seen[0]!.messages[0]!.content;
+    expect(system).toContain("2026-09-25");
+    expect(system).toContain("pt");
+    expect(system).toContain("44.3845, 7.5427");
+  });
+
+  it("continues a conversation from an answer's transcript", async () => {
+    const first = scripted([{ content: "Which city?" }]);
+    const out = await runAskLoop(deps({ engine: first.engine }));
+    const second = scripted([{ content: "ok" }]);
+    await runAskLoop(deps({ engine: second.engine, resumeFrom: [...(out.kind === "answer" ? out.transcript : []), { role: "user", content: "Cuneo" }] }));
+    const sent = second.seen[0]!.messages;
+    expect(sent.at(-2)).toEqual({ role: "assistant", content: "Which city?" });
+    expect(sent.at(-1)).toEqual({ role: "user", content: "Cuneo" });
+  });
+});
+
+describe("where proposed places sit", () => {
+  const at = (ref: string, lat: number, lng: number) => ({ entity: "place", ref, values: { name: ref, kind: "park", where: { lat, lng } } });
+
+  it("sends back two places on exactly the same point", () => {
+    const out = checkProposal(PLACES, [at("a", 44.39, 7.54), at("b", 44.39, 7.54), at("c", 44.391, 7.54)]);
+    expect(!out.ok && out.problems.join()).toMatch(/a and b are at exactly the same point/);
+  });
+
+  it("sends back a place put on the centre of the area the model was given", () => {
+    const out = checkProposal(PLACES, [at("a", 44.3845, 7.5427)], [], { area: { lat: 44.3845, lng: 7.5427 } });
+    expect(!out.ok && out.problems.join()).toMatch(/centre of the area/);
+    expect(checkProposal(PLACES, [at("a", 44.3899, 7.5475)], [], { area: { lat: 44.3845, lng: 7.5427 } }).ok).toBe(true);
+  });
+});
+
+describe("defaults the model can see", () => {
+  it("names each field's default, so a wrong one can be overruled", () => {
+    const def = { id: "p", name: "P", entities: { place: { fields: { visited: { type: "boolean", default: true }, when: { type: "datetime", default: () => new Date() } } } }, pages: [] } as unknown as AppDefinition;
+    const text = describeStructure(def);
+    expect(text).toMatch(/visited.*defaults to true when left out/);
+    expect(text).toMatch(/when.*defaults to set by the app/);
   });
 });

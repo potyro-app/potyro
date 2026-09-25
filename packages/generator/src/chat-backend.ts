@@ -24,6 +24,12 @@ export interface ToolCallOnMessage {
   function: { name: string; arguments: string };
 }
 
+/** A page a provider-side search read, as the provider reports it. */
+export interface Citation {
+  url: string;
+  title?: string;
+}
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
@@ -41,9 +47,11 @@ export interface ChatRequest {
   /** Omitted entirely when absent — an on-device engine must see the request it saw before. */
   tools?: Array<{ type: "function"; function: { name: string; description: string; parameters: Record<string, unknown> } }>;
   tool_choice?: "auto" | "none";
+  /** Tools the provider runs itself (OpenRouter's `openrouter:web_search`). Engines that have none ignore them. */
+  serverTools?: Array<Record<string, unknown>>;
 }
 export interface ChatResponse {
-  choices: Array<{ message: { content: string; tool_calls?: ToolCallOnMessage[] }; finish_reason?: string }>;
+  choices: Array<{ message: { content: string; tool_calls?: ToolCallOnMessage[]; citations?: Citation[] }; finish_reason?: string }>;
 }
 export interface ChatEngine {
   chat: { completions: { create(req: ChatRequest): Promise<ChatResponse> } };
