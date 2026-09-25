@@ -53,6 +53,18 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+/** OpenStreetMap's geocoder, stubbed: Bar Bibe's address agrees with the model, Via Busca lands 40 km off. */
+async function stubGeocoder(page: Page): Promise<string[]> {
+  const asked: string[] = [];
+  await page.route("https://nominatim.openstreetmap.org/**", async (route) => {
+    const q = new URL(route.request().url()).searchParams.get("q") ?? "";
+    asked.push(q);
+    const hit = q.startsWith("Corso Galileo Ferraris") ? [{ lat: "44.3861", lon: "7.5511" }] : [{ lat: "44.1", lon: "7.9" }];
+    await route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(hit) });
+  });
+  return asked;
+}
+
 async function openAsk(page: Page) {
   await page.goto(`/?user=${APP_ID}`);
   await expect(page.locator(".k-map-canvas")).toBeVisible();
@@ -66,6 +78,7 @@ test("the map's area and web search go with the request, as shown; the sources a
     bodies.push(JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>);
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(PROPOSAL) });
   });
+  const geocoded = await stubGeocoder(page);
   const dialog = await openAsk(page);
   const chips = dialog.locator(".k-ask-context");
   await expect(chips).toContainText("Area on your map · 44.38");
@@ -80,6 +93,10 @@ test("the map's area and web search go with the request, as shown; the sources a
   expect(system).toMatch(/visited.*defaults to true/);
   expect((bodies[0]!.tools as Array<{ type: string }>).map((t) => t.type)).toContain("openrouter:web_search");
 
+  // Each address was looked up; the one the geocoder put 40 km away keeps the model's pin, flagged.
+  expect(geocoded).toEqual(["Corso Galileo Ferraris 26, Cuneo", "Via Busca 3b, Cuneo"]);
+  await expect(dialog.locator(".k-ask-row", { hasText: "Ninføød" })).toContainText("Location approximate");
+  await expect(dialog.locator(".k-ask-row", { hasText: "Bar Bibe" })).not.toContainText("approximate");
   await expect(dialog.locator(".k-ask-found summary")).toHaveText("Found on happycow.net");
   await dialog.locator(".k-ask-found summary").click();
   await expect(dialog.getByRole("link", { name: "Vegan Restaurants in Cuneo" })).toHaveAttribute("href", "https://www.happycow.net/europe/italy/cuneo/");
@@ -97,6 +114,7 @@ test("the area can be left out, and web search turned off, before sending", asyn
     bodies.push(JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>);
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(PROPOSAL) });
   });
+  const geocoded = await stubGeocoder(page);
   const dialog = await openAsk(page);
   await dialog.getByRole("button", { name: "Don’t send the map area" }).click();
   await dialog.locator(".k-ask-context").getByRole("checkbox", { name: /Search the web/ }).uncheck();
@@ -107,6 +125,8 @@ test("the area can be left out, and web search turned off, before sending", asyn
   expect(system).not.toMatch(/Area: around/);
   expect(system).toMatch(/cannot look anything up/);
   expect(JSON.stringify(bodies[0]!.tools)).not.toContain("web_search");
+  // No web: no geocoding either.
+  expect(geocoded).toEqual([]);
 
   // The choice about web search is remembered on this device.
   await dialog.getByRole("button", { name: "Discard" }).click();
