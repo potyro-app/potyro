@@ -27,11 +27,13 @@ const DEF = {
 } as unknown as AppDefinition;
 
 const EXISTING = {
-  room: [{ id: "r1", name: "Kitchen" }, { id: "r2", name: "Bedroom" }],
+  room: [{ id: "r1", name: "Kitchen" }, { id: "r2", name: "Bedroom" }, { id: "r3", name: "Back garden" }],
   plant: [
     { id: "p1", name: "Monstera" },
     { id: "p2", name: "Boston fern" },
     { id: "p3", name: "Bird's nest fern" },
+    { id: "p4", name: "Tomato" },
+    { id: "p5", name: "tomato" },
   ],
 };
 
@@ -85,6 +87,25 @@ describe("prepareReview", () => {
     expect(none!.targets).toEqual([]);
     expect(none!.notes.join()).toMatch(/cactus/);
     expect(none!.label).toBe("Feed");
+  });
+
+  it("never links by a partial name: one close match is named in a note, not taken", () => {
+    const review = prepareReview(DEF, { summary: "", rows: [{ entity: "plant", ref: "b", values: { name: "Basil", room: { match: "garden" } } }], actions: [] }, EXISTING);
+    expect(review.rows[0]!.values.room).toBeUndefined();
+    expect(review.rows[0]!.notes.join()).toMatch(/Back garden/);
+  });
+
+  it("two records with the same name are offered, not both ticked", () => {
+    const review = prepareReview(DEF, { summary: "", rows: [], actions: [{ entity: "plant", action: "water", match: "tomato" }] }, EXISTING);
+    expect(review.actions[0]!.targets.map((t) => t.ticked)).toEqual([false, false]);
+    expect(review.actions[0]!.notes.join()).toMatch(/more than one/i);
+  });
+
+  it("a declared action always gets an input, so a run never falls back to asking with a form", () => {
+    const review = prepareReview(DEF, { summary: "", rows: [], actions: [{ entity: "plant", action: "feed", match: "monstera" }] }, EXISTING);
+    expect(review.actions[0]!.input).toEqual({});
+    const bare = prepareReview(DEF, { summary: "", rows: [], actions: [{ entity: "plant", action: "water", match: "monstera" }] }, EXISTING);
+    expect(bare.actions[0]!.input).toBeUndefined();
   });
 
   it("resolves a link inside an action's input by name", () => {

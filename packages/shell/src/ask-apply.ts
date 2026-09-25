@@ -4,8 +4,10 @@
 // All of it happens HERE, against the person's records on this device, because the model never sees
 // those records (packages/generator/src/agent/ask.ts). The model names things the way the person did
 // ("the fern", "Kitchen"); `findByName` decides which records those are, by the entity's display field,
-// case- and spacing-blind. One exact match is taken; names that merely contain it are offered, not
-// taken; nothing found is said plainly. A row already there by name is marked, and comes unticked.
+// case- and spacing-blind. Only a single exact match is ever taken. Anything less — a name that merely
+// contains it, two records with the same name — is offered unticked (an action's targets) or left
+// empty with a note naming the candidates (a link); nothing found is said plainly. A row already
+// there by name is marked, and comes unticked.
 //
 // Links inside a proposal are refs ("@lx"). Rows are created first, then those refs are resolved to the
 // ids the store gave them; a row that links to rows created after it, or to itself through a cycle,
@@ -72,7 +74,6 @@ function resolveLink(def: AppDefinition, to: string, existing: Records, name: st
   const { exact, partial } = findByName(def, to, records, name);
   const called = (id: string) => nameOf(def, to, records.find((r) => r.id === id) ?? {});
   if (exact.length === 1) return { id: exact[0] };
-  if (!exact.length && partial.length === 1) return { id: partial[0], note: `${label}: “${name}” taken as ${called(partial[0]!)}.` };
   const many = exact.length > 1 ? exact : partial;
   if (many.length) return { note: `${label}: “${name}” could be ${many.map(called).join(", ")}; left empty.` };
   return { note: `${label}: nothing called “${name}”; left empty.` };
@@ -120,7 +121,9 @@ export function markDuplicates(def: AppDefinition, rows: ProposedRow[], existing
 function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow[], existing: Records): ReviewAction {
   const info = actionInfo(def.entities[run.entity], run.action);
   const notes: string[] = [];
-  let input = run.input;
+  // A declared action always gets an input, even an empty one: with none, the runtime would take the
+  // run for a button tap and ask with a form, in the middle of applying a review.
+  let input = info?.input ? (run.input ?? {}) : run.input;
   if (input && info?.input) {
     const r = resolveLinks(def, info.input, input, existing);
     input = r.values;
@@ -134,10 +137,11 @@ function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow
     const records = existing[run.entity] ?? [];
     const { exact, partial } = findByName(def, run.entity, records, run.match);
     for (const id of exact.length ? exact : partial) {
-      targets.push({ kind: "existing", id, name: nameOf(def, run.entity, records.find((r) => r.id === id)!), ticked: exact.length > 0 });
+      targets.push({ kind: "existing", id, name: nameOf(def, run.entity, records.find((r) => r.id === id)!), ticked: exact.length === 1 });
     }
     const label = def.entities[run.entity]?.label?.toLowerCase() ?? run.entity;
     if (!targets.length) notes.push(`No ${label} called “${run.match}”.`);
+    else if (exact.length > 1) notes.push(`More than one ${label} is called “${run.match}”; tick the ones you meant.`);
     else if (!exact.length) notes.push(`Nothing is called exactly “${run.match}”; tick the ones you meant.`);
   }
   const inputText = run.input && info?.input
