@@ -8629,6 +8629,8 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-ask-asks textarea {
   font-size: 1rem;
+}
+
 /* A page whose data could not be read (it used to stay on "Loading…" for good). */
 .k-load-error {
   margin: 0;
@@ -8638,4 +8640,295 @@ body:has(.k-tabbar) .k-toasts {
   background: var(--danger-tint);
   color: var(--danger);
   font-size: 0.9rem;
+}
+
+/* ── Ask's review (#213): cards or a table, each record approved or held back, with its evidence ── */
+.k-ask:has(.k-ask-table) {
+  width: min(1080px, 100%);
+}
+.k-ask-review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.k-ask-review-count {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-ask-layout {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.k-ask-layout button {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.k-ask-layout button[aria-pressed="true"] {
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-ask-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.k-ask-card {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+  transition: border-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.k-ask-card[data-approved] {
+  border-left-color: var(--accent);
+}
+.k-ask-card:not([data-approved]) {
+  opacity: 0.78;
+}
+.k-ask-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.k-ask-card-title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.k-ask-card-summary {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.k-ask-held {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--warn);
+}
+.k-ask-more {
+  justify-self: start;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.k-ask-more:hover,
+.k-ask-more:focus-visible {
+  color: var(--ink);
+}
+.k-ask-card-body {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--line);
+}
+.k-ask-fields {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-field-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 30%) 1fr;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+}
+.k-ask-field-row dt {
+  color: var(--ink-soft);
+}
+.k-ask-field-row dd {
+  margin: 0;
+}
+.k-ask-value {
+  display: grid;
+  gap: 0.15rem;
+}
+.k-ask-value-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.k-ask-value[data-dropped] .k-ask-value-text {
+  text-decoration: line-through;
+  color: var(--ink-faint);
+}
+.k-ask-value-why {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.k-ask-value[data-issue="contradicted"] .k-ask-value-why {
+  color: var(--danger);
+}
+.k-ask-value[data-issue="unsupported"] .k-ask-value-why {
+  color: var(--warn);
+}
+.k-ask-keep {
+  margin-left: 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0 0.5rem;
+  color: inherit;
+  cursor: pointer;
+}
+.k-ask-badge {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+}
+.k-ask-badge[data-tone="good"] {
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-tint);
+}
+.k-ask-badge[data-tone="warn"] {
+  color: var(--warn);
+  border-color: color-mix(in oklab, var(--warn) 40%, var(--line));
+  background: color-mix(in oklab, var(--warn) 8%, var(--surface));
+}
+.k-ask-badge[data-tone="bad"] {
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-tint);
+}
+.k-ask-badge-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.k-ask-decision {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.k-ask-decision button {
+  border: 0;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.85rem;
+  width: 2rem;
+  height: 1.9rem;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.k-ask-decision button + button {
+  border-left: 1px solid var(--line);
+}
+.k-ask-approve[aria-pressed="true"] {
+  background: var(--ok-tint);
+  color: var(--ok);
+  font-weight: 700;
+}
+.k-ask-reject[aria-pressed="true"] {
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-weight: 700;
+}
+.k-ask-decision button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.k-ask-sources-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+.k-ask-sources-list a {
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 0.4rem;
+}
+.k-ask-sources-list q {
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.k-ask-row-notes {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  color: var(--warn);
+}
+.k-ask-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.k-ask-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+}
+.k-ask-table th,
+.k-ask-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+.k-ask-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-sunken);
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.k-ask-table td {
+  min-width: 7rem;
+  max-width: 18rem;
+}
+.k-ask-table td:first-child,
+.k-ask-table td:nth-child(2) {
+  min-width: 0;
+}
+.k-ask-table tbody tr:not([data-approved]):not(.k-ask-table-more) {
+  opacity: 0.7;
+}
+.k-ask-table-more td {
+  background: var(--surface-sunken);
+  display: table-cell;
+}
+/* Read by screen readers, not shown. */
+.k-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

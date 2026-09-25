@@ -24,7 +24,11 @@ export default defineApp({
 const reply = (message: Record<string, unknown>) => ({ choices: [{ message }] });
 const PROPOSAL = reply({
   content: "",
-  annotations: [{ type: "url_citation", url_citation: { url: "https://www.happycow.net/europe/italy/cuneo/", title: "Vegan Restaurants in Cuneo" } }],
+  // What a real search returns: pages with text. Both places are named on two different sites.
+  annotations: [
+    { type: "url_citation", url_citation: { url: "https://www.happycow.net/europe/italy/cuneo/", title: "Vegan Restaurants in Cuneo", content: "Bar Bibe, Corso Galileo Ferraris 26. Ninføød, Via Busca 3b: fully vegan." } },
+    { type: "url_citation", url_citation: { url: "https://restaurantguru.com/cuneo-vegan", title: "Vegan in Cuneo", content: "Top vegan: Ninføød and Bar Bibe." } },
+  ],
   tool_calls: [
     {
       id: "t1",
@@ -95,9 +99,11 @@ test("the map's area and web search go with the request, as shown; the sources a
 
   // Each address was looked up; the one the geocoder put 40 km away keeps the model's pin, flagged.
   expect(geocoded).toEqual(["Corso Galileo Ferraris 26, Cuneo", "Via Busca 3b, Cuneo"]);
-  await expect(dialog.locator(".k-ask-row", { hasText: "Ninføød" })).toContainText("Location approximate");
-  await expect(dialog.locator(".k-ask-row", { hasText: "Bar Bibe" })).not.toContainText("approximate");
-  await expect(dialog.locator(".k-ask-found summary")).toHaveText("Found on happycow.net");
+  await expect(dialog.locator(".k-ask-card", { hasText: "Ninføød" })).toContainText("Location approximate");
+  await expect(dialog.locator(".k-ask-card", { hasText: "Bar Bibe" })).not.toContainText("approximate");
+  // Two sites name each place: confirmed, and approved.
+  await expect(dialog.locator(".k-ask-card", { hasText: "Bar Bibe" }).locator(".k-ask-badge")).toHaveText("2 sources");
+  await expect(dialog.locator(".k-ask-found summary")).toHaveText("Found on happycow.net, restaurantguru.com");
   await dialog.locator(".k-ask-found summary").click();
   await expect(dialog.getByRole("link", { name: "Vegan Restaurants in Cuneo" })).toHaveAttribute("href", "https://www.happycow.net/europe/italy/cuneo/");
 

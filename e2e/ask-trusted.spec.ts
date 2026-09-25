@@ -104,6 +104,8 @@ test("Ask proposes records in the app's shape, sends no records, and adds only w
   await askButton(page).click();
   const dialog = page.getByRole("dialog", { name: `Ask ${APP_NAME}` });
   await expect(dialog.getByText("Nothing already in the app is sent.")).toBeVisible();
+  // No web search: this test is about the app's shape and the person's records, not about sources.
+  await dialog.locator(".k-ask-context").getByRole("checkbox", { name: /Search the web/ }).uncheck();
   await dialog.getByRole("textbox", { name: "What to add" }).fill("dog friendly places in Lisbon");
   await dialog.getByRole("button", { name: "Ask", exact: true }).click();
 
@@ -117,15 +119,15 @@ test("Ask proposes records in the app's shape, sends no records, and adds only w
   expect(bodies[1]).toMatch(/must be one of: cafe, park, beach/);
 
   // The review: the one the person already has is marked and unticked.
-  const rows = dialog.locator(".k-ask-row");
+  const rows = dialog.locator(".k-ask-card");
   await expect(rows).toHaveCount(4);
-  const dup = rows.filter({ hasText: "already in your app" });
+  const dup = rows.filter({ hasText: "Already in your app" });
   await expect(dup).toHaveCount(1);
-  await expect(dup.getByRole("checkbox")).not.toBeChecked();
+  await expect(dup.getByRole("button", { name: /^Reject/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows.filter({ hasText: "Dog Beach" })).toContainText("Lisbon");
 
   // Leave one more out, then add.
-  await rows.filter({ hasText: "Café Canino" }).getByRole("checkbox").uncheck();
+  await rows.filter({ hasText: "Café Canino" }).getByRole("button", { name: /^Reject/ }).click();
   await dialog.getByRole("button", { name: "Add 2" }).click();
   await expect(dialog.getByText("Added 2 records.")).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();
