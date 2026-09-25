@@ -92,6 +92,7 @@ pnpm ci:local all              # every step (run in a terminal; ~15 min)
 pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..5
 pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
 pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic from vazio's cron; docs/16 §8)
+pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io
 
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130)

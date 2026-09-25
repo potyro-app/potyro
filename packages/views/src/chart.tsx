@@ -86,7 +86,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
 
   const head = (
     <figcaption className="k-chart-head">
-      {title ? <span className="k-chart-title">{title}</span> : null}
+      {title ? <span className="k-chart-title" data-k-wording>{title}</span> : null}
       {subtitle ? <span className="k-chart-sub">{subtitle}</span> : null}
     </figcaption>
   );

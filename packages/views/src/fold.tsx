@@ -62,7 +62,10 @@ export function Fold({ storageKey, title, count, collapsible, initiallyOpen = tr
           ▾
         </span>
       ) : null}
-      <span className="k-fold-title">{title}</span>
+      {/* A record page's section is titled by the app; a list's group heading is a record's value. */}
+      <span className="k-fold-title" data-k-wording={variant === "section" || undefined}>
+        {title}
+      </span>
       {count !== undefined ? <span className="k-fold-count">{count}</span> : null}
     </>
   );
