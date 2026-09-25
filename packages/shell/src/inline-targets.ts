@@ -9,9 +9,10 @@
 //   - TAGGED. The built-in views mark a field label with `data-k-field="entity.key"` and the chrome
 //     marks a page title with `data-k-page="id"`. Those need no text match at all, which also covers
 //     a label the app never wrote down (the key, humanized) — renaming it inserts one.
-//   - LITERAL. Anything else whose text equals a display literal — a custom view's JSX, a group
-//     title, an action's label. Text inside `data-k-value` is a record's own data and is never
-//     offered, even when it happens to read like one of the app's words.
+//   - LITERAL. Anything else whose text equals a display literal — a custom view's JSX, a tab, a
+//     quick action. Inside a built-in view (`data-k-view`) only what the view marks `data-k-wording`
+//     qualifies — a section title, an empty-state line, an action's label — because everything else
+//     there is records, and a record's text can read exactly like one of the app's words.
 
 import { humanizeKey } from "@karta/views";
 import type { AppShape, EntityShape, FieldShape, PageShape, TextSite } from "./app-source.js";
@@ -96,6 +97,11 @@ function targetFor(node: Text, byText: Map<string, TextSite[]>, shape: AppShape)
     }
   }
 
+  // Inside a built-in view (or a strip or sheet the shell draws from records) text is DATA unless
+  // the view marked it as the app's wording. Failing this way round is the point: a view that
+  // forgets a tag offers less, where the opposite default offered a record called "Milk".
+  const view = el.closest("[data-k-view]");
+  if (view && !el.closest("[data-k-wording]")) return null;
   if (el.closest("[data-k-value]")) return null;
   const sites = byText.get(text);
   return sites ? { kind: "text", node, text, sites } : null;
