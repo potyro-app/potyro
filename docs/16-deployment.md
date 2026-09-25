@@ -207,7 +207,7 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 ## Redeploying
 
 **It is automatic:** every commit that lands on `main` goes live once it passes the local CI — see
-[§8](#8-automatic-deploy-from-the-ci-machine). By hand, from a clean checkout of `origin/main`:
+[§8](#8-merging-and-deploying-through-the-ci-machine). By hand, from a clean checkout of `origin/main`:
 
 ```bash
 pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
@@ -221,26 +221,40 @@ No restart, no reload. The relay only needs touching when `cojson` changes versi
 which case bump the pin in `/opt/karta-relay/package.json`, re-run the `npm install` container, and
 `docker restart karta-relay`.
 
-## 8. Automatic deploy from the CI machine
+## 8. Merging and deploying through the CI machine
 
-GitHub Actions is unavailable, so the CI machine (`vazio`) does it from cron. Every five minutes
-`scripts/ci-watch.mjs` fetches `origin/main`. When there is a new commit, it runs the full local CI
-on it, posts `local-ci` on the commit, and, when the commit is green, runs `ci-local.mjs deploy`.
-A red commit leaves the site on the last green one. A run cut short resumes on the next tick: the
-machine slept, or another checkout's suite held the test ports. **While vazio sleeps, nothing
-deploys.** It catches up when it wakes (`~/bin/wake-vazio` on the laptop).
+GitHub Actions is unavailable, so the CI machine (`vazio`) is both the gate and the deployer.
+**Merge with `pnpm ship <pr-number>`**:
+
+```
+laptop:  pnpm ship 232          merge commit on GitHub's main, pushed to vazio:appinator.git
+vazio:   pre-receive            refuses at once anything but main, or a main not built on GitHub's
+         post-receive           in the background: full local CI on that exact commit
+           green →              pushed to GitHub's main (the PR shows merged) → deployed
+           red   →              nothing moves; the local-ci check on the commit says why
+```
+
+The gate runs **before** main moves, so a red commit never reaches GitHub's main. The push returns
+at once; follow with `ssh vazio tail -f ci-watch.log`. `ship` wakes vazio if it is asleep.
+
+**Merged on GitHub instead?** cron is the backstop. Every five minutes `ci-watch.mjs` checks
+GitHub's main; when it is new, it runs the gate on it and deploys it when green. A red main leaves
+the site on the last green commit. It also moves the bare repo along, so the next `ship` builds on
+it. **While vazio sleeps, neither runs.** They catch up when it wakes.
 
 The pieces on `vazio`:
 
 | | |
 |---|---|
-| Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at `origin/main` on every tick, so nothing is ever edited there. |
+| Bare repo | `~/appinator.git`, with `hooks/pre-receive` and `hooks/post-receive` from [`deploy/vazio-hooks/`](../deploy/vazio-hooks/). |
+| Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
+| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so only one suite ever holds the test ports. |
 | Key | `~/.ssh/karta_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
 | ssh alias | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` with that key. |
-| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin KARTA_DEPLOY_TARGET=karta-deploy: flock -n /tmp/karta-ci-watch.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin KARTA_DEPLOY_TARGET=karta-deploy: flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
 
 `KARTA_DEPLOY_TARGET=karta-deploy:` is relative to the web root, because `rrsync` anchors every path
-there. Follow a run with `tail -f ~/ci-watch.log` on vazio.
+there. After changing a hook in `deploy/vazio-hooks/`, copy it to `~/appinator.git/hooks/` on vazio.
 
 ## The agent
 
