@@ -146,6 +146,9 @@ importers:
       '@capacitor/local-notifications':
         specifier: ^8.2.1
         version: 8.2.1(@capacitor/core@8.4.2)
+      '@capgo/capacitor-share-target':
+        specifier: 8.0.54
+        version: 8.0.54(@capacitor/core@8.4.2)
       '@karta/capabilities':
         specifier: workspace:*
         version: link:../capabilities
@@ -512,6 +515,11 @@ packages:
 
   '@capacitor/synapse@1.0.4':
     resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
+
+  '@capgo/capacitor-share-target@8.0.54':
+    resolution: {integrity: sha512-GoYftxn1uecJcguMtWorMoUdQyWuStV981Dz7ijaL6TSgUYfvEKV6ZXMEXMtVQn9bVAPRo/MSNE6eGWvJc7j7Q==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@csstools/color-helpers@6.1.0':
     resolution: {integrity: sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg==}
@@ -3419,6 +3427,10 @@ snapshots:
       '@capacitor/core': 8.4.2
 
   '@capacitor/synapse@1.0.4': {}
+
+  '@capgo/capacitor-share-target@8.0.54(@capacitor/core@8.4.2)':
+    dependencies:
+      '@capacitor/core': 8.4.2
 
   '@csstools/color-helpers@6.1.0':
     optional: true

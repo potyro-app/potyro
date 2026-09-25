@@ -8975,3 +8975,75 @@ body:has(.k-tabbar) .k-toasts {
   resize: vertical;
   min-height: 7rem;
 }
+
+/* "Bring this into…" (#213): text shared into Karta, and the app it goes into. */
+.k-share-page {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--space) 1rem calc(var(--space) + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 0.9rem;
+}
+.k-share-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+}
+.k-share-preview {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  display: grid;
+  gap: 0.4rem;
+}
+.k-share-preview figcaption {
+  font-weight: 600;
+}
+.k-share-preview pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+}
+.k-share-apps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.k-share-app {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-share-app:hover,
+.k-share-app:focus-visible {
+  border-color: var(--tile-accent, var(--accent));
+  background: var(--accent-tint);
+}
+.k-share-app[data-best] {
+  border-color: var(--tile-accent, var(--accent));
+}
+.k-share-app .k-launch-avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: none;
+}
+.k-share-app-name {
+  flex: 1;
+  font-weight: 600;
+}
