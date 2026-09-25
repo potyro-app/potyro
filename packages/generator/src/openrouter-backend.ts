@@ -145,7 +145,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
       "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/karta",
       "X-Title": opts.appTitle ?? "Karta",
     };
-    const res = await doFetch(`${baseUrl}/chat/completions`, {
+    const post = (reasoning: ReasoningOptions | undefined) => doFetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -153,16 +153,26 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
         messages: req.messages,
         ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
         max_tokens: req.max_tokens ?? opts.maxTokens ?? DEFAULT_MAX_TOKENS,
-        reasoning: opts.reasoning ?? DEFAULT_REASONING,
+        ...(reasoning ? { reasoning } : {}),
         provider: opts.provider ?? DEFAULT_PROVIDER,
-        ...(req.tools ? { tools: req.tools, tool_choice: req.tool_choice ?? "auto" } : {}),
+        ...(req.tools || req.serverTools
+          ? { tools: [...(req.tools ?? []), ...(req.serverTools ?? [])], tool_choice: req.tool_choice ?? "auto" }
+          : {}),
       }),
       ...(typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
         ? { signal: AbortSignal.timeout(timeoutMs) }
         : {}),
     });
 
-    const text = await res.text();
+    let res = await post(opts.reasoning ?? DEFAULT_REASONING);
+    let text = await res.text();
+    // Some models cannot think less than they do (Gemini 3.6 Flash: "Reasoning is mandatory for this
+    // endpoint and cannot be disabled"). Turning it off is a speed preference, not a requirement:
+    // ask again with the model's own default rather than failing the request.
+    if (res.status === 400 && /reasoning is mandatory/i.test(text)) {
+      res = await post(undefined);
+      text = await res.text();
+    }
     let body: unknown;
     try {
       body = JSON.parse(stripKeepAlive(text)) as unknown;
@@ -180,14 +190,23 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     const choices = (
       body as {
         choices?: Array<{
-          message?: { content?: string | null; tool_calls?: ToolCallOnMessage[] };
+          message?: {
+            content?: string | null;
+            tool_calls?: ToolCallOnMessage[];
+            annotations?: Array<{ type?: string; url_citation?: { url?: string; title?: string } }>;
+          };
           finish_reason?: string;
         }>;
       }
     )?.choices;
     const choice = choices?.[0];
     const content = choice?.message?.content;
-    const toolCalls = choice?.message?.tool_calls;
+    // Only our own function tools come back to the caller; a server tool has already run upstream.
+    const toolCalls = choice?.message?.tool_calls?.filter((c) => (c as { type?: string }).type === undefined || c.type === "function");
+    const citations = (choice?.message?.annotations ?? [])
+      .map((a) => a.url_citation)
+      .filter((c): c is { url: string; title?: string } => typeof c?.url === "string")
+      .map((c) => ({ url: c.url, ...(c.title ? { title: c.title } : {}) }));
     // A tool call IS an answer — it just isn't prose. Only an empty reply with neither is a failure.
     if (!content && !toolCalls?.length) {
       // "length" with no content means the thinking ate the budget — a settings problem, not a
@@ -203,7 +222,11 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     return {
       choices: [
         {
-          message: { content: content ?? "", ...(toolCalls ? { tool_calls: toolCalls } : {}) },
+          message: {
+            content: content ?? "",
+            ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
+            ...(citations.length ? { citations } : {}),
+          },
           ...(choice?.finish_reason ? { finish_reason: choice.finish_reason } : {}),
         },
       ],
