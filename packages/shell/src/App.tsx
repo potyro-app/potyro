@@ -31,6 +31,7 @@ import { InlineEdit } from "./inline-edit.js";
 import { buildAndValidate } from "./validate-app.js";
 import { AskPanel } from "./ask-panel.js";
 import { useAskEnabled } from "./ask-setting.js";
+import { clearAskMaterial, peekAskMaterial } from "./share-inbox.js";
 import type { Toaster } from "./toaster.js";
 import { Picker, type PickerHost } from "./picker.js";
 import { UiSurfaces, type UiHost } from "./ui-host.js";
@@ -633,7 +634,13 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const [activityOpen, setActivityOpen] = useState(false);
   // Ask (#213): a model adds records in this app's own shape. Offered until the person turns it off
   // for this app, and never in a read-only one — everything it does is a write.
-  const [askOpen, setAskOpen] = useState(false);
+  // Text shared into Karta and handed to this app (#213) opens Ask with it filled in.
+  // Read in the initializer (which a dev render runs twice), used up once mounted.
+  const [shared] = useState(() => (appId ? peekAskMaterial(appId) : null));
+  useEffect(() => {
+    if (shared) clearAskMaterial();
+  }, [shared]);
+  const [askOpen, setAskOpen] = useState(shared !== null);
   const askOn = useAskEnabled(appId) && !locked;
   // Talking to the people you share with (KA-35). Only a CRDT store can carry it, and only a synced
   // app has a CRDT store — so on a local-only app the control is absent rather than present and
@@ -1094,7 +1101,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         />
       ) : null}
 
-      {askOpen && askOn && appId ? <AskPanel appId={appId} runtime={runtime} engine={engineCfg} onClose={() => setAskOpen(false)} /> : null}
+      {askOpen && askOn && appId ? <AskPanel appId={appId} runtime={runtime} engine={engineCfg} initialMaterial={shared ?? undefined} onClose={() => setAskOpen(false)} /> : null}
 
       {activityOpen && activity && appId ? (
         <ActivityPanel

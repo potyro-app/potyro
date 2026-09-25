@@ -14,6 +14,7 @@ import { mapArea, subscribeMapArea } from "@karta/views";
 import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
+import { MaterialField, type Material } from "./ask-material.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
@@ -47,6 +48,8 @@ export interface AskPanelProps {
   appId: string;
   runtime: KartaRuntime;
   engine: EngineConfig;
+  /** Something brought from elsewhere — text shared into Karta — to start with (#213). */
+  initialMaterial?: Material;
   onClose: () => void;
 }
 
@@ -100,7 +103,7 @@ function Found({ citations }: { citations: Citation[] }) {
   );
 }
 
-export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
+export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: AskPanelProps) {
   const def = runtime.definition;
   const [request, setRequest] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
@@ -115,6 +118,8 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [web, setWeb] = useState(webPreference);
   const [searchDown, setSearchDown] = useState(false);
   const [reply, setReply] = useState("");
+  /** Something the person brought — a paste or a file another AI made — to turn into records. */
+  const [material, setMaterial] = useState<Material | null>(initialMaterial ?? null);
   const [placing, setPlacing] = useState<{ done: number; of: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
@@ -181,8 +186,9 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     ...(area && sendArea ? { area: { ...area, label: "the map on the person's screen" } } : {}),
   });
 
+  const hasMaterial = Boolean(material?.text.trim());
   const ask = (resumeFrom?: ChatMessage[]): void => {
-    const text = request.trim();
+    const text = request.trim() || (hasMaterial ? "Add what's in this." : "");
     if (!text && !resumeFrom) return;
     const controller = new AbortController();
     abort.current = controller;
@@ -221,6 +227,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     void startAsk({
       definition: def,
       request: text,
+      ...(hasMaterial ? { material: { label: material!.label, text: material!.text } } : {}),
       engine,
       sources: sources.usable.map((s) => s.ask),
       fetchSource,
@@ -300,13 +307,15 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
               }}
             />
+            <MaterialField material={material} onChange={setMaterial} />
             {refused ? (
               <p className="k-ask-refused" role="note">
                 {refused}
               </p>
             ) : (
               <p className="k-ask-privacy">
-                {engineLabel(engine)} sees how this app is organised, what you type{area && sendArea ? ", and the area on your map" : ""}. Nothing already in the app is sent.
+                {engineLabel(engine)} sees how this app is organised, what you type{hasMaterial ? " and paste" : ""}
+                {area && sendArea ? ", and the area on your map" : ""}. Nothing already in the app is sent.
                 You choose what gets added.
               </p>
             )}
@@ -336,7 +345,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
               <button type="button" className="k-ask-off" onClick={turnOff}>
                 Turn off Ask for this app
               </button>
-              <button type="button" className="k-add k-primary-action" disabled={!request.trim() || Boolean(refused)} onClick={() => ask()}>
+              <button type="button" className="k-add k-primary-action" disabled={(!request.trim() && !hasMaterial) || Boolean(refused)} onClick={() => ask()}>
                 Ask
               </button>
             </footer>

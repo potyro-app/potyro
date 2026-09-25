@@ -11,6 +11,8 @@ export interface AskCase {
   app: string | AppDefinition;
   request: string;
   context?: AskContext;
+  /** A paste the person brought, as another AI would have written it. */
+  material?: { label: string; text: string };
   /** What a good answer looks like, for the person reading the transcript. */
   expect: string;
 }
@@ -92,7 +94,47 @@ const WISHLIST = {
 
 const PLAIN: AskContext = { today: "2026-09-26", language: "en" };
 
+const PPL_PASTE = `Here's a solid Push/Pull/Legs split for hypertrophy 💪
+
+**Push (Day 1)**
+| Exercise | Sets | Reps | Rest |
+|---|---|---|---|
+| Barbell Bench Press | 4 | 6–8 | 2–3 min |
+| Seated Dumbbell Shoulder Press | 3 | 8–10 | 90 s |
+| Incline Dumbbell Press | 3 | 10–12 | 90 s |
+| Cable Lateral Raise | 3 | 12–15 | 60 s |
+| Rope Triceps Pushdown | 3 | 12–15 | 60 s |
+
+**Pull (Day 2)**
+| Exercise | Sets | Reps | Rest |
+|---|---|---|---|
+| Deadlift | 3 | 5 | 3 min |
+| Weighted Pull-Up | 4 | 6–8 | 2 min |
+| Chest-Supported Row | 3 | 8–10 | 90 s |
+| Face Pull | 3 | 15 | 60 s |
+| Incline Dumbbell Curl | 3 | 10–12 | 60 s |
+
+**Legs (Day 3)**
+- Back Squat — 4×6–8, rest 3 min
+- Romanian Deadlift — 3×8–10, rest 2 min
+- Bulgarian Split Squat — 3×10 each leg, 90 s
+- Leg Curl — 3×12, 60 s
+- Standing Calf Raise — 4×12–15, 60 s
+
+Tip: add weight when you hit the top of the rep range on all sets!`;
+
+const BOOKS_PASTE = `Great choice — Italian literature has so much to offer. A few I'd start with:
+
+1) "The Leopard" (Il Gattopardo) by Giuseppe Tomasi di Lampedusa, 1958 — a Sicilian prince watches his world end.
+2) Italo Calvino — *Invisible Cities*, 1972. Short, dreamlike, perfect for dipping in.
+3) Elsa Morante's "History" (La Storia), published 1974.
+4) If you like crime: "The Day of the Owl" by Leonardo Sciascia (1961).
+
+Honourable mention: Eco's The Name of the Rose, though you've probably read it!`;
+
 export const ASK_CASES: AskCase[] = [
+  { id: "paste-ppl", app: "workout.app.tsx", request: "add these", material: { label: "what you pasted", text: PPL_PASTE }, context: PLAIN, expect: "15 exercises, day and order from the headings, sets and rep ranges and rest from the tables and list; nothing invented." },
+  { id: "paste-books", app: BOOKS, request: "add these to my list", material: { label: "what you pasted", text: BOOKS_PASTE }, context: PLAIN, expect: "4 books (not the honourable mention, or flagged); titles, authors, years from the paste; read false." },
   { id: "books-calvino", app: BOOKS, request: "add 3 novels by Italo Calvino", context: PLAIN, expect: "Real Calvino novels with correct years; myRating empty, read false." },
   { id: "gigs-turin", app: EVENTS, request: "add concerts in Turin in October", context: PLAIN, expect: "Real October 2026 concerts in Turin with dates and venues from listings." },
   { id: "wishlist-ereaders", app: WISHLIST, request: "add 3 e-readers under 150 euros", context: PLAIN, expect: "Real current e-readers with prices under €150 from shops or reviews." },

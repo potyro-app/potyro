@@ -14,7 +14,7 @@ import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
 import { getLaunchUrl, onUrlOpen } from "@karta/native";
 import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
-import { maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@karta/native";
+import { listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@karta/native";
 import { setSourceHttp } from "./ask-sources.js";
 import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@karta/identity";
 import type { Provenance } from "@karta/host";
@@ -39,6 +39,8 @@ import { Splash } from "./splash.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 import { navigateTo, setRouteHandler, type ShellRoute } from "./router.js";
 import { DataPage } from "./data-page.js";
+import { SharePage } from "./share-page.js";
+import { rememberShare } from "./share-inbox.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
 
@@ -48,6 +50,7 @@ type Route = ShellRoute;
 function route(): Route {
   const p = new URLSearchParams(location.search);
   if (p.has("data")) return { kind: "data", ...(p.get("data") ? { id: p.get("data")! } : {}) };
+  if (p.has("share")) return { kind: "share" };
   const id = p.get("user") ?? p.get("app");
   if (id && getUserApp(id)) return { kind: "user", id };
   return { kind: "home" };
@@ -211,6 +214,7 @@ function mount(root: HTMLElement, node: ReactNode): void {
   );
   registerServiceWorker();
   registerDeepLinks();
+  registerShares();
 }
 
 // A saved user app. UNTRUSTED by default (isolate); if the user promoted it, TRUSTED (direct) — the
@@ -562,6 +566,11 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
     await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
     return;
   }
+  if (r.kind === "share") {
+    mount(root, <SharePage key={`share:${seq}`} />);
+    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    return;
+  }
   if (r.kind === "data") {
     // Mounted before the app it came from is put away: the page opens that app's store too, and the
     // storage worker keeps a database open while anyone still holds it.
@@ -594,7 +603,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
 function canSwitchInPlace(next: Route): boolean {
   if (current?.sync) return false;
   if (sessionStorage.getItem(IMPORT_KEY)) return false;
-  return next.kind === "home" || next.kind === "data" || !getUserApp(next.id)?.sync;
+  return next.kind === "home" || next.kind === "data" || next.kind === "share" || !getUserApp(next.id)?.sync;
 }
 
 // Where the identity's secrets live (#57): the platform keystore on a device, else this browser's
@@ -788,6 +797,22 @@ async function boot(): Promise<void> {
  * runtime, and doing that underneath a mounted app is far more failure-prone than starting clean.
  */
 let deepLinksRegistered = false;
+
+let sharesRegistered = false;
+
+/**
+ * Text shared into Karta from another app (#213). Kept for the session and put in front of the person
+ * on the "Bring this into…" page, whatever they were looking at. The plugin holds a share that
+ * arrived before this listened, so sharing into a closed Karta arrives too.
+ */
+function registerShares(): void {
+  if (sharesRegistered) return;
+  sharesRegistered = true;
+  void listenForShares((share) => {
+    rememberShare(share);
+    navigateTo({ kind: "share" });
+  }).catch((e: unknown) => console.warn("[karta] could not listen for shares:", e));
+}
 
 function registerDeepLinks(): void {
   // `mount` runs on every route, so without this each navigation would add another listener and a
