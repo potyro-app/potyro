@@ -28,6 +28,8 @@ export interface ToolCallOnMessage {
 export interface Citation {
   url: string;
   title?: string;
+  /** The text the search returned from this page: what the model read, and what its quotes are checked against. */
+  content?: string;
 }
 
 export interface ChatMessage {

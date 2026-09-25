@@ -2,12 +2,13 @@
 // with what the device would know when they typed it. Read the transcripts, not only the counts —
 // "a proposal with 5 rows" says nothing about whether the five restaurants exist.
 
+import type { AppDefinition } from "karta";
 import type { AskContext } from "./agent/ask.js";
 
 export interface AskCase {
   id: string;
-  /** File under examples/. */
-  app: string;
+  /** File under examples/, or an app defined here — apps unlike the examples, so the checks are not tuned to them. */
+  app: string | AppDefinition;
   request: string;
   context?: AskContext;
   /** What a good answer looks like, for the person reading the transcript. */
@@ -20,7 +21,81 @@ const CUNEO: AskContext = {
   area: { lat: 44.3845, lng: 7.5427, radiusKm: 3, label: "the area the map shows" },
 };
 
+// Apps a person might make in the Studio that look nothing like the examples. Plain definitions: the
+// harness needs their shape, not their pages.
+const BOOKS = {
+  id: "books",
+  name: "Reading list",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    book: {
+      label: "Book",
+      displayField: "title",
+      fields: {
+        title: { type: "text", required: true },
+        author: { type: "text" },
+        year: { type: "number", integer: true },
+        genre: { type: "enum", options: ["novel", "short stories", "essays", "poetry", "non-fiction"] },
+        pages: { type: "number", integer: true },
+        read: { type: "boolean", default: false },
+        myRating: { type: "number", min: 1, max: 5, label: "My rating" },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book" } }],
+} as unknown as AppDefinition;
+
+const EVENTS = {
+  id: "gigs",
+  name: "Gigs",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    gig: {
+      label: "Gig",
+      displayField: "artist",
+      fields: {
+        artist: { type: "text", required: true },
+        date: { type: "datetime", precision: "minute" },
+        venue: { type: "text" },
+        city: { type: "text" },
+        ticketUrl: { type: "url", label: "Tickets" },
+        going: { type: "boolean", default: false },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Gigs", view: { type: "list", entity: "gig" } }],
+} as unknown as AppDefinition;
+
+const WISHLIST = {
+  id: "wishlist",
+  name: "Wishlist",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    product: {
+      label: "Product",
+      displayField: "name",
+      fields: {
+        name: { type: "text", required: true },
+        brand: { type: "text" },
+        price: { type: "money", currency: "EUR" },
+        screen: { type: "text", label: "Screen" },
+        link: { type: "url" },
+        bought: { type: "boolean", default: false },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Wishlist", view: { type: "list", entity: "product" } }],
+} as unknown as AppDefinition;
+
+const PLAIN: AskContext = { today: "2026-09-26", language: "en" };
+
 export const ASK_CASES: AskCase[] = [
+  { id: "books-calvino", app: BOOKS, request: "add 3 novels by Italo Calvino", context: PLAIN, expect: "Real Calvino novels with correct years; myRating empty, read false." },
+  { id: "gigs-turin", app: EVENTS, request: "add concerts in Turin in October", context: PLAIN, expect: "Real October 2026 concerts in Turin with dates and venues from listings." },
+  { id: "wishlist-ereaders", app: WISHLIST, request: "add 3 e-readers under 150 euros", context: PLAIN, expect: "Real current e-readers with prices under €150 from shops or reviews." },
   {
     id: "places-veg-bare",
     app: "places.app.ts",

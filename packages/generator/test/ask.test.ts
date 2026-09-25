@@ -158,7 +158,7 @@ describe("runAskLoop", () => {
     const rows = [{ entity: "place", ref: "p1", values: { name: "Jardim da Estrela", kind: "park" } }];
     const { engine } = scripted([propose("t1", { summary: "One park.", rows })]);
     const out = await runAskLoop(deps({ engine }));
-    expect(out).toEqual({ kind: "proposal", proposal: { summary: "One park.", rows, actions: [] } });
+    expect(out).toMatchObject({ kind: "proposal", proposal: { summary: "One park.", rows, actions: [] } });
   });
 
   it("sends a proposal that does not fit back to the model with the reasons", async () => {
@@ -215,7 +215,7 @@ describe("runAskLoop with data sources", () => {
 
   it("fetches through the host and hands the result back framed as data", async () => {
     const asked: unknown[] = [];
-    const rows = [{ entity: "place", ref: "p", values: { name: "Dog Beach", kind: "park" } }];
+    const rows = [{ entity: "place", ref: "p", values: { name: "Dog Beach", kind: "park" }, evidence: [{ url: "search?q=dog", quote: '[{"name":"Dog Beach"}]' }] }];
     const { engine, seen } = scripted([
       toolCall("t1", "read_docs", { source: "app:places" }),
       toolCall("t2", "fetch_data", { source: "app:places", url: "search?q=dog" }),
@@ -308,7 +308,7 @@ describe("actions in a proposal", () => {
   it("an actions-only proposal is a proposal", async () => {
     const { engine } = scripted([propose("t1", { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] })]);
     const out = await runAskLoop(deps({ engine, definition: PLANTS }));
-    expect(out).toEqual({ kind: "proposal", proposal: { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] } });
+    expect(out).toMatchObject({ kind: "proposal", proposal: { summary: "Water the fern.", rows: [], actions: [{ entity: "plant", action: "water", match: "fern" }] } });
   });
 });
 
@@ -399,5 +399,47 @@ describe("defaults the model can see", () => {
     const text = describeStructure(def);
     expect(text).toMatch(/visited.*defaults to true when left out/);
     expect(text).toMatch(/when.*defaults to set by the app/);
+  });
+});
+
+describe("evidence in the loop", () => {
+  const withCitations = (message: Record<string, unknown>, citations: Array<{ url: string; content: string }>) => ({ ...message, citations });
+  const SEARCHED = [
+    { url: "https://www.happycow.net/cuneo", content: "Bar Bibe is a vegan bar at Corso Galileo Ferraris 26 in Cuneo." },
+    { url: "https://restaurantguru.com/Bar-Bibe-Cuneo", content: "Bar Bibe, Cuneo: vegan croissants, home-style lunches." },
+  ];
+
+  it("a quote from what the search returned counts, and two sites corroborate", async () => {
+    const rows = [
+      {
+        entity: "place",
+        ref: "b",
+        values: { name: "Bar Bibe", kind: "bar" },
+        evidence: [
+          { url: "https://www.happycow.net/cuneo", quote: "Bar Bibe is a vegan bar at Corso Galileo Ferraris 26" },
+          { url: "https://restaurantguru.com/Bar-Bibe-Cuneo", quote: "Bar Bibe, Cuneo: vegan croissants" },
+        ],
+      },
+    ];
+    const { engine } = scripted([withCitations(propose("t1", { summary: "One.", rows }), SEARCHED) as never]);
+    const out = await runAskLoop(deps({ engine, webSearch: true }));
+    expect(out.kind === "proposal" && out.proposal.trust?.b?.status).toBe("corroborated");
+  });
+
+  it("a made-up quote is sent back once; if it stays, the row is kept but marked unsupported", async () => {
+    const fake = [{ entity: "place", ref: "a", values: { name: "Alter ego", kind: "bar" }, evidence: [{ url: "http://cambiamenu.it/x", quote: "Alter ego, the best vegetarian restaurant in Cuneo" }] }];
+    const { engine, seen } = scripted([
+      withCitations(propose("t1", { summary: "x", rows: fake }), SEARCHED) as never,
+      propose("t2", { summary: "x", rows: fake }),
+    ]);
+    const out = await runAskLoop(deps({ engine, webSearch: true }));
+    expect(seen[1]!.messages.find((m) => m.role === "tool")!.content).toMatch(/not in the text retrieved from cambiamenu\.it/);
+    expect(out.kind === "proposal" && out.proposal.trust?.a).toMatchObject({ status: "unsupported" });
+  });
+
+  it("with nothing to look anything up with, rows are general knowledge", async () => {
+    const { engine } = scripted([propose("t1", { summary: "x", rows: [{ entity: "place", ref: "p", values: { name: "Park", kind: "park" } }] })]);
+    const out = await runAskLoop(deps({ engine }));
+    expect(out.kind === "proposal" && out.proposal.trust?.p?.status).toBe("general");
   });
 });
