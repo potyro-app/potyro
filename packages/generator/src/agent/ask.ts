@@ -472,10 +472,12 @@ function sourceTools(sources: AskSource[], fetchSource: SourceFetch, retrieved: 
       // and the absolute one.
       const src = known(req.source);
       const asked = req.kind === "docs" ? src?.docs : req.url;
-      if (asked) retrieved.add(asked, res.detail);
+      // Data from a source someone set up is theirs to trust; its docs are just reading.
+      const via = req.kind === "data" ? src?.label : undefined;
+      if (asked) retrieved.add(asked, res.detail, via);
       if (asked && src?.endpoint && req.kind === "data") {
         try {
-          retrieved.add(new URL(asked, src.endpoint).toString(), res.detail);
+          retrieved.add(new URL(asked, src.endpoint).toString(), res.detail, via);
         } catch {
           // not resolvable: kept under the address as asked
         }

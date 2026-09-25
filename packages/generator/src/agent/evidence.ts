@@ -39,8 +39,9 @@ export interface FieldIssue {
 
 export interface Trust {
   status: TrustStatus;
-  /** The quotes that were found in retrieved text, one per site at most. */
-  sources: Array<{ url: string; host: string; quote: string }>;
+  /** The quotes that were found in retrieved text, one per site at most. `via`: a data source the app or
+   *  the person set up (an API), which counts as confirmation on its own. */
+  sources: Array<{ url: string; host: string; quote: string; via?: string }>;
   /** Why it is not trusted, in words for the person. */
   issues: string[];
   /** Per field: what its sources dispute, or do not state. */
@@ -81,14 +82,15 @@ export function hostOf(url: string): string {
 
 /** Everything the model was shown during one request: search results and fetched pages, by address. */
 export class Retrieved {
-  private readonly byUrl = new Map<string, { url: string; text: string }>();
+  private readonly byUrl = new Map<string, { url: string; text: string; via?: string }>();
 
-  add(url: string, text: string | undefined): void {
+  /** `via`: the name of a data source the app or the person configured — an API they chose to trust. */
+  add(url: string, text: string | undefined, via?: string): void {
     if (!url || !text) return;
     const key = urlKey(url);
     const had = this.byUrl.get(key);
     // A page can come back from several searches, each with its own excerpts: keep them all.
-    this.byUrl.set(key, { url, text: had && !had.text.includes(text) ? `${had.text}\n${text}` : text });
+    this.byUrl.set(key, { url, text: had && !had.text.includes(text) ? `${had.text}\n${text}` : text, ...(via ?? had?.via ? { via: via ?? had?.via } : {}) });
   }
 
   get size(): number {
@@ -96,12 +98,12 @@ export class Retrieved {
   }
 
   /** The retrieved text for this address, or null when the model cites a page it was never shown. */
-  textOf(url: string): { url: string; text: string } | null {
+  textOf(url: string): { url: string; text: string; via?: string } | null {
     return this.byUrl.get(urlKey(url)) ?? null;
   }
 
   /** Where this quote actually is, if anywhere: its own page first, then anything retrieved. */
-  locate(url: string, quote: string): { url: string; text: string } | null {
+  locate(url: string, quote: string): { url: string; text: string; via?: string } | null {
     const q = normText(quote);
     if (q.length < MIN_QUOTE) return null;
     const own = this.textOf(url);
@@ -110,7 +112,7 @@ export class Retrieved {
     return null;
   }
 
-  pages(): Array<{ url: string; text: string }> {
+  pages(): Array<{ url: string; text: string; via?: string }> {
     return [...this.byUrl.values()];
   }
 }
@@ -147,13 +149,13 @@ export function verifyRow(
   retrieved: Retrieved,
 ): Trust {
   const issues: string[] = [];
-  const found: Array<{ url: string; host: string; quote: string }> = [];
+  const found: Array<{ url: string; host: string; quote: string; via?: string }> = [];
   const name = nameOfRow(def, row.entity, row.values);
   const key = name ? normText(name) : "";
 
   if (key.length >= MIN_NAME) {
     for (const page of retrieved.pages()) {
-      if (` ${normText(page.text)} `.includes(` ${key} `)) found.push({ url: page.url, host: hostOf(page.url), quote: around(page.text, name!) });
+      if (` ${normText(page.text)} `.includes(` ${key} `)) found.push({ url: page.url, host: hostOf(page.url), quote: around(page.text, name!), ...(page.via ? { via: page.via } : {}) });
     }
   }
 
@@ -167,12 +169,13 @@ export function verifyRow(
       continue;
     }
     // A quote that names the record, or a record too short to search for by name.
-    if (key.length < MIN_NAME || normText(e.quote).includes(key)) found.push({ url: page.url, host: hostOf(page.url), quote: e.quote });
+    if (key.length < MIN_NAME || normText(e.quote).includes(key)) found.push({ url: page.url, host: hostOf(page.url), quote: e.quote, ...(page.via ? { via: page.via } : {}) });
   }
 
   // One per site: two pages of the same site are not two sources.
   const perSite = [...new Map(found.map((f) => [f.host, f])).values()];
-  if (perSite.length) return { status: perSite.length >= 2 ? "corroborated" : "single", sources: perSite, issues };
+  // A data source someone set up is an authority they chose; the open web needs a second site.
+  if (perSite.length) return { status: perSite.length >= 2 || perSite.some((p) => p.via) ? "corroborated" : "single", sources: perSite, issues };
   if (row.general === true) return { status: "general", sources: [], issues: [] };
   return { status: "unsupported", sources: [], issues: [name ? `No page that was read mentions “${name}”.` : "Nothing that was read supports it.", ...issues] };
 }
