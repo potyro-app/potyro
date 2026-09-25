@@ -8932,3 +8932,46 @@ body:has(.k-tabbar) .k-toasts {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Bringing in what another AI made (#213): a paste or a file, shown in full before it is sent. */
+.k-ask-bring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.k-ask-bring-btn {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.k-ask-bring-btn:hover,
+.k-ask-bring-btn:focus-visible {
+  border-color: var(--accent-line);
+  color: var(--ink);
+  background: var(--accent-tint);
+}
+.k-ask-material {
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-material-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.k-ask-material-head .k-field-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.k-ask-material-text {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  resize: vertical;
+  min-height: 7rem;
+}
