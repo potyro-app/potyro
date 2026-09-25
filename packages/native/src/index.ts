@@ -6,6 +6,7 @@ import type { Capabilities } from "@karta/capabilities";
 
 export { getLaunchUrl, onUrlOpen, launchUrlFrom, listenForUrls, type CapacitorAppPlugin } from "./deep-links.js";
 export { maybeCreateNativeVault, vaultOver, type NativeSecretVault } from "./secure-vault.js";
+export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHttp } from "./native-http.js";
 
 export {
   CapacitorCapabilities,

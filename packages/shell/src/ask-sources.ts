@@ -210,6 +210,20 @@ export async function resolveSources(
 
 // ── fetching ────────────────────────────────────────────────────────────────
 
+/** One GET, `fetch`-shaped. The browser's own by default; the native app registers its HTTP stack,
+ *  which has no CORS (packages/native/src/native-http.ts), so an API that refuses browsers still works. */
+export type SourceHttp = (url: string, init: RequestInit) => Promise<Response>;
+
+let http: SourceHttp = (url, init) => globalThis.fetch(url, init);
+
+/** Called once by the composition root on a native device. */
+export function setSourceHttp(fn: SourceHttp): void {
+  http = fn;
+}
+
+/** The registered one, read at call time. */
+export const sourceHttp: SourceHttp = (url, init) => http(url, init);
+
 /** Enough for a page of results; a model does not need a whole API dump. */
 const MAX_CHARS = 12_000;
 const TIMEOUT_MS = 20_000;
@@ -240,7 +254,7 @@ function under(url: URL, endpoint: string): boolean {
 export interface SourceFetcherDeps {
   sources: ResolvedSource[];
   keys: KeyStore;
-  fetch: typeof fetch;
+  fetch: SourceHttp;
   /** Ask the person: may requests for this source go to `origin`? `sendsKey`: this one carries their key. */
   confirmOrigin: (source: ResolvedSource, origin: string, sendsKey: boolean) => Promise<boolean>;
   /** A yes, to remember for next time. */

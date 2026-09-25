@@ -16,7 +16,7 @@ import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
 import { currentVault } from "@karta/identity";
-import { allowOrigin, approveAppSource, keyStore, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
+import { allowOrigin, approveAppSource, keyStore, sourceHttp, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
 import { SourcesSection, type SourcesState } from "./ask-sources-panel.js";
 
 /** One key store for the page, so a key kept in memory (no vault here) outlives the dialog. */
@@ -239,7 +239,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
     const fetchSource = makeSourceFetcher({
       sources: sources.usable,
       keys,
-      fetch: (input, init) => globalThis.fetch(input, init),
+      fetch: sourceHttp,
       confirmOrigin: (source, origin, sendsKey) =>
         controller.signal.aborted
           ? Promise.resolve(false)
