@@ -120,6 +120,7 @@ test("Ask proposes action runs by name; the device finds the records; only ticke
 
   await page.getByRole("button", { name: /^✧?\s*Ask\b/ }).click();
   const dialog = page.getByRole("dialog", { name: `Ask ${APP_NAME}` });
+  await dialog.locator(".k-ask-context").getByRole("checkbox", { name: /Search the web/ }).uncheck();
   await dialog.getByRole("textbox", { name: "What to add" }).fill("add a basil in the kitchen, water it and the ferns, feed the monstera 12 g");
   await dialog.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(dialog.getByText("A basil for the kitchen, and some watering and feeding.")).toBeVisible();
@@ -129,7 +130,7 @@ test("Ask proposes action runs by name; the device finds the records; only ticke
   for (const name of ["Monstera", "Boston fern", "Kitchen"]) expect(bodies[0]).not.toContain(name);
 
   // The new row's link found the kitchen on this device.
-  await expect(dialog.locator(".k-ask-row", { hasText: "Basil" })).toContainText("Kitchen");
+  await expect(dialog.locator(".k-ask-card", { hasText: "Basil" })).toContainText("Kitchen");
   const actions = dialog.locator(".k-ask-action");
   await expect(actions).toHaveCount(3);
   const [waterNew, waterFerns, feed] = [actions.nth(0), actions.nth(1), actions.nth(2)];

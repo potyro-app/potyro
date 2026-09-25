@@ -61,3 +61,16 @@ describe("verifyRow", () => {
     expect(t.status).toBe("single");
   });
 });
+
+describe("a data source someone set up", () => {
+  it("confirms on its own, where the open web needs a second site", () => {
+    const r = new Retrieved();
+    r.add("https://api.places.test/v1/search?q=dog", '[{"name":"Dog Beach","lat":44.39}]', "Places search");
+    const t = verifyRow(
+      { id: "p", name: "P", entities: { place: { displayField: "name", fields: { name: { type: "text" } } } }, pages: [] } as never,
+      { entity: "place", values: { name: "Dog Beach" } },
+      r,
+    );
+    expect(t).toMatchObject({ status: "corroborated", sources: [{ via: "Places search" }] });
+  });
+});
