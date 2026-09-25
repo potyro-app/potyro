@@ -49,7 +49,18 @@ export interface RuntimeDeps {
 /** A page ref may name a layout item (`today#1`, #105); `resolveView` knows the difference. */
 const viewOf = (def: AppDefinition, pageRef: string): View => resolveView(def, pageRef);
 
+/** The ctx calls that write: each one is tracked until it lands, so leaving can wait for it. */
+const WRITES = new Set<PropertyKey>(["create", "patch", "delete", "increment", "transaction"]);
+
+/**
+ * The longest `settle` waits. Long enough for any write a person makes — a worker round trip is well
+ * under a millisecond — and short enough that one that never returns cannot hold the app open.
+ */
+const SETTLE_LIMIT_MS = 5_000;
+
 export class RuntimeCore {
+  /** Writes started and not yet landed (or failed). */
+  private readonly inFlight = new Set<Promise<unknown>>();
   readonly app: LoadedApp;
   readonly host: Host;
   readonly store: Store;
@@ -173,7 +184,42 @@ export class RuntimeCore {
       space: typeof this.space === "function" ? this.space() : this.space,
       scope: this.scope,
     };
-    return this.host.makeCtx(this.app, base);
+    const ctx = this.host.makeCtx(this.app, base);
+    // Every write through this ctx is tracked — the views', a custom view's, an action's. A Proxy
+    // rather than a copy, so the parts of ctx that are getters (the space) stay live.
+    return new Proxy(ctx, {
+      get: (target, key, receiver) => {
+        const value = Reflect.get(target, key, receiver);
+        if (!WRITES.has(key) || typeof value !== "function") return value;
+        return (...args: unknown[]) => this.track((value as (...a: unknown[]) => Promise<unknown>).apply(target, args));
+      },
+    });
+  }
+
+  /** Remember `work` until it settles. Returns it unchanged, rejection included. */
+  track<T>(work: Promise<T>): Promise<T> {
+    this.inFlight.add(work);
+    const done = (): void => void this.inFlight.delete(work);
+    work.then(done, done);
+    return work;
+  }
+
+  /**
+   * Wait until every write this runtime started has landed or failed.
+   *
+   * A tick is a patch, and a patch is several store calls in turn: read, check the values fit,
+   * write. Putting the app away between them closed the store under the write, and the tick was gone
+   * on the next open. The shell awaits this before closing the store. Never throws — a write that
+   * failed has already told whoever started it — and gives up after SETTLE_LIMIT_MS.
+   */
+  async settle(limitMs = SETTLE_LIMIT_MS): Promise<void> {
+    const deadline = Date.now() + limitMs;
+    // A loop, because a write that lands can start another (an action's second patch).
+    while (this.inFlight.size > 0) {
+      const left = deadline - Date.now();
+      if (left <= 0) return;
+      await Promise.race([Promise.allSettled([...this.inFlight]), new Promise((r) => setTimeout(r, left))]);
+    }
   }
 
   /**
@@ -181,7 +227,8 @@ export class RuntimeCore {
    * did nothing and said nothing is the worst of both.
    */
   async runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void> {
-    await this.app.callPageAction(pageId, index, this.ctxFor(params));
+    // The whole action, not only its ctx writes: an untrusted app writes from inside its isolate.
+    await this.track(this.app.callPageAction(pageId, index, this.ctxFor(params)));
     this.invalidate();
   }
 
@@ -219,11 +266,18 @@ export class RuntimeCore {
     return this.ctxFor(params).get(entity, id);
   }
 
-  async runAction(entity: string, key: string, id: Id, input?: unknown, params?: Record<string, unknown>): Promise<void> {
-    const ctx = this.ctxFor(params);
-    const record = await ctx.get(entity, id);
-    if (!record) throw new Error(`runAction: ${entity}/${id} not found`);
-    await this.app.callAction(entity, key, record, ctx, input);
+  runAction(entity: string, key: string, id: Id, input?: unknown, params?: Record<string, unknown>): Promise<void> {
+    // Tracked from the call, not from when the action begins: the record is read first, and leaving
+    // during that read must still wait. The whole action, too — an untrusted app writes from inside
+    // its isolate, where no ctx of ours sees it.
+    return this.track(
+      (async () => {
+        const ctx = this.ctxFor(params);
+        const record = await ctx.get(entity, id);
+        if (!record) throw new Error(`runAction: ${entity}/${id} not found`);
+        await this.app.callAction(entity, key, record, ctx, input);
+      })(),
+    );
   }
 
   async create(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {
