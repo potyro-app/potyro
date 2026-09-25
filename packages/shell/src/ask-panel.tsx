@@ -48,6 +48,8 @@ export interface AskPanelProps {
   appId: string;
   runtime: KartaRuntime;
   engine: EngineConfig;
+  /** Something brought from elsewhere — text shared into Karta — to start with (#213). */
+  initialMaterial?: Material;
   onClose: () => void;
 }
 
@@ -101,7 +103,7 @@ function Found({ citations }: { citations: Citation[] }) {
   );
 }
 
-export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
+export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: AskPanelProps) {
   const def = runtime.definition;
   const [request, setRequest] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
@@ -117,7 +119,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [searchDown, setSearchDown] = useState(false);
   const [reply, setReply] = useState("");
   /** Something the person brought — a paste or a file another AI made — to turn into records. */
-  const [material, setMaterial] = useState<Material | null>(null);
+  const [material, setMaterial] = useState<Material | null>(initialMaterial ?? null);
   const [placing, setPlacing] = useState<{ done: number; of: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
