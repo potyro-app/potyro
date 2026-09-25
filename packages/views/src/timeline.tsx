@@ -157,7 +157,7 @@ export function TimelineView(props: BuiltinViewProps) {
       : undefined;
 
   if (loading || dated === null) return <p className="k-loading">Loading…</p>;
-  if (!dated.length) return <p className="k-empty">{emptyText}</p>;
+  if (!dated.length) return <p className="k-empty" data-k-wording>{emptyText}</p>;
 
   return (
     <div className="k-tl">

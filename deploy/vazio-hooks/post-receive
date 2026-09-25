@@ -1,0 +1,16 @@
+#!/bin/sh
+# vazio: ~/appinator.git/hooks/post-receive — gate a pushed main before it reaches GitHub: full
+# local CI, then GitHub's main + apps.vaz.io when green (scripts/ci-watch.mjs gate). It runs in the
+# background — CI takes ~12 minutes and the push should not hang on it — and shares cron's lock, so
+# only one suite ever holds the test ports (docs/16 §8).
+# Git runs hooks with GIT_DIR=. (and a quarantine object dir while receiving). Left set, every git
+# command in the checkout below would act on THIS bare repo instead — "not a git repository".
+unset GIT_DIR GIT_QUARANTINE_PATH GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_PUSH_OPTION_COUNT
+while read -r old new ref; do
+  [ "$ref" = "refs/heads/main" ] || continue
+  cd "$HOME/appinator-deploy" || exit 1
+  PATH="$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:/bin" KARTA_DEPLOY_TARGET=karta-deploy: \
+    setsid nohup flock "$HOME/.karta-ci.lock" node scripts/ci-watch.mjs gate "$new" >> "$HOME/ci-watch.log" 2>&1 < /dev/null &
+  echo "⏳ gating $(echo "$new" | cut -c1-7) on vazio: green → GitHub's main + apps.vaz.io, red → nothing moves"
+  echo "   follow: ssh vazio tail -f ci-watch.log   ·   result: the local-ci check on the commit"
+done
