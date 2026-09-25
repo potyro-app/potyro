@@ -8117,3 +8117,429 @@ body:has(.k-tabbar) .k-toasts {
   margin: 0;
   font-size: 0.9rem;
 }
+
+/* --- Ask (#213): say what to add, look it over, add it (ask-panel.tsx) ------------------------------
+   A modal, not a floating panel: the review IS the task while it is open. The review reads like the
+   app's own list — a title and a line of the values that matter — and a row's state is carried by
+   its edge: accent when it will be added, dashed and faded when the person already has it. */
+.k-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: min(86vh, 760px);
+  width: min(560px, 100%);
+  /* The sources and the add-a-source form can outgrow a phone screen; the review scrolls on its own. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.k-ask[data-phase="review"] {
+  overflow-y: hidden;
+}
+.k-ask-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.k-ask-title {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+.k-ask-input {
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 5.5rem;
+}
+.k-ask-privacy,
+.k-ask-refused {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-ask-refused {
+  color: var(--warn);
+}
+.k-ask-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.6rem;
+}
+.k-ask-off {
+  margin-right: auto;
+  background: none;
+  border: 0;
+  padding: 0.3rem 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.k-ask-off:hover,
+.k-ask-off:focus-visible {
+  color: var(--ink);
+}
+
+.k-ask-working {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.1rem 0.2rem;
+}
+.k-ask-working p {
+  margin: 0;
+  flex: 1;
+  color: var(--ink-soft);
+}
+.k-ask-pulse {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: k-ask-pulse 1.1s var(--ease) infinite alternate;
+}
+@keyframes k-ask-pulse {
+  from {
+    transform: scale(0.7);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-ask-pulse {
+    animation: none;
+  }
+}
+
+.k-ask-summary {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.k-ask-review {
+  overflow-y: auto;
+  margin: 0 -0.4rem;
+  padding: 0 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.k-ask-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-ask-group-count {
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+.k-ask-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.k-ask-row label {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.k-ask-row label:hover {
+  background: var(--accent-tint);
+}
+.k-ask-row[data-ticked] label {
+  border-left-color: var(--accent);
+}
+.k-ask-row:not([data-ticked]) label {
+  opacity: 0.62;
+}
+.k-ask-row[data-duplicate] label {
+  border-style: dashed;
+}
+.k-ask-row input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+.k-ask-row label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-ask-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.k-ask-row-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.k-ask-row-dup {
+  font-size: 0.75rem;
+  color: var(--warn);
+}
+.k-ask-row-details {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.k-ask-done,
+.k-ask-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.k-ask-done-count {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--ok);
+}
+.k-ask-note p {
+  margin: 0;
+}
+.k-ask-note-head {
+  font-weight: 700;
+}
+
+.k-tile-editor-ask {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.k-tile-editor-ask > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.k-tile-editor-ask input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+/* The shell's buttons have no disabled look of their own; here it matters, because "Ask" and "Add"
+   are disabled for a reason the dialog states right next to them. */
+.k-ask .k-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Ask's sources (#213): a quiet disclosure under the request. A source waiting for a key is the one
+   thing here that needs the person, so it wears the accent edge; the rest read as a plain list. */
+.k-ask-sources {
+  border-top: 1px dashed var(--line);
+  padding-top: 0.6rem;
+}
+.k-ask-sources > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  list-style-position: inside;
+}
+.k-ask-sources[open] > summary {
+  margin-bottom: 0.6rem;
+}
+.k-ask-source-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.k-ask-source {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-source[data-waiting] {
+  border-left-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-ask-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
+}
+.k-ask-source-name {
+  font-weight: 600;
+}
+.k-ask-source-host {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+.k-ask-source-from {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-ask-source-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-ask-source .k-ask-off {
+  justify-self: start;
+  margin: 0;
+}
+.k-ask-key,
+.k-ask-auth {
+  display: flex;
+  gap: 0.4rem;
+}
+.k-ask-key .k-input,
+.k-ask-auth .k-input {
+  flex: 1;
+  min-width: 0;
+}
+.k-ask-add-source {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  margin-bottom: 0.6rem;
+}
+.k-ask-field {
+  display: grid;
+  gap: 0.25rem;
+}
+.k-ask-add-btn {
+  margin-bottom: 0.5rem;
+}
+.k-ask-question {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--accent-line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-tint);
+}
+.k-ask-question p {
+  margin: 0;
+}
+.k-ask-fetched {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.k-ask-fetched > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.k-ask-fetched ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+/* Ask's actions in the review (#213): what runs, then on which records. A run on a record this
+   proposal adds says "new" and follows that row's tick. */
+.k-ask-action {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  display: grid;
+  gap: 0.35rem;
+}
+.k-ask-action-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+}
+.k-ask-action-name {
+  font-weight: 600;
+}
+.k-ask-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--warn);
+}
+.k-ask-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.k-ask-target label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-ask-target[data-ticked] label {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.k-ask-target input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+.k-ask-target input:disabled + span {
+  color: var(--ink-faint);
+}
+.k-ask-target label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-ask-target-new {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.k-ask-row-body .k-ask-note {
+  display: block;
+}
