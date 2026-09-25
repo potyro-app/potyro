@@ -57,8 +57,8 @@ describe("applyProposal", () => {
       { entity: "place", ref: "p", values: { name: "Park", city: "@lx" } },
       { entity: "city", ref: "lx", values: { name: "Lisbon" } },
     ];
-    const count = await applyProposal(rt, DEF, rows);
-    expect(count).toBe(2);
+    const { created } = await applyProposal(rt, DEF, rows);
+    expect(created).toBe(2);
     const city = rt.created.find((c) => c.entity === "city")!;
     const place = rt.created.find((c) => c.entity === "place")!;
     expect(place.data.city ?? rt.patched.find((p) => p.id === place.id)?.data.city).toBe(city.id);

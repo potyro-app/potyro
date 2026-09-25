@@ -2,7 +2,7 @@
 // (M2/M3). Each consumes the runtime only.
 
 import type { ReactNode } from "react";
-import type { Resolved } from "karta";
+import { actionInfo, type Resolved } from "karta";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -79,7 +79,7 @@ export function RowActions({
           onClick={() => void runtime.runAction(entity, a, id)}
         >
           {/* The action KEY is an identifier, not a label — "startWorkout" is not a button name. */}
-          {humanizeKey(a)}
+          {actionInfo(runtime.definition.entities[entity], a)?.label ?? humanizeKey(a)}
         </button>
       ))}
       {onEdit ? (
@@ -396,7 +396,7 @@ export function DetailView(props: BuiltinViewProps) {
             typeof a === "string" ? (
               <button key={ai} type="button" className={`k-add${ai === 0 ? " k-primary-action" : ""}`} onClick={() => void runtime.runAction(view.entity, a, id)}>
                 {/* The action KEY is an identifier, not a label — "snapPhoto" is not a button name. */}
-                {humanizeKey(a)}
+                {actionInfo(runtime.definition.entities[view.entity], a)?.label ?? humanizeKey(a)}
               </button>
             ) : (
               <button
