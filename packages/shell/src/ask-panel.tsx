@@ -13,6 +13,7 @@ import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@kart
 import { mapArea, subscribeMapArea } from "@karta/views";
 import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
+import { placeByAddress } from "./ask-geocode.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
@@ -114,6 +115,7 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
   const [web, setWeb] = useState(webPreference);
   const [searchDown, setSearchDown] = useState(false);
   const [reply, setReply] = useState("");
+  const [placing, setPlacing] = useState<{ done: number; of: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const refused = askRefusal(engine);
   const keys = keysForPage();
@@ -142,7 +144,14 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
 
   const land = async (outcome: StartAskOutcome): Promise<void> => {
     if (outcome.kind === "proposal") {
-      setPhase({ kind: "review", ...(await review(outcome.proposal)), citations: outcome.proposal.citations ?? [] });
+      const r = await review(outcome.proposal);
+      // Addresses become pins at the real address (ask-geocode.ts) — an online lookup, so only when
+      // the person allowed web search.
+      if (web) {
+        r.review = { ...r.review, rows: await placeByAddress(def, r.review.rows, { http: sourceHttp, area: context().area, onProgress: (done, of) => setPlacing({ done, of }) }) };
+        setPlacing(null);
+      }
+      setPhase({ kind: "review", ...r, citations: outcome.proposal.citations ?? [] });
       return;
     }
     if (outcome.kind === "answer") {
@@ -340,6 +349,8 @@ export function AskPanel({ appId, runtime, engine, onClose }: AskPanelProps) {
             <p>
               {phase.kind === "saving"
                 ? "Adding…"
+                : placing
+                  ? `Putting places at their address (${placing.done + 1} of ${placing.of})…`
                 : tries
                   ? `Fitting it to ${def.name}’s fields (try ${tries + 1})…`
                   : reading
