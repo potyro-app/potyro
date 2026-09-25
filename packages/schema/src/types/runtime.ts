@@ -26,15 +26,15 @@ export interface Runtime {
   watchQuery(
     entity: string,
     spec: { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number } | undefined,
-    cb: (state: { rows: Resolved[]; loading: boolean }) => void,
+    cb: (state: { rows: Resolved[]; loading: boolean; error?: string }) => void,
   ): Unsubscribe;
-  watchRecord(entity: string, id: Id, cb: (state: { record: Resolved | null; loading: boolean }) => void): Unsubscribe;
+  watchRecord(entity: string, id: Id, cb: (state: { record: Resolved | null; loading: boolean; error?: string }) => void): Unsubscribe;
 
   useQuery(
     entity: string,
     spec?: { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number },
-  ): { rows: Resolved[]; loading: boolean };
-  useRecord(entity: string, id: Id): { record: Resolved | null; loading: boolean };
+  ): { rows: Resolved[]; loading: boolean; error?: string };
+  useRecord(entity: string, id: Id): { record: Resolved | null; loading: boolean; error?: string };
   runAction(entity: string, key: string, id: Id, input?: unknown): Promise<void>;
   create(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord>;
   patch(entity: string, id: Id, data: Partial<KartaRecord>): Promise<void>;
