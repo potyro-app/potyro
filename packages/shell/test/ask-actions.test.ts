@@ -47,7 +47,7 @@ describe("findByName", () => {
 });
 
 describe("prepareReview", () => {
-  it("resolves a row's link by name, and says when it cannot", () => {
+  it("resolves a row's link by name, and offers to make what is not there", () => {
     const review = prepareReview(
       DEF,
       {
@@ -60,9 +60,12 @@ describe("prepareReview", () => {
       },
       EXISTING,
     );
-    expect(review.rows[0]!.values.room).toBe("r1");
-    expect(review.rows[1]!.values.room).toBeUndefined();
-    expect(review.rows[1]!.notes.join()).toMatch(/Garage/);
+    const row = (ref: string) => review.rows.find((r) => r.ref === ref)!;
+    expect(row("b").values.room).toBe("r1");
+    // No room called Garage: a room needs only a name, so the review offers to make one.
+    const garage = review.rows.find((r) => r.entity === "room")!;
+    expect(garage.values).toEqual({ name: "Garage" });
+    expect(row("c").values.room).toBe(`@${garage.ref}`);
   });
 
   it("offers action targets: new rows and exact matches ticked, partial ones not, none said", () => {

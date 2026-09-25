@@ -9,7 +9,8 @@
 // through `fetchSource`, which holds the keys; the loop only ever sees what came back.
 
 import type { AppDefinition } from "karta";
-import { runAskLoop, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@karta/generator/agent";
+import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@karta/generator/agent";
+import type { ChatMessage } from "@karta/generator/agent";
 import { createOpenRouterEngine } from "@karta/generator/backends";
 import type { EngineConfig } from "./engines.js";
 
@@ -29,6 +30,12 @@ export async function startAsk(opts: {
   /** Outside data the model may read, and the host that fetches it (ask-sources.ts). */
   sources?: AskSource[];
   fetchSource?: SourceFetch;
+  /** The date, language and map area the dialog shows the person before sending. */
+  context?: AskContext;
+  /** Let the model search the web when it needs to (OpenRouter's search; a few cents a request). */
+  webSearch?: boolean;
+  /** Carry on after a question: its transcript, with the person's reply appended. */
+  resumeFrom?: ChatMessage[];
   onStep?: (step: AskStep) => void;
   signal?: AbortSignal;
 }): Promise<StartAskOutcome> {
@@ -42,6 +49,9 @@ export async function startAsk(opts: {
       request: opts.request,
       sources: opts.sources,
       fetchSource: opts.fetchSource,
+      context: opts.context,
+      webSearch: opts.webSearch,
+      resumeFrom: opts.resumeFrom,
       onStep: opts.onStep,
       signal: opts.signal,
     });

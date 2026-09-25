@@ -190,15 +190,18 @@ describe("camera", () => {
   });
 
   it('"fit" ignores a saved position and re-frames instead', async () => {
-    const { runtime } = await makeRuntime("fit", { center: [13.4, 52.5], zoom: 14 });
+    const { runtime, store } = await makeRuntime("fit", { center: [13.4, 52.5], zoom: 14 });
     render(<View runtime={runtime} />);
     gate.open();
 
     await waitFor(() => expect(spies.markers).toBe(1));
     expect(spies.built[0]).toEqual({ center: [0, 20], zoom: 1 });
     expect(spies.fits).toBe(1);
-    // ...and it does not quietly start remembering.
-    expect(spies.handlers.has("moveend")).toBe(false);
+    // ...and it does not quietly start remembering: a move the user makes changes nothing saved.
+    const before = await store.kvGet(CAMERA_KV);
+    spies.center = { lng: 9.9, lat: 45.1 };
+    spies.handlers.get("moveend")?.({ originalEvent: new Event("wheel") });
+    expect(await store.kvGet(CAMERA_KV)).toBe(before);
   });
 
   // #133 / #134: "the map opens on the trip I am in". The camera is a function of ctx and reads the
@@ -219,7 +222,8 @@ describe("camera", () => {
     expect(spies.built[0]).toEqual({ center: [13.405, 52.52], zoom: 11 });
     expect(spies.fits).toBe(0);
     // Not "remember": a computed position must not be overwritten by a saved one.
-    expect(spies.handlers.has("moveend")).toBe(false);
+    spies.handlers.get("moveend")?.({ originalEvent: new Event("wheel") });
+    expect(await store.kvGet(CAMERA_KV)).toBeNull();
   });
 
   it("a fixed camera opens there and stays there", async () => {
