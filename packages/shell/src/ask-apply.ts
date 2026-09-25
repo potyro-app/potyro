@@ -13,7 +13,7 @@
 // person's records arrives here already resolved to its id.
 
 import type { AppDefinition, Field, KartaRecord } from "karta";
-import { actionInfo } from "karta";
+import { actionInfo, humanizeKey } from "karta";
 import type { Proposal, ProposedAction, ProposedRow } from "@karta/generator/agent";
 
 type Records = Record<string, ReadonlyArray<Record<string, unknown>>>;
@@ -84,7 +84,7 @@ function resolveLinks(def: AppDefinition, fields: Record<string, Field>, values:
   const notes: string[] = [];
   for (const [key, field] of Object.entries(fields)) {
     if (field.type !== "relation" || values[key] === undefined) continue;
-    const label = field.label ?? key;
+    const label = field.label ?? humanizeKey(key);
     const one = (v: unknown): unknown => {
       if (typeof v !== "object" || v === null || !("match" in v)) return v;
       const r = resolveLink(def, field.to, existing, String((v as { match: unknown }).match), label);
@@ -145,7 +145,7 @@ function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow
         .map(([k, v]) => {
           const f = info.input![k];
           const shown = typeof v === "object" && v !== null && "match" in v ? String((v as { match: unknown }).match) : Array.isArray(v) ? `${v.length}` : String(v);
-          return `${f?.label ?? k} ${shown}`;
+          return `${f?.label ?? humanizeKey(k)} ${shown}`;
         })
         .join(" · ")
     : undefined;
