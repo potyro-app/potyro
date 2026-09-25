@@ -130,7 +130,13 @@ export function ListView(props: BuiltinViewProps) {
     : undefined;
 
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
+  if (!rows.length) {
+    return (
+      <p className="k-empty" data-k-wording>
+        {emptyText}
+      </p>
+    );
+  }
 
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
   // lives on the detail page (#111). Only a row with nowhere to open keeps its Delete.
@@ -253,7 +259,13 @@ export function GalleryView(props: BuiltinViewProps) {
     : undefined;
 
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
+  if (!rows.length) {
+    return (
+      <p className="k-empty" data-k-wording>
+        {emptyText}
+      </p>
+    );
+  }
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
   const renderCards = (list: Resolved[]) => (
@@ -412,6 +424,7 @@ export function DetailView(props: BuiltinViewProps) {
                 type="button"
                 className={`k-add${ai === 0 ? " k-primary-action" : ""}`}
                 onClick={() => navigate(a.navigate.page, mapDetailNav(a.navigate.param, record))}
+                data-k-wording
               >
                 {a.label}
               </button>
@@ -464,7 +477,7 @@ export function DetailView(props: BuiltinViewProps) {
           </section>
         ) : (
           <section key={si} className="k-section">
-            {group.title ? <h3>{group.title}</h3> : null}
+            {group.title ? <h3 data-k-wording>{group.title}</h3> : null}
             {fieldsOf(group)}
           </section>
         ),

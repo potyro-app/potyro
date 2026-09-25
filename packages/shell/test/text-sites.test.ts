@@ -71,8 +71,19 @@ describe("textSites", () => {
   it("offers display literals from the definition and from JSX", async () => {
     const texts = (await textSites(APP)).map((s) => s.text);
     expect(texts).toEqual(
-      expect.arrayContaining(["Item", "Everything", "Board", "Kit", "Nothing planned yet, take a break.", "Start the timer", "Start session", "All done", "Keep going", "Search"]),
+      expect.arrayContaining(["Item", "Everything", "Board", "Kit", "Nothing planned yet, take a break.", "Start session", "All done", "Keep going"]),
     );
+  });
+
+  it("does not offer what is never text on screen: placeholders, tooltips, alt text", async () => {
+    // A record named "Milk" must not pair with `placeholder: "Milk"` (Groceries did exactly that).
+    const texts = (await textSites(APP.replace(`title: { type: "text", required: true },`, `title: { type: "text", required: true, placeholder: "Milk" },`))).map((s) => s.text);
+    for (const t of ["Milk", "Start the timer", "Search"]) expect(texts).not.toContain(t);
+  });
+
+  it("offers a display prop of the app's own component", async () => {
+    const texts = (await textSites(APP.replace("<h2>Today&apos;s plan</h2>", `<Card title="Today" />`))).map((s) => s.text);
+    expect(texts).toContain("Today");
   });
 
   it("does not offer strings that are data or logic", async () => {
