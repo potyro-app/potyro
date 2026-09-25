@@ -19,11 +19,25 @@ export type Unsubscribe = () => void;
 export interface QueryState {
   rows: Resolved[];
   loading: boolean;
+  /** Set when the read failed: a view says so rather than loading forever. */
+  error?: string;
 }
 
 export interface RecordState {
   record: Resolved | null;
   loading: boolean;
+  error?: string;
+}
+
+/**
+ * A read that failed, as a state a view can show. It used to be swallowed — the view never left
+ * "Loading…" and nothing reached the console (the PPL Log report) — so it is logged here, loudly,
+ * and handed on as `error`.
+ */
+function failed(what: string, e: unknown): string {
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(`[karta] ${what} could not load:`, e);
+  return message;
 }
 
 /**
@@ -99,7 +113,11 @@ export function watchPageQuery(
   return watch(
     core,
     core.entityForPage(pageId),
-    () => core.queryPage(pageId, read()).then(({ rows }) => ({ rows, loading: false })),
+    () =>
+      core.queryPage(pageId, read()).then(
+        ({ rows }): QueryState => ({ rows, loading: false }),
+        (e: unknown): QueryState => ({ rows: [], loading: false, error: failed(`page "${pageId}"`, e) }),
+      ),
     cb,
   );
 }
@@ -111,7 +129,16 @@ export function watchEntityQuery(
   spec: (() => { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number } | undefined) | undefined,
   cb: (state: QueryState) => void,
 ): Unsubscribe {
-  return watch(core, entity, () => core.queryEntity(entity, spec?.()).then((rows) => ({ rows, loading: false })), cb);
+  return watch(
+    core,
+    entity,
+    () =>
+      core.queryEntity(entity, spec?.()).then(
+        (rows): QueryState => ({ rows, loading: false }),
+        (e: unknown): QueryState => ({ rows: [], loading: false, error: failed(`"${entity}" records`, e) }),
+      ),
+    cb,
+  );
 }
 
 /** Watch one record. */
@@ -121,5 +148,14 @@ export function watchRecord(
   id: Id,
   cb: (state: RecordState) => void,
 ): Unsubscribe {
-  return watch(core, entity, () => core.getRecord(entity, id).then((record) => ({ record, loading: false })), cb);
+  return watch(
+    core,
+    entity,
+    () =>
+      core.getRecord(entity, id).then(
+        (record): RecordState => ({ record, loading: false }),
+        (e: unknown): RecordState => ({ record: null, loading: false, error: failed(`${entity} ${id}`, e) }),
+      ),
+    cb,
+  );
 }
