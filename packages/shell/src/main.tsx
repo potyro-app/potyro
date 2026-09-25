@@ -8,6 +8,7 @@ import "./styles.css";
 import type { KartaRecord } from "karta";
 import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
 import { openStore } from "./open-store.js";
+import { setShellCaps } from "./shell-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
@@ -32,18 +33,20 @@ import { NavHost } from "./nav-host.js";
 import { Dialogs, shellDialogs } from "./dialog.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
-import { seedIfEmpty } from "./seed.js";
+import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { Splash } from "./splash.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
-import { setRouteHandler } from "./router.js";
+import { navigateTo, setRouteHandler, type ShellRoute } from "./router.js";
+import { DataPage } from "./data-page.js";
 
 const SANDBOX = import.meta.env.MODE === "sandbox";
 
 // Route from the URL: a saved app (?user=, or the older ?app= that named an example) or the home.
 // The examples are ordinary apps (#152), so `?app=recipes` is the same app as `?user=recipes`.
-type Route = { kind: "user"; id: string } | { kind: "home" };
+type Route = ShellRoute;
 function route(): Route {
   const p = new URLSearchParams(location.search);
+  if (p.has("data")) return { kind: "data", ...(p.get("data") ? { id: p.get("data")! } : {}) };
   const id = p.get("user") ?? p.get("app");
   if (id && getUserApp(id)) return { kind: "user", id };
   return { kind: "home" };
@@ -327,8 +330,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // An app someone else wrote may only open its SYNCED store once this device has agreed to that
   // (KA-23). Denied, or never asked — an imported app whose `sync` flag came in a bundle — it opens
   // local-only rather than failing: that is what the permission means.
-  const { syncConsented } = await import("./sync-consent.js");
-  const syncAllowed = !saved.sync || saved.trusted || syncConsented(id);
+  const syncAllowed = !saved.sync || (await syncAllowedFor(saved));
   if (saved.sync && !syncAllowed) {
     toaster.push(`“${saved.name}” runs on this device only: it has not been allowed to sync.`);
   }
@@ -350,13 +352,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       toaster.push(`Could not import that data: ${e instanceof Error ? e.message : String(e)}`);
     }
   } else {
-    rawStore = await openStore(`user:${id}`, { sync: syncAllowed && Boolean(saved.sync) });
-    // Never into a space that came from somewhere else. The seeders are keyed on the app id, so a
-    // guest who joined a shared "split" ran `seedSplit` against the space they had just joined —
-    // and a space whose records have not replicated yet is indistinguishable from an empty one. The
-    // result was a second "Flat" group inside the owner's app, with both people writing to one
-    // space and each seeing only their own rows (Split scopes its views by the selected group).
-    if (!saved.joined) await seedIfEmpty(rawStore, id, me.id);
+    // Seeded when empty, never when joined — the same open the Data panel uses (app-store.ts).
+    rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
   }
 
   // `ctx.me` is always present, which is what lets app code stop branching on whether identity
@@ -496,6 +493,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       open = false;
       liveApps(-1);
       for (const stop of stops.splice(0)) stop();
+      // Writes still on their way land first — a tick then Home used to close the store under its
+      // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
+      await composed!.runtime.settle();
       composed!.loaded.dispose();
       await rawStore.close();
     },
@@ -534,6 +534,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       lock={syncAllowed && saved.sync ? lock : undefined}
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
       onImport={() => void importApp(caps, toaster)}
+      onData={() => navigateTo({ kind: "data", id })}
       generator
     />,
   );
@@ -557,6 +558,13 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
 
   if (r.kind === "home") {
     mount(root, <Home key={`home:${seq}`} />);
+    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    return;
+  }
+  if (r.kind === "data") {
+    // Mounted before the app it came from is put away: the page opens that app's store too, and the
+    // storage worker keeps a database open while anyone still holds it.
+    mount(root, <DataPage key={`data:${seq}`} initialAppId={r.id} />);
     await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
     return;
   }
@@ -585,7 +593,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
 function canSwitchInPlace(next: Route): boolean {
   if (current?.sync) return false;
   if (sessionStorage.getItem(IMPORT_KEY)) return false;
-  return next.kind === "home" || !getUserApp(next.id)?.sync;
+  return next.kind === "home" || next.kind === "data" || !getUserApp(next.id)?.sync;
 }
 
 // Where the identity's secrets live (#57): the platform keystore on a device, else this browser's
@@ -750,6 +758,7 @@ async function boot(): Promise<void> {
   // Native (Capacitor) capabilities on a device — chiefly EXACT offline notifications — else web.
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
+  setShellCaps(caps);
 
   // Opening an app, going home and Back switch in place from here on (#89).
   setRouteHandler((next) => {

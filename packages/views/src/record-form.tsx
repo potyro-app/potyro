@@ -135,6 +135,7 @@ function FormField({
   error,
   focusToken,
   plain,
+  tag,
   children,
 }: {
   label: string;
@@ -144,6 +145,8 @@ function FormField({
   focusToken: number;
   /** The control names itself (a switch row) or is several controls (a number with its stepper). */
   plain?: boolean;
+  /** `entity.key` when this row is a record field — how edit mode finds the label it can rename. */
+  tag?: string;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -176,7 +179,7 @@ function FormField({
   );
 
   return (
-    <div className="k-form-field" ref={ref} data-width={hints.width ?? "full"} data-invalid={error ? "true" : undefined}>
+    <div className="k-form-field" ref={ref} data-k-field={tag} data-width={hints.width ?? "full"} data-invalid={error ? "true" : undefined}>
       {plain ? (
         children
       ) : (
@@ -211,6 +214,7 @@ function FieldRow({
   onChange,
   error,
   focusToken,
+  tag,
 }: {
   runtime: KartaRuntime;
   field: Field;
@@ -219,9 +223,10 @@ function FieldRow({
   onChange: (v: unknown) => void;
   error?: string;
   focusToken: number;
+  tag?: string;
 }) {
   const hints = field as Hints;
-  const common = { label, hints, error, focusToken };
+  const common = { label, hints, error, focusToken, tag };
   if (field.type === "boolean") {
     // A boolean is a switch row (#97): the label and the toggle are one hit target, not a grey
     // caption over a bare checkbox. The row carries its own help line.
@@ -351,6 +356,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       runtime={runtime}
       field={fields[key]!}
       label={fieldLabel(runtime, entity, key)}
+      tag={`${entity}.${key}`}
       value={form[key]}
       onChange={(v) => set(key, v)}
       error={errors[key]}
