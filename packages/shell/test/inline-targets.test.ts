@@ -55,6 +55,20 @@ describe("collectTargets", () => {
     expect(collectTargets([root], SITES, SHAPE)[0]!.node.parentElement!.tagName).toBe("P");
   });
 
+  it("inside a built-in view, offers only what the view marks as wording — the rest is records", () => {
+    // Groceries: a checklist row "Milk" read as the app's word "Milk". No tag on the row, and still
+    // not offered, because a built-in view's text is data by default.
+    const root = render(`<div data-k-view><span class="k-check-label">Milk</span><p class="k-empty" data-k-wording>Details</p></div><div class="custom"><p>Milk</p></div>`);
+    const targets = collectTargets([root], SITES, SHAPE);
+    expect(targets.map((t) => `${t.kind}:${t.text}`)).toEqual(["text:Details", "text:Milk"]);
+    expect(targets[1]!.node.parentElement!.closest(".custom")).not.toBeNull();
+  });
+
+  it("still offers a tagged field label inside a built-in view", () => {
+    const root = render(`<div data-k-view><table><tr><th data-k-field="item.title">Name</th></tr></table></div>`);
+    expect(summary(root)).toEqual(["field:Name"]);
+  });
+
   it("uses a field tag, and covers a label the app never wrote (the humanized key)", () => {
     const root = render(`<table><tr><th data-k-field="item.title">Name</th><th data-k-field="item.dueDate">Due Date</th></tr></table>`);
     expect(summary(root)).toEqual(["field:Name", "field:Due Date"]);
