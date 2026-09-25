@@ -36,6 +36,8 @@ export async function startAsk(opts: {
   webSearch?: boolean;
   /** Carry on after a question: its transcript, with the person's reply appended. */
   resumeFrom?: ChatMessage[];
+  /** A paste or a file the person brought, to turn into records (ask-material.tsx). */
+  material?: { label: string; text: string };
   onStep?: (step: AskStep) => void;
   signal?: AbortSignal;
 }): Promise<StartAskOutcome> {
@@ -52,6 +54,7 @@ export async function startAsk(opts: {
       context: opts.context,
       webSearch: opts.webSearch,
       resumeFrom: opts.resumeFrom,
+      material: opts.material,
       onStep: opts.onStep,
       signal: opts.signal,
     });

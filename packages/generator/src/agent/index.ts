@@ -36,6 +36,7 @@ export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAcces
 export { runModifyLoop, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
+export { MATERIAL_MAX } from "./ask.js";
 export { runAskLoop, checkProposal, checkProposedRows, describeStructure, askSystemPrompt, ASK_SYSTEM_PROMPT, type AskLoopDeps, type AskOutcome, type AskContext, type AskStep, type Proposal, type ProposedRow, type ProposedAction, type AskSource, type SourceFetch, type SourceRequest } from "./ask.js";
 export type { ChatMessage, Citation } from "../chat-backend.js";
 export { verifyRow, Retrieved, normText, type Evidence, type Trust, type TrustStatus } from "./evidence.js";
