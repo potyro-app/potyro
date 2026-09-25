@@ -20,6 +20,7 @@ import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
 import { LookPanel } from "./look-panel.js";
+import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
@@ -142,6 +143,8 @@ interface UserActions {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  /** Its records, on the Data page. */
+  onData: () => void;
 }
 
 function TileMenu({
@@ -227,6 +230,7 @@ function TileMenu({
             {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
             {item("edit-tile", "Edit tile", user.onEditTile)}
             {item("history", "History", user.onHistory)}
+            {item("data", "Data", user.onData)}
             {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
             {item("share", "Share", user.onShare)}
             {item("rename", "Rename", user.onRename)}
@@ -244,6 +248,14 @@ const WELCOME_KEY = "karta:welcome:dismissed";
 
 /** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
 /** Light or dark, and the colour the shell wears. A device thing, so it lives with the device. */
+function DataButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="k-add k-data-btn" aria-label="Your data — every app’s records" title="Your data" onClick={onClick}>
+      <DatabaseIcon size="1.15em" />
+    </button>
+  );
+}
+
 function LookButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="k-add k-look-btn" aria-label="Look — appearance and colour" title="Look" onClick={onClick}>
@@ -580,6 +592,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         onRename: () => void rename(a.user),
         onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
+        onData: () => navigateTo({ kind: "data", id: a.id }),
       }}
     />
   );
@@ -600,6 +613,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               ＋ New app
             </button>
           ) : null}
+          {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
           <LookButton onClick={() => setLookOpen(true)} />
           <YouButton onClick={() => setIdentity(true)} />
           {onClose ? (

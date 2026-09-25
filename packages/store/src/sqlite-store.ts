@@ -34,6 +34,9 @@ export interface SqliteDbHandle {
   close?(): void | Promise<void>;
 }
 
+/** Ids bound per `IN (…)`: under SQLite's lowest default cap on parameters (999), with room for the rest. */
+const IDS_PER_STATEMENT = 500;
+
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS records(
      seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,18 +92,30 @@ export class SqliteStore implements Store {
 
   // ── reads ──────────────────────────────────────────────────────────────────
   async all(entity: string, narrow?: Narrow): Promise<KartaRecord[]> {
-    const rows = (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map(
-      (r) => JSON.parse(r.doc as string) as KartaRecord,
-    );
-
-    let out = rows;
-    if (narrow?.ids) {
-      const set = new Set(narrow.ids);
-      out = out.filter((r) => set.has(r.id));
-    }
+    const out = narrow?.ids
+      ? await this.byIds(entity, narrow.ids)
+      : (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map((r) => JSON.parse(r.doc as string) as KartaRecord);
     const offset = narrow?.offset ?? 0;
     const end = narrow?.limit != null ? offset + narrow.limit : undefined;
     return out.slice(offset, end);
+  }
+
+  /**
+   * The rows with these ids, in creation order — read through the `(entity, id)` key.
+   *
+   * This is how the runtime resolves a list's relations: one call per related entity. It used to
+   * read and parse the whole entity and filter in JS, so a batch of 5 aisles cost as much as the
+   * table. In chunks, because SQLite caps the parameters one statement may bind.
+   */
+  private async byIds(entity: string, ids: readonly Id[]): Promise<KartaRecord[]> {
+    const unique = [...new Set(ids)];
+    const found: Array<{ seq: number; doc: string }> = [];
+    for (let at = 0; at < unique.length; at += IDS_PER_STATEMENT) {
+      const chunk = unique.slice(at, at + IDS_PER_STATEMENT);
+      const rows = await this.db.selectObjects(`SELECT seq, doc FROM records WHERE entity=? AND id IN (${chunk.map(() => "?").join(",")})`, [entity, ...chunk]);
+      for (const r of rows) found.push({ seq: Number(r.seq), doc: r.doc as string });
+    }
+    return found.sort((a, b) => a.seq - b.seq).map((r) => JSON.parse(r.doc) as KartaRecord);
   }
 
   async get(entity: string, id: Id): Promise<KartaRecord | null> {
