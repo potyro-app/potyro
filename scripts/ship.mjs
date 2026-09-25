@@ -46,8 +46,9 @@ try {
 const dir = mkdtempSync(join(tmpdir(), `karta-ship-${pr}-`));
 try {
   sh(`git worktree add -q --detach ${dir} origin/main`);
-  const message = `Merge pull request #${pr} from fuzue/${info.headRefName}\n\n${info.title}`;
-  sh(`git merge -q --no-ff origin/${info.headRefName} -m ${JSON.stringify(message)}`, dir);
+  // Two -m's: a subject and a body. One string with "\n" in it reaches git as a backslash and an n.
+  const subject = `Merge pull request #${pr} from fuzue/${info.headRefName}`;
+  sh(`git merge -q --no-ff origin/${info.headRefName} -m ${JSON.stringify(subject)} -m ${JSON.stringify(info.title)}`, dir);
   const merge = sh("git rev-parse HEAD", dir);
   process.stdout.write(`▶ #${pr} as ${merge.slice(0, 7)} → vazio\n`);
   execSync(`git push ${VAZIO} HEAD:refs/heads/main`, { cwd: dir, stdio: "inherit" });
