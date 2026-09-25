@@ -193,7 +193,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
           message?: {
             content?: string | null;
             tool_calls?: ToolCallOnMessage[];
-            annotations?: Array<{ type?: string; url_citation?: { url?: string; title?: string } }>;
+            annotations?: Array<{ type?: string; url_citation?: { url?: string; title?: string; content?: string } }>;
           };
           finish_reason?: string;
         }>;
@@ -205,8 +205,8 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     const toolCalls = choice?.message?.tool_calls?.filter((c) => (c as { type?: string }).type === undefined || c.type === "function");
     const citations = (choice?.message?.annotations ?? [])
       .map((a) => a.url_citation)
-      .filter((c): c is { url: string; title?: string } => typeof c?.url === "string")
-      .map((c) => ({ url: c.url, ...(c.title ? { title: c.title } : {}) }));
+      .filter((c): c is { url: string; title?: string; content?: string } => typeof c?.url === "string")
+      .map((c) => ({ url: c.url, ...(c.title ? { title: c.title } : {}), ...(c.content ? { content: c.content } : {}) }));
     // A tool call IS an answer — it just isn't prose. Only an empty reply with neither is a failure.
     if (!content && !toolCalls?.length) {
       // "length" with no content means the thinking ate the budget — a settings problem, not a
