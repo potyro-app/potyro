@@ -15,6 +15,7 @@ import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, t
 import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
 import { MaterialField, type Material } from "./ask-material.js";
+import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
@@ -147,7 +148,17 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
   };
   closeRef.current = close;
 
+  /** What the last request cost, when the engine said. */
+  const [lastCost, setLastCost] = useState<number | null>(null);
+  const [appSpent, setAppSpent] = useState(() => spentIn(appId));
+
   const land = async (outcome: StartAskOutcome): Promise<void> => {
+    const spent = "spent" in outcome ? outcome.spent : undefined;
+    if (typeof spent === "number") {
+      addSpend(appId, spent);
+      setAppSpent(spentIn(appId));
+      setLastCost((c) => (c ?? 0) + spent);
+    }
     if (outcome.kind === "proposal") {
       const r = await review(outcome.proposal);
       // Addresses become pins at the real address (ask-geocode.ts) — an online lookup, so only when
@@ -194,7 +205,10 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
     abort.current = controller;
     setTries(0);
     setReading(null);
-    if (!resumeFrom) setFetched([]);
+    if (!resumeFrom) {
+      setFetched([]);
+      setLastCost(null);
+    }
     setSearchDown(false);
     setPhase({ kind: "working" });
     const labels = new Map(sources.usable.map((s) => [s.ask.id, s.ask.label]));
@@ -319,6 +333,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                 You choose what gets added.
               </p>
             )}
+            {appSpent > 0 ? <p className="k-ask-cost">Ask has used {formatSpend(appSpent)} of your OpenRouter credit in this app, on this device.</p> : null}
             <div className="k-ask-context" aria-label="Sent with your request">
               {area && sendArea ? (
                 <span className="k-ask-chip">
@@ -470,6 +485,10 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
               </button>
             </footer>
           </div>
+        ) : null}
+
+        {lastCost !== null && phase.kind !== "compose" && phase.kind !== "working" && phase.kind !== "saving" ? (
+          <p className="k-ask-cost">This request cost {formatSpend(lastCost)} of your OpenRouter credit.</p>
         ) : null}
       </div>
     </div>

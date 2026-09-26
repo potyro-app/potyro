@@ -64,13 +64,18 @@ export type AskStep =
   /** A second model is checking the proposal against the pages it came from. */
   | { kind: "checking" };
 
-export type AskOutcome =
+export type AskOutcome = (
   | { kind: "proposal"; proposal: Proposal }
   /** The model answered in words: a question back, or why it cannot do this in this app. `transcript`
    *  continues the conversation: pass it back as `resumeFrom` with the person's reply. */
   | { kind: "answer"; text: string; transcript: ChatMessage[] }
   | { kind: "failed"; reason: string }
-  | { kind: "stopped" };
+  | { kind: "stopped" }
+) & {
+  /** What the request cost, in US dollars: every model call it made, the checks included. Absent
+   *  when the engine does not say. */
+  spent?: number;
+};
 
 /**
  * Outside data the model may read (#213): declared by the app, or added by the person. What the model
@@ -647,8 +652,36 @@ function proposeTool(
 /** Searches per request, and results per search: enough to find a handful of real places. */
 const WEB_SEARCH = { type: "openrouter:web_search", parameters: { max_results: 6, max_uses: 3 } };
 
-/** Run Ask until the model proposes rows that fit, answers in words, or runs out of steps. */
+/** Run Ask until the model proposes rows that fit, answers in words, or runs out of steps — and say
+ *  what it cost: every call goes through one counter, the checking calls included. */
 export async function runAskLoop(deps: AskLoopDeps): Promise<AskOutcome> {
+  let spent = 0;
+  let priced = false;
+  const engine: ChatEngine = {
+    chat: {
+      completions: {
+        create: async (req) => {
+          const res = await deps.engine.chat.completions.create(req);
+          if (typeof res.usage?.cost === "number") {
+            spent += res.usage.cost;
+            priced = true;
+          }
+          return res;
+        },
+      },
+    },
+  };
+  try {
+    const out = await askLoop({ ...deps, engine });
+    return priced ? { ...out, spent } : out;
+  } catch (e) {
+    // A failure part way still spent what it spent.
+    if (priced && e instanceof Error) (e as Error & { spent?: number }).spent = spent;
+    throw e;
+  }
+}
+
+async function askLoop(deps: AskLoopDeps): Promise<AskOutcome> {
   const sources = deps.fetchSource && deps.sources?.length ? deps.sources : [];
   const material = deps.material && deps.material.text.trim() ? { label: deps.material.label, text: deps.material.text.slice(0, MATERIAL_MAX) } : null;
   const canLookUp = Boolean(deps.webSearch) || sources.length > 0 || material !== null;

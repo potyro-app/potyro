@@ -61,7 +61,8 @@ async function stubModel(route: Route): Promise<void> {
   const body = JSON.parse(route.request().postData() ?? "{}") as { tools?: Array<{ function?: { name?: string } }>; messages: Array<{ content: string }> };
   const tools = (body.tools ?? []).map((t) => t.function?.name);
   const message = tools.includes("verdicts") ? VERDICTS : String(body.messages[0]?.content).startsWith("Search the web for each") ? { content: "done" } : PROPOSAL;
-  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }] }) });
+  // Every call says what it cost, as OpenRouter's does.
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }], usage: { cost: 0.007 } }) });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -84,6 +85,9 @@ test("records start approved or held back by what was read; the person decides, 
   await dialog.getByRole("textbox", { name: "What to add" }).fill("vegetarian spots in Cuneo");
   await dialog.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(dialog.getByText("Three spots.")).toBeVisible();
+  // Proposing, once more after the unconfirmed record is sent back, the dedicated search for the
+  // one-site record, and the check: four calls at 0.7¢.
+  await expect(dialog.locator(".k-ask-cost")).toHaveText("This request cost 2.8¢ of your OpenRouter credit.");
 
   const card = (name: string) => dialog.locator(".k-ask-card", { hasText: name });
   await expect(card("Ninfood").locator(".k-ask-badge")).toHaveText("2 sources");
@@ -109,6 +113,10 @@ test("records start approved or held back by what was read; the person decides, 
 
   await dialog.getByRole("button", { name: "Add 2" }).click();
   await dialog.getByRole("button", { name: "Done" }).click();
+  // The app keeps a running total, shown the next time Ask opens.
+  await page.getByRole("button", { name: /^✧?\s*Ask\b/ }).click();
+  await expect(page.getByRole("dialog", { name: "Ask Spots" }).locator(".k-ask-cost")).toContainText("Ask has used 2.8¢");
+  await page.getByRole("dialog", { name: "Ask Spots" }).getByRole("button", { name: "Close" }).click();
   const rows = page.locator(".k-list-row");
   await expect(rows).toHaveCount(2);
   // Saved without the disputed hours; the unconfirmed record was not saved.

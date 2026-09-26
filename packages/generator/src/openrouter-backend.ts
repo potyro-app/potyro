@@ -219,7 +219,16 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
             : " — the model replied with no content.";
       throw new Error(`OpenRouter returned no completion${why}`);
     }
+    const u = (body as { usage?: { cost?: unknown; prompt_tokens?: unknown; completion_tokens?: unknown } })?.usage;
+    const usage = u
+      ? {
+          ...(typeof u.cost === "number" ? { cost: u.cost } : {}),
+          ...(typeof u.prompt_tokens === "number" ? { promptTokens: u.prompt_tokens } : {}),
+          ...(typeof u.completion_tokens === "number" ? { completionTokens: u.completion_tokens } : {}),
+        }
+      : undefined;
     return {
+      ...(usage ? { usage } : {}),
       choices: [
         {
           message: {
