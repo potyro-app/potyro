@@ -16,7 +16,7 @@
 
 import type { AppDefinition, Field, KartaRecord } from "karta";
 import { actionInfo, humanizeKey } from "karta";
-import type { Proposal, ProposedAction, ProposedRow, Trust } from "@karta/generator/agent";
+import type { Proposal, ProposedAction, ProposedEdit, ProposedRow, Trust } from "@karta/generator/agent";
 
 type Records = Record<string, ReadonlyArray<Record<string, unknown>>>;
 
@@ -45,10 +45,24 @@ export interface ReviewAction {
   notes: string[];
 }
 
+/** A change to one of the person's records: which, what its fields hold now, and what they would hold. */
+export interface ReviewEdit {
+  /** "edit:1": what its trust is kept under. */
+  ref: string;
+  entity: string;
+  match: string;
+  /** What it sets, links resolved: the person's records by id, rows of this proposal by "@ref". */
+  set: Record<string, unknown>;
+  targets: Array<{ id: string; name: string; ticked: boolean; before: Record<string, unknown> }>;
+  notes: string[];
+  trust?: Trust;
+}
+
 export interface Review {
   summary: string;
   rows: ReviewRow[];
   actions: ReviewAction[];
+  edits: ReviewEdit[];
 }
 
 const norm = (v: unknown): string => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").toLowerCase() : "");
@@ -209,6 +223,49 @@ function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow
   return { entity: run.entity, action: run.action, label: info?.label ?? run.action, input, inputText, targets, notes };
 }
 
+function reviewEdit(def: AppDefinition, edit: ProposedEdit, existing: Records, links: Links, dup: Map<string, string>, trust: Trust | undefined): ReviewEdit {
+  const fields = def.entities[edit.entity]?.fields ?? {};
+  const notes: string[] = [];
+  const set = retarget(fields, links.values(fields, edit.set, notes), dup);
+  const records = existing[edit.entity] ?? [];
+  const { exact, partial } = findByName(def, edit.entity, records, edit.match);
+  const label = def.entities[edit.entity]?.label?.toLowerCase() ?? edit.entity;
+  const targets = (exact.length ? exact : partial).map((id) => {
+    const record = records.find((r) => r.id === id)!;
+    return { id, name: nameOf(def, edit.entity, record), ticked: exact.length === 1, before: Object.fromEntries(Object.keys(set).map((k) => [k, record[k]])) };
+  });
+  if (!targets.length) notes.push(`No ${label} called “${edit.match}”.`);
+  else if (exact.length > 1) notes.push(`More than one ${label} is called “${edit.match}”; tick the ones you meant.`);
+  else if (!exact.length) notes.push(`Nothing is called exactly “${edit.match}”; tick the ones you meant.`);
+  return { ref: edit.ref, entity: edit.entity, match: edit.match, set, targets, notes, ...(trust ? { trust } : {}) };
+}
+
+/** An edit as a review row: its trust and values, judged by the same rules as a new record's. */
+export function editAsReviewRow(edit: ReviewEdit): ReviewRow {
+  return { entity: edit.entity, ref: edit.ref, values: edit.set, duplicate: false, notes: edit.notes, ...(edit.trust ? { trust: edit.trust } : {}) };
+}
+
+const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * Where an edit starts: approved when a record was found and something would change; held back when
+ * none is ticked, when every value it sets is disputed, or when the records already hold those values.
+ * The rest is a new record's rule (ask-verdicts.ts): an edit's trust is judged the same way.
+ */
+export function editApproval(edit: ReviewEdit, kept: ReadonlySet<string> = new Set(), ticked?: ReadonlySet<string>): { approved: boolean; reason?: string } {
+  const isTicked = (t: ReviewEdit["targets"][number]) => (ticked ? ticked.has(t.id) : t.ticked);
+  if (!edit.targets.some(isTicked)) return { approved: false, reason: edit.notes[0] ?? "No record to change." };
+  const issues = edit.trust?.fieldIssues ?? {};
+  const keys = Object.keys(edit.set);
+  const saved = keys.filter((k) => issues[k]?.kind !== "contradicted" || kept.has(k));
+  if (!saved.length) return { approved: false, reason: issues[keys[0]!]?.why ?? "Its sources say otherwise." };
+  const t = edit.trust;
+  if (t?.status === "unsupported" || t?.status === "contradicted") return { approved: false, reason: t.issues[0] ?? "Nothing that was read supports it." };
+  const changes = edit.targets.filter(isTicked).some((x) => saved.some((k) => !same(x.before[k], edit.set[k])));
+  if (!changes) return { approved: false, reason: "It already holds these values." };
+  return { approved: true };
+}
+
 function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const rad = (x: number) => (x * Math.PI) / 180;
   const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
@@ -250,10 +307,14 @@ export function prepareReview(def: AppDefinition, proposal: Proposal, existing: 
     notes: [...row.notes, ...(opts.area ? areaNotes(def, row, opts.area) : [])],
     ...(proposal.trust?.[row.ref] ? { trust: proposal.trust[row.ref] } : {}),
   }));
+  const actions = proposal.actions.map((a) => reviewAction(def, a, proposal.rows, existing, links, dup));
+  const edits = (proposal.edits ?? []).map((e) => reviewEdit(def, e, existing, links, dup, proposal.trust?.[e.ref]));
   return {
     summary: proposal.summary,
-    rows,
-    actions: proposal.actions.map((a) => reviewAction(def, a, proposal.rows, existing, links, dup)),
+    // Links resolved for edits may have made records too ("Chest" for a muscle): they are rows like any other.
+    rows: [...links.made.filter((r) => !rows.some((x) => x.ref === r.ref)), ...rows],
+    actions,
+    edits,
   };
 }
 
@@ -273,6 +334,10 @@ export function entitiesToLoad(def: AppDefinition, proposal: Proposal): string[]
   for (const a of proposal.actions) {
     out.add(a.entity);
     links(actionInfo(def.entities[a.entity], a.action)?.input);
+  }
+  for (const e of proposal.edits ?? []) {
+    out.add(e.entity);
+    links(def.entities[e.entity]?.fields);
   }
   return [...out].filter((e) => def.entities[e]);
 }
@@ -327,6 +392,35 @@ export async function runActions(runner: ActionRunner, runs: Array<{ entity: str
     return ran;
   } catch (e) {
     throw new ApplyError(ran, e);
+  }
+}
+
+/**
+ * Change the approved records: only the fields that change, links to rows of this review swapped for
+ * the ids they were given (`ids`; one to a row the person left out is dropped), null emptying a field.
+ * Returns how many; throws `ApplyError` at the first failure, saying how many were changed before it.
+ */
+export async function applyEdits(
+  runtime: Writer,
+  def: AppDefinition,
+  edits: Array<{ entity: string; id: string; set: Record<string, unknown> }>,
+  ids: Map<string, string>,
+  accepted: ReadonlySet<string>,
+): Promise<number> {
+  let changed = 0;
+  try {
+    for (const e of edits) {
+      const fields = def.entities[e.entity]?.fields ?? {};
+      const emptied = Object.keys(e.set).filter((k) => e.set[k] === null);
+      const data = substitute(fields, e.set, ids, new Set(accepted), null);
+      for (const k of emptied) data[k] = null;
+      if (!Object.keys(data).length) continue;
+      await runtime.patch(e.entity, e.id, data as Partial<KartaRecord>);
+      changed += 1;
+    }
+    return changed;
+  } catch (e) {
+    throw new ApplyError(changed, e);
   }
 }
 

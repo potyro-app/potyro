@@ -11,8 +11,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KartaRuntime } from "@karta/runtime";
 import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@karta/generator/agent";
 import { mapArea, subscribeMapArea } from "@karta/views";
-import { ApplyError, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
-import { doneText, ReviewPanel, type AcceptedRun } from "./ask-review.js";
+import { ApplyError, applyEdits, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
+import { doneText, ReviewPanel, type AcceptedEdit, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
 import { MaterialField, type Material } from "./ask-material.js";
 import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
@@ -42,7 +42,7 @@ type Phase =
   /** The model needs one thing from the person; their reply carries the conversation on. */
   | { kind: "question"; text: string; transcript: ChatMessage[] }
   | { kind: "saving" }
-  | { kind: "added"; created: number; ran: number }
+  | { kind: "added"; created: number; ran: number; changed: number }
   | { kind: "note"; head: string; text: string };
 
 export interface AskPanelProps {
@@ -256,13 +256,17 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
     });
   };
 
-  const add = async (rows: ReviewRow[], runs: AcceptedRun[]): Promise<void> => {
+  const add = async (rows: ReviewRow[], runs: AcceptedRun[], edits: AcceptedEdit[]): Promise<void> => {
     setPhase({ kind: "saving" });
     let created = 0;
-    let stage: "rows" | "actions" = "rows";
+    let changed = 0;
+    let stage: "rows" | "edits" | "actions" = "rows";
     try {
       const saved = await applyProposal(runtime, def, rows);
       created = saved.created;
+      stage = "edits";
+      // After the rows, so a change that links to one of them gets its id.
+      changed = await applyEdits(runtime, def, edits, saved.ids, new Set(rows.map((r) => r.ref)));
       stage = "actions";
       // Actions run after the rows exist, through the same path as a button: checked input, the
       // sandbox for a shared app. `core`, not `runtime.runAction`, so a failure reaches this dialog
@@ -274,13 +278,14 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
           return id ? [{ entity: r.entity, action: r.action, id, input: r.input }] : [];
         }),
       );
-      setPhase({ kind: "added", created, ran });
+      setPhase({ kind: "added", created, ran, changed });
     } catch (e) {
       const why = e instanceof Error ? e.message : String(e);
       const partial = e instanceof ApplyError ? e.created : 0;
       const doneRows = stage === "rows" ? partial : created;
+      const doneEdits = stage === "edits" ? partial : changed;
       const doneRuns = stage === "actions" ? partial : 0;
-      const done = doneRows || doneRuns ? doneText(doneRows, doneRuns).replace(/\.$/, "") : "";
+      const done = doneRows || doneRuns || doneEdits ? doneText(doneRows, doneRuns, doneEdits).replace(/\.$/, "") : "";
       setPhase({
         kind: "note",
         head: done ? `${done}, then it stopped` : "Nothing was done",
@@ -445,7 +450,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
               </p>
             ) : null}
             {phase.citations.length ? <Found citations={phase.citations} /> : null}
-            <ReviewPanel def={def} review={phase.review} names={phase.names} onAccept={(rows, runs) => void add(rows, runs)} onDiscard={() => setPhase({ kind: "compose" })} />
+            <ReviewPanel def={def} review={phase.review} names={phase.names} onAccept={(rows, runs, edits) => void add(rows, runs, edits)} onDiscard={() => setPhase({ kind: "compose" })} />
             {fetched.length ? (
               <details className="k-ask-fetched">
                 <summary>
@@ -463,7 +468,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
 
         {phase.kind === "added" ? (
           <div className="k-ask-done" role="status">
-            <p className="k-ask-done-count">{doneText(phase.created, phase.ran)}</p>
+            <p className="k-ask-done-count">{doneText(phase.created, phase.ran, phase.changed)}</p>
             <footer className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => setPhase({ kind: "compose" })}>
                 Ask for more
