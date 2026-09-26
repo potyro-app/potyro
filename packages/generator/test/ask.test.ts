@@ -468,3 +468,36 @@ describe("material the person brings (a paste, a file)", () => {
     expect(trust.b!.status).toBe("unsupported");
   });
 });
+
+describe("what a request cost", () => {
+  it("adds up every model call it made — asking, checking — and reports it", async () => {
+    let n = 0;
+    const engine = {
+      chat: {
+        completions: {
+          create: async (req: { tools?: Array<{ function: { name: string } }> }) => {
+            n += 1;
+            const isCheck = (req.tools ?? []).some((t) => t.function.name === "verdicts");
+            const message = isCheck
+              ? { content: "", tool_calls: [{ id: "v", type: "function", function: { name: "verdicts", arguments: '{"verdicts":[]}' } }] }
+              : { ...propose("t1", { summary: "One.", rows: [{ entity: "place", ref: "b", values: { name: "Bar Bibe", kind: "bar" } }] }), citations: [
+                  { url: "https://a.example/x", content: "Bar Bibe in Cuneo." },
+                  { url: "https://b.example/y", content: "Bar Bibe, vegan bar." },
+                ] };
+            return { choices: [{ message }], usage: { cost: 0.01 } };
+          },
+        },
+      },
+    } as unknown as ChatEngine;
+    const out = await runAskLoop(deps({ engine, webSearch: true }));
+    expect(n).toBe(2);
+    expect(out.kind).toBe("proposal");
+    expect(out.spent).toBeCloseTo(0.02, 5);
+  });
+
+  it("reports what an unfinished request cost too", async () => {
+    const engine = { chat: { completions: { create: async () => ({ choices: [{ message: { content: "Which city?" } }], usage: { cost: 0.003 } }) } } } as unknown as ChatEngine;
+    const out = await runAskLoop(deps({ engine }));
+    expect(out).toMatchObject({ kind: "answer", spent: 0.003 });
+  });
+});

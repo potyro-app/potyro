@@ -9047,3 +9047,10 @@ body:has(.k-tabbar) .k-toasts {
   flex: 1;
   font-weight: 600;
 }
+
+/* What Ask cost (#213): quiet, always said. */
+.k-ask-cost {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+}

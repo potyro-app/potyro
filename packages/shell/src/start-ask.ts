@@ -59,7 +59,9 @@ export async function startAsk(opts: {
       signal: opts.signal,
     });
   } catch (e) {
-    if (opts.signal?.aborted) return { kind: "stopped" };
-    return { kind: "failed", reason: e instanceof Error ? e.message : String(e) };
+    const spent = (e as { spent?: number } | null)?.spent;
+    const cost = typeof spent === "number" ? { spent } : {};
+    if (opts.signal?.aborted) return { kind: "stopped", ...cost };
+    return { kind: "failed", reason: e instanceof Error ? e.message : String(e), ...cost };
   }
 }
