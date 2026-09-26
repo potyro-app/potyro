@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppDefinition } from "karta";
-import { checkProposal, checkProposedRows, describeStructure, runAskLoop, type AskLoopDeps } from "../src/agent/ask.js";
+import { askSystemPrompt, checkProposal, checkProposedRows, describeStructure, runAskLoop, type AskLoopDeps } from "../src/agent/ask.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
 // Ask (#213): the model works on an app's data in the app's own shape. It sees the app's STRUCTURE
@@ -499,5 +499,93 @@ describe("what a request cost", () => {
     const engine = { chat: { completions: { create: async () => ({ choices: [{ message: { content: "Which city?" } }], usage: { cost: 0.003 } }) } } } as unknown as ChatEngine;
     const out = await runAskLoop(deps({ engine }));
     expect(out).toMatchObject({ kind: "answer", spent: 0.003 });
+  });
+});
+
+describe("edits to the person's own records", () => {
+  // The model never sees the records: it names one as the person did, and says what to change.
+  const edit = { entity: "place", match: "Jardim da Estrela", set: { rating: 4, kind: "park" } };
+
+  it("accepts an edit that names a record and sets only some fields", () => {
+    const out = checkProposal(PLACES, [], [], { edits: [edit] });
+    expect(out).toMatchObject({ ok: true, edits: [edit] });
+  });
+
+  it("refuses an edit with no name, nothing to set, an unknown field, a bad value, or a required field emptied", () => {
+    const out = checkProposal(PLACES, [], [], {
+      edits: [
+        { entity: "place", set: { rating: 4 } },
+        { entity: "place", match: "X", set: {} },
+        { entity: "place", match: "X", set: { colour: "red" } },
+        { entity: "place", match: "X", set: { rating: 9 } },
+        { entity: "place", match: "X", set: { name: "" } },
+        { entity: "shop", match: "X", set: { name: "Y" } },
+      ],
+    });
+    expect(out.ok).toBe(false);
+    const problems = out.ok ? [] : out.problems;
+    expect(problems.find((p) => p.startsWith("Edit 1"))).toMatch(/match/);
+    expect(problems.find((p) => p.startsWith("Edit 2"))).toMatch(/nothing to change/);
+    expect(problems.find((p) => p.startsWith("Edit 3"))).toMatch(/colour/);
+    expect(problems.find((p) => p.startsWith("Edit 4"))).toBeTruthy();
+    expect(problems.find((p) => p.startsWith("Edit 5"))).toMatch(/required/);
+    expect(problems.find((p) => p.startsWith("Edit 6"))).toMatch(/no entity "shop"/);
+  });
+
+  it("does not require the fields an edit leaves alone", () => {
+    // `name` is required on a place; an edit that changes the rating need not repeat it.
+    expect(checkProposal(PLACES, [], [], { edits: [{ entity: "place", match: "Park", set: { rating: 3 } }] }).ok).toBe(true);
+  });
+
+  it("links an edit to a row of the same proposal, or to a record by name", () => {
+    const rows = [{ entity: "city", ref: "c", values: { name: "Lisbon" } }];
+    expect(checkProposal(PLACES, rows, [], { edits: [{ entity: "place", match: "Park", set: { city: "@c" } }] }).ok).toBe(true);
+    expect(checkProposal(PLACES, [], [], { edits: [{ entity: "place", match: "Park", set: { city: { match: "Lisbon" } } }] }).ok).toBe(true);
+    expect(checkProposal(PLACES, [], [], { edits: [{ entity: "place", match: "Park", set: { city: "@nope" } }] }).ok).toBe(false);
+  });
+
+  it("an edits-only proposal is a proposal, each edit with its own trust", async () => {
+    const { engine } = scripted([propose("t1", { summary: "Rated it.", rows: [], edits: [edit] })]);
+    const out = await runAskLoop(deps({ engine, request: "rate Jardim da Estrela 4" }));
+    expect(out.kind).toBe("proposal");
+    if (out.kind !== "proposal") return;
+    expect(out.proposal.edits).toEqual([{ ...edit, ref: "edit:1" }]);
+    expect(out.proposal.trust?.["edit:1"]?.status).toBe("general");
+  });
+
+  it("what the person said confirms it: their request is a source they chose", async () => {
+    const { engine } = scripted([propose("t1", { summary: "Rated it.", rows: [], edits: [{ entity: "place", match: "Jardim da Estrela", set: { rating: 4 } }] })]);
+    const out = await runAskLoop(deps({ engine, webSearch: true, request: "rate Jardim da Estrela 4 stars" }));
+    const trust = out.kind === "proposal" ? out.proposal.trust?.["edit:1"] : undefined;
+    expect(trust).toMatchObject({ status: "corroborated", sources: [{ via: "what you asked" }] });
+  });
+
+  it("a value nothing read states is flagged by the check, whichever field it is", async () => {
+    const withAddress = { entity: "place", match: "Jardim da Estrela", set: { where: { lat: 38.7, lng: -9.1, label: "Praça da Estrela 12" } } };
+    const verdicts = {
+      content: "",
+      tool_calls: [
+        {
+          id: "v",
+          type: "function" as const,
+          function: { name: "verdicts", arguments: JSON.stringify({ verdicts: [{ ref: "edit:1", verdict: "unsupported", problems: [{ field: "where", kind: "unsupported", why: "No text gives its address." }] }] }) },
+        },
+      ],
+    };
+    const { engine } = scripted([propose("t1", { summary: "Added its address.", rows: [], edits: [withAddress] }), verdicts]);
+    const out = await runAskLoop(deps({ engine, webSearch: true, request: "add the address of Jardim da Estrela" }));
+    const trust = out.kind === "proposal" ? out.proposal.trust?.["edit:1"] : undefined;
+    expect(trust?.fieldIssues?.where).toEqual({ kind: "unsupported", why: "No text gives its address." });
+  });
+
+  it("row refs may not take the names edits are tracked by", () => {
+    const out = checkProposal(PLACES, [{ entity: "city", ref: "edit:1", values: { name: "Lisbon" } }]);
+    expect(out.ok).toBe(false);
+  });
+
+  it("tells the model it cannot see records, so it works only on ones the person names", () => {
+    const text = askSystemPrompt({ canLookUp: false });
+    expect(text).toMatch(/edit/i);
+    expect(text).toMatch(/cannot see their records.*ask which/is);
   });
 });

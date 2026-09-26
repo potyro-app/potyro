@@ -9054,3 +9054,40 @@ body:has(.k-tabbar) .k-toasts {
   font-size: 0.76rem;
   color: var(--ink-faint);
 }
+
+/* Ask changing a record the person has: what it holds now, struck through, then what it would hold. */
+.k-ask-changes .k-ask-field-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.45rem;
+}
+.k-ask-before {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ink-faint) 60%, transparent);
+  overflow-wrap: anywhere;
+}
+.k-ask-arrow {
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+}
+.k-ask-changes .k-ask-value-text {
+  font-weight: 600;
+}
+.k-ask-source-own {
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 0.4rem;
+}
+.k-ask-target-now {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+.k-ask-edit .k-ask-card-head {
+  flex-wrap: wrap;
+}
+.k-ask-edit .k-ask-card-title {
+  flex: 1 1 8rem;
+  overflow-wrap: break-word;
+}
