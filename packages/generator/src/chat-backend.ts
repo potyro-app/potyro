@@ -52,8 +52,17 @@ export interface ChatRequest {
   /** Tools the provider runs itself (OpenRouter's `openrouter:web_search`). Engines that have none ignore them. */
   serverTools?: Array<Record<string, unknown>>;
 }
+/** What one call cost, as the provider reports it. */
+export interface Usage {
+  /** In US dollars. */
+  cost?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
 export interface ChatResponse {
   choices: Array<{ message: { content: string; tool_calls?: ToolCallOnMessage[]; citations?: Citation[] }; finish_reason?: string }>;
+  usage?: Usage;
 }
 export interface ChatEngine {
   chat: { completions: { create(req: ChatRequest): Promise<ChatResponse> } };

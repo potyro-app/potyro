@@ -294,3 +294,13 @@ describe("a model that cannot turn reasoning off", () => {
     expect(res.choices[0]!.message.citations).toEqual([{ url: "https://www.happycow.net/x", title: "HappyCow" }]);
   });
 });
+
+describe("what a call cost", () => {
+  it("passes on OpenRouter's usage: cost and tokens", async () => {
+    const fetch = async () =>
+      new Response(JSON.stringify({ choices: [{ message: { content: "hi" } }], usage: { prompt_tokens: 1200, completion_tokens: 80, cost: 0.00731 } }), { status: 200 });
+    const engine = createOpenRouterEngine({ apiKey: "k", fetch: fetch as never });
+    const res = await engine.chat.completions.create({ messages: [{ role: "user", content: "x" }] });
+    expect(res.usage).toEqual({ cost: 0.00731, promptTokens: 1200, completionTokens: 80 });
+  });
+});
