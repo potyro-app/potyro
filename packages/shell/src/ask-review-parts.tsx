@@ -120,9 +120,14 @@ export function Sources({ row }: { row: ReviewRow }) {
     <ul className="k-ask-sources-list" aria-label="Where this was found">
       {sources.map((s) => (
         <li key={s.url}>
-          <a href={s.url} target="_blank" rel="noreferrer noopener">
-            {s.host}
-          </a>
+          {/* What the person gave (their request, a paste) has no page to open: it is named instead. */}
+          {s.url.startsWith("karta:") ? (
+            <span className="k-ask-source-own">{s.via ?? "you"}</span>
+          ) : (
+            <a href={s.url} target="_blank" rel="noreferrer noopener">
+              {s.host}
+            </a>
+          )}
           <q>{s.quote}</q>
         </li>
       ))}
