@@ -30,6 +30,7 @@ import { FakeCapabilities } from "@karta/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@karta/host";
 import { createRuntime, type KartaRuntime } from "@karta/runtime";
 import { createPeerPair, type PeerPair, type Store } from "@karta/store";
+import { seededInput } from "./smoke.js";
 
 const UI: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const NAV: NavBridge = { navigate: () => {} };
@@ -186,6 +187,10 @@ export async function concurrencyChecks({ app, pair, runA, runB, seed }: Concurr
       if (!ids.length) continue;
       ran.entities++;
 
+      // `core`, not `runtime.runAction`: the latter turns a failure into a toast, so an action that
+      // threw looked like a clean run here. A declared action gets seeded input, not a form.
+      const run = (rt: KartaRuntime, action: string, id: string) => rt.core.runAction(entity, action, id, seededInput(def, action, created));
+
       for (const action of Object.keys(def.actions ?? {})) {
         const id = ids[0]!;
         ran.actions++;
@@ -194,8 +199,8 @@ export async function concurrencyChecks({ app, pair, runA, runB, seed }: Concurr
         const before = numbers(await pair.a.get(entity, id));
         let sequential: Record<string, number>;
         try {
-          await runA.runAction(entity, action, id);
-          await runA.runAction(entity, action, id);
+          await run(runA, action, id);
+          await run(runA, action, id);
           await pair.settle();
           sequential = numbers(await pair.a.get(entity, id));
         } catch (e) {
@@ -210,7 +215,7 @@ export async function concurrencyChecks({ app, pair, runA, runB, seed }: Concurr
         const fresh = ids[1] ?? ids[0]!;
         const base = numbers(await pair.a.get(entity, fresh));
         try {
-          await Promise.all([runA.runAction(entity, action, fresh), runB.runAction(entity, action, fresh)]);
+          await Promise.all([run(runA, action, fresh), run(runB, action, fresh)]);
         } catch (e) {
           errors.push(`${entity}.${action} (concurrent): ${message(e)}`);
           continue;
@@ -265,8 +270,8 @@ export async function concurrencyChecks({ app, pair, runA, runB, seed }: Concurr
         // from a view of the order that the other is halfway through changing.
         for (let i = 1; i < ids.length; i++) {
           await Promise.all([
-            runA.runAction(entity, action, ids[i]!).catch(() => {}),
-            runB.runAction(entity, action, ids[i - 1]!).catch(() => {}),
+            run(runA, action, ids[i]!).catch(() => {}),
+            run(runB, action, ids[i - 1]!).catch(() => {}),
           ]);
           await pair.settle(200);
         }

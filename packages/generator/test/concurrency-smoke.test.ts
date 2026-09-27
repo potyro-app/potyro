@@ -111,6 +111,54 @@ const COUNTED = defineApp({
   pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }],
 });
 
+const BROKEN = defineApp({
+  id: "broken-list",
+  name: "Broken List",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    item: {
+      label: "Item",
+      displayField: "title",
+      fields: { title: { type: "text", required: true }, done: { type: "boolean" } },
+      actions: {
+        // A method ctx does not have — what a model invents. The button would show a toast.
+        finish: async (record, ctx) => {
+          await (ctx as unknown as { markDone: (id: string) => Promise<void> }).markDone(record.id as string);
+        },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }],
+});
+
+const ASKS = defineApp({
+  id: "asks-list",
+  name: "Asks List",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    item: {
+      label: "Item",
+      displayField: "title",
+      fields: { title: { type: "text", required: true }, note: { type: "text" } },
+      actions: {
+        // Declares what it needs; with none given the runtime would open a form nobody answers.
+        annotate: {
+          label: "Add a note",
+          input: { note: { type: "text", required: true } },
+          run: async (record, ctx, input) => {
+            const note = (input as { note?: string } | undefined)?.note;
+            if (!note) throw new Error("annotate ran without its input");
+            await ctx.patch("item", record.id as string, { note });
+          },
+        },
+      },
+    },
+  },
+  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }],
+});
+
 describe("the concurrency gate", () => {
   it("catches a counter that loses one of two simultaneous presses", async () => {
     const r = await concurrencySmoke(UNSAFE as never, seed(UNSAFE as never));
@@ -150,6 +198,19 @@ describe("the concurrency gate", () => {
     expect(r.errors, `setup failed: ${r.errors.join("; ")}`).toEqual([]);
     expect(r.ran.actions).toBeGreaterThan(0);
     expect(r.hazards, JSON.stringify(r.hazards, null, 1)).toEqual([]);
+    expect(concurrencyPassed(r)).toBe(true);
+  }, 60_000);
+
+  it("reports an action that throws, instead of treating it as a clean run", async () => {
+    const r = await concurrencySmoke(BROKEN as never, seed(BROKEN as never));
+    expect(r.errors.join("; ")).toMatch(/item\.finish/);
+    expect(concurrencyPassed(r)).toBe(false);
+  }, 60_000);
+
+  it("runs an action that declares input, with seeded input", async () => {
+    const r = await concurrencySmoke(ASKS as never, seed(ASKS as never));
+    expect(r.errors, `setup failed: ${r.errors.join("; ")}`).toEqual([]);
+    expect(r.ran.actions).toBeGreaterThan(0);
     expect(concurrencyPassed(r)).toBe(true);
   }, 60_000);
 });
