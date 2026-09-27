@@ -44,11 +44,32 @@ export interface ProposedAction {
   input?: Record<string, unknown>;
 }
 
+/**
+ * A change to one of the person's own records. The model never sees them, so it names the record as
+ * the person did (`match`), found on the device like an action's target, and gives only the fields to
+ * change (`set`; null empties one). `ref` is given by the device ("edit:1"), so its trust is kept with
+ * the rows'.
+ */
+export interface ProposedEdit {
+  entity: string;
+  match: string;
+  set: Record<string, unknown>;
+  evidence?: Evidence[];
+  general?: boolean;
+  ref: string;
+}
+
+/** What an edit is tracked by. Row refs may not look like it. */
+const EDIT_REF = /^edit:\d+$/;
+const editRef = (i: number): string => `edit:${i + 1}`;
+
 export interface Proposal {
   /** One or two sentences for the person: what this is. */
   summary: string;
   rows: ProposedRow[];
   actions: ProposedAction[];
+  /** Changes to records the person already has. Absent in proposals made before edits existed. */
+  edits?: ProposedEdit[];
   /** Pages a web search read on the way, for the person to check. */
   citations?: Citation[];
   /** How far each row can be trusted, by ref: checked against what was actually retrieved. */
@@ -258,8 +279,12 @@ function withoutLinks(of: Record<string, Field>, value: unknown): unknown {
   });
 }
 
-/** Problems with a set of values against `fields` (a row's, or an action's input). */
-function valuesProblems(fields: Record<string, Field>, values: Record<string, unknown>, refs: Map<string, string>, at: string, owner: string): string[] {
+/**
+ * Problems with a set of values against `fields` (a row's, or an action's input). `partial`: an edit,
+ * which gives only what changes — a required field it leaves out stays as it is, but it may not
+ * empty one, and null empties any other.
+ */
+function valuesProblems(fields: Record<string, Field>, values: Record<string, unknown>, refs: Map<string, string>, at: string, owner: string, partial = false): string[] {
   const problems: string[] = [];
   for (const [key, value] of Object.entries(values)) {
     const field = fields[key];
@@ -272,6 +297,10 @@ function valuesProblems(fields: Record<string, Field>, values: Record<string, un
       problems.push(`${at}: ${label} (${key}) cannot be set here; leave it out.`);
       continue;
     }
+    if (partial && (value === null || value === "")) {
+      if (field.required) problems.push(`${at}: ${label} (${key}) is required; it cannot be emptied.`);
+      continue;
+    }
     const problem =
       field.type === "relation"
         ? relationProblem(value, field.to, Boolean(field.many), refs, label)
@@ -279,6 +308,7 @@ function valuesProblems(fields: Record<string, Field>, values: Record<string, un
     if (problem) problems.push(`${at}: ${problem}`);
     else if (field.type === "list") problems.push(...listRowProblems(field.of, value, `${at}: ${label}`, refs));
   }
+  if (partial) return problems;
   for (const [key, field] of Object.entries(fields)) {
     if (!field.required || field.default !== undefined || UNSETTABLE.has(field.type)) continue;
     const v = values[key];
@@ -312,6 +342,19 @@ function actionProblems(def: AppDefinition, actions: ProposedAction[], refs: Map
     }
     if (run.input !== undefined && !isObject(run.input)) return void problems.push(`${at}: this action takes { ${Object.keys(info.input).join(", ")} } as input.`);
     problems.push(...valuesProblems(info.input, isObject(run.input) ? run.input : {}, refs, at, `${run.action}'s input`));
+  });
+  return problems;
+}
+
+function editProblems(def: AppDefinition, edits: ProposedEdit[], refs: Map<string, string>): string[] {
+  const problems: string[] = [];
+  edits.forEach((edit, i) => {
+    const at = `Edit ${i + 1} (${edit.entity})`;
+    const entity = def.entities[edit.entity];
+    if (!entity) return void problems.push(`${at}: this app has no entity "${edit.entity}". It has: ${Object.keys(def.entities).join(", ")}.`);
+    if (typeof edit.match !== "string" || !edit.match.trim()) problems.push(`${at}: give match, the name of the person's record as they said it.`);
+    if (!isObject(edit.set) || !Object.keys(edit.set).length) return void problems.push(`${at}: set has nothing to change; give { field: new value }.`);
+    problems.push(...valuesProblems(entity.fields, edit.set, refs, at, edit.entity, true));
   });
   return problems;
 }
@@ -350,21 +393,26 @@ export function checkProposal(
   def: AppDefinition,
   givenRows: readonly unknown[],
   givenActions: readonly unknown[] = [],
-  opts?: { area?: AskContext["area"] },
-): { ok: true; rows: ProposedRow[]; actions: ProposedAction[] } | { ok: false; problems: string[] } {
+  opts?: { area?: AskContext["area"]; edits?: readonly unknown[] },
+): { ok: true; rows: ProposedRow[]; actions: ProposedAction[]; edits: ProposedEdit[] } | { ok: false; problems: string[] } {
   const problems: string[] = [];
   // The model's JSON, not yet rows: anything that is not an object is reported, never dereferenced.
   const rows: ProposedRow[] = [];
   const actions: ProposedAction[] = [];
+  const edits: ProposedEdit[] = [];
   givenRows.forEach((row, i) => (isObject(row) ? rows.push(row as unknown as ProposedRow) : problems.push(`Row ${i + 1} is not an object { entity, ref, values }.`)));
   givenActions.forEach((a, i) => (isObject(a) ? actions.push(a as unknown as ProposedAction) : problems.push(`Action ${i + 1} is not an object { entity, action, on | match, input? }.`)));
+  (opts?.edits ?? []).forEach((e, i) =>
+    isObject(e) ? edits.push({ ...(e as unknown as ProposedEdit), ref: editRef(i) }) : problems.push(`Edit ${i + 1} is not an object { entity, match, set }.`),
+  );
   if (problems.length) return { ok: false, problems };
-  if (!rows.length && !actions.length) problems.push("The proposal has no rows and no actions.");
-  if (rows.length + actions.length > MAX_ROWS) problems.push(`At most ${MAX_ROWS} rows and actions in one proposal.`);
+  if (!rows.length && !actions.length && !edits.length) problems.push("The proposal has no rows, no actions and no edits.");
+  if (rows.length + actions.length + edits.length > MAX_ROWS) problems.push(`At most ${MAX_ROWS} rows, actions and edits in one proposal.`);
 
   const refs = new Map<string, string>();
   for (const row of rows) {
     if (typeof row.ref !== "string" || !row.ref) problems.push("Every row needs a ref.");
+    else if (EDIT_REF.test(row.ref)) problems.push(`The ref "${row.ref}" is reserved; choose another.`);
     else if (refs.has(row.ref)) problems.push(`The ref "${row.ref}" is used twice.`);
     else refs.set(row.ref, row.entity);
   }
@@ -376,9 +424,10 @@ export function checkProposal(
     problems.push(...valuesProblems(entity.fields, isObject(row.values) ? row.values : {}, refs, at, row.entity));
   });
   problems.push(...actionProblems(def, actions, refs));
+  problems.push(...editProblems(def, edits, refs));
   if (!problems.length) problems.push(...placementProblems(def, rows, opts?.area));
 
-  return problems.length ? { ok: false, problems } : { ok: true, rows, actions };
+  return problems.length ? { ok: false, problems } : { ok: true, rows, actions, edits };
 }
 
 /** `checkProposal` for rows alone. */
@@ -394,7 +443,8 @@ export function checkProposedRows(def: AppDefinition, given: readonly unknown[])
  */
 export function askSystemPrompt(opts: { canLookUp: boolean }): string {
   return [
-    "You do things in a person's app for them: add records and run the app's actions. The app's structure is below;",
+    "You do things in a person's app for them: add records, change the ones they have, and run the app's actions. The",
+    "app's structure is below;",
     "its records are not shown to you.",
     "",
     "Do the task. The person asked so that it gets done, not to start a conversation.",
@@ -423,7 +473,7 @@ export function askSystemPrompt(opts: { canLookUp: boolean }): string {
     "Use each thing's name as your sources write it, and prefer what two different sites agree on. You may add",
     "`evidence` ({ url, quote } copied word for word). Mark only general knowledge (a recipe, an exercise) `general: true`.",
     "",
-    "Answer by calling `propose_records` once with everything: new `rows`, and `actions` to run.",
+    "Answer by calling `propose_records` once with everything: new `rows`, `edits` to records they have, and `actions`.",
     "A row is { entity, ref, values }:",
     "- `ref` is a short name you choose, unique in the proposal;",
     "- `values` uses the field keys exactly, and each value must follow that field's rule;",
@@ -433,6 +483,14 @@ export function askSystemPrompt(opts: { canLookUp: boolean }): string {
     'An action run is { entity, action, on | match, input? }: `on` is "@<ref>" of a row you propose; `match` is the name',
     'of the person\'s record(s) as they said it ("the fern" → "fern"); `input` fills what the action takes, and is left',
     "out when it takes nothing. Use actions for things the person did or wants done to records they already have.",
+    'An edit is { entity, match, set }: `match` is the name of one of the person\'s records, the words they called it by',
+    'without "the", "my" or the kind of thing ("the Verdena gig" → "Verdena"); `set` holds only the fields to change,',
+    "each following its rule (null empties one).",
+    "When the person speaks of something as already theirs (\"I finished X\", \"X costs 139 now\", \"I'm not going to X\",",
+    '"change X"), it is an edit of X, or an action on X when the app has one for it — never a new row: a row with the',
+    "name of one they have is not saved. Rows are for things new to them.",
+    "You cannot see their records, so change only ones the person names. Only when they name none (\"all my places",
+    'without an address"), say in one short sentence that you cannot see their records, and ask which ones they mean.',
     "The person reviews the proposal before anything is saved. If the tool reports problems, fix all of them and call it",
     "again. Write the summary, and any words, in the person's language.",
   ].join("\n");
@@ -554,6 +612,17 @@ export interface AskLoopDeps {
   signal?: AbortSignal;
 }
 
+/**
+ * An edit, as the checks see it: the record under its name, with the values it would have. Whether
+ * the record exists is not in question (it is the person's, found on the device); what the checks
+ * judge is whether what was read says the new values.
+ */
+export function editAsRow(def: AppDefinition, edit: ProposedEdit): ProposedRow {
+  const by = def.entities[edit.entity]?.displayField;
+  const values: Record<string, unknown> = by ? { [by]: edit.match, ...edit.set } : { ...edit.set };
+  return { entity: edit.entity, ref: edit.ref, values, ...(edit.evidence ? { evidence: edit.evidence } : {}), ...(edit.general !== undefined ? { general: edit.general } : {}) };
+}
+
 function proposeTool(
   def: AppDefinition,
   accept: (p: Proposal) => void,
@@ -598,6 +667,24 @@ function proposeTool(
             required: ["entity", "action"],
           },
         },
+        edits: {
+          type: "array",
+          description: "Changes to records the person already has, named as they said them.",
+          items: {
+            type: "object",
+            properties: {
+              entity: { type: "string" },
+              match: { type: "string", description: "The record's name, as the person said it." },
+              set: { type: "object", description: "Only the fields to change. null empties one." },
+              evidence: {
+                type: "array",
+                items: { type: "object", properties: { url: { type: "string" }, quote: { type: "string" } }, required: ["url", "quote"] },
+              },
+              general: { type: "boolean" },
+            },
+            required: ["entity", "match", "set"],
+          },
+        },
       },
       required: ["summary", "rows"],
     },
@@ -621,14 +708,15 @@ function proposeTool(
       };
       const rows = list(args.rows);
       const actions = list(args.actions);
-      if (typeof rows === "string" || typeof actions === "string") {
-        const problems = [typeof rows === "string" ? `rows ${rows}` : "", typeof actions === "string" ? `actions ${actions}` : ""].filter(Boolean);
-        return { ok: false, detail: `Not saved: ${problems.join("; ")}.` };
+      const edits = list(args.edits);
+      const malformed = Object.entries({ rows, actions, edits }).filter((e): e is [string, string] => typeof e[1] === "string");
+      if (malformed.length || typeof rows === "string" || typeof actions === "string" || typeof edits === "string") {
+        return { ok: false, detail: `Not saved: ${malformed.map(([k, why]) => `${k} ${why}`).join("; ")}.` };
       }
-      const checked = checkProposal(def, rows, actions, { area });
+      const checked = checkProposal(def, rows, actions, { area, edits });
       if (!checked.ok) return { ok: false, detail: `Not saved, fix these and call again:\n${checked.problems.map((p) => `- ${p}`).join("\n")}` };
       const trust: Record<string, Trust> = {};
-      for (const row of checked.rows) {
+      for (const row of [...checked.rows, ...checked.edits.map((e) => editAsRow(def, e))]) {
         trust[row.ref] = canLookUp() ? verifyRow(def, row, retrieved) : { status: "general", sources: [], issues: [] };
       }
       const weak = checked.rows.filter((r) => trust[r.ref]!.status === "unsupported");
@@ -643,8 +731,9 @@ function proposeTool(
             "such as a recipe — set general: true. Then call propose_records again with everything.",
         };
       }
-      accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows, actions: checked.actions, trust });
-      return { ok: true, detail: `${rows.length} row${rows.length === 1 ? "" : "s"} and ${actions.length} action${actions.length === 1 ? "" : "s"} proposed.` };
+      accept({ summary: typeof args.summary === "string" ? args.summary : "", rows: checked.rows, actions: checked.actions, edits: checked.edits, trust });
+      const n = (k: number, one: string) => `${k} ${one}${k === 1 ? "" : "s"}`;
+      return { ok: true, detail: `${n(rows.length, "row")}, ${n(edits.length, "edit")} and ${n(actions.length, "action")} proposed.` };
     },
   };
 }
@@ -692,6 +781,9 @@ async function askLoop(deps: AskLoopDeps): Promise<AskOutcome> {
   const retrieved = new Retrieved();
   // The person's own material is a source they chose: what it names is confirmed by it.
   if (material) retrieved.add(`karta:material/${encodeURIComponent(material.label)}`, material.text, material.label);
+  // So are their own words: "rate Jardim da Estrela 4" confirms that rating. A record they name is
+  // theirs to name; what else is said about it is still judged field by field against what was read.
+  retrieved.add("karta:request", deps.request, "what you asked");
   const tools = [
     proposeTool(deps.definition, (p) => (accepted = p), deps.context?.area, retrieved, () => searching || sources.length > 0 || material !== null),
     ...(sources.length ? sourceTools(sources, deps.fetchSource!, retrieved) : []),
@@ -718,8 +810,9 @@ async function askLoop(deps: AskLoopDeps): Promise<AskOutcome> {
     let trust = proposal.trust;
     if (trust && retrieved.size && !deps.signal?.aborted) {
       deps.onStep?.({ kind: "checking" });
-      if (searching) trust = await corroborate({ engine: deps.engine, model: deps.model, definition: deps.definition, rows: proposal.rows, trust, retrieved, signal: deps.signal });
-      trust = await verifyClaims({ engine: deps.engine, model: deps.model, definition: deps.definition, rows: proposal.rows, trust, retrieved, signal: deps.signal });
+      const checked = [...proposal.rows, ...(proposal.edits ?? []).map((e) => editAsRow(deps.definition, e))];
+      if (searching) trust = await corroborate({ engine: deps.engine, model: deps.model, definition: deps.definition, rows: checked, trust, retrieved, signal: deps.signal });
+      trust = await verifyClaims({ engine: deps.engine, model: deps.model, definition: deps.definition, rows: checked, trust, retrieved, signal: deps.signal });
     }
     if (deps.signal?.aborted) return { kind: "stopped" };
     return { kind: "proposal", proposal: { ...proposal, ...(trust ? { trust } : {}), ...(citations.size ? { citations: [...citations.values()] } : {}) } };

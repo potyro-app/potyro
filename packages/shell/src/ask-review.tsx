@@ -4,20 +4,29 @@
 // approved or held back accordingly (ask-verdicts.ts) — the person decides. Two ways to look: cards,
 // one record at a time with every value and where it was found; or a table per kind of record, for
 // comparing many. A value its sources dispute is left out unless the person keeps it. Then the
-// actions: what runs, with what, on which records. One button does all of it, and says how much.
+// changes to records the person has, each field as it is now and as it would be; then the actions:
+// what runs, with what, on which records. One button does all of it, and says how much.
 
 import { useMemo, useState } from "react";
 import { humanizeKey, type AppDefinition } from "karta";
-import type { Review, ReviewAction, ReviewRow, ReviewTarget } from "./ask-apply.js";
+import { editApproval, type Review, type ReviewAction, type ReviewEdit, type ReviewRow, type ReviewTarget } from "./ask-apply.js";
 import { defaultApproval, valuesToSave } from "./ask-verdicts.js";
 import { titleOf, type LinkNames } from "./ask-review-parts.js";
 import { EntityTable, RowCard, type RowState } from "./ask-review-layouts.js";
+import { EditCard, type EditState } from "./ask-review-edits.js";
 
 export interface AcceptedRun {
   entity: string;
   action: string;
   input?: Record<string, unknown>;
   target: ReviewTarget;
+}
+
+/** A change the person approved, on one of their records: only the values they kept. */
+export interface AcceptedEdit {
+  entity: string;
+  id: string;
+  set: Record<string, unknown>;
 }
 
 type Layout = "cards" | "table";
@@ -102,10 +111,10 @@ export function ReviewPanel({
   review: Review;
   /** The person's records the review mentions, id → name, for showing links. */
   names: Map<string, string>;
-  onAccept: (rows: ReviewRow[], runs: AcceptedRun[]) => void;
+  onAccept: (rows: ReviewRow[], runs: AcceptedRun[], edits: AcceptedEdit[]) => void;
   onDiscard: () => void;
 }) {
-  const { rows, actions } = review;
+  const { rows, actions, edits } = review;
   const [layout, setLayout] = useState<Layout>(savedLayout);
   /** The person's own decisions, by ref; everything else follows its default. */
   const [decided, setDecided] = useState<Map<string, boolean>>(new Map());
@@ -123,8 +132,17 @@ export function ReviewPanel({
     const d = defaultApproval(def, row, keptOf(row));
     return { approved: decided.get(row.ref) ?? d.approved, ...(d.reason ? { reason: d.reason } : {}), kept: keptOf(row) };
   };
-  const decide = (row: ReviewRow, approved: boolean) => setDecided((m) => new Map(m).set(row.ref, approved));
-  const keep = (row: ReviewRow, field: string) => setKept((m) => new Map(m).set(row.ref, toggled(new Set(keptOf(row)), field)));
+  const decide = (row: { ref: string }, approved: boolean) => setDecided((m) => new Map(m).set(row.ref, approved));
+  const keep = (row: { ref: string }, field: string) => setKept((m) => new Map(m).set(row.ref, toggled(new Set(kept.get(row.ref) ?? []), field)));
+
+  const [editTicks, setEditTicks] = useState<Map<string, Set<string>>>(() => new Map(edits.map((e) => [e.ref, new Set(e.targets.filter((t) => t.ticked).map((t) => t.id))])));
+  const editState = (edit: ReviewEdit): EditState => {
+    const ticked = editTicks.get(edit.ref) ?? new Set<string>();
+    const k = kept.get(edit.ref) ?? new Set<string>();
+    const d = editApproval(edit, k, ticked);
+    return { approved: (decided.get(edit.ref) ?? d.approved) && ticked.size > 0, ...(d.reason ? { reason: d.reason } : {}), kept: k, ticked };
+  };
+  const tick = (edit: ReviewEdit, id: string) => setEditTicks((m) => new Map(m).set(edit.ref, toggled(new Set(m.get(edit.ref) ?? []), id)));
 
   const approvedRows = rows.filter((r) => stateOf(r).approved);
   const approvedRefs = new Set(approvedRows.map((r) => r.ref));
@@ -133,9 +151,18 @@ export function ReviewPanel({
       .filter((t) => tickedRuns.has(targetKey(ai, t)) && (t.kind !== "new" || approvedRefs.has(t.ref)))
       .map((t) => ({ entity: a.entity, action: a.action, input: a.input, target: t })),
   );
+  const accepted: AcceptedEdit[] = edits.flatMap((e) => {
+    const st = editState(e);
+    if (!st.approved) return [];
+    const set = valuesToSave({ ...e, values: e.set, duplicate: false }, st.kept);
+    return Object.keys(set).length ? e.targets.filter((t) => st.ticked.has(t.id)).map((t) => ({ entity: e.entity, id: t.id, set })) : [];
+  });
   const nRows = approvedRows.length;
   const nRuns = runs.length;
-  const verb = [nRows ? `Add ${nRows}` : "", nRuns ? `${nRows ? "run" : "Run"} ${nRuns}` : ""].filter(Boolean).join(" and ");
+  const nEdits = accepted.length;
+  const parts = [nRows ? `add ${nRows}` : "", nEdits ? `change ${nEdits}` : "", nRuns ? `run ${nRuns}` : ""].filter(Boolean);
+  const joined = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "");
+  const verb = joined.charAt(0).toUpperCase() + joined.slice(1);
   const held = rows.length - nRows;
 
   const pickLayout = (l: Layout): void => {
@@ -184,6 +211,27 @@ export function ReviewPanel({
             )}
           </section>
         ))}
+        {edits.length ? (
+          <section className="k-ask-group" aria-label="Changes">
+            <h3 className="k-ask-group-head">
+              Changes to your records <span className="k-ask-group-count">{edits.length}</span>
+            </h3>
+            <ul className="k-ask-cards">
+              {edits.map((e) => (
+                <EditCard
+                  key={e.ref}
+                  def={def}
+                  edit={e}
+                  state={editState(e)}
+                  names={linkNames}
+                  onDecide={(a) => decide(e, a)}
+                  onKeep={(k) => keep(e, k)}
+                  onTick={(id) => tick(e, id)}
+                />
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {actions.length ? (
           <section className="k-ask-group" aria-label="Actions">
             <h3 className="k-ask-group-head">
@@ -204,8 +252,8 @@ export function ReviewPanel({
         <button
           type="button"
           className="k-add k-primary-action"
-          disabled={!nRows && !nRuns}
-          onClick={() => onAccept(approvedRows.map((r) => ({ ...r, values: valuesToSave(r, keptOf(r)) })), runs)}
+          disabled={!nRows && !nRuns && !nEdits}
+          onClick={() => onAccept(approvedRows.map((r) => ({ ...r, values: valuesToSave(r, keptOf(r)) })), runs, accepted)}
         >
           {verb || "Nothing approved"}
         </button>
@@ -214,10 +262,9 @@ export function ReviewPanel({
   );
 }
 
-export function doneText(created: number, ran: number): string {
-  return [created ? `Added ${plural(created, "record", "records")}` : "", ran ? `ran ${plural(ran, "action", "actions")}` : ""]
+export function doneText(created: number, ran: number, changed = 0): string {
+  const text = [created ? `added ${plural(created, "record", "records")}` : "", changed ? `changed ${plural(changed, "record", "records")}` : "", ran ? `ran ${plural(ran, "action", "actions")}` : ""]
     .filter(Boolean)
-    .join(", ")
-    .replace(/^ran/, "Ran")
-    .concat(".");
+    .join(", ");
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
 }

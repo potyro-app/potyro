@@ -74,7 +74,8 @@ function describe(o: AskOutcome): string {
     const counts: Record<string, number> = {};
     for (const t of Object.values(o.proposal.trust ?? {})) counts[t.status] = (counts[t.status] ?? 0) + 1;
     const trust = Object.entries(counts).map(([k, n]) => `${k} ${n}`).join(", ");
-    return `proposal: ${o.proposal.rows.length} rows, ${o.proposal.citations?.length ?? 0} cited | ${trust}`;
+    const edits = (o.proposal.edits ?? []).map((e) => `${e.match}: ${JSON.stringify(e.set)}`).join("; ");
+    return `proposal: ${o.proposal.rows.length} rows, ${o.proposal.edits?.length ?? 0} edits${edits ? ` [${edits}]` : ""}, ${o.proposal.citations?.length ?? 0} cited | ${trust}`;
   }
   if (o.kind === "answer") return `ANSWER: ${o.text.replace(/\s+/g, " ").slice(0, 110)}`;
   if (o.kind === "failed") return `FAILED: ${o.reason.slice(0, 110)}`;

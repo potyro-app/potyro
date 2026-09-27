@@ -133,6 +133,13 @@ const BOOKS_PASTE = `Great choice — Italian literature has so much to offer. A
 Honourable mention: Eco's The Name of the Rose, though you've probably read it!`;
 
 export const ASK_CASES: AskCase[] = [
+  // Changing records the person has. The model never sees them: it names them as the person did.
+  { id: "edit-books-finished", app: BOOKS, request: "I finished The Leopard, 4 stars", context: PLAIN, expect: "One edit on “The Leopard”: read true, myRating 4. No new book." },
+  { id: "edit-wishlist-price", app: WISHLIST, request: "the Kindle Paperwhite is 139 euros now", context: PLAIN, expect: "One edit on “Kindle Paperwhite”: price 139. Nothing else changed." },
+  { id: "edit-gigs-not-going", app: EVENTS, request: "I'm not going to the Verdena gig anymore", context: PLAIN, expect: "One edit on the Verdena gig: going false." },
+  { id: "edit-workout-sets", app: "workout.app.tsx", request: "change bench press to 4 sets of 6-8", context: PLAIN, expect: "One edit on the bench press exercise: its sets and reps fields, in their rules." },
+  { id: "edit-books-author-web", app: BOOKS, request: "fill in the author and year of Invisible Cities", context: PLAIN, expect: "One edit: author Italo Calvino, year 1972, confirmed by what was read." },
+  { id: "edit-books-unnamed", app: BOOKS, request: "fill in the missing authors in my list", context: PLAIN, expect: "A short reply: it cannot see the records; which books? No edits guessed." },
   { id: "paste-ppl", app: "workout.app.tsx", request: "add these", material: { label: "what you pasted", text: PPL_PASTE }, context: PLAIN, expect: "15 exercises, day and order from the headings, sets and rep ranges and rest from the tables and list; nothing invented." },
   { id: "paste-books", app: BOOKS, request: "add these to my list", material: { label: "what you pasted", text: BOOKS_PASTE }, context: PLAIN, expect: "4 books (not the honourable mention, or flagged); titles, authors, years from the paste; read false." },
   { id: "books-calvino", app: BOOKS, request: "add 3 novels by Italo Calvino", context: PLAIN, expect: "Real Calvino novels with correct years; myRating empty, read false." },
