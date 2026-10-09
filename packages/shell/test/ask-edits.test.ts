@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition, KartaRecord } from "karta";
-import type { Proposal } from "@karta/generator/agent";
+import type { AppDefinition, PotyroRecord } from "potyro";
+import type { Proposal } from "@potyro/generator/agent";
 import { ApplyError, applyEdits, editApproval, entitiesToLoad, prepareReview } from "../src/ask-apply.js";
 
 // Ask (#213) changing records the person already has. The model named them; which records those are
@@ -73,7 +73,7 @@ describe("prepareReview with edits", () => {
   });
 
   it("carries the edit's trust", () => {
-    const trust = { status: "corroborated" as const, sources: [{ url: "karta:request", host: "", quote: "bench press 4 sets", via: "what you asked" }], issues: [] };
+    const trust = { status: "corroborated" as const, sources: [{ url: "potyro:request", host: "", quote: "bench press 4 sets", via: "what you asked" }], issues: [] };
     const review = prepareReview(DEF, { ...proposal([{ ref: "edit:1", entity: "exercise", match: "Bench Press", set: { sets: 4 } }]), trust: { "edit:1": trust } }, EXISTING);
     expect(review.edits[0]!.trust).toEqual(trust);
   });
@@ -114,8 +114,8 @@ function fakeWriter() {
   const patched: Array<{ entity: string; id: string; data: Record<string, unknown> }> = [];
   return {
     patched,
-    create: async (_e: string, d: Partial<KartaRecord>) => ({ ...d, id: "x" }) as KartaRecord,
-    patch: async (entity: string, id: string, data: Partial<KartaRecord>) => void patched.push({ entity, id, data: data as Record<string, unknown> }),
+    create: async (_e: string, d: Partial<PotyroRecord>) => ({ ...d, id: "x" }) as PotyroRecord,
+    patch: async (entity: string, id: string, data: Partial<PotyroRecord>) => void patched.push({ entity, id, data: data as Record<string, unknown> }),
   };
 }
 

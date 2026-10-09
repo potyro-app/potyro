@@ -9,9 +9,9 @@
 // still on the page. Without one (a keyboard shortcut, a timer) the menu is a centred panel.
 
 import { useSyncExternalStore } from "react";
-import type { Field, UiItem, UiProgress } from "karta";
-import type { KartaRuntime } from "@karta/runtime";
-import { ChoicePanel, ValuesForm } from "@karta/views";
+import type { Field, UiItem, UiProgress } from "potyro";
+import type { PotyroRuntime } from "@potyro/runtime";
+import { ChoicePanel, ValuesForm } from "@potyro/views";
 
 type Choice = { kind: "sheet" | "menu"; title?: string; items: UiItem<unknown>[]; anchor: DOMRect | null; settle: (v: unknown) => void };
 type FormAsk = { kind: "form"; title: string; fields: Record<string, Field>; initial?: Record<string, unknown>; submit?: string; settle: (v: Record<string, unknown> | null) => void };
@@ -117,7 +117,7 @@ export class UiHost {
 }
 
 /** The questions and progress bars, rendered. Mounted inside the App, which has the runtime a form's relation pickers need. */
-export function UiSurfaces({ host, runtime }: { host: UiHost; runtime: KartaRuntime }) {
+export function UiSurfaces({ host, runtime }: { host: UiHost; runtime: PotyroRuntime }) {
   const request = useSyncExternalStore(host.subscribe, host.get, host.get);
   const bars = useSyncExternalStore(host.subscribe, host.getBars, host.getBars);
 

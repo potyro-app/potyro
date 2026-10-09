@@ -1,6 +1,6 @@
-// Text shared into Karta from another app (#213) — what another AI made — and where it goes next.
+// Text shared into Potyro from another app (#213) — what another AI made — and where it goes next.
 //
-// A share arrives while Karta may be showing anything, so it is kept for this session, offered on the
+// A share arrives while Potyro may be showing anything, so it is kept for this session, offered on the
 // "Bring this into…" page, and handed to the app the person picks, whose Ask opens with it filled in.
 // sessionStorage, not localStorage: a share is something in hand, not something to keep.
 //
@@ -8,8 +8,8 @@
 // against each app's own words — its entity and field names, labels and options, read from its
 // source. The person picks either way; this only orders the list.
 
-const SHARE = "karta:pending-share";
-const HANDED = "karta:ask-material";
+const SHARE = "potyro:pending-share";
+const HANDED = "potyro:ask-material";
 const LABEL = "what you shared";
 
 export interface Share {

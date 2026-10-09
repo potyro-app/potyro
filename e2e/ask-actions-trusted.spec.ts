@@ -9,7 +9,7 @@ import { test, expect, type Page } from "@playwright/test";
 const APP_ID = "ask-plants";
 const APP_NAME = "Green Room";
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -88,10 +88,10 @@ const PROPOSAL = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id, name]) => {
-      if (!localStorage.getItem("karta:user-apps")) {
-        localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
+      if (!localStorage.getItem("potyro:user-apps")) {
+        localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
       }
-      sessionStorage.setItem("karta:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "anthropic/claude-sonnet-4.5" }));
+      sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "anthropic/claude-sonnet-4.5" }));
     },
     [SOURCE, APP_ID, APP_NAME],
   );

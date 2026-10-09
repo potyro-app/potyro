@@ -4,7 +4,7 @@ import { scoreSource } from "../src/index.js";
 // The three scoring gates: compile (esbuild), validate (defineApp/Zod at import), render (query).
 
 const GOOD = `
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: { task: { label: "Task", displayField: "title", fields: {
@@ -17,10 +17,10 @@ export default defineApp({
 
 const SYNTAX_ERROR = `export default (`; // unbalanced → esbuild parse error
 
-const NOT_KARTA = `export default { hello: 1 };`; // valid JS, not a KartaApp
+const NOT_POTYRO = `export default { hello: 1 };`; // valid JS, not a PotyroApp
 
 const INVALID_SCHEMA = `
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 export default defineApp({
   id: "x", name: "X", version: "1.0.0", schemaVersion: 1,
   entities: { a: { label: "A", displayField: "n", fields: { n: { type: "text" } } } },
@@ -42,8 +42,8 @@ describe("scoreSource", () => {
     expect(r.errors[0]).toMatch(/^compile:/);
   });
 
-  it("compiles but fails validation when the default export isn't a KartaApp", async () => {
-    const r = await scoreSource(NOT_KARTA);
+  it("compiles but fails validation when the default export isn't a PotyroApp", async () => {
+    const r = await scoreSource(NOT_POTYRO);
     expect(r).toMatchObject({ compiles: true, validates: false, renders: false });
     expect(r.errors[0]).toMatch(/^validate:/);
   });

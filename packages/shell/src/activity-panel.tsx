@@ -22,11 +22,11 @@
 // `opacity: 0` until `:hover`, which means they do not exist on a phone. This one is always visible.
 
 import { useEffect, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import { activitySince, activitySupported, type ActivityItem } from "@karta/runtime";
+import type { PotyroRuntime } from "@potyro/runtime";
+import { activitySince, activitySupported, type ActivityItem } from "@potyro/runtime";
 
 /** Where this device remembers what it has already shown you. Local by design — see the header. */
-const seenKey = (appId: string): string => `karta:seen:${appId}`;
+const seenKey = (appId: string): string => `potyro:seen:${appId}`;
 
 export function lastSeen(appId: string): Date | undefined {
   const raw = globalThis.localStorage?.getItem(seenKey(appId));
@@ -45,7 +45,7 @@ export function markSeen(appId: string, at: Date = new Date()): void {
  * Returns `null` when the store cannot answer, which the caller must treat differently from an empty
  * list: one means "nothing happened", the other means "this app does not keep that".
  */
-export async function loadActivity(runtime: KartaRuntime, appId: string): Promise<ActivityItem[] | null> {
+export async function loadActivity(runtime: PotyroRuntime, appId: string): Promise<ActivityItem[] | null> {
   const store = runtime.core.store;
   if (!activitySupported(store)) return null;
   const ctx = runtime.ctx;
@@ -88,7 +88,7 @@ export function ActivityPanel({
   items,
   onClose,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   appId: string;
   items: ActivityItem[];
   onClose: () => void;

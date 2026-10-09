@@ -5,7 +5,7 @@
 // wrong app-level fix. Same fake as app-history.test.ts — only the durable-store factory is swapped.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryStore } from "@karta/store";
+import { MemoryStore } from "@potyro/store";
 
 // A switch the tests can flip, so the "store is unavailable" path is genuinely exercised rather than
 // asserted against a store that happens to be empty.

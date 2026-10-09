@@ -5,9 +5,9 @@
 // and a model backend (`createOpenRouterEngine`) are each built and tested in isolation. Nothing
 // before this file ever constructed a `LoopDeps` for real — this is where that finally happens.
 
-import type { Store } from "@karta/store";
-import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/runtime";
-import type { KartaRuntime } from "@karta/runtime";
+import type { Store } from "@potyro/store";
+import { replayCase, replayPassed, type Case, type ReplayTarget } from "@potyro/runtime";
+import type { PotyroRuntime } from "@potyro/runtime";
 import {
   runAgentLoop,
   buildAppTools,
@@ -15,8 +15,8 @@ import {
   type LoopDeps,
   type LoopOutcome,
   type LoopStep,
-} from "@karta/generator/agent";
-import { createOpenRouterEngine } from "@karta/generator/backends";
+} from "@potyro/generator/agent";
+import { createOpenRouterEngine } from "@potyro/generator/backends";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
 
@@ -26,7 +26,7 @@ export interface StartFixOpts {
   /** What the person recorded: what they did, and what they expected. */
   theCase: Case;
   /** The CURRENT app's runtime — used to compute the baseline and to answer `query_data`/`replay_case`. */
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   /** The app's real store. Read-only inside verification (see `verifyCandidate`); never written here. */
   store: Store;
   engine: EngineConfig;
@@ -73,7 +73,7 @@ export function sourceShownIn(transcript: NonNullable<LoopDeps["resumeFrom"]>): 
  *  `query` that unwraps `queryPage`'s `{ rows }`. `runAction` is deliberately never supplied — an
  *  action step would mutate the very records the bug report is about (see the SAFETY CRITICAL note
  *  on `ReplayTarget.runAction` in `packages/runtime/src/replay.ts`). */
-function targetFor(runtime: KartaRuntime): ReplayTarget {
+function targetFor(runtime: PotyroRuntime): ReplayTarget {
   return {
     definition: runtime.definition,
     query: async (_entity, pageId) => (await runtime.queryPage(pageId)).rows,

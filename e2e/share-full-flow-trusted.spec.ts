@@ -18,7 +18,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // Both were reported by the owner, not by the suite. Hence this file: it walks the flow to the end
 // and keeps walking after the first success, which is where both defects lived.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "shareflow",
@@ -42,10 +42,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "shareflow", name: "Share Flow", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),
@@ -106,7 +106,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
 
   // The guest's store must be the one the invite pointed at — not a per-app file the join path
   // wandered into. Regression 1 put it in `user:shareflow-jazz`.
-  expect(await b.evaluate(() => localStorage.getItem("karta:jazz:db:user:shareflow"))).toBe("karta-jazz");
+  expect(await b.evaluate(() => localStorage.getItem("potyro:jazz:db:user:shareflow"))).toBe("karta-jazz");
 
   // ---- the guest writes, and it reaches the owner ----
   await add(b, "Tasca");

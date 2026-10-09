@@ -150,12 +150,12 @@ function status(post) {
  * Build the shell and put it live. Refuses anything but a green origin/main, so what is live is
  * always something that passed the gate — never a branch, never an edit on top of a commit.
  *
- * Where it goes is `KARTA_DEPLOY_TARGET`, an rsync destination. The default is the path on the
+ * Where it goes is `POTYRO_DEPLOY_TARGET`, an rsync destination. The default is the path on the
  * server; vazio's watcher uses an ssh alias whose key is locked to the web root by `rrsync`, so its
  * target is relative to that root (docs/16 §8). `version.json` in the web root names the live commit.
  */
 function deploy() {
-  const target = process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/";
+  const target = process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/";
   for (const s of ["ok", "fail"]) rmSync(join(dir, `deploy.${s}`), { force: true });
   if (dirty()) {
     console.error("✘ not deploying: tracked files are modified.");
@@ -175,7 +175,7 @@ function deploy() {
     process.stdout.write(`✓ ${short} is already live\n`);
     return;
   }
-  const built = run("deploy-build", "pnpm", ["--filter", "@karta/shell", "exec", "vite", "build"]);
+  const built = run("deploy-build", "pnpm", ["--filter", "@potyro/shell", "exec", "vite", "build"]);
   if (!built.ok) return record("deploy", built);
   const dist = join(ROOT, "packages/shell/dist");
   writeFileSync(join(dist, "version.json"), `${JSON.stringify({ commit: sha, deployedAt: new Date().toISOString() })}\n`);

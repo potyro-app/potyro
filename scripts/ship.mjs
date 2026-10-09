@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const VAZIO = process.env.KARTA_GATE_REMOTE ?? "vazio:appinator.git";
+const VAZIO = process.env.POTYRO_GATE_REMOTE ?? "vazio:appinator.git";
 const sh = (cmd, cwd = ROOT) => execSync(cmd, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] }).trim();
 
 const pr = process.argv[2];
@@ -43,7 +43,7 @@ try {
   sh(`${process.env.HOME}/bin/wake-vazio`);
 }
 
-const dir = mkdtempSync(join(tmpdir(), `karta-ship-${pr}-`));
+const dir = mkdtempSync(join(tmpdir(), `potyro-ship-${pr}-`));
 try {
   sh(`git worktree add -q --detach ${dir} origin/main`);
   // Two -m's: a subject and a body. One string with "\n" in it reaches git as a backslash and an n.

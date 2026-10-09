@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-// What a DEPLOYED Karta does — run against `vite build` + `vite preview`, not the dev server.
+// What a DEPLOYED Potyro does — run against `vite build` + `vite preview`, not the dev server.
 //
 // Every claim here was false in a production build until KA-28, and no amount of dev-server testing
 // could have shown it: the dev server has a relay default, hosts the generator endpoint as a
 // middleware, and disables the service worker. The bugs live exactly in the gap between the two.
 //
 // Built with NOTHING configured, on purpose. This is what someone gets from `vite build` and a web
-// server, so a test that set `VITE_KARTA_RELAY` would be testing a deployment nobody has.
+// server, so a test that set `VITE_POTYRO_RELAY` would be testing a deployment nobody has.
 
 test("a deployed build has a relay to sync through", async ({ page }) => {
   // The bug this replaces: `syncRelayUrl()` returned `undefined` outside dev, so every deployed app
@@ -50,7 +50,7 @@ test("a deployed build can be pointed at another relay, without devtools", async
   await page.locator(".k-dialog").getByRole("button", { name: "OK" }).click();
 
   await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem("karta:sync:relay")), { timeout: 30_000 })
+    .poll(async () => page.evaluate(() => localStorage.getItem("potyro:sync:relay")), { timeout: 30_000 })
     .toBe("wss://relay.example.com/sync");
 });
 

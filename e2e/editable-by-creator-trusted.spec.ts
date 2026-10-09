@@ -9,7 +9,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // running off its edge. The store-level guarantee (another copy's edit simply does not take) is
 // `jazz-store.test.ts`; this is what the person sees.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "trip", name: "Trip Costs", version: "1.0.0", schemaVersion: 1,
   entities: { expense: { label: "Expense", icon: "💶", displayField: "description", editableBy: "creator", fields: {
@@ -26,9 +26,9 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
-      localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "trip", name: "Trip Costs", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "trip", name: "Trip Costs", source, trusted: true, updatedAt: new Date().toISOString() }]));
     },
     [SOURCE, seed] as const,
   );
@@ -99,7 +99,7 @@ test("on someone else's row, Edit and Delete are inactive and say who can change
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-  if (process.env.KARTA_SHOTS) await b.screenshot({ path: `${process.env.KARTA_SHOTS}/creator-only-phone.png` });
+  if (process.env.POTYRO_SHOTS) await b.screenshot({ path: `${process.env.POTYRO_SHOTS}/creator-only-phone.png` });
 
   await more.click({ force: true });
   await expect(b.locator("[role=menu]")).toHaveCount(0);

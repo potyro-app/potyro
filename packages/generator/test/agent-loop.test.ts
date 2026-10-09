@@ -3,7 +3,7 @@ import { runAgentLoop, type LoopDeps, type LoopStep } from "../src/agent/loop.js
 import type { AgentTool } from "../src/agent/tools.js";
 import type { ChatEngine, ChatMessage, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
-const APP = 'import { defineApp } from "karta";\nexport default defineApp({ id: "x" });';
+const APP = 'import { defineApp } from "potyro";\nexport default defineApp({ id: "x" });';
 
 /** Replies in the order given, one per model turn. */
 function scripted(turns: ChatResponse["choices"][number]["message"][]): { engine: ChatEngine; seen: ChatRequest[] } {
@@ -329,7 +329,7 @@ describe("runAgentLoop", () => {
     const { engine } = scripted([{ content: edit }]);
     const verify = vi.fn(async () => ({ passed: true, detail: "replay passed" }));
     const out = await runAgentLoop(base({ engine, verify }));
-    expect(verify).toHaveBeenCalledWith('import { defineApp } from "karta";\nexport default defineApp({ id: "y" });');
+    expect(verify).toHaveBeenCalledWith('import { defineApp } from "potyro";\nexport default defineApp({ id: "y" });');
     expect(out).toMatchObject({ kind: "fix", rationale: "Guarding the click." });
   });
 

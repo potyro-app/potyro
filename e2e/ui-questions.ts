@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 export async function installQuestions(page: Page, trusted: boolean): Promise<void> {
   const source = readFileSync(fileURLToPath(new URL("./fixtures/ui-questions.app.ts", import.meta.url)), "utf8");
   await page.addInitScript(([src, t]) => {
-    localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "ui-questions", name: "Questions", source: src, trusted: t, updatedAt: new Date().toISOString() }]));
+    localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "ui-questions", name: "Questions", source: src, trusted: t, updatedAt: new Date().toISOString() }]));
   }, [source, trusted] as const);
   await page.goto("/?user=ui-questions");
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", trusted ? "trusted" : "untrusted", { timeout: 30_000 });

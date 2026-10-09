@@ -6,12 +6,12 @@
 // because the time depends on the machine and the count does not.
 
 import { describe, expect, it } from "vitest";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase } from "../src/index.js";
 
-function shopApp(): KartaApp {
+function shopApp(): PotyroApp {
   return defineApp({
     id: "shop",
     name: "Shop",

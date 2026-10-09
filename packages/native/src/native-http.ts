@@ -1,7 +1,7 @@
 // Ask's source requests over the app's own HTTP stack (#213), for the Android/iOS build.
 //
 // In a browser, a request to another origin is refused unless the API opts in (CORS), and most APIs
-// never do: they expect a server to call them. Karta has no server in that path on purpose, because a
+// never do: they expect a server to call them. Potyro has no server in that path on purpose, because a
 // server would hold the person's keys. The native app does not need one: `CapacitorHttp` goes through
 // the platform's HTTP stack, where CORS does not exist.
 //

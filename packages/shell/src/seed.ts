@@ -1,6 +1,6 @@
 // First-run seed data so the app isn't empty. Writes directly through the Store (shell-owned),
 // independent of the loaded app's trust. Per-app seeders keyed by app id.
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 
 const DAY = 86_400_000;
 

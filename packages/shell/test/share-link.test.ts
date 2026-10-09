@@ -22,21 +22,21 @@ const COORDS = {
 };
 
 /** A modest real app — the workout example is far bigger than this. */
-const SOURCE = `import { defineApp } from "karta";\n${'// a line of app source that is entirely typical\n'.repeat(120)}`;
+const SOURCE = `import { defineApp } from "potyro";\n${'// a line of app source that is entirely typical\n'.repeat(120)}`;
 
 describe("invite link size", () => {
   it("fits comfortably inside a deep link", () => {
-    const link = `https://karta.app/#join=${encode(COORDS)}`;
+    const link = `https://potyro.app/#join=${encode(COORDS)}`;
     // Both platforms handle a few KB reliably; this leaves an order of magnitude of headroom.
     expect(link.length).toBeLessThan(1000);
   });
 
   it("would NOT fit if it still carried the app source", () => {
     // The regression this guards: re-adding `source` to the payload for convenience.
-    const withSource = `https://karta.app/#join=${encode({ ...COORDS, source: SOURCE })}`;
+    const withSource = `https://potyro.app/#join=${encode({ ...COORDS, source: SOURCE })}`;
     expect(withSource.length).toBeGreaterThan(5000);
     expect(withSource.length).toBeGreaterThan(
-      `https://karta.app/#join=${encode(COORDS)}`.length * 5,
+      `https://potyro.app/#join=${encode(COORDS)}`.length * 5,
     );
   });
 

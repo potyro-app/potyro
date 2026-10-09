@@ -12,9 +12,9 @@ import {
   type LoopStep,
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
-} from "@karta/generator/agent";
-import { createOpenRouterEngine } from "@karta/generator/backends";
-import type { AppShape } from "@karta/runtime";
+} from "@potyro/generator/agent";
+import { createOpenRouterEngine } from "@potyro/generator/backends";
+import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 

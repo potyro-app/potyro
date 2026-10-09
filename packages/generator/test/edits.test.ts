@@ -64,7 +64,7 @@ describe("parseEdits", () => {
 
 // Two entities with identical field lines, so "matches one place" is a real question.
 const FILE = [
-  'import { defineApp } from "karta";',
+  'import { defineApp } from "potyro";',
   "",
   "export default defineApp({",
   '  id: "x",',

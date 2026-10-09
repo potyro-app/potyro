@@ -7,11 +7,11 @@
 // button's function calls `ctx.views`, and the view that is mounted takes the call.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { defineApp, type Ctx } from "karta";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { MemoryStore } from "@potyro/store";
+import { defineApp, type Ctx } from "potyro";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 const toasts: string[] = [];
 const ui: UiBridge = { toast: (m) => void toasts.push(m), confirm: async () => true, prompt: async () => null, pick: async () => null };
@@ -42,7 +42,7 @@ const app = () =>
     ],
   });
 
-async function setup(): Promise<KartaRuntime> {
+async function setup(): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("places");
   const host = createHost();
@@ -51,7 +51,7 @@ async function setup(): Promise<KartaRuntime> {
 }
 
 /** Stand in for a mounted map view: takes the map verbs, declines everything else. */
-function mountMap(runtime: KartaRuntime, pageId = "map"): () => void {
+function mountMap(runtime: PotyroRuntime, pageId = "map"): () => void {
   return runtime.registerViewControl(pageId, (verb, arg) => {
     if (!verb.startsWith("map.")) return false;
     moves.push({ verb, arg });

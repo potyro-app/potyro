@@ -1,6 +1,6 @@
 // Browser-safe generator entrypoint: the model backends + prompt assembly only. Excludes the eval
 // scorer (score.ts / run-eval.ts import Node-only esbuild + fs), so the shell can `import
-// "@karta/generator/backends"` for the "Describe an app…" panel without pulling Node modules into
+// "@potyro/generator/backends"` for the "Describe an app…" panel without pulling Node modules into
 // the browser bundle. The full package barrel (with the harness) stays Node-only.
 
 export type { GenPrompt, ModelBackend } from "./backend.js";

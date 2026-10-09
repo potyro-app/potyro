@@ -13,7 +13,7 @@
 // that the model cannot link to a record that already exists or know what is already there; the
 // shell de-duplicates against the person's records, locally, after the proposal comes back.
 
-import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "karta";
+import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "potyro";
 import type { ChatEngine, ChatMessage, Citation } from "../chat-backend.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import { Retrieved, verifyRow, type Evidence, type Trust } from "./evidence.js";
@@ -780,10 +780,10 @@ async function askLoop(deps: AskLoopDeps): Promise<AskOutcome> {
   const citations = new Map<string, Citation>();
   const retrieved = new Retrieved();
   // The person's own material is a source they chose: what it names is confirmed by it.
-  if (material) retrieved.add(`karta:material/${encodeURIComponent(material.label)}`, material.text, material.label);
+  if (material) retrieved.add(`potyro:material/${encodeURIComponent(material.label)}`, material.text, material.label);
   // So are their own words: "rate Jardim da Estrela 4" confirms that rating. A record they name is
   // theirs to name; what else is said about it is still judged field by field against what was read.
-  retrieved.add("karta:request", deps.request, "what you asked");
+  retrieved.add("potyro:request", deps.request, "what you asked");
   const tools = [
     proposeTool(deps.definition, (p) => (accepted = p), deps.context?.area, retrieved, () => searching || sources.length > 0 || material !== null),
     ...(sources.length ? sourceTools(sources, deps.fetchSource!, retrieved) : []),

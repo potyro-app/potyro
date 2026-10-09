@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-// First run and the create action (#90). A device that has never opened an app is told what Karta is
+// First run and the create action (#90). A device that has never opened an app is told what Potyro is
 // and offered one thing to do; the apps are examples to try. "New app" is one control — a header
 // button on a wide screen, a floating button on a phone — never a tile among the apps.
 
-const SHOTS = process.env.KARTA_SHOTS;
+const SHOTS = process.env.POTYRO_SHOTS;
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });

@@ -4,7 +4,7 @@ import { createDefaults } from "../src/record-form.js";
 
 // KA-25: a function default is evaluated by the host, where the function lives. For an untrusted app
 // the definition carries the sentinel string, and a form or quick action that read it directly
-// started the field as "__karta_fn__".
+// started the field as "__potyro_fn__".
 
 const runtimeWith = (fields: Record<string, unknown>, callFieldDefault = vi.fn(async () => "from-host")) =>
   ({
@@ -17,7 +17,7 @@ describe("createDefaults", () => {
   it("asks the host for a sentinel or function default, and keeps static ones and presets", async () => {
     const call = vi.fn(async (_e: string, key: string) => (key === "at" ? new Date(0) : "Ana"));
     const values = await createDefaults(
-      runtimeWith({ at: { type: "datetime", default: "__karta_fn__" }, who: { type: "text", default: () => "x" }, n: { type: "number", default: 2 }, done: { type: "boolean" }, title: { type: "text" } }, call),
+      runtimeWith({ at: { type: "datetime", default: "__potyro_fn__" }, who: { type: "text", default: () => "x" }, n: { type: "number", default: 2 }, done: { type: "boolean" }, title: { type: "text" } }, call),
       "e",
       { title: "preset" },
     );
@@ -26,7 +26,7 @@ describe("createDefaults", () => {
   });
 
   it("starts a field empty when its default throws, instead of failing the form", async () => {
-    const values = await createDefaults(runtimeWith({ at: { type: "datetime", default: "__karta_fn__" } }, vi.fn(async () => { throw new Error("boom"); })), "e");
+    const values = await createDefaults(runtimeWith({ at: { type: "datetime", default: "__potyro_fn__" } }, vi.fn(async () => { throw new Error("boom"); })), "e");
     expect(values).toEqual({ at: undefined });
   });
 });

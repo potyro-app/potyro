@@ -12,7 +12,7 @@
 // order belongs to the Studio, and the bar says so.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { humanizeKey } from "@karta/views";
+import { humanizeKey } from "@potyro/views";
 import { applyEdit, fieldStep, inspect, textSites, type AppShape, type Edit, type TextSite } from "./app-source.js";
 import { appRoots, collectTargets, sameThing, type InlineTarget } from "./inline-targets.js";
 

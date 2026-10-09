@@ -23,9 +23,9 @@ export type Value =
  * Fields are `unknown` here because at the storage seam nothing has been resolved or
  * narrowed yet — the runtime is responsible for hydration/resolution.
  *
- * Named `KartaRecord` (not `Record`) to avoid clashing with the TS built-in `Record<K,V>`.
+ * Named `PotyroRecord` (not `Record`) to avoid clashing with the TS built-in `Record<K,V>`.
  */
-export interface KartaRecord {
+export interface PotyroRecord {
   id: Id;
   createdAt: string;
   updatedAt: string;

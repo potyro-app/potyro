@@ -3,7 +3,7 @@
 //
 // See `backup-all.ts` for what the setting MEANS and what turning it on does.
 
-const KEY = "karta:backup:all";
+const KEY = "potyro:backup:all";
 
 /** Is this device keeping every app on the relay, including the ones made from here on? */
 export function backupEnabled(): boolean {

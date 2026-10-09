@@ -20,7 +20,7 @@ import { test, expect } from "@playwright/test";
 
 const APP_NAME = "Case Test App";
 
-const SOURCE_V1 = `import { defineApp } from "karta";
+const SOURCE_V1 = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "case-test-app",
@@ -55,7 +55,7 @@ export default defineApp({
 
 // V2 drops the "detail" page entirely — the app someone reports a case against is never the last
 // version of that app forever; this is what a normal edit looks like.
-const SOURCE_V2 = `import { defineApp } from "karta";
+const SOURCE_V2 = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "case-test-app",
@@ -105,7 +105,7 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   // Read back the id the UI actually assigned — not assumed from the slugging rule — so the rest of
   // the test drives the exact record the app just created.
   const appId = await page.evaluate(() => {
-    const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as Array<{ id: string; name: string }>;
+    const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; name: string }>;
     return apps.find((a) => a.name === "Case Test App")?.id ?? null;
   });
   expect(appId).toBeTruthy();

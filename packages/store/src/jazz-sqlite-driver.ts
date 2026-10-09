@@ -1,13 +1,13 @@
-// Durable storage for JazzStore, on the SQLite engine Karta already ships.
+// Durable storage for JazzStore, on the SQLite engine Potyro already ships.
 //
 // cojson persists CoValues through a small driver interface (`SQLiteDatabaseDriverAsync`, 7
-// methods). Karta already carries `@sqlite.org/sqlite-wasm` for `SqliteStore` (KA-01) and opens it
+// methods). Potyro already carries `@sqlite.org/sqlite-wasm` for `SqliteStore` (KA-01) and opens it
 // over OPFS. Bridging the two means Jazz-backed apps get durability with **no second WASM engine**
 // — which matters: the bundle already lazily loads QuickJS for the isolate and SQLite for the
 // store, and a third would be hard to justify for a feature that is opt-in per app.
 //
-// cojson gets its OWN database file, not Karta's. Its schema (coValues/sessions/transactions/…) is
-// entirely its business, and sharing a file with Karta's `records`/`blobs`/`meta` tables would
+// cojson gets its OWN database file, not Potyro's. Its schema (coValues/sessions/transactions/…) is
+// entirely its business, and sharing a file with Potyro's `records`/`blobs`/`meta` tables would
 // couple two migration timelines that have no reason to meet.
 //
 // The driver is sync underneath (sqlite-wasm's oo1 API is synchronous once the module is loaded);
@@ -29,7 +29,7 @@ export interface SqliteDriverAsync {
 }
 
 /**
- * Adapt a Karta `SqliteDbHandle` to cojson's async driver.
+ * Adapt a Potyro `SqliteDbHandle` to cojson's async driver.
  *
  * Schema versioning uses `PRAGMA user_version`, which is per-database — safe precisely because
  * cojson owns this file outright.

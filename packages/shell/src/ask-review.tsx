@@ -8,7 +8,7 @@
 // what runs, with what, on which records. One button does all of it, and says how much.
 
 import { useMemo, useState } from "react";
-import { humanizeKey, type AppDefinition } from "karta";
+import { humanizeKey, type AppDefinition } from "potyro";
 import { editApproval, type Review, type ReviewAction, type ReviewEdit, type ReviewRow, type ReviewTarget } from "./ask-apply.js";
 import { defaultApproval, valuesToSave } from "./ask-verdicts.js";
 import { titleOf, type LinkNames } from "./ask-review-parts.js";
@@ -30,7 +30,7 @@ export interface AcceptedEdit {
 }
 
 type Layout = "cards" | "table";
-const LAYOUT_KEY = "karta:ask-review-layout";
+const LAYOUT_KEY = "potyro:ask-review-layout";
 function savedLayout(): Layout {
   try {
     return globalThis.localStorage?.getItem(LAYOUT_KEY) === "table" ? "table" : "cards";

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 //
 // Everything before this was checked in a Node harness, which does NOT exercise the path the app
 // really takes: `loadTrustedModule` bundles the source in-browser with esbuild-wasm, resolving
-// `karta`/`react` to the shell's own modules, then imports it from a blob URL. A custom view that
+// `potyro`/`react` to the shell's own modules, then imports it from a blob URL. A custom view that
 // works under Node's bundler can still fail there. This test walks what a person does:
 //
 //   install → open → Start workout → Load routine / ＋ Exercise → tap a set → End
@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source]) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "workout-sessions", name: "Workout Sessions", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

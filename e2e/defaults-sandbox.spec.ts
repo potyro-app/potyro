@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 // the shape that makes "press the button, pick the type, and you are in it" possible. It lives here
 // rather than in an example because it is a platform behaviour: PPL Log used to carry it, until
 // "Start session" was removed for creating an empty session and dropping you on its record page.
-const MENU_APP = `import { defineApp } from "karta";
+const MENU_APP = `import { defineApp } from "potyro";
 export default defineApp({
   id: "logger", name: "Logger", icon: "\u25CE", version: "1.0.0", schemaVersion: 1,
   quickActions: [{ id: "start", label: "Start session", icon: "\u25B6", entity: "session", mode: "menu", open: true }],
@@ -27,9 +27,9 @@ export default defineApp({
 const seedMenuApp = async (page: import("@playwright/test").Page, trusted: boolean): Promise<void> => {
   await page.addInitScript(
     ([source, t]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "logger", name: "Logger", source, trusted: t, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -39,7 +39,7 @@ const seedMenuApp = async (page: import("@playwright/test").Page, trusted: boole
 
 
 // KA-25 untrusted: a `date` that defaults to `ctx.now()`. Inside the isolate that function never
-// leaves the VM, and the quick action used to store the sentinel string "__karta_fn__" as the date.
+// leaves the VM, and the quick action used to store the sentinel string "__potyro_fn__" as the date.
 // The host now evaluates the default where it lives.
 //
 // Against a fixture, not PPL Log: that app's menu quick action was removed for creating an empty
@@ -55,6 +55,6 @@ test("an untrusted quick action starts a record from its function default", asyn
   await page.locator(".k-quickmenu").getByRole("button", { name: "legs", exact: true }).click();
   const detail = page.locator("article.k-detail");
   await expect(detail).toBeVisible();
-  await expect(detail).not.toContainText("__karta_fn__");
+  await expect(detail).not.toContainText("__potyro_fn__");
   await expect(detail).toContainText(/Sep 9, 2026|9 Sep 2026|9\/9\/2026/);
 });

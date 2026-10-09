@@ -3,7 +3,7 @@
 // tapping it, drag items between aisles, and aisles that are RECORDS you can rename, reorder and
 // delete from the list itself. All of it declared: no custom view, no JSX, not one function beyond
 // the sort. If a shopping list needs React to rename a row, nobody but a programmer has one.
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 export default defineApp({
   id: "groceries",

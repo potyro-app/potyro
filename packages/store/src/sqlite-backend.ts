@@ -72,7 +72,7 @@ export interface SqliteStoreFactoryResult {
  * Open a raw OPFS-backed SQLite handle.
  *
  * Exists so cojson can be given a database of its OWN (`createJazzStore`). Its schema
- * (coValues/sessions/transactions/…) is entirely its business, and sharing a file with Karta's
+ * (coValues/sessions/transactions/…) is entirely its business, and sharing a file with Potyro's
  * `records`/`blobs`/`meta` tables would couple two migration timelines that never need to meet.
  * The `name`/`directory` are namespaced by caller, so the files never collide.
  */
@@ -82,8 +82,8 @@ export async function openOpfsDb(name: string, opts?: { directory?: string }): P
     throw new Error("openOpfsDb: OPFS SAH-pool VFS unavailable in this environment");
   }
   const pool = await sqlite3.installOpfsSAHPoolVfs({
-    name: `karta-${name}`,
-    directory: opts?.directory ?? `/karta/${name}`,
+    name: `potyro-${name}`,
+    directory: opts?.directory ?? `/potyro/${name}`,
   });
   return new pool.OpfsSAHPoolDb(`/${name}.sqlite3`) as unknown as SqliteDbHandle;
 }
@@ -93,7 +93,7 @@ export async function createSqliteStore(appId: string, opts?: { directory?: stri
   if (!sqlite3.installOpfsSAHPoolVfs) {
     throw new Error("createSqliteStore: OPFS SAH-pool VFS unavailable in this environment (use createMemorySqliteStore for tests)");
   }
-  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `karta-${appId}`, directory: opts?.directory ?? `/karta/${appId}` });
+  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `potyro-${appId}`, directory: opts?.directory ?? `/potyro/${appId}` });
   const db = new pool.OpfsSAHPoolDb(`/${appId}.sqlite3`);
   const store = new SqliteStore(db, () => sqlite3.capi.sqlite3_js_db_export(db.pointer));
   await store.open(appId);
@@ -113,7 +113,7 @@ export async function importSqliteStore(appId: string, bytes: Uint8Array, opts?:
     const { store } = await createMemorySqliteStore(appId, { bytes }); // non-durable fallback
     return store;
   }
-  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `karta-${appId}`, directory: opts?.directory ?? `/karta/${appId}` });
+  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `potyro-${appId}`, directory: opts?.directory ?? `/potyro/${appId}` });
   const filename = `/${appId}.sqlite3`;
   if (typeof pool.importDb === "function") pool.importDb(filename, bytes);
   const db = new pool.OpfsSAHPoolDb(filename);

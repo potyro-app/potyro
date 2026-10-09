@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { useMapMarkers } from "../src/map.js";
 
 // Tests marker resolution against a real (DirectHost) runtime, without mounting MapLibre (which
@@ -36,7 +36,7 @@ const app = defineApp({
   ],
 });
 
-async function makeRuntime(): Promise<KartaRuntime> {
+async function makeRuntime(): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("map-fixture");
   await store.insert("place", { name: "Cozy Bar", location: { lat: 52.52, lng: 13.405 }, kind: "bar" });
@@ -49,7 +49,7 @@ async function makeRuntime(): Promise<KartaRuntime> {
   return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav });
 }
 
-function Harness({ runtime }: { runtime: KartaRuntime }) {
+function Harness({ runtime }: { runtime: PotyroRuntime }) {
   const { rows } = runtime.usePageQuery("map", {});
   const markers = useMapMarkers(runtime, "map", rows);
   return (

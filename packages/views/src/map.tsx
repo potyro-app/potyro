@@ -5,8 +5,8 @@
 // params. Online tiles first; offline tiles are a later milestone (M5).
 
 import { useEffect, useRef, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { MapCamera, Resolved } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { MapCamera, Resolved } from "potyro";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -79,7 +79,7 @@ function toLatLng(v: unknown): { lat: number; lng: number } | null {
 }
 
 /** Resolve geo/title/color per row (async host calls), skipping rows without a valid geo point. */
-export function useMapMarkers(runtime: KartaRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
+export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
   const [markers, setMarkers] = useState<MapMarker[]>([]);
 
   useEffect(() => {
@@ -184,7 +184,7 @@ async function resolveCamera(runtime: BuiltinViewProps["runtime"], pageId: strin
       const value = await viewOption.call(runtime, pageId, "camera");
       return (value ?? null) as MapCamera | null;
     } catch (e) {
-      console.warn("[karta] the map's camera function failed; opening as remembered:", e);
+      console.warn("[potyro] the map's camera function failed; opening as remembered:", e);
       return null;
     }
   }
@@ -292,7 +292,7 @@ export function MapView(props: BuiltinViewProps) {
         try {
           opening = toCamera(await runtimeRef.current.ctx.storage.get(cameraKey(pageIdRef.current)));
         } catch (e) {
-          console.warn("[karta] could not read the saved map position:", e);
+          console.warn("[potyro] could not read the saved map position:", e);
         }
       }
       if (disposed || !el) return;
@@ -334,7 +334,7 @@ export function MapView(props: BuiltinViewProps) {
           restoredRef.current = true;
           void runtimeRef.current.ctx.storage
             .set(cameraKey(pageIdRef.current), camera)
-            .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+            .catch((err: unknown) => console.warn("[potyro] could not save the map position:", err));
         });
       }
 
@@ -433,7 +433,7 @@ export function MapView(props: BuiltinViewProps) {
     })().catch((e: unknown) => {
       // One bad marker used to take the whole sync down with it — including the framing — and say
       // nothing, because the promise was floated.
-      console.warn("[karta] could not sync map markers:", e);
+      console.warn("[potyro] could not sync map markers:", e);
     });
     return () => {
       cancelled = true;
@@ -472,7 +472,7 @@ export function MapView(props: BuiltinViewProps) {
       restoredRef.current = true;
       void runtimeRef.current.ctx.storage
         .set(cameraKey(pageIdRef.current), { center, zoom })
-        .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+        .catch((err: unknown) => console.warn("[potyro] could not save the map position:", err));
     }
     return true;
   };

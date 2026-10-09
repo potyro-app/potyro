@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { TimelineView, groupTimeline, whenText } from "../src/timeline.js";
 
 // The timeline (#110): records by date under headings — "Today", "This week", a month — newest first
@@ -55,7 +55,7 @@ describe("whenText", () => {
   });
 });
 
-async function makeRuntime(def: KartaApp, n: number): Promise<KartaRuntime> {
+async function makeRuntime(def: PotyroApp, n: number): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open(def.id);
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
@@ -66,7 +66,7 @@ async function makeRuntime(def: KartaApp, n: number): Promise<KartaRuntime> {
   return runtime;
 }
 
-const journal = (view: Record<string, unknown> = {}): KartaApp =>
+const journal = (view: Record<string, unknown> = {}): PotyroApp =>
   defineApp({
     id: "journal",
     name: "Journal",

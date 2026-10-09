@@ -1,6 +1,6 @@
-// Text shared to Karta from another app (#213) — a list, a plan, a table another AI made — reaches
+// Text shared to Potyro from another app (#213) — a list, a plan, a table another AI made — reaches
 // the shell through @capgo/capacitor-share-target. The plugin keeps a share until JavaScript listens,
-// so sharing into Karta while it is closed still arrives.
+// so sharing into Potyro while it is closed still arrives.
 //
 // Boxed: an awaited Capacitor plugin hangs forever on Android (see deep-links.ts), so this never
 // returns the plugin itself. Text only for now; files and images come later.

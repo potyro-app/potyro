@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FixPanel } from "../src/fix-panel.js";
-import type { LoopOutcome, LoopStep } from "@karta/generator/agent";
+import type { LoopOutcome, LoopStep } from "@potyro/generator/agent";
 
 // Six renders in one file; without this they stack in the same DOM and `getByText` starts matching
 // a previous case's output. `case-report.test.tsx` does the same.

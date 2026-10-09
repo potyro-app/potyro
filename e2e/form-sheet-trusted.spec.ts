@@ -6,7 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 // fold. On a wide screen the modal is capped at the viewport with the same footer. Focus goes to
 // the first field, stays inside, and returns to the opener; a nested create is a second sheet.
 
-const TWENTY = `import { defineApp } from "karta";
+const TWENTY = `import { defineApp } from "potyro";
 export default defineApp({
   id: "tall",
   name: "Tall",
@@ -28,9 +28,9 @@ ${Array.from({ length: 19 }, (_, i) => `        field${i + 1}: { type: "text" },
 
 async function seedTall(page: Page): Promise<void> {
   await page.addInitScript((source: string) => {
-    if (localStorage.getItem("karta:user-apps")) return;
+    if (localStorage.getItem("potyro:user-apps")) return;
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "tall", name: "Tall", source, trusted: true, updatedAt: new Date().toISOString() }]),
     );
   }, TWENTY);

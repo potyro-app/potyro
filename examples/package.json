@@ -1,5 +1,5 @@
 {
-  "name": "@karta/examples",
+  "name": "@potyro/examples",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "karta": "workspace:*",
+    "potyro": "workspace:*",
     "react": "^18.3.1"
   },
   "devDependencies": {

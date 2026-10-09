@@ -8,7 +8,7 @@ import { tileAction } from "./launcher-actions.js";
 // `ctx.caps.network`, and asked about the same way. A browser drives it because the answer decides
 // which STORE opens on the next boot, which no unit test can see.
 
-const SOURCE = (permissions?: string) => `import { defineApp } from "karta";
+const SOURCE = (permissions?: string) => `import { defineApp } from "potyro";
 export default defineApp({
   id: "trip", name: "Trip Costs", version: "1.0.0", schemaVersion: 1,${permissions ? `\n  permissions: ${permissions},` : ""}
   entities: { expense: { label: "Expense", icon: "💶", displayField: "description", fields: { description: { type: "text", required: true } } } },
@@ -19,10 +19,10 @@ export default defineApp({
 async function seed(page: Page, opts: { trusted: boolean; permissions?: string }): Promise<void> {
   await page.addInitScript(
     ([source, trusted]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "trip", name: "Trip Costs", source, trusted, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -31,7 +31,7 @@ async function seed(page: Page, opts: { trusted: boolean; permissions?: string }
 }
 
 const synced = (page: Page) => page.evaluate(() => {
-  const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; sync?: boolean }[];
+  const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; sync?: boolean }[];
   return Boolean(apps.find((a) => a.id === "trip")?.sync);
 });
 

@@ -20,7 +20,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const BARE = process.env.KARTA_BARE_REPO ?? join(homedir(), "appinator.git");
+const BARE = process.env.POTYRO_BARE_REPO ?? join(homedir(), "appinator.git");
 /** How long a gate waits for test ports another checkout is holding before it gives up. */
 const PORT_WAIT_MINUTES = 90;
 

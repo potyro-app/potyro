@@ -12,7 +12,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // writes something into it, B signs in with A's words, B is offered the app, and after loading it B
 // has A's data — never having seen a share link.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "notes", name: "Notes", icon: "📝", version: "1.0.0", schemaVersion: 1,
   entities: { note: { label: "Note", icon: "📝", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -24,10 +24,10 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -111,7 +111,7 @@ test("an app the new device already seeded for itself is still offered, with the
 
   // ---- A: the seeded Groceries, with something added, synced ----
   const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  await ctxA.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  await ctxA.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
   const a = await ctxA.newPage();
   await a.goto("/?user=groceries");
   await expect(a.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
@@ -156,7 +156,7 @@ test("an app the new device already seeded for itself is still offered, with the
 
   // ---- B: a second browser, which has seeded its OWN Groceries ----
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
-  await ctxB.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  await ctxB.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
   const b = await ctxB.newPage();
   await b.goto("/?user=groceries");
   await expect(b.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
@@ -203,9 +203,9 @@ test("an app that was never synced is backed up by one switch, and a linked devi
   const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await ctxA.addInitScript(
     ([source]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -239,7 +239,7 @@ test("an app that was never synced is backed up by one switch, and a linked devi
 
   // ---- B: a second browser that has never seen this app ----
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
-  await ctxB.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  await ctxB.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
   const b = await ctxB.newPage();
   await b.goto("/");
   await b.getByRole("button", { name: "You and your devices" }).click();

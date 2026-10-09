@@ -2,7 +2,7 @@
 // configurable; network is offline-by-default (throws) so tests assert the offline-first
 // invariant (docs/09 #4) unless a fetch impl is injected.
 
-import type { Geo } from "karta";
+import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
 
 export interface FakeOptions {

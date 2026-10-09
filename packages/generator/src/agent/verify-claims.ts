@@ -8,7 +8,7 @@
 // fields. Records it cannot judge (general knowledge, nothing retrieved) are left as they are, and a
 // check that fails leaves the mechanical verdict standing, with a note — never a silent pass.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { ChatEngine } from "../chat-backend.js";
 import { hostOf, normText, type FieldIssue, type Retrieved, type Trust } from "./evidence.js";
 

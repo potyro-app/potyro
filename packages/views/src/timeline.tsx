@@ -10,7 +10,7 @@
 // crosses the isolate bridge per row).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EnumField, Resolved, DateTimeField } from "karta";
+import type { EnumField, Resolved, DateTimeField } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { useDisplayCells } from "./cells.js";
 import { getView } from "./format.js";

@@ -1,5 +1,5 @@
 {
-  "name": "@karta/identity",
+  "name": "@potyro/identity",
   "version": "0.0.0",
   "type": "module",
   "description": "Device identity (KA-16, ADR 0001 D2 amended): owns the cojson account seed, the cached {id,name}, and passphrase linking (D2a). No network, no database.",

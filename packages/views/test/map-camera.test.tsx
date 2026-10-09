@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { defineApp, type Ctx, type Dynamic, type MapCamera } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type Ctx, type Dynamic, type MapCamera } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 
 // How the built-in map frames itself — the `camera` field, and the auto-fit rule around it. None of
 // this is reachable from an app module beyond declaring `camera`, so it is host behaviour and belongs
@@ -122,7 +122,7 @@ function fixture(camera?: Dynamic<MapCamera>) {
   });
 }
 
-async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
+async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promise<{ runtime: PotyroRuntime; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("map-camera-fixture");
   await store.insert("place", { name: "Cozy Bar", location: { lat: 52.52, lng: 13.405 } });
@@ -135,7 +135,7 @@ async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promis
   return { runtime: createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav }), store };
 }
 
-function View({ runtime }: { runtime: KartaRuntime }) {
+function View({ runtime }: { runtime: PotyroRuntime }) {
   return <MapView runtime={runtime} pageId="map" params={{}} navigate={() => {}} onCreate={() => {}} />;
 }
 

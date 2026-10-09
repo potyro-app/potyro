@@ -6,7 +6,7 @@
 // paste goes in, so the person sees — and can trim — exactly what will be sent.
 
 import { useRef, useState } from "react";
-import { MATERIAL_MAX } from "@karta/generator/agent";
+import { MATERIAL_MAX } from "@potyro/generator/agent";
 
 export interface Material {
   /** What the review calls it: "what you pasted", or the file's name. */

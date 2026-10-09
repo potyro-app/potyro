@@ -1,10 +1,10 @@
-import type { KartaRuntime } from "@karta/runtime";
-import type { View } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { View } from "potyro";
 import type { ComponentType } from "react";
 
 /** Props every built-in view component receives from the shell. */
 export interface BuiltinViewProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   pageId: string;
   params: Record<string, unknown>;
   /** Update a view-chrome param (e.g. the pantry picker) — re-runs the query. */

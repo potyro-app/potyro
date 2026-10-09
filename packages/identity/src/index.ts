@@ -1,4 +1,4 @@
-// @karta/identity — who you are on this device (KA-16 · ADR 0001 D2 amended, D2a).
+// @potyro/identity — who you are on this device (KA-16 · ADR 0001 D2 amended, D2a).
 export {
   peekIdentity,
   ensureIdentity,

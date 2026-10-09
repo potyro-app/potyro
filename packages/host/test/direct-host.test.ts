@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { defineApp, type Ctx, type KartaApp, type Resolved } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
+import { defineApp, type Ctx, type PotyroApp, type Resolved } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
 
 // A compact recipes-shaped app exercising the M1 surface: relation, computed macros (with a
 // cross-computed reference), a JS filter, and an action that patches + toasts.
-function recipesApp(): KartaApp {
+function recipesApp(): PotyroApp {
   return defineApp({
     id: "recipes",
     name: "Recipes",

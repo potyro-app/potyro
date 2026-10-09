@@ -5,9 +5,9 @@
 // runs UNTRUSTED in the QuickJS isolate, the same safe path a shared app takes.
 
 import { useEffect, useRef, useState } from "react";
-import { MemoryStore, type Store } from "@karta/store";
-import { createWebCapabilities } from "@karta/capabilities";
-import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@karta/runtime";
+import { MemoryStore, type Store } from "@potyro/store";
+import { createWebCapabilities } from "@potyro/capabilities";
+import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@potyro/runtime";
 import { caseLabel, listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
@@ -20,12 +20,12 @@ import {
   buildRepairInstruction,
   extractSource,
   looksLikeApp,
-} from "@karta/generator/backends";
+} from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { loadTrustedModule } from "./trusted-loader.js";
-import type { Provenance } from "@karta/host";
+import type { Provenance } from "@potyro/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
 import { backendFor, modifyTurn } from "./model-turn.js";
@@ -42,13 +42,13 @@ import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
-import { guardedModify } from "@karta/generator/backends";
+import { guardedModify } from "@potyro/generator/backends";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
 const POLL_MS = 1_500;
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "my-app",
@@ -283,7 +283,7 @@ export function Studio({
       try {
         composed = await compose({ provenance: "trusted", app: await loadTrustedModule(src), ...base });
       } catch {
-        // A malformed app can't produce a KartaApp — fall back to the isolate so the user still
+        // A malformed app can't produce a PotyroApp — fall back to the isolate so the user still
         // gets a preview plus the validation issues, rather than a hard failure.
         provenance = "untrusted";
         const bundle = await createAppBundler();

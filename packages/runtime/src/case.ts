@@ -1,6 +1,6 @@
 // A CASE is what someone did, plus what they expected — recorded from the app they were using.
 //
-// It is deliberately SEMANTIC, not a DOM recording. A Karta app's navigation vocabulary is
+// It is deliberately SEMANTIC, not a DOM recording. A Potyro app's navigation vocabulary is
 // `navigate(pageId, params)`, so a trace is small, stable across edits, and replayable headlessly.
 // A recorded click on a coordinate would break on the next layout change and could never be replayed
 // without a browser; this survives an app being rewritten from scratch.
