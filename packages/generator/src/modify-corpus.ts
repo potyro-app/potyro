@@ -1,6 +1,6 @@
 // Modify requests to measure a model on, each against a real example app.
 //
-// The generate harness answers "can this model write a Karta app?". This corpus answers the
+// The generate harness answers "can this model write a Potyro app?". This corpus answers the
 // question that actually bit in use: "asked to CHANGE an app, does it edit it or replace it?" A
 // fast model given a whole file and an instruction drifts from "edit this" to "write an app with
 // this feature", and the person's entities and pages go with it. Until this existed that was an

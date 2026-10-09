@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { defineApp } from "karta";
-import type { ListField } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import type { ListField } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput, FieldValue, moveKey, singular } from "../src/index.js";
 
 // Nested rows as cards (#104): a card per row, Remove in its menu, a grip and arrow keys when the
@@ -30,7 +30,7 @@ const app = defineApp({
   pages: [{ id: "list", title: "Recipes", view: { type: "list", entity: "recipe", display: { primary: "name" } } }],
 });
 
-async function makeRuntime(): Promise<KartaRuntime> {
+async function makeRuntime(): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("rows-fixture");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

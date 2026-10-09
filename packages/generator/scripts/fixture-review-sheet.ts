@@ -1,7 +1,7 @@
 // Produce a review sheet with no model, so the FORMAT can be argued about before any money is spent.
 //
-//   pnpm --filter @karta/generator eval:modify:fixture
-//   pnpm.cmd --filter @karta/generator eval:modify:fixture     # Windows
+//   pnpm --filter @potyro/generator eval:modify:fixture
+//   pnpm.cmd --filter @potyro/generator eval:modify:fixture     # Windows
 //
 // The sheet is the deliverable of a paid run — the thing a founder reads to decide whether AI
 // editing is safe enough for an external user. Reviewing its shape by spending €15 and then finding
@@ -25,7 +25,7 @@ import { runModifyScenario, summarize, type ScenarioRun } from "../src/modify-ev
 import { artifactPath, formatModifyReport, rejectedPath, reviewSheet } from "../src/modify-report.js";
 import type { ModifyScenario } from "../src/modify-scenarios.js";
 
-const app = (opts: { version: string; fields: string[]; secondary?: string; migrations?: string }): string => `import { defineApp } from "karta";
+const app = (opts: { version: string; fields: string[]; secondary?: string; migrations?: string }): string => `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "reading",
@@ -82,10 +82,10 @@ const V3_ORPHANS = app({
  * handing the harness something to score (see `callModel`). So the fixture is the shape a real bad
  * reply takes — a file that looks like an app and whose default export is not one.
  */
-const BROKEN = `import { defineApp } from "karta";
+const BROKEN = `import { defineApp } from "potyro";
 
 export const nope = () => defineApp({});
-export default { not: "a karta app" };`;
+export default { not: "a potyro app" };`;
 
 interface Script {
   generate?: string[];

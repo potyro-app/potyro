@@ -1,4 +1,4 @@
-// "Bring this into…" (#213): text shared into Karta from another app — a plan, a list, a table
+// "Bring this into…" (#213): text shared into Potyro from another app — a plan, a list, a table
 // another AI made — and the person picking which of their apps it goes into. The best fits come
 // first (share-inbox.ts `bestFits`, judged on this device); the person picks either way. Picking
 // opens that app with its Ask filled in, where the same review as any Ask decides what is added.
@@ -26,7 +26,7 @@ export function SharePage() {
     return (
       <main className="k-share-page">
         <h1 className="k-share-title">Nothing to bring in</h1>
-        <p className="k-muted">Share text to Karta from another app and it will wait here for you to pick where it goes.</p>
+        <p className="k-muted">Share text to Potyro from another app and it will wait here for you to pick where it goes.</p>
         <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
           Go to your apps
         </button>
@@ -37,7 +37,7 @@ export function SharePage() {
   const long = share.text.length > PREVIEW;
   return (
     <main className="k-share-page">
-      <p className="k-ask-eyebrow">Shared with Karta</p>
+      <p className="k-ask-eyebrow">Shared with Potyro</p>
       <h1 className="k-share-title">Bring this into…</h1>
       <figure className="k-share-preview">
         {share.title ? <figcaption>{share.title}</figcaption> : null}

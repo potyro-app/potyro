@@ -24,10 +24,10 @@ describe("the keystore vault", () => {
     const plugin = fakePlugin();
     const vault = vaultOver(plugin);
     expect(await vault.available()).toBe(true);
-    expect(await vault.get("karta:identity:secret")).toBeNull();
-    await vault.set("karta:identity:secret", "sealerSecret_x/signerSecret_y");
-    expect(await vault.get("karta:identity:secret")).toBe("sealerSecret_x/signerSecret_y");
-    await vault.remove("karta:identity:secret");
+    expect(await vault.get("potyro:identity:secret")).toBeNull();
+    await vault.set("potyro:identity:secret", "sealerSecret_x/signerSecret_y");
+    expect(await vault.get("potyro:identity:secret")).toBe("sealerSecret_x/signerSecret_y");
+    await vault.remove("potyro:identity:secret");
     expect(plugin.map.size).toBe(0);
   });
 

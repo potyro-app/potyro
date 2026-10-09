@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 // → restore → reload) only exists in the browser. The model is never called: the Studio's source
 // editor produces a real edit deterministically.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "history-target",
@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source]) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "history-target", name: "History Target", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),
@@ -98,7 +98,7 @@ test("a saved change is diffable and reversible", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "Notes" }).or(page.getByRole("button", { name: "Notes" })).first())
     .toBeVisible({ timeout: 30_000 });
   const saved = await page.evaluate(() => {
-    const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; source: string }[];
+    const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
     return apps.find((a) => a.id === "history-target")?.source ?? "";
   });
   expect(saved).toContain('title: "Notes"');

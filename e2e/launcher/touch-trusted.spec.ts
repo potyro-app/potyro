@@ -124,7 +124,7 @@ test("offline, a synced app's header still fits the phone, and still says it is 
   // The relay cannot be reached — a train, a dead router. The status then says the most it ever
   // says ("Offline · changes saved here"), and on a 375-pixel phone that pushed the ⋯ menu past the
   // edge: the page scrolled sideways and the app's name was squeezed to nothing.
-  await page.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://127.0.0.1:9"));
+  await page.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://127.0.0.1:9"));
   await openApp(page, "garden", "Garden");
   const status = page.locator(".k-topbar .k-sync-status");
   await expect(status).toHaveAttribute("data-state", "offline", { timeout: 20_000 });

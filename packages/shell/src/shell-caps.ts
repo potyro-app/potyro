@@ -4,7 +4,7 @@
 // The Data panel builds runtimes of its own, and a photo field's editor needs the camera: handing it
 // the web capabilities from here would pick a target outside the one place allowed to.
 
-import type { Capabilities } from "@karta/capabilities";
+import type { Capabilities } from "@potyro/capabilities";
 
 let current: Capabilities | null = null;
 

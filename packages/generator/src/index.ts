@@ -1,4 +1,4 @@
-// @karta/generator — AI generator eval harness (KA-06).
+// @potyro/generator — AI generator eval harness (KA-06).
 export type { GenPrompt, ModelBackend } from "./backend.js";
 export { FixtureBackend } from "./backend.js";
 export { scoreSource, type ScoreResult } from "./score.js";

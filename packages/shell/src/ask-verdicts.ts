@@ -10,7 +10,7 @@
 // A disputed value is left out of what is saved unless the person keeps it; an unconfirmed one is
 // saved, and shown with its note.
 
-import { humanizeKey, type AppDefinition } from "karta";
+import { humanizeKey, type AppDefinition } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 
 export type Tone = "good" | "warn" | "bad" | "neutral";

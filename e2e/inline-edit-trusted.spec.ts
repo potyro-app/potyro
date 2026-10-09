@@ -11,7 +11,7 @@ import { test, expect, type Page } from "@playwright/test";
 //   - fields and tabs move from the same spot, and the app re-runs with edit mode still on
 //   - where nothing is editable, the bar says so and points at the Studio — no empty panel
 
-const APP_SOURCE = `import { defineApp } from "karta";
+const APP_SOURCE = `import { defineApp } from "potyro";
 import { useState } from "react";
 
 function Board(props) {
@@ -54,9 +54,9 @@ export default defineApp({
 async function seed(page: Page): Promise<void> {
   // Once: a re-run reloads the page, and re-seeding would overwrite the edit under test.
   await page.addInitScript((src) => {
-    if (localStorage.getItem("karta:user-apps")) return;
+    if (localStorage.getItem("potyro:user-apps")) return;
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "kit", name: "Kit", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
     );
   }, APP_SOURCE);
@@ -66,7 +66,7 @@ async function seed(page: Page): Promise<void> {
 const storedSource = async (page: Page): Promise<string> => {
   try {
     return await page.evaluate(
-      () => (JSON.parse(localStorage.getItem("karta:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "kit")!.source,
+      () => (JSON.parse(localStorage.getItem("potyro:user-apps")!) as { id: string; source: string }[]).find((a) => a.id === "kit")!.source,
     );
   } catch {
     return "";
@@ -125,7 +125,7 @@ async function tapText(page: Page, text: string, within = "body"): Promise<void>
 }
 
 async function awaitRerun(page: Page, act: () => Promise<void>): Promise<void> {
-  const MARK = "__karta_pre_reload";
+  const MARK = "__potyro_pre_reload";
   await page.evaluate((key: string) => ((globalThis as Record<string, unknown>)[key] = true), MARK);
   await act();
   await expect
@@ -235,7 +235,7 @@ test("hiding a field takes it out of the form", async ({ page }) => {
 
 test("with nothing editable on screen, the bar says so and the Studio is one tap away", async ({ page }) => {
   // One page, and every word on it computed: there is no literal to change anywhere.
-  const COMPUTED = `import { defineApp } from "karta";
+  const COMPUTED = `import { defineApp } from "potyro";
 
 function Screen() {
   return <p className="computed">{["Nothing", "literal"].join(" ")}</p>;
@@ -251,8 +251,8 @@ export default defineApp({
 });
 `;
   await page.addInitScript((src) => {
-    if (localStorage.getItem("karta:user-apps")) return;
-    localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "kit", name: "Kit", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]));
+    if (localStorage.getItem("potyro:user-apps")) return;
+    localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "kit", name: "Kit", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]));
   }, COMPUTED);
   await page.goto("/?user=kit");
   await expect(page.locator(".computed")).toHaveText("Nothing literal");

@@ -5,7 +5,7 @@ import { tileAction } from "./launcher-actions.js";
 // and offer a generic prompt with an OK button. Now: the link read-only, a Copy button that says
 // whether it worked, and — when it did not — the link left selected for copying by hand.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 export default defineApp({
   id: "sharedlg", name: "Share Dialog", version: "1.0.0", schemaVersion: 1,
   entities: { item: { label: "Item", icon: "x", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -16,10 +16,10 @@ export default defineApp({
 async function openLauncher(page: Page, initScript?: () => void): Promise<void> {
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "sharedlg", name: "Share Dialog", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

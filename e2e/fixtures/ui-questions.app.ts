@@ -2,7 +2,7 @@
 // button, a progress bar, and a form with several kinds of field. Installed trusted and untrusted by
 // the specs, so every one of them is checked crossing the isolate too.
 
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 export default defineApp({
   id: "ui-questions",

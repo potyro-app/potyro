@@ -43,7 +43,7 @@ const minimal: AppDefinition = {
 describe("defineApp — valid definitions", () => {
   it("accepts a minimal app and brands + normalizes it", () => {
     const app = defineApp(minimal);
-    expect(app.__kartaApp).toBe(true);
+    expect(app.__potyroApp).toBe(true);
     expect(app.id).toBe("todo");
     // normalized optional arrays
     expect(app.reminders).toEqual([]);

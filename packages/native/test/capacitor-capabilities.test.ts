@@ -53,7 +53,7 @@ describe("CapacitorCapabilities", () => {
     expect(scheduled[0]!.id).toBe(stableNotificationId("plant:42"));
     expect(scheduled[0]!.schedule).toMatchObject({ allowWhileIdle: true });
     expect(scheduled[0]!.schedule.at.toISOString()).toBe("2026-08-01T09:00:00.000Z");
-    expect(scheduled[0]!.extra).toEqual({ kartaId: "plant:42", at: "2026-08-01T09:00:00.000Z" });
+    expect(scheduled[0]!.extra).toEqual({ potyroId: "plant:42", at: "2026-08-01T09:00:00.000Z" });
 
     const list = await caps.notifications.list();
     expect(list).toEqual([{ id: "plant:42", at: "2026-08-01T09:00:00.000Z" }]); // string id recovered
@@ -77,9 +77,9 @@ describe("CapacitorCapabilities", () => {
     const { plugins } = fakePlugins();
     const caps = new CapacitorCapabilities(plugins, helpers);
 
-    await caps.filesystem.save("recipes.karta.zip", new Blob(["data"]));
+    await caps.filesystem.save("recipes.potyro.zip", new Blob(["data"]));
     expect(plugins.Filesystem.writeFile).toHaveBeenCalledWith({
-      path: "recipes.karta.zip",
+      path: "recipes.potyro.zip",
       data: "QkFTRTY0",
       directory: "DOCUMENTS",
       recursive: true,

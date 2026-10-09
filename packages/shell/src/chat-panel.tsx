@@ -37,13 +37,13 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import type { KartaRuntime } from "@karta/runtime";
-import { memberName, personHue, personInitials } from "@karta/runtime";
-import type { ChatMessage, Store } from "@karta/store";
-import { ROOM_THREAD, recordThread } from "@karta/store";
+import type { PotyroRuntime } from "@potyro/runtime";
+import { memberName, personHue, personInitials } from "@potyro/runtime";
+import type { ChatMessage, Store } from "@potyro/store";
+import { ROOM_THREAD, recordThread } from "@potyro/store";
 
 /** Where this device remembers what it has already read. Local by design — see the header. */
-const seenKey = (appId: string, thread: string): string => `karta:chat-seen:${appId}:${thread}`;
+const seenKey = (appId: string, thread: string): string => `potyro:chat-seen:${appId}:${thread}`;
 
 function lastRead(appId: string, thread: string): number {
   const raw = globalThis.localStorage?.getItem(seenKey(appId, thread));
@@ -83,7 +83,7 @@ export function unreadCount(messages: readonly ChatMessage[], appId: string, thr
  * feature is worth nothing without. `thread === null` loads nothing, so a caller can hold the hook
  * unconditionally while the record it is about is still resolving.
  */
-export function useThread(runtime: KartaRuntime, thread: string | null): {
+export function useThread(runtime: PotyroRuntime, thread: string | null): {
   messages: ChatMessage[];
   post: (text: string) => Promise<void>;
   error: string | null;
@@ -148,8 +148,8 @@ export function useThread(runtime: KartaRuntime, thread: string | null): {
  * membership watcher already fires. Without it a peer's rename lands in the store, updates `ctx`,
  * and stays invisible until something unrelated happened to redraw the panel.
  */
-function useLiveMembers(runtime: KartaRuntime): {
-  me: KartaRuntime["ctx"]["me"];
+function useLiveMembers(runtime: PotyroRuntime): {
+  me: PotyroRuntime["ctx"]["me"];
   members: readonly { id: string; name: string }[] | undefined;
 } {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -185,7 +185,7 @@ export function ChatPeek({
   onOpen,
   onDismiss,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   message: ChatMessage;
   /** The Chat button. The balloon is measured against it and points back at it. */
   anchor: RefObject<HTMLElement | null>;
@@ -278,7 +278,7 @@ export function Thread({
   emptyText,
   autoFocus,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   appId: string;
   thread: string;
   emptyText: string;
@@ -393,7 +393,7 @@ export function ChatPanel({
   appId,
   onClose,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   appId: string;
   onClose: () => void;
 }) {
@@ -446,7 +446,7 @@ export function RecordThread({
   recordId,
   label,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   appId: string;
   entity: string;
   recordId: string;

@@ -8,11 +8,11 @@
 // No store beyond `MemoryStore`, no network, no cojson: identity is engine-independent by design.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { defineApp } from "karta";
-import type { NavBridge, UiBridge } from "@karta/host";
+import { MemoryStore } from "@potyro/store";
+import { defineApp } from "potyro";
+import type { NavBridge, UiBridge } from "@potyro/host";
 import { createHost, type MakeCtxBase } from "../src/index.js";
-import { FakeCapabilities } from "@karta/capabilities";
+import { FakeCapabilities } from "@potyro/capabilities";
 
 const app = () =>
   defineApp({

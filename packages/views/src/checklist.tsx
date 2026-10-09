@@ -25,7 +25,7 @@
 // guessing, or making the person open a form to answer a question one tap can.
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { Resolved } from "karta";
+import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, getView } from "./format.js";
 import { useDynamicText } from "./dynamic.js";

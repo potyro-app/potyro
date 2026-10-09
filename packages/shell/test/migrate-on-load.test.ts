@@ -5,8 +5,8 @@
 // and never spin.
 
 import { describe, expect, it } from "vitest";
-import type { AppDefinition, Migration } from "karta";
-import { MemoryStore } from "@karta/store";
+import type { AppDefinition, Migration } from "potyro";
+import { MemoryStore } from "@potyro/store";
 import { migrateOnLoad, migrationChain } from "../src/migrate-on-load.js";
 
 const mig = (from: string, to: string, steps: Migration["steps"]): Migration => ({ from, to, steps });

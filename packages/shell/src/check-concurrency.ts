@@ -1,6 +1,6 @@
 // "Will this app survive two people?" — asked in the browser, on the source about to be saved.
 //
-// The gate itself lives in `@karta/generator` and is driven here over two peers and two composed
+// The gate itself lives in `@potyro/generator` and is driven here over two peers and two composed
 // runtimes, so the check the shell runs is byte-for-byte the one the eval harness runs. Rebuilding
 // the host wiring separately is how two code paths end up testing subtly different things.
 //
@@ -18,13 +18,13 @@
 // would be the tool substituting its judgement for the user's — so this reports, and the user
 // decides. Sharing is where it is worth being loud.
 
-import type { ConcurrencyResult } from "@karta/generator/backends";
+import type { ConcurrencyResult } from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 
-export type { ConcurrencyResult } from "@karta/generator/backends";
+export type { ConcurrencyResult } from "@potyro/generator/backends";
 
 /** How long to let it run before giving up. Two isolates and two cojson nodes are not free. */
 const BUDGET_MS = 30_000;
@@ -50,8 +50,8 @@ export async function checkConcurrency(source: string, appId: string): Promise<C
 
 async function run(source: string, appId: string): Promise<ConcurrencyResult | null> {
   const [{ concurrencyChecks, seedRecords }, { createPeerPair }] = await Promise.all([
-    import("@karta/generator/backends"),
-    import("@karta/store"),
+    import("@potyro/generator/backends"),
+    import("@potyro/store"),
   ]);
 
   const bundle = await createAppBundler();
@@ -64,7 +64,7 @@ async function run(source: string, appId: string): Promise<ConcurrencyResult | n
         provenance: "untrusted",
         bundleCode,
         store,
-        caps: (await import("@karta/capabilities")).createWebCapabilities(),
+        caps: (await import("@potyro/capabilities")).createWebCapabilities(),
         ui: createUiBridge(() => {}),
         nav: createNavBridge(() => {}),
         loadIsolated: await createSandboxLoader(store),

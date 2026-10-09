@@ -14,8 +14,8 @@
 //
 // The store half is `guardedStore` reading `AppLock`; this file decides when the lock is set.
 
-import type { AppDefinition } from "karta";
-import type { Store } from "@karta/store";
+import type { AppDefinition } from "potyro";
+import type { Store } from "@potyro/store";
 import type { AppLock } from "./app-lock.js";
 import type { PublishedApp } from "./app-sync.js";
 import type { UserApp } from "./user-apps.js";
@@ -188,7 +188,7 @@ export async function migrateShared(opts: {
       // `runMigrations` computes every change before it writes the first one, so a migration that
       // throws leaves the data as it was. Stay read-only rather than let a new-version app write
       // into data that is still in the old shape.
-      console.warn("[karta] migration failed:", e);
+      console.warn("[potyro] migration failed:", e);
       toast.push(`Could not update your data: ${e instanceof Error ? e.message : String(e)}`);
       lock.set({ kind: "data", resolve: run });
     }

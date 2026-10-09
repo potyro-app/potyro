@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 // the shape that makes "press the button, pick the type, and you are in it" possible. It lives here
 // rather than in an example because it is a platform behaviour: PPL Log used to carry it, until
 // "Start session" was removed for creating an empty session and dropping you on its record page.
-const MENU_APP = `import { defineApp } from "karta";
+const MENU_APP = `import { defineApp } from "potyro";
 export default defineApp({
   id: "logger", name: "Logger", icon: "\u25CE", version: "1.0.0", schemaVersion: 1,
   quickActions: [{ id: "start", label: "Start session", icon: "\u25B6", entity: "session", mode: "menu", open: true }],
@@ -27,9 +27,9 @@ export default defineApp({
 const seedMenuApp = async (page: import("@playwright/test").Page, trusted: boolean): Promise<void> => {
   await page.addInitScript(
     ([source, t]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "logger", name: "Logger", source, trusted: t, updatedAt: new Date().toISOString() }]),
       );
     },

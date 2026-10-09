@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { describeDrift, schemaDrift } from "../src/schema-drift.js";
 
-const BEFORE = `import { defineApp } from "karta";
+const BEFORE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: {
@@ -19,7 +19,7 @@ export default defineApp({
 `;
 
 /** The real shape of the edit that broke it: a new required relation, same schemaVersion. */
-const AFTER_BROKEN = `import { defineApp } from "karta";
+const AFTER_BROKEN = `import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: {

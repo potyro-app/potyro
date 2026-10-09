@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// KA-04 data round-trip in a real browser: export the recipes data to a .karta.zip, add a recipe
+// KA-04 data round-trip in a real browser: export the recipes data to a .potyro.zip, add a recipe
 // that ISN'T in that bundle, then import the bundle back — the imported (bundle) data replaces the
 // live data, so the seed recipe returns and the just-added one is gone. Forces the <a download> /
 // <input> fallbacks so headless Chromium can capture the download + file chooser.

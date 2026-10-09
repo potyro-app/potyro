@@ -7,11 +7,11 @@
 // at once, which is exactly the failure mode that made KA-38 expensive. So it is pinned here.
 
 import { describe, expect, it } from "vitest";
-import { defineApp } from "karta";
-import type { StoreSchema } from "@karta/store";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
+import { defineApp } from "potyro";
+import type { StoreSchema } from "@potyro/store";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
 import { createRuntime } from "../src/index.js";
 
 const app = defineApp({

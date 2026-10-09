@@ -1,7 +1,7 @@
 // Run the deep gate (`smoke.ts`) over every .app.ts in a directory. No model calls — this re-scores
 // artifacts an eval run already produced, so it is free and repeatable.
 //
-//   pnpm --filter @karta/generator smoke:dir -- eval-out/baseline
+//   pnpm --filter @potyro/generator smoke:dir -- eval-out/baseline
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";

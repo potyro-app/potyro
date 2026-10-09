@@ -3,11 +3,11 @@
 //
 // `query_data` is deliberately shape-only. A huge share of "it doesn't work" is not a code bug —
 // the map is empty because no record has coordinates — and that is answerable from counts alone.
-// Karta apps hold someone's medications and finances; sending their rows to a cloud model to answer
+// Potyro apps hold someone's medications and finances; sending their rows to a cloud model to answer
 // "how many are empty?" would be a betrayal for no diagnostic gain. Raw values require BOTH an
 // explicit per-app grant and an on-device engine, decided by the caller, never by this module.
 
-import { replayCase, replayPassed, type Case, type ReplayTarget } from "@karta/runtime";
+import { replayCase, replayPassed, type Case, type ReplayTarget } from "@potyro/runtime";
 import type { AgentTool } from "./tools.js";
 
 /**

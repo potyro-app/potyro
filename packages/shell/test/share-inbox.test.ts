@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { bestFits, handShareTo, peekShare, rememberShare, takeAskMaterial } from "../src/share-inbox.js";
 
-// Text shared into Karta from another app (#213): kept for this session, offered to an app — the best
+// Text shared into Potyro from another app (#213): kept for this session, offered to an app — the best
 // fits first, judged on this device from each app's own words — and handed to that app's Ask.
 
 beforeEach(() => sessionStorage.clear());

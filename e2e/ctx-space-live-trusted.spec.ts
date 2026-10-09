@@ -12,7 +12,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // The app below renders its members through an `aggregate` view, so what is asserted is genuinely
 // what APP CODE sees, not what the shell renders on its behalf.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "roster",
@@ -49,10 +49,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "roster", name: "Roster", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

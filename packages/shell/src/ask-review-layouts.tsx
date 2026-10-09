@@ -3,7 +3,7 @@
 // many at once. Both show the same things and take the same decisions.
 
 import { useState } from "react";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 import { Decision, fieldLabel, shownFields, Sources, showValue, titleOf, TrustBadge, ValueCell, type LinkNames } from "./ask-review-parts.js";
 

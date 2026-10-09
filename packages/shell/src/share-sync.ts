@@ -20,7 +20,7 @@
 // `trusted: false` and runs in the isolate. Being invited to someone's DATA says nothing about
 // whether their CODE should run with ambient authority — those are two different axes.
 
-import { createSpaceInvite, joinSpace, openJazzStore } from "@karta/store";
+import { createSpaceInvite, joinSpace, openJazzStore } from "@potyro/store";
 import { syncRelayUrl } from "./open-store.js";
 import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 
@@ -52,7 +52,7 @@ export async function createShareLink(appId: string, role: "writer" | "reader" =
   if (!app) throw new Error("app not found");
   if (!app.sync) throw new Error("Turn sync on for this app first — sharing needs a space to invite into.");
 
-  const { identityAccount, peekIdentity } = await import("@karta/identity");
+  const { identityAccount, peekIdentity } = await import("@potyro/identity");
   // `identityAccount()` first, THEN the name: it is what mints the identity on a device that has
   // never had one, and `peekIdentity` answers null until it has. See `acceptInvite` for the bug this
   // ordering fixes.
@@ -125,7 +125,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // So: the same id only when nothing is there, or when what is there is already THIS space (the
   // same link opened twice must not breed a second copy). Otherwise the shared app arrives beside
   // the one you have, and yours is untouched.
-  const { peekAppSpace } = await import("@karta/store");
+  const { peekAppSpace } = await import("@potyro/store");
   const existing = listUserApps().find((a) => a.id === payload.appId);
   const here = existing ? peekAppSpace(`user:${payload.appId}`) : null;
   const rejoining = Boolean(here && here.group === payload.group && here.root === payload.root);
@@ -135,7 +135,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // one does not, so the space is the source of truth either way.
   // You join a space AS someone: the same device identity every other app uses, so the inviter sees
   // one person rather than a new stranger per app.
-  const { identityAccount, peekIdentity } = await import("@karta/identity");
+  const { identityAccount, peekIdentity } = await import("@potyro/identity");
   // Your NAME goes with you, not just your account.
   //
   // Joining is where a guest's account CoValue is first materialised, and without this it was

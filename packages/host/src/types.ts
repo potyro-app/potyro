@@ -8,7 +8,7 @@ import type {
   CustomViewComponent,
   CustomViewMount,
   Id,
-  KartaApp,
+  PotyroApp,
   PermissionManifest,
   Person,
   Space,
@@ -17,16 +17,16 @@ import type {
   Field,
   UiItem,
   UiProgress,
-} from "karta";
-import type { Capabilities } from "@karta/capabilities";
-import type { Store } from "@karta/store";
+} from "potyro";
+import type { Capabilities } from "@potyro/capabilities";
+import type { Store } from "@potyro/store";
 
 export type Provenance = "trusted" | "untrusted";
 
 /** Where an app came from. Determines the runner (docs/07). */
 export type AppSource =
   /** An already-imported module (trusted dev path: Vite imports the `.app.ts`). */
-  | { kind: "module"; app: KartaApp; provenance?: Provenance }
+  | { kind: "module"; app: PotyroApp; provenance?: Provenance }
   /** A self-contained bundled JS string (untrusted-by-default: shared/imported). */
   | { kind: "bundle"; code: string; provenance?: Provenance }
   /** A URL to fetch a bundle from (untrusted-by-default). */
@@ -81,7 +81,7 @@ export interface MakeCtxBase {
   /** Fixed evaluation time; defaults to now. Injected once so computed values are stable. */
   now?: Date;
   /**
-   * Who this device is (KA-18). Supplied by the composition root from `@karta/identity`.
+   * Who this device is (KA-18). Supplied by the composition root from `@potyro/identity`.
    *
    * Defaulted rather than required so a `MemoryStore` test or a fake host need not stand up an
    * identity to build a `ctx` — `ctx.me` is always *present*, which is the contract app code
@@ -131,7 +131,7 @@ export interface LoadedApp {
    * Aggregates are the one shape that cannot be a per-record binding, so this is the only call that
    * takes the whole row set. It exists as a host call for the same reason `callBinding` does: for an
    * untrusted app the function never leaves the isolate, so the shell cannot invoke it directly —
-   * its definition carries the `__karta_fn__` sentinel where the function was. Routing both
+   * its definition carries the `__potyro_fn__` sentinel where the function was. Routing both
    * provenances through here keeps trust out of the shell's arithmetic.
    */
   callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;

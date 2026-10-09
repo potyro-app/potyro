@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import type { AppDefinition, KartaRecord } from "karta";
+import type { AppDefinition, PotyroRecord } from "potyro";
 import { applyProposal, prepareReview } from "../src/ask-apply.js";
 
 // Links in Ask's proposals (#213), measured against real runs (scripts/run-ask-eval.ts):
@@ -34,10 +34,10 @@ function fakeRuntime() {
   let n = 0;
   return {
     created,
-    create: async (entity: string, data: Partial<KartaRecord>) => {
+    create: async (entity: string, data: Partial<PotyroRecord>) => {
       const id = `new${++n}`;
       created.push({ entity, data: data as Record<string, unknown>, id });
-      return { ...data, id } as KartaRecord;
+      return { ...data, id } as PotyroRecord;
     },
     patch: async () => undefined,
   };

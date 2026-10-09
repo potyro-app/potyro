@@ -8,10 +8,10 @@
 // organised and nothing that is in it (packages/generator/src/agent/ask.ts). Outside data comes
 // through `fetchSource`, which holds the keys; the loop only ever sees what came back.
 
-import type { AppDefinition } from "karta";
-import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@karta/generator/agent";
-import type { ChatMessage } from "@karta/generator/agent";
-import { createOpenRouterEngine } from "@karta/generator/backends";
+import type { AppDefinition } from "potyro";
+import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@potyro/generator/agent";
+import type { ChatMessage } from "@potyro/generator/agent";
+import { createOpenRouterEngine } from "@potyro/generator/backends";
 import type { EngineConfig } from "./engines.js";
 
 export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };

@@ -1,8 +1,8 @@
 // Measure how a model behaves when asked to CHANGE an app rather than write one.
 //
-//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @karta/generator eval:modify:edits -- --backend openrouter
-//   pnpm --filter @karta/generator eval:modify:edits -- --backend openrouter --model deepseek/deepseek-v4-pro-0813
-//   pnpm --filter @karta/generator eval:modify:edits -- --backend scripted   # no key: proves the harness
+//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @potyro/generator eval:modify:edits -- --backend openrouter
+//   pnpm --filter @potyro/generator eval:modify:edits -- --backend openrouter --model deepseek/deepseek-v4-pro-0813
+//   pnpm --filter @potyro/generator eval:modify:edits -- --backend scripted   # no key: proves the harness
 //
 // Sibling of `run-modify-eval.ts`, and deliberately a different measurement. That one runs a CHAIN —
 // generate, seed records, modify three times, migrate — and asks what a change costs and what it
@@ -35,7 +35,7 @@ import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modi
 import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
-import type { AppShape } from "@karta/runtime";
+import type { AppShape } from "@potyro/runtime";
 
 interface Outcome {
   id: string;
@@ -126,7 +126,7 @@ function scriptedBackend(kind: "scripted" | "scripted-edits"): ModelBackend {
       if (n > 1) return "```ts\n" + source + "\n```";
       // A different, smaller app: one entity, one page. Exactly what a rewrite looks like.
       return `\`\`\`ts
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 export default defineApp({
   id: "rewritten", name: "Rewritten", version: "1.0.0", schemaVersion: 1,
   entities: { thing: { label: "Thing", displayField: "name", fields: { name: { type: "text", required: true } } } },

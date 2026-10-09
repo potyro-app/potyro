@@ -1,13 +1,13 @@
 // The app-wide selection (`ctx.scope`, #134), remembered per device.
 //
 // Which trip *you* are looking at is not shared state, so this is `localStorage` under the same
-// `karta:<feature>:<appId>` convention as the "seen" watermarks — never `ctx.storage`, whose
+// `potyro:<feature>:<appId>` convention as the "seen" watermarks — never `ctx.storage`, whose
 // key/value store syncs across a space's devices once the app is synced. The runtime owns the
 // value (`runtime.setScope`); this owns remembering it.
 
-import type { KartaRuntime } from "@karta/runtime";
+import type { PotyroRuntime } from "@potyro/runtime";
 
-const key = (appId: string): string => `karta:scope:${appId}`;
+const key = (appId: string): string => `potyro:scope:${appId}`;
 
 /** The saved selection's record id, or null. */
 export function savedScope(appId: string): string | null {
@@ -32,7 +32,7 @@ export function rememberScope(appId: string, id: string | null): void {
  * `ctx.scope` never flashes everything first. A remembered record that no longer exists (deleted on
  * another device, say) clears the memory rather than pinning the app to nothing.
  */
-export async function restoreScope(runtime: KartaRuntime, appId: string): Promise<void> {
+export async function restoreScope(runtime: PotyroRuntime, appId: string): Promise<void> {
   const scope = runtime.definition.scope;
   if (!scope) return;
   const id = savedScope(appId);
@@ -42,7 +42,7 @@ export async function restoreScope(runtime: KartaRuntime, appId: string): Promis
 }
 
 /** Select a record and remember it. */
-export async function chooseScope(runtime: KartaRuntime, appId: string, id: string | null): Promise<void> {
+export async function chooseScope(runtime: PotyroRuntime, appId: string, id: string | null): Promise<void> {
   const scope = runtime.definition.scope;
   if (!scope) return;
   await runtime.setScope(scope.entity, id);

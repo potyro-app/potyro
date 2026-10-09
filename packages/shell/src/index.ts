@@ -1,4 +1,4 @@
-// @karta/shell — composition root + shell UI (public surface for embedding/tests).
+// @potyro/shell — composition root + shell UI (public surface for embedding/tests).
 export { App } from "./App.js";
 export { compose, type ComposeOptions, type Composed } from "./compose.js";
 export { createUiBridge, createNavBridge } from "./ui-bridge.js";

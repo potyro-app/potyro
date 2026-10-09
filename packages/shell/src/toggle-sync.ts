@@ -9,7 +9,7 @@
 // nothing opens any more. Nothing is deleted from the old store either — a migration that turns
 // out to be wrong must be reversible by flipping back.
 
-import { copyStoreData, type CopyStoreResult } from "@karta/store";
+import { copyStoreData, type CopyStoreResult } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { setUserAppSync } from "./user-apps.js";
 

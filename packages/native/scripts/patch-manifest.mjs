@@ -40,10 +40,10 @@ export function withPermissions(xml) {
   return { xml: xml.replace(/<\/manifest>\s*$/, `${block}</manifest>\n`), added: missing.map(nameOf) };
 }
 
-// Karta in Android's share sheet (#213): text shared from another app — what another AI made —
+// Potyro in Android's share sheet (#213): text shared from another app — what another AI made —
 // arrives as ACTION_SEND text/*, which @capgo/capacitor-share-target hands to the shell. Text only for
 // now; images come later. Inside the main activity, where the plugin reads the intent.
-export const SHARE_FILTER = `<intent-filter android:label="Add to Karta">
+export const SHARE_FILTER = `<intent-filter android:label="Add to Potyro">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/*" />

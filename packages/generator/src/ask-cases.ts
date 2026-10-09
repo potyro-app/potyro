@@ -2,7 +2,7 @@
 // with what the device would know when they typed it. Read the transcripts, not only the counts —
 // "a proposal with 5 rows" says nothing about whether the five restaurants exist.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { AskContext } from "./agent/ask.js";
 
 export interface AskCase {

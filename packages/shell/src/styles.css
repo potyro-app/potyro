@@ -1,4 +1,4 @@
-/* Karta shell — a warm editorial "recipe card" direction: paper ground, ink text, a single
+/* Potyro shell — a warm editorial "recipe card" direction: paper ground, ink text, a single
    app-supplied accent, real scale contrast, layered surfaces, and designed interaction states.
    Deliberately not a default card grid. */
 
@@ -45,9 +45,9 @@
   /* The one accent an app supplies (`theme.accent`, set on `.k-app`). What must read on it, and the
      tints derived from it, are declared again on `.k-app` below so they follow the override. */
   --accent: #e4a93c;
-  /* Karta's own, kept under its own name so the Look panel can offer it back as a swatch after you
+  /* Potyro's own, kept under its own name so the Look panel can offer it back as a swatch after you
      have chosen another — `--accent` by then IS the other one. */
-  --accent-karta: #e4a93c;
+  --accent-potyro: #e4a93c;
   --on-accent: oklch(22% 0.04 70);
 
   /* Semantic colours: a state is a word AND a colour, never a colour alone. */
@@ -1150,7 +1150,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
 }
 .k-look-hue-default {
-  background: var(--accent-karta);
+  background: var(--accent-potyro);
 }
 /* Appearance and colour, from the launcher — a device's look, kept with the device. */
 .k-look-btn,
@@ -6383,7 +6383,7 @@ body:has(.k-tabbar) .k-toasts {
 @keyframes k-slide-in {
   from { transform: translateX(-100%); }
 }
-/* First run and the create action (#90). The welcome says what Karta is and offers one thing to
+/* First run and the create action (#90). The welcome says what Potyro is and offers one thing to
    do; "New app" is a header button on a wide screen and a floating button in thumb reach on a phone,
    never a tile among the apps. */
 .k-welcome {
@@ -8976,7 +8976,7 @@ body:has(.k-tabbar) .k-toasts {
   min-height: 7rem;
 }
 
-/* "Bring this into…" (#213): text shared into Karta, and the app it goes into. */
+/* "Bring this into…" (#213): text shared into Potyro, and the app it goes into. */
 .k-share-page {
   max-width: 36rem;
   margin: 0 auto;

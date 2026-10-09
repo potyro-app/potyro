@@ -136,7 +136,7 @@ async function load(): Promise<Tools | null> {
         MagicString: (magic.default ?? magic) as unknown as Tools["MagicString"],
       };
     } catch (e) {
-      console.warn("[karta] structural editing unavailable:", e);
+      console.warn("[potyro] structural editing unavailable:", e);
       tools = null; // a transient chunk failure shouldn't disable it for the session
       return null;
     }
@@ -722,7 +722,7 @@ function indentAt(source: string, index: number): string {
 
 /**
  * Which field an entity falls back to for its human label, mirroring `displayFieldFor` in
- * @karta/views. Reordering fields would otherwise silently change what every list row and relation
+ * @potyro/views. Reordering fields would otherwise silently change what every list row and relation
  * picker shows — see `pinDisplayField`.
  */
 function effectiveDisplayField(entityNode: Node, order: readonly string[]): string | undefined {

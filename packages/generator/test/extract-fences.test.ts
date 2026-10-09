@@ -14,14 +14,14 @@
 import { describe, expect, it } from "vitest";
 import { extractSource, looksLikeApp, parseModifyReply } from "../src/prompt.js";
 
-const APP = `import { defineApp } from "karta";\nexport default defineApp({ id: "x", name: "X" });`;
+const APP = `import { defineApp } from "potyro";\nexport default defineApp({ id: "x", name: "X" });`;
 const fenced = (tag: string, body = APP) => "Here is the updated app:\n```" + tag + "\n" + body + "\n```\n";
 
 describe("extractSource", () => {
   for (const tag of ["ts", "tsx", "typescript", "jsx", "js", "javascript", ""]) {
     it(`unwraps a \`\`\`${tag || "(none)"} block`, () => {
       const out = extractSource(fenced(tag));
-      expect(out.split("\n")[0]).toBe('import { defineApp } from "karta";');
+      expect(out.split("\n")[0]).toBe('import { defineApp } from "potyro";');
       expect(out).not.toContain("Here is the updated app");
       expect(out).not.toContain("```");
     });
@@ -48,7 +48,7 @@ describe("parseModifyReply", () => {
     const r = parseModifyReply(fenced("tsx"));
     expect(r.kind).toBe("source");
     if (r.kind !== "source") throw new Error("unreachable");
-    expect(r.source.split("\n")[0]).toBe('import { defineApp } from "karta";');
+    expect(r.source.split("\n")[0]).toBe('import { defineApp } from "potyro";');
     expect(r.source).not.toContain("```");
     expect(r.rationale).toBe("Here is the updated app:");
   });

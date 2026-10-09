@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { listenOn, textOfShare } from "../src/share-target.js";
 
-// Text shared into Karta from another app (#213), with a fake plugin.
+// Text shared into Potyro from another app (#213), with a fake plugin.
 
 describe("share target", () => {
   it("joins the shared texts, and ignores a share with no text", () => {

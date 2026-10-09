@@ -14,16 +14,16 @@ playwright-report/
 # Local agent config (do not publish)
 .claude/
 
-# Capacitor generated native projects (regenerate with: pnpm --filter @karta/native cap:add:android)
+# Capacitor generated native projects (regenerate with: pnpm --filter @potyro/native cap:add:android)
 packages/native/android/
 packages/native/ios/
 
-# Generator eval artifacts — generated apps + reports (regenerate with: pnpm --filter @karta/generator eval:cli)
+# Generator eval artifacts — generated apps + reports (regenerate with: pnpm --filter @potyro/generator eval:cli)
 packages/generator/eval-out/
 
 # local sync relay database
-.karta-relay.sqlite*
-packages/generator/.karta-eval-*/
+.potyro-relay.sqlite*
+packages/generator/.potyro-eval-*/
 # local CI results, per commit (scripts/ci-local.mjs)
 .ci-local/
 

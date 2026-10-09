@@ -6,8 +6,8 @@
 // separate means a failure here points at the sentence, not at the engine.
 
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
-import type { FieldEdit, Store } from "@karta/store";
+import type { AppDefinition } from "potyro";
+import type { FieldEdit, Store } from "@potyro/store";
 import { activitySince, activitySupported } from "../src/activity.js";
 
 const ANA = { id: "co_zAna", name: "Ana" };

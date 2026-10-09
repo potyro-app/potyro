@@ -1,6 +1,6 @@
 // What the fixing agent is told before it starts.
 //
-// The generator's SYSTEM_PROMPT teaches how to WRITE a Karta app and nothing else — it predates
+// The generator's SYSTEM_PROMPT teaches how to WRITE a Potyro app and nothing else — it predates
 // tools entirely. An agent given tools and no explanation of them wastes its budget rediscovering
 // what it can do, and (measured in review) will re-run `replay_case` after proposing a fix expecting
 // to see its own change, which cannot happen. So this prompt adds what the loop depends on it

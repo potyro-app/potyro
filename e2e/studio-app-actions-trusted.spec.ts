@@ -14,7 +14,7 @@ import { tileAction } from "./launcher-actions.js";
 // on your saved copy (Rename), and the one on the launcher tile (Edit tile). The top bar read the
 // source's, so a renamed app went on calling itself by the name the model gave it.
 
-const APP = `import { defineApp } from "karta";
+const APP = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "notes",
@@ -36,9 +36,9 @@ async function seedApp(page: Page): Promise<void> {
       // Once. `addInitScript` runs on EVERY navigation, so without this guard a reload puts the
       // original name back and a rename looks like it did not survive — which is exactly the
       // phantom bug this spec nearly reported.
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

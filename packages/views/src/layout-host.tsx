@@ -12,8 +12,8 @@
 // split's selection is just a param.
 
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import type { LayoutItem, PageLayout, View } from "karta";
-import { layoutItemId } from "karta";
+import type { LayoutItem, PageLayout, View } from "potyro";
+import { layoutItemId } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { ViewHost } from "./host.js";
 
@@ -43,7 +43,7 @@ function useWide(ref: React.RefObject<HTMLDivElement | null>): boolean {
   return wide;
 }
 
-const foldKey = (appId: string, pageId: string, index: number): string => `karta:layout:${appId}:${pageId}:${index}`;
+const foldKey = (appId: string, pageId: string, index: number): string => `potyro:layout:${appId}:${pageId}:${index}`;
 
 function readFold(key: string): boolean | null {
   try {

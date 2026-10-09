@@ -12,7 +12,7 @@
 // What leaves the device: the addresses the model proposed — never the person's records. Only when
 // the person has web search on. One request a second, as the geocoder's usage policy asks.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 import type { SourceHttp } from "./ask-sources.js";
 

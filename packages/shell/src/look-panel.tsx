@@ -44,13 +44,13 @@ export function LookPanel({ onClose }: { onClose: () => void }) {
 
         <h3 className="k-field-label">Accent</h3>
         <div className="k-look-hues" role="radiogroup" aria-label="Accent colour">
-          {/* Karta's own gold, which is what "no choice" means — offered as a swatch so choosing it
+          {/* Potyro's own gold, which is what "no choice" means — offered as a swatch so choosing it
               back is a tap rather than a thing you cannot undo. */}
           <button
             type="button"
             role="radio"
             aria-checked={look.accent === undefined}
-            aria-label="Karta gold"
+            aria-label="Potyro gold"
             className="k-look-hue k-look-hue-default"
             data-on={look.accent === undefined || undefined}
             onClick={() => setLook({ appearance: look.appearance })}

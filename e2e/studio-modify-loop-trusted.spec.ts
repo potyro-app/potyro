@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 // Fails if the Studio still takes the one-turn path (no nudge, no tool round-trip).
 
 const APP =
-  'import { defineApp } from "karta";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});';
+  'import { defineApp } from "potyro";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});';
 
 const EDITS =
   "Adding the rating.\n```ts\n<<<<<<< SEARCH\n  entities: { book: { label: \"Book\", displayField: \"title\", fields: { title: { type: \"text\", required: true } } } },\n=======\n  entities: { book: { label: \"Book\", displayField: \"title\", fields: { title: { type: \"text\", required: true }, rating: { type: \"number\", min: 0, max: 5 } } } },\n>>>>>>> REPLACE\n```";

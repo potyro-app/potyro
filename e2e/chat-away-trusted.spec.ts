@@ -13,7 +13,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // sent, and the assertion is what it shows on its own when it comes back — the balloon and the
 // count, without anyone opening the conversation.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "talk", name: "Talk", version: "1.0.0", schemaVersion: 1,
   entities: { note: { label: "Note", icon: "📝", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -24,10 +24,10 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "talk", name: "Talk", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

@@ -1,18 +1,18 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { StatsView, compareText } from "../src/stats.js";
 import { ChartView, niceMax } from "../src/chart.js";
 
 // Stats tiles and a bar chart (#109): figures and comparisons in words, a chart with its numbers in a
 // table, an empty series saying so, and a series that throws saying that instead.
 
-const app = (view: Record<string, unknown>): KartaApp =>
+const app = (view: Record<string, unknown>): PotyroApp =>
   defineApp({
     id: "runs",
     name: "Runs",
@@ -22,7 +22,7 @@ const app = (view: Record<string, unknown>): KartaApp =>
     pages: [{ id: "p", title: "P", view: { entity: "run", ...view } }],
   } as never);
 
-async function makeRuntime(def: KartaApp): Promise<KartaRuntime> {
+async function makeRuntime(def: PotyroApp): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open(def.id);
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
@@ -34,7 +34,7 @@ async function makeRuntime(def: KartaApp): Promise<KartaRuntime> {
   return runtime;
 }
 
-const props = (runtime: KartaRuntime) => ({ runtime, pageId: "p", params: {}, setParam: () => {}, navigate: () => {} });
+const props = (runtime: PotyroRuntime) => ({ runtime, pageId: "p", params: {}, setParam: () => {}, navigate: () => {} });
 
 afterEach(cleanup);
 

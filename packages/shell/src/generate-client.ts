@@ -15,14 +15,14 @@ const TIMEOUT_MS = 300_000;
  * A deployed build has no such route — and every AI surface still offered itself, failed on the
  * fetch, and showed a stranger the words "Is `pnpm dev` still running?".
  *
- * So `claude -p` is offered only where this is true. `VITE_KARTA_GENERATOR` is the switch for a
+ * So `claude -p` is offered only where this is true. `VITE_POTYRO_GENERATOR` is the switch for a
  * deployment that stands such a route up. Everything else about reaching a model does not depend on
  * it: the Studio opens on any build (its source editor and History need no model), and the agent
  * works through any engine the person chose with their own key (model-turn.ts). Hiding all of that
  * behind this route once left someone whose app had broken with no way at all to fix it.
  */
 export function canGenerate(): boolean {
-  return Boolean(import.meta.env?.DEV || import.meta.env?.VITE_KARTA_GENERATOR);
+  return Boolean(import.meta.env?.DEV || import.meta.env?.VITE_POTYRO_GENERATOR);
 }
 
 export interface GenerateOptions {

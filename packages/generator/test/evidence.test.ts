@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { Retrieved, verifyRow } from "../src/agent/evidence.js";
 
 // Every proposed record is checked against the text that was actually retrieved (#213). The device

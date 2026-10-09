@@ -13,7 +13,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // Two CONTEXTS, not two pages: contexts have separate storage, so this is genuinely two devices
 // rather than two views of the same one.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "sync-pair",
@@ -47,10 +47,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "sync-pair", name: "Sync Pair", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

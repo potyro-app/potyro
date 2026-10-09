@@ -1,5 +1,5 @@
 {
-  "name": "karta",
+  "name": "potyro",
   "version": "0.0.0",
   "type": "module",
   "description": "defineApp() typed builder + Zod validation of the declarative parts (WP1, the gate)",

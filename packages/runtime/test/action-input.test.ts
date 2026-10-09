@@ -3,11 +3,11 @@
 // of those fields. The form's title and button are the action's label.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 const app = defineApp({
   id: "plants",
@@ -32,7 +32,7 @@ const app = defineApp({
   pages: [{ id: "all", title: "Plants", view: { type: "list", entity: "plant", rowActions: ["feed"] } }],
 });
 
-let runtime: KartaRuntime;
+let runtime: PotyroRuntime;
 let store: MemoryStore;
 let id: string;
 let forms: Array<{ title: string; submit?: string; fields: Record<string, unknown> }>;

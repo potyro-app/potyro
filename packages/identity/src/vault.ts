@@ -62,7 +62,7 @@ export function deferredVault(choose: () => Promise<SecretVault | null | undefin
   };
 }
 
-const DB = "karta-vault";
+const DB = "potyro-vault";
 const STORE = "secrets";
 const KEY = "__key";
 

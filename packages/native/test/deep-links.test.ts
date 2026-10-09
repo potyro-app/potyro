@@ -26,7 +26,7 @@ function pluginProxy(impl: Partial<CapacitorAppPlugin>): CapacitorAppPlugin {
 
 describe("the launch URL", () => {
   it("settles even though the plugin answers to `then`", async () => {
-    const app = pluginProxy({ getLaunchUrl: async () => ({ url: "https://karta.app/#join=abc" }) });
+    const app = pluginProxy({ getLaunchUrl: async () => ({ url: "https://potyro.app/#join=abc" }) });
     // Proof the hazard is real in this fixture: awaiting the plugin ITSELF never settles — the
     // runtime calls its `then`, which goes to native and answers nobody. That is the black screen.
     const hung = Promise.race([
@@ -35,7 +35,7 @@ describe("the launch URL", () => {
     ]);
     await expect(hung).resolves.toBe("never settled");
 
-    await expect(launchUrlFrom(app)).resolves.toBe("https://karta.app/#join=abc");
+    await expect(launchUrlFrom(app)).resolves.toBe("https://potyro.app/#join=abc");
   });
 
   it("is null when the app was not launched by a link, and when the plugin fails", async () => {
@@ -56,8 +56,8 @@ describe("links while the app is running", () => {
     });
     const seen: string[] = [];
     const stop = await listenForUrls(app, (u) => seen.push(u));
-    fire?.({ url: "https://karta.app/#join=xyz" });
-    expect(seen).toEqual(["https://karta.app/#join=xyz"]);
+    fire?.({ url: "https://potyro.app/#join=xyz" });
+    expect(seen).toEqual(["https://potyro.app/#join=xyz"]);
     stop();
     expect(remove).toHaveBeenCalled();
   });

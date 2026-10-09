@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 // the person's own key pasted. The turn goes to the chosen engine, and carries the view context.
 
 const modify = vi.fn(async () => "REPLY");
-vi.mock("@karta/generator/backends", async (orig) => ({
+vi.mock("@potyro/generator/backends", async (orig) => ({
   ...(await orig<object>()),
   createOpenRouterBackend: async () => ({ name: "or", generate: async () => "", modify }),
   createClaudeBackend: async () => ({ name: "claude", generate: async () => "", modify }),

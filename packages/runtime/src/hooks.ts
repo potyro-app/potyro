@@ -7,7 +7,7 @@
 // other than React is not shut out.
 
 import { useEffect, useRef, useState } from "react";
-import type { Id, Resolved } from "karta";
+import type { Id, Resolved } from "potyro";
 import type { RuntimeCore } from "./core.js";
 import { watchEntityQuery, watchPageQuery, watchRecord, type QueryState, type RecordState } from "./watch.js";
 

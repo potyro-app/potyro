@@ -9,7 +9,7 @@
 
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
-import { VIEW_FIELDS } from "karta";
+import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
 
 interface Declaration {
@@ -54,7 +54,7 @@ export function lookupReference(reference: string, rawQuery: string): string {
   }
   if (!picked.length) {
     return (
-      `Nothing in the karta module is called "${query}" or declares a "${query}". It does not exist. ` +
+      `Nothing in the potyro module is called "${query}" or declares a "${query}". It does not exist. ` +
       `If the request needs it, say so with NOT-IN-APP and quote this; if a different name might, look that up.`
     );
   }
@@ -81,7 +81,7 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
     {
       name: "lookup",
       description:
-        "Read the real declaration of a type, a property or a view type from the karta module — the same text as the REFERENCE in your instructions, " +
+        "Read the real declaration of a type, a property or a view type from the potyro module — the same text as the REFERENCE in your instructions, " +
         "found for you. Use it BEFORE deciding an option does not exist: lookup(\"MapView\"), lookup(\"camera\"), lookup(\"map\"), lookup(\"ctx.scope\"). " +
         "If it answers that nothing declares it, that is the fact to quote in a NOT-IN-APP.",
       parameters: { type: "object", properties: { query: { type: "string", description: "A type name, property name, view type, or ctx.<member>" } }, required: ["query"] },

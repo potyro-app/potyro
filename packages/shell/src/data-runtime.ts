@@ -11,11 +11,11 @@
 // `FieldValue` and `FieldInput`: a money field shows as money and edits as money, exactly as it does
 // in the app, and a write goes through `ctx` like any other edit.
 
-import { defineApp, type Field, type KartaApp } from "karta";
-import { createHost } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
-import type { Store } from "@karta/store";
-import type { Capabilities } from "@karta/capabilities";
+import { defineApp, type Field, type PotyroApp } from "potyro";
+import { createHost } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
+import type { Store } from "@potyro/store";
+import type { Capabilities } from "@potyro/capabilities";
 import { declaredEntities, type DeclaredEntity } from "./app-source.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -32,7 +32,7 @@ export interface DataEntity {
 }
 
 export interface DataSession {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   store: Store;
   entities: DataEntity[];
   close(): Promise<void>;
@@ -45,7 +45,7 @@ export interface DataSession {
  * `options` come from a const has no options here. Rather than let one such field fail the whole app,
  * each field is added only if the definition still validates with it; the rest fall back to raw.
  */
-export function dataDefinition(appId: string, declared: Record<string, DeclaredEntity>): { app: KartaApp; rejected: Record<string, string[]> } {
+export function dataDefinition(appId: string, declared: Record<string, DeclaredEntity>): { app: PotyroApp; rejected: Record<string, string[]> } {
   const base = (entities: Record<string, { fields: Record<string, Field> }>) =>
     defineApp({ id: "data-panel", name: appId, version: "1.0.0", schemaVersion: 1, entities, pages: [] });
 
@@ -79,7 +79,7 @@ export async function openDataSession(app: UserApp, caps: Capabilities): Promise
 
   // Opened exactly as the app opens it: the same store, and an example that has never been opened
   // gets its first-run rows here rather than showing an empty table.
-  const { ensureIdentity } = await import("@karta/identity");
+  const { ensureIdentity } = await import("@potyro/identity");
   const me = await ensureIdentity();
   const store = await openAppStore(app, { sync: await syncAllowedFor(app), me: me.id });
   const host = createHost();

@@ -2,7 +2,7 @@
 // sources it was checked against, and the approve / reject control. The card and the table only
 // arrange these differently.
 
-import { formatMoney, humanizeKey, type AppDefinition, type Field } from "karta";
+import { formatMoney, humanizeKey, type AppDefinition, type Field } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 import { trustLabel } from "./ask-verdicts.js";
 
@@ -121,7 +121,7 @@ export function Sources({ row }: { row: ReviewRow }) {
       {sources.map((s) => (
         <li key={s.url}>
           {/* What the person gave (their request, a paste) has no page to open: it is named instead. */}
-          {s.url.startsWith("karta:") ? (
+          {s.url.startsWith("potyro:") ? (
             <span className="k-ask-source-own">{s.via ?? "you"}</span>
           ) : (
             <a href={s.url} target="_blank" rel="noreferrer noopener">

@@ -10,7 +10,7 @@
 // result to the launcher entry — the tile re-renders from there. Leaving the home screen closes
 // them. Capped, so thirty synced apps do not open thirty stores.
 
-import { ROOM_THREAD, type Store } from "@karta/store";
+import { ROOM_THREAD, type Store } from "@potyro/store";
 import { appKey, recordSignals, type InstalledApp } from "./launcher-store.js";
 
 /** How many synced apps are watched at once: the most recently opened. */
@@ -35,7 +35,7 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
       const [{ openStore }, { unreadCount }, { peekIdentity }] = await Promise.all([
         import("./open-store.js"),
         import("./chat-panel.js"),
-        import("@karta/identity"),
+        import("@potyro/identity"),
       ]);
       if (stopped) return;
       const store = await openStore(`user:${app.id}`, { sync: true });
@@ -58,7 +58,7 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
       };
       const recount = (): void => {
         if (timer) clearTimeout(timer);
-        timer = setTimeout(() => void count().catch((e: unknown) => console.warn("[karta] live badge count failed:", e)), DEBOUNCE_MS);
+        timer = setTimeout(() => void count().catch((e: unknown) => console.warn("[potyro] live badge count failed:", e)), DEBOUNCE_MS);
       };
       stops.push(() => {
         if (timer) clearTimeout(timer);
@@ -69,7 +69,7 @@ export function watchLiveSignals(apps: readonly InstalledApp[]): () => void {
       const unsubChat = store.subscribeMessages?.(ROOM_THREAD, recount);
       if (unsubChat) stops.push(unsubChat);
       recount();
-    })().catch((e: unknown) => console.warn(`[karta] could not watch "${app.name}" for the home screen:`, e));
+    })().catch((e: unknown) => console.warn(`[potyro] could not watch "${app.name}" for the home screen:`, e));
   }
 
   return () => {

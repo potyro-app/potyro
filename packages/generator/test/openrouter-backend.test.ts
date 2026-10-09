@@ -14,7 +14,7 @@ import {
 // Drives the OpenRouter backend with an injected engine (message assembly) and an injected fetch
 // (the HTTP adapter) — no API key, no network, deterministic.
 
-const GOOD = `import { defineApp } from "karta";
+const GOOD = `import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: { task: { label: "Task", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -73,7 +73,7 @@ describe("OpenRouterBackend prompt assembly", () => {
     expect(msgs[3]!.content).toContain("validate: boom");
   });
 
-  // A modify turn that opens with "Create a Karta app for this request: <the edit>" tells the model
+  // A modify turn that opens with "Create a Potyro app for this request: <the edit>" tells the model
   // the app it should have written is described BY the edit — so the source in the next turn reads
   // as a wrong answer. Strong models reconcile it; a fast one obeys and replaces the whole app,
   // which is exactly the "it deletes my app and writes a new one" report.
@@ -84,7 +84,7 @@ describe("OpenRouterBackend prompt assembly", () => {
     await backend.modify("CURRENT SOURCE", "add a 5-star rating field", { id: "t", description: "a book tracker" });
 
     const opener = reqs[0]!.messages[1]!.content;
-    expect(opener).not.toContain("Create a Karta app for this request");
+    expect(opener).not.toContain("Create a Potyro app for this request");
     expect(opener).not.toContain("add a 5-star rating field");
     expect(opener).toMatch(/current/i); // it introduces the app as the thing being changed
   });

@@ -24,7 +24,7 @@ import { test, expect, type Page } from "@playwright/test";
 const APP_ID = "field-notes"; // slug of the app NAME — see `saveUserApp`
 
 const app = (opts: { version: string; title: string; fields: string; migrations?: string }): string =>
-  `import { defineApp } from "karta";
+  `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "field-notes",
@@ -267,7 +267,7 @@ test.describe("create, change twice, and get back", () => {
     await expect(pageTab(studio, "Notes & tags")).toBeVisible({ timeout: 30_000 });
 
     const stored = await page.evaluate((id: string) => {
-      const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; source: string }[];
+      const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
       return apps.find((a) => a.id === id)?.source ?? "";
     }, APP_ID);
     expect(stored).toContain('title: "Notes & tags"');

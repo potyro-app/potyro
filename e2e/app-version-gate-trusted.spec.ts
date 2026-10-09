@@ -18,7 +18,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // A unit test cannot see any of this: the lock arrives over a relay from another device, and what
 // matters is what the locked page does with a tap.
 
-const V1 = `import { defineApp } from "karta";
+const V1 = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "shared-todo",
@@ -43,10 +43,10 @@ const V2 = V1.replace('version: "1.0.0"', 'version: "2.0.0"')
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "shared-todo", name: "Shared Todo", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -107,7 +107,7 @@ test("a newer version locks an open copy, and data changes shape only when asked
       async () =>
         a
           .evaluate(() => {
-            const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; source: string }[];
+            const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
             return apps.find((x) => x.id === "shared-todo")?.source ?? "";
           })
           .catch(() => ""),
@@ -142,7 +142,7 @@ test("a newer version locks an open copy, and data changes shape only when asked
   await banner(a).getByRole("button", { name: "Update data" }).click();
   await expect(banner(a)).toHaveCount(0, { timeout: 30_000 });
   await expect(addButton(a)).not.toHaveAttribute("aria-disabled", "true");
-  const migrated = await a.evaluate(() => localStorage.getItem("karta:user-apps"));
+  const migrated = await a.evaluate(() => localStorage.getItem("potyro:user-apps"));
   expect(migrated).toContain("schemaVersion: 2");
 
   await banner(b).getByRole("button", { name: "Update" }).click();
@@ -150,7 +150,7 @@ test("a newer version locks an open copy, and data changes shape only when asked
   await expect(b.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });
   await expect(banner(b)).toHaveCount(0);
   await expect(addButton(b)).not.toHaveAttribute("aria-disabled", "true");
-  const bSource = await b.evaluate(() => localStorage.getItem("karta:user-apps"));
+  const bSource = await b.evaluate(() => localStorage.getItem("potyro:user-apps"));
   expect(bSource).toContain("schemaVersion: 2");
 
   await ctxA.close();

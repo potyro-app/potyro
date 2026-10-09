@@ -1,4 +1,4 @@
-// Isolate-only stub for `karta`. When bundling an app for the untrusted isolate, `defineApp`
+// Isolate-only stub for `potyro`. When bundling an app for the untrusted isolate, `defineApp`
 // only needs to yield the app object (validation already happened at author time, and pulling
 // Zod into QuickJS is unnecessary weight). `f` mirrors the real field builders.
 

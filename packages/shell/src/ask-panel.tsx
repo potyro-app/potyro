@@ -8,9 +8,9 @@
 // request, never what is in it. And it holds the one switch that makes Ask go away for this app.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@karta/generator/agent";
-import { mapArea, subscribeMapArea } from "@karta/views";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@potyro/generator/agent";
+import { mapArea, subscribeMapArea } from "@potyro/views";
 import { ApplyError, applyEdits, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedEdit, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
@@ -19,7 +19,7 @@ import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
-import { currentVault } from "@karta/identity";
+import { currentVault } from "@potyro/identity";
 import { allowOrigin, approveAppSource, keyStore, sourceHttp, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
 import { SourcesSection, type SourcesState } from "./ask-sources-panel.js";
 
@@ -47,15 +47,15 @@ type Phase =
 
 export interface AskPanelProps {
   appId: string;
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   engine: EngineConfig;
-  /** Something brought from elsewhere — text shared into Karta — to start with (#213). */
+  /** Something brought from elsewhere — text shared into Potyro — to start with (#213). */
   initialMaterial?: Material;
   onClose: () => void;
 }
 
 /** Web search is a person's choice, per device: it costs a few cents a request on their own key. */
-const WEB_KEY = "karta:ask-web";
+const WEB_KEY = "potyro:ask-web";
 function webPreference(): boolean {
   try {
     return globalThis.localStorage?.getItem(WEB_KEY) !== "0";

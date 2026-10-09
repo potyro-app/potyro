@@ -4,7 +4,7 @@
 // (KA-19). Two copies of these rules would drift, and drift here is visible — the same person
 // reading as "You" on one line and `co_z9f…` on the next, or changing colour between screens.
 
-import type { Person } from "karta";
+import type { Person } from "potyro";
 
 /**
  * An account id as a person to read: "You", their name, or a short id.

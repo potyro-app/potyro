@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { REFERENCE_FILES, buildReference } from "../src/reference.js";
 import { SCHEMA_REFERENCE } from "../src/reference.generated.js";
 import { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT } from "../src/prompt.js";
-import { FIELD_TYPES, VIEW_FIELDS } from "karta";
+import { FIELD_TYPES, VIEW_FIELDS } from "potyro";
 
 // The model's reference is the schema's own type declarations, generated from
 // `packages/schema/src/types`. The hand-written catalogue it replaces drifted from the schema (issue
@@ -35,7 +35,7 @@ describe("buildReference", () => {
 });
 
 describe("SCHEMA_REFERENCE", () => {
-  it("is up to date with packages/schema/src/types (run `pnpm --filter @karta/generator gen:reference`)", () => {
+  it("is up to date with packages/schema/src/types (run `pnpm --filter @potyro/generator gen:reference`)", () => {
     expect(SCHEMA_REFERENCE).toBe(buildReference(readSources()));
   });
 

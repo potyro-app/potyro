@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { askSystemPrompt, checkProposal, checkProposedRows, describeStructure, runAskLoop, type AskLoopDeps } from "../src/agent/ask.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 

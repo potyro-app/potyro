@@ -31,7 +31,7 @@ const APP = {
   id: "split",
   name: "Split",
   icon: "🧾",
-  source: 'import { defineApp } from "karta";\nexport default defineApp({ id: "split" });\n',
+  source: 'import { defineApp } from "potyro";\nexport default defineApp({ id: "split" });\n',
   group: "co_zGROUP",
   root: "co_zROOT",
   sizeBytes: 4_200,

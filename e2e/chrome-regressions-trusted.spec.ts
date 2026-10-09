@@ -8,7 +8,7 @@ import { test, expect, type Page } from "@playwright/test";
 //  • the whole page scrolling sideways on a phone, because that row never wrapped
 //  • detail buttons labelled with raw action keys — `snapPhoto`, not "Snap Photo"
 
-const APP_SOURCE = `import { defineApp } from "karta";
+const APP_SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "chrome",
@@ -35,13 +35,13 @@ export default defineApp({
 
 async function open(page: Page, width = 1280): Promise<void> {
   await page.addInitScript((src) => {
-    if (localStorage.getItem("karta:user-apps")) return;
+    if (localStorage.getItem("potyro:user-apps")) return;
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "chrome", name: "Chrome", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
     );
     localStorage.setItem(
-      "karta:user:chrome",
+      "potyro:user:chrome",
       JSON.stringify({ records: { place: { p1: { id: "p1", createdAt: "", updatedAt: "", name: "Somewhere", note: "hi" } } }, blobs: {}, kv: {}, schemaVersion: 1 }),
     );
   }, APP_SOURCE);
@@ -101,11 +101,11 @@ test("an action that fails tells the user instead of failing silently", async ({
   );
   await page.addInitScript((src) => {
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "chrome", name: "Chrome", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
     );
     localStorage.setItem(
-      "karta:user:chrome",
+      "potyro:user:chrome",
       JSON.stringify({ records: { place: { p1: { id: "p1", createdAt: "", updatedAt: "", name: "Somewhere", note: "hi" } } }, blobs: {}, kv: {}, schemaVersion: 1 }),
     );
   }, source);
@@ -145,11 +145,11 @@ test("ctx.navigate from an app action actually changes page", async ({ page }) =
   );
   await page.addInitScript((src) => {
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "chrome", name: "Chrome", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
     );
     localStorage.setItem(
-      "karta:user:chrome",
+      "potyro:user:chrome",
       JSON.stringify({ records: { place: { p1: { id: "p1", createdAt: "", updatedAt: "", name: "Somewhere", note: "hi" } } }, blobs: {}, kv: {}, schemaVersion: 1 }),
     );
   }, source);
