@@ -1,8 +1,6 @@
-# Karta
+# Potyro
 
-> Working codename — rename freely (find/replace `karta` / `Karta`).
-
-**Karta is an offline-first runtime that loads a TypeScript app module and runs it as a
+**Potyro is an offline-first runtime that loads a TypeScript app module and runs it as a
 working, native-capable personal app.**
 
 You write (or have an LLM write) a `*.app.ts` module: it declares your data **shape**
@@ -16,8 +14,8 @@ geolocation. No per-app build. No cloud. No visual builder. No little DSL to hit
 
 Logic is JavaScript/TypeScript — not a restricted expression language. Every "safe little
 DSL" eventually reinvents variables, conditionals, loops and a bad module system; you end up
-rebuilding JS badly and still hitting walls. Karta refuses that. **The language is
-unrestricted. What Karta controls is the *capability surface* handed to your code (`ctx`) and
+rebuilding JS badly and still hitting walls. Potyro refuses that. **The language is
+unrestricted. What Potyro controls is the *capability surface* handed to your code (`ctx`) and
 the *execution boundary* it runs in — two things that are independent of the language.**
 
 - **Structure stays declarative** (entities/fields/view layout are data — this gives you

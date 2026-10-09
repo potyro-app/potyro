@@ -1,4 +1,4 @@
-// @karta/store — persistence seam.
+// @potyro/store — persistence seam.
 export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
 export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
 export { ROOM_THREAD, recordThread } from "./types.js";

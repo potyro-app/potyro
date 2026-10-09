@@ -35,7 +35,7 @@ export function useFold(key: string, initiallyOpen: boolean): [boolean, () => vo
   return [open, toggle];
 }
 
-export const foldKey = (appId: string, pageId: string, part: string): string => `karta:fold:${appId}:${pageId}:${part}`;
+export const foldKey = (appId: string, pageId: string, part: string): string => `potyro:fold:${appId}:${pageId}:${part}`;
 
 export interface FoldProps {
   /** Where the open/folded state is remembered. */

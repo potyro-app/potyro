@@ -24,7 +24,7 @@ import { useSyncExternalStore } from "react";
 import { DEFAULT_ENGINE_CONFIG, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
 
-const KEY = "karta:engine-config";
+const KEY = "potyro:engine-config";
 
 /** sessionStorage throws in some embedded/private contexts — a missing store must degrade to
  *  in-memory-only, never take the shell down on boot. */

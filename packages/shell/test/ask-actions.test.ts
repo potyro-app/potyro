@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import type { AppDefinition, KartaRecord } from "karta";
+import type { AppDefinition, PotyroRecord } from "potyro";
 import { applyProposal, findByName, prepareReview, runActions, ApplyError } from "../src/ask-apply.js";
 
 // Ask's actions and name matches (#213), the shell's half. The model named records the way the
@@ -125,10 +125,10 @@ describe("applying rows and actions", () => {
     return {
       created,
       ran,
-      create: async (entity: string, data: Partial<KartaRecord>) => {
+      create: async (entity: string, data: Partial<PotyroRecord>) => {
         const id = `new${++n}`;
         created.push({ entity, data: data as Record<string, unknown>, id });
-        return { ...data, id } as KartaRecord;
+        return { ...data, id } as PotyroRecord;
       },
       patch: async () => undefined,
       runAction: async (entity: string, action: string, id: string, input?: unknown) => {

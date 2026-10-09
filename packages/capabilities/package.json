@@ -1,5 +1,5 @@
 {
-  "name": "@karta/capabilities",
+  "name": "@potyro/capabilities",
   "version": "0.0.0",
   "type": "module",
   "description": "Capabilities interface + FakeCapabilities (WP4). Web/Capacitor impls land later.",
@@ -13,7 +13,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "karta": "workspace:*"
+    "potyro": "workspace:*"
   },
   "devDependencies": {
     "happy-dom": "^20.11.1"

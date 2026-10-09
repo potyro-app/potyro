@@ -6,7 +6,7 @@
 
 import { openStore } from "./open-store.js";
 import { seedIfEmpty } from "./seed.js";
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 import type { UserApp } from "./user-apps.js";
 
 /**

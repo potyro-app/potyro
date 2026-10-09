@@ -34,7 +34,7 @@ export interface AccountApp {
 }
 
 /** The key on the account CoMap pointing at the registry. */
-const REGISTRY = "kartaApps";
+const REGISTRY = "potyroApps";
 
 interface CoMapish {
   id: string;
@@ -92,7 +92,7 @@ function parse(id: string, raw: unknown): AccountApp | null {
 async function registry(node: Nodeish, create: boolean, waitMs = 0): Promise<CoMapish | null> {
   const deadline = Date.now() + waitMs;
   for (;;) {
-    const account = await node.expectCurrentAccount("karta apps");
+    const account = await node.expectCurrentAccount("potyro apps");
     const existing = account.get(REGISTRY);
     if (typeof existing === "string") {
       const loaded = await node.load(existing);
@@ -104,7 +104,7 @@ async function registry(node: Nodeish, create: boolean, waitMs = 0): Promise<CoM
     await new Promise((r) => setTimeout(r, 250));
   }
 
-  const account = await node.expectCurrentAccount("karta apps");
+  const account = await node.expectCurrentAccount("potyro apps");
   if (typeof account.get(REGISTRY) === "string" || !create) return null;
   const map = node.createGroup().createMap();
   account.set(REGISTRY, map.id, "private");

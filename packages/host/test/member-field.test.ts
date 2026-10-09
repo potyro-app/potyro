@@ -7,10 +7,10 @@
 // any app forge a member.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { defineApp } from "karta";
-import type { NavBridge, UiBridge } from "@karta/host";
-import { FakeCapabilities } from "@karta/capabilities";
+import { MemoryStore } from "@potyro/store";
+import { defineApp } from "potyro";
+import type { NavBridge, UiBridge } from "@potyro/host";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase } from "../src/index.js";
 
 const app = () =>

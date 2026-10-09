@@ -66,7 +66,7 @@ plant reminder to actually water plants, cooks from the steps view, and logs pla
 - **Object/relation + views model** — study Anytype's object model and Notion's
   database/view split; adopt the good decomposition, reject the heavy authoring UI.
 - **Config/JSON-defined UI** — amis and Budibase prove interpretation works, but their logic
-  story is a DSL that hits walls; Karta keeps *structure* declarative and makes *logic* full
+  story is a DSL that hits walls; Potyro keeps *structure* declarative and makes *logic* full
   code instead.
 - **Local-first data** — follow the Ink & Switch "local-first" principles; use a mature
   local DB rather than hand-rolling. Sync engines (Jazz/Triplit/Automerge/Loro) are the

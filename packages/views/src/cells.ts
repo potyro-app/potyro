@@ -2,8 +2,8 @@
 // outside of render. Keeps the view components synchronous.
 
 import { useEffect, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { MediaRef, Resolved } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { MediaRef, Resolved } from "potyro";
 import type { DisplayCell } from "./types.js";
 import { formatDateValue, getView, toBadges } from "./format.js";
 import { releaseMediaUrl } from "./media-input.js";
@@ -14,7 +14,7 @@ function str(v: unknown): string {
   return v instanceof Date ? formatDateValue(v) : String(v);
 }
 
-export function useDisplayCells(runtime: KartaRuntime, pageId: string, rows: Resolved[]): DisplayCell[] {
+export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): DisplayCell[] {
   const [cells, setCells] = useState<DisplayCell[]>([]);
 
   useEffect(() => {

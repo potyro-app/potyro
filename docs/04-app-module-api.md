@@ -1,7 +1,7 @@
 # 04 · App Module API — `defineApp` and the `ctx` surface
 
 This is the real API of the system. "Full control" is delivered here: app functions receive
-`ctx`, and `ctx` exposes everything the host can do. Enriching Karta means enriching `ctx` —
+`ctx`, and `ctx` exposes everything the host can do. Enriching Potyro means enriching `ctx` —
 never adding language features to a DSL (there is no DSL).
 
 ## `defineApp(def): App`

@@ -4,7 +4,7 @@ import { test, expect, type Page } from "@playwright/test";
 // load — a white flash, the bundle, storage and identity all started again — and Back left the site.
 
 const h1 = (page: Page) => page.locator("h1").first();
-const live = (page: Page) => page.evaluate(() => (globalThis as unknown as { __kartaLiveApps?: number }).__kartaLiveApps ?? 0);
+const live = (page: Page) => page.evaluate(() => (globalThis as unknown as { __potyroLiveApps?: number }).__potyroLiveApps ?? 0);
 
 async function switchTo(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name: "Switch app" }).click();

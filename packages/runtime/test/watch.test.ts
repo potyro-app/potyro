@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { watchEntityQuery } from "../src/watch.js";
 import type { RuntimeCore } from "../src/core.js";
-import type { Resolved } from "karta";
+import type { Resolved } from "potyro";
 
 /** A core whose reads resolve in an order we choose, not the order they were asked for. */
 function coreWithDelays(delays: number[]): { core: RuntimeCore; fire: () => void; answers: Resolved[][] } {

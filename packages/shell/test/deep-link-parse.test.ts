@@ -14,12 +14,12 @@ const fragment = `#join=${btoa(encodeURIComponent(JSON.stringify(payload)))}`;
 
 describe("reading an invite", () => {
   it("reads one from an explicit URL — the device path", () => {
-    expect(pendingInvite(`https://karta.app/${fragment}`)).toEqual(payload);
+    expect(pendingInvite(`https://potyro.app/${fragment}`)).toEqual(payload);
   });
 
   it("reads one from a custom scheme URL", () => {
     // The fallback route when there is no verified domain yet.
-    expect(pendingInvite(`karta://open/${fragment}`)).toEqual(payload);
+    expect(pendingInvite(`potyro://open/${fragment}`)).toEqual(payload);
   });
 
   it("reads one from the address bar when no URL is given — the web path", () => {
@@ -29,11 +29,11 @@ describe("reading an invite", () => {
   });
 
   it("returns null for a URL with no invite", () => {
-    expect(pendingInvite("https://karta.app/?user=todo")).toBeNull();
+    expect(pendingInvite("https://potyro.app/?user=todo")).toBeNull();
   });
 
   it("returns null rather than throwing on a corrupt payload", () => {
     // A malformed link must not take the app down before it has rendered anything.
-    expect(pendingInvite("https://karta.app/#join=not-base64!!")).toBeNull();
+    expect(pendingInvite("https://potyro.app/#join=not-base64!!")).toBeNull();
   });
 });

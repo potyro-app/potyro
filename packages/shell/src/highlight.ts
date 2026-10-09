@@ -57,7 +57,7 @@ async function load(): Promise<PrismApi | null> {
       return core.default ?? core;
     } catch (e) {
       // Highlighting is decoration. Losing it must not cost the user their editor.
-      console.warn("[karta] syntax highlighting unavailable:", e);
+      console.warn("[potyro] syntax highlighting unavailable:", e);
       prism = null; // a transient chunk failure shouldn't disable highlighting for the session
       return null;
     }
@@ -112,7 +112,7 @@ export async function highlightLines(code: string): Promise<CodeRun[][]> {
     // against its textarea. Cheaper to check than to debug.
     return lines.length === code.split("\n").length ? lines : plain();
   } catch (e) {
-    console.warn("[karta] could not highlight source:", e);
+    console.warn("[potyro] could not highlight source:", e);
     return plain();
   }
 }

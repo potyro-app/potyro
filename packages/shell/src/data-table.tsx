@@ -5,8 +5,8 @@
 // no longer declares are data too: they get columns of their own, shown raw and never edited.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FieldValue, RecordForm, displayFieldFor, fieldLabel, formatDateRelative } from "@karta/views";
-import type { Resolved } from "karta";
+import { FieldValue, RecordForm, displayFieldFor, fieldLabel, formatDateRelative } from "@potyro/views";
+import type { Resolved } from "potyro";
 import type { DataSession } from "./data-runtime.js";
 import { shellDialogs } from "./dialog.js";
 

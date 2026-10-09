@@ -3,8 +3,8 @@
 //   - untrusted bundle → IsolateHost (QuickJS-WASM) — wired once the isolate lands
 // `promote` flips an app to trusted so a subsequent load runs it direct.
 
-import type { Ctx, KartaApp } from "karta";
-import { isKartaApp } from "karta";
+import type { Ctx, PotyroApp } from "potyro";
+import { isPotyroApp } from "potyro";
 import { DirectLoadedApp } from "./direct-host.js";
 import { buildCtx } from "./make-ctx.js";
 import type { AppSource, Host, LoadedApp, MakeCtxBase, Provenance } from "./types.js";
@@ -30,8 +30,8 @@ export function createHost(options: CreateHostOptions = {}): Host {
   return {
     async load(source: AppSource): Promise<LoadedApp> {
       if (source.kind === "module") {
-        if (!isKartaApp(source.app as KartaApp)) {
-          throw new Error("load: module source is not a KartaApp (did you defineApp() it?)");
+        if (!isPotyroApp(source.app as PotyroApp)) {
+          throw new Error("load: module source is not a PotyroApp (did you defineApp() it?)");
         }
         const provenance = provenanceFor(source, source.provenance, "trusted");
         if (provenance === "untrusted") {

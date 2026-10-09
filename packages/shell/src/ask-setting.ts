@@ -2,11 +2,11 @@
 //
 // On until the person turns it off. Their choice, not the app's builder's, and per device — a
 // device-level preference like the "seen" watermarks, so `localStorage` under the
-// `karta:<feature>:<appId>` convention, never `ctx.storage` (which syncs across a space).
+// `potyro:<feature>:<appId>` convention, never `ctx.storage` (which syncs across a space).
 
 import { useSyncExternalStore } from "react";
 
-const key = (appId: string): string => `karta:ask-off:${appId}`;
+const key = (appId: string): string => `potyro:ask-off:${appId}`;
 const listeners = new Set<() => void>();
 
 export function askEnabled(appId: string): boolean {

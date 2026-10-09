@@ -1,5 +1,5 @@
 {
-  "name": "@karta/runtime",
+  "name": "@potyro/runtime",
   "version": "0.0.0",
   "type": "module",
   "description": "Runtime core (WP5): computed runner, JS-predicate query, action runner, reminder reconciler, ctx wiring + React hooks.",
@@ -13,10 +13,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@karta/capabilities": "workspace:*",
-    "@karta/host": "workspace:*",
-    "@karta/store": "workspace:*",
-    "karta": "workspace:*"
+    "@potyro/capabilities": "workspace:*",
+    "@potyro/host": "workspace:*",
+    "@potyro/store": "workspace:*",
+    "potyro": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.3.1"

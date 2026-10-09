@@ -3,7 +3,7 @@
 // sources dispute is left out unless the person keeps it, as for a new record. When the name matched
 // more than one record, or none exactly, the person ticks the ones they meant.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { editAsReviewRow, type ReviewEdit } from "./ask-apply.js";
 import { Decision, fieldLabel, showValue, Sources, TrustBadge, ValueCell, type LinkNames } from "./ask-review-parts.js";
 
@@ -108,7 +108,7 @@ export function EditCard({
         </ul>
       ) : null}
       {/* Their own request is already named by the badge; quoting it on every card says nothing new. */}
-      {edit.trust?.sources.some((s) => !s.url.startsWith("karta:request")) ? <Sources row={row} /> : null}
+      {edit.trust?.sources.some((s) => !s.url.startsWith("potyro:request")) ? <Sources row={row} /> : null}
     </li>
   );
 }

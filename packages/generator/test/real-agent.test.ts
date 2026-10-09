@@ -7,13 +7,13 @@ import { expect, test } from "vitest";
 // of inventing an app-level change. That can only be answered by asking one.
 //
 // Opt-in — it spends a real `claude -p` call and needs `pnpm dev` running:
-//   KARTA_REAL_AGENT=1 pnpm --filter @karta/generator exec vitest run test/real-agent.test.ts
+//   POTYRO_REAL_AGENT=1 pnpm --filter @potyro/generator exec vitest run test/real-agent.test.ts
 //
 // Last run: answered `NOT-IN-APP`, correctly attributing pin animation to packages/views and
 // naming the map's declarable surface back.
 import { SYSTEM_PROMPT, buildModifyMessage, parseModifyReply, NOT_IN_APP } from "../src/prompt.js";
 
-const APP = `import { defineApp } from "karta";
+const APP = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "spots", name: "Spots", version: "1.0.0", schemaVersion: 1,
@@ -28,7 +28,7 @@ export default defineApp({
 // markers animate in. The contract's whole point is that this comes back as a diagnosis.
 const INSTRUCTION = 'Regarding the "Map" page: make the pins fade in one by one as the map loads';
 
-test.skipIf(!process.env.KARTA_REAL_AGENT)("the real model answers NOT-IN-APP for a host-owned request", async () => {
+test.skipIf(!process.env.POTYRO_REAL_AGENT)("the real model answers NOT-IN-APP for a host-owned request", async () => {
   const prompt = [
     "The current app:", "```ts", APP, "```", "",
     buildModifyMessage(INSTRUCTION, {

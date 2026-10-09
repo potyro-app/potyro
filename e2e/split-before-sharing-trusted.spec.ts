@@ -18,7 +18,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // The visible symptom was two of four expenses sitting in the guest's list with a share of €0.00.
 
 async function device(context: BrowserContext): Promise<Page> {
-  await context.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  await context.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
   return context.newPage();
 }
 

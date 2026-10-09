@@ -1,9 +1,9 @@
 // recipes.app.ts
 // Stresses: relations (recipe->ingredient), nested list rows, computed macros as real
 // functions, a JS "ingredients I have" filter, and a CUSTOM cook-along view (full React).
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { useState } from "react";
-import type { Resolved, ViewProps } from "karta";
+import type { Resolved, ViewProps } from "potyro";
 
 // ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
 // it, and it runs anywhere the shell does. ----

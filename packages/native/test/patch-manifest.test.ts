@@ -11,7 +11,7 @@ import { PERMS, withPermissions } from "../scripts/patch-manifest.mjs";
 
 const MANIFEST = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label="Karta" />
+    <application android:label="Potyro" />
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
 `;
@@ -50,7 +50,7 @@ import { withShareTarget } from "../scripts/patch-manifest.mjs";
 
 describe("the share target (#213)", () => {
   const WITH_ACTIVITY = `<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label="Karta">
+    <application android:label="Potyro">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { addStep, newCase, type Case } from "@karta/runtime";
+import { addStep, newCase, type Case } from "@potyro/runtime";
 import { startFix } from "../src/start-fix.js";
 import { DEFAULT_ENGINE_CONFIG } from "../src/engines.js";
-import type { InvestigationDeps } from "@karta/generator/agent";
-import type { OpenRouterOptions } from "@karta/generator/backends";
+import type { InvestigationDeps } from "@potyro/generator/agent";
+import type { OpenRouterOptions } from "@potyro/generator/backends";
 
 const aCase = () => addStep(newCase("city-maps", "clicking a city"), { kind: "open", page: "nowhere" });
 
@@ -25,8 +25,8 @@ const mocks = vi.hoisted(() => ({
   runAgentLoop: vi.fn(),
 }));
 
-vi.mock("@karta/generator/backends", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@karta/generator/backends")>();
+vi.mock("@potyro/generator/backends", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@potyro/generator/backends")>();
   return {
     ...actual,
     // Faked: returns a `ChatEngine` whose `create` is the shared `mocks.chatCreate`, so each test
@@ -38,8 +38,8 @@ vi.mock("@karta/generator/backends", async (importOriginal) => {
   };
 });
 
-vi.mock("@karta/generator/agent", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@karta/generator/agent")>();
+vi.mock("@potyro/generator/agent", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@potyro/generator/agent")>();
   // Real implementation underneath — these spies only observe the arguments they were called with;
   // they do not change behavior. That is what lets the "baseline passes -> no-repro, engine never
   // called" test below prove something real: it is `runAgentLoop`'s ACTUAL baseline-first check
@@ -196,7 +196,7 @@ describe("startFix — wiring (FINDING 3)", () => {
     // the REAL request body the engine was called with, and with a marker no other fixture carries,
     // so a `toContain` cannot be satisfied by coincidence (`source: "x"` elsewhere would be).
     const APP = [
-      'import { defineApp } from "karta";',
+      'import { defineApp } from "potyro";',
       "// marker-4f21c8: only this test's source contains this line",
       'export default defineApp({ id: "city-maps", name: "City maps", version: "1.0.0", schemaVersion: 1 });',
     ].join("\n");

@@ -15,11 +15,11 @@
 // in order, and a device that is current runs none. Matching on `from` rather than comparing
 // versions avoids a semver parser and, more importantly, cannot skip a step.
 
-import type { AppDefinition, Migration } from "karta";
-import type { Store } from "@karta/store";
-// Re-exported: the walk itself lives beside `MigrationPlan` in @karta/store, so the eval harness
+import type { AppDefinition, Migration } from "potyro";
+import type { Store } from "@potyro/store";
+// Re-exported: the walk itself lives beside `MigrationPlan` in @potyro/store, so the eval harness
 // and the shell cannot disagree about which migrations run.
-import { migrationChain } from "@karta/store";
+import { migrationChain } from "@potyro/store";
 export { migrationChain };
 
 const APP_VERSION_KEY = "__appVersion";

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { validateDefinition } from "../src/validate-app.js";
 
 // Studio validates the LOADED definition, and `defineApp` copies a layout page's first item into

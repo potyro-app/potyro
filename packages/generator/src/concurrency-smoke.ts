@@ -25,11 +25,11 @@
 // question that matters — *did concurrency change the outcome?* — and asks it of the app's own
 // semantics rather than an assumption about them.
 
-import type { AppDefinition } from "karta";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
-import { createPeerPair, type PeerPair, type Store } from "@karta/store";
+import type { AppDefinition } from "potyro";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
+import { createPeerPair, type PeerPair, type Store } from "@potyro/store";
 import { seededInput } from "./smoke.js";
 
 const UI: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
@@ -57,7 +57,7 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-async function runtimeFor(app: AppDefinition & { id: string }, store: Store): Promise<KartaRuntime> {
+async function runtimeFor(app: AppDefinition & { id: string }, store: Store): Promise<PotyroRuntime> {
   const host = createHost();
   const loaded = await host.load({ kind: "module", app: app as never });
   return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui: UI, nav: NAV });
@@ -135,7 +135,7 @@ function fusedPairs(
  */
 export async function concurrencySmoke(
   app: AppDefinition & { id: string },
-  seed: (runtime: KartaRuntime) => Promise<Record<string, string[]>>,
+  seed: (runtime: PotyroRuntime) => Promise<Record<string, string[]>>,
 ): Promise<ConcurrencyResult> {
   let pair: PeerPair | null = null;
   try {
@@ -161,9 +161,9 @@ export async function concurrencySmoke(
 export interface ConcurrencyDeps {
   app: AppDefinition & { id: string };
   pair: PeerPair;
-  runA: KartaRuntime;
-  runB: KartaRuntime;
-  seed: (runtime: KartaRuntime) => Promise<Record<string, string[]>>;
+  runA: PotyroRuntime;
+  runB: PotyroRuntime;
+  seed: (runtime: PotyroRuntime) => Promise<Record<string, string[]>>;
 }
 
 /**
@@ -189,7 +189,7 @@ export async function concurrencyChecks({ app, pair, runA, runB, seed }: Concurr
 
       // `core`, not `runtime.runAction`: the latter turns a failure into a toast, so an action that
       // threw looked like a clean run here. A declared action gets seeded input, not a form.
-      const run = (rt: KartaRuntime, action: string, id: string) => rt.core.runAction(entity, action, id, seededInput(def, action, created));
+      const run = (rt: PotyroRuntime, action: string, id: string) => rt.core.runAction(entity, action, id, seededInput(def, action, created));
 
       for (const action of Object.keys(def.actions ?? {})) {
         const id = ids[0]!;

@@ -5,7 +5,7 @@
 //   - `runtime` must not import concrete Store/Capabilities/Host impls (only interfaces
 //     from their packages' type entrypoints are allowed; concrete impl files are not).
 //   - App modules (examples/*.app.ts) must reach host power only via `ctx` — they may
-//     import `karta` (defineApp + types) but never a host/store/capabilities package.
+//     import `potyro` (defineApp + types) but never a host/store/capabilities package.
 //
 // This is intentionally a lightweight regex scan (no dep-cruiser dependency yet). It is
 // good enough to fail closed on the obvious violations; tighten later.
@@ -19,13 +19,13 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const rules = [
   {
     pkg: "packages/views/src",
-    forbidden: [/@karta\/store/, /@karta\/host/, /@karta\/capabilities/],
+    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/],
     note: "views may only depend on the runtime API + schema types",
   },
   {
     pkg: "examples",
-    forbidden: [/@karta\/store/, /@karta\/host/, /@karta\/capabilities/, /@karta\/runtime/, /@karta\/views/, /@karta\/shell/],
-    note: "app modules reach host power only via ctx; import `karta` only",
+    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
+    note: "app modules reach host power only via ctx; import `potyro` only",
   },
 ];
 

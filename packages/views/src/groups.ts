@@ -3,7 +3,7 @@
 // the sections they read back. Before this, only the detail view had sections and only the form
 // followed field order, and the two never matched.
 
-import type { EntityDef, Field } from "karta";
+import type { EntityDef, Field } from "potyro";
 
 export interface ResolvedGroup {
   title?: string;

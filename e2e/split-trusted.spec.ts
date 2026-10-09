@@ -10,7 +10,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // €100 dinner comes out as €100.01 between three people) is invisible until there are.
 
 async function device(context: BrowserContext): Promise<Page> {
-  await context.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://localhost:4201"));
+  await context.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
   return context.newPage();
 }
 
@@ -128,9 +128,9 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   await expect(bo.locator("article.k-detail")).toContainText("Ana €66.67");
   await expect(bo.locator("article.k-detail")).toContainText("You €33.33");
 
-  if (process.env.KARTA_SHOTS) {
-    await ana.screenshot({ path: `${process.env.KARTA_SHOTS}/split-balances.png` });
-    await bo.screenshot({ path: `${process.env.KARTA_SHOTS}/split-expense.png` });
+  if (process.env.POTYRO_SHOTS) {
+    await ana.screenshot({ path: `${process.env.POTYRO_SHOTS}/split-balances.png` });
+    await bo.screenshot({ path: `${process.env.POTYRO_SHOTS}/split-expense.png` });
   }
 
   await ctxA.close();

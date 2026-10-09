@@ -5,7 +5,7 @@
 // provider you are not using is noise you have to read past every time.
 
 import { useEffect, useRef } from "react";
-import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@karta/generator/backends";
+import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
 import { ENGINES, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
 

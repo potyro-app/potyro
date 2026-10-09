@@ -2,7 +2,7 @@
 // input (#213) must actually run there, with seeded input, rather than stop at a form nobody answers.
 
 import { describe, expect, it } from "vitest";
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { smokeApp } from "../src/smoke.js";
 
 const app = (run: (r: never, ctx: never, input: never) => unknown) =>

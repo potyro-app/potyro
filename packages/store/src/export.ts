@@ -1,4 +1,4 @@
-// Data-export bundle (KA-04). Packs an app's logic + data into a portable `.karta.zip`:
+// Data-export bundle (KA-04). Packs an app's logic + data into a portable `.potyro.zip`:
 //   data.sqlite   — a real SQLite file (opens in any SQLite browser / Datasette / CLI)
 //   manifest.json — schemaVersion, provenance, granted caps, mode
 //   app.ts        — the app's logic source, when available
@@ -8,12 +8,12 @@
 // on-ethos anti-lock-in guarantee: your data is a plain file you fully own.
 
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import type { KartaRecord } from "karta";
+import type { PotyroRecord } from "potyro";
 
 export type ExportMode = "snapshot" | "mergeable";
 
 export interface ExportManifest {
-  format: "karta-bundle/1";
+  format: "potyro-bundle/1";
   appId: string;
   appVersion: string;
   schemaVersion: number;
@@ -30,7 +30,7 @@ export interface BundleInputs {
   manifest: ExportManifest;
   appSource?: string;
   /** All entity rows keyed by entity, for the universal JSON + CSV exports. */
-  rowsByEntity?: Record<string, KartaRecord[]>;
+  rowsByEntity?: Record<string, PotyroRecord[]>;
 }
 
 export interface UnpackedBundle {
@@ -50,14 +50,14 @@ function csvCell(value: unknown): string {
 }
 
 /** Render records as CSV. Columns are the sorted union of all keys across the rows. */
-export function rowsToCsv(rows: KartaRecord[]): string {
+export function rowsToCsv(rows: PotyroRecord[]): string {
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))].sort();
   const header = columns.map(csvCell).join(",");
   const lines = rows.map((r) => columns.map((c) => csvCell(r[c])).join(","));
   return [header, ...lines].join("\n");
 }
 
-/** Assemble a `.karta.zip` bundle from its parts. */
+/** Assemble a `.potyro.zip` bundle from its parts. */
 export function packBundle(input: BundleInputs): Uint8Array {
   const files: Record<string, Uint8Array> = {
     [SQLITE]: input.sqlite,
@@ -81,7 +81,7 @@ export function unpackBundle(zip: Uint8Array): UnpackedBundle {
   const manifestBytes = files[MANIFEST];
   if (!manifestBytes) throw new Error("bundle: missing manifest.json");
   const manifest = JSON.parse(strFromU8(manifestBytes)) as ExportManifest;
-  if (manifest.format !== "karta-bundle/1") throw new Error(`bundle: unsupported format "${manifest.format}"`);
+  if (manifest.format !== "potyro-bundle/1") throw new Error(`bundle: unsupported format "${manifest.format}"`);
   const app = files[APP];
   return { manifest, sqlite, appSource: app ? strFromU8(app) : undefined };
 }

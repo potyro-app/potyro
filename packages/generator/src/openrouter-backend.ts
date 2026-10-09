@@ -30,7 +30,7 @@ export interface OpenRouterModel {
 
 /**
  * A short curated list for the Studio picker — cheap-and-fast first, since the whole point of
- * running a small model is finding out whether Karta's validator-gated, safe-when-wrong output
+ * running a small model is finding out whether Potyro's validator-gated, safe-when-wrong output
  * makes an inexpensive model good enough. Any OpenRouter model id works; this is just the shortlist.
  */
 export const OPENROUTER_MODELS: readonly OpenRouterModel[] = [
@@ -142,8 +142,8 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     const headers: Record<string, string> = {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/karta",
-      "X-Title": opts.appTitle ?? "Karta",
+      "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/potyro",
+      "X-Title": opts.appTitle ?? "Potyro",
     };
     const post = (reasoning: ReasoningOptions | undefined) => doFetch(`${baseUrl}/chat/completions`, {
       method: "POST",

@@ -11,7 +11,7 @@ parts). It does not restrict logic; functions are just typed by TS.
 ## Top-level shape
 
 ```ts
-import { defineApp, f } from "karta";          // f = field builders (optional sugar)
+import { defineApp, f } from "potyro";          // f = field builders (optional sugar)
 import { scoreDifficulty } from "./lib/difficulty";   // your own imports — allowed
 
 export default defineApp({
@@ -143,7 +143,7 @@ nobody can find afterwards. The form takes what a person writes (`42`, `42.5`, `
 the integer; the screen formats it the way the reader's own device writes money; a list shows the
 amounts down its right with their total underneath (`money: false` on the view opts out, or name
 another field). `currency` is ISO 4217 and decides the minor digits — a yen has none, so `5` is ¥5.
-Divide with `splitEvenly(total, people)` / `shareOf(total, people, i)` from `karta`: the remainder is
+Divide with `splitEvenly(total, people)` / `shareOf(total, people, i)` from `potyro`: the remainder is
 handed out a cent each, in the caller's order, so every device agrees who pays the extra cent.
 
 A `list` field's rows are cards (#104): the first sub-field is the line you read, the rest sit under

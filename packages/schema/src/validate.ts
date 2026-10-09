@@ -155,10 +155,10 @@ const fieldGroupSchema = z.object({
 });
 
 // `run` may be the isolate's placeholder for a function the host cannot see (a definition read out
-// of the sandbox carries "__karta_fn__" there); everywhere else it must be a real function.
+// of the sandbox carries "__potyro_fn__" there); everywhere else it must be a real function.
 const actionDefSchema = z
   .object({
-    run: z.union([zFn, z.literal("__karta_fn__")]),
+    run: z.union([zFn, z.literal("__potyro_fn__")]),
     label: z.string().min(1).optional(),
     description: z.string().optional(),
     input: z.record(fieldSchema).optional(),

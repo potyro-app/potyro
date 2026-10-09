@@ -1,4 +1,4 @@
-// @karta/views — view registry + built-in views.
+// @potyro/views — view registry + built-in views.
 export { ViewHost } from "./host.js";
 export { LayoutHost, type LayoutHostProps } from "./layout-host.js";
 export { defaultRegistry, resolveViewComponent } from "./registry.js";

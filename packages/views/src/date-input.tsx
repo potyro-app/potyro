@@ -6,7 +6,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import type { DateTimeField } from "karta";
+import type { DateTimeField } from "potyro";
 import { buildMonthGrid, sameDay } from "./calendar.js";
 import { usePhone } from "./media.js";
 import { addDays, formatDateForInput, parseTypedDay, precisionOf, startOfDay, toDate, toIsoTime, withTime } from "./dates.js";

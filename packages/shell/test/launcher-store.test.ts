@@ -23,13 +23,13 @@ describe("launcher store", () => {
     expect(a).toEqual({ key: "user:groceries", pinned: true, displayName: "Food" });
     expect(b).toEqual({ key: "user:groceries", pinned: true }); // undefined removes; `a` untouched
     expect(a.displayName).toBe("Food");
-    expect(JSON.parse(localStorage.getItem("karta:launcher")!)).toEqual({ "user:groceries": { key: "user:groceries", pinned: true } });
+    expect(JSON.parse(localStorage.getItem("potyro:launcher")!)).toEqual({ "user:groceries": { key: "user:groceries", pinned: true } });
   });
 
   it("tolerates garbage in storage", async () => {
     await saveUserApp({ id: "recipes", name: "Recipes", source: "export default 1" }, NOW); // so its entry is live, not pruned
     for (const junk of ["not json", "[1,2]", "null", '{"nope":{"pinned":true},"user:x":null,"user:recipes":{"openCount":3}}']) {
-      localStorage.setItem("karta:launcher", junk);
+      localStorage.setItem("potyro:launcher", junk);
       expect(() => listInstalledApps()).not.toThrow();
       expect(getEntry("user:plants")).toEqual({ key: "user:plants" });
     }
@@ -60,7 +60,7 @@ describe("launcher store", () => {
     recordOpen("user:trips", NOW);
     await removeUserApp("trips");
     expect(listInstalledApps().some((a) => a.key === "user:trips")).toBe(false);
-    expect(localStorage.getItem("karta:launcher")).not.toContain("user:trips");
+    expect(localStorage.getItem("potyro:launcher")).not.toContain("user:trips");
     removeEntry("user:recipes"); // absent: a no-op, not an error
   });
 
@@ -80,7 +80,7 @@ describe("launcher store", () => {
 // #82: the declared identity, read from the source and cached against its hash.
 describe("launcher store: identity", () => {
   const SOURCE = (name: string, extra = "") =>
-    `import { defineApp } from "karta";\nexport default defineApp({ id: "g", name: ${JSON.stringify(name)}, ${extra} version: "1.0.0", schemaVersion: 1, entities: {}, pages: [] });`;
+    `import { defineApp } from "potyro";\nexport default defineApp({ id: "g", name: ${JSON.stringify(name)}, ${extra} version: "1.0.0", schemaVersion: 1, entities: {}, pages: [] });`;
 
   it("reads a user app's declared name, icon and accent once, and again only when the source changes", async () => {
     await saveUserApp({ id: "g", name: "Groceries", source: SOURCE("Grocery run", 'icon: "🛒", theme: { accent: "#123456" },') }, NOW);

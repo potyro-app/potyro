@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { View } from "karta";
+import type { View } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { DetailView, GalleryView, ListView, TableView } from "./builtins.js";
 import { CalendarView } from "./calendar.js";

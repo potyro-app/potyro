@@ -9,7 +9,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // milk", "running late" — so the line IS the notification: it appears in a balloon beside the
 // button, with the sender's name, and two ways out — read it and dismiss, or open the conversation.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "talk", name: "Talk", version: "1.0.0", schemaVersion: 1,
   entities: { note: { label: "Note", icon: "📝", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -20,10 +20,10 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "talk", name: "Talk", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -70,9 +70,9 @@ test("a message arrives as a balloon on the Chat button, showing what was said",
   await expect(peek).toBeVisible({ timeout: 60_000 });
   await expect(peek).toContainText("are we getting milk?");
   await expect(peek).toContainText("Bo");
-  if (process.env.KARTA_SHOTS) {
+  if (process.env.POTYRO_SHOTS) {
     await ana.waitForTimeout(600);
-    await ana.screenshot({ path: `${process.env.KARTA_SHOTS}/chat-peek-wide.png` });
+    await ana.screenshot({ path: `${process.env.POTYRO_SHOTS}/chat-peek-wide.png` });
   }
 
   // Dismissing leaves the count alone: it was not read, only put aside.
@@ -85,7 +85,7 @@ test("a message arrives as a balloon on the Chat button, showing what was said",
   await bo.getByRole("button", { name: /^Send$/ }).click();
   await expect(peek).toBeVisible({ timeout: 60_000 });
   await expect(peek).toContainText("and bread");
-  if (process.env.KARTA_SHOTS) await ana.screenshot({ path: `${process.env.KARTA_SHOTS}/chat-peek-second.png` });
+  if (process.env.POTYRO_SHOTS) await ana.screenshot({ path: `${process.env.POTYRO_SHOTS}/chat-peek-second.png` });
 
   // Open goes to the conversation, where the whole thing is, and the balloon has done its job.
   await peek.getByRole("button", { name: "Open" }).click();
@@ -106,9 +106,9 @@ test("a message arrives as a balloon on the Chat button, showing what was said",
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
   expect(box.y).toBeGreaterThan(button.y + button.height - 1);
-  if (process.env.KARTA_SHOTS) {
+  if (process.env.POTYRO_SHOTS) {
     await bo.waitForTimeout(600);
-    await bo.screenshot({ path: `${process.env.KARTA_SHOTS}/chat-peek-phone.png` });
+    await bo.screenshot({ path: `${process.env.POTYRO_SHOTS}/chat-peek-phone.png` });
   }
 
   // ---- Readable in the dark: measured, not eyeballed ----
@@ -162,7 +162,7 @@ test("a message arrives as a balloon on the Chat button, showing what was said",
   expect(contrast.text).toBeGreaterThanOrEqual(4.5);
   expect(contrast.who).toBeGreaterThanOrEqual(4.5);
   expect(contrast.avatar).toBeGreaterThanOrEqual(4.5);
-  if (process.env.KARTA_SHOTS) await bo.screenshot({ path: `${process.env.KARTA_SHOTS}/chat-dark.png` });
+  if (process.env.POTYRO_SHOTS) await bo.screenshot({ path: `${process.env.POTYRO_SHOTS}/chat-dark.png` });
 
   await ctxA.close();
   await ctxB.close();

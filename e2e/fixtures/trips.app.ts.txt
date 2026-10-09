@@ -1,4 +1,4 @@
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 // The shape of the request that opened #134: one trip is what everything else belongs to. Seeded as
 // a USER app by e2e/scope-trusted.spec.ts (kept as .txt so the examples tsconfig does not compile it).

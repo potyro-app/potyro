@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import type { RelationField } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import type { RelationField } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput } from "../src/index.js";
 
 // A field pointing at other records: a searchable picker instead of a browser <select>, chips you
@@ -32,7 +32,7 @@ const app = defineApp({
   pages: [{ id: "list", title: "Recipes", view: { type: "list", entity: "recipe", display: { primary: "title" } } }],
 });
 
-async function makeRuntime(seed: string[] = []): Promise<{ runtime: KartaRuntime; ids: Record<string, string> }> {
+async function makeRuntime(seed: string[] = []): Promise<{ runtime: PotyroRuntime; ids: Record<string, string> }> {
   const store = new MemoryStore();
   await store.open("relation-fixture");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

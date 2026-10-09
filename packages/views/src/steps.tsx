@@ -10,7 +10,7 @@
 // the last step is ticked rather than behind a button you might not press.
 
 import { useEffect, useRef, useState } from "react";
-import type { Resolved } from "karta";
+import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 
@@ -66,7 +66,7 @@ export function StepsView(props: BuiltinViewProps) {
       })
       .catch((e: unknown) => {
         // Losing saved progress is a nuisance; refusing to render the steps is worse.
-        console.warn("[karta] could not read step progress:", e);
+        console.warn("[potyro] could not read step progress:", e);
         if (live) setDone(new Set());
       });
     return () => {
@@ -89,7 +89,7 @@ export function StepsView(props: BuiltinViewProps) {
     if (storageKey) {
       void runtime.ctx.storage
         .set(storageKey, [...next])
-        .catch((e: unknown) => console.warn("[karta] could not save step progress:", e));
+        .catch((e: unknown) => console.warn("[potyro] could not save step progress:", e));
     }
 
     const nowComplete = steps.length > 0 && next.size === steps.length;
@@ -106,7 +106,7 @@ export function StepsView(props: BuiltinViewProps) {
     if (storageKey) {
       void runtime.ctx.storage
         .delete(storageKey)
-        .catch((e: unknown) => console.warn("[karta] could not clear step progress:", e));
+        .catch((e: unknown) => console.warn("[potyro] could not clear step progress:", e));
     }
   };
 

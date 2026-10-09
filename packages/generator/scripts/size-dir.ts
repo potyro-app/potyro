@@ -2,7 +2,7 @@
 // Over-production is a quality problem the compile/validate/render/smoke gates cannot see: an app
 // with 17 fields nobody asked for passes every gate. This is the counter-metric.
 //
-//   pnpm --filter @karta/generator exec vite-node scripts/size-dir.ts eval-out/fixed eval-out/budget
+//   pnpm --filter @potyro/generator exec vite-node scripts/size-dir.ts eval-out/fixed eval-out/budget
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";

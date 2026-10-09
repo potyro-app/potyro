@@ -10,8 +10,8 @@
 // button that adds one says what it adds.
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { Field, ListField } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { Field, ListField } from "potyro";
 // A row holds fields and a field may be a list, so these two modules name each other. ESM is fine
 // with that here: both sides are hoisted function declarations, used at render, not at module load.
 import { FieldInput } from "./field-input.js";
@@ -21,7 +21,7 @@ import { useReorder } from "./reorder.js";
 import { usePhone } from "./media.js";
 
 export interface ListInputProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: ListField;
   value: unknown;
   onChange: (v: unknown) => void;
@@ -127,7 +127,7 @@ function RowCard({
   phone: boolean;
   name: string;
   noun: string;
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   row: Record<string, unknown>;
   head?: [string, Field];
   rest: [string, Field][];

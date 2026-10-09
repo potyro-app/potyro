@@ -37,7 +37,7 @@ export interface PeerPair {
  */
 export async function createPeerPair(appId = "pair"): Promise<PeerPair> {
   // Imported here, not at module scope: this pulls in the wasm crypto, and nothing that merely
-  // imports `@karta/store` should pay for it.
+  // imports `@potyro/store` should pay for it.
   const [{ LocalNode, cojsonInternals }, { WasmCrypto }] = await Promise.all([
     import("cojson"),
     import("cojson/crypto/WasmCrypto"),

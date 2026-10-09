@@ -5,10 +5,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost } from "@karta/host";
-import { createRuntime } from "@karta/runtime";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost } from "@potyro/host";
+import { createRuntime } from "@potyro/runtime";
 import { declaredEntities } from "../src/app-source.js";
 import { dataDefinition } from "../src/data-runtime.js";
 
@@ -29,7 +29,7 @@ describe("declaredEntities", () => {
 
   it("drops what would have to run, and never runs it", async () => {
     const source = `
-      import { defineApp } from "karta";
+      import { defineApp } from "potyro";
       globalThis.__ran = true;
       const SIZES = ["s", "m"];
       export default defineApp({

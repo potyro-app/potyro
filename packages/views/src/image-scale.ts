@@ -1,6 +1,6 @@
 // Photos, cut down to a size a personal app can actually keep.
 //
-// A phone camera hands over a 4000-pixel JPEG of four megabytes or so. Nothing in Karta ever shows
+// A phone camera hands over a 4000-pixel JPEG of four megabytes or so. Nothing in Potyro ever shows
 // one at that size — the biggest it is ever drawn is a phone screen — and the cost of keeping it is
 // paid three times over: the device's storage fills, a shared app pushes every one of those
 // megabytes to every person in it, and a browser that has fallen back to local storage cannot hold

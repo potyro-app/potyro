@@ -6,7 +6,7 @@ import { test, expect, type Route } from "@playwright/test";
 // the reason, a disputed value left out unless kept — and the person decides, in cards or a table.
 
 const APP_ID = "spots";
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "${APP_ID}", name: "Spots", version: "1.0.0", schemaVersion: 1,
   entities: { spot: { label: "Spot", displayField: "name", fields: {
@@ -68,9 +68,9 @@ async function stubModel(route: Route): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id]) => {
-      if (!localStorage.getItem("karta:user-apps")) localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name: "Spots", source, trusted: true, updatedAt: new Date().toISOString() }]));
-      sessionStorage.setItem("karta:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
-      localStorage.removeItem("karta:ask-review-layout");
+      if (!localStorage.getItem("potyro:user-apps")) localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name: "Spots", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
+      localStorage.removeItem("potyro:ask-review-layout");
     },
     [SOURCE, APP_ID],
   );

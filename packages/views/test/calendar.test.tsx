@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { CalendarView } from "../src/calendar.js";
 
 // Renders the calendar view against a real (DirectHost) runtime — proving the view resolves its
@@ -26,7 +26,7 @@ const fixtureApp = defineApp({
   pages: [{ id: "cal", title: "Schedule", view: { type: "calendar", entity: "ev", date: "at", title: "name" } }],
 });
 
-async function makeRuntime(seedAt: Date): Promise<KartaRuntime> {
+async function makeRuntime(seedAt: Date): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("cal-fixture");
   await store.insert("ev", { name: "Water Fern", at: seedAt });

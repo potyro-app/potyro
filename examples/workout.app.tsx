@@ -10,9 +10,9 @@
 //
 // Note: creating a session (with its nested entries → sets) uses the *generic* record form —
 // no custom "log" screen is required for the data-entry path.
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ViewProps } from "karta";
+import type { ViewProps } from "potyro";
 
 // ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
 // it, and it runs anywhere the shell does. ----

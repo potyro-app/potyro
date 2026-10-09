@@ -5,7 +5,7 @@
 // meant pressing "Cloud" first, which replaced the app you were trying to edit. One engine, chosen
 // deliberately in one place, is what removes that whole class of surprise.
 
-import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@karta/generator/backends";
+import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
 
 export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter";
 

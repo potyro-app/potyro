@@ -5,7 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
 // what the model adds beyond it is held back as not confirmed. The person sees exactly what is sent.
 
 const APP_ID = "reading";
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "${APP_ID}", name: "Reading", version: "1.0.0", schemaVersion: 1,
   entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true }, author: { type: "text" }, year: { type: "number", integer: true } } } },
@@ -39,8 +39,8 @@ const PROPOSAL = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id]) => {
-      if (!localStorage.getItem("karta:user-apps")) localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name: "Reading", source, trusted: true, updatedAt: new Date().toISOString() }]));
-      sessionStorage.setItem("karta:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
+      if (!localStorage.getItem("potyro:user-apps")) localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name: "Reading", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
     },
     [SOURCE, APP_ID],
   );

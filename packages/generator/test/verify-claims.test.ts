@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { Retrieved, type Trust } from "../src/agent/evidence.js";
 import { verifyClaims } from "../src/agent/verify-claims.js";
 import type { ChatEngine, ChatRequest } from "../src/chat-backend.js";

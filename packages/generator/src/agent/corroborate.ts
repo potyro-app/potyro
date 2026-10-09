@@ -7,7 +7,7 @@
 // searched for by name and its own details, the pages found join what was retrieved, and the
 // record's sources are counted again. Nothing is asked of the model but the searching.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { ChatEngine } from "../chat-backend.js";
 import { nameOfRow, verifyRow, type Retrieved, type Trust } from "./evidence.js";
 

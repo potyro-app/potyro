@@ -2,7 +2,7 @@
 // One place for the words, so a list, a record page and the picker agree — and so a day-precision
 // field never shows a time it does not have.
 
-import type { DateTimeField } from "karta";
+import type { DateTimeField } from "potyro";
 
 export type Precision = NonNullable<DateTimeField["precision"]>;
 

@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 //  2. A `relation` to an entity with no records yet was a dead end: creating a Place required a
 //     Place Type, so you had to cancel the form, make the type, and start over.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "places-form",
@@ -51,7 +51,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source]) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "places-form", name: "Places Form", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

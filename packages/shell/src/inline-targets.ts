@@ -14,7 +14,7 @@
 //     qualifies — a section title, an empty-state line, an action's label — because everything else
 //     there is records, and a record's text can read exactly like one of the app's words.
 
-import { humanizeKey } from "@karta/views";
+import { humanizeKey } from "@potyro/views";
 import type { AppShape, EntityShape, FieldShape, PageShape, TextSite } from "./app-source.js";
 
 export type InlineTarget =

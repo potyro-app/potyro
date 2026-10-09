@@ -17,7 +17,7 @@ const app = (opts: {
   version: string;
   fields: string[];
   migrations?: string;
-}): string => `import { defineApp } from "karta";
+}): string => `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "notes",
@@ -65,10 +65,10 @@ const V3_SILENT = app({ version: "1.1.0", fields: ["summary"] });
  * exercise the REPAIR loop has to be the other failure: a file that looks like an app and whose
  * default export is not one.
  */
-const BROKEN = `import { defineApp } from "karta";
+const BROKEN = `import { defineApp } from "potyro";
 
 export const nope = () => defineApp({});
-export default { not: "a karta app" };`;
+export default { not: "a potyro app" };`;
 
 /**
  * A backend that reads from a script instead of a model, and reports whatever usage it is given.
@@ -179,7 +179,7 @@ describe("runModifyScenario", () => {
     expect(backend.seen.filter((r) => r.kind === "repair")).toHaveLength(1);
     // The draft the repair was handed is kept: a repair reviewed without it says nothing.
     expect(step.rejectedSource).toBe(BROKEN);
-    expect(step.validationErrors.join(" ")).toContain("not a validated KartaApp");
+    expect(step.validationErrors.join(" ")).toContain("not a validated PotyroApp");
   }, 60_000);
 
   it("stops the chain when a modification stays invalid, rather than modifying nothing", async () => {

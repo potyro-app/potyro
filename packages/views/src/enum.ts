@@ -4,8 +4,8 @@
 // because it is derived from the value itself unless the field names one. Colour is never the only
 // signal: the word is always there beside it.
 
-import { personHue } from "@karta/runtime";
-import type { EnumColor, EnumField } from "karta";
+import { personHue } from "@potyro/runtime";
+import type { EnumColor, EnumField } from "potyro";
 
 /** Above this many options a row of buttons stops fitting and stops being scannable. */
 export const SEGMENTED_MAX = 5;

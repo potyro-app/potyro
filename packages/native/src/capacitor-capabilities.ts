@@ -7,8 +7,8 @@
 // real plugins. The QuickJS isolate and the host's per-app mediation are unchanged — only the
 // composition root swaps this in for WebCapabilities when running under Capacitor.
 
-import type { Geo } from "karta";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "@karta/capabilities";
+import type { Geo } from "potyro";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "@potyro/capabilities";
 
 // --- Minimal plugin shapes (a subset of the real @capacitor/* APIs we actually use) -------------
 
@@ -35,13 +35,13 @@ export interface ScheduledNotification {
   title: string;
   body?: string;
   schedule: { at: Date; allowWhileIdle: boolean };
-  extra: { kartaId: string; at: string };
+  extra: { potyroId: string; at: string };
 }
 export interface LocalNotificationsPlugin {
   requestPermissions(): Promise<{ display?: string }>;
   schedule(opts: { notifications: ScheduledNotification[] }): Promise<unknown>;
   cancel(opts: { notifications: Array<{ id: number }> }): Promise<unknown>;
-  getPending(): Promise<{ notifications: Array<{ id: number; schedule?: { at?: string }; extra?: { kartaId?: string; at?: string } }> }>;
+  getPending(): Promise<{ notifications: Array<{ id: number; schedule?: { at?: string }; extra?: { potyroId?: string; at?: string } }> }>;
 }
 export interface FilesystemPlugin {
   writeFile(opts: { path: string; data: string; directory: string; recursive?: boolean }): Promise<{ uri: string }>;
@@ -68,7 +68,7 @@ export interface CapacitorHostHelpers {
 // --- Helpers ------------------------------------------------------------------------------------
 
 /** Capacitor notification ids are 32-bit ints; derive a stable positive one from the app's string
- *  id. The original string round-trips via the notification's `extra.kartaId` (see `list`). */
+ *  id. The original string round-trips via the notification's `extra.potyroId` (see `list`). */
 export function stableNotificationId(key: string): number {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
@@ -154,7 +154,7 @@ export class CapacitorCapabilities implements Capabilities {
               title: n.title,
               body: n.body,
               schedule: { at: new Date(n.at), allowWhileIdle: true },
-              extra: { kartaId: n.id, at: n.at },
+              extra: { potyroId: n.id, at: n.at },
             },
           ],
         });
@@ -165,7 +165,7 @@ export class CapacitorCapabilities implements Capabilities {
       list: async () => {
         const pending = await LocalNotifications.getPending();
         return pending.notifications.map((p) => ({
-          id: p.extra?.kartaId ?? String(p.id),
+          id: p.extra?.potyroId ?? String(p.id),
           at: p.extra?.at ?? p.schedule?.at ?? "",
         }));
       },

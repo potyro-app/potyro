@@ -23,7 +23,7 @@ const RECIPES = read("recipes.app.tsx");
 const WORKOUT = read("workout.app.tsx");
 
 /** What the agent produced for the user's city-places app — generated code, not hand-written. */
-const GENERATED = `import { defineApp } from "karta";
+const GENERATED = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "city-places",
@@ -86,7 +86,7 @@ describe("inspect", () => {
   });
 
   it("says why an app it cannot read structurally is off limits", async () => {
-    const opaque = 'import { defineApp } from "karta";\nconst config = buildIt();\nexport default defineApp(config);\n';
+    const opaque = 'import { defineApp } from "potyro";\nconst config = buildIt();\nexport default defineApp(config);\n';
     const shape = await inspect(opaque);
     expect(shape.blocked).toMatch(/defineApp/);
     expect(shape.entities).toEqual([]);
@@ -159,7 +159,7 @@ describe("reordering fields", () => {
   });
 
   it("carries a field's own comment with it", async () => {
-    const source = `import { defineApp } from "karta";
+    const source = `import { defineApp } from "potyro";
 export default defineApp({
   id: "a", name: "A", version: "1.0.0", schemaVersion: 1,
   entities: {
@@ -190,7 +190,7 @@ export default defineApp({
   it("pins displayField before a reorder that would change it", async () => {
     // `displayFieldFor` falls back to the FIRST field. Without pinning, dragging a field to the top
     // silently renames every record in every list and relation picker.
-    const source = `import { defineApp } from "karta";
+    const source = `import { defineApp } from "potyro";
 export default defineApp({
   id: "a", name: "A", version: "1.0.0", schemaVersion: 1,
   entities: { thing: { fields: { title: { type: "text" }, code: { type: "text" } } } },
@@ -267,14 +267,14 @@ describe("everything else is byte-identical", () => {
 // source — the literal `name`, `icon` and `theme.accent`, and nothing when they are not literal.
 describe("inspect: identity", () => {
   it("reads name, icon and accent when they are written literally", async () => {
-    const source = `import { defineApp } from "karta";
+    const source = `import { defineApp } from "potyro";
 export default defineApp({ id: "gym", name: "PPL Log", icon: "🏋", version: "1.0.0", schemaVersion: 1, theme: { accent: "#5B8DEF" },
   entities: { x: { fields: { name: { type: "text" } } } }, pages: [] });`;
     expect(await inspect(source)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
   });
 
   it("leaves out what is not there, or not literal", async () => {
-    const source = `import { defineApp } from "karta";
+    const source = `import { defineApp } from "potyro";
 const NAME = "Computed";
 export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion: 1, entities: {}, pages: [] });`;
     const shape = await inspect(source);
@@ -292,7 +292,7 @@ export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion:
 // Entity groups (#100): read when written literally, and regrouped in place — a group's
 // `fields: [...]` is the only text that changes, so titles, comments and the fold stay put.
 describe("groups", () => {
-  const GROUPED = `import { defineApp } from "karta";
+  const GROUPED = `import { defineApp } from "potyro";
 export default defineApp({
   id: "a", name: "A", version: "1.0.0", schemaVersion: 1,
   entities: {

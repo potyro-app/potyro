@@ -14,7 +14,7 @@ import type { UserApp } from "../src/user-apps.js";
 const app = (over: Partial<UserApp> = {}): UserApp =>
   ({ id: "trip", name: "Trip Costs", source: SOURCE(), trusted: false, updatedAt: "2026-09-16T00:00:00.000Z", ...over }) as UserApp;
 
-const SOURCE = (permissions?: string) => `import { defineApp } from "karta";
+const SOURCE = (permissions?: string) => `import { defineApp } from "potyro";
 export default defineApp({
   id: "trip", name: "Trip Costs", version: "1.0.0", schemaVersion: 1,${permissions ? `\n  permissions: ${permissions},` : ""}
   entities: { expense: { fields: { description: { type: "text" } } } },

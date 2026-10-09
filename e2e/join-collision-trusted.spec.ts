@@ -17,7 +17,7 @@ import { tileAction } from "./launcher-actions.js";
 // The chat is a single unscoped thread, so it kept working throughout — which is exactly why this
 // read as "sync is broken" rather than "you are looking at your own app".
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "shareflow",
@@ -41,10 +41,10 @@ export default defineApp({
 async function device(context: BrowserContext): Promise<Page> {
   await context.addInitScript(
     (source) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "shareflow", name: "Share Flow", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

@@ -2,23 +2,25 @@
 // saved source: trusted ones run direct, untrusted ones in the QuickJS-WASM isolate. `pnpm
 // dev:sandbox` (mode "sandbox") seeds the examples untrusted, which is what exercises the isolate.
 
+// First, before any module below reads localStorage: the codename-to-product key move (#114).
+import "./rename-migration.js";
 import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
-import type { KartaRecord } from "karta";
-import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@karta/store";
+import type { PotyroRecord } from "potyro";
+import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
-import { getLaunchUrl, onUrlOpen } from "@karta/native";
-import { createWebCapabilities, type Capabilities } from "@karta/capabilities";
-import { listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@karta/native";
+import { getLaunchUrl, onUrlOpen } from "@potyro/native";
+import { createWebCapabilities, type Capabilities } from "@potyro/capabilities";
+import { listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@potyro/native";
 import { setSourceHttp } from "./ask-sources.js";
-import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@karta/identity";
-import type { Provenance } from "@karta/host";
-import type { KartaRuntime } from "@karta/runtime";
+import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@potyro/identity";
+import type { Provenance } from "@potyro/host";
+import type { PotyroRuntime } from "@potyro/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
@@ -56,12 +58,12 @@ function route(): Route {
   return { kind: "home" };
 }
 
-// Export the current app as a portable `.karta.zip` bundle (KA-04): logic + a real SQLite data file
+// Export the current app as a portable `.potyro.zip` bundle (KA-04): logic + a real SQLite data file
 // + manifest + CSV/JSON, saved via the filesystem cap. The current data is snapshotted into a fresh
 // in-memory SQLite so a genuine `data.sqlite` is produced from ANY durable store (even the LocalStore
 // fallback) — the export never depends on the browser having OPFS.
 async function exportApp(
-  runtime: KartaRuntime,
+  runtime: PotyroRuntime,
   store: Store,
   caps: Capabilities,
   provenance: Provenance,
@@ -69,7 +71,7 @@ async function exportApp(
   toaster: Toaster,
 ): Promise<void> {
   const def = runtime.definition;
-  const rowsByEntity: Record<string, KartaRecord[]> = {};
+  const rowsByEntity: Record<string, PotyroRecord[]> = {};
   for (const entity of Object.keys(def.entities)) rowsByEntity[entity] = await store.all(entity);
 
   const snapshot = await createMemorySqliteStore(def.id);
@@ -82,7 +84,7 @@ async function exportApp(
     const zip = packBundle({
       sqlite: snapshot.export(),
       manifest: {
-        format: "karta-bundle/1",
+        format: "potyro-bundle/1",
         appId: def.id,
         appVersion: def.version,
         schemaVersion: def.schemaVersion,
@@ -95,8 +97,8 @@ async function exportApp(
       appSource,
       rowsByEntity,
     });
-    await caps.filesystem.save(`${def.id}.karta.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
-    toaster.push(`Exported ${def.id}.karta.zip`);
+    await caps.filesystem.save(`${def.id}.potyro.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
+    toaster.push(`Exported ${def.id}.potyro.zip`);
   } finally {
     snapshot.destroy();
   }
@@ -104,7 +106,7 @@ async function exportApp(
 
 // Session-storage handoff for an import: the picked bundle's data.sqlite bytes (base64) survive the
 // reload so the OPFS pool VFS is installed exactly once — on the fresh page — before the store opens.
-const IMPORT_KEY = "karta:import";
+const IMPORT_KEY = "potyro:import";
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -148,7 +150,7 @@ async function replaceWithBundle(target: Store, pending: string, appId: string):
   }
 }
 
-// Import a `.karta.zip` bundle's data into the matching app (KA-04): pick → unpack → stash the
+// Import a `.potyro.zip` bundle's data into the matching app (KA-04): pick → unpack → stash the
 // SQLite bytes → reload into that app, where boot() restores them into the durable store.
 async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
   let blob: Blob;
@@ -167,7 +169,7 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
     sqlite = bundle.sqlite;
     entities = bundle.manifest.entities ?? [];
   } catch {
-    toaster.push("Not a valid Karta export bundle.");
+    toaster.push("Not a valid Potyro export bundle.");
     return;
   }
   const target = getUserApp(appId);
@@ -283,7 +285,7 @@ async function runMigrationsIfPossible(
   } catch (e) {
     // A failed migration must not leave the user staring at a blank screen with no explanation.
     // The app still opens; the data is simply not migrated yet.
-    console.warn("[karta] migration failed:", e);
+    console.warn("[potyro] migration failed:", e);
     toaster.push(`Could not update your data: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
@@ -291,8 +293,8 @@ async function runMigrationsIfPossible(
 /** How many apps are open and not yet put away — exposed in dev so a spec can see switching leaks nothing. */
 function liveApps(delta: number): void {
   if (!import.meta.env.DEV) return;
-  const g = globalThis as unknown as { __kartaLiveApps?: number };
-  g.__kartaLiveApps = (g.__kartaLiveApps ?? 0) + delta;
+  const g = globalThis as unknown as { __potyroLiveApps?: number };
+  g.__potyroLiveApps = (g.__potyroLiveApps ?? 0) + delta;
 }
 
 /** An open app, and how to put it away when another route takes the screen (#89). */
@@ -342,7 +344,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
 
   // Who this device is (KA-18), before the store: minted on first run with crypto alone — no
   // database, no network — so seed rows can be attributed to the person using the app.
-  const { ensureIdentity } = await import("@karta/identity");
+  const { ensureIdentity } = await import("@potyro/identity");
   const me = await ensureIdentity();
 
   let rawStore: Store;
@@ -427,7 +429,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
         source: saved.source,
         shared: (space?.().members.length ?? 1) > 1,
       });
-    })().catch((e: unknown) => console.warn("[karta] could not record this app on your account:", e));
+    })().catch((e: unknown) => console.warn("[potyro] could not record this app on your account:", e));
   }
   const picker = new PickerHost();
   const questions = new UiHost();
@@ -563,19 +565,19 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
 
   if (r.kind === "home") {
     mount(root, <Home key={`home:${seq}`} />);
-    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
     return;
   }
   if (r.kind === "share") {
     mount(root, <SharePage key={`share:${seq}`} />);
-    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
     return;
   }
   if (r.kind === "data") {
     // Mounted before the app it came from is put away: the page opens that app's store too, and the
     // storage worker keeps a database open while anyone still holds it.
     mount(root, <DataPage key={`data:${seq}`} initialAppId={r.id} />);
-    await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+    await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
     return;
   }
 
@@ -584,7 +586,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
     root,
     <Splash key={`opening:${seq}`} id={r.id} name={saved?.name ?? r.id} source={saved?.source} />,
   );
-  await prev?.dispose().catch((e: unknown) => console.warn("[karta] closing the previous app failed:", e));
+  await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
   if (!isCurrent()) return;
 
   // An open is an open however it came about — a tile, a deep link, a reload, Back — so it is
@@ -623,7 +625,7 @@ void maybeCreateNativeSourceHttp().then((native) => {
  * nothing at all when there is nothing to offer — which is every boot but the first after linking.
  */
 /** Set once the account has been read on this device, so the wait below happens only the first time. */
-const OFFERED = "karta:account:offered";
+const OFFERED = "potyro:account:offered";
 
 async function offerAccountApps(): Promise<void> {
   try {
@@ -632,7 +634,7 @@ async function offerAccountApps(): Promise<void> {
     // asked for their apps to be anywhere but here — starting a socket for them would be helping
     // ourselves to a device that never opted in. `origin: passphrase` is set by `signInWithPassphrase`
     // and by nothing else, so it is exactly "this device was told it is someone".
-    const linked = globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
+    const linked = globalThis.localStorage?.getItem("potyro:identity:origin") === "passphrase";
     const { listUserApps } = await import("./user-apps.js");
     const syncs = listUserApps().some((a) => a.sync);
     if (!linked && !syncs) return;
@@ -641,11 +643,11 @@ async function offerAccountApps(): Promise<void> {
     // moment overlaps the launcher; left until an app is tapped, it sits between the tap and the
     // app appearing. Not awaited — nothing below needs it, and the real open shares this one.
     if (syncs) {
-      const { warmDeviceDatabase } = await import("@karta/store");
+      const { warmDeviceDatabase } = await import("@potyro/store");
       void warmDeviceDatabase();
     }
 
-    const { readAccountApps, readAccountName, readProfileName } = await import("@karta/store");
+    const { readAccountApps, readAccountName, readProfileName } = await import("@potyro/store");
     const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
     if (!node) return;
@@ -670,7 +672,7 @@ async function offerAccountApps(): Promise<void> {
     // A device that HAS been named keeps its own — being renamed from elsewhere without asking
     // would be worse than the inconsistency.
     try {
-      const { peekIdentity, renameIdentity, DEFAULT_NAME } = await import("@karta/identity");
+      const { peekIdentity, renameIdentity, DEFAULT_NAME } = await import("@potyro/identity");
       const here = peekIdentity();
       if (here && (!here.name || here.name === DEFAULT_NAME)) {
         // The registry first — it is the copy that arrives with the apps — then the profile.
@@ -722,7 +724,7 @@ async function offerAccountApps(): Promise<void> {
     if (installed > 0) globalThis.location.reload();
   } catch (e) {
     // Never block boot on it: the apps already on this device are what someone came for.
-    console.warn("[karta] could not read the apps on your account:", e);
+    console.warn("[potyro] could not read the apps on your account:", e);
   }
 }
 
@@ -736,7 +738,7 @@ async function boot(): Promise<void> {
 
   // Move secrets an older build left in plain storage into the vault. Not awaited: nothing on screen
   // waits on it, and every read of a secret performs the same move if this has not finished.
-  void secureIdentitySecrets().catch((e: unknown) => console.warn("[karta] could not secure identity keys:", e));
+  void secureIdentitySecrets().catch((e: unknown) => console.warn("[potyro] could not secure identity keys:", e));
 
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
@@ -757,14 +759,14 @@ async function boot(): Promise<void> {
   // launcher may as well wait too — and it arrives with the apps already on it.
   //
   // Every other boot does NOT wait. Asking the account means asking the relay, and that answer is
-  // allowed to take seconds; awaited on every boot it sat between opening Karta and seeing anything
+  // allowed to take seconds; awaited on every boot it sat between opening Potyro and seeing anything
   // at all, for anyone who syncs even one app.
   if (!joined) {
     // "Linked, and not asked yet." Not "has no apps": every device is seeded with the examples, so
     // an empty list never happens. Not "linked" alone either, or the wait would come back on every
     // boot of that device forever.
     const justLinked =
-      globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase" &&
+      globalThis.localStorage?.getItem("potyro:identity:origin") === "passphrase" &&
       !globalThis.localStorage?.getItem(OFFERED);
     if (justLinked) await offerAccountApps();
     else void offerAccountApps();
@@ -801,9 +803,9 @@ let deepLinksRegistered = false;
 let sharesRegistered = false;
 
 /**
- * Text shared into Karta from another app (#213). Kept for the session and put in front of the person
+ * Text shared into Potyro from another app (#213). Kept for the session and put in front of the person
  * on the "Bring this into…" page, whatever they were looking at. The plugin holds a share that
- * arrived before this listened, so sharing into a closed Karta arrives too.
+ * arrived before this listened, so sharing into a closed Potyro arrives too.
  */
 function registerShares(): void {
   if (sharesRegistered) return;
@@ -811,7 +813,7 @@ function registerShares(): void {
   void listenForShares((share) => {
     rememberShare(share);
     navigateTo({ kind: "share" });
-  }).catch((e: unknown) => console.warn("[karta] could not listen for shares:", e));
+  }).catch((e: unknown) => console.warn("[potyro] could not listen for shares:", e));
 }
 
 function registerDeepLinks(): void {

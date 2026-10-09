@@ -13,7 +13,7 @@ test("an app's due reminders show on its tile, and more as time passes, without 
   await page.goto("/?app=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
   // Give the reminder watcher its debounce and first pass.
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("karta:launcher") ?? "{}")["user:plants"]?.signals?.due?.length ?? 0), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}")["user:plants"]?.signals?.due?.length ?? 0), { timeout: 30_000 }).toBeGreaterThan(0);
 
   await page.goto("/");
   const tile = page.locator(".k-launch-tile", { hasText: "Plants" });
@@ -28,7 +28,7 @@ test("an app's due reminders show on its tile, and more as time passes, without 
   await page.reload();
   await expect.poll(async () => Number(await page.locator(".k-launch-tile", { hasText: "Plants" }).locator(".k-launch-badge").innerText()), { timeout: 30_000 }).toBeGreaterThan(before);
 
-  if (process.env.KARTA_SHOTS) await page.screenshot({ path: `${process.env.KARTA_SHOTS}/badges-home.png` });
+  if (process.env.POTYRO_SHOTS) await page.screenshot({ path: `${process.env.POTYRO_SHOTS}/badges-home.png` });
   // The breakdown is in the tile's menu too.
   await page.getByRole("button", { name: "Actions for Plants" }).click();
   await expect(page.locator(".k-tile-menu-note")).toHaveText(/\d+ due/);

@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 // The identity panel leads with the person, not with infrastructure (#95). It used to open on a
 // monospace "no identity yet", a ws:// URL and two unrelated-sounding sections.
 
-const SHOTS = process.env.KARTA_SHOTS;
+const SHOTS = process.env.POTYRO_SHOTS;
 
 async function openPanel(page: Page): Promise<ReturnType<Page["locator"]>> {
   await page.goto("/");

@@ -5,11 +5,11 @@
 // query still fails says so instead of loading forever.
 
 import { describe, expect, it, vi } from "vitest";
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import workout from "../../../examples/workout.app.js";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost } from "@karta/host";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost } from "@potyro/host";
 import { createRuntime, watchPageQuery, type QueryState } from "../src/index.js";
 
 const ui = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

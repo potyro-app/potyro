@@ -6,7 +6,7 @@
 // (OPFS SQLite doesn't exist in Node; MemoryStore implements the same interface).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryStore } from "@karta/store";
+import { MemoryStore } from "@potyro/store";
 
 // `openStore` is the one thing that can't run headlessly — swap in the in-memory Store the shell
 // itself falls back to in browsers without OPFS.

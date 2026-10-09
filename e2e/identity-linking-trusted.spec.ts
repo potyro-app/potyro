@@ -10,7 +10,7 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 // they cannot cover is the part that broke twice in this track: whether the identity a real page
 // boots with is the one the panel exports, across a real reload.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "who",
@@ -34,9 +34,9 @@ export default defineApp({
 async function device(context: BrowserContext): Promise<Page> {
   await context.addInitScript(
     ([source]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "who", name: "Who", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),
@@ -57,7 +57,7 @@ async function device(context: BrowserContext): Promise<Page> {
  */
 const accountId = async (page: Page): Promise<string | null> => {
   try {
-    return await page.evaluate(() => localStorage.getItem("karta:identity:id"));
+    return await page.evaluate(() => localStorage.getItem("potyro:identity:id"));
   } catch {
     return null;
   }
