@@ -15,7 +15,7 @@ import { tileAction } from "./launcher-actions.js";
 // name so the data is genuinely written there, then deleted, which is precisely what a device
 // upgrading from the old build looks like.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "legacy-app",
@@ -41,15 +41,15 @@ test("a synced app created before the database rename still opens", async ({ pag
 
   await page.addInitScript(
     ([source]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "legacy-app", name: "Legacy App", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),
       );
       // Force this app's space into the LEGACY per-app file, as the old build did.
-      localStorage.setItem("karta:jazz:db:user:legacy-app", "user:legacy-app-jazz");
+      localStorage.setItem("potyro:jazz:db:user:legacy-app", "user:legacy-app-jazz");
     },
     [STARTER],
   );
@@ -78,12 +78,12 @@ test("a synced app created before the database rename still opens", async ({ pag
   // Delete the marker. The group id and the records stay exactly where the old build left them, so
   // the app is now indistinguishable from one created before the rename ever happened.
   const before = await page.evaluate(() => ({
-    group: localStorage.getItem("karta:jazz:group:user:legacy-app"),
-    account: localStorage.getItem("karta:identity:id"),
+    group: localStorage.getItem("potyro:jazz:group:user:legacy-app"),
+    account: localStorage.getItem("potyro:identity:id"),
   }));
   expect(before.group).toBeTruthy();
 
-  await page.evaluate(() => localStorage.removeItem("karta:jazz:db:user:legacy-app"));
+  await page.evaluate(() => localStorage.removeItem("potyro:jazz:db:user:legacy-app"));
 
   // ---- THE POINT: it opens, on the old data, as the same person ----
   await page.goto("/?user=legacy-app");
@@ -92,9 +92,9 @@ test("a synced app created before the database rename still opens", async ({ pag
 
   // Not a fresh empty space wearing the same name: same group, same account.
   const after = await page.evaluate(() => ({
-    group: localStorage.getItem("karta:jazz:group:user:legacy-app"),
-    account: localStorage.getItem("karta:identity:id"),
-    db: localStorage.getItem("karta:jazz:db:user:legacy-app"),
+    group: localStorage.getItem("potyro:jazz:group:user:legacy-app"),
+    account: localStorage.getItem("potyro:identity:id"),
+    db: localStorage.getItem("potyro:jazz:db:user:legacy-app"),
   }));
   expect(after.group).toBe(before.group);
   expect(after.account).toBe(before.account);

@@ -1,6 +1,6 @@
 {
-  "name": "Karta",
-  "short_name": "Karta",
+  "name": "Potyro",
+  "short_name": "Potyro",
   "description": "Personal apps that are real TypeScript modules.",
   "start_url": "/",
   "display": "standalone",

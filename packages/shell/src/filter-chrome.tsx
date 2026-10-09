@@ -15,11 +15,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { KartaRuntime } from "@karta/runtime";
-import type { FilterChip } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { FilterChip } from "potyro";
 
 interface ChromeProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   pageId: string;
   params: Record<string, unknown>;
   setParam: (key: string, value: unknown) => void;
@@ -28,7 +28,7 @@ interface ChromeProps {
 interface ChipProps {
   chip: FilterChip;
   entity: string;
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   params: Record<string, unknown>;
   setParam: (key: string, value: unknown) => void;
 }
@@ -61,7 +61,7 @@ const isOptionChip = (chip: FilterChip): boolean => !DIRECT_TYPES.has(chip.type 
  * own toolbar. The label is the app's — unlike an action named by key, nothing is guessed from an
  * identifier.
  */
-function PageActions({ runtime, pageId, params }: { runtime: KartaRuntime; pageId: string; params: Record<string, unknown> }) {
+function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; pageId: string; params: Record<string, unknown> }) {
   const actions = runtime.definition.pages.find((p) => p.id === pageId)?.actions;
   // Which button is mid-run — a `run` that awaits the position or the network takes a moment, and a
   // button that looks inert while it works gets pressed again.
@@ -174,7 +174,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
 }
 
 /** A chosen value's name: an option speaks for itself, a record id has to be looked up. */
-function ValueLabel({ chip, runtime, value }: { chip: FilterChip; runtime: KartaRuntime; value: string }) {
+function ValueLabel({ chip, runtime, value }: { chip: FilterChip; runtime: PotyroRuntime; value: string }) {
   const fromEntity = chip.from && runtime.definition.entities[chip.from] ? chip.from : "";
   const { rows } = runtime.useQuery(fromEntity);
   if (!fromEntity) return <>{value}</>;
@@ -196,7 +196,7 @@ function FilterSheet({
 }: {
   filters: FilterChip[];
   entity: string;
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   params: Record<string, unknown>;
   setParam: (key: string, value: unknown) => void;
   picked: number;

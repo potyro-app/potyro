@@ -3,7 +3,7 @@
 // supplied. Nothing here uses a platform dialog: those block the page, cannot be themed, announce the
 // origin rather than the app, and become OS dialogs on the native target.
 
-import type { NavBridge, UiBridge } from "@karta/host";
+import type { NavBridge, UiBridge } from "@potyro/host";
 import type { PickerHost } from "./picker.js";
 import type { DialogHost } from "./dialog.js";
 import type { UiHost } from "./ui-host.js";

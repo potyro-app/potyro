@@ -54,7 +54,7 @@ server, the durable store is OPFS and the sync specs share one relay — so para
 parallel clients of the same state. At the default worker count `export-import-trusted.spec.ts`
 dies on `Boot error: Missing required OPFS APIs.`; at one worker it passes.
 
-`KARTA_PARALLEL=4 pnpm e2e` is available for a quick local sweep; confirm anything it reports at one
+`POTYRO_PARALLEL=4 pnpm e2e` is available for a quick local sweep; confirm anything it reports at one
 worker before believing it.
 
 ### Known intermittent: `export-import-trusted.spec.ts`
@@ -95,7 +95,7 @@ and local, names colliding on their first letter):
 **The baselines are CI's pixels.** Two Linux machines with the same Chromium and the same fonts
 still disagree — glyph hinting by a few hundred pixels a page, and a classic scrollbar on one shifts
 a layout that overlay scrollbars on the other leave alone — so the comparison runs on CI and is
-skipped locally (`KARTA_BASELINES=1 pnpm e2e:launcher` compares here anyway, expect noise). After a
+skipped locally (`POTYRO_BASELINES=1 pnpm e2e:launcher` compares here anyway, expect noise). After a
 change to the launcher's pixels that you meant, regenerate them on the runner and they land on your
 branch as a commit:
 
@@ -281,8 +281,8 @@ skipped here — they are GitHub's runner's pixels — and want regenerating the
 
 | Do | Expect |
 |---|---|
-| Any app → header **Export** | Downloads `<app>.karta.zip` — unzip it: `data.sqlite` (opens in any SQLite tool!), `manifest.json`, `app.ts`, `data.json`, `csv/<entity>.csv` |
-| Add or change some data, then header **Import** → pick the earlier `.karta.zip` | The app reloads with the **bundle's** data (your later change is replaced) — the round-trip |
+| Any app → header **Export** | Downloads `<app>.potyro.zip` — unzip it: `data.sqlite` (opens in any SQLite tool!), `manifest.json`, `app.ts`, `data.json`, `csv/<entity>.csv` |
+| Add or change some data, then header **Import** → pick the earlier `.potyro.zip` | The app reloads with the **bundle's** data (your later change is replaced) — the round-trip |
 
 Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a real, standalone DB.
 
@@ -342,13 +342,13 @@ what happens to somebody who did not notice the first one.
 
 ```bash
 # No model, no money. Writes a sample review sheet so the FORMAT can be argued about first.
-pnpm --filter @karta/generator eval:modify:fixture
+pnpm --filter @potyro/generator eval:modify:fixture
 
 # The real thing. It spends money, so every default is the cautious one.
-pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+pnpm --filter @potyro/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
 ```
 
-Windows: `pnpm.cmd --filter @karta/generator eval:modify -- …`.
+Windows: `pnpm.cmd --filter @potyro/generator eval:modify -- …`.
 
 Every check is mechanical. Nothing here asks a model whether a model did well.
 
@@ -386,8 +386,8 @@ refusal without a lookup sent back once) instead of the one-turn guard; OpenRout
 `--backend scripted-decline` proves the harness: every case with a predicate scores refused.
 
 ```bash
-pnpm --filter @karta/generator eval:modify:edits -- --backend scripted-decline      # free proof
-pnpm --filter @karta/generator eval:modify:edits -- --backend openrouter --loop --only trip-scope,recipes-chart
+pnpm --filter @potyro/generator eval:modify:edits -- --backend scripted-decline      # free proof
+pnpm --filter @potyro/generator eval:modify:edits -- --backend openrouter --loop --only trip-scope,recipes-chart
 ```
 
 ### Cost controls

@@ -16,7 +16,7 @@ import { applyEdit, fieldStep, inspect, resetSourceTools, textSites, type Edit }
 const read = (name: string): string => readFileSync(resolve(process.cwd(), "../../examples", name), "utf8");
 const RECIPES = read("recipes.app.tsx");
 
-const APP = `import { defineApp } from "karta";
+const APP = `import { defineApp } from "potyro";
 
 function Board({ ctx }) {
   const done = ctx.params.done;

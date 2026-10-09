@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition, Migration } from "karta";
+import type { AppDefinition, Migration } from "potyro";
 import { compareData, type DataSnapshot } from "../src/data-safety.js";
 
 // The check that says whether a person still has what they wrote.

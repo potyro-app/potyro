@@ -19,13 +19,13 @@ import { StorageReport } from "./storage-report.js";
 import { BackupSwitch } from "./backup-switch.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
-import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@karta/identity";
-import { personHue, personInitials } from "@karta/runtime";
+import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@potyro/identity";
+import { personHue, personInitials } from "@potyro/runtime";
 
 /** Set once the user has been offered their words, so the offer is made once and not on every sync. */
-const OFFERED = "karta:identity:offeredBackup";
+const OFFERED = "potyro:identity:offeredBackup";
 /** Set once the name has been ASKED for. Separate from having a name: declining is an answer. */
-const ASKED_NAME = "karta:identity:askedName";
+const ASKED_NAME = "potyro:identity:askedName";
 
 /**
  * Ask what to call you, at the first moment somebody else can see it.
@@ -179,7 +179,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
   const relay = syncRelayUrl();
 
   // #95: this read like a debug page — a monospace `no identity yet` under the name, a ws:// URL on
-  // the front, and "Add a device" / "I already use Karta" as two unrelated products. It leads with the
+  // the front, and "Add a device" / "I already use Potyro" as two unrelated products. It leads with the
   // person now; the two device paths sit under one heading; infrastructure is under Advanced.
   return (
     <div className="k-modal-scrim" onClick={onClose}>
@@ -225,7 +225,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
           {words ? (
             <div className="k-identity-words">
               <p className="k-muted">
-                Type these words into Karta on the other device. They are the only copy — write them down somewhere safe.
+                Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe.
               </p>
               <output className="k-passphrase">{words}</output>
               <button type="button" className="k-add" onClick={() => void navigator.clipboard?.writeText(words).catch(() => {})}>

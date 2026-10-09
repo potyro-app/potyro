@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { MoneyField } from "karta";
+import type { MoneyField } from "potyro";
 import { FieldInput, FieldValue, MoneyTotal } from "../src/index.js";
 
 // Typing and showing money (KA-26, #66). The value handed back is always whole minor units — that

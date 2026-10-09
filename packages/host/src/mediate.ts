@@ -3,8 +3,8 @@
 // manifest requested, each behind a one-time consent prompt and (where relevant) a scoping
 // wrapper. App code sees the same `ctx.caps` interface either way — authority is what differs.
 
-import type { Caps, NetworkPermission, PermissionManifest } from "karta";
-import type { Capabilities } from "@karta/capabilities";
+import type { Caps, NetworkPermission, PermissionManifest } from "potyro";
+import type { Capabilities } from "@potyro/capabilities";
 import type { Provenance, UiBridge } from "./types.js";
 
 /** A once-per-capability consent gate backed by the shell's confirm dialog. */

@@ -1,12 +1,12 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 // Capacitor wraps the SHELL's web build (packages/shell/dist) into a native Android/iOS app. Build
-// the shell first (`pnpm --filter @karta/shell build:web`), then `cap sync` copies dist → native.
+// the shell first (`pnpm --filter @potyro/shell build:web`), then `cap sync` copies dist → native.
 // The QuickJS isolate + capability seam are unchanged; only the composition root swaps in
 // CapacitorCapabilities (see src/index.ts → maybeCreateNativeCapabilities).
 const config: CapacitorConfig = {
-  appId: "io.karta.app",
-  appName: "Karta",
+  appId: "app.potyro",
+  appName: "Potyro",
   webDir: "../shell/dist",
   plugins: {
     LocalNotifications: {

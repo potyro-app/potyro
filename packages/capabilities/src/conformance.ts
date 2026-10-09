@@ -121,7 +121,7 @@ export const CONFORMANCE_CHECKS: ConformanceCheck[] = [
   {
     name: "saving a file resolves, and picking one returns a blob",
     async run(caps, target) {
-      await caps.filesystem.save("conformance.txt", new Blob(["karta"], { type: "text/plain" }));
+      await caps.filesystem.save("conformance.txt", new Blob(["potyro"], { type: "text/plain" }));
       const picking = caps.filesystem.pick();
       await target.cue?.(); // the web picker waits for a person, as the camera does
       const picked = await picking;

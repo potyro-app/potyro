@@ -11,7 +11,7 @@
 // row, and none of them is what someone opened a recipe list to do.
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ActionMenu, usePhone, type MenuEntry } from "@karta/views";
+import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
 
 const WIDE_FROM = 760;
 

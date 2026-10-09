@@ -8,7 +8,7 @@
 // in-memory database and simulate a "reload" by export/deserialize. QuickJS isolation is unaffected
 // — the store lives host-side, never inside the app sandbox.
 
-import type { Id, KartaRecord, MediaRef, Value } from "karta";
+import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
 import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
 import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
@@ -91,10 +91,10 @@ export class SqliteStore implements Store {
   }
 
   // ── reads ──────────────────────────────────────────────────────────────────
-  async all(entity: string, narrow?: Narrow): Promise<KartaRecord[]> {
+  async all(entity: string, narrow?: Narrow): Promise<PotyroRecord[]> {
     const out = narrow?.ids
       ? await this.byIds(entity, narrow.ids)
-      : (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map((r) => JSON.parse(r.doc as string) as KartaRecord);
+      : (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map((r) => JSON.parse(r.doc as string) as PotyroRecord);
     const offset = narrow?.offset ?? 0;
     const end = narrow?.limit != null ? offset + narrow.limit : undefined;
     return out.slice(offset, end);
@@ -107,7 +107,7 @@ export class SqliteStore implements Store {
    * read and parse the whole entity and filter in JS, so a batch of 5 aisles cost as much as the
    * table. In chunks, because SQLite caps the parameters one statement may bind.
    */
-  private async byIds(entity: string, ids: readonly Id[]): Promise<KartaRecord[]> {
+  private async byIds(entity: string, ids: readonly Id[]): Promise<PotyroRecord[]> {
     const unique = [...new Set(ids)];
     const found: Array<{ seq: number; doc: string }> = [];
     for (let at = 0; at < unique.length; at += IDS_PER_STATEMENT) {
@@ -115,15 +115,15 @@ export class SqliteStore implements Store {
       const rows = await this.db.selectObjects(`SELECT seq, doc FROM records WHERE entity=? AND id IN (${chunk.map(() => "?").join(",")})`, [entity, ...chunk]);
       for (const r of rows) found.push({ seq: Number(r.seq), doc: r.doc as string });
     }
-    return found.sort((a, b) => a.seq - b.seq).map((r) => JSON.parse(r.doc) as KartaRecord);
+    return found.sort((a, b) => a.seq - b.seq).map((r) => JSON.parse(r.doc) as PotyroRecord);
   }
 
-  async get(entity: string, id: Id): Promise<KartaRecord | null> {
+  async get(entity: string, id: Id): Promise<PotyroRecord | null> {
     const doc = await this.db.selectValue("SELECT doc FROM records WHERE entity=? AND id=?", [entity, id]);
-    return doc == null ? null : (JSON.parse(doc as string) as KartaRecord);
+    return doc == null ? null : (JSON.parse(doc as string) as PotyroRecord);
   }
 
-  async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
+  async byIndex(entity: string, field: string, value: Value): Promise<PotyroRecord[]> {
     // Personal-scale: scan + compare in JS (identical semantics to MemoryStore). A JSON1 index is
     // a later optimization; the runtime never relies on this fast-path for correctness.
     const rows = await this.all(entity);
@@ -131,10 +131,10 @@ export class SqliteStore implements Store {
   }
 
   // ── writes ─────────────────────────────────────────────────────────────────
-  async insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {
+  async insert(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const id = (data.id as Id) ?? ulid();
     const ts = nowIso();
-    const record: KartaRecord = {
+    const record: PotyroRecord = {
       ...structuredClone(data),
       id,
       createdAt: (data.createdAt as string) ?? ts,
@@ -148,10 +148,10 @@ export class SqliteStore implements Store {
     return structuredClone(record);
   }
 
-  async update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord> {
+  async update(entity: string, id: Id, patch: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const existing = await this.get(entity, id);
     if (!existing) throw new Error(`update: ${entity}/${id} not found`);
-    const next: KartaRecord = {
+    const next: PotyroRecord = {
       ...existing,
       ...structuredClone(patch),
       id: existing.id,
@@ -169,7 +169,7 @@ export class SqliteStore implements Store {
   }
 
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
-    const name = `karta_tx_${++this.txCounter}`;
+    const name = `potyro_tx_${++this.txCounter}`;
     const mark = this.pendingEmits.length; // notifications buffered before this (nested) level
     await this.db.exec(`SAVEPOINT ${name}`);
     this.txDepth++;
@@ -311,7 +311,7 @@ export class SqliteStore implements Store {
         m = new Map();
         records.set(entity, m);
       }
-      const rec = JSON.parse(row.doc as string) as KartaRecord;
+      const rec = JSON.parse(row.doc as string) as PotyroRecord;
       m.set(rec.id, rec);
     }
     return records;

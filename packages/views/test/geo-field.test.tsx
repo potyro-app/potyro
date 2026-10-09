@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import type { Field } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import type { Field } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput, FieldValue } from "../src/index.js";
 
 // Geo field (issue #22): "use my location" fills coordinates from ctx.caps.geo (graceful/disabled
@@ -23,7 +23,7 @@ const app = defineApp({
   pages: [{ id: "list", title: "Places", view: { type: "list", entity: "place", display: { primary: "name" } } }],
 });
 
-async function makeRuntime(caps: FakeCapabilities): Promise<KartaRuntime> {
+async function makeRuntime(caps: FakeCapabilities): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("geo-fixture");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

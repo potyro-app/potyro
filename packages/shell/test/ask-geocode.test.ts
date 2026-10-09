@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { placeByAddress } from "../src/ask-geocode.js";
 import type { ReviewRow } from "../src/ask-apply.js";
 

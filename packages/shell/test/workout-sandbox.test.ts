@@ -6,9 +6,9 @@ import { describe, expect, it, beforeAll } from "vitest";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import workout from "../../../examples/workout.app.tsx";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import type { NavBridge, UiBridge } from "@karta/host";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import type { NavBridge, UiBridge } from "@potyro/host";
 import { compose } from "../src/compose.js";
 import { createSandboxLoader } from "../src/isolate-bridge.js";
 import { seedIfEmpty } from "../src/seed.js";
@@ -24,9 +24,9 @@ async function bundleWorkout(): Promise<string> {
     globalName: "__sandbox",
     platform: "browser",
     target: "es2020",
-    footer: { js: "globalThis.__kartaApp = (__sandbox && __sandbox.default) ? __sandbox.default : __sandbox;" },
+    footer: { js: "globalThis.__potyroApp = (__sandbox && __sandbox.default) ? __sandbox.default : __sandbox;" },
     alias: {
-      karta: here("../src/isolate-stubs/karta.ts"),
+      potyro: here("../src/isolate-stubs/potyro.ts"),
       react: here("../src/isolate-stubs/react.ts"),
       "react/jsx-runtime": here("../src/isolate-stubs/react.ts"),
       "react/jsx-dev-runtime": here("../src/isolate-stubs/react.ts"),

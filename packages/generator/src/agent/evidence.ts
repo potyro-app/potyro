@@ -16,7 +16,7 @@
 // quoted text actually says what the record says ("a bar", not "a vegetarian restaurant") is the
 // second model's job (verify-claims.ts), reading only this same retrieved text.
 
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 
 export interface Evidence {
   url: string;

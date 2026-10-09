@@ -9,7 +9,7 @@
 // leave stay on the list to pull later rather than disappearing.
 
 import { useState } from "react";
-import { rememberAppSpace, type AccountApp } from "@karta/store";
+import { rememberAppSpace, type AccountApp } from "@potyro/store";
 import { saveUserApp, getUserApp } from "./user-apps.js";
 
 export interface RestoreAppsProps {

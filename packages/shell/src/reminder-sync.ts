@@ -3,13 +3,13 @@
 // its schedule) re-computes its next notification. Reconciliation itself is idempotent and a no-op
 // when there is no notification cap (web today → the app's in-app "due" surface covers it).
 
-import type { KartaRuntime } from "@karta/runtime";
-import type { Store } from "@karta/store";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { Store } from "@potyro/store";
 
 const DEBOUNCE_MS = 300;
 
 /** Start reminder reconciliation. Returns a disposer. No-op when the app declares no reminders. */
-export function startReminderSync(runtime: KartaRuntime, store: Store): () => void {
+export function startReminderSync(runtime: PotyroRuntime, store: Store): () => void {
   const reminders = runtime.definition.reminders ?? [];
   if (reminders.length === 0) return () => {};
 
@@ -41,7 +41,7 @@ const MAX_DUE = 50;
  * watched entity changes. The launcher stores the times and counts the ones that have come, so a
  * plant that falls due after the app was closed still shows on its tile. Returns a disposer.
  */
-export function watchReminderTimes(runtime: KartaRuntime, store: Store, onTimes: (due: string[]) => void): () => void {
+export function watchReminderTimes(runtime: PotyroRuntime, store: Store, onTimes: (due: string[]) => void): () => void {
   const reminders = runtime.definition.reminders ?? [];
   if (reminders.length === 0) return () => {};
   const entities = [...new Set(reminders.map((r) => r.entity))];

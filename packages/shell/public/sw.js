@@ -24,7 +24,7 @@
 // CACHE is versioned: bump it on release and `activate` drops every older cache. It is bumped here
 // deliberately, so a browser still holding a poisoned v2 throws it away on the next load.
 
-const CACHE = "karta-v4";
+const CACHE = "potyro-v4";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -75,7 +75,7 @@ function stash(req, res) {
 }
 
 /** Marker for the one automatic retry, so a gate that keeps refusing cannot spin. */
-const RETRY_MARK = "/__karta_auth_retry";
+const RETRY_MARK = "/__potyro_auth_retry";
 
 /**
  * An auth challenge the worker cannot answer: hand the navigation back to the browser.

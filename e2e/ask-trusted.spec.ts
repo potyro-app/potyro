@@ -11,7 +11,7 @@ const APP_ID = "dog-places";
 const APP_NAME = "Dog Places";
 const ALREADY_HAVE = "Jardim da Estrela";
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -62,8 +62,8 @@ const FITS = call("t2", {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id, name]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
-      localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
+      if (localStorage.getItem("potyro:user-apps")) return;
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
     },
     [SOURCE, APP_ID, APP_NAME],
   );

@@ -158,8 +158,8 @@ export async function ensureIdentities(apps: readonly InstalledApp[]): Promise<v
   );
 }
 
-const KEY = "karta:launcher";
-const CHANGED = "karta:launcher:changed";
+const KEY = "potyro:launcher";
+const CHANGED = "potyro:launcher:changed";
 
 type Entries = Readonly<Record<string, LauncherEntry>>;
 
@@ -226,7 +226,7 @@ export function setPinned(key: AppKey, pinned: boolean): void {
   updateEntry(key, pinned ? { pinned: true, order: last + 1 } : { pinned: undefined, order: undefined });
 }
 
-const SORT_KEY = "karta:launcher:sort";
+const SORT_KEY = "potyro:launcher:sort";
 const SORT_MODES = new Set(["recent", "az", "manual"]);
 
 /** How the unpinned apps are ordered on this device. `recent` (frecency) unless chosen otherwise. */
@@ -290,7 +290,7 @@ export function subscribe(cb: () => void): () => void {
   if (!target?.addEventListener) return () => {};
   const onStorage = (e: Event): void => {
     const k = (e as StorageEvent).key;
-    if (k === null || k === KEY || k === SORT_KEY || k === "karta:user-apps") cb();
+    if (k === null || k === KEY || k === SORT_KEY || k === "potyro:user-apps") cb();
   };
   target.addEventListener(CHANGED, cb);
   target.addEventListener(USER_APPS_CHANGED, cb);
@@ -306,7 +306,7 @@ export function subscribe(cb: () => void): () => void {
 // The raw JSON of both keys is the fingerprint: cheap to compare, and it changes iff the list does.
 let snapshot: { raw: string; apps: InstalledApp[] } | null = null;
 function getSnapshot(): InstalledApp[] {
-  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("karta:user-apps") ?? ""}`;
+  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""}`;
   if (!snapshot || snapshot.raw !== raw) snapshot = { raw, apps: listInstalledApps() };
   return snapshot.apps;
 }
@@ -321,7 +321,7 @@ export function useSortMode(): "recent" | "az" | "manual" {
 export function useInstalledApps(): InstalledApp[] {
   const apps = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   useEffect(() => {
-    void ensureIdentities(apps).catch((e) => console.warn("[karta] could not read an app's identity:", e));
+    void ensureIdentities(apps).catch((e) => console.warn("[potyro] could not read an app's identity:", e));
   }, [apps]);
   return apps;
 }

@@ -10,16 +10,16 @@
 // computed evaluation, every page's filter/sort, display bindings, entity actions, and reminder
 // `when`. That is where hallucinated `ctx` APIs and unguarded field access actually surface.
 
-import { actionInfo, type AppDefinition, type EntityDef, type Field, type Id, type Resolved } from "karta";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime } from "@karta/runtime";
-import { MemoryStore } from "@karta/store";
+import { actionInfo, type AppDefinition, type EntityDef, type Field, type Id, type Resolved } from "potyro";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime } from "@potyro/runtime";
+import { MemoryStore } from "@potyro/store";
 
 const SEED_ROWS = 3;
 const DAY_MS = 86_400_000;
 
-/** Every view binding path a `BindingRef` can address (see @karta/host BindingRef). */
+/** Every view binding path a `BindingRef` can address (see @potyro/host BindingRef). */
 const VIEW_BINDING_PATHS = ["display.primary", "display.secondary", "date", "title", "color", "text", "geo"] as const;
 
 export interface SmokeResult {

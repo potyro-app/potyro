@@ -1,17 +1,17 @@
-import { actionInfo, actionInputProblem, FieldValueError, resolveView } from "karta";
+import { actionInfo, actionInputProblem, FieldValueError, resolveView } from "potyro";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
-import type { AppDefinition, Ctx, Id, KartaRecord, Person, Resolved, Space, Value, View } from "karta";
-import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@karta/host";
-import type { Capabilities } from "@karta/capabilities";
-import type { Store } from "@karta/store";
+import type { AppDefinition, Ctx, Id, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
+import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
+import type { Capabilities } from "@potyro/capabilities";
+import type { Store } from "@potyro/store";
 import { asyncSort } from "./async-sort.js";
 
 /** Sentinel a bundler/isolate loader uses to mark a function-valued binding it can't serialize. */
-export const FN_SENTINEL = "__karta_fn__";
+export const FN_SENTINEL = "__potyro_fn__";
 
 /** kv key holding the set of currently-scheduled reminder notification ids (for idempotent reconcile). */
 const REMINDER_KV_KEY = "reminders.scheduled";
@@ -294,11 +294,11 @@ export class RuntimeCore {
     );
   }
 
-  async create(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {
+  async create(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord> {
     return this.ctxFor().create(entity, data as Record<string, unknown>);
   }
 
-  async patch(entity: string, id: Id, data: Partial<KartaRecord>): Promise<void> {
+  async patch(entity: string, id: Id, data: Partial<PotyroRecord>): Promise<void> {
     await this.ctxFor().patch(entity, id, data as Record<string, unknown>);
   }
 

@@ -1,13 +1,13 @@
 // Runtime app bundler: turn a `.app.ts` source string (an AI-generated app, or an imported shared
 // bundle's logic) into the self-contained IIFE the QuickJS isolate expects — the same shape the
-// build-time sandbox plugin produces, but on demand in the browser. `karta`/`react` resolve to the
+// build-time sandbox plugin produces, but on demand in the browser. `potyro`/`react` resolve to the
 // isolate stubs so Zod and React never enter the untrusted bundle. The generated/imported code then
 // runs *untrusted in the isolate*, which is exactly what makes running unknown app logic safe.
 //
 // The core is env-agnostic (esbuild + stub sources are injected), so it's testable in Node with the
 // native esbuild; `createAppBundler` wires esbuild-wasm + the inlined stubs for the browser.
 
-const FOOTER = "globalThis.__kartaApp = (__sandbox && __sandbox.default) ? __sandbox.default : __sandbox;";
+const FOOTER = "globalThis.__potyroApp = (__sandbox && __sandbox.default) ? __sandbox.default : __sandbox;";
 
 // Minimal structural views of the esbuild surface we use — satisfied by both `esbuild` and
 // `esbuild-wasm`, so this module never depends on a concrete esbuild package.
@@ -37,18 +37,18 @@ export interface EsbuildLike {
 }
 
 export interface IsolateStubs {
-  karta: string;
+  potyro: string;
   react: string;
 }
 
-/** Bundle `source` to the isolate IIFE, resolving `karta`/`react` to the provided stub sources. */
+/** Bundle `source` to the isolate IIFE, resolving `potyro`/`react` to the provided stub sources. */
 export async function bundleAppSource(source: string, esbuild: EsbuildLike, stubs: IsolateStubs): Promise<string> {
   const plugin: EsbuildPlugin = {
-    name: "karta-isolate-stubs",
+    name: "potyro-isolate-stubs",
     setup(build) {
-      build.onResolve({ filter: /^(karta|react)(\/jsx-(dev-)?runtime)?$/ }, (args) => ({ path: args.path, namespace: "karta-stub" }));
-      build.onLoad({ filter: /.*/, namespace: "karta-stub" }, (args) => ({
-        contents: args.path === "karta" ? stubs.karta : stubs.react,
+      build.onResolve({ filter: /^(potyro|karta|react)(\/jsx-(dev-)?runtime)?$/ }, (args) => ({ path: args.path, namespace: "potyro-stub" }));
+      build.onLoad({ filter: /.*/, namespace: "potyro-stub" }, (args) => ({
+        contents: args.path === "potyro" || args.path === "karta" ? stubs.potyro : stubs.react,
         loader: "ts",
       }));
     },
@@ -93,28 +93,28 @@ export async function getEsbuild(): Promise<EsbuildLike> {
  */
 export async function createAppBundler(): Promise<(source: string) => Promise<string>> {
   const esbuild = await getEsbuild();
-  const [karta, react] = await Promise.all([
-    import("./isolate-stubs/karta.ts?raw"),
+  const [potyro, react] = await Promise.all([
+    import("./isolate-stubs/potyro.ts?raw"),
     import("./isolate-stubs/react.ts?raw"),
   ]);
-  return (source: string) => bundleAppSource(source, esbuild, { karta: karta.default, react: react.default });
+  return (source: string) => bundleAppSource(source, esbuild, { potyro: potyro.default, react: react.default });
 }
 
 /**
  * Bundle a `.app.ts` source to a self-contained ES module for TRUSTED (direct) execution. Unlike the
- * isolate bundle, `karta`/`react` resolve to the SHELL's real modules (read from globals at eval
+ * isolate bundle, `potyro`/`react` resolve to the SHELL's real modules (read from globals at eval
  * time), so the real `defineApp` runs — validating the app and yielding live functions + a branded
- * KartaApp. Used only after the user promotes an app to trusted (see trusted-loader).
+ * PotyroApp. Used only after the user promotes an app to trusted (see trusted-loader).
  */
 export async function bundleTrustedModule(source: string): Promise<string> {
   const esbuild = await getEsbuild();
   const real = (name: string) => `module.exports = globalThis.${name};`;
   const plugin: EsbuildPlugin = {
-    name: "karta-real-modules",
+    name: "potyro-real-modules",
     setup(build) {
-      build.onResolve({ filter: /^(karta|react)(\/jsx-(dev-)?runtime)?$/ }, (args) => ({ path: args.path, namespace: "karta-real" }));
-      build.onLoad({ filter: /.*/, namespace: "karta-real" }, (args) => ({
-        contents: args.path === "karta" ? real("__kartaReal") : args.path.startsWith("react/jsx") ? real("__reactJsxReal") : real("__reactReal"),
+      build.onResolve({ filter: /^(potyro|karta|react)(\/jsx-(dev-)?runtime)?$/ }, (args) => ({ path: args.path, namespace: "potyro-real" }));
+      build.onLoad({ filter: /.*/, namespace: "potyro-real" }, (args) => ({
+        contents: args.path === "potyro" || args.path === "karta" ? real("__potyroReal") : args.path.startsWith("react/jsx") ? real("__reactJsxReal") : real("__reactReal"),
         loader: "js",
       }));
     },

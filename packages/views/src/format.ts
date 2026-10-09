@@ -1,6 +1,6 @@
-import { resolveView, humanizeKey } from "karta";
-import type { KartaRuntime } from "@karta/runtime";
-import type { View } from "karta";
+import { resolveView, humanizeKey } from "potyro";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { View } from "potyro";
 import { formatDateRelative, type Precision } from "./dates.js";
 
 /**
@@ -38,12 +38,12 @@ export function toBadges(v: unknown): string[] {
 
 /** The view object for a page (typed loosely — declarative fields only guaranteed present). */
 /** The view a page ref names — a layout item's for `page#index` (#105). */
-export function getView(runtime: KartaRuntime, pageRef: string): View {
+export function getView(runtime: PotyroRuntime, pageRef: string): View {
   return resolveView(runtime.definition, pageRef);
 }
 
 /** The field an entity uses as its human label (relation pickers, list rows). */
-export function displayFieldFor(runtime: KartaRuntime, entity: string): string {
+export function displayFieldFor(runtime: PotyroRuntime, entity: string): string {
   const def = runtime.definition.entities[entity];
   if (!def) return "id";
   if (def.displayField) return def.displayField;
@@ -52,11 +52,11 @@ export function displayFieldFor(runtime: KartaRuntime, entity: string): string {
 }
 
 /** Humanize a field/computed key: "caloriesPerServing" → "Calories Per Serving". */
-// Re-exported, not reimplemented — see `humanizeKey` in `karta` for why. Imported as well as
+// Re-exported, not reimplemented — see `humanizeKey` in `potyro` for why. Imported as well as
 // re-exported, because `fieldLabel` below calls it and `export … from` does not bring it into scope.
 export { humanizeKey };
 
 /** A readable label for a field/computed key on an entity. */
-export function fieldLabel(runtime: KartaRuntime, entity: string, key: string): string {
+export function fieldLabel(runtime: PotyroRuntime, entity: string, key: string): string {
   return runtime.definition.entities[entity]?.fields[key]?.label ?? humanizeKey(key);
 }

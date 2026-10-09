@@ -11,7 +11,7 @@
 // The reactive machinery underneath was never React's: `Store.subscribe(entity, cb)` has been there
 // all along.
 
-import type { Id, Resolved } from "karta";
+import type { Id, Resolved } from "potyro";
 import type { RuntimeCore } from "./core.js";
 
 export type Unsubscribe = () => void;
@@ -36,7 +36,7 @@ export interface RecordState {
  */
 function failed(what: string, e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
-  console.error(`[karta] ${what} could not load:`, e);
+  console.error(`[potyro] ${what} could not load:`, e);
   return message;
 }
 

@@ -31,9 +31,9 @@
 // by wrapping whichever store is chosen in `readOnlyStore`, so a write attempt throws instead of
 // landing.
 
-import { MemoryStore, type Store } from "@karta/store";
-import { replayCase, replayPassed, structuralLoss, viewSubstitutions, type AppShape, type Case, type ReplayTarget } from "@karta/runtime";
-import { createWebCapabilities } from "@karta/capabilities";
+import { MemoryStore, type Store } from "@potyro/store";
+import { replayCase, replayPassed, structuralLoss, viewSubstitutions, type AppShape, type Case, type ReplayTarget } from "@potyro/runtime";
+import { createWebCapabilities } from "@potyro/capabilities";
 import { createAppBundler } from "./app-bundler.js";
 import { observeRender } from "./observe-render.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
@@ -58,9 +58,9 @@ const VERIFY_MEMORY_BYTES = 64 * 1024 * 1024;
 // single call without becoming another false-failure source for a slow-but-correct app.
 export const VERIFY_WALL_CLOCK_MS = VERIFY_TIMEOUT_MS * 2;
 
-// The shape comparison moved to @karta/runtime (see shape.ts there); re-exported so the shell's
+// The shape comparison moved to @potyro/runtime (see shape.ts there); re-exported so the shell's
 // existing importers and tests need no change.
-export { structuralLoss, viewSubstitutions, type AppShape } from "@karta/runtime";
+export { structuralLoss, viewSubstitutions, type AppShape } from "@potyro/runtime";
 
 export interface VerifyCandidateDeps {
   source: string;

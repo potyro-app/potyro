@@ -10,8 +10,8 @@
 
 import { describe, expect, it } from "vitest";
 import { newAsyncContext } from "quickjs-emscripten";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
 import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
 
@@ -21,7 +21,7 @@ function newContext(): Promise<QuickJSAsyncContextLike> {
 
 /** What esbuild would produce for an app whose map page carries a "centre on me" button. */
 const BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "places", name: "Places", version: "1.0.0", schemaVersion: 1,
   entities: { place: { fields: { name: { type: "text" }, at: { type: "geo" } } } },
   pages: [

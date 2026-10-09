@@ -1,6 +1,6 @@
-// `karta` — the public authoring package (WP1, the gate). App modules import from here.
+// `potyro` — the public authoring package (WP1, the gate). App modules import from here.
 
-export { defineApp, isKartaApp } from "./defineApp.js";
+export { defineApp, isPotyroApp } from "./defineApp.js";
 export { f } from "./fields.js";
 export { humanizeKey } from "./humanize.js";
 export { actionInfo, actionInputProblem, actionRun, type ActionInfo } from "./actions.js";
@@ -9,7 +9,7 @@ export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueErro
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- shared value types ----
-export type { Id, Value, KartaRecord, Resolved, MediaRef, Geo } from "./types/core.js";
+export type { Id, Value, PotyroRecord, Resolved, MediaRef, Geo } from "./types/core.js";
 
 // ---- field types ----
 export type {
@@ -61,7 +61,7 @@ export type {
 // ---- app definition ----
 export type {
   AppDefinition,
-  KartaApp,
+  PotyroApp,
   EntityDef,
   FieldGroup,
   LayoutItem,
@@ -116,7 +116,7 @@ export type {
 } from "./types/app.js";
 export { VIEW_TYPES } from "./types/app.js";
 
-// ---- runtime contracts (implemented by @karta/runtime, consumed by @karta/views) ----
+// ---- runtime contracts (implemented by @potyro/runtime, consumed by @potyro/views) ----
 export type { Runtime, ViewProps, CustomViewComponent, CustomViewMount, Unsubscribe } from "./types/runtime.js";
 
 // ---- opt-in precise-typing helpers (author may supply an explicit entity shape) ----
@@ -131,3 +131,10 @@ export type {
 
 export { LAYOUT_TYPES } from "./types/app.js";
 export { resolveView, basePageId, layoutItemId } from "./layout.js";
+
+// ---- names from before the rename (#114) ----
+// Apps written while the product was still the codename import these. They keep working forever:
+// an app module is a saved source on someone's device, not something we can rewrite.
+export { isPotyroApp as isKartaApp } from "./defineApp.js";
+export type { PotyroRecord as KartaRecord } from "./types/core.js";
+export type { PotyroApp as KartaApp } from "./types/app.js";

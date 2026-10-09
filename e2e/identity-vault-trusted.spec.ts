@@ -8,7 +8,7 @@ import { ensureIdentity, recoveryPassphrase, type IdentityKeys } from "../packag
 // browser generated as non-extractable. Only a real browser has that IndexedDB and that key, which is
 // why this is a browser spec: the unit tests cover the rules, this covers the vault that ships.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 export default defineApp({
   id: "who", name: "Who", version: "1.0.0", schemaVersion: 1,
   entities: { note: { label: "Note", icon: "📝", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -16,13 +16,13 @@ export default defineApp({
 });
 `;
 
-const SECRET_KEYS = ["karta:identity:seed", "karta:identity:secret"];
+const SECRET_KEYS = ["potyro:identity:seed", "potyro:identity:secret"];
 
 async function device(context: BrowserContext, plain?: Record<string, string>): Promise<Page> {
   await context.addInitScript(
     ([source, legacy]) => {
-      if (localStorage.getItem("karta:user-apps")) return; // first load only
-      localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "who", name: "Who", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      if (localStorage.getItem("potyro:user-apps")) return; // first load only
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "who", name: "Who", source, trusted: true, updatedAt: new Date().toISOString() }]));
       for (const [k, v] of Object.entries(legacy ?? {})) localStorage.setItem(k, v);
     },
     [STARTER, plain ?? null] as const,
@@ -38,7 +38,7 @@ const vaultContents = (page: Page) =>
   page.evaluate(
     () =>
       new Promise<{ keys: string[]; keyIsCryptoKey: boolean; extractable: boolean | null; sealed: string[] }>((resolve, reject) => {
-        const open = indexedDB.open("karta-vault");
+        const open = indexedDB.open("potyro-vault");
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const store = open.result.transaction("secrets").objectStore("secrets");
@@ -87,11 +87,11 @@ test("a new device keeps its identity secrets in the encrypted vault, and they s
   const secretLike = /sealerSecret_|signerSecret_/;
   expect(vault.sealed.some((v) => secretLike.test(v))).toBe(false);
 
-  const id = await page.evaluate(() => localStorage.getItem("karta:identity:id"));
+  const id = await page.evaluate(() => localStorage.getItem("potyro:identity:id"));
   await page.reload();
   await expect(page.locator("h1").first()).toHaveText("Who", { timeout: 30_000 });
   expect(await openYou(page)).toBe(words);
-  expect(await page.evaluate(() => localStorage.getItem("karta:identity:id"))).toBe(id);
+  expect(await page.evaluate(() => localStorage.getItem("potyro:identity:id"))).toBe(id);
   await ctx.close();
 });
 
@@ -113,7 +113,7 @@ test("a device from before the vault has its plain secrets moved in — and is s
   expect((await vaultContents(page)).keys.sort()).toEqual([...SECRET_KEYS].sort());
 
   // Same person, same words: nothing was lost in the move.
-  expect(await page.evaluate(() => localStorage.getItem("karta:identity:id"))).toBe(me.id);
+  expect(await page.evaluate(() => localStorage.getItem("potyro:identity:id"))).toBe(me.id);
   expect(await openYou(page)).toBe(expectedWords);
   await ctx.close();
 });

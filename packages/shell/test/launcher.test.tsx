@@ -17,7 +17,7 @@ import { Launcher } from "../src/launcher.js";
 import { USER_APPS_CHANGED, type UserApp } from "../src/user-apps.js";
 
 const app = (id: string, name = id): UserApp => ({ id, name, source: "export default 1", updatedAt: "2026-09-11T00:00:00.000Z", trusted: true });
-const seed = (...apps: UserApp[]) => localStorage.setItem("karta:user-apps", JSON.stringify(apps));
+const seed = (...apps: UserApp[]) => localStorage.setItem("potyro:user-apps", JSON.stringify(apps));
 const props = { variant: "home" as const, onOpen: () => {}, onNewApp: () => {} };
 const tiles = (name: string) => screen.queryAllByRole("button", { name: new RegExp(name) }).filter((b) => b.classList.contains("k-launch-tile"));
 
@@ -110,8 +110,8 @@ describe("Launcher order", () => {
   };
   const opened = (id: string, name: string, openCount: number) => {
     localStorage.setItem(
-      "karta:launcher",
-      JSON.stringify({ ...JSON.parse(localStorage.getItem("karta:launcher") ?? "{}"), [`user:${id}`]: { key: `user:${id}`, openCount, lastOpenedAt: new Date().toISOString() } }),
+      "potyro:launcher",
+      JSON.stringify({ ...JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}"), [`user:${id}`]: { key: `user:${id}`, openCount, lastOpenedAt: new Date().toISOString() } }),
     );
     return app(id, name);
   };
@@ -124,7 +124,7 @@ describe("Launcher order", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Pin" }));
     expect(keysIn("Pinned")).toEqual(["user:trips"]);
     expect(keysIn("Everything else")).not.toContain("user:trips");
-    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:trips"]).toMatchObject({ pinned: true, order: 0 });
+    expect(JSON.parse(localStorage.getItem("potyro:launcher")!)["user:trips"]).toMatchObject({ pinned: true, order: 0 });
     // And back.
     fireEvent.click(screen.getByRole("button", { name: /Actions for Trips/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
@@ -139,17 +139,17 @@ describe("Launcher order", () => {
     fireEvent.click(screen.getByRole("button", { name: "A–Z" }));
     expect(keysIn("Apps")[0]).toBe("user:apple");
     expect(screen.getByRole("button", { name: "A–Z" }).getAttribute("aria-pressed")).toBe("true");
-    expect(localStorage.getItem("karta:launcher:sort")).toBe("az");
+    expect(localStorage.getItem("potyro:launcher:sort")).toBe("az");
   });
 
   it("moves a pinned tile with Alt+arrows", () => {
     seed(app("a", "Alpha"), app("b", "Beta"));
-    localStorage.setItem("karta:launcher", JSON.stringify({ "user:a": { key: "user:a", pinned: true, order: 0 }, "user:b": { key: "user:b", pinned: true, order: 1 } }));
+    localStorage.setItem("potyro:launcher", JSON.stringify({ "user:a": { key: "user:a", pinned: true, order: 0 }, "user:b": { key: "user:b", pinned: true, order: 1 } }));
     render(<Launcher {...props} />);
     expect(keysIn("Pinned")).toEqual(["user:a", "user:b"]);
     fireEvent.keyDown(tiles("Alpha")[0]!, { key: "ArrowRight", altKey: true });
     expect(keysIn("Pinned")).toEqual(["user:b", "user:a"]);
-    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:a"].order).toBe(1);
+    expect(JSON.parse(localStorage.getItem("potyro:launcher")!)["user:a"].order).toBe(1);
   });
 });
 
@@ -202,9 +202,9 @@ describe("Launcher tile editor", () => {
     const tile = tiles("Mum's recipes")[0]!;
     expect(tile.querySelector(".k-launch-avatar")?.textContent).toBe("🥘");
     expect(tile.style.getPropertyValue("--tile-accent")).toBe("oklch(72% 0.13 205)");
-    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:recipes"]).toMatchObject({ displayName: "Mum's recipes", icon: "🥘", hue: 205 });
+    expect(JSON.parse(localStorage.getItem("potyro:launcher")!)["user:recipes"]).toMatchObject({ displayName: "Mum's recipes", icon: "🥘", hue: 205 });
     // The record is the author's, untouched.
-    expect(JSON.parse(localStorage.getItem("karta:user-apps")!)[0].name).toBe("Recipes");
+    expect(JSON.parse(localStorage.getItem("potyro:user-apps")!)[0].name).toBe("Recipes");
     // Reset puts it back.
     fireEvent.click(screen.getByRole("button", { name: /Actions for Mum's recipes/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Edit tile" }));
@@ -212,6 +212,6 @@ describe("Launcher tile editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "The app's own colour" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(tiles("Recipes")).toHaveLength(1);
-    expect(JSON.parse(localStorage.getItem("karta:launcher")!)["user:recipes"].hue).toBeUndefined();
+    expect(JSON.parse(localStorage.getItem("potyro:launcher")!)["user:recipes"].hue).toBeUndefined();
   });
 });

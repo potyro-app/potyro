@@ -11,8 +11,8 @@
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
 
-import type { AppShape } from "@karta/runtime";
-import { structuralLoss } from "@karta/runtime";
+import type { AppShape } from "@potyro/runtime";
+import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";

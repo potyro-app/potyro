@@ -2,7 +2,7 @@
 // the model's calls and its checks, as OpenRouter reports them — and each app keeps a running total,
 // per device, in localStorage (a convenience, not an account: another device has its own).
 
-const KEY = (appId: string): string => `karta:ask-spent:${appId}`;
+const KEY = (appId: string): string => `potyro:ask-spent:${appId}`;
 
 export function spentIn(appId: string): number {
   try {

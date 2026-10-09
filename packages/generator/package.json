@@ -1,5 +1,5 @@
 {
-  "name": "@karta/generator",
+  "name": "@potyro/generator",
   "version": "0.0.0",
   "type": "module",
   "description": "AI generator eval harness (KA-06): score generated .app.ts sources (compile/validate/render) against a prompt corpus and a pluggable model backend. The measurable base for KA-05/KA-07.",
@@ -23,13 +23,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
-    "@karta/capabilities": "workspace:*",
-    "@karta/host": "workspace:*",
-    "@karta/runtime": "workspace:*",
-    "@karta/store": "workspace:*",
+    "@potyro/capabilities": "workspace:*",
+    "@potyro/host": "workspace:*",
+    "@potyro/runtime": "workspace:*",
+    "@potyro/store": "workspace:*",
     "@mlc-ai/web-llm": "^0.2.84",
     "esbuild": "^0.21.5",
-    "karta": "workspace:*"
+    "potyro": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

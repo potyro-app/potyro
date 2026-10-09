@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { DurationInput, NumberInput, nudge, wantsStepper } from "../src/number-input.js";
 import { formatDuration, formatWithUnit } from "../src/units.js";
-import type { DurationField, NumberField } from "karta";
+import type { DurationField, NumberField } from "potyro";
 
 // Numbers with their unit, a stepper where a value is nudged rather than typed, the right phone
 // keyboard, and durations as h : min (#99).

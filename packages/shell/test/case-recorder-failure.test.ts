@@ -1,4 +1,4 @@
-// This test lives in its own file because it needs a module-level `vi.mock` of `@karta/runtime`
+// This test lives in its own file because it needs a module-level `vi.mock` of `@potyro/runtime`
 // that only breaks `addStep` — every other `case-recorder.test.ts` test needs the REAL `addStep`
 // to record steps correctly, and `vi.mock` factories apply for the whole file they're declared in.
 // Splitting this one assertion out lets it mock just what it needs (via `importActual` for
@@ -12,8 +12,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@karta/runtime", async (importActual) => {
-  const actual = await importActual<typeof import("@karta/runtime")>();
+vi.mock("@potyro/runtime", async (importActual) => {
+  const actual = await importActual<typeof import("@potyro/runtime")>();
   return {
     ...actual,
     addStep: () => {
@@ -50,7 +50,7 @@ describe("CaseRecorder when recording itself fails", () => {
 
     expect(r.lost).toBe(2);
     expect(warn).toHaveBeenCalledTimes(2);
-    expect(warn.mock.calls[0]![0]).toContain("[karta]");
+    expect(warn.mock.calls[0]![0]).toContain("[potyro]");
     warn.mockRestore();
   });
 });

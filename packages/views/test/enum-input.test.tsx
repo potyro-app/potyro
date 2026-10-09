@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { EnumField } from "karta";
+import type { EnumField } from "potyro";
 import { EnumInput, EnumPill } from "../src/enum-input.js";
 import { enumSwatch, filterOptions, wantsSegmented } from "../src/enum.js";
 

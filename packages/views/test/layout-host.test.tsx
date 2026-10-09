@@ -7,11 +7,11 @@
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp, type AppInput, type PageLayout } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type AppInput, type PageLayout } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { LayoutHost } from "../src/layout-host.js";
 
 const app = (layout: PageLayout): AppInput => ({
@@ -31,7 +31,7 @@ const app = (layout: PageLayout): AppInput => ({
   ],
 });
 
-async function makeRuntime(layout: PageLayout): Promise<KartaRuntime> {
+async function makeRuntime(layout: PageLayout): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("layout-fixture");
   await store.insert("plant", { name: "Fern", done: false });
@@ -45,7 +45,7 @@ async function makeRuntime(layout: PageLayout): Promise<KartaRuntime> {
 
 // Like the shell: navigating to a page merges the params into that page's params — so a split's
 // selection, which navigates to its own page, lands in the params the detail reads.
-function Harness({ runtime, layout, navigate }: { runtime: KartaRuntime; layout: PageLayout; navigate?: (p: string, q?: Record<string, string>) => void }) {
+function Harness({ runtime, layout, navigate }: { runtime: PotyroRuntime; layout: PageLayout; navigate?: (p: string, q?: Record<string, string>) => void }) {
   const [params, setParams] = useState<Record<string, unknown>>({});
   return (
     <LayoutHost
@@ -136,7 +136,7 @@ describe("LayoutHost", () => {
     expect(details.open).toBe(true);
     details.open = false;
     fireEvent(details, new Event("toggle"));
-    expect(localStorage.getItem("karta:layout:layout-fixture:home:0")).toBe("closed");
+    expect(localStorage.getItem("potyro:layout:layout-fixture:home:0")).toBe("closed");
     view.unmount();
     render(<Harness runtime={runtime} layout={layout} />);
     await screen.findByText("Fern");

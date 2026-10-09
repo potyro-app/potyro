@@ -5,7 +5,7 @@
 // resolving the wrong way.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
+import { MemoryStore } from "@potyro/store";
 import { isSchemaBehind, pendingAppUpdate, publishAppSource, readPublishedApp, schemaVersionOf } from "../src/app-sync.js";
 import { readOnlyStore } from "../src/read-only-store.js";
 

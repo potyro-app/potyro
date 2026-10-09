@@ -8,7 +8,7 @@ import { openHome, seed } from "./fixture.js";
 const app = (id: string, name: string) => ({
   id,
   name,
-  source: `import { defineApp } from "karta";\nexport default defineApp({ id: ${JSON.stringify(id)}, name: ${JSON.stringify(name)}, version: "1.0.0", schemaVersion: 1,\n  entities: { item: { fields: { title: { type: "text" } } } }, pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item" } }] });\n`,
+  source: `import { defineApp } from "potyro";\nexport default defineApp({ id: ${JSON.stringify(id)}, name: ${JSON.stringify(name)}, version: "1.0.0", schemaVersion: 1,\n  entities: { item: { fields: { title: { type: "text" } } } }, pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item" } }] });\n`,
   updatedAt: new Date(0).toISOString(),
   trusted: true,
 });

@@ -1,7 +1,7 @@
 // Put real requests to Ask (#213) and keep everything, so its answers can be READ — the only way to
 // judge whether "add vegetarian restaurants" produced restaurants, a question, or invented places.
 //
-//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @karta/generator eval:ask -- --model deepseek/deepseek-v4-flash-0731
+//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @potyro/generator eval:ask -- --model deepseek/deepseek-v4-flash-0731
 //
 // Flags: --model <openrouter id>[,<id>…]  --only <case id>[,…]  --reasoning none|low|medium|high
 //        --web (let the model search the web)  --out <dir>
@@ -13,7 +13,7 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import { createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { runAskLoop, type AskContext, type AskOutcome } from "../src/agent/ask.js";
 import { ASK_CASES, type AskCase } from "../src/ask-cases.js";

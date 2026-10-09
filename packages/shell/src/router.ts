@@ -10,7 +10,7 @@
 // cannot switch to in place: it falls back to the full navigation, which always works.
 
 /** `data` is the Data page, open on one app's records when `id` says which. */
-/** `share`: text shared into Karta from another app, waiting for the person to pick an app (#213). */
+/** `share`: text shared into Potyro from another app, waiting for the person to pick an app (#213). */
 export type ShellRoute = { kind: "user"; id: string } | { kind: "home" } | { kind: "data"; id?: string } | { kind: "share" };
 
 /** Returns false to decline, and the router navigates the page instead. */
@@ -31,11 +31,11 @@ export function urlFor(route: ShellRoute): string {
 
 /** Marks a history entry this router pushed, so "back" can tell a way back into the shell from one
  *  that would leave the site. */
-const PUSHED = { karta: true } as const;
+const PUSHED = { potyro: true } as const;
 
 /** Is there a shell page behind this one to go back to? */
 export function canGoBack(): boolean {
-  return (history.state as { karta?: boolean } | null)?.karta === true;
+  return (history.state as { potyro?: boolean } | null)?.potyro === true;
 }
 
 export function navigateTo(route: ShellRoute): void {

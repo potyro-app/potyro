@@ -11,7 +11,7 @@ const APP_NAME = "Dog Spots";
 const APP_KEY = "app-key-4417";
 const MY_KEY = "my-key-9921";
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -40,10 +40,10 @@ const tool = (id: string, name: string, args: unknown) => ({
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id, name]) => {
-      if (!localStorage.getItem("karta:user-apps")) {
-        localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
+      if (!localStorage.getItem("potyro:user-apps")) {
+        localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]));
       }
-      sessionStorage.setItem("karta:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "anthropic/claude-sonnet-4.5" }));
+      sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "anthropic/claude-sonnet-4.5" }));
     },
     [SOURCE, APP_ID, APP_NAME],
   );

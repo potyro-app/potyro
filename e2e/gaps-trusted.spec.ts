@@ -34,7 +34,7 @@ async function captureTiles(page: Page): Promise<Tile[]> {
 const tileX = (lng: number, z: number): number => Math.floor(((lng + 180) / 360) * 2 ** z);
 
 function mapApp(camera: string): string {
-  return `import { defineApp } from "karta";
+  return `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "cam",
@@ -52,9 +52,9 @@ export default defineApp({
 async function seed(page: Page, source: string, data?: Record<string, unknown>[]): Promise<void> {
   await page.addInitScript(
     ([src, rows]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "cam", name: "Cam", source: src, updatedAt: new Date(0).toISOString(), trusted: true }]),
       );
       if (rows) {
@@ -63,7 +63,7 @@ async function seed(page: Page, source: string, data?: Record<string, unknown>[]
           records[`s${i}`] = { id: `s${i}`, createdAt: "", updatedAt: "", ...r };
         });
         localStorage.setItem(
-          "karta:user:cam",
+          "potyro:user:cam",
           JSON.stringify({ records: { spot: records }, blobs: {}, kv: {}, schemaVersion: 1 }),
         );
       }
@@ -100,7 +100,7 @@ test('camera "fit" frames the markers instead of restoring a position', async ({
   await expect.poll(() => Math.max(0, ...tiles.map((t) => t.z)), { timeout: 15_000 }).toBeGreaterThan(8);
   // Nothing was written to the app's storage, because "fit" doesn't record moves.
   const saved = await page.evaluate(() => {
-    const raw = localStorage.getItem("karta:user:cam");
+    const raw = localStorage.getItem("potyro:user:cam");
     return raw ? ((JSON.parse(raw) as { kv?: Record<string, string> }).kv?.["kv:map:map:camera"] ?? null) : null;
   });
   expect(saved).toBeNull();
@@ -136,7 +136,7 @@ test("an unknown view key is refused with a message you can act on", async ({ pa
   await studio.getByRole("tab", { name: "Source" }).click();
 
   const source = studio.getByRole("textbox", { name: "App source" });
-  await source.fill(`import { defineApp } from "karta";
+  await source.fill(`import { defineApp } from "potyro";
 
 export default defineApp({
   id: "bogus", name: "Bogus", version: "1.0.0", schemaVersion: 1,
@@ -153,7 +153,7 @@ export default defineApp({
 });
 
 test("the steps view walks an ordered list and remembers where you got to", async ({ page }) => {
-  const source = `import { defineApp } from "karta";
+  const source = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "cam",
@@ -197,7 +197,7 @@ export default defineApp({
   await expect(page.getByRole("status")).toHaveText("1 of 2 done");
 });
 
-const PLACES_APP = `import { defineApp } from "karta";
+const PLACES_APP = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "cam",

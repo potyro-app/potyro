@@ -2,11 +2,11 @@
 //
 // Two kinds, one shape. An APP's source is declared in its definition (`sources`, never with a key);
 // the person supplies the key. A PERSON's source is one they added themselves: a name, a key, and an
-// endpoint or a link to the API's documentation. Karta ships none.
+// endpoint or a link to the API's documentation. Potyro ships none.
 //
 // THE KEY RULES — each one has a test in test/ask-sources.test.ts:
 //
-//   Where a key lives   In the device's secret vault (@karta/identity: the platform keystore on
+//   Where a key lives   In the device's secret vault (@potyro/identity: the platform keystore on
 //                       Android, a non-extractable AES key on the web). With no vault, in memory for
 //                       this page only. NEVER localStorage: unlike the identity, a source key has no
 //                       plain-storage fallback, because losing it costs a re-paste, not an account.
@@ -25,12 +25,12 @@
 // The settings of a person's source (name, endpoint, docs, allowed origins) are not secret and sit in
 // localStorage on this device. Nothing here syncs or exports.
 //
-// The honest limit on the web, same as the identity's (vault.ts): code running on Karta's own origin
+// The honest limit on the web, same as the identity's (vault.ts): code running on Potyro's own origin
 // can still ask the vault to decrypt. What this removes is a key lying around in the clear.
 
-import type { AppDefinition, SourceDef } from "karta";
-import type { SecretVault } from "@karta/identity";
-import type { AskSource, SourceFetch, SourceRequest } from "@karta/generator/agent";
+import type { AppDefinition, SourceDef } from "potyro";
+import type { SecretVault } from "@potyro/identity";
+import type { AskSource, SourceFetch, SourceRequest } from "@potyro/generator/agent";
 
 export type SourceAuth = NonNullable<SourceDef["auth"]>;
 
@@ -48,7 +48,7 @@ export interface PersonSource {
 
 // ── the person's sources ────────────────────────────────────────────────────
 
-const MINE = "karta:ask-sources";
+const MINE = "potyro:ask-sources";
 
 export function listMySources(): PersonSource[] {
   try {
@@ -77,7 +77,7 @@ export function removeMySource(id: string): void {
 }
 
 /** Hosts the person allowed for an app's declared sources, per app, on this device. */
-const APP_OK = (appId: string): string => `karta:ask-source-ok:${appId}`;
+const APP_OK = (appId: string): string => `potyro:ask-source-ok:${appId}`;
 
 function appApprovals(appId: string): Record<string, string[]> {
   try {
@@ -168,8 +168,8 @@ export interface ResolvedSource {
   origins: string[];
 }
 
-export const appKeyId = (appId: string, name: string): string => `karta:source-key:app:${appId}:${name}`;
-export const myKeyId = (id: string): string => `karta:source-key:mine:${id}`;
+export const appKeyId = (appId: string, name: string): string => `potyro:source-key:app:${appId}:${name}`;
+export const myKeyId = (id: string): string => `potyro:source-key:mine:${id}`;
 
 /** An app's and the person's sources, split into those Ask can use and those waiting for a key. */
 export async function resolveSources(

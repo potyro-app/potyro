@@ -4,8 +4,8 @@
 // computed keys (which have no field definition — their value is already final).
 
 import { useEffect, useState } from "react";
-import type { Field, Geo, MediaRef, DateTimeField, MoneyField } from "karta";
-import type { KartaRuntime } from "@karta/runtime";
+import type { Field, Geo, MediaRef, DateTimeField, MoneyField } from "potyro";
+import type { PotyroRuntime } from "@potyro/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
@@ -19,7 +19,7 @@ export function FieldValue({
   fieldKey,
   value,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   entity: string;
   fieldKey: string;
   value: unknown;
@@ -29,7 +29,7 @@ export function FieldValue({
   return <FieldByType runtime={runtime} field={field} value={value} />;
 }
 
-function FieldByType({ runtime, field, value }: { runtime: KartaRuntime; field: Field; value: unknown }) {
+function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field: Field; value: unknown }) {
   if (value == null || value === "") return <span className="k-muted">–</span>;
 
   switch (field.type) {
@@ -196,7 +196,7 @@ function relText(v: unknown, displayField: string): string {
  * On the record page, media shows as the same tiles the form used (#102) — one photo looks like one
  * photo everywhere — and a `multiple` field shows all of them, not only the first.
  */
-function MediaValue({ runtime, value }: { runtime: KartaRuntime; value: MediaRef | MediaRef[] }) {
+function MediaValue({ runtime, value }: { runtime: PotyroRuntime; value: MediaRef | MediaRef[] }) {
   const refs = mediaList(value);
   if (!refs.length) return <span className="k-muted">–</span>;
   return (

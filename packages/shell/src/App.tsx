@@ -4,9 +4,9 @@
 
 import { DatabaseIcon } from "./data-icon.js";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { replayCase, type ActivityItem, type Case, type KartaRuntime, type ReplayReport, type ReplayTarget } from "@karta/runtime";
-import type { Provenance } from "@karta/host";
-import { LayoutHost, RecordForm, ViewHost, createDefaults, usePageTitles } from "@karta/views";
+import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
+import type { Provenance } from "@potyro/host";
+import { LayoutHost, RecordForm, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -17,16 +17,16 @@ import { FixPanel } from "./fix-panel.js";
 import { startFix } from "./start-fix.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
-import type { LoopDeps, LoopOutcome, LoopStep } from "@karta/generator/agent";
+import type { LoopDeps, LoopOutcome, LoopStep } from "@potyro/generator/agent";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { AppChrome, type ChromePage, type ChromeQuick, type ChromeTool } from "./chrome.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
 import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
 import { ChatPanel, ChatPeek, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
-import { ROOM_THREAD } from "@karta/store";
+import { ROOM_THREAD } from "@potyro/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
-import type { Resolved } from "karta";
+import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { buildAndValidate } from "./validate-app.js";
 import { AskPanel } from "./ask-panel.js";
@@ -54,7 +54,7 @@ interface EditorState {
   onCreated?: (id: string) => void;
 }
 
-// Declarative quick action (mirrors karta's QuickAction; kept structural to avoid a hard dep here).
+// Declarative quick action (mirrors potyro's QuickAction; kept structural to avoid a hard dep here).
 interface QuickActionDef {
   id: string;
   label: string;
@@ -76,9 +76,9 @@ interface QuickMenuState {
 const HOME = "__home__";
 
 /** Survives the reload that re-runs an edited app, so an edit doesn't cost you your place. */
-const RETURN_TO_PAGE = "karta:return-to-page";
+const RETURN_TO_PAGE = "potyro:return-to-page";
 /** Set across a re-run that edit mode asked for (a move), so it is still on when the app is back. */
-const KEEP_EDITING = "karta:keep-editing";
+const KEEP_EDITING = "potyro:keep-editing";
 
 // One object-type tile on the grid home: icon + label + live record count. Reuses the entity's list
 // page query for the count, so it reflects the same data the list shows.
@@ -89,7 +89,7 @@ function GridTile({
   icon,
   onOpen,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   pageId: string;
   label: string;
   icon: string;
@@ -114,7 +114,7 @@ interface AppProps {
   picker?: PickerHost;
   /** Backs `ctx.ui.sheet`/`menu`/`form`/`progress` (#112); omit for surfaces that never ask. */
   questions?: UiHost;
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   provenance: Provenance;
   toaster: Toaster;
   appId?: string;
@@ -634,7 +634,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const [activityOpen, setActivityOpen] = useState(false);
   // Ask (#213): a model adds records in this app's own shape. Offered until the person turns it off
   // for this app, and never in a read-only one — everything it does is a write.
-  // Text shared into Karta and handed to this app (#213) opens Ask with it filled in.
+  // Text shared into Potyro and handed to this app (#213) opens Ask with it filled in.
   // Read in the initializer (which a dev render runs twice), used up once mounted.
   const [shared] = useState(() => (appId ? peekAskMaterial(appId) : null));
   useEffect(() => {
@@ -738,7 +738,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    *
    * In order: the colour you gave THIS app (Edit tile — which until now tinted the tile and nothing
    * else, so a choice made there was invisible the moment the app opened), then the colour the app
-   * declares for itself, then your accent for everything that has none, then Karta's own gold.
+   * declares for itself, then your accent for everything that has none, then Potyro's own gold.
    *
    * Yours outranks the app's on purpose: you chose it for this app, knowing what the app looks
    * like. The app's `theme.accent` is a default from whoever wrote it.

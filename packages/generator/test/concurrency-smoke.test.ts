@@ -5,7 +5,7 @@
 // app does, both passed every existing gate, and both destroyed data in the wild.
 
 import { describe, expect, it } from "vitest";
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { concurrencySmoke, concurrencyPassed } from "../src/concurrency-smoke.js";
 import { seedRecords } from "../src/smoke.js";
 

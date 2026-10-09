@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { FixtureBackend, PROMPTS, runEval, formatReport, type GenPrompt } from "../src/index.js";
 
 const GOOD = `
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 export default defineApp({
   id: "good", name: "Good", version: "1.0.0", schemaVersion: 1,
   entities: { t: { label: "T", displayField: "n", fields: { n: { type: "text", required: true } } } },
   pages: [{ id: "all", title: "All", view: { type: "list", entity: "t", display: { primary: "n" } } }],
 });
 `;
-const BROKEN = `export default { not: "a karta app" };`;
+const BROKEN = `export default { not: "a potyro app" };`;
 
 const prompts: GenPrompt[] = [
   { id: "good", description: "a good app" },

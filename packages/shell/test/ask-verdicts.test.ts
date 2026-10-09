@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
+import type { AppDefinition } from "potyro";
 import type { ReviewRow } from "../src/ask-apply.js";
 import { defaultApproval, trustLabel, valuesToSave } from "../src/ask-verdicts.js";
 

@@ -14,9 +14,9 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 import { backupEnabled } from "./backup-setting.js";
 
-const KEY = "karta:user-apps";
+const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
-export const USER_APPS_CHANGED = "karta:user-apps:changed";
+export const USER_APPS_CHANGED = "potyro:user-apps:changed";
 
 export interface UserApp {
   id: string;

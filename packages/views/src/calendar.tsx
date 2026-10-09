@@ -4,8 +4,8 @@
 // binding works identically for trusted apps and untrusted ones running in the QuickJS-WASM isolate.
 
 import { useEffect, useMemo, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { Resolved } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -51,7 +51,7 @@ function toDate(v: unknown): Date | null {
 }
 
 /** Resolve date/title/color per row via the runtime (async host calls), outside of render. */
-function useCalendarEvents(runtime: KartaRuntime, pageId: string, rows: Resolved[]): CalendarEvent[] {
+function useCalendarEvents(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): CalendarEvent[] {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
   useEffect(() => {

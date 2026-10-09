@@ -10,7 +10,7 @@
 // `name` / `icon` (the launcher store does that), and `hue` is their colour, which wins over the
 // declared accent — it is their device.
 
-import { personHue, personInitials } from "@karta/runtime";
+import { personHue, personInitials } from "@potyro/runtime";
 
 /** The twelve hues a tile can be, evenly spread — the same wheel `personHue` picks from. */
 export const TILE_HUES: readonly number[] = [25, 55, 85, 115, 145, 175, 205, 235, 265, 295, 325, 355];

@@ -15,7 +15,7 @@ import {
   createWebLLMBackend,
   type ModelBackend,
   type ModifyContext,
-} from "@karta/generator/backends";
+} from "@potyro/generator/backends";
 import { engineReady, type EngineConfig } from "./engines.js";
 import { canGenerate, generateViaCli } from "./generate-client.js";
 

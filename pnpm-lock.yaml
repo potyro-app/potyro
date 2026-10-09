@@ -35,7 +35,7 @@ importers:
 
   examples:
     dependencies:
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../packages/schema
       react:
@@ -48,7 +48,7 @@ importers:
 
   packages/capabilities:
     dependencies:
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
@@ -61,25 +61,25 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.115.0
         version: 0.115.0(zod@4.1.11)
-      '@karta/capabilities':
-        specifier: workspace:*
-        version: link:../capabilities
-      '@karta/host':
-        specifier: workspace:*
-        version: link:../host
-      '@karta/runtime':
-        specifier: workspace:*
-        version: link:../runtime
-      '@karta/store':
-        specifier: workspace:*
-        version: link:../store
       '@mlc-ai/web-llm':
         specifier: ^0.2.84
         version: 0.2.84
+      '@potyro/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
+      '@potyro/host':
+        specifier: workspace:*
+        version: link:../host
+      '@potyro/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@potyro/store':
+        specifier: workspace:*
+        version: link:../store
       esbuild:
         specifier: ^0.21.5
         version: 0.21.5
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
@@ -101,13 +101,13 @@ importers:
 
   packages/host:
     dependencies:
-      '@karta/capabilities':
+      '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
-      '@karta/store':
+      '@potyro/store':
         specifier: workspace:*
         version: link:../store
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
       quickjs-emscripten:
@@ -149,13 +149,13 @@ importers:
       '@capgo/capacitor-share-target':
         specifier: 8.0.54
         version: 8.0.54(@capacitor/core@8.4.2)
-      '@karta/capabilities':
+      '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
       capacitor-secure-storage-plugin:
         specifier: 0.13.0
         version: 0.13.0(@capacitor/core@8.4.2)
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
@@ -168,16 +168,16 @@ importers:
 
   packages/runtime:
     dependencies:
-      '@karta/capabilities':
+      '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
-      '@karta/host':
+      '@potyro/host':
         specifier: workspace:*
         version: link:../host
-      '@karta/store':
+      '@potyro/store':
         specifier: workspace:*
         version: link:../store
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
@@ -206,39 +206,39 @@ importers:
       '@babel/parser':
         specifier: ^7.29.8
         version: 7.29.8
-      '@karta/capabilities':
+      '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
-      '@karta/generator':
+      '@potyro/generator':
         specifier: workspace:^
         version: link:../generator
-      '@karta/host':
+      '@potyro/host':
         specifier: workspace:*
         version: link:../host
-      '@karta/identity':
+      '@potyro/identity':
         specifier: workspace:*
         version: link:../identity
-      '@karta/native':
+      '@potyro/native':
         specifier: workspace:*
         version: link:../native
-      '@karta/runtime':
+      '@potyro/runtime':
         specifier: workspace:*
         version: link:../runtime
-      '@karta/store':
+      '@potyro/store':
         specifier: workspace:*
         version: link:../store
-      '@karta/views':
+      '@potyro/views':
         specifier: workspace:*
         version: link:../views
       esbuild-wasm:
         specifier: ^0.28.1
         version: 0.28.1
-      karta:
-        specifier: workspace:*
-        version: link:../schema
       magic-string:
         specifier: ^1.1.0
         version: 1.1.0
+      potyro:
+        specifier: workspace:*
+        version: link:../schema
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -297,29 +297,29 @@ importers:
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../schema
 
   packages/views:
     dependencies:
-      '@karta/runtime':
+      '@potyro/runtime':
         specifier: workspace:*
         version: link:../runtime
-      karta:
-        specifier: workspace:*
-        version: link:../schema
       maplibre-gl:
         specifier: ^6.0.0
         version: 6.0.0
+      potyro:
+        specifier: workspace:*
+        version: link:../schema
     devDependencies:
-      '@karta/capabilities':
+      '@potyro/capabilities':
         specifier: workspace:^
         version: link:../capabilities
-      '@karta/host':
+      '@potyro/host':
         specifier: workspace:^
         version: link:../host
-      '@karta/store':
+      '@potyro/store':
         specifier: workspace:^
         version: link:../store
       '@testing-library/dom':

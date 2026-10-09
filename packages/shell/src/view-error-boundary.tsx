@@ -37,7 +37,7 @@ export class ViewErrorBoundary extends Component<ViewErrorBoundaryProps, ViewErr
     // Not swallowed — logged for whoever goes looking afterwards. The fallback below is what tells
     // the PERSON something broke; this is what tells the developer what and where.
     // eslint-disable-next-line no-console
-    console.error("[karta] view crashed:", error, info.componentStack);
+    console.error("[potyro] view crashed:", error, info.componentStack);
   }
 
   override render(): ReactNode {

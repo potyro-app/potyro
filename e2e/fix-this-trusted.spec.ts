@@ -19,7 +19,7 @@ import { test, expect, type Page, type Route } from "@playwright/test";
 const APP_ID = "cities-app";
 const APP_NAME = "Cities";
 
-const BROKEN_SOURCE = `import { defineApp } from "karta";
+const BROKEN_SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -58,7 +58,7 @@ export default defineApp({
 
 // The agent's fix: give the action the page it was already trying to reach. Nothing else changes —
 // the test asserts the app was fixed, not replaced.
-const FIXED_SOURCE = `import { defineApp } from "karta";
+const FIXED_SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -118,9 +118,9 @@ test.beforeEach(async ({ page }) => {
   // of this test would be asserting against a fix that never actually landed.
   await page.addInitScript(
     ([source, id, name]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

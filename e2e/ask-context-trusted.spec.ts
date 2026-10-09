@@ -6,7 +6,7 @@ import { test, expect, type Page } from "@playwright/test";
 // listed; and when the model does need to ask, the person answers in place and it carries on.
 
 const APP_ID = "cuneo-places";
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "${APP_ID}", name: "Cuneo Places", version: "1.0.0", schemaVersion: 1,
   entities: { place: { label: "Place", displayField: "name", fields: {
@@ -50,8 +50,8 @@ const PROPOSAL = reply({
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, id]) => {
-      if (!localStorage.getItem("karta:user-apps")) localStorage.setItem("karta:user-apps", JSON.stringify([{ id, name: "Cuneo Places", source, trusted: true, updatedAt: new Date().toISOString() }]));
-      sessionStorage.setItem("karta:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
+      if (!localStorage.getItem("potyro:user-apps")) localStorage.setItem("potyro:user-apps", JSON.stringify([{ id, name: "Cuneo Places", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub", openrouterModel: "deepseek/deepseek-v4-flash-0731" }));
     },
     [SOURCE, APP_ID],
   );

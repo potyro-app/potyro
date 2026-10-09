@@ -13,7 +13,7 @@ const app = (id: string, name: string, extra: { trusted?: boolean; sync?: boolea
   id,
   name,
   source:
-    `import { defineApp } from "karta";\n` +
+    `import { defineApp } from "potyro";\n` +
     `export default defineApp({ id: ${JSON.stringify(id)}, name: ${JSON.stringify(name)}, version: "1.0.0", schemaVersion: 1,\n` +
     `  entities: { item: { label: "Item", displayField: "title", fields: { title: { type: "text", required: true } } } },\n` +
     `  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }] });\n`,
@@ -39,9 +39,9 @@ export const SEED_NAMES = SEED.map((a) => a.name);
 export async function seed(page: Page, apps: readonly unknown[] = SEED): Promise<void> {
   await page.addInitScript(
     ([list]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (localStorage.getItem("karta:user-apps")) return;
-      localStorage.setItem("karta:user-apps", JSON.stringify(list));
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (localStorage.getItem("potyro:user-apps")) return;
+      localStorage.setItem("potyro:user-apps", JSON.stringify(list));
     },
     [apps] as const,
   );

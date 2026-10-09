@@ -9,7 +9,7 @@
 // recording or not — a recorder that changed behaviour would be recording a different app than the
 // one that misbehaved.
 
-import { addStep, newCase, observe, type Case, type ScreenState } from "@karta/runtime";
+import { addStep, newCase, observe, type Case, type ScreenState } from "@potyro/runtime";
 
 type Nav = (page: string, params?: Record<string, string>) => void;
 
@@ -74,7 +74,7 @@ export class CaseRecorder {
         }
       } catch (error) {
         this.lostCount += 1;
-        console.warn("[karta] case recorder dropped a step:", error);
+        console.warn("[potyro] case recorder dropped a step:", error);
       }
       nav(page, params);
     };

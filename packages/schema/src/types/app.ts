@@ -3,7 +3,7 @@
 
 import type { ReactElement } from "react";
 import type { Ctx } from "./ctx.js";
-import type { KartaRecord, Resolved, Value } from "./core.js";
+import type { PotyroRecord, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 import type { ViewProps } from "./runtime.js";
 
@@ -577,7 +577,7 @@ export type MigrationStep =
   | { op: "renameEntity"; from: string; to: string }
   | { op: "setDefaultForExisting"; entity: string; field: string; value: unknown }
   | { op: "addRelation"; entity: string; field: string; to: string; many?: boolean }
-  | { transform: (record: KartaRecord, ctx: Ctx) => KartaRecord };
+  | { transform: (record: PotyroRecord, ctx: Ctx) => PotyroRecord };
 
 export interface Migration {
   from: string;
@@ -692,8 +692,8 @@ export interface AppDefinition {
 /**
  * The result of `defineApp`. It *is* the (normalized) definition — carrying all field data
  * and live function closures — plus a brand so the host can recognize it. The host reads
- * `.definition` off a loaded module; a `KartaApp` satisfies that by being its own definition.
+ * `.definition` off a loaded module; a `PotyroApp` satisfies that by being its own definition.
  */
-export interface KartaApp extends AppDefinition {
-  readonly __kartaApp: true;
+export interface PotyroApp extends AppDefinition {
+  readonly __potyroApp: true;
 }

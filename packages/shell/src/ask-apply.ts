@@ -14,9 +14,9 @@
 // gets its links by a patch. A link to a row the person unticked is dropped. A link to one of the
 // person's records arrives here already resolved to its id.
 
-import type { AppDefinition, Field, KartaRecord } from "karta";
-import { actionInfo, humanizeKey } from "karta";
-import type { Proposal, ProposedAction, ProposedEdit, ProposedRow, Trust } from "@karta/generator/agent";
+import type { AppDefinition, Field, PotyroRecord } from "potyro";
+import { actionInfo, humanizeKey } from "potyro";
+import type { Proposal, ProposedAction, ProposedEdit, ProposedRow, Trust } from "@potyro/generator/agent";
 
 type Records = Record<string, ReadonlyArray<Record<string, unknown>>>;
 
@@ -343,8 +343,8 @@ export function entitiesToLoad(def: AppDefinition, proposal: Proposal): string[]
 }
 
 interface Writer {
-  create(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord>;
-  patch(entity: string, id: string, data: Partial<KartaRecord>): Promise<void>;
+  create(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord>;
+  patch(entity: string, id: string, data: Partial<PotyroRecord>): Promise<void>;
 }
 
 interface ActionRunner {
@@ -415,7 +415,7 @@ export async function applyEdits(
       const data = substitute(fields, e.set, ids, new Set(accepted), null);
       for (const k of emptied) data[k] = null;
       if (!Object.keys(data).length) continue;
-      await runtime.patch(e.entity, e.id, data as Partial<KartaRecord>);
+      await runtime.patch(e.entity, e.id, data as Partial<PotyroRecord>);
       changed += 1;
     }
     return changed;
@@ -483,7 +483,7 @@ async function saveRows(runtime: Writer, def: AppDefinition, rows: ProposedRow[]
     const row = pending.splice(i, 1)[0]!;
     const waits: Record<string, string[]> = {};
     const data = substitute(fieldsOf(row), row.values, ids, accepted, waits);
-    const record = await runtime.create(row.entity, data as Partial<KartaRecord>);
+    const record = await runtime.create(row.entity, data as Partial<PotyroRecord>);
     onCreated();
     ids.set(row.ref, record.id);
     if (Object.keys(waits).length) later.push({ row, id: record.id, links: waits });
@@ -496,6 +496,6 @@ async function saveRows(runtime: Writer, def: AppDefinition, rows: ProposedRow[]
       const current = substitute(fieldsOf(row), { [key]: row.values[key] }, ids, accepted, null)[key];
       data[key] = field.many ? current : (current ?? ids.get(refs[0]!));
     }
-    await runtime.patch(row.entity, id, data as Partial<KartaRecord>);
+    await runtime.patch(row.entity, id, data as Partial<PotyroRecord>);
   }
 }

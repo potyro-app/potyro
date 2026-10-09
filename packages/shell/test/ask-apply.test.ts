@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AppDefinition, KartaRecord } from "karta";
+import type { AppDefinition, PotyroRecord } from "potyro";
 import { ApplyError, applyProposal, markDuplicates } from "../src/ask-apply.js";
 import { askEnabled, setAskEnabled } from "../src/ask-setting.js";
 
@@ -29,12 +29,12 @@ function fakeRuntime() {
   return {
     created,
     patched,
-    create: async (entity: string, data: Partial<KartaRecord>) => {
+    create: async (entity: string, data: Partial<PotyroRecord>) => {
       const id = `id${++n}`;
       created.push({ entity, data: data as Record<string, unknown>, id });
-      return { ...data, id } as KartaRecord;
+      return { ...data, id } as PotyroRecord;
     },
-    patch: async (entity: string, id: string, data: Partial<KartaRecord>) => void patched.push({ entity, id, data: data as Record<string, unknown> }),
+    patch: async (entity: string, id: string, data: Partial<PotyroRecord>) => void patched.push({ entity, id, data: data as Record<string, unknown> }),
   };
 }
 

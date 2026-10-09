@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AppDefinition } from "karta";
-import { memoryVault, type SecretVault } from "@karta/identity";
+import type { AppDefinition } from "potyro";
+import { memoryVault, type SecretVault } from "@potyro/identity";
 import { keyStore, listMySources, makeSourceFetcher, removeMySource, resolveSources, saveMySource, setSourceHttp, sourceHttp, type PersonSource } from "../src/ask-sources.js";
 
 // Data sources for Ask (#213), the part that holds keys. The rules under test:
@@ -80,8 +80,8 @@ describe("resolveSources", () => {
   it("never puts a key in what the model is told", async () => {
     const keys = keyStore(memoryVault());
     const mine: PersonSource = { id: "w", label: "Weather", endpoint: "https://weather.example/", origins: ["https://weather.example"], auth: { query: "appid" } };
-    await keys.set("karta:source-key:app:places:places", KEY);
-    await keys.set("karta:source-key:mine:w", KEY);
+    await keys.set("potyro:source-key:app:places:places", KEY);
+    await keys.set("potyro:source-key:mine:w", KEY);
     const out = await resolveSources(DEF, "places", [mine], keys);
     expect(JSON.stringify(out.usable.map((s) => s.ask))).not.toContain(KEY);
   });
@@ -90,8 +90,8 @@ describe("resolveSources", () => {
 describe("makeSourceFetcher", () => {
   async function setup(mine: PersonSource[] = [], confirm: (s: unknown, origin: string) => Promise<boolean> = async () => true) {
     const keys = keyStore(memoryVault());
-    await keys.set("karta:source-key:app:places:places", KEY);
-    for (const m of mine) await keys.set(`karta:source-key:mine:${m.id}`, KEY);
+    await keys.set("potyro:source-key:app:places:places", KEY);
+    for (const m of mine) await keys.set(`potyro:source-key:mine:${m.id}`, KEY);
     const { usable } = await resolveSources(DEF, "places", mine, keys);
     const rec = recorder(`{"echo":"https://api.example.com/v1/x?key=${KEY}"}`);
     const allowed: string[] = [];
@@ -140,7 +140,7 @@ describe("makeSourceFetcher", () => {
   it("scrubs the key in its encoded forms too", async () => {
     const keys = keyStore(memoryVault());
     const odd = "k+y/=9 z";
-    await keys.set("karta:source-key:app:places:places", odd);
+    await keys.set("potyro:source-key:app:places:places", odd);
     const { usable } = await resolveSources(DEF, "places", [], keys);
     const body = `${odd} ${encodeURIComponent(odd)} ${btoa(odd)}`;
     const rec = recorder(body);

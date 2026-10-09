@@ -14,16 +14,16 @@ const SANDBOX_PORT = 4189;
 // KA-28 exists because a production build had no relay and nobody had ever run one.
 const PROD_PORT = 4190;
 const shellVite = (extra: string, port: number) =>
-  `pnpm --filter @karta/shell exec vite ${extra} --port ${port} --strictPort`;
+  `pnpm --filter @potyro/shell exec vite ${extra} --port ${port} --strictPort`;
 
-/** `KARTA_PARALLEL`, or the one worker this suite defaults to. See `workers` below. */
+/** `POTYRO_PARALLEL`, or the one worker this suite defaults to. See `workers` below. */
 function workerCount(): number {
-  const raw = process.env.KARTA_PARALLEL;
+  const raw = process.env.POTYRO_PARALLEL;
   if (raw === undefined || raw === "") return 1;
   const n = Number(raw);
   // `Number("0")` is 0 and `Number("some")` is NaN, and a non-empty string is truthy either way —
   // so without this a typo silently configures a suite that never runs a test.
-  if (!Number.isInteger(n) || n < 1) throw new Error(`KARTA_PARALLEL must be a positive integer, got "${raw}"`);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`POTYRO_PARALLEL must be a positive integer, got "${raw}"`);
   return n;
 }
 
@@ -42,7 +42,7 @@ export default defineConfig({
   //
   // A default command that fails for reasons that have nothing to do with the code is worse than a
   // slow one: it teaches everybody to re-run until green, and a suite people re-run until green
-  // cannot report a regression. `KARTA_PARALLEL=4 pnpm e2e` is there for a quick local sweep, with
+  // cannot report a regression. `POTYRO_PARALLEL=4 pnpm e2e` is there for a quick local sweep, with
   // the understanding that a failure from it needs confirming at one worker before it is believed.
   // A bad value is refused rather than quietly becoming `NaN` or `0` workers, either of which turns
   // a typo into a suite that does not run and does not say why.
@@ -80,15 +80,15 @@ export default defineConfig({
     // Only when asked for (`pnpm test:e2e:prod`). Playwright starts every `webServer` on every run
     // regardless of the project selected, so leaving this in unconditionally made each ordinary run
     // pay for a full production build — and the CPU it stole made the parallel suite flaky.
-    ...(process.env.KARTA_PROD
+    ...(process.env.POTYRO_PROD
       ? [
           {
             // Built with NOTHING configured, on purpose: this is what a self-hoster gets by running
             // `vite build` and serving `dist`. A deployment default that only works when an env var
             // is set would pass a test that set one.
             command:
-              "pnpm --filter @karta/shell exec vite build && " +
-              `pnpm --filter @karta/shell exec vite preview --port ${PROD_PORT} --strictPort`,
+              "pnpm --filter @potyro/shell exec vite build && " +
+              `pnpm --filter @potyro/shell exec vite preview --port ${PROD_PORT} --strictPort`,
             url: `http://localhost:${PROD_PORT}`,
             reuseExistingServer: !process.env.CI,
             timeout: 240_000,
@@ -114,7 +114,7 @@ export default defineConfig({
     // a slower browser. That is a real finding and it has an issue; it is not something to discover
     // inside the change that puts CI back on its feet, and turning it on now would leave main red
     // for a defect nothing on main introduced.
-    ...(process.env.KARTA_FIREFOX
+    ...(process.env.POTYRO_FIREFOX
       ? [
           {
             name: "trusted-firefox",
@@ -135,7 +135,7 @@ export default defineConfig({
     // invocation while the server it needs was never started, so `pnpm e2e` reported four
     // connection-refused failures that said nothing about the code — and would have kept CI red
     // even once everything genuinely broken was fixed. Use `pnpm test:e2e:prod`.
-    ...(process.env.KARTA_PROD
+    ...(process.env.POTYRO_PROD
       ? [
           {
             name: "prod",

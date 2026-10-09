@@ -11,11 +11,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { defineApp, structureSchema, type ViewProps } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, structureSchema, type ViewProps } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { CustomView } from "../src/custom.js";
 
 const torn = vi.fn();
@@ -31,7 +31,7 @@ function appWith(view: Record<string, unknown>) {
   });
 }
 
-async function runtimeFor(view: Record<string, unknown>): Promise<KartaRuntime> {
+async function runtimeFor(view: Record<string, unknown>): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("mount-fixture");
   await store.insert("note", { text: "hello" });
@@ -42,7 +42,7 @@ async function runtimeFor(view: Record<string, unknown>): Promise<KartaRuntime> 
   return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav });
 }
 
-const View = ({ runtime }: { runtime: KartaRuntime }) => (
+const View = ({ runtime }: { runtime: PotyroRuntime }) => (
   <CustomView runtime={runtime} pageId="screen" params={{}} setParam={() => {}} navigate={() => {}} />
 );
 

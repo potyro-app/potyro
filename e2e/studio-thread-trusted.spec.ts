@@ -11,7 +11,7 @@ import { tileAction } from "./launcher-actions.js";
 // Every version already stored the prompt that produced it, so the thread is that material read as
 // a conversation rather than a list of versions.
 
-const APP = (title: string) => `import { defineApp } from "karta";
+const APP = (title: string) => `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "notes",
@@ -53,10 +53,10 @@ async function seedApp(page: Page): Promise<void> {
   await page.addInitScript(
     (source) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
-      localStorage.setItem("karta:generator:engine", JSON.stringify({ engine: "cli" }));
+      localStorage.setItem("potyro:generator:engine", JSON.stringify({ engine: "cli" }));
     },
     APP("Notes"),
   );
@@ -142,7 +142,7 @@ test("a change that wasn't a request reads as something that happened, never as 
   await expect(pop).toHaveCount(0);
   // The rename is a version now. (`seedApp` re-seeds the source on every load, so the reload that
   // "Done" does would put the old name back on screen — History is what this is about.)
-  const MARK = "__karta_pre_reload";
+  const MARK = "__potyro_pre_reload";
   await page.evaluate((key: string) => ((globalThis as Record<string, unknown>)[key] = true), MARK);
   await page.locator(".k-inline-bar").getByRole("button", { name: "Done" }).click();
   await expect

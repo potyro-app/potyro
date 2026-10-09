@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Text shared into Karta from another app (#213). The Android share sheet puts it in the session's
+// Text shared into Potyro from another app (#213). The Android share sheet puts it in the session's
 // share inbox (share-target.ts → rememberShare) and opens "Bring this into…"; here the inbox is
 // filled the same way and the page opened by its URL, since a browser has no share sheet to drive.
 // The best fit comes first; picking an app opens its Ask with the shared text filled in.
@@ -13,7 +13,7 @@ Legs — Squat 4×6, Leg curl 3×12.`;
 test("a shared plan is offered to the app it fits, and opens that app's Ask filled in", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator(".k-launch-tile").first()).toBeVisible();
-  await page.evaluate((text) => sessionStorage.setItem("karta:pending-share", JSON.stringify({ text })), PLAN);
+  await page.evaluate((text) => sessionStorage.setItem("potyro:pending-share", JSON.stringify({ text })), PLAN);
   await page.goto("/?share");
 
   await expect(page.getByRole("heading", { name: "Bring this into…" })).toBeVisible();
@@ -36,7 +36,7 @@ test("a shared plan is offered to the app it fits, and opens that app's Ask fill
 test("“Don’t add it” drops the share", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator(".k-launch-tile").first()).toBeVisible();
-  await page.evaluate(() => sessionStorage.setItem("karta:pending-share", JSON.stringify({ text: "anything" })));
+  await page.evaluate(() => sessionStorage.setItem("potyro:pending-share", JSON.stringify({ text: "anything" })));
   await page.goto("/?share");
   await page.getByRole("button", { name: "Don’t add it" }).click();
   await expect(page.locator(".k-launch-tile").first()).toBeVisible();

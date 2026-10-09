@@ -23,7 +23,7 @@
 // entire point — verified in a browser by `e2e/aggregate-sandbox.spec.ts`.
 
 import { useEffect, useState } from "react";
-import type { AggregateRow, Resolved } from "karta";
+import type { AggregateRow, Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { useDynamicText } from "./dynamic.js";
 

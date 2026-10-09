@@ -50,7 +50,7 @@ describe("minting an identity", () => {
     // than surfacing an identity whose seed is missing — an account that could never be linked.
     const { keys, map } = memoryKeys();
     await ensureIdentity(keys);
-    map.delete("karta:identity:id");
+    map.delete("potyro:identity:id");
     expect(peekIdentity(keys)).toBeNull();
   });
 });
@@ -128,7 +128,7 @@ describe("recovery passphrase (ADR D2a)", () => {
     // of an existing key — so this says so plainly instead of producing wrong words.
     const { keys, map } = memoryKeys();
     await ensureIdentity(keys);
-    map.delete("karta:identity:seed");
+    map.delete("potyro:identity:seed");
     await expect(recoveryPassphrase(keys)).rejects.toThrow(/cannot be linked/i);
   });
 });

@@ -39,7 +39,7 @@ describe("device account is seed-derived", () => {
     const keys = memoryKeys();
     await createJazzStore("split", { db: await memoryDb(), crypto, keys: keys.store });
 
-    const hex = keys.map.get("karta:jazz:accountSeed");
+    const hex = keys.map.get("potyro:jazz:accountSeed");
     expect(hex, "no seed stored — the account can never produce a recovery passphrase").toBeTruthy();
     expect(fromHex(hex!)).toHaveLength(32);
   });
@@ -50,9 +50,9 @@ describe("device account is seed-derived", () => {
     const keys = memoryKeys();
     await createJazzStore("split", { db: await memoryDb(), crypto, keys: keys.store });
 
-    const seed = fromHex(keys.map.get("karta:jazz:accountSeed")!);
+    const seed = fromHex(keys.map.get("potyro:jazz:accountSeed")!);
     const derived = crypto.agentSecretFromSecretSeed(seed);
 
-    expect(derived).toBe(keys.map.get("karta:jazz:accountSecret"));
+    expect(derived).toBe(keys.map.get("potyro:jazz:accountSecret"));
   });
 });

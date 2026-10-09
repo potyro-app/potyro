@@ -6,8 +6,8 @@
 // too: there is one case per bug anyone ever reports.
 
 import { openStore } from "./open-store.js";
-import type { Store } from "@karta/store";
-import type { Case, CaseStep } from "@karta/runtime";
+import type { Store } from "@potyro/store";
+import type { Case, CaseStep } from "@potyro/runtime";
 
 const NAMESPACE = "app-cases";
 const ENTITY = "case";
@@ -110,7 +110,7 @@ export async function saveCase(c: Case): Promise<void> {
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
     for (const stale of forApp.slice(MAX_CASES)) await s.delete(ENTITY, stale.id);
   } catch (e) {
-    console.warn("[karta] could not save case:", e);
+    console.warn("[potyro] could not save case:", e);
   }
 }
 
@@ -123,14 +123,14 @@ export async function listCases(appId: string): Promise<Case[]> {
         const record = r as Record<string, unknown>;
         const c = toCase(record);
         if (c === null && typeof record.id === "string" && record.appId === appId) {
-          console.warn("[karta] discarding a corrupt case:", record.id);
+          console.warn("[potyro] discarding a corrupt case:", record.id);
         }
         return c;
       })
       .filter((c): c is Case => c !== null && c.appId === appId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   } catch (e) {
-    console.warn("[karta] app cases unavailable:", e);
+    console.warn("[potyro] app cases unavailable:", e);
     return [];
   }
 }
@@ -165,6 +165,6 @@ export async function clearCases(appId: string): Promise<void> {
       if (c && c.appId === appId) await s.delete(ENTITY, (r as { id: string }).id);
     }
   } catch (e) {
-    console.warn("[karta] could not clear app cases:", e);
+    console.warn("[potyro] could not clear app cases:", e);
   }
 }

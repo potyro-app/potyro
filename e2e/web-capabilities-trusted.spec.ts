@@ -47,7 +47,7 @@ test("a place takes its position from the device's own location, and a real phot
   // The record kept both: the position it read, and the photo.
   await expect(page.locator(".k-detail-title, .k-list-row").first()).toBeVisible({ timeout: 30_000 });
   const stored = await page.evaluate(() => {
-    const raw = localStorage.getItem("karta:user:places") ?? "{}";
+    const raw = localStorage.getItem("potyro:user:places") ?? "{}";
     const data = JSON.parse(raw) as { records?: { place?: Record<string, { name?: string; location?: { lat: number; lng: number }; photo?: unknown }> } };
     return Object.values(data.records?.place ?? {}).find((r) => r.name === "Miradouro") ?? null;
   });

@@ -1,7 +1,7 @@
 // places.app.ts
 // Stresses: geo field + map view, two categorizations, nested opening-hours rows, and
 // JS filters for "open now" and "within N km" — arbitrary logic, no DSL.
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 type HourRow = { day: string; from: string; to: string };
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];

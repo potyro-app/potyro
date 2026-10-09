@@ -7,8 +7,8 @@
 // regroups a moment later (the checklist view learned that the hard way, #106).
 
 import { useEffect, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { Field, Resolved } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { Field, Resolved } from "potyro";
 import { displayFieldFor, formatValue } from "./format.js";
 
 export interface RowGroup {
@@ -30,7 +30,7 @@ interface Membership {
   label: string;
 }
 
-function membershipsOf(runtime: KartaRuntime, field: Field | undefined, value: unknown): Membership[] {
+function membershipsOf(runtime: PotyroRuntime, field: Field | undefined, value: unknown): Membership[] {
   if (value == null || value === "") return [{ key: "", label: "" }];
   if (field?.type === "relation") {
     const one = (v: unknown): Membership => {
@@ -58,7 +58,7 @@ function membershipsOf(runtime: KartaRuntime, field: Field | undefined, value: u
  * "bar" because the app said so, not because of the alphabet — and otherwise the order the values
  * first appear in the (already sorted) rows. Rows with no value come first, under no heading.
  */
-export function groupRows(runtime: KartaRuntime, view: GroupedView, rows: Resolved[], memberships: Membership[][]): RowGroup[] {
+export function groupRows(runtime: PotyroRuntime, view: GroupedView, rows: Resolved[], memberships: Membership[][]): RowGroup[] {
   const groups = new Map<string, RowGroup>();
   rows.forEach((row, i) => {
     for (const m of memberships[i] ?? [{ key: "", label: "" }]) {
@@ -84,7 +84,7 @@ export function groupRows(runtime: KartaRuntime, view: GroupedView, rows: Resolv
 }
 
 /** `null` while a function binding is still being resolved; the groups once every row has one. */
-export function useRowGroups(runtime: KartaRuntime, pageId: string, rows: Resolved[], view: GroupedView): RowGroup[] | null {
+export function useRowGroups(runtime: PotyroRuntime, pageId: string, rows: Resolved[], view: GroupedView): RowGroup[] | null {
   const byField = typeof view.group === "string";
   const [resolved, setResolved] = useState<{ rows: Resolved[]; groups: RowGroup[] } | null>(null);
 

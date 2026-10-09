@@ -4,13 +4,13 @@
 
 import { describe, expect, it, beforeEach } from "vitest";
 import recipes from "../../../examples/recipes.app.js";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 let store: MemoryStore;
-let runtime: KartaRuntime;
+let runtime: PotyroRuntime;
 let ids: { chicken: string; roast: string };
 
 beforeEach(async () => {

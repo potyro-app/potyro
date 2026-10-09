@@ -12,7 +12,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // with no activity API called and no event emitted. The feed is a fold over the CRDT log, so it is
 // unforgeable (the author comes from the signing session) and retroactive.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "shoplist",
@@ -39,10 +39,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "shoplist", name: "Shoplist", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

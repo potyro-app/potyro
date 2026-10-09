@@ -42,8 +42,8 @@ export interface JazzKeyStore {
 /** What cojson calls someone who has not named themselves. A placeholder, not a name. */
 const DEFAULT_PROFILE_NAME = "Me";
 
-const ACCOUNT_ID = "karta:jazz:accountID";
-const ACCOUNT_SECRET = "karta:jazz:accountSecret";
+const ACCOUNT_ID = "potyro:jazz:accountID";
+const ACCOUNT_SECRET = "potyro:jazz:accountSecret";
 /**
  * The 32-byte seed the account secret is derived from, hex-encoded.
  *
@@ -54,16 +54,18 @@ const ACCOUNT_SECRET = "karta:jazz:accountSecret";
  * Deriving from an explicit seed costs nothing and is the difference between multi-device being
  * possible later and being impossible for every account created before someone noticed.
  */
-const ACCOUNT_SEED = "karta:jazz:accountSeed";
+const ACCOUNT_SEED = "potyro:jazz:accountSeed";
 
 const toHex = (b: Uint8Array): string => [...b].map((n) => n.toString(16).padStart(2, "0")).join("");
 const fromHex = (s: string): Uint8Array => new Uint8Array(s.match(/../g)?.map((h) => parseInt(h, 16)) ?? []);
-const groupKey = (appId: string) => `karta:jazz:group:${appId}`;
+const groupKey = (appId: string) => `potyro:jazz:group:${appId}`;
 /** Which cojson database this app's space lives in. See `openJazzStore`. */
-const dbKey = (appId: string) => `karta:jazz:db:${appId}`;
+const dbKey = (appId: string) => `potyro:jazz:db:${appId}`;
 /** The one cojson database a device uses for every space created from here on. */
+// The name predates the rename to Potyro and stays: it is the file on every device, and the
+// `…:jazz:db:` keys moved by the shell still name it (packages/shell/src/rename-migration.ts).
 const DEVICE_DB = "karta-jazz";
-const rootKey = (appId: string) => `karta:jazz:root:${appId}`;
+const rootKey = (appId: string) => `potyro:jazz:root:${appId}`;
 
 export interface CreateJazzStoreOpts {
   /**
@@ -90,9 +92,9 @@ export interface CreateJazzStoreOpts {
   /** Display name used only when the device account is first created. */
   profileName?: string;
   /**
-   * The device account to open, from `@karta/identity`.
+   * The device account to open, from `@potyro/identity`.
    *
-   * Identity is not the store's to invent (ADR D2 amended): `@karta/identity` owns the seed the
+   * Identity is not the store's to invent (ADR D2 amended): `@potyro/identity` owns the seed the
    * account is derived from, because that seed is also the recovery passphrase, and one place has
    * to be responsible for the most security-sensitive value we hold. Passing it here also means the
    * account exists *before* any app syncs, so `ctx.me` is answerable on a device that has never
@@ -294,7 +296,7 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
     });
 
   if (opts.account) {
-    // Identity was minted by `@karta/identity` with crypto alone — no database, no node — so the
+    // Identity was minted by `@potyro/identity` with crypto alone — no database, no node — so the
     // FIRST time any app syncs there is no account CoValue in storage yet and loading it fails.
     // Creating it from the same secret produces the same id (that derivation is what makes
     // passphrase linking work at all), so materialising here is a no-op for identity and simply
@@ -545,7 +547,7 @@ export async function openJazzStore(
     peers?: unknown[];
     profileName?: string;
     relay?: string;
-    /** The device account from `@karta/identity`. See `CreateJazzStoreOpts.account`. */
+    /** The device account from `@potyro/identity`. See `CreateJazzStoreOpts.account`. */
     account?: { id: string; secret: string };
     /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
     expectExisting?: boolean;
@@ -584,7 +586,7 @@ export async function openJazzStore(
   // mint a replacement over live data ("group … is unavailable"). A rename is a migration, and this
   // one shipped without one.
   //
-  // `karta:jazz:db:<ns>` records which file an app uses, written the first time it is opened from
+  // `potyro:jazz:db:<ns>` records which file an app uses, written the first time it is opened from
   // here on. If that marker is ABSENT but a group id is present, the space was created before this
   // existed and its data is in the legacy per-app file — so that is what gets opened, permanently.
   // Deterministic, with no probing of storage that would create the very file it is testing for.
@@ -606,11 +608,11 @@ export async function openJazzStore(
       driver = (await openWorkerSqlite(dbName)).driver;
     } catch (err) {
       // No worker, no OPFS, or another tab holding the pool. Sync matters more than speed.
-      console.info(`[karta] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
+      console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
       driver = undefined;
     }
   }
-  if (driver) console.info("[karta] storage: SQLite in a worker, on OPFS");
+  if (driver) console.info("[potyro] storage: SQLite in a worker, on OPFS");
   if (!driver) {
     try {
       db = await openOpfsDb(dbName);
@@ -797,7 +799,7 @@ export async function joinSpace(
     keys?: JazzKeyStore;
     relay?: string;
     profileName?: string;
-    /** The device account from `@karta/identity` — you join a space AS someone. */
+    /** The device account from `@potyro/identity` — you join a space AS someone. */
     account?: { id: string; secret: string };
   },
 ): Promise<JazzStoreHandle> {

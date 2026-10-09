@@ -13,7 +13,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // The other specs that share hide this, because every one of them navigates afterwards. This one
 // deliberately does not: after the share dialog, Ana's page is left exactly where it was.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "list", name: "Shared List", version: "1.0.0", schemaVersion: 1,
   entities: { item: { label: "Item", icon: "✓", displayField: "name", fields: {
@@ -29,10 +29,10 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "list", name: "Shared List", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

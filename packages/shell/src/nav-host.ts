@@ -27,7 +27,7 @@ export class NavHost {
     if (!this.target) {
       // Before mount, or after unmount. Say so rather than dropping it silently — a swallowed
       // navigation is exactly the failure this class exists to fix.
-      console.warn(`[karta] ctx.navigate("${pageId}") had nowhere to go — no view is mounted.`);
+      console.warn(`[potyro] ctx.navigate("${pageId}") had nowhere to go — no view is mounted.`);
       return;
     }
     this.target(pageId, param);

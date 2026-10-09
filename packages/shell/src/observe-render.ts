@@ -17,8 +17,8 @@
 
 import { createRoot } from "react-dom/client";
 import { createElement } from "react";
-import { ViewHost } from "@karta/views";
-import type { KartaRuntime, ScreenState } from "@karta/runtime";
+import { ViewHost } from "@potyro/views";
+import type { PotyroRuntime, ScreenState } from "@potyro/runtime";
 
 /** Matches the recorder's own settle delay (App.tsx). The two must agree: a candidate judged on a
  *  shorter fuse than the recording would be called broken for being merely slow. */
@@ -37,7 +37,7 @@ export function canObserveRender(): boolean {
  * look", never as "it was fine".
  */
 export async function observeRender(
-  runtime: KartaRuntime,
+  runtime: PotyroRuntime,
   pageId: string,
   params: Record<string, unknown>,
   settleMs: number = SETTLE_MS,

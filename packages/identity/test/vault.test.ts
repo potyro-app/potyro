@@ -19,7 +19,7 @@ import {
   type SecretVault,
 } from "../src/index.js";
 
-const SECRET_KEYS = ["karta:identity:seed", "karta:identity:secret"];
+const SECRET_KEYS = ["potyro:identity:seed", "potyro:identity:secret"];
 
 function device(secrets?: SecretVault): { keys: IdentityKeys; plain: Map<string, string> } {
   const plain = new Map<string, string>();
@@ -40,7 +40,7 @@ describe("a new identity", () => {
       expect(vault.map.get(k)).toBeTruthy();
     }
     expect(peekIdentity(keys)).toEqual(me); // still answered synchronously
-    expect((await identityAccount(keys)).secret).toBe(vault.map.get("karta:identity:secret"));
+    expect((await identityAccount(keys)).secret).toBe(vault.map.get("potyro:identity:secret"));
     expect((await recoveryPassphrase(keys)).split(" ")).toHaveLength(24);
   });
 
@@ -59,40 +59,40 @@ describe("a device from before the vault", () => {
   it("moves its plain secrets into the vault at boot, and removes the plain copies", async () => {
     const { keys: old, plain } = device(); // an older build: no vault
     const me = await ensureIdentity(old);
-    const secret = plain.get("karta:identity:secret");
+    const secret = plain.get("potyro:identity:secret");
 
     const vault = memoryVault();
     const upgraded: IdentityKeys = { ...old, secrets: vault };
     await secureIdentitySecrets(upgraded);
 
     expect(SECRET_KEYS.some((k) => plain.has(k))).toBe(false);
-    expect(vault.map.get("karta:identity:secret")).toBe(secret);
+    expect(vault.map.get("potyro:identity:secret")).toBe(secret);
     expect(await identityAccount(upgraded)).toEqual({ id: me.id, secret });
   });
 
   it("keeps the plain copy when the vault did not take it — never loses the secret", async () => {
     const { keys: old, plain } = device();
     await ensureIdentity(old);
-    const secret = plain.get("karta:identity:secret");
+    const secret = plain.get("potyro:identity:secret");
     const broken: SecretVault = { available: async () => true, get: async () => null, set: async () => {}, remove: async () => {} };
 
     await secureIdentitySecrets({ ...old, secrets: broken });
 
-    expect(plain.get("karta:identity:secret")).toBe(secret);
+    expect(plain.get("potyro:identity:secret")).toBe(secret);
     expect((await identityAccount({ ...old, secrets: broken })).secret).toBe(secret);
   });
 
   it("moves an account adopted from the old store into the vault as well", async () => {
     const vault = memoryVault();
     const { keys, plain } = device(vault);
-    plain.set("karta:jazz:accountID", "co_zLegacy");
-    plain.set("karta:jazz:accountSecret", "sealerSecret_legacy/signerSecret_legacy");
+    plain.set("potyro:jazz:accountID", "co_zLegacy");
+    plain.set("potyro:jazz:accountSecret", "sealerSecret_legacy/signerSecret_legacy");
 
     const me = await ensureIdentity(keys);
 
     expect(me.id).toBe("co_zLegacy");
-    expect(plain.has("karta:jazz:accountSecret")).toBe(false);
-    expect(plain.has("karta:identity:secret")).toBe(false);
+    expect(plain.has("potyro:jazz:accountSecret")).toBe(false);
+    expect(plain.has("potyro:identity:secret")).toBe(false);
     expect((await identityAccount(keys)).secret).toBe("sealerSecret_legacy/signerSecret_legacy");
   });
 });
@@ -102,14 +102,14 @@ describe("where there is no vault", () => {
     const unavailable: SecretVault = { available: async () => false, get: async () => null, set: async () => { throw new Error("no"); }, remove: async () => {} };
     const { keys, plain } = device(unavailable);
     const me = await ensureIdentity(keys);
-    expect(plain.get("karta:identity:secret")).toBeTruthy();
+    expect(plain.get("potyro:identity:secret")).toBeTruthy();
     expect((await identityAccount(keys)).id).toBe(me.id);
   });
 
   it("a deferred vault that finds nothing behaves as no vault", async () => {
     const { keys, plain } = device(deferredVault(async () => null));
     await ensureIdentity(keys);
-    expect(plain.get("karta:identity:secret")).toBeTruthy();
+    expect(plain.get("potyro:identity:secret")).toBeTruthy();
   });
 });
 

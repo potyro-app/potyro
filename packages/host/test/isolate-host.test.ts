@@ -5,8 +5,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { newAsyncContext } from "quickjs-emscripten";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
 import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
 
@@ -14,10 +14,10 @@ function newContext(): Promise<QuickJSAsyncContextLike> {
   return newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>;
 }
 
-// A hand-written app bundle (what esbuild would produce for a .app.ts). It sets __kartaApp
+// A hand-written app bundle (what esbuild would produce for a .app.ts). It sets __potyroApp
 // with a computed, a filter, and an action that patches through ctx.
 const RECIPE_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "recipes", name: "Recipes", version: "1.0.0", schemaVersion: 1,
   permissions: { camera: true },
   entities: {
@@ -133,7 +133,7 @@ describe("IsolateHost — marshalled function execution", () => {
 describe("IsolateHost — containment (must fail closed)", () => {
   it("an adversarial app cannot reach fetch / globals / host internals", async () => {
     const adversary = `
-      globalThis.__kartaApp = {
+      globalThis.__potyroApp = {
         id: "evil", name: "Evil", version: "1.0.0", schemaVersion: 1, permissions: {},
         entities: { x: { fields: { n: { type: "number" } }, computed: {
           escape: function(r){
@@ -163,7 +163,7 @@ describe("IsolateHost — containment (must fail closed)", () => {
 describe("IsolateHost — resource limits", () => {
   it("aborts a runaway (infinite loop) via the timeout interrupt", async () => {
     const runaway = `
-      globalThis.__kartaApp = {
+      globalThis.__potyroApp = {
         id: "loop", name: "Loop", version: "1.0.0", schemaVersion: 1, permissions: {},
         entities: { x: { fields: { n: { type: "number" } }, computed: {
           spin: function(r){ while(true){} return 1; }
@@ -197,7 +197,7 @@ describe("IsolateHost — resource limits", () => {
   it("aborts a bundle whose top-level module body loops forever, via the load-time interrupt", async () => {
     const runaway = `
       while (true) {}
-      globalThis.__kartaApp = {
+      globalThis.__potyroApp = {
         id: "loop-load", name: "LoopLoad", version: "1.0.0", schemaVersion: 1, permissions: {},
         entities: {}, pages: [], reminders: []
       };
@@ -224,7 +224,7 @@ describe("IsolateHost — mediated caps", () => {
 
   it("a granted haptics cap vibrates through the isolate bridge", async () => {
     const bundle = `
-      globalThis.__kartaApp = {
+      globalThis.__potyroApp = {
         id: "buzz", name: "Buzz", version: "1.0.0", schemaVersion: 1, permissions: { haptics: true },
         entities: { t: { fields: { n: { type: "number" } }, actions: {
           go: async function(r, ctx){ ctx.caps.haptics.vibrate([0, 200, 100, 200]); }
@@ -260,7 +260,7 @@ describe("IsolateHost — mediated caps", () => {
 // app that used the picker the contract promised it — provenance is not an edge case here (CLAUDE.md
 // rule 3: a shared/imported app ALWAYS runs here), so this was a real break, not a theoretical one.
 const PICK_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "picker-app", name: "PickerApp", version: "1.0.0", schemaVersion: 1, permissions: {},
   entities: { t: { fields: { n: { type: "number" } }, actions: {
     choose: async function(r, ctx){
@@ -308,11 +308,11 @@ describe("IsolateHost — ctx.ui.pick", () => {
 //
 // `computed` is per-record, so an aggregate over the WHOLE set lives in `page.summary`. For an
 // untrusted app that function never leaves the VM: the extracted definition carries the
-// `__karta_fn__` sentinel string where the function was. Before `callSummary` existed the shell
+// `__potyro_fn__` sentinel string where the function was. Before `callSummary` existed the shell
 // called that string, threw, and every function-form figure silently rendered a dash — i.e. the
 // one shape built-in views cannot express was exactly the shape untrusted apps could not compute.
 const SUMMARY_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "expenses", name: "Expenses", version: "1.0.0", schemaVersion: 1,
   entities: {
     expense: { fields: { amount: { type: "number" }, month: { type: "number" } } }
@@ -344,7 +344,7 @@ describe("IsolateHost — page summary aggregates", () => {
     const { loaded, ctx } = await setup(SUMMARY_BUNDLE);
     // The definition proves the function did NOT cross the boundary...
     const spec = (loaded.definition.pages[0] as { summary: { value?: unknown }[] }).summary[0];
-    expect(spec.value).toBe("__karta_fn__");
+    expect(spec.value).toBe("__potyro_fn__");
     // ...and the host call is what makes it computable anyway.
     expect(await loaded.callSummary("all", 0, rows, ctx)).toBe(15);
   });
@@ -361,7 +361,7 @@ describe("IsolateHost — page summary aggregates", () => {
 // A stats tile's `value`, its `compare.value` and a chart's `series` stay in the VM; `callFold`
 // names them by path from the view — including a view inside a page layout.
 const FOLD_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "fold", name: "Fold", version: "1.0.0", schemaVersion: 1,
   entities: { run: { fields: { km: { type: "number" } } } },
   pages: [
@@ -405,7 +405,7 @@ describe("IsolateHost — callFold", () => {
 // from a pending job. The bridge used to suspend the VM for every host call, so an action awaiting
 // two in a row aborted QuickJS (`p->ref_count == 0`), and one waiting on a person while other calls
 // ran crashed the tab. Revert the promise bridge in harness.ts / isolate-host.ts and both fail.
-const SEQUENCE_BUNDLE = `globalThis.__kartaApp = { id: "x", name: "X", version: "1.0.0", schemaVersion: 1,
+const SEQUENCE_BUNDLE = `globalThis.__potyroApp = { id: "x", name: "X", version: "1.0.0", schemaVersion: 1,
   entities: { n: { fields: { t: { type: "text" }, k: { type: "number" } }, actions: {
     two: async function(r, ctx){ var a = await ctx.get("n", r.id); var b = await ctx.patch("n", r.id, { k: 1 }); var c = await ctx.patch("n", r.id, { k: 2 }); ctx.ui.toast("k=" + c.k); },
     askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); }
@@ -447,7 +447,7 @@ describe("IsolateHost — host calls as promises", () => {
 // KA-18: identity has to survive the isolate boundary, or one app source behaves differently
 // depending on how it was installed — which is exactly what provenance is supposed NOT to change.
 const IDENTITY_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "ledger", name: "Ledger", version: "1.0.0", schemaVersion: 1,
   entities: {
     expense: {
@@ -526,7 +526,7 @@ describe("IsolateHost — identity across the boundary (KA-18)", () => {
 // data.create / data.patch wrote the app's data as given, so an untrusted app — the one this rule
 // exists for — could forge a record's author or rewrite an existing one's.
 const FORGE_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "ledger", name: "Ledger", version: "1.0.0", schemaVersion: 1,
   entities: { expense: { fields: { description: { type: "text" }, n: { type: "number" } }, actions: {
     forgeCreate: async function(r, ctx){ await ctx.create("expense", { description: "forged", createdBy: "co_zMallory" }); },
@@ -565,7 +565,7 @@ describe("IsolateHost — authorship cannot be forged from the isolate (KA-18)",
 // KA-25 across the isolate: a function default lives in the VM; the definition out here holds only
 // the sentinel string. `callFieldDefault` is what lets a form or a quick action start from it.
 const DEFAULTS_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "log", name: "Log", version: "1.0.0", schemaVersion: 1,
   entities: { entry: { fields: {
     at: { type: "datetime", default: function(ctx){ return ctx.now(); } },
@@ -582,7 +582,7 @@ describe("IsolateHost — function field defaults (KA-25)", () => {
     const now = new Date("2026-09-09T10:00:00Z");
     const { loaded, ctx } = await setup(DEFAULTS_BUNDLE, {}, { me: { id: "co_zAna", name: "Ana" }, now });
     const fields = (loaded.definition.entities as Record<string, { fields: Record<string, { default?: unknown }> }>).entry!.fields;
-    expect(fields.at!.default).toBe("__karta_fn__");
+    expect(fields.at!.default).toBe("__potyro_fn__");
     const at = await loaded.callFieldDefault("entry", "at", ctx);
     expect(at instanceof Date ? at.toISOString() : at).toBe(now.toISOString());
     expect(await loaded.callFieldDefault("entry", "who", ctx)).toBe("Ana");

@@ -6,11 +6,11 @@
 // and a function-valued view option sees it.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { defineApp, type Ctx } from "karta";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { MemoryStore } from "@potyro/store";
+import { defineApp, type Ctx } from "potyro";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const nav: NavBridge = { navigate: () => {} };
@@ -56,7 +56,7 @@ const app = () =>
     ],
   });
 
-async function setup(): Promise<{ runtime: KartaRuntime; store: MemoryStore; berlin: string; lisbon: string }> {
+async function setup(): Promise<{ runtime: PotyroRuntime; store: MemoryStore; berlin: string; lisbon: string }> {
   const store = new MemoryStore();
   await store.open("trips");
   const host = createHost();

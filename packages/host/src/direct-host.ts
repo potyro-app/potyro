@@ -3,8 +3,8 @@
 // returns the real React component. No isolate, no marshalling. This is the runner for the
 // user's own apps and for tests.
 
-import { actionRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "karta";
-import type { Binding, ReminderWhen } from "karta";
+import { actionRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "potyro";
+import type { Binding, ReminderWhen } from "potyro";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
 type Fn = (...args: unknown[]) => unknown;

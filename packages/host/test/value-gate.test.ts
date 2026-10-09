@@ -6,10 +6,10 @@
 // that did fit, and says nothing about it.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore, type FieldEdit } from "@karta/store";
-import { defineApp } from "karta";
-import type { NavBridge, UiBridge } from "@karta/host";
-import { FakeCapabilities } from "@karta/capabilities";
+import { MemoryStore, type FieldEdit } from "@potyro/store";
+import { defineApp } from "potyro";
+import type { NavBridge, UiBridge } from "@potyro/host";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { newAsyncContext } from "quickjs-emscripten";
 import { createHost, type MakeCtxBase } from "../src/index.js";
 import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
@@ -112,7 +112,7 @@ describe("reading a value that does not fit", () => {
 
 // The same, from inside the isolate: the path an app shared with you takes.
 const BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "trip", name: "Trip", version: "1.0.0", schemaVersion: 1,
   entities: { expense: { fields: { description: { type: "text" }, amount: { type: "number", label: "Amount" } }, actions: {
     writeBad: async function(r, ctx){ await ctx.create("expense", { description: "Taxi", amount: "twelve" }); },

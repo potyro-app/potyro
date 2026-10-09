@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FilterChrome } from "../src/filter-chrome.js";
 
 // The generic filter-chip chrome (issue #21): option lists behind one Filter button, a boolean
@@ -46,7 +46,7 @@ const app = defineApp({
   ],
 });
 
-async function makeRuntime(caps: FakeCapabilities): Promise<KartaRuntime> {
+async function makeRuntime(caps: FakeCapabilities): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("chrome-fixture");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

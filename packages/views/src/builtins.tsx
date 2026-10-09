@@ -2,7 +2,7 @@
 // (M2/M3). Each consumes the runtime only.
 
 import type { ReactNode } from "react";
-import { actionInfo, type Resolved } from "karta";
+import { actionInfo, type Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
 import { useDisplayCells } from "./cells.js";

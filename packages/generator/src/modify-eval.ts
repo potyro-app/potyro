@@ -47,11 +47,11 @@
 // run stops gracefully when a `CallBudget` limit is reached and reports what it had, because a
 // partial answer to "is this safe" is worth a great deal and an unbounded bill is not.
 
-import type { AppDefinition, Id, Migration, Resolved } from "karta";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
-import { MemoryStore, migrationChain, type Store } from "@karta/store";
+import type { AppDefinition, Id, Migration, Resolved } from "potyro";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
+import { MemoryStore, migrationChain, type Store } from "@potyro/store";
 import type { ModelBackend } from "./backend.js";
 import { loadApp, scoreSource } from "./score.js";
 import { smokeApp, seedRecords, paramsForPage } from "./smoke.js";
@@ -211,14 +211,14 @@ function message(e: unknown): string {
 }
 
 /** Build a runtime over a store that already holds records. */
-async function runtimeFor(app: AppDefinition & { id: string }, store: Store): Promise<KartaRuntime> {
+async function runtimeFor(app: AppDefinition & { id: string }, store: Store): Promise<PotyroRuntime> {
   const host = createHost();
   const loaded = await host.load({ kind: "module", app: app as never });
   return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui: UI, nav: NAV });
 }
 
 /** Every record id currently reachable from any page, which is the only reachability a person has. */
-async function reachableIds(runtime: KartaRuntime, def: AppDefinition): Promise<Set<string>> {
+async function reachableIds(runtime: PotyroRuntime, def: AppDefinition): Promise<Set<string>> {
   const seen = new Set<string>();
   // A first record per entity, so a page reached by navigation can be given the param it needs.
   const firstOf = new Map<string, Record<string, unknown>>();
@@ -251,7 +251,7 @@ async function reachableIds(runtime: KartaRuntime, def: AppDefinition): Promise<
 /**
  * Bring a store's data up to a new definition, exactly as the shell does on load.
  *
- * Uses `migrationChain` from @karta/store — the same walk `migrateOnLoad` performs — so a migration
+ * Uses `migrationChain` from @potyro/store — the same walk `migrateOnLoad` performs — so a migration
  * that would not run in the product does not run here either. A harness that migrated more
  * willingly than the product would report a data-survival rate nobody gets.
  *
@@ -271,7 +271,7 @@ async function migrate(store: Store, def: AppDefinition, fromVersion: string | n
   return chain;
 }
 
-function assertContext(runtime: KartaRuntime, def: AppDefinition, before: AppDefinition): AssertContext {
+function assertContext(runtime: PotyroRuntime, def: AppDefinition, before: AppDefinition): AssertContext {
   return {
     definition: def,
     before,
@@ -311,7 +311,7 @@ function assertContext(runtime: KartaRuntime, def: AppDefinition, before: AppDef
  * report itself as the data loss.
  */
 async function seedAddedEntities(
-  runtime: KartaRuntime,
+  runtime: PotyroRuntime,
   def: AppDefinition,
   known: Set<string>,
 ): Promise<void> {

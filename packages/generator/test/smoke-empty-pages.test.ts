@@ -10,7 +10,7 @@
 // relation, so a filter of that shape shows up as a page that matched nothing.
 
 import { describe, expect, it } from "vitest";
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { smokeApp } from "../src/smoke.js";
 
 const app = (filter: (todo: never, ctx: never) => boolean) =>
