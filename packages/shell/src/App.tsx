@@ -6,7 +6,7 @@ import { DatabaseIcon } from "./data-icon.js";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
-import { LayoutHost, RecordForm, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
+import { LayoutHost, RecordForm, TRUST_REQUEST, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -817,6 +817,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       : [{ key: "report", label: "Something's wrong", icon: "⚑", onSelect: startRecording }]
     : [];
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
+  // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
+  useEffect(() => {
+    const open = (): void => setTrustPrompt(true);
+    globalThis.addEventListener(TRUST_REQUEST, open);
+    return () => globalThis.removeEventListener(TRUST_REQUEST, open);
+  }, []);
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
@@ -869,9 +875,17 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
             {/* Provenance is shown only when it is unusual (#87): an app that runs in the sandbox
                 gets a quiet mark, never red — that is the safe state. A trusted app says nothing. */}
             {provenance === "untrusted" ? (
-              <span className="k-prov k-prov-untrusted" title="Runs in a sandbox — click Runs in a sandbox in the menu to review">
+              // A button, not a label: on a phone this mark was the only visible sign of the sandbox,
+              // and the way out was the last entry of the ⋯ menu.
+              <button
+                type="button"
+                className="k-prov k-prov-untrusted"
+                aria-label="Runs in a sandbox: review"
+                title="Runs in a sandbox. Tap to let it run as yours."
+                onClick={() => setTrustPrompt(true)}
+              >
                 🛡 sandbox
-              </span>
+              </button>
             ) : null}
             <SyncStatus sync={sync} />
           </>
