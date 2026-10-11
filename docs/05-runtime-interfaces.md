@@ -168,6 +168,17 @@ component would need a serializable-VDOM plus an event-callback protocol that do
 A DOM-sandboxing strategy remains the long-term answer for genuinely bespoke UI — it is no longer
 load-bearing for sharing.
 
+**Contained failures are reported, not thrown (#262).** A `computed` that throws shows as empty and
+its page still loads; the console says so once per session. Whoever has to know every time — the
+Studio, running a candidate app before it ships — listens:
+
+```ts
+export interface AppFailure { app: string; what: string; message: string } // what: "computed meal.kcal"
+export function onAppFailure(listener: (f: AppFailure) => void): () => void; // returns unsubscribe
+```
+
+Listening changes nothing about the containment; a listener that throws is ignored.
+
 ## Runtime API (packages/runtime) — what views consume
 
 ```ts

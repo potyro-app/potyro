@@ -7,6 +7,11 @@
 // every candidate must compile, validate and keep the app's shape, and a refusal is only accepted
 // after the model has actually looked — a NOT-IN-APP with no tool call behind it is sent back once.
 //
+// #262: when the caller can run a candidate (`run`), passing the validator is no longer enough. The
+// candidate is run on sample records; anything that throws sends it back with the error in words, and
+// a page that shows nothing is pointed out once — resending the same candidate means "that is meant".
+// This replaces the single repair round: the loop itself keeps going until the app runs.
+//
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
@@ -17,6 +22,7 @@ import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
 import { NOT_IN_APP, buildModifyMessage, buildModifyOpener } from "../prompt.js";
+import { describeRun, runSafely, type RunReport } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 
@@ -49,14 +55,17 @@ export interface ModifyLoopDeps {
   /** The candidate's shape, for the loss gate (entities and pages must survive a change). */
   shapeOf: (source: string) => Promise<AppShape>;
   before: AppShape;
+  /** Run a candidate that passed the check on sample records (#262). Without it the gate stops at
+   *  compile + validate + shape, as before. */
+  run?: (source: string) => Promise<RunReport>;
   maxSteps?: number;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: ChatMessage[];
 }
 
-// Raised from 8 with #262: reading the corpus takes steps, and a change grounded in a real app is
-// worth the extra turns.
+// Raised from 8 with #262: reading the corpus and fixing what a run reports both take steps, and a
+// change that runs is worth the extra turns over one that is handed back broken.
 const DEFAULT_MAX_STEPS = 12;
 const ASK = "ASK:";
 /** The tools whose use makes a refusal informed. */
@@ -74,6 +83,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   let nudged = false;
   let failedCandidates = 0;
   let unusableReplies = 0;
+  /** Candidates whose warnings were already pointed out: sent again unchanged, they are accepted. */
+  const warned = new Set<string>();
 
   for (let step = 0; step < maxSteps; step += 1) {
     if (deps.signal?.aborted) return { kind: "stopped" };
@@ -166,7 +177,19 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       const loss = shape ? structuralLoss(deps.before, shape) : null;
       if (loss) problem = retryInstruction("", loss).trim();
     }
-    deps.onStep?.({ kind: "candidate", passed: problem === null, detail: problem ?? "compiles, validates, keeps the app's shape" });
+    let ran: RunReport | null = null;
+    if (!problem && deps.run) {
+      ran = await runSafely(deps.run, candidate);
+      if (ran.errors.length) problem = `It compiles and validates, but it breaks when it runs. ${describeRun(ran)}`;
+      else if (ran.warnings.length && !warned.has(candidate)) {
+        warned.add(candidate);
+        problem =
+          `It compiles and validates, and nothing threw — but look at this. ${describeRun(ran)}\n` +
+          "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
+      }
+    }
+    const passed = ran ? `compiles, validates, keeps the app's shape, and runs (${ran.ran || "nothing to run"})` : "compiles, validates, keeps the app's shape";
+    deps.onStep?.({ kind: "candidate", passed: problem === null, detail: problem ?? passed });
     if (problem === null) {
       return {
         kind: "source",

@@ -7,13 +7,15 @@
 // few-shot app that uses a feature. A refusal is only worth anything after these have been used —
 // `runModifyLoop` enforces that; this module only makes it possible.
 //
-// #262 added what a developer has beyond the declarations: `search_corpus` / `read` open the
-// release's corpus — the example apps, the personal apps, the API docs and the schema types — so the
-// model can see how a real app puts the parts together, and `example` falls back to it.
+// #262 added what a developer has beyond the declarations: `check` also RUNS the candidate when the
+// caller can (`run`), so a computed that throws or a page that shows nothing comes back as words;
+// and `search_corpus` / `read` open the release's corpus — the example apps, the personal apps, the
+// API docs and the schema types — so the model can see how a real app puts the parts together.
 
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
 import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
 import { loadCorpus } from "../load-corpus.js";
+import { describeRun, runSafely, type RunReport } from "../run-report.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
@@ -74,6 +76,9 @@ export function lookupReference(reference: string, rawQuery: string): string {
 export interface DiscoveryDeps {
   /** Bundle + validate a candidate; the validator's issues, empty when it is a well-formed app. Throws when it does not compile. */
   check: (source: string) => Promise<string[]>;
+  /** Run a candidate that validates on sample records: what threw, what showed nothing. Optional —
+   *  without it `check` stops at the validator, as it did before #262. */
+  run?: (source: string) => Promise<RunReport>;
   /** The release's corpus. Defaults to the one shipped with this build, loaded on first use. */
   corpus?: () => Promise<Corpus>;
 }
@@ -99,16 +104,22 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
     {
       name: "check",
       description:
-        "Bundle and validate a complete candidate .app.ts source and return the validator's own issues, or that it validates. " +
-        "Use it to TRY an option you are unsure of instead of guessing. The edits you finally send are checked the same way automatically.",
+        "Bundle and validate a complete candidate .app.ts source and return the validator's own issues, or that it validates" +
+        (deps.run ? " — and then RUN it on sample records and report what threw and which pages showed nothing" : "") +
+        ". Use it to TRY an option you are unsure of instead of guessing. The edits you finally send are checked the same way automatically.",
       parameters: { type: "object", properties: { source: { type: "string", description: "The complete app source to check" } }, required: ["source"] },
       run: async (args) => {
+        const source = String(args.source ?? "");
+        let issues: string[];
         try {
-          const issues = await deps.check(String(args.source ?? ""));
-          return issues.length ? { ok: false, detail: issues.map((i) => `- ${i}`).join("\n") } : { ok: true, detail: "ok: it compiles and validates." };
+          issues = await deps.check(source);
         } catch (e) {
           return { ok: false, detail: `does not compile: ${e instanceof Error ? e.message : String(e)}` };
         }
+        if (issues.length) return { ok: false, detail: issues.map((i) => `- ${i}`).join("\n") };
+        if (!deps.run) return { ok: true, detail: "ok: it compiles and validates." };
+        const report = await runSafely(deps.run, source);
+        return { ok: report.errors.length === 0, detail: `It compiles and validates. ${describeRun(report)}` };
       },
     },
     {
