@@ -94,7 +94,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     // As wide as it may be, then as tall as the room allows — up to a tall phone's shape, never
     // shorter than 4:3 portrait.
     W = Math.min(el.clientWidth || 360, 520, Math.floor((room * 3) / 4));
-    H = Math.min(Math.floor(room), Math.floor(W * 1.9));
+    H = Math.min(Math.floor(room), Math.floor(W * 2.2));
     const dpr = window.devicePixelRatio || 1;
     if (W === prevW && H === prevH) return;
     // The board can change size while you play: Android hides its bars a moment after full screen
@@ -142,7 +142,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   const build = (): void => {
     const lv = levels!.levels[level]!;
     const gap = 4;
-    const top = 56;
+    const top = 64;
     const bw = (W - gap * (COLS + 1)) / COLS;
     const bh = Math.max(12, H / 32);
     bricks = [];
@@ -262,8 +262,10 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     g.fillText(`${score}`, 12, 26);
     g.textAlign = "center";
     g.fillText(levels!.levels[level]!.name, W / 2, 26);
-    g.textAlign = "right";
-    g.fillText(`${"●".repeat(Math.max(lives, 0))}  best ${best}`, W - 12, 26);
+    // Lives and best on the left under the score: the top-right corner is where the shell keeps its ✕.
+    g.textAlign = "left";
+    g.font = `400 12px system-ui, sans-serif`;
+    g.fillText(`${"●".repeat(Math.max(lives, 0))}  best ${best}`, 12, 44);
     for (const b of bricks) {
       if (b.hits <= 0) continue;
       g.fillStyle = b.color;
