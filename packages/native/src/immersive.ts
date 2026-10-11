@@ -15,3 +15,21 @@ export async function setImmersive(on: boolean): Promise<void> {
     // An older shell without the plugin: the page is still full-screen inside the app.
   }
 }
+
+/**
+ * Android's back button or gesture, while `cb` is registered: it calls `cb` instead of going back.
+ * Returns the way to stop listening. Nothing to listen to on the web, where Escape does the same.
+ */
+export async function onBackButton(cb: () => void): Promise<() => void> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return () => {};
+    const { App } = (await import("@capacitor/app")) as unknown as {
+      App: { addListener(e: "backButton", cb: () => void): Promise<{ remove(): Promise<void> }> };
+    };
+    const handle = await App.addListener("backButton", cb);
+    return () => void handle.remove();
+  } catch {
+    return () => {};
+  }
+}
