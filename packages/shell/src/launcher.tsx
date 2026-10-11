@@ -275,6 +275,33 @@ function YouButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/**
+ * The link in an install address (`#add=<link>`, #253), taken once and cleared from the address bar.
+ *
+ * Taken outside React and remembered: a state initializer runs twice in strict mode, and the first
+ * run clearing the hash left the second with nothing — the dialog never opened.
+ */
+let addLink: string | null | undefined;
+function takeAddLink(): string | null {
+  if (addLink === undefined) {
+    const m = /^#add=(.+)$/.exec(globalThis.location?.hash ?? "");
+    addLink = null;
+    if (m) {
+      globalThis.history.replaceState(null, "", `${location.pathname}${location.search}`);
+      try {
+        addLink = decodeURIComponent(m[1]!);
+      } catch {
+        addLink = m[1]!;
+      }
+    }
+  }
+  const link = addLink;
+  // Handed to one launcher, the first that asks; strict mode's second render asks again and must
+  // get the same answer, so it is cleared on the next tick rather than now.
+  if (link) setTimeout(() => (addLink = null), 0);
+  return link;
+}
+
 export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: LauncherProps) {
   // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
@@ -363,14 +390,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   const [lookOpen, setLookOpen] = useState(false);
   // Add an app (#253). `#add=<link>` opens it with the link filled in: an install link anyone can send.
   const [adding, setAdding] = useState<{ link?: string } | null>(() => {
-    const m = /^#add=(.+)$/.exec(globalThis.location?.hash ?? "");
-    if (!m) return null;
-    globalThis.history.replaceState(null, "", `${location.pathname}${location.search}`);
-    try {
-      return { link: decodeURIComponent(m[1]!) };
-    } catch {
-      return { link: m[1] };
-    }
+    const link = takeAddLink();
+    return link ? { link } : null;
   });
 
   // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
