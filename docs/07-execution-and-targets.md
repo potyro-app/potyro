@@ -64,6 +64,27 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   *always* means running code — so the trust prompt for untrusted apps is not optional, it is
   the whole safety story. This is the price of full control, and it's the right price.
 
+### Packages and Add an app (#253)
+
+- **A package** is a zip: `app.ts`/`app.tsx`, `files/…` it ships with, an optional `seed.json`
+  (`{ entity: [records] }`) and a `manifest.json` (`potyro-app/1`). A bare source is a package with
+  no files; an export bundle installs as one too. `pnpm pack:app <app.tsx> [file …] [--files dir]
+  [--seed seed.json]` makes one.
+- **Add an app** (launcher) takes a package or the app's file with the files it uses from this
+  device, a link, or pasted source. It reads the app **in the sealed box** to show a card — name,
+  what it keeps, what it asks for, what it ships — before anything is saved.
+- **Trust at install** (owner, 2026-10-11): everything comes in **sealed**. For a file from this
+  device or pasted source the card offers "I wrote this, run it as mine"; **a link never does**,
+  and an update from a link drops a trusted app back into the sealed box, so a link cannot put new
+  code into an app that runs with full authority. An update from a file or paste keeps the trust the
+  app had.
+- **The same app already installed**: *Replace, keep its data* is preselected — the ordinary update
+  path, so History keeps the old version and the data check runs on the next open. Shipped files are
+  replaced unless the person changed them (they are then `app`, not `shipped`) and kept; shipped files
+  the new version dropped are removed. The seed never runs on an update. *Add as a second app* makes
+  an empty copy under a new id.
+- **Install links**: `https://<shell>/#add=<url-encoded link>` opens the dialog with the link filled in.
+
 ## Authoring loop (offline)
 
 - **Trusted dev:** `pnpm dev` loads `examples/*.app.ts` directly via Vite; edit + hot-reload,
