@@ -28,6 +28,7 @@ import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
 import { AddAppDialog } from "./add-app-dialog.js";
+import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 
@@ -768,9 +769,22 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         </section>
       ) : null}
       {variant === "home" ? (
-        <button type="button" className="k-launch-fab" onClick={() => onNewApp()}>
-          <span aria-hidden>＋</span> New app
-        </button>
+        // On a phone the header's Add button is a lone icon, and this is the button people reach for:
+        // so it asks which they mean — make one, or bring in one someone sent (#253).
+        <ActionMenu
+          label="New app"
+          title="New app"
+          buttonClassName="k-launch-fab"
+          trigger={
+            <>
+              <span aria-hidden>＋</span> New app
+            </>
+          }
+          entries={[
+            { key: "describe", label: "Describe a new app", icon: "✦", onSelect: () => onNewApp() },
+            { key: "add", label: "Add an app someone sent you", icon: "⤓", onSelect: () => setAdding({}) },
+          ]}
+        />
       ) : null}
 
       {history ? (

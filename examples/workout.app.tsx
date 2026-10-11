@@ -346,7 +346,7 @@ const CSS = `
 .wk-addset { align-self:flex-start; border:1px dashed var(--line,#ccc); background:transparent; color:var(--ink-soft,#777); border-radius:10px; padding:.5rem .8rem; }
 
 /* ---- fixed bottom bar ---- */
-.wk-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--k-chrome-bottom, 0px); width:min(860px, 100%); display:flex; align-items:center; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--surface,#fff); border-top:1px solid var(--line,#eee); z-index:20; }
+.wk-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--k-chrome-bottom, 0px); width:min(860px, 100%); display:flex; align-items:center; gap:10px; padding:12px 16px calc(12px + var(--k-safe-bottom, env(safe-area-inset-bottom))); background:var(--surface,#fff); border-top:1px solid var(--line,#eee); z-index:20; }
 .wk-bar-hint { color:var(--ink-soft,#999); font-size:.9rem; }
 .wk-rest { display:flex; align-items:center; gap:8px; }
 .wk-rest-n { font-size:1.4rem; font-weight:800; font-variant-numeric: tabular-nums; color:var(--wk-accent); }
