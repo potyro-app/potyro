@@ -2498,12 +2498,24 @@ details.k-form-group > summary:focus-visible {
 }
 /* The quiet marks: the sandbox pill and the sync state. */
 .k-prov {
+  font: inherit;
   font-size: 0.7rem;
   padding: 0.15em 0.55em;
   border-radius: 999px;
   border: 1px solid var(--line);
+  background: none;
   color: var(--ink-soft);
   white-space: nowrap;
+}
+/* The sandbox mark is a button (#253): tapping it is how a phone reaches the trust dialog. */
+button.k-prov {
+  cursor: pointer;
+  min-height: 1.75rem;
+}
+button.k-prov:hover,
+button.k-prov:focus-visible {
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 /* Bottom tab bar: four pages and More, each a 44px column with its glyph over its name. */
