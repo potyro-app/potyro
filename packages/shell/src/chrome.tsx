@@ -137,20 +137,24 @@ export function AppChrome(props: AppChromeProps) {
 function FullscreenFrame({ onExit, children }: { onExit: () => void; children: ReactNode }) {
   useEffect(() => {
     let live = true;
-    void import("@potyro/native").then((n) => (live ? n.setImmersive(true) : undefined));
+    let stopBack: (() => void) | null = null;
+    void import("@potyro/native").then(async (n) => {
+      if (!live) return;
+      await n.setImmersive(true);
+      // Android's back leaves full screen, not the app. Not done through history: pushing an entry
+      // and undoing it fires a back event the router reads as navigation, and the app reopened.
+      const stop = await n.onBackButton(onExit);
+      if (live) stopBack = stop;
+      else stop();
+    });
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") onExit();
     };
     window.addEventListener("keydown", onKey);
-    // Android's back gesture: one step back leaves full screen rather than the app.
-    history.pushState({ potyroFullscreen: true }, "");
-    const onPop = (): void => onExit();
-    window.addEventListener("popstate", onPop);
     return () => {
       live = false;
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("popstate", onPop);
-      if ((history.state as { potyroFullscreen?: boolean } | null)?.potyroFullscreen) history.back();
+      stopBack?.();
       void import("@potyro/native").then((n) => n.setImmersive(false));
     };
   }, [onExit]);
