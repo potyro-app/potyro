@@ -112,13 +112,42 @@ describe("runModifyLoop", () => {
     expect(out.kind === "failed" && out.reason).toMatch(/2 step/);
   });
 
-  it("counts search_corpus as looking before a refusal (#262)", async () => {
-    const search: AgentTool = { ...lookup, name: "search_corpus" };
-    const { engine } = scripted([
-      { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "search_corpus", arguments: '{"query":"bluetooth"}' } }] },
-      { content: `${NOT_IN_APP} nothing in the apps or docs uses bluetooth.` },
-    ]);
-    const out = await runModifyLoop(base({ engine, tools: [search] }));
-    expect(out.kind).toBe("diagnosis");
+  describe("running the candidate (#262)", () => {
+    const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
+
+    it("sends a candidate that validates but throws when it runs back with the error", async () => {
+      const { engine, seen } = scripted([rename("boom"), rename("y")]);
+      const run = async (src: string) =>
+        src.includes("boom") ? { errors: ["action city.visit: ctx.travel is not a function"], warnings: [], ran: "1 action" } : { errors: [], warnings: [], ran: "1 action" };
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind === "source" && out.source).toContain('id: "y"');
+      expect(seen[1]!.messages.at(-1)!.content).toContain("ctx.travel is not a function");
+      expect(seen[1]!.messages.at(-1)!.content).toMatch(/app as first shown/);
+    });
+
+    it("points a warning out once; the same candidate sent again is accepted as meant", async () => {
+      const { engine, seen } = scripted([rename("y"), rename("y")]);
+      const run = async () => ({ errors: [], warnings: ['page "overdue" showed nothing'], ran: "2 pages" });
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind).toBe("source");
+      expect(seen).toHaveLength(2);
+      expect(seen[1]!.messages.at(-1)!.content).toContain('page "overdue" showed nothing');
+    });
+
+    it("does not hold a change back when the run itself cannot start", async () => {
+      const { engine } = scripted([rename("y"), rename("y")]);
+      const out = await runModifyLoop(base({ engine, run: async () => { throw new Error("no DOM"); } }));
+      expect(out.kind).toBe("source");
+    });
+
+    it("counts search_corpus as looking before a refusal", async () => {
+      const search: AgentTool = { ...lookup, name: "search_corpus" };
+      const { engine } = scripted([
+        { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "search_corpus", arguments: '{"query":"bluetooth"}' } }] },
+        { content: `${NOT_IN_APP} nothing in the apps or docs uses bluetooth.` },
+      ]);
+      const out = await runModifyLoop(base({ engine, tools: [search] }));
+      expect(out.kind).toBe("diagnosis");
+    });
   });
 });

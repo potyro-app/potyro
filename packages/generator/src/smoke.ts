@@ -12,9 +12,10 @@
 
 import { actionInfo, type AppDefinition, type EntityDef, type Field, type Id, type Resolved } from "potyro";
 import { FakeCapabilities } from "@potyro/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
-import { createRuntime } from "@potyro/runtime";
+import { createHost, onAppFailure, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { MemoryStore } from "@potyro/store";
+import type { RunReport } from "./run-report.js";
 
 const SEED_ROWS = 3;
 const DAY_MS = 86_400_000;
@@ -152,6 +153,45 @@ export function paramsForPage(
 }
 
 export async function smokeApp(app: AppDefinition & { id: string }): Promise<SmokeResult> {
+  const store = new MemoryStore();
+  await store.open(app.id);
+  const host = createHost();
+  const loaded = await host.load({ kind: "module", app: app as never });
+  const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui: UI, nav: NAV });
+  return smokeRuntime(app, runtime);
+}
+
+export interface SmokeOptions {
+  /**
+   * Server-render each custom view's first paint (default true). Off when the caller renders every
+   * page for real anyway — the Studio does (#262), with effects, in a DOM.
+   */
+  customViews?: boolean;
+}
+
+/**
+ * The smoke run against a runtime someone else composed — the Studio's, in the isolate or direct, on
+ * a throwaway store (#262). `app` is the definition as the runtime holds it; it must be EMPTY of
+ * records, since the run seeds its own. Custom views are taken from the runtime (`customView`), so an
+ * isolate, which never runs them, is not reported as failing them.
+ */
+export async function smokeRuntime(app: AppDefinition & { id: string }, runtime: PotyroRuntime, opts: SmokeOptions = {}): Promise<SmokeResult> {
+  // A computed that throws is contained — it shows as empty and nothing rejects — so it is heard here
+  // rather than caught. Without this a broken computed passed every gate (#262).
+  const contained = new Set<string>();
+  const stop = onAppFailure((f) => {
+    if (f.app === app.id) contained.add(`${f.what}: ${f.message}`);
+  });
+  try {
+    const result = await smokeSteps(app, runtime, opts);
+    if (!contained.size) return result;
+    return { ...result, computedOk: false, errors: [...result.errors, ...contained] };
+  } finally {
+    stop();
+  }
+}
+
+async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRuntime, opts: SmokeOptions): Promise<SmokeResult> {
   const errors: string[] = [];
   const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0, customViews: 0 };
   const emptyPages: string[] = [];
@@ -161,12 +201,6 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
   let actionsOk = true;
   let remindersOk = true;
   let customViewsOk = true;
-
-  const store = new MemoryStore();
-  await store.open(app.id);
-  const host = createHost();
-  const loaded = await host.load({ kind: "module", app: app as never });
-  const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui: UI, nav: NAV });
 
   const entities = Object.entries(app.entities ?? {});
   ran.entities = entities.length;
@@ -225,9 +259,11 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
   // the component body, its hooks and its JSX — catching invented UI APIs, bad prop access, and
   // anything thrown on first paint. Effects do NOT run under renderToStaticMarkup, so this proves
   // first paint, not interaction.
-  for (const page of app.pages ?? []) {
-    const view = page.view as { type?: string; entity?: string; param?: string; render?: unknown } | undefined;
-    if (view?.type !== "custom" || typeof view.render !== "function") continue;
+  for (const page of opts.customViews === false ? [] : (app.pages ?? [])) {
+    const view = page.view as { type?: string; entity?: string; param?: string } | undefined;
+    if (view?.type !== "custom") continue;
+    const component = runtime.core.app.customView(page.id);
+    if (!component) continue;
     const params: Record<string, string> = {};
     if (view.param && view.entity) {
       const first = created[view.entity]?.[0];
@@ -248,7 +284,7 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
         import("react-dom/server"),
         import("react"),
       ]);
-      renderToStaticMarkup(createElement(view.render as never, props as never));
+      renderToStaticMarkup(createElement(component as never, props as never));
       ran.customViews++;
     } catch (e) {
       customViewsOk = false;
@@ -286,6 +322,26 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
   }
 
   return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors, emptyPages };
+}
+
+/** A smoke run as feedback for a model (#262): what threw, and which pages filtered everything away. */
+export function smokeReport(s: SmokeResult): RunReport {
+  const counts: Array<[number, string]> = [
+    [s.ran.records, "record"],
+    [s.ran.pages, "page"],
+    [s.ran.computed, "computed value"],
+    [s.ran.actions, "action"],
+    [s.ran.reminders, "reminder"],
+    [s.ran.customViews, "custom view"],
+  ];
+  return {
+    errors: s.errors,
+    warnings: s.emptyPages.map((p) => `page "${p}" showed none of the sample records — a filter that can never match?`),
+    ran: counts
+      .filter(([n]) => n > 0)
+      .map(([n, what]) => `${n} ${what}${n === 1 ? "" : "s"}`)
+      .join(", "),
+  };
 }
 
 /** True when the app not only validates but actually executed its own logic without throwing. */
