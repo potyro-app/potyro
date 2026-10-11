@@ -21,7 +21,7 @@
 // look for SHAPE: an entity that some other entity points at, a page that narrows to a subset, a
 // string that reads like a ratio.
 
-import type { AppDefinition, Resolved } from "karta";
+import type { AppDefinition, Resolved } from "potyro";
 
 /** What the harness hands an assertion: the built app and a way to ask it questions. */
 export interface AssertContext {

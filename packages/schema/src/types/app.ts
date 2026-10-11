@@ -3,7 +3,7 @@
 
 import type { ReactElement } from "react";
 import type { Ctx } from "./ctx.js";
-import type { KartaRecord, Resolved, Value } from "./core.js";
+import type { PotyroRecord, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 import type { ViewProps } from "./runtime.js";
 
@@ -41,6 +41,17 @@ export interface FieldGroup {
   collapsible?: boolean;
 }
 
+/** An action that says what it takes (#213). A button opens a form of `input`; Ask can fill it. The
+ *  values reach `run` as its third argument, checked. A bare function is an action taking nothing. */
+export interface ActionDef {
+  run: ActionFn;
+  /** Button text; default: the key, humanised. */
+  label?: string;
+  /** What it does, for Ask. */
+  description?: string;
+  input?: Record<string, Field>;
+}
+
 export interface EntityDef {
   label?: string;
   /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
@@ -51,7 +62,7 @@ export interface EntityDef {
    *  last group, untitled, in declaration order. */
   groups?: FieldGroup[];
   computed?: Record<string, Computed>;
-  actions?: Record<string, ActionFn>;
+  actions?: Record<string, ActionFn | ActionDef>;
   /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
    *  else's edit does not take. Default `"anyone"`; means nothing in an app nobody else uses. */
   editableBy?: "anyone" | "creator";
@@ -566,7 +577,7 @@ export type MigrationStep =
   | { op: "renameEntity"; from: string; to: string }
   | { op: "setDefaultForExisting"; entity: string; field: string; value: unknown }
   | { op: "addRelation"; entity: string; field: string; to: string; many?: boolean }
-  | { transform: (record: KartaRecord, ctx: Ctx) => KartaRecord };
+  | { transform: (record: PotyroRecord, ctx: Ctx) => PotyroRecord };
 
 export interface Migration {
   from: string;
@@ -638,6 +649,20 @@ export interface ScopeDef {
   required?: boolean;
 }
 
+/** Outside data the app's Ask can read (#213): a places API, a search engine. NEVER a key: each
+ *  person brings their own, kept in the device's vault and sent only under `endpoint`. */
+export interface SourceDef {
+  label?: string;
+  /** What it answers, for Ask. */
+  description?: string;
+  /** Base URL, https. */
+  endpoint: string;
+  /** Documentation Ask may read. */
+  docs?: string;
+  /** How the key is sent: a header (optional `prefix`, e.g. "Bearer "), or a query parameter. None: no key. */
+  auth?: { header: string; prefix?: string } | { query: string };
+}
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -660,13 +685,15 @@ export interface AppDefinition {
   pages: Page[];
   reminders?: Reminder[];
   migrations?: Migration[];
+  /** Outside data the app's Ask can read, by name (#213). See `SourceDef`. */
+  sources?: Record<string, SourceDef>;
 }
 
 /**
  * The result of `defineApp`. It *is* the (normalized) definition — carrying all field data
  * and live function closures — plus a brand so the host can recognize it. The host reads
- * `.definition` off a loaded module; a `KartaApp` satisfies that by being its own definition.
+ * `.definition` off a loaded module; a `PotyroApp` satisfies that by being its own definition.
  */
-export interface KartaApp extends AppDefinition {
-  readonly __kartaApp: true;
+export interface PotyroApp extends AppDefinition {
+  readonly __potyroApp: true;
 }

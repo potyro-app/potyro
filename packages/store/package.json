@@ -1,5 +1,5 @@
 {
-  "name": "@karta/store",
+  "name": "@potyro/store",
   "version": "0.0.0",
   "type": "module",
   "description": "Store interface + MemoryStore/LocalStore/SqliteStore + JazzStore (CRDT, ADR 0001).",
@@ -15,7 +15,7 @@
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
     "fflate": "^0.8.3",
-    "karta": "workspace:*",
+    "potyro": "workspace:*",
     "cojson": "0.20.19",
     "cojson-transport-ws": "0.20.19"
   }

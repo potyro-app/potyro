@@ -7,8 +7,8 @@
 // refusal.
 
 import { describe, expect, it, vi } from "vitest";
-import { FakeCapabilities } from "@karta/capabilities";
-import type { PermissionManifest } from "karta";
+import { FakeCapabilities } from "@potyro/capabilities";
+import type { PermissionManifest } from "potyro";
 import type { UiBridge } from "../src/index.js";
 import { mediateCaps } from "../src/index.js";
 

@@ -1,5 +1,5 @@
 import { describe, it, vi } from "vitest";
-import { CONFORMANCE_CHECKS, type TargetExpectations } from "@karta/capabilities";
+import { CONFORMANCE_CHECKS, type TargetExpectations } from "@potyro/capabilities";
 import { CapacitorCapabilities, type CapacitorPlugins, type ScheduledNotification } from "../src/capacitor-capabilities.js";
 
 // The shared capability spec (docs/09), run against the NATIVE target — the same list that runs

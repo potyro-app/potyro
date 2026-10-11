@@ -10,11 +10,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { StepsView } from "../src/steps.js";
 
 const cooked = vi.fn();
@@ -44,7 +44,7 @@ const app = defineApp({
   ],
 });
 
-async function makeRuntime(): Promise<{ runtime: KartaRuntime; id: string; store: MemoryStore }> {
+async function makeRuntime(): Promise<{ runtime: PotyroRuntime; id: string; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("steps-fixture");
   const rec = await store.insert("recipe", {
@@ -59,7 +59,7 @@ async function makeRuntime(): Promise<{ runtime: KartaRuntime; id: string; store
   return { runtime: createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav }), id: String(rec.id), store };
 }
 
-function View({ runtime, id }: { runtime: KartaRuntime; id: string }) {
+function View({ runtime, id }: { runtime: PotyroRuntime; id: string }) {
   return (
     <StepsView runtime={runtime} pageId="cook" params={{ recipeId: id }} setParam={() => {}} navigate={() => {}} />
   );

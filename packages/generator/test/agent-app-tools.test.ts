@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addStep, annotate, newCase } from "@karta/runtime";
+import { addStep, annotate, newCase } from "@potyro/runtime";
 import { buildAppTools, type DataAccess, type InvestigationDeps } from "../src/agent/app-tools.js";
 import { runTool } from "../src/agent/tools.js";
 
@@ -9,7 +9,7 @@ function deps(over: Partial<InvestigationDeps> = {}): InvestigationDeps {
   c = annotate(c, "here I expected the map to open");
   c = addStep(c, { kind: "open", page: "city-detail" });
   return {
-    source: 'import { defineApp } from "karta";\nexport default defineApp({ id: "city-maps" });',
+    source: 'import { defineApp } from "potyro";\nexport default defineApp({ id: "city-maps" });',
     theCase: c,
     target: {
       definition: { pages: [{ id: "all", title: "Cities", view: { type: "list", entity: "city" } }] },

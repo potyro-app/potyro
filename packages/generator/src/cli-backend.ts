@@ -139,7 +139,7 @@ function spawnCli(bin: string | undefined, args: string[]): CliProcess {
 
 /** Run `claude -p`, feeding the user message on stdin and the contract as the system prompt. */
 async function runClaude(userMessage: string, opts: CliBackendOptions): Promise<{ text: string; usage: CallUsage }> {
-  const dir = mkdtempSync(join(tmpdir(), "karta-cli-"));
+  const dir = mkdtempSync(join(tmpdir(), "potyro-cli-"));
   const sysFile = join(dir, "system.txt");
   writeFileSync(sysFile, opts.systemPrompt ?? SYSTEM_PROMPT);
 

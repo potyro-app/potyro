@@ -15,7 +15,7 @@
 // ## How
 //
 // SQLite runs in memory and the whole database is snapshotted into IndexedDB. That is viable here
-// only because of a property `docs/01` states outright: Karta is personal-scale, thousands of
+// only because of a property `docs/01` states outright: Potyro is personal-scale, thousands of
 // records rather than millions. A snapshot of that is small and quick; this approach would be
 // hopeless for a large database.
 //
@@ -29,6 +29,8 @@
 import { initSqlite } from "./sqlite-backend.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
 
+// The name predates the rename to Potyro and stays: it is the database on every device that ever
+// ran the IndexedDB fallback, and a new name would orphan it.
 const DB_NAME = "karta-jazz-idb";
 const STORE = "databases";
 

@@ -3,7 +3,7 @@
 // with optional cheap narrowing, plus writes, reactivity, blobs, kv, and migrations. A CRDT
 // store later implements the same interface.
 
-import type { Field, Id, KartaRecord, MediaRef, Migration, Value } from "karta";
+import type { Field, Id, PotyroRecord, MediaRef, Migration, Value } from "potyro";
 
 export type Unsubscribe = () => void;
 
@@ -63,15 +63,15 @@ export interface Store {
   describe?(schema: StoreSchema, rules?: StoreRules): void;
 
   // reads — return raw records; the runtime resolves relations + computed + JS filters
-  all(entity: string, narrow?: Narrow): Promise<KartaRecord[]>;
-  get(entity: string, id: Id): Promise<KartaRecord | null>;
+  all(entity: string, narrow?: Narrow): Promise<PotyroRecord[]>;
+  get(entity: string, id: Id): Promise<PotyroRecord | null>;
 
   // optional indexable fast-path (later optimization; default impl may ignore)
-  byIndex?(entity: string, field: string, value: Value): Promise<KartaRecord[]>;
+  byIndex?(entity: string, field: string, value: Value): Promise<PotyroRecord[]>;
 
   // writes
-  insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord>;
-  update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord>;
+  insert(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord>;
+  update(entity: string, id: Id, patch: Partial<PotyroRecord>): Promise<PotyroRecord>;
   delete(entity: string, id: Id): Promise<void>;
 
   /**
@@ -211,7 +211,7 @@ export interface FieldEdit {
   value: unknown;
   /**
    * The account that made the change, derived from the signing session — not an app-supplied field,
-   * so it cannot be forged (the same guarantee as `KartaRecord.createdBy`, KA-18).
+   * so it cannot be forged (the same guarantee as `PotyroRecord.createdBy`, KA-18).
    */
   by: string;
   at: Date;

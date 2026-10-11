@@ -21,11 +21,11 @@ export type Appearance = "system" | "light" | "dark";
 
 export interface Look {
   appearance: Appearance;
-  /** A hue from `TILE_HUES`, or absent for Karta's own gold. */
+  /** A hue from `TILE_HUES`, or absent for Potyro's own gold. */
   accent?: number;
 }
 
-const KEY = "karta:look";
+const KEY = "potyro:look";
 export const DEFAULT_LOOK: Look = { appearance: "system" };
 
 function store(): Storage | null {
@@ -92,7 +92,7 @@ export function applyLook(look: Look = readLook()): void {
   else root.style.setProperty("--accent", hueColour(look.accent));
 }
 
-/** The colour of the chosen accent, or null for Karta's own. */
+/** The colour of the chosen accent, or null for Potyro's own. */
 export function accentColour(look: Look = readLook()): string | null {
   return look.accent === undefined ? null : hueColour(look.accent);
 }

@@ -10,11 +10,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SummaryStrip } from "../src/summary-strip.js";
-import type { KartaRuntime } from "@karta/runtime";
+import type { PotyroRuntime } from "@potyro/runtime";
 
 afterEach(cleanup);
 
-function runtimeWith(summary: unknown, queried: { count: number }): KartaRuntime {
+function runtimeWith(summary: unknown, queried: { count: number }): PotyroRuntime {
   return {
     definition: {
       pages: [{ id: "all", title: "All", view: { type: "list", entity: "item" }, ...(summary ? { summary } : {}) }],
@@ -26,7 +26,7 @@ function runtimeWith(summary: unknown, queried: { count: number }): KartaRuntime
     },
     ctx: {},
     core: { app: { callSummary: async () => ({ text: "0" }) } },
-  } as unknown as KartaRuntime;
+  } as unknown as PotyroRuntime;
 }
 
 describe("the summary strip", () => {

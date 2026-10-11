@@ -1,7 +1,7 @@
 // In-memory Store for tests and the runtime's default (docs/05). Correct + reactive; not
 // durable. SqliteStore (OPFS + JSON1) implements the same interface for the PWA (WP3, later).
 
-import type { Id, KartaRecord, MediaRef, Value } from "karta";
+import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
 import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
 import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
@@ -22,7 +22,7 @@ function nowIso(): string {
 
 export class MemoryStore implements Store {
   protected appId: string | null = null;
-  protected records = new Map<string, Map<Id, KartaRecord>>();
+  protected records = new Map<string, Map<Id, PotyroRecord>>();
   protected blobs = new Map<string, BlobEntry>();
   protected kv = new Map<string, string>();
   private listeners = new Map<string, Set<() => void>>();
@@ -31,7 +31,7 @@ export class MemoryStore implements Store {
   /** Subclass hook fired after every mutation (LocalStore persists here). */
   protected changed(): void {}
 
-  private entityMap(entity: string): Map<Id, KartaRecord> {
+  private entityMap(entity: string): Map<Id, PotyroRecord> {
     let m = this.records.get(entity);
     if (!m) {
       m = new Map();
@@ -53,7 +53,7 @@ export class MemoryStore implements Store {
     this.appId = null;
   }
 
-  async all(entity: string, narrow?: Narrow): Promise<KartaRecord[]> {
+  async all(entity: string, narrow?: Narrow): Promise<PotyroRecord[]> {
     let rows = [...this.entityMap(entity).values()];
     if (narrow?.ids) {
       const set = new Set(narrow.ids);
@@ -65,20 +65,20 @@ export class MemoryStore implements Store {
     return rows.slice(offset, end).map(clone);
   }
 
-  async get(entity: string, id: Id): Promise<KartaRecord | null> {
+  async get(entity: string, id: Id): Promise<PotyroRecord | null> {
     const r = this.entityMap(entity).get(id);
     return r ? clone(r) : null;
   }
 
-  async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
+  async byIndex(entity: string, field: string, value: Value): Promise<PotyroRecord[]> {
     const rows = [...this.entityMap(entity).values()].filter((r) => r[field] === value);
     return rows.map(clone);
   }
 
-  async insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {
+  async insert(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const id = (data.id as Id) ?? ulid();
     const ts = nowIso();
-    const record: KartaRecord = {
+    const record: PotyroRecord = {
       ...clone(data),
       id,
       createdAt: (data.createdAt as string) ?? ts,
@@ -89,10 +89,10 @@ export class MemoryStore implements Store {
     return clone(record);
   }
 
-  async update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord> {
+  async update(entity: string, id: Id, patch: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const existing = this.entityMap(entity).get(id);
     if (!existing) throw new Error(`update: ${entity}/${id} not found`);
-    const next: KartaRecord = {
+    const next: PotyroRecord = {
       ...existing,
       ...clone(patch),
       id: existing.id,
@@ -110,7 +110,7 @@ export class MemoryStore implements Store {
 
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
     // Snapshot for rollback. MemoryStore runs the transaction against itself.
-    const snapshot = new Map<string, Map<Id, KartaRecord>>();
+    const snapshot = new Map<string, Map<Id, PotyroRecord>>();
     for (const [e, m] of this.records) snapshot.set(e, new Map(m));
     try {
       return await fn(this);

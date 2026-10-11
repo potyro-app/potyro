@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { guardedModify, noMatchInstruction, readEditsOrFile, readModifyReply, retryInstruction } from "../src/guarded-modify.js";
 import { EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH } from "../src/edits.js";
-import type { AppShape } from "@karta/runtime";
+import type { AppShape } from "@potyro/runtime";
 
 // The app as the person has it: two entities, two pages. A rewrite typically keeps one and drops the
 // rest — that is the shape the first real modify came back in.

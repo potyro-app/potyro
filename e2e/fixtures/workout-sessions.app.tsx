@@ -14,7 +14,7 @@
 // The elapsed clock is computed IN THE COMPONENT: `useRecord` only re-fetches on a store write, so a
 // computed clock is frozen between writes and the timer sits at 00:00 however often the view renders.
 
-import { defineApp, type ViewProps } from "karta";
+import { defineApp, type ViewProps } from "potyro";
 import { useEffect, useRef, useState } from "react";
 
 const DEF_SERIES = 3;

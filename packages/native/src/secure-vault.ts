@@ -5,7 +5,7 @@
 // never readable by the app's own JavaScript. (iOS: the Keychain.) The browser build never loads this:
 // the composition root asks for it only when running inside the native shell.
 //
-// Shaped as `@karta/identity`'s `SecretVault` structurally, so this package does not depend on it.
+// Shaped as `@potyro/identity`'s `SecretVault` structurally, so this package does not depend on it.
 
 export interface NativeSecretVault {
   available(): Promise<boolean>;

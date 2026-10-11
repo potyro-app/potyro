@@ -61,7 +61,13 @@ export function SyncStatus({ sync }: { sync?: boolean }) {
   if (state === "off") return null;
   return (
     <span className="k-sync-status" data-state={state} title={LABEL[state]} aria-live="polite">
-      {state === "synced" ? "⇄" : state === "connecting" ? "◌" : "⇄̸"} {LABEL[state]}
+      <span className="k-sync-icon" aria-hidden>
+        {state === "synced" ? "⇄" : state === "connecting" ? "◌" : "⇄̸"}
+      </span>
+      {/* Its own element so a phone's top bar can show the icon alone and keep the words for a
+          screen reader and the tooltip: "Offline · changes saved here" beside an app's name and the
+          menu is wider than a phone. */}
+      <span className="k-sync-label">{LABEL[state]}</span>
     </span>
   );
 }

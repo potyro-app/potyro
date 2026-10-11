@@ -1,4 +1,4 @@
-// @karta/host — loading, execution & trust.
+// @potyro/host — loading, execution & trust.
 export type {
   Host,
   LoadedApp,

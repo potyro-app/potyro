@@ -3,11 +3,11 @@
 // hosts — and resolved again whenever the runtime says something a ctx depends on changed (the
 // selection, membership). A view never calls an app function itself; that is the host's job.
 
-import type { KartaRuntime } from "@karta/runtime";
-import { basePageId, resolveView } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import { basePageId, resolveView } from "potyro";
 import { useEffect, useState } from "react";
 
-function declared(runtime: KartaRuntime, pageRef: string, key: string, where: "view" | "page"): unknown {
+function declared(runtime: PotyroRuntime, pageRef: string, key: string, where: "view" | "page"): unknown {
   if (where === "view") return (resolveView(runtime.definition, pageRef) as unknown as Record<string, unknown>)[key];
   const page = runtime.definition.pages.find((p) => p.id === basePageId(pageRef)) as Record<string, unknown> | undefined;
   return page?.[key];
@@ -17,7 +17,7 @@ function declared(runtime: KartaRuntime, pageRef: string, key: string, where: "v
  * A string option that may be a function of ctx. Returns the literal at once, the fallback until a
  * function resolves, and the resolved text after. Re-resolves on `runtime.core.onInvalidate`.
  */
-export function useDynamicText(runtime: KartaRuntime, pageId: string, key: string, where: "view" | "page", fallback: string): string {
+export function useDynamicText(runtime: PotyroRuntime, pageId: string, key: string, where: "view" | "page", fallback: string): string {
   const raw = declared(runtime, pageId, key, where);
   const literal = typeof raw === "string" ? raw : raw === undefined ? fallback : null;
   const [resolved, setResolved] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function useDynamicText(runtime: KartaRuntime, pageId: string, key: strin
           if (live) setResolved(v == null ? fallback : String(v));
         },
         (e: unknown) => {
-          console.warn(`[karta] could not resolve ${where} option ${pageId}.${key}:`, e);
+          console.warn(`[potyro] could not resolve ${where} option ${pageId}.${key}:`, e);
           if (live) setResolved(fallback);
         },
       );
@@ -52,7 +52,7 @@ export function useDynamicText(runtime: KartaRuntime, pageId: string, key: strin
  * Every page's title, resolved. Literal titles are returned as they are; function titles resolve
  * through the runtime and follow the selection. What the tab bar and the page header read.
  */
-export function usePageTitles(runtime: KartaRuntime): Record<string, string> {
+export function usePageTitles(runtime: PotyroRuntime): Record<string, string> {
   const pages = runtime.definition.pages;
   const initial = (): Record<string, string> =>
     Object.fromEntries(pages.map((p) => [p.id, typeof p.title === "string" ? p.title : p.id]));

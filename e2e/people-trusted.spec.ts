@@ -7,7 +7,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // it reaches them and nothing they write reaches anyone; and the links shared before stop working, so
 // they cannot simply rejoin. And an owner can invite someone to view only.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 export default defineApp({
   id: "people", name: "People App", version: "1.0.0", schemaVersion: 1,
   entities: { spot: { label: "Spot", icon: "📍", displayField: "name", fields: { name: { type: "text", required: true } } } },
@@ -18,9 +18,9 @@ export default defineApp({
 async function device(context: BrowserContext, seed = false): Promise<Page> {
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!s || localStorage.getItem("karta:user-apps")) return;
-      localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "people", name: "People App", source, trusted: true, updatedAt: new Date().toISOString() }]));
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!s || localStorage.getItem("potyro:user-apps")) return;
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "people", name: "People App", source, trusted: true, updatedAt: new Date().toISOString() }]));
     },
     [STARTER, seed] as const,
   );
@@ -87,13 +87,13 @@ test("the owner removes someone, who then gets nothing new and cannot rejoin wit
   const aPanel = await openPeople(a);
   await expect(aPanel.locator(".k-people-row", { hasText: "Bo" })).toContainText("Can edit", { timeout: 60_000 });
   await expect(aPanel.locator(".k-people-row", { hasText: "Ana" })).toContainText("Owner");
-  if (process.env.KARTA_SHOTS) await a.screenshot({ path: `${process.env.KARTA_SHOTS}/people-owner.png` });
+  if (process.env.POTYRO_SHOTS) await a.screenshot({ path: `${process.env.POTYRO_SHOTS}/people-owner.png` });
 
   // ---- Ana removes Bo ----
   await aPanel.locator(".k-people-row", { hasText: "Bo" }).getByRole("button", { name: "Remove" }).click();
   const confirm = a.locator(".k-dialog");
   await expect(confirm).toContainText("Links you shared before stop working");
-  if (process.env.KARTA_SHOTS) await a.screenshot({ path: `${process.env.KARTA_SHOTS}/people-confirm.png` });
+  if (process.env.POTYRO_SHOTS) await a.screenshot({ path: `${process.env.POTYRO_SHOTS}/people-confirm.png` });
   await confirm.getByRole("button", { name: "Remove" }).click();
   await expect(aPanel.locator(".k-people-row", { hasText: "Bo" })).toHaveCount(0, { timeout: 30_000 });
   await aPanel.getByRole("button", { name: "Close" }).click();

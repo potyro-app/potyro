@@ -12,12 +12,12 @@
 // to compute.
 
 import { useEffect, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { Field, Resolved, SummaryValue } from "karta";
-import { computeSummary, type SummaryFigure } from "@karta/views";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { Field, Resolved, SummaryValue } from "potyro";
+import { computeSummary, type SummaryFigure } from "@potyro/views";
 
 interface SummaryStripProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   pageId: string;
   params: Record<string, unknown>;
 }
@@ -57,10 +57,12 @@ function Figures({ runtime, pageId, params, specs }: SummaryStripProps & { specs
   }, [specs, rows, entity, pageId, runtime]);
 
   return (
-    <section className="k-summary" aria-label="Summary">
+    <section className="k-summary" aria-label="Summary" data-k-view>
       {figures.map((figure, i) => (
         <div key={i} className="k-summary-figure">
-          <span className="k-summary-label">{figure.label}</span>
+          <span className="k-summary-label" data-k-wording>
+              {figure.label}
+            </span>
           {/* A figure that failed shows a dash with the reason on hover — one bad summary must not
               blank the page it sits above. */}
           <span className="k-summary-value" title={figure.error} data-loading={loading || undefined}>

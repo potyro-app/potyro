@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { MemoryStore } from "@karta/store";
-import { addStep, newCase } from "@karta/runtime";
+import { MemoryStore } from "@potyro/store";
+import { addStep, newCase } from "@potyro/runtime";
 import type { EsbuildLike } from "../src/app-bundler.js";
 
 vi.mock("../src/open-store.js", () => ({
@@ -28,7 +28,7 @@ vi.mock("../src/app-bundler.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/app-bundler.js")>();
   const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
   const stubs = {
-    karta: readFileSync(here("../src/isolate-stubs/karta.ts"), "utf8"),
+    potyro: readFileSync(here("../src/isolate-stubs/potyro.ts"), "utf8"),
     react: readFileSync(here("../src/isolate-stubs/react.ts"), "utf8"),
   };
   const esbuild = { build } as unknown as EsbuildLike;
@@ -40,7 +40,7 @@ vi.mock("../src/app-bundler.js", async (importOriginal) => {
 
 const { verifyCandidate, VERIFY_TIMEOUT_MS } = await import("../src/verify-candidate.js");
 
-const APP = (pages: string) => `import { defineApp } from "karta";
+const APP = (pages: string) => `import { defineApp } from "potyro";
 export default defineApp({
   id: "city-maps", name: "City Maps", version: "1.0.0", schemaVersion: 1,
   entities: { city: { label: "City", displayField: "name", fields: { name: { type: "text", required: true } } } },
@@ -176,7 +176,7 @@ describe("verifyCandidate", () => {
   });
 
   it("kills a candidate whose module body loops forever, on the verification budget", async () => {
-    const runaway = `import { defineApp } from "karta";
+    const runaway = `import { defineApp } from "potyro";
 while (true) {}
 export default defineApp({
   id: "city-maps", name: "City Maps", version: "1.0.0", schemaVersion: 1,
@@ -206,14 +206,14 @@ export default defineApp({
     // isolate is merely AWAITING. ctx.ui.pick() is the realistic way a candidate hits this class:
     // verify-candidate.ts now supplies no PickerHost (see the "No picker" comment there), so
     // ctx.ui.pick() resolves to `null` immediately via ui-bridge.ts's headless fallback — safe. This
-    // candidate calls ctx.ui.pick() anyway, so the test exercises the real call site, but @karta/host's
+    // candidate calls ctx.ui.pick() anyway, so the test exercises the real call site, but @potyro/host's
     // isolate bridge does not implement a `ui.pick` host op today (a separate gap in the host package,
     // out of scope for this shell-only fix) — so that call currently rejects fast rather than hanging.
     // The `await new Promise(() => {})` after it reproduces the hazard directly instead: from the
     // isolate's point of view, a promise that genuinely never settles is indistinguishable from a
     // `PickerHost.pick()` that nobody ever mounted a React tree to resolve — either way QuickJS sits
     // idle waiting on a host promise, so its CPU-bound interrupt handler never gets a chance to fire.
-    // Verified directly against @karta/host's real isolate during development: without a wall clock
+    // Verified directly against @potyro/host's real isolate during development: without a wall clock
     // around the whole verification, this hangs indefinitely (still unsettled 6s in, on a 2s per-call
     // budget) — proving the per-call `timeoutMs` alone does not save `verifyCandidate` here.
     // The filter only runs per resolved row — an unseeded store would let this "pass" instantly with

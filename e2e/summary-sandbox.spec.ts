@@ -6,7 +6,7 @@ import { test, expect, type Page } from "@playwright/test";
 //
 // This is the case that was silently broken. `computed` is per-record, so an aggregate over the
 // whole set lives in `page.summary` — and for an untrusted app that function never leaves the VM:
-// the extracted definition carries the `__karta_fn__` sentinel string where the function was. The
+// the extracted definition carries the `__potyro_fn__` sentinel string where the function was. The
 // shell called that string, threw, and the figure rendered a dash. So the one shape built-in views
 // cannot express was exactly the shape an untrusted app could not compute, which is why a shared
 // app's aggregate screen came up blank for the very recipients sharing exists to serve.

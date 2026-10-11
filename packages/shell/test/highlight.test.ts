@@ -27,7 +27,7 @@ describe("highlightLines", () => {
   });
 
   it("classifies keywords and strings", async () => {
-    const lines = await highlightLines('const name = "karta";');
+    const lines = await highlightLines('const name = "potyro";');
     const classes = classesOn(lines[0]!).join(" ");
     expect(classes).toContain("keyword");
     expect(classes).toContain("string");

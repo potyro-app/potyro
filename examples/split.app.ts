@@ -8,7 +8,7 @@
 // the app has failed. So the money never leaves whole minor units, the split helpers hand out the
 // remainder in a fixed order (`splitEvenly`, `splitByShares` — every device lands on the same
 // cents), and who is in it comes from the space's membership rather than typed names that drift.
-import { defineApp, formatMoney, splitByShares, splitEvenly, type Ctx, type Resolved } from "karta";
+import { defineApp, formatMoney, splitByShares, splitEvenly, type Ctx, type Resolved } from "potyro";
 
 /** A member value arrives resolved (a person) or as the account id it is stored as. */
 const idOf = (v: unknown): string => {

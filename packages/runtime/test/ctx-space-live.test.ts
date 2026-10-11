@@ -10,11 +10,11 @@
 // and fakes legitimately pass a fixed value.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { defineApp } from "karta";
-import type { Space } from "karta";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { FakeCapabilities } from "@karta/capabilities";
+import { MemoryStore } from "@potyro/store";
+import { defineApp } from "potyro";
+import type { Space } from "potyro";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createRuntime } from "../src/index.js";
 
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

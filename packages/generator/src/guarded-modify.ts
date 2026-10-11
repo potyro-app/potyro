@@ -17,7 +17,7 @@
 // one is not worth throwing away — but labelled, so the Studio can say so and the eval can count it.
 // It is never silent, and it never burns a fourth call.
 
-import { structuralLoss, type AppShape } from "@karta/runtime";
+import { structuralLoss, type AppShape } from "@potyro/runtime";
 import { applyEdits, describeEditFailures, DIVIDER_MARK, EDIT_PLACEHOLDER_REPLACE, EDIT_PLACEHOLDER_SEARCH, parseEditsStrict, REPLACE_MARK, SEARCH_MARK, type EditFailure } from "./edits.js";
 import { extractSource, looksLikeApp, parseModifyReply, withNotDone } from "./prompt.js";
 

@@ -12,8 +12,8 @@
 // split's selection is just a param.
 
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import type { LayoutItem, PageLayout, View } from "karta";
-import { layoutItemId } from "karta";
+import type { LayoutItem, PageLayout, View } from "potyro";
+import { layoutItemId } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { ViewHost } from "./host.js";
 
@@ -43,7 +43,7 @@ function useWide(ref: React.RefObject<HTMLDivElement | null>): boolean {
   return wide;
 }
 
-const foldKey = (appId: string, pageId: string, index: number): string => `karta:layout:${appId}:${pageId}:${index}`;
+const foldKey = (appId: string, pageId: string, index: number): string => `potyro:layout:${appId}:${pageId}:${index}`;
 
 function readFold(key: string): boolean | null {
   try {
@@ -65,7 +65,7 @@ export function LayoutHost(props: LayoutHostProps) {
   );
   const titled = (it: LayoutItem, i: number, body: ReactNode, span?: number): ReactNode => (
     <section key={i} className="k-layout-item" data-span={span} aria-label={it.title || undefined}>
-      {it.title ? <h3 className="k-layout-title">{it.title}</h3> : null}
+      {it.title ? <h3 className="k-layout-title" data-k-wording>{it.title}</h3> : null}
       {body}
     </section>
   );
@@ -158,7 +158,7 @@ function Fold({ appId, pageId, index, title, children }: { appId: string; pageId
         }
       }}
     >
-      <summary className="k-layout-title">{title}</summary>
+      <summary className="k-layout-title" data-k-wording>{title}</summary>
       {children}
     </details>
   );

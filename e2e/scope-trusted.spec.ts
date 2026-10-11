@@ -11,9 +11,9 @@ const SOURCE = readFileSync(new URL("./fixtures/trips.app.ts.txt", import.meta.u
 
 async function seed(page: Page): Promise<void> {
   await page.addInitScript((source) => {
-    if (localStorage.getItem("karta:user-apps")) return;
+    if (localStorage.getItem("potyro:user-apps")) return;
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "trips", name: "Trips", source, updatedAt: new Date(0).toISOString(), trusted: true }]),
     );
   }, SOURCE);

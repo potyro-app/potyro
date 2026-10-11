@@ -7,7 +7,7 @@
 // and exact offline scheduling arrives with the native target (KA-03). The host wraps whichever caps
 // are present with per-app mediation for untrusted code — unchanged by what this class exposes.
 
-import type { Geo } from "karta";
+import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
 
 // Minimal shapes for the File System Access API (not in older lib.dom typings).

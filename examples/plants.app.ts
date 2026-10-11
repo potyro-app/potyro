@@ -1,7 +1,7 @@
 // plants.app.ts
 // Stresses: datetime logic, season-dependent computed interval (real branching), reminders
 // as functions returning Date|null, a quick action, calendar view.
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 // plain helpers — full code, your own module in a real project
 const DAY = 86_400_000;

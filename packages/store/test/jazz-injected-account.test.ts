@@ -1,6 +1,6 @@
 // Opening a store under an identity minted elsewhere (ADR D2 amended).
 //
-// `@karta/identity` mints the account with crypto alone — no database, no `LocalNode` — so that a
+// `@potyro/identity` mints the account with crypto alone — no database, no `LocalNode` — so that a
 // person who never turns on sync still has a `ctx.me` without loading a CRDT engine. The
 // consequence is that the FIRST time any app syncs, cojson's storage has never seen the account
 // CoValue, and loading it fails exactly as it does across a database boundary.
@@ -28,7 +28,7 @@ async function memoryDb() {
   return new sqlite3.oo1.DB(":memory:", "c");
 }
 
-/** What `@karta/identity` produces, without depending on it from here. */
+/** What `@potyro/identity` produces, without depending on it from here. */
 function mintedIdentity(): { id: string; secret: string } {
   const seed = crypto.newRandomSecretSeed();
   const secret = crypto.agentSecretFromSecretSeed(seed);

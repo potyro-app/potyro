@@ -14,7 +14,7 @@ import {
 // Drives the OpenRouter backend with an injected engine (message assembly) and an injected fetch
 // (the HTTP adapter) — no API key, no network, deterministic.
 
-const GOOD = `import { defineApp } from "karta";
+const GOOD = `import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: { task: { label: "Task", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -73,7 +73,7 @@ describe("OpenRouterBackend prompt assembly", () => {
     expect(msgs[3]!.content).toContain("validate: boom");
   });
 
-  // A modify turn that opens with "Create a Karta app for this request: <the edit>" tells the model
+  // A modify turn that opens with "Create a Potyro app for this request: <the edit>" tells the model
   // the app it should have written is described BY the edit — so the source in the next turn reads
   // as a wrong answer. Strong models reconcile it; a fast one obeys and replaces the whole app,
   // which is exactly the "it deletes my app and writes a new one" report.
@@ -84,7 +84,7 @@ describe("OpenRouterBackend prompt assembly", () => {
     await backend.modify("CURRENT SOURCE", "add a 5-star rating field", { id: "t", description: "a book tracker" });
 
     const opener = reqs[0]!.messages[1]!.content;
-    expect(opener).not.toContain("Create a Karta app for this request");
+    expect(opener).not.toContain("Create a Potyro app for this request");
     expect(opener).not.toContain("add a 5-star rating field");
     expect(opener).toMatch(/current/i); // it introduces the app as the thing being changed
   });
@@ -257,5 +257,50 @@ describe("OpenRouterBackend drives the KA-06 eval repair loop", () => {
     expect(report.validWithinN).toBe(1);
     expect(report.renders).toBe(1);
     expect(report.outcomes[0]!.repairsUsed).toBe(1);
+  });
+});
+
+describe("a model that cannot turn reasoning off", () => {
+  it("asks again with the model's own default instead of failing", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetch = async (_url: string, init: { body: string }) => {
+      bodies.push(JSON.parse(init.body) as Record<string, unknown>);
+      if (bodies.length === 1) return new Response('{"error":{"message":"Reasoning is mandatory for this endpoint and cannot be disabled."}}', { status: 400 });
+      return new Response('{"choices":[{"message":{"content":"hi"}}]}', { status: 200 });
+    };
+    const engine = createOpenRouterEngine({ apiKey: "k", fetch: fetch as never });
+    const res = await engine.chat.completions.create({ messages: [{ role: "user", content: "x" }] });
+    expect(res.choices[0]!.message.content).toBe("hi");
+    expect(bodies[0]!.reasoning).toEqual({ effort: "none" });
+    expect(bodies[1]!.reasoning).toBeUndefined();
+  });
+
+  it("passes server tools alongside function tools, and returns the pages a search read", async () => {
+    let body: Record<string, unknown> = {};
+    const fetch = async (_url: string, init: { body: string }) => {
+      body = JSON.parse(init.body) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: "done", annotations: [{ type: "url_citation", url_citation: { url: "https://www.happycow.net/x", title: "HappyCow" } }] } }] }),
+        { status: 200 },
+      );
+    };
+    const engine = createOpenRouterEngine({ apiKey: "k", fetch: fetch as never });
+    const res = await engine.chat.completions.create({
+      messages: [{ role: "user", content: "x" }],
+      tools: [{ type: "function", function: { name: "f", description: "", parameters: {} } }],
+      serverTools: [{ type: "openrouter:web_search" }],
+    });
+    expect((body.tools as Array<{ type: string }>).map((t) => t.type)).toEqual(["function", "openrouter:web_search"]);
+    expect(res.choices[0]!.message.citations).toEqual([{ url: "https://www.happycow.net/x", title: "HappyCow" }]);
+  });
+});
+
+describe("what a call cost", () => {
+  it("passes on OpenRouter's usage: cost and tokens", async () => {
+    const fetch = async () =>
+      new Response(JSON.stringify({ choices: [{ message: { content: "hi" } }], usage: { prompt_tokens: 1200, completion_tokens: 80, cost: 0.00731 } }), { status: 200 });
+    const engine = createOpenRouterEngine({ apiKey: "k", fetch: fetch as never });
+    const res = await engine.chat.completions.create({ messages: [{ role: "user", content: "x" }] });
+    expect(res.usage).toEqual({ cost: 0.00731, promptTokens: 1200, completionTokens: 80 });
   });
 });

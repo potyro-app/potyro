@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { defineApp, type Ctx } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type Ctx } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { ListView } from "../src/builtins.js";
 
 // `Dynamic<string>` in a built-in view (#133): the empty state names the selection, and follows it.
@@ -36,7 +36,7 @@ const app = () =>
     ],
   });
 
-async function makeRuntime(): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
+async function makeRuntime(): Promise<{ runtime: PotyroRuntime; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("trips");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

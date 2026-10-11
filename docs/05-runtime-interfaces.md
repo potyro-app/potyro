@@ -110,7 +110,7 @@ export interface LoadedApp {
   // Page summary aggregates (docs/03 `Page.summary`). The only call taking the whole row set:
   // `computed` is per-record, so a figure over the WHOLE set cannot be a per-record binding.
   // It is a host call because for an untrusted app the function never leaves the isolate —
-  // the extracted definition carries the `__karta_fn__` sentinel where the function was.
+  // the extracted definition carries the `__potyro_fn__` sentinel where the function was.
   callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
   // A function inside a page's view, over its rows, named by path (#109): "series" of a chart,
   // "items.2.value" / "items.2.compare.value" of a stats view. Own keys and indexes only.

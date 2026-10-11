@@ -3,10 +3,10 @@
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
 // memory + time limits.
 
-import type { AppDefinition, Ctx, KartaRecord, PermissionManifest, Resolved, UiProgress, Value } from "karta";
-import type { Store } from "@karta/store";
+import type { AppDefinition, Ctx, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value } from "potyro";
+import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
-import { resolveRecord, type ResolveDeps } from "../resolve.js";
+import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "../values-gate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
@@ -110,7 +110,11 @@ class IsolateLoadedApp implements LoadedApp {
         return nul;
       case "data.all": {
         const rows = await this.store.all(op.entity as string);
-        const resolved = await Promise.all(rows.map((r) => resolveRecord(this.resolveDeps, op.entity as string, r, false)));
+        // A cache for this one call: these deps live as long as the isolate, and a cache that did
+        // too would serve rows from before any later write.
+        const deps = { ...this.resolveDeps, records: new Map() };
+        await prefetchRelated(deps, op.entity as string, rows);
+        const resolved = await Promise.all(rows.map((r) => resolveRecord(deps, op.entity as string, r, false)));
         return serialize(resolved);
       }
       case "data.get": {
@@ -124,7 +128,7 @@ class IsolateLoadedApp implements LoadedApp {
         if (!me) throw new Error("ctx.create: no identity to stamp the record with");
         const clean = stampAuthor(op.data, me);
         assertValuesFit(this.definition, op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me));
-        const row = await this.store.insert(op.entity as string, clean as Partial<KartaRecord>);
+        const row = await this.store.insert(op.entity as string, clean as Partial<PotyroRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       case "data.patch": {
@@ -134,7 +138,7 @@ class IsolateLoadedApp implements LoadedApp {
           now: currentPeople(this.ctxHost?.space, this.ctxHost?.me),
           ever: everyone(this.store),
         });
-        const row = await this.store.update(op.entity as string, op.id as string, clean as Partial<KartaRecord>);
+        const row = await this.store.update(op.entity as string, op.id as string, clean as Partial<PotyroRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       // A shared app runs HERE, so this is the surface that decides whether counting is safe for the
@@ -153,7 +157,7 @@ class IsolateLoadedApp implements LoadedApp {
         } else {
           const current = await this.store.get(entity, id);
           const base = Number((current as Record<string, unknown> | null)?.[field] ?? 0);
-          await this.store.update(entity, id, { [field]: base + delta } as Partial<KartaRecord>);
+          await this.store.update(entity, id, { [field]: base + delta } as Partial<PotyroRecord>);
         }
         const row = await this.store.get(entity, id);
         if (!row) throw new Error(`increment: ${entity}/${id} not found`);
@@ -336,7 +340,7 @@ class IsolateLoadedApp implements LoadedApp {
     if (this.disposed) return;
     try {
       this.enter(() => {
-        this.vm.unwrapResult(this.vm.evalCode(`globalThis.__karta.settle(${JSON.stringify(id)}, ${ok}, ${JSON.stringify(json)})`)).dispose();
+        this.vm.unwrapResult(this.vm.evalCode(`globalThis.__potyro.settle(${JSON.stringify(id)}, ${ok}, ${JSON.stringify(json)})`)).dispose();
       });
     } catch (e) {
       // The continuation ran out of budget or threw at the top level; the call waiting on it
@@ -346,13 +350,13 @@ class IsolateLoadedApp implements LoadedApp {
   }
 
   /**
-   * Invoke `globalThis.__karta.call(payload)` and return its value. The budget is wall-clock time
+   * Invoke `globalThis.__potyro.call(payload)` and return its value. The budget is wall-clock time
    * spent by the call — its own code and the host calls it waits on — but not the time a question
    * is open for the person: a form can take a minute, and that is not the app running away.
    */
   private async invoke(payload: Record<string, unknown>, ctx: Ctx): Promise<Value> {
     this.ctxHost = ctx;
-    const code = `globalThis.__karta.call(${JSON.stringify(serialize(payload))})`;
+    const code = `globalThis.__potyro.call(${JSON.stringify(serialize(payload))})`;
     let handle: QuickJSHandle | null = null;
     let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
     this.enter(() => {
@@ -487,13 +491,13 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
     const deadline = Date.now() + loadTimeout;
     vm.runtime.setInterruptHandler(() => Date.now() > deadline);
     try {
-      // 1) Run the app bundle: it must set globalThis.__kartaApp to the app definition.
+      // 1) Run the app bundle: it must set globalThis.__potyroApp to the app definition.
       const appRes = vm.evalCode(args.code);
       vm.unwrapResult(appRes).dispose();
 
       // 2) Read the declarative definition out (structure only; functions stay in the VM).
       const defRes = vm.evalCode(
-        "JSON.stringify(globalThis.__kartaApp, (k, v) => (typeof v === 'function' ? '__karta_fn__' : v))",
+        "JSON.stringify(globalThis.__potyroApp, (k, v) => (typeof v === 'function' ? '__potyro_fn__' : v))",
       );
       const defHandle = vm.unwrapResult(defRes);
       const raw = deserialize<AppDefinition>(vm.getString(defHandle));
@@ -506,7 +510,7 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
       };
       defHandle.dispose();
 
-      // 3) Install the harness (ctx bridge + __karta.call).
+      // 3) Install the harness (ctx bridge + __potyro.call).
       const app = new IsolateLoadedApp(vm, definition, opts.store, timeout);
       app.installBridge();
       const harnessRes = vm.evalCode(HARNESS_SOURCE);

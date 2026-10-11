@@ -3,16 +3,16 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import plants from "../../../examples/plants.app.js";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 const DAY = 86_400_000;
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const nav: NavBridge = { navigate: () => {} };
 
-async function setup(caps: FakeCapabilities): Promise<{ store: MemoryStore; runtime: KartaRuntime }> {
+async function setup(caps: FakeCapabilities): Promise<{ store: MemoryStore; runtime: PotyroRuntime }> {
   const store = new MemoryStore();
   await store.open("plants");
   const host = createHost();

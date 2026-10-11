@@ -15,7 +15,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // device. Nothing short of this shape can catch it: with one device there is no update to adopt, and
 // a unit test cannot see whether a React tree exists to answer the question.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "shared-todo",
@@ -32,10 +32,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "shared-todo", name: "Shared Todo", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },
@@ -89,7 +89,7 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
       async () =>
         a
           .evaluate(() => {
-            const apps = JSON.parse(localStorage.getItem("karta:user-apps") ?? "[]") as { id: string; source: string }[];
+            const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
             return apps.find((x) => x.id === "shared-todo")?.source ?? "";
           })
           .catch(() => ""),

@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { defineApp } from "karta";
-import type { MemberField, Space } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import type { MemberField, Space } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput, FieldValue } from "../src/index.js";
 
 // The person picker and the person chip (KA-19, #60). The candidates are the people in the space —
@@ -42,7 +42,7 @@ const space: Space = {
   invite: async () => "",
 };
 
-async function makeRuntime(shared: boolean): Promise<KartaRuntime> {
+async function makeRuntime(shared: boolean): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("ledger");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

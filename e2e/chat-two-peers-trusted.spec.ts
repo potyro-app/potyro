@@ -13,7 +13,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 //
 // Two CONTEXTS, not two pages: separate storage, so genuinely two devices with two identities.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "chat-pair",
@@ -48,16 +48,16 @@ export default defineApp({
  * A device.
  *
  * Seeded ONCE per context, not once per navigation: an init script runs on every page load, and an
- * unconditional write to `karta:user-apps` silently resets `sync` to off — the trap documented on
+ * unconditional write to `potyro:user-apps` silently resets `sync` to off — the trap documented on
  * `sync-two-peers-trusted.spec.ts`.
  */
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "chat-pair", name: "Chat Pair", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

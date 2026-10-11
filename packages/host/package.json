@@ -1,5 +1,5 @@
 {
-  "name": "@karta/host",
+  "name": "@potyro/host",
   "version": "0.0.0",
   "type": "module",
   "description": "Loading, execution & trust (WP2): DirectHost runner + makeCtx + capability mediation. IsolateHost (QuickJS-WASM) lands after DirectHost.",
@@ -14,9 +14,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@karta/capabilities": "workspace:*",
-    "@karta/store": "workspace:*",
-    "karta": "workspace:*",
+    "@potyro/capabilities": "workspace:*",
+    "@potyro/store": "workspace:*",
+    "potyro": "workspace:*",
     "quickjs-emscripten": "^0.31.0"
   }
 }

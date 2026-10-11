@@ -7,7 +7,7 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
   const hits: string[] = [];
   const sent: string[] = [];
   const app = (extra: string) =>
-    '```ts\nimport { defineApp } from "karta";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true }' +
+    '```ts\nimport { defineApp } from "potyro";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true }' +
     extra +
     ' } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});\n```';
 
@@ -78,7 +78,7 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 // edits replaced whole-file replies is that retyping the untouched lines damaged them.
 test("an edit-block reply changes only the lines it names, and the Studio says how many", async ({ page }) => {
   const CREATED = [
-    'import { defineApp } from "karta";',
+    'import { defineApp } from "potyro";',
     "export default defineApp({",
     '  id: "reader",',
     '  name: "Reader",',
@@ -156,7 +156,7 @@ test("the History tab shows this session before anything is saved, and New draft
           {
             message: {
               content:
-                '```ts\nimport { defineApp } from "karta";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});\n```',
+                '```ts\nimport { defineApp } from "potyro";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});\n```',
             },
           },
         ],
@@ -213,7 +213,7 @@ test("a generate that needs repair is repaired with an edit, through the same ga
   // Pretty-printed so the page's view sits on its own lines — the repair edit below targets exactly
   // one of them.
   const GENERATED = [
-    'import { defineApp } from "karta";',
+    'import { defineApp } from "potyro";',
     "export default defineApp({",
     '  id: "reader",',
     '  name: "Reader",',

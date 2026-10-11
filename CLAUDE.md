@@ -5,7 +5,7 @@ collide and the architecture stays honest.
 
 ## Mental model (one paragraph)
 
-A Karta app is a **TypeScript module** (`*.app.ts`) that default-exports `defineApp({...})`.
+A Potyro app is a **TypeScript module** (`*.app.ts`) that default-exports `defineApp({...})`.
 It declares data **shape** (entities/fields/view layout) as plain data, and all **logic**
 (computed, filters, actions, reminders, custom views) as ordinary functions that receive
 **`ctx`** — the host API surface (data, time, capabilities, storage, ui, navigation). A
@@ -91,14 +91,20 @@ pnpm lint:boundaries
 pnpm ci:local all              # every step (run in a terminal; ~15 min)
 pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..5
 pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
+pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic from vazio's cron; docs/16 §8)
+pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io
 
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130)
-pnpm --filter @karta/generator gen:reference
+pnpm --filter @potyro/generator gen:reference
 
 # does changing an app that holds records keep the records? (docs/12 §8)
-pnpm --filter @karta/generator eval:modify:fixture   # no model, no money — sample review sheet
-pnpm --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+pnpm --filter @potyro/generator eval:modify:fixture   # no model, no money — sample review sheet
+pnpm --filter @potyro/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+
+# does Ask do what people ask? real requests against the example apps; READ the transcripts (paid,
+# ~2¢ a request with --web on DeepSeek V4 Flash)
+OPENROUTER_API_KEY=… pnpm --filter @potyro/generator eval:ask -- --web --model deepseek/deepseek-v4-flash-0731
 ```
 
 **On Windows** call `pnpm.cmd`: PowerShell blocks `pnpm.ps1` under the default execution policy and

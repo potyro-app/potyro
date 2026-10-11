@@ -2,7 +2,7 @@
 // and a list cell all say "7 days" the same way, and a duration in minutes or hours reads as
 // "1 h 30 min" rather than "90".
 
-import type { DurationField, NumberField } from "karta";
+import type { DurationField, NumberField } from "potyro";
 
 export function formatNumber(value: unknown, integer = false): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return String(value ?? "");

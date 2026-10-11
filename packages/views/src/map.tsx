@@ -5,8 +5,8 @@
 // params. Online tiles first; offline tiles are a later milestone (M5).
 
 import { useEffect, useRef, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { MapCamera, Resolved } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { MapCamera, Resolved } from "potyro";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -79,7 +79,7 @@ function toLatLng(v: unknown): { lat: number; lng: number } | null {
 }
 
 /** Resolve geo/title/color per row (async host calls), skipping rows without a valid geo point. */
-export function useMapMarkers(runtime: KartaRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
+export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
   const [markers, setMarkers] = useState<MapMarker[]>([]);
 
   useEffect(() => {
@@ -184,7 +184,7 @@ async function resolveCamera(runtime: BuiltinViewProps["runtime"], pageId: strin
       const value = await viewOption.call(runtime, pageId, "camera");
       return (value ?? null) as MapCamera | null;
     } catch (e) {
-      console.warn("[karta] the map's camera function failed; opening as remembered:", e);
+      console.warn("[potyro] the map's camera function failed; opening as remembered:", e);
       return null;
     }
   }
@@ -292,7 +292,7 @@ export function MapView(props: BuiltinViewProps) {
         try {
           opening = toCamera(await runtimeRef.current.ctx.storage.get(cameraKey(pageIdRef.current)));
         } catch (e) {
-          console.warn("[karta] could not read the saved map position:", e);
+          console.warn("[potyro] could not read the saved map position:", e);
         }
       }
       if (disposed || !el) return;
@@ -307,6 +307,23 @@ export function MapView(props: BuiltinViewProps) {
       });
       mapRef.current = created as unknown as typeof mapRef.current;
 
+      // What the map shows, for Ask (#213): "restaurants" with no place named means the area on
+      // screen. Every move counts here, the auto-fit included — it is what the person sees.
+      // Never allowed to break the map: telling Ask where it is looking is a courtesy.
+      const publish = (): void => {
+        try {
+          const c = created.getCenter();
+          const b = (created as { getBounds?: () => { getNorth(): number; getEast(): number } }).getBounds?.();
+          // Without bounds, a zoom-level estimate: a 1000-pixel view spans ~40000 km / 2^zoom.
+          const radiusKm = b ? distanceKm(c.lat, c.lng, b.getNorth(), b.getEast()) : 20000 / 2 ** created.getZoom();
+          setShown({ lat: c.lat, lng: c.lng, radiusKm: Math.max(0.2, radiusKm) });
+        } catch {
+          // an area nobody hears about
+        }
+      };
+      created.on("moveend", publish);
+      (created as { once?: (e: string, f: () => void) => void }).once?.("load", publish);
+
       // Remember the framing — but only for moves the user made. A programmatic fitBounds carries no
       // `originalEvent`, and recording it would pin the map to the first auto-fit forever.
       if (mode === "remember") {
@@ -317,7 +334,7 @@ export function MapView(props: BuiltinViewProps) {
           restoredRef.current = true;
           void runtimeRef.current.ctx.storage
             .set(cameraKey(pageIdRef.current), camera)
-            .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+            .catch((err: unknown) => console.warn("[potyro] could not save the map position:", err));
         });
       }
 
@@ -353,6 +370,7 @@ export function MapView(props: BuiltinViewProps) {
     })();
     return () => {
       disposed = true;
+      setShown(null);
       mapRef.current?.remove?.();
       mapRef.current = null;
     };
@@ -415,7 +433,7 @@ export function MapView(props: BuiltinViewProps) {
     })().catch((e: unknown) => {
       // One bad marker used to take the whole sync down with it — including the framing — and say
       // nothing, because the promise was floated.
-      console.warn("[karta] could not sync map markers:", e);
+      console.warn("[potyro] could not sync map markers:", e);
     });
     return () => {
       cancelled = true;
@@ -454,7 +472,7 @@ export function MapView(props: BuiltinViewProps) {
       restoredRef.current = true;
       void runtimeRef.current.ctx.storage
         .set(cameraKey(pageIdRef.current), { center, zoom })
-        .catch((err: unknown) => console.warn("[karta] could not save the map position:", err));
+        .catch((err: unknown) => console.warn("[potyro] could not save the map position:", err));
     }
     return true;
   };
@@ -567,4 +585,32 @@ export function MapView(props: BuiltinViewProps) {
       ) : null}
     </div>
   );
+}
+
+// ── the area on screen (#213) ───────────────────────────────────────────────
+
+let shown: { lat: number; lng: number; radiusKm: number } | null = null;
+const shownListeners = new Set<() => void>();
+
+function setShown(next: typeof shown): void {
+  shown = next;
+  for (const l of shownListeners) l();
+}
+
+/** Be told when the area on screen changes (for `useSyncExternalStore`). */
+export function subscribeMapArea(cb: () => void): () => void {
+  shownListeners.add(cb);
+  return () => void shownListeners.delete(cb);
+}
+
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (x: number) => (x * Math.PI) / 180;
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(a));
+}
+
+/** The area the map on screen shows — its centre and the distance to its corner — or null when no
+ *  map is open. Read by Ask to know what "near here" means. */
+export function mapArea(): { lat: number; lng: number; radiusKm: number } | null {
+  return shown;
 }

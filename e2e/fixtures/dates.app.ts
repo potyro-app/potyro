@@ -2,7 +2,7 @@
 // ordinary day and `startsAt` is a moment. Committed rather than generated, so what the browser
 // test drives never drifts.
 
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 export default defineApp({
   id: "dates",

@@ -1,5 +1,5 @@
 {
-  "name": "appinator",
+  "name": "potyro",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,17 +14,18 @@
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "ci:local": "node scripts/ci-local.mjs",
-    "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @karta/shell dev\"",
-    "dev:sandbox": "pnpm --filter @karta/shell dev:sandbox",
+    "ship": "node scripts/ship.mjs",
+    "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @potyro/shell dev\"",
+    "dev:sandbox": "pnpm --filter @potyro/shell dev:sandbox",
     "e2e": "playwright test",
     "e2e:launcher": "playwright test e2e/launcher",
-    "e2e:baselines": "KARTA_BASELINES=1 playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
-    "conformance": "pnpm --filter @karta/capabilities exec vitest run test/conformance-web.test.ts && pnpm --filter @karta/native exec vitest run test/conformance-capacitor.test.ts",
+    "e2e:baselines": "POTYRO_BASELINES=1 playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
+    "conformance": "pnpm --filter @potyro/capabilities exec vitest run test/conformance-web.test.ts && pnpm --filter @potyro/native exec vitest run test/conformance-capacitor.test.ts",
     "relay": "jazz-run sync --port 4201 --in-memory",
-    "dev:shell-only": "pnpm --filter @karta/shell dev",
+    "dev:shell-only": "pnpm --filter @potyro/shell dev",
     "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json",
-    "test:e2e:prod": "KARTA_PROD=1 playwright test --project=prod",
-    "test:e2e:firefox": "KARTA_FIREFOX=1 playwright test --project=trusted-firefox"
+    "test:e2e:prod": "POTYRO_PROD=1 playwright test --project=prod",
+    "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

@@ -1,14 +1,14 @@
 // createRuntime — assembles the RuntimeCore and exposes the docs/05 `Runtime` surface plus a
 // few page-aware extras the shell/views use. Views consume this; never Store/Host/Caps.
 
-import type { AppDefinition, Ctx, Id, KartaRecord, Resolved, Runtime } from "karta";
-import type { BindingRef } from "@karta/host";
+import type { AppDefinition, Ctx, Id, PotyroRecord, Resolved, Runtime } from "potyro";
+import type { BindingRef } from "@potyro/host";
 import { RuntimeCore, type RuntimeDeps } from "./core.js";
 import { useEntityQuery, usePageQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 import { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
 
 /** The runtime the shell/views use: the docs `Runtime` + page-aware helpers. */
-export interface KartaRuntime extends Runtime {
+export interface PotyroRuntime extends Runtime {
   readonly core: RuntimeCore;
   /** Fresh page-aware query (async) — resolve + JS filter + JS sort via the host. */
   queryPage(pageId: string, params?: Record<string, unknown>): Promise<{ rows: Resolved[]; ctx: Ctx }>;
@@ -21,7 +21,7 @@ export interface KartaRuntime extends Runtime {
     cb: (state: QueryState) => void,
   ): () => void;
   /** Resolve a view/reminder binding (string field key or function) to a value. */
-  resolveBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<import("karta").Value>;
+  resolveBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<import("potyro").Value>;
   entityForPage(pageId: string): string;
   /** The app-wide selection (`ctx.scope`), by entity — what the header chip shows. */
   readonly scope: Readonly<Record<string, Resolved | undefined>>;
@@ -31,9 +31,9 @@ export interface KartaRuntime extends Runtime {
    */
   setScope(entity: string, id: string | null): Promise<void>;
   /** A `Dynamic<T>` view option — the literal, or the function evaluated with a fresh ctx. */
-  viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
+  viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("potyro").Value>;
   /** A `Dynamic<T>` page option (`title`) — the literal, or the function evaluated with a fresh ctx. */
-  pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("karta").Value>;
+  pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<import("potyro").Value>;
   /**
    * Be told when a photo's bytes arrive (KA-20).
    *
@@ -41,7 +41,7 @@ export interface KartaRuntime extends Runtime {
    * a reference whose bytes are still on their way. Returns a no-op unsubscribe on a store that keeps
    * everything locally, where there is nothing to wait for.
    */
-  watchMedia(ref: import("karta").MediaRef, cb: () => void): () => void;
+  watchMedia(ref: import("potyro").MediaRef, cb: () => void): () => void;
   /**
    * A view says it is on screen and can be driven (`ctx.views`); the returned function takes it back
    * out on unmount. `verb` is namespaced by view type ("map.flyTo"), and a handler returns whether
@@ -50,9 +50,14 @@ export interface KartaRuntime extends Runtime {
   registerViewControl(pageId: string, handle: (verb: string, arg?: unknown) => boolean | Promise<boolean>): () => void;
   /** Run a page's declared button (`Page.actions[index]`), with the page's current params in ctx. */
   runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void>;
+  /**
+   * Resolves once every write this runtime started has landed (or failed). Await it before closing
+   * the store: a write still on its way would otherwise land on a closed database and be lost.
+   */
+  settle(): Promise<void>;
 }
 
-export function createRuntime(deps: RuntimeDeps): KartaRuntime {
+export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
   const core = new RuntimeCore(deps);
 
   // Tell the store what the app declared (KA-38).
@@ -78,6 +83,7 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
   return {
     watchMedia: (ref, cb) => deps.store.subscribeBlob?.(ref, cb) ?? (() => {}),
     registerViewControl: (pageId, handle) => core.registerViewControl(pageId, handle),
+    settle: () => core.settle(),
     async runPageAction(pageId, index, params) {
       // The same catch `runAction` needs, for the same reason: a button fires this from a click
       // handler, so an escaping rejection would be invisible to the person who pressed it.
@@ -86,7 +92,7 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         deps.ui.toast(message);
-        console.warn(`[karta] page action ${pageId}[${index}] failed:`, e);
+        console.warn(`[potyro] page action ${pageId}[${index}] failed:`, e);
       }
     },
     core,
@@ -156,10 +162,10 @@ export function createRuntime(deps: RuntimeDeps): KartaRuntime {
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         deps.ui.toast(message);
-        console.warn(`[karta] action ${entity}.${key} failed:`, e);
+        console.warn(`[potyro] action ${entity}.${key} failed:`, e);
       }
     },
-    create(entity, data): Promise<KartaRecord> {
+    create(entity, data): Promise<PotyroRecord> {
       return core.create(entity, data);
     },
     async patch(entity, id, data): Promise<void> {

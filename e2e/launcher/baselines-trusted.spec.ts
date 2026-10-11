@@ -12,11 +12,11 @@ import { openApp, openHome, openSwitcher, pinFonts, seed } from "./fixture.js";
 // The pixels are CI's. Two Linux machines with the same Chromium and the same fonts still do not
 // agree: glyph hinting differs by a few hundred pixels per page, and a classic scrollbar on one
 // shifts a whole layout that overlay scrollbars on the other leave alone. So the baselines are
-// rendered on the CI runner, the comparison runs there (or here on request, `KARTA_BASELINES=1`),
+// rendered on the CI runner, the comparison runs there (or here on request, `POTYRO_BASELINES=1`),
 // and the "Launcher baselines" workflow regenerates them after a change you meant. The rest of the
 // harness runs everywhere.
 
-test.skip(!process.env.CI && !process.env.KARTA_BASELINES, "baselines are CI's pixels — set KARTA_BASELINES=1 to compare here");
+test.skip(!process.env.CI && !process.env.POTYRO_BASELINES, "baselines are CI's pixels — set POTYRO_BASELINES=1 to compare here");
 
 const WIDTHS = [375, 768, 1440] as const;
 const THEMES = ["light", "dark"] as const;

@@ -2,7 +2,7 @@
 // (MLC) + WebGPU, fully offline once the weights are cached. It's the same ModelBackend contract as
 // the cloud backend, so the eval harness reports comparable numbers. The class depends only on a
 // minimal `ChatEngine` shape (mockable → unit-testable without a GPU); `createWebLLMBackend` wires
-// the real runtime. Karta is an unusually good target for a weak model: the output is small,
+// the real runtime. Potyro is an unusually good target for a weak model: the output is small,
 // validator-gated, and safe-when-wrong (untrusted → isolate).
 
 import { ChatBackend, firstContent, type ChatEngine, type ChatMessage } from "./chat-backend.js";

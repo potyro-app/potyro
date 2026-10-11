@@ -4,8 +4,8 @@
 // `app-version-gate-trusted.spec.ts`; these pin the pieces it is built from.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AppDefinition, Migration } from "karta";
-import { MemoryStore } from "@karta/store";
+import type { AppDefinition, Migration } from "potyro";
+import { MemoryStore } from "@potyro/store";
 import { AppLock } from "../src/app-lock.js";
 import { SchemaBehindError, guardedStore } from "../src/read-only-store.js";
 import { migrateShared, type GateResult } from "../src/version-gate.js";
@@ -57,7 +57,7 @@ describe("the guarded store is a drop-in", () => {
       "subscribe", "putBlob", "putBlobWithKey", "getBlob", "subscribeBlob", "kvGet", "kvSet", "kvDelete", "kvKeys", "subscribeKv", "memberIds",
       "storedSchemaVersion", "runMigrations", "editHistory", "postMessage", "messages", "subscribeMessages",
     ];
-    const full = Object.fromEntries(methods.map((m) => [m, vi.fn(async () => undefined)])) as unknown as import("@karta/store").Store;
+    const full = Object.fromEntries(methods.map((m) => [m, vi.fn(async () => undefined)])) as unknown as import("@potyro/store").Store;
     const guarded = guardedStore(full, () => null) as unknown as Record<string, unknown>;
     expect(methods.filter((m) => typeof guarded[m] !== "function")).toEqual([]);
   });

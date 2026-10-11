@@ -10,7 +10,7 @@ import { crc32, deflateSync } from "node:zlib";
 // exceeded". SQLite runs in a worker now, and this pins the consequence rather than the mechanism:
 // photos land somewhere that holds them, and they are still there after a reload.
 
-const SOURCE = `import { defineApp } from "karta";
+const SOURCE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "album", name: "Album", icon: "📷", version: "1.0.0", schemaVersion: 1,
   entities: { shot: { label: "Shot", displayField: "name", fields: {
@@ -54,7 +54,7 @@ test("photos in a local-only app outlive a reload, and do not fill localStorage"
   test.slow();
   await page.addInitScript((source) => {
     localStorage.setItem(
-      "karta:user-apps",
+      "potyro:user-apps",
       JSON.stringify([{ id: "album", name: "Album", source, trusted: true, updatedAt: new Date().toISOString() }]),
     );
   }, SOURCE);

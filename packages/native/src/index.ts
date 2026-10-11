@@ -1,11 +1,13 @@
-// @karta/native — Capacitor target (WP8 / KA-03): native capability impls. The composition root
+// @potyro/native — Capacitor target (WP8 / KA-03): native capability impls. The composition root
 // swaps `WebCapabilities` for `CapacitorCapabilities` when running under Capacitor; the QuickJS-WASM
 // isolate and the host's per-app mediation run unchanged.
 
-import type { Capabilities } from "@karta/capabilities";
+import type { Capabilities } from "@potyro/capabilities";
 
 export { getLaunchUrl, onUrlOpen, launchUrlFrom, listenForUrls, type CapacitorAppPlugin } from "./deep-links.js";
 export { maybeCreateNativeVault, vaultOver, type NativeSecretVault } from "./secure-vault.js";
+export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHttp } from "./native-http.js";
+export { listenForShares, textOfShare, type SharedText } from "./share-target.js";
 
 export {
   CapacitorCapabilities,

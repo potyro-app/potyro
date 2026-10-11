@@ -13,9 +13,9 @@
 // it belongs is a product decision (local-only keeps it private and off the wire; synced would make
 // unread follow you across devices). This module takes a `since` and answers.
 
-import { fieldValueProblem, humanizeKey } from "karta";
-import type { AppDefinition, Id, Person } from "karta";
-import type { FieldEdit, Store } from "@karta/store";
+import { fieldValueProblem, humanizeKey } from "potyro";
+import type { AppDefinition, Id, Person } from "potyro";
+import type { FieldEdit, Store } from "@potyro/store";
 import { memberName } from "./people.js";
 
 /** One field of one record changing, ready to show. */

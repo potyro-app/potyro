@@ -7,7 +7,7 @@
 // code that must never be able to take the page down with it.
 
 import { describe, expect, it, vi } from "vitest";
-import type { Ctx, Resolved, SummaryValue } from "karta";
+import type { Ctx, Resolved, SummaryValue } from "potyro";
 import { computeFigure, computeSummary, formatFigure } from "../src/summary.js";
 
 const rows = (...values: Record<string, unknown>[]): Resolved[] =>

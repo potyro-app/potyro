@@ -30,7 +30,26 @@ export type Edit =
   | { kind: "field-order"; entity: string; order: readonly string[] }
   /** The new field lists of the entity's groups, one per existing group, in order (#100). */
   | { kind: "field-groups"; entity: string; groups: readonly (readonly string[])[] }
-  | { kind: "page-title"; page: string; value: string };
+  | { kind: "page-title"; page: string; value: string }
+  /** The pages in their new order — every page id there is now, once (edit mode's tab moves). */
+  | { kind: "page-order"; order: readonly string[] }
+  /** Replace the text `from` at each of `sites` (edit mode's in-place rename). Every site must still
+   *  hold `from` where `textSites` found it, or nothing is changed. */
+  | { kind: "text"; from: string; sites: readonly TextSite[]; value: string };
+
+/**
+ * A piece of text the app shows, written as a literal we can splice.
+ *
+ * `start`/`end` cover the whole literal for a string (quotes included) and the text itself for JSX
+ * text (the whitespace around it stays). `text` is what renders: for JSX, runs of whitespace
+ * collapse to one space, which is also what the DOM ends up holding.
+ */
+export interface TextSite {
+  start: number;
+  end: number;
+  text: string;
+  form: "string" | "template" | "jsx";
+}
 
 export type EditResult = { ok: true; source: string; note: string } | { ok: false; reason: string };
 
@@ -39,6 +58,8 @@ export interface FieldShape {
   key: string;
   /** The declared `label`, when there is one. Absent means the app leans on the key. */
   label?: string;
+  /** A `label` is written, but not as a plain string — renaming it would overwrite that code. */
+  labelOpaque?: boolean;
   hidden: boolean;
 }
 
@@ -62,6 +83,8 @@ export interface EntityShape {
 export interface PageShape {
   id: string;
   title?: string;
+  /** A `title` is written, but not as a plain string — renaming it would overwrite that code. */
+  titleOpaque?: boolean;
   /** The entity this page's view reads, when it names one. */
   entity?: string;
   /** Declared `hidden`. Hidden pages are reached by tapping a row, not from the tab bar. */
@@ -113,7 +136,7 @@ async function load(): Promise<Tools | null> {
         MagicString: (magic.default ?? magic) as unknown as Tools["MagicString"],
       };
     } catch (e) {
-      console.warn("[karta] structural editing unavailable:", e);
+      console.warn("[potyro] structural editing unavailable:", e);
       tools = null; // a transient chunk failure shouldn't disable it for the session
       return null;
     }
@@ -264,9 +287,15 @@ export async function inspect(source: string): Promise<AppShape> {
         const value = fp.value as Node;
         // A field written as anything but an object literal (a helper call, a shared const) can be
         // listed and reordered, but its own properties aren't ours to touch.
-        const label = value.type === "ObjectExpression" ? literalString(propValue(value, "label")) : undefined;
+        const labelNode = value.type === "ObjectExpression" ? propValue(value, "label") : null;
+        const label = literalString(labelNode);
         const hiddenNode = value.type === "ObjectExpression" ? propValue(value, "hidden") : null;
-        fields.push({ key, hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true, ...(label ? { label } : {}) });
+        fields.push({
+          key,
+          hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true,
+          ...(label ? { label } : {}),
+          ...(labelNode && label === undefined ? { labelOpaque: true } : {}),
+        });
       }
       const groups = literalGroups(propValue(ep.value as Node, "groups"));
       if (groups === "opaque") {
@@ -289,10 +318,12 @@ export async function inspect(source: string): Promise<AppShape> {
       if (!id) continue;
       const view = propValue(el, "view");
       const hiddenNode = propValue(el, "hidden");
+      const titleNode = propValue(el, "title");
       pages.push({
         id,
         hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true,
-        ...(literalString(propValue(el, "title")) !== undefined ? { title: literalString(propValue(el, "title"))! } : {}),
+        ...(literalString(titleNode) !== undefined ? { title: literalString(titleNode)! } : {}),
+        ...(titleNode && literalString(titleNode) === undefined ? { titleOpaque: true } : {}),
         ...(literalString(propValue(view, "entity")) !== undefined ? { entity: literalString(propValue(view, "entity"))! } : {}),
         ...(literalString(propValue(view, "type")) !== undefined ? { viewType: literalString(propValue(view, "type"))! } : {}),
       });
@@ -303,6 +334,314 @@ export async function inspect(source: string): Promise<AppShape> {
   const icon = literalString(propValue(def, "icon"));
   const accent = literalString(propValue(propValue(def, "theme"), "accent"));
   return { entities, pages, ...(name ? { name } : {}), ...(icon ? { icon } : {}), ...(accent ? { accent } : {}) };
+}
+
+/** One entity's declared data shape: the literal parts of each field, and nothing that would run. */
+export interface DeclaredEntity {
+  label?: string;
+  displayField?: string;
+  editableBy?: string;
+  /** Field key → the field's literal properties (`type`, `options`, `to`, `currency`…). A property
+   *  written as anything but a literal — `default: () => …` — is left out, never evaluated. */
+  fields: Record<string, Record<string, JsonLiteral>>;
+  /** Fields declared as something this can't read (a helper call, a shared const). */
+  opaque: string[];
+}
+
+export type JsonLiteral = string | number | boolean | null | JsonLiteral[] | { [k: string]: JsonLiteral };
+
+/**
+ * The entities an app declares, read from its source WITHOUT running it.
+ *
+ * The data panel needs each field's type to show and edit a stored value, and the app that declared
+ * it may be someone else's: evaluating the module to find out would run untrusted code with the
+ * shell's authority. The fields are plain data (docs/03), so the literal parts are all there is to
+ * know — anything computed is skipped rather than guessed.
+ */
+export async function declaredEntities(source: string): Promise<Record<string, DeclaredEntity> | null> {
+  const t = await load();
+  if (!t) return null;
+  const ast = parseModule(t, source);
+  if (!ast) return null;
+  const def = findDefinition(ast);
+  const entitiesNode = propValue(def, "entities");
+  if (entitiesNode?.type !== "ObjectExpression") return null;
+
+  const out: Record<string, DeclaredEntity> = {};
+  for (const ep of asArray(entitiesNode.properties)) {
+    if (ep.type !== "ObjectProperty" || ep.computed === true) continue;
+    const name = keyOf(ep);
+    if (!name) continue;
+    const entityNode = ep.value as Node;
+    const fields: DeclaredEntity["fields"] = {};
+    const opaque: string[] = [];
+    const fieldsNode = propValue(entityNode, "fields");
+    for (const fp of fieldsNode?.type === "ObjectExpression" ? asArray(fieldsNode.properties) : []) {
+      const key = fp.type === "ObjectProperty" && fp.computed !== true ? keyOf(fp) : undefined;
+      if (!key) continue;
+      const value = literalOf(fp.value as Node);
+      if (value && typeof value === "object" && !Array.isArray(value) && typeof value.type === "string") fields[key] = value;
+      else opaque.push(key);
+    }
+    const label = literalString(propValue(entityNode, "label"));
+    const displayField = literalString(propValue(entityNode, "displayField"));
+    const editableBy = literalString(propValue(entityNode, "editableBy"));
+    out[name] = {
+      fields,
+      opaque,
+      ...(label ? { label } : {}),
+      ...(displayField ? { displayField } : {}),
+      ...(editableBy ? { editableBy } : {}),
+    };
+  }
+  return out;
+}
+
+/** A node's value when it is written as a literal; `undefined` for anything that would need running.
+ *  Object members that aren't literal are dropped, so `{ type: "text", default: () => "" }` reads as
+ *  `{ type: "text" }`. */
+function literalOf(node: Node | null | undefined): JsonLiteral | undefined {
+  if (!node) return undefined;
+  switch (node.type) {
+    case "StringLiteral":
+    case "NumericLiteral":
+    case "BooleanLiteral":
+      return node.value as JsonLiteral;
+    case "NullLiteral":
+      return null;
+    case "TemplateLiteral":
+      return asArray(node.expressions).length === 0 ? asArray(node.quasis).map((q) => (q.value as { cooked: string }).cooked).join("") : undefined;
+    case "UnaryExpression": {
+      const arg = literalOf(node.argument as Node);
+      return node.operator === "-" && typeof arg === "number" ? -arg : undefined;
+    }
+    case "TSAsExpression":
+    case "TSSatisfiesExpression":
+      return literalOf(node.expression as Node);
+    case "ArrayExpression": {
+      const items = asArray(node.elements).map((el) => literalOf(el));
+      return items.every((v) => v !== undefined) ? (items as JsonLiteral[]) : undefined;
+    }
+    case "ObjectExpression": {
+      const obj: Record<string, JsonLiteral> = {};
+      for (const p of asArray(node.properties)) {
+        if (p.type !== "ObjectProperty" || p.computed === true) continue;
+        const key = keyOf(p);
+        const value = literalOf(p.value as Node);
+        if (key && value !== undefined) obj[key] = value;
+      }
+      return obj;
+    }
+    default:
+      return undefined;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Text the app shows
+
+/**
+ * Keys whose string value is TEXT ON SCREEN — in the definition (`label`, `title`, `help`…) and as
+ * props of an app's own component (`<Step label="…">`).
+ *
+ * Not `placeholder`, `alt` or `aria-label`: those are never a text node, so pairing them with the
+ * text on screen can only ever match something else — a record called "Milk" matched the name
+ * field's `placeholder: "Milk"` and was offered for renaming.
+ */
+const DISPLAY_KEYS = new Set([
+  "label", "title", "name", "help", "text", "description", "subtitle", "heading",
+  "caption", "hint", "message", "empty", "emptyText", "emptyLabel",
+]);
+
+/** Nodes a display string can sit inside and still be what renders: `{done ? "A" : "B"}`. */
+const PASS_THROUGH = new Set(["ConditionalExpression", "LogicalExpression", "TSAsExpression", "TSSatisfiesExpression", "ParenthesizedExpression"]);
+
+const attrName = (attr: Node): string | undefined => {
+  const name = attr.name as { name?: unknown } | undefined;
+  return typeof name?.name === "string" ? name.name : undefined;
+};
+
+/** Is the string node at the end of `ancestors` in a display position? */
+function inDisplayPosition(node: Node, ancestors: readonly Node[]): boolean {
+  let child = node;
+  let i = ancestors.length - 1;
+  // Climb out of `a ? "x" : "y"` and `ok && "x"` — but only through their result arms, never a test.
+  while (i >= 0 && PASS_THROUGH.has(ancestors[i]!.type)) {
+    const p = ancestors[i]!;
+    if (p.type === "ConditionalExpression" && p.test === child) return false;
+    if (p.type === "LogicalExpression" && p.left === child && p.operator !== "??") return false;
+    child = p;
+    i -= 1;
+  }
+  const parent = ancestors[i];
+  if (!parent) return false;
+  if (parent.type === "ObjectProperty") {
+    const key = keyOf(parent);
+    return parent.value === child && parent.computed !== true && key !== undefined && DISPLAY_KEYS.has(key);
+  }
+  if (parent.type === "JSXAttribute") return renderedProp(parent, ancestors[i - 1]);
+  if (parent.type === "JSXExpressionContainer") {
+    const holder = ancestors[i - 1];
+    if (holder?.type === "JSXAttribute") return renderedProp(holder, ancestors[i - 2]);
+    return holder?.type === "JSXElement" || holder?.type === "JSXFragment";
+  }
+  return false;
+}
+
+/**
+ * Does this JSX attribute's string end up as text? On an HTML element, never: `<button title="…">`
+ * is a tooltip, `<input placeholder="…">` sits inside an empty box. On the app's own component a
+ * display-named prop is what that component prints.
+ */
+function renderedProp(attr: Node, opening: Node | undefined): boolean {
+  const tag = (opening?.name as { type?: string; name?: unknown } | undefined) ?? undefined;
+  const intrinsic = tag?.type === "JSXIdentifier" && typeof tag.name === "string" && /^[a-z]/.test(tag.name);
+  return !intrinsic && DISPLAY_KEYS.has(attrName(attr) ?? "");
+}
+
+/**
+ * Every piece of text in `source` that edit mode can change in place.
+ *
+ * Positional, never textual: a string qualifies by WHERE it is written (a display key, JSX text, a
+ * display prop), so `status === "done"` and an enum's `options` are never offered however much they
+ * look like words. On top of that, a string that is also a key or an id somewhere in the module is
+ * left out — `view: { title: "name" }` names a field, and renaming it would break the page.
+ * Returns `[]` for source it cannot read; edit mode then has nothing to offer, which it says.
+ */
+export async function textSites(source: string): Promise<TextSite[]> {
+  const t = await load();
+  if (!t) return [];
+  const ast = parseModule(t, source);
+  return ast ? collectSites(source, ast) : [];
+}
+
+function collectSites(source: string, ast: Node): TextSite[] {
+  const identifiers = new Set<string>();
+  const found: { node: Node; ancestors: Node[] }[] = [];
+  const walk = (n: unknown, ancestors: Node[]): void => {
+    if (!n || typeof n !== "object") return;
+    const node = n as Node;
+    if (typeof node.type !== "string") return;
+    if (node.type === "ObjectProperty" || node.type === "ObjectMethod") {
+      const key = keyOf(node);
+      if (key) identifiers.add(key);
+      const value = node.value as Node | undefined;
+      if (key && ["id", "page", "entity", "field"].includes(key) && value?.type === "StringLiteral") identifiers.add(String(value.value));
+    }
+    if (node.type === "StringLiteral" || node.type === "JSXText" || (node.type === "TemplateLiteral" && asArray(node.expressions).length === 0)) {
+      found.push({ node, ancestors });
+    }
+    const next = [...ancestors, node];
+    for (const [k, value] of Object.entries(node)) {
+      if (k === "leadingComments" || k === "trailingComments" || k === "innerComments" || k === "extra" || k === "loc") continue;
+      if (Array.isArray(value)) for (const v of value) walk(v, next);
+      else if (value && typeof value === "object") walk(value, next);
+    }
+  };
+  walk(ast, []);
+
+  const sites: TextSite[] = [];
+  for (const { node, ancestors } of found) {
+    const site = siteOf(source, node, ancestors);
+    if (!site || !/\p{L}/u.test(site.text) || identifiers.has(site.text)) continue;
+    sites.push(site);
+  }
+  return sites;
+}
+
+function siteOf(source: string, node: Node, ancestors: readonly Node[]): TextSite | null {
+  if (node.type === "JSXText") {
+    const raw = source.slice(node.start, node.end);
+    // An entity (`&apos;`) renders as a different character than is written, so the DOM text would
+    // never match — and splicing around one is easy to get wrong. Left to the Studio.
+    if (raw.includes("&")) return null;
+    const lead = raw.length - raw.trimStart().length;
+    const text = raw.trim().replace(/\s+/g, " ");
+    if (!text) return null;
+    return { start: node.start + lead, end: node.start + lead + raw.trim().length, text, form: "jsx" };
+  }
+  if (!inDisplayPosition(node, ancestors)) return null;
+  if (node.type === "StringLiteral") return { start: node.start, end: node.end, text: String(node.value), form: "string" };
+  const quasi = asArray(node.quasis)[0] as { value?: { cooked?: string } } | undefined;
+  const cooked = quasi?.value?.cooked;
+  return typeof cooked === "string" ? { start: node.start, end: node.end, text: cooked, form: "template" } : null;
+}
+
+/** `value` written the way the site was: same quote, or as JSX text (braced when it needs to be). */
+function writeText(source: string, site: TextSite, value: string): string {
+  if (site.form === "jsx") {
+    const flat = value.replace(/\s+/g, " ").trim();
+    return /[{}<>&]/.test(flat) ? `{${JSON.stringify(flat)}}` : flat;
+  }
+  if (site.form === "template") return "`" + value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${") + "`";
+  if (source[site.start] === "'") {
+    return `'${JSON.stringify(value).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'")}'`;
+  }
+  return JSON.stringify(value);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Moving a field one step
+
+/**
+ * An entity's fields as the form lays them out: its groups in order, then the fields in no group
+ * (#100). A field moves within its group, over a group's edge into the neighbouring one, or out of
+ * the last group into the ungrouped run — each step one edit to the source. An entity without
+ * groups is one ungrouped run, and moving there is the plain field reorder.
+ */
+interface Run {
+  /** Index into `entity.groups`, or -1 for the ungrouped run. */
+  group: number;
+  keys: string[];
+}
+
+function runsOf(entity: EntityShape): Run[] {
+  const groups = entity.groups ?? [];
+  const placed = new Set(groups.flatMap((g) => g.fields));
+  const runs: Run[] = groups.map((g, i) => ({ group: i, keys: [...g.fields] }));
+  const rest = entity.fields.map((f) => f.key).filter((k) => !placed.has(k));
+  if (rest.length || runs.length === 0) runs.push({ group: -1, keys: rest });
+  return runs;
+}
+
+/** Move `from` to `to` in a copy of `keys`. */
+function moved(keys: readonly string[], from: number, to: number): string[] {
+  const next = [...keys];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
+
+/** The edit that moves field `key` one step earlier (-1) or later (1), or null at a wall. */
+export function fieldStep(entity: EntityShape, key: string, direction: -1 | 1): Edit | null {
+  if (entity.blocked) return null;
+  const runs = runsOf(entity);
+  const r = runs.findIndex((run) => run.keys.includes(key));
+  if (r < 0) return null;
+  const run = runs[r]!;
+  const index = run.keys.indexOf(key);
+  const groups = (entity.groups ?? []).map((g) => [...g.fields]);
+  const target = index + direction;
+  if (target >= 0 && target < run.keys.length) {
+    if (run.group < 0) {
+      const order = entity.fields.map((f) => f.key);
+      return { kind: "field-order", entity: entity.key, order: moved(order, order.indexOf(key), order.indexOf(run.keys[target]!)) };
+    }
+    groups[run.group] = moved(groups[run.group]!, index, target);
+    return { kind: "field-groups", entity: entity.key, groups };
+  }
+  const neighbour = runs[r + direction];
+  if (!neighbour) return null;
+  if (run.group >= 0) {
+    if (run.keys.length === 1) return null; // would leave the group empty — refused by the source
+    groups[run.group] = groups[run.group]!.filter((k) => k !== key);
+  }
+  if (neighbour.group >= 0) {
+    if (direction < 0) groups[neighbour.group] = [...groups[neighbour.group]!, key];
+    else groups[neighbour.group] = [key, ...groups[neighbour.group]!];
+  }
+  // Out of the last group into the ungrouped run — the field simply stops being listed in a group.
+  return { kind: "field-groups", entity: entity.key, groups };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -343,13 +682,35 @@ function removeProperty(source: string, ms: MagicStringType, obj: Node, name: st
  *
  * Reordering has to carry a field's comment with it, or the explanation ends up above whatever field
  * happens to land in that slot next — worse than no comment at all.
+ *
+ * Which comment is whose goes by LINE, not by the parser: Babel hands `{ … }, // the main list` to
+ * the NEXT sibling as a leading comment. So a leading comment only counts when it starts its own
+ * line, and a comment after the element on its last line is carried as the element's own.
  */
-function extentOf(source: string, node: Node): { start: number; end: number; text: string } {
+function extentOf(source: string, node: Node): { start: number; end: number; text: string; comment: string } {
   let start = node.start;
-  for (const c of asArray(node.leadingComments)) if (c.start < start) start = c.start;
+  for (const c of asArray(node.leadingComments)) {
+    const ownLine = /^[ \t]*$/.test(source.slice(source.lastIndexOf("\n", c.start - 1) + 1, c.start));
+    if (ownLine && c.start < start) start = c.start;
+  }
   let end = node.end;
   if (source[end] === ",") end += 1;
-  return { start, end, text: source.slice(start, end) };
+  const text = source.slice(start, end);
+  const trailing = /^[ \t]*(\/\/[^\n]*|\/\*[^\n]*?\*\/)[ \t]*(?=\n|$)/.exec(source.slice(end));
+  if (trailing) end += trailing[0].length;
+  return { start, end, text, comment: trailing?.[1] ?? "" };
+}
+
+/** Elements in their new order, one per line: a comma after each (the last only if `lastComma`),
+ *  and each element's same-line comment after its comma, where it was. */
+function joinRun(parts: readonly { text: string; comment: string }[], indent: string, lastComma: boolean): string {
+  return parts
+    .map(({ text, comment }, i) => {
+      const body = text.trim().replace(/,$/, "");
+      const comma = i < parts.length - 1 || lastComma ? "," : "";
+      return `${body}${comma}${comment ? ` ${comment}` : ""}`;
+    })
+    .join(`\n${indent}`);
 }
 
 /** The indentation of the line `index` sits on. */
@@ -361,7 +722,7 @@ function indentAt(source: string, index: number): string {
 
 /**
  * Which field an entity falls back to for its human label, mirroring `displayFieldFor` in
- * @karta/views. Reordering fields would otherwise silently change what every list row and relation
+ * @potyro/views. Reordering fields would otherwise silently change what every list row and relation
  * picker shows — see `pinDisplayField`.
  */
 function effectiveDisplayField(entityNode: Node, order: readonly string[]): string | undefined {
@@ -379,6 +740,40 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
   const def = findDefinition(ast);
   if (!def) return { ok: false, reason: "this app doesn't call defineApp with a plain object" };
   const ms = new t.MagicString(source);
+
+  if (edit.kind === "text") {
+    const value = edit.value.trim();
+    if (!value) return { ok: false, reason: "the new text is empty" };
+    if (edit.sites.length === 0) return { ok: false, reason: "there is nothing to change" };
+    // Re-derive the sites from THIS source: offsets from an older read would splice the wrong bytes.
+    const current = collectSites(source, ast);
+    for (const site of edit.sites) {
+      const still = current.find((c) => c.start === site.start && c.end === site.end && c.text === edit.from);
+      if (!still) return { ok: false, reason: "the app changed since this text was read — try again" };
+      ms.overwrite(still.start, still.end, writeText(source, still, value));
+    }
+    const where = edit.sites.length > 1 ? ` (${edit.sites.length} places)` : "";
+    return finish(t, ms, `changed "${edit.from}" to "${value}"${where}`);
+  }
+
+  if (edit.kind === "page-order") {
+    const pagesNode = propValue(def, "pages");
+    if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: "this app's pages aren't a plain array" };
+    const elements = asArray(pagesNode.elements);
+    const ids = elements.map((el) => (el?.type === "ObjectExpression" ? literalString(propValue(el, "id")) : undefined));
+    if (ids.length === 0 || ids.some((id) => id === undefined)) return { ok: false, reason: "some pages aren't written as plain objects with an id" };
+    if ([...ids].sort().join("\0") !== [...edit.order].sort().join("\0")) {
+      return { ok: false, reason: "the new order must contain exactly the pages that are there now" };
+    }
+    const indent = indentAt(source, elements[0]!.start);
+    const byId = new Map(ids.map((id, i) => [id!, extentOf(source, elements[i]!)]));
+    const first = byId.get(ids[0]!)!;
+    const last = byId.get(ids[ids.length - 1]!)!;
+    // Keep the array's own trailing-comma style: only the last page decides whether there is one.
+    const trailing = last.text.trimEnd().endsWith(",");
+    ms.overwrite(first.start, last.end, joinRun(edit.order.map((id) => byId.get(id)!), indent, trailing));
+    return finish(t, ms, "reordered the pages");
+  }
 
   if (edit.kind === "page-title") {
     const pagesNode = propValue(def, "pages");
@@ -416,11 +811,8 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     // overlapping ranges, and this is a handful of lines of text.
     const first = byKey.get(currentKeys[0]!)!;
     const last = byKey.get(currentKeys[currentKeys.length - 1]!)!;
-    const rewritten = edit.order
-      .map((k) => byKey.get(k)!.text.trim())
-      .map((text, i) => (text.endsWith(",") || i === edit.order.length - 1 ? text : `${text},`))
-      .join(`\n${indent}`);
-    ms.overwrite(first.start, last.end, rewritten);
+    const lastComma = last.text.trimEnd().endsWith(",");
+    ms.overwrite(first.start, last.end, joinRun(edit.order.map((k) => byKey.get(k)!), indent, lastComma));
     return finish(t, ms, `reordered ${edit.entity} fields`);
   }
 

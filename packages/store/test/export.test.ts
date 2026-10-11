@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createMemorySqliteStore, importSqliteStore, packBundle, rowsToCsv, unpackBundle, type ExportManifest } from "../src/index.js";
-import type { KartaRecord } from "karta";
+import type { PotyroRecord } from "potyro";
 
 // Data-export bundle (KA-04): CSV rendering, and a full pack → unpack → reopen round-trip proving
 // the exported SQLite file is a real, self-contained database.
 
 const manifest = (over: Partial<ExportManifest> = {}): ExportManifest => ({
-  format: "karta-bundle/1",
+  format: "potyro-bundle/1",
   appId: "demo",
   appVersion: "1.0.0",
   schemaVersion: 1,
@@ -20,7 +20,7 @@ const manifest = (over: Partial<ExportManifest> = {}): ExportManifest => ({
 
 describe("rowsToCsv", () => {
   it("emits a sorted-column header and escapes commas/quotes", () => {
-    const rows = [{ id: "1", title: "a,b", note: 'he said "hi"' }] as unknown as KartaRecord[];
+    const rows = [{ id: "1", title: "a,b", note: 'he said "hi"' }] as unknown as PotyroRecord[];
     const csv = rowsToCsv(rows);
     const [header] = csv.split("\n");
     expect(header).toBe("id,note,title"); // sorted union of keys

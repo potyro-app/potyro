@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import type { MediaField } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import type { MediaField } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput, FieldValue } from "../src/index.js";
 
 // The photo field (#102): a tile that shows what you chose, with a way to take it off, a strip when
@@ -31,7 +31,7 @@ const app = defineApp({
   pages: [{ id: "list", title: "Plants", view: { type: "list", entity: "plant", display: { primary: "name" } } }],
 });
 
-async function makeRuntime(caps = new FakeCapabilities(), breakStore = false): Promise<KartaRuntime> {
+async function makeRuntime(caps = new FakeCapabilities(), breakStore = false): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("media-fixture");
   // `runtime.ctx` mints a fresh ctx per access, so a failure has to come from the store underneath.

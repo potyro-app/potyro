@@ -6,10 +6,10 @@
 // attribute a charge or a failure to does not help you make it.
 //
 //   # the three-scenario pilot: 12 base calls, hard-stopped at 15
-//   pnpm --filter @karta/generator eval:modify -- --only todo-groups,recipes-shopping,expenses-split --max-calls 15 --max-cost 16
+//   pnpm --filter @potyro/generator eval:modify -- --only todo-groups,recipes-shopping,expenses-split --max-calls 15 --max-cost 16
 //
 //   # Windows (PowerShell blocks pnpm.ps1 under the default execution policy)
-//   pnpm.cmd --filter @karta/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
+//   pnpm.cmd --filter @potyro/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
 //
 // Flags
 //   --only a,b        run only these scenarios (default: the whole corpus)

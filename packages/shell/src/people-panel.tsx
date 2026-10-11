@@ -7,7 +7,7 @@
 // shared before (see `removeSpaceMember`) — the confirm says all of that in words.
 
 import { useEffect, useState } from "react";
-import { personHue, personInitials } from "@karta/runtime";
+import { personHue, personInitials } from "@potyro/runtime";
 import { shellDialogs } from "./dialog.js";
 
 type Role = "admin" | "writer" | "reader";

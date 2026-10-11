@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkReferences, isKartaApp } from "karta";
+import { checkReferences, isPotyroApp } from "potyro";
 import recipes from "../recipes.app.js";
 import plants from "../plants.app.js";
 import places from "../places.app.js";
@@ -9,10 +9,10 @@ import workout from "../workout.app.js";
 // were invalid, these imports would throw and the suite would fail. We re-assert here.
 const apps = { recipes, plants, places, workout };
 
-describe("example apps are valid Karta apps (living fixtures)", () => {
+describe("example apps are valid Potyro apps (living fixtures)", () => {
   for (const [name, app] of Object.entries(apps)) {
     it(`${name} is branded, validated, and referentially sound`, () => {
-      expect(isKartaApp(app)).toBe(true);
+      expect(isPotyroApp(app)).toBe(true);
       expect(app.id).toBe(name);
       expect(checkReferences(app)).toEqual([]);
       expect(Array.isArray(app.pages)).toBe(true);

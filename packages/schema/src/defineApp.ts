@@ -1,4 +1,4 @@
-import type { AppDefinition, AppInput, KartaApp, Page } from "./types/app.js";
+import type { AppDefinition, AppInput, PotyroApp, Page } from "./types/app.js";
 import { checkReferences, describeIssue, structureSchema, ValidationError } from "./validate.js";
 
 /**
@@ -19,7 +19,7 @@ import { checkReferences, describeIssue, structureSchema, ValidationError } from
  *
  * Throws {@link ValidationError} if the declarative parts are invalid.
  */
-export function defineApp(def: AppInput): KartaApp {
+export function defineApp(def: AppInput): PotyroApp {
   const parsed = structureSchema.safeParse(def);
   if (!parsed.success) {
     throw new ValidationError(parsed.error.issues.map((i) => describeIssue(i, def)));
@@ -37,18 +37,18 @@ export function defineApp(def: AppInput): KartaApp {
     throw new ValidationError(refIssues);
   }
 
-  const normalized: KartaApp = {
+  const normalized: PotyroApp = {
     ...definition,
     reminders: definition.reminders ?? [],
     migrations: definition.migrations ?? [],
-    __kartaApp: true,
+    __potyroApp: true,
   };
   return normalized;
 }
 
 /** Type guard: did this object come from `defineApp`? */
-export function isKartaApp(value: unknown): value is KartaApp {
-  return typeof value === "object" && value !== null && (value as { __kartaApp?: unknown }).__kartaApp === true;
+export function isPotyroApp(value: unknown): value is PotyroApp {
+  return typeof value === "object" && value !== null && (value as { __potyroApp?: unknown }).__potyroApp === true;
 }
 
 export type { AppDefinition };

@@ -19,7 +19,7 @@
 // prompt, and the new version is written through `saveUserApp` so it lands in History and can be
 // rolled back like any other edit.
 
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 
 const KEY = "__appSource";
 

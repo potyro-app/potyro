@@ -22,7 +22,7 @@ import { tileAction } from "./launcher-actions.js";
 // the pre-migration copy, every assertion was answered by that copy. Both tests passed without the
 // CRDT store being read even once, which is the entire thing they exist to check.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "sync-target",
@@ -60,10 +60,10 @@ const SECOND = STARTER.replace(/sync-target/g, "sync-second").replace("Sync Targ
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source, second]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       const now = new Date().toISOString();
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "sync-target", name: "Sync Target", source, trusted: true, updatedAt: now },
           { id: "sync-second", name: "Sync Second", source: second, trusted: true, updatedAt: now },
@@ -151,7 +151,7 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
 // rescue: it was simply broken on the second app.
 test("a SECOND app can be synced on the same device, with no relay", async ({ page }) => {
   // Before any navigation, so it is in place for the first boot.
-  await page.addInitScript(() => localStorage.setItem("karta:sync:relay", "ws://127.0.0.1:4299"));
+  await page.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://127.0.0.1:4299"));
 
   const enableSyncFor = async (name: string, first = false): Promise<void> => {
     await page.getByRole("button", { name: /switch app|launcher|apps/i }).first().click();

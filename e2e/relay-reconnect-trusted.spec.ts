@@ -93,7 +93,7 @@ test.afterAll(async () => {
   await stopRelay();
 });
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "reconnect",
@@ -117,10 +117,10 @@ export default defineApp({
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
   await context.addInitScript(
     ([source, seedApp, relayUrl]) => {
-      localStorage.setItem("karta:sync:relay", relayUrl as string);
-      if (!seedApp || localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", relayUrl as string);
+      if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([
           { id: "reconnect", name: "Reconnect", source, trusted: true, updatedAt: new Date().toISOString() },
         ]),

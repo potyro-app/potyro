@@ -10,9 +10,9 @@
 //
 // Note: creating a session (with its nested entries → sets) uses the *generic* record form —
 // no custom "log" screen is required for the data-entry path.
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ViewProps } from "karta";
+import type { ViewProps } from "potyro";
 
 // ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
 // it, and it runs anywhere the shell does. ----
@@ -357,8 +357,9 @@ const CSS = `
 
 const LOOKBACK = 5; // "best of the last N sessions"
 
-// relations inside list rows may be a raw id ref or a resolved object — handle both
-const refId = (x: unknown): string => (typeof x === "string" ? x : (x as { id: string }).id);
+// relations inside list rows may be a raw id ref or a resolved object — handle both. A link to an
+// exercise that was deleted resolves to null: that entry has no exercise any more, and says so.
+const refId = (x: unknown): string | undefined => (typeof x === "string" ? x : (x as { id?: string } | null)?.id);
 // scoring: bodyweight lifts progress on reps; loaded lifts on volume (kg × reps)
 const setScore = (bw: boolean, s: { kg?: number; reps?: number }) => (bw ? (s.reps ?? 0) : (s.kg ?? 0) * (s.reps ?? 0));
 
@@ -387,7 +388,7 @@ export default defineApp({
   id: "workout",
   name: "PPL Log",
   icon: "🏋",
-  version: "1.1.0",
+  version: "1.1.1",
   schemaVersion: 1,
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
@@ -483,7 +484,11 @@ export default defineApp({
         // One set, asked for in one form (#112): which exercise, how heavy, how many. It starts from
         // this session's last set, so the common case — the same again — is one tap.
         logSet: async (s, ctx) => {
-          const entries = ((s.entries as any[]) ?? []).map((e: any) => ({ exercise: refId(e.exercise), sets: [...((e.sets as any[]) ?? [])] }));
+          // An entry whose exercise was deleted cannot be written back (its exercise is required);
+          // the session keeps the rest.
+          const entries = ((s.entries as any[]) ?? [])
+            .map((e: any) => ({ exercise: refId(e.exercise), sets: [...((e.sets as any[]) ?? [])] }))
+            .filter((e) => e.exercise !== undefined);
           const last = entries[entries.length - 1];
           const lastSet = last?.sets[last.sets.length - 1];
           const set = await ctx.ui.form<{ exercise: string; kg: number; reps: number }>({

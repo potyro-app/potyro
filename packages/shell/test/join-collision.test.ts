@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const joinedNamespaces: string[] = [];
 let spaceOnDevice: Record<string, { group: string; root: string } | null> = {};
 
-vi.mock("@karta/store", () => ({
+vi.mock("@potyro/store", () => ({
   createSpaceInvite: async () => ({ group: "g", root: "r", secret: "s" }),
   joinSpace: async (namespace: string) => {
     joinedNamespaces.push(namespace);
@@ -29,7 +29,7 @@ vi.mock("@karta/store", () => ({
 }));
 
 vi.mock("../src/open-store.js", () => ({ syncRelayUrl: () => "wss://relay.example" }));
-vi.mock("@karta/identity", () => ({
+vi.mock("@potyro/identity", () => ({
   identityAccount: async () => ({ id: "acct" }),
   peekIdentity: () => ({ name: "Ada" }),
 }));

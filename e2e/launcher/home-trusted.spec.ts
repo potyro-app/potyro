@@ -40,7 +40,7 @@ test("in-app ⊞ Apps button slides in the launcher to switch", async ({ page })
 // deep link and a reload count exactly like a tap on a tile.
 test("opening an app by URL records an open, and a reload records another", async ({ page }) => {
   await seed(page);
-  const entry = () => page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number; lastOpenedAt?: string }>)["user:groceries"]);
+  const entry = () => page.evaluate(() => (JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}") as Record<string, { openCount?: number; lastOpenedAt?: string }>)["user:groceries"]);
   await openApp(page, "groceries", "Groceries");
   const first = await entry();
   expect(first?.openCount).toBe(1);
@@ -51,7 +51,7 @@ test("opening an app by URL records an open, and a reload records another", asyn
   // A built-in counts the same way, under its own key.
   await page.goto("/?app=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes");
-  const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("karta:launcher") ?? "{}") as Record<string, { openCount?: number }>)["user:recipes"]);
+  const recipes = await page.evaluate(() => (JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}") as Record<string, { openCount?: number }>)["user:recipes"]);
   expect(recipes?.openCount).toBe(1);
 });
 

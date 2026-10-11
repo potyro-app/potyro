@@ -25,7 +25,7 @@
 // guessing, or making the person open a form to answer a question one tap can.
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { Resolved } from "karta";
+import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, getView } from "./format.js";
 import { useDynamicText } from "./dynamic.js";
@@ -658,7 +658,7 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   return (
     <div className="k-checklist">
-      {rows.length === 0 && !managed ? <p className="k-empty">{emptyText}</p> : null}
+      {rows.length === 0 && !managed ? <p className="k-empty" data-k-wording>{emptyText}</p> : null}
       {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">All done.</p> : null}
       {sections.map((s) => (
         <section key={s.key || "—"} className="k-check-section" aria-label={s.label || undefined}>

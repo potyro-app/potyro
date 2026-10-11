@@ -4,7 +4,7 @@
 // app-facing `ctx.caps` shapes (docs/04) — the host adapts between them (e.g. Date <-> ISO
 // string for notification scheduling).
 
-import type { Geo } from "karta";
+import type { Geo } from "potyro";
 
 export interface CameraCap {
   capture(o?: { source?: "camera" | "library" }): Promise<Blob>;

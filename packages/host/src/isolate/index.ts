@@ -1,4 +1,4 @@
-// @karta/host/isolate — the untrusted (QuickJS-WASM) runner. Kept as a separate entrypoint so
+// @potyro/host/isolate — the untrusted (QuickJS-WASM) runner. Kept as a separate entrypoint so
 // the WASM engine is only loaded when an untrusted app is actually run.
 export {
   createIsolateLoader,

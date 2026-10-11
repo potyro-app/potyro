@@ -23,8 +23,8 @@
 // looked" and "we could not tell" must not produce the same verdict — the whole reason this file
 // exists is that a check which cannot fail teaches nobody anything.
 
-import type { AppDefinition, KartaRecord, Migration } from "karta";
-import type { Store } from "@karta/store";
+import type { AppDefinition, PotyroRecord, Migration } from "potyro";
+import type { Store } from "@potyro/store";
 
 /** Bookkeeping the store owns. A change to these says nothing about the user's data. */
 const INTERNAL = new Set(["id", "createdAt", "updatedAt"]);
@@ -100,7 +100,7 @@ function stable(value: unknown): string {
 export async function snapshotData(store: Store, entities: Iterable<string>): Promise<DataSnapshot> {
   const snap: DataSnapshot = new Map();
   for (const entity of new Set(entities)) {
-    let rows: KartaRecord[];
+    let rows: PotyroRecord[];
     try {
       rows = await store.all(entity);
     } catch {

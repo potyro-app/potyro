@@ -7,7 +7,7 @@
 // gave.
 
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { EnumField } from "karta";
+import type { EnumField } from "potyro";
 import { enumSwatch, wantsSegmented } from "./enum.js";
 import { PickList } from "./pick-list.js";
 

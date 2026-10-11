@@ -42,7 +42,7 @@ function claudeCliPlugin(): Plugin {
   let seq = 0;
 
   return {
-    name: "karta-claude-cli",
+    name: "potyro-claude-cli",
     configureServer(server) {
       server.middlewares.use("/__generate", (req, res) => {
         const send = (status: number, payload: unknown): void => {
@@ -81,7 +81,7 @@ function claudeCliPlugin(): Plugin {
           jobs.set(id, job);
           send(202, { id });
 
-          const dir = mkdtempSync(join(tmpdir(), "karta-gen-"));
+          const dir = mkdtempSync(join(tmpdir(), "potyro-gen-"));
           const args = ["-p", "--output-format", "text", "--disallowedTools", ...NO_TOOLS];
           if (system) {
             const sysFile = join(dir, "system.txt");

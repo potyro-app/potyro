@@ -17,7 +17,7 @@ import { shellDialogs } from "./dialog.js";
 import { declaredSync } from "./app-source.js";
 import type { UserApp } from "./user-apps.js";
 
-const KEY = "karta:sync-consent";
+const KEY = "potyro:sync-consent";
 
 function granted(): Record<string, boolean> {
   try {
