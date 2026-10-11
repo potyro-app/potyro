@@ -26,6 +26,11 @@ export function onAppFailure(listener: Listener): () => void {
   };
 }
 
+/** How many listeners are attached — for tests that check a run leaves none behind. */
+export function activeFailureListeners(): number {
+  return listeners.size;
+}
+
 export function reportAppFailure(failure: AppFailure): void {
   for (const listener of listeners) {
     try {

@@ -15,7 +15,7 @@
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
 import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
 import { loadCorpus } from "../load-corpus.js";
-import { describeRun, runSafely, type RunReport } from "../run-report.js";
+import { describeRun, type RunGate } from "../run-report.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
@@ -76,9 +76,10 @@ export function lookupReference(reference: string, rawQuery: string): string {
 export interface DiscoveryDeps {
   /** Bundle + validate a candidate; the validator's issues, empty when it is a well-formed app. Throws when it does not compile. */
   check: (source: string) => Promise<string[]>;
-  /** Run a candidate that validates on sample records: what threw, what showed nothing. Optional —
-   *  without it `check` stops at the validator, as it did before #262. */
-  run?: (source: string) => Promise<RunReport>;
+  /** Run a candidate that validates on sample records, against the app as first shown
+   *  (`regressionGate`): what it broke, and what was already broken. Optional — without it `check`
+   *  stops at the validator, as it did before #262. */
+  run?: RunGate;
   /** The release's corpus. Defaults to the one shipped with this build, loaded on first use. */
   corpus?: () => Promise<Corpus>;
 }
@@ -118,8 +119,8 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
         }
         if (issues.length) return { ok: false, detail: issues.map((i) => `- ${i}`).join("\n") };
         if (!deps.run) return { ok: true, detail: "ok: it compiles and validates." };
-        const report = await runSafely(deps.run, source);
-        return { ok: report.errors.length === 0, detail: `It compiles and validates. ${describeRun(report)}` };
+        const { report, preexisting } = await deps.run(source);
+        return { ok: report.errors.length === 0, detail: `It compiles and validates. ${describeRun(report, preexisting)}` };
       },
     },
     {

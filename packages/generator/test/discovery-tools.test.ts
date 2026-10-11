@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDiscoveryTools, lookupReference } from "../src/agent/discovery-tools.js";
 import { buildCorpus } from "../src/corpus.js";
+import { regressionGate } from "../src/run-report.js";
 import { SCHEMA_REFERENCE } from "../src/reference.generated.js";
 import { runTool } from "../src/agent/tools.js";
 
@@ -72,10 +73,15 @@ describe("buildDiscoveryTools", () => {
   it("check RUNS a candidate that validates, when it can, and reports what broke (#262)", async () => {
     const running = buildDiscoveryTools({
       check: async () => [],
-      run: async (src) =>
-        src.includes("boom")
-          ? { errors: ["computed recipe.kcal: ctx.nutrition is not a function"], warnings: [], ran: "2 pages" }
-          : { errors: [], warnings: ['page "today" showed nothing'], ran: "2 pages" },
+      run: regressionGate(
+        async (src) =>
+          src === "ORIGINAL"
+            ? { errors: [], warnings: [], ran: "2 pages" }
+            : src.includes("boom")
+              ? { errors: ["computed recipe.kcal: ctx.nutrition is not a function"], warnings: [], ran: "2 pages" }
+              : { errors: [], warnings: ['page "today" showed nothing'], ran: "2 pages" },
+        "ORIGINAL",
+      ),
     });
     const broken = await runTool(running, { id: "7", name: "check", args: { source: "boom" } });
     expect(broken.ok).toBe(false);
@@ -86,7 +92,7 @@ describe("buildDiscoveryTools", () => {
   });
 
   it("check reports a run that cannot start as a warning, not as a compile error", async () => {
-    const running = buildDiscoveryTools({ check: async () => [], run: async () => { throw new Error("no DOM"); } });
+    const running = buildDiscoveryTools({ check: async () => [], run: regressionGate(async () => { throw new Error("no DOM"); }, "ORIGINAL") });
     const r = await runTool(running, { id: "9", name: "check", args: { source: "x" } });
     expect(r.ok).toBe(true);
     expect(r.detail).toContain("could not be run to check it: no DOM");
