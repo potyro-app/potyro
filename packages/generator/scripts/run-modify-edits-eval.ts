@@ -11,6 +11,9 @@
 //
 // Flags: --backend openrouter|claude-cli|scripted|scripted-edits|scripted-repair  --model <id>
 //        --reasoning <effort>  --only id1,id2  --concurrency N  --out <dir>  --repair
+//        --loop  --run   (`--run`, with `--loop`: candidates are also RUN on sample records, as the
+//                         Studio does since #262 — here the logic run only; pages are not mounted
+//                         in Node)
 //
 // Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
 // read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
@@ -34,6 +37,8 @@ import { MODIFY_AGENT_SYSTEM_PROMPT } from "../src/agent/modify-system-prompt.js
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
+import { smokeApp, smokeReport } from "../src/smoke.js";
+import type { RunReport } from "../src/run-report.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@potyro/runtime";
 
@@ -206,7 +211,9 @@ async function loopModify(
   before: AppShape,
   resolveDir: string,
   keep: (text: string) => string,
+  runCandidates: boolean,
 ): Promise<GuardedModifyResult> {
+  const run = async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never));
   const check = async (src: string): Promise<string[]> => {
     const r = await scoreSource(src, resolveDir);
     if (!r.compiles) throw new Error(r.errors.join("; "));
@@ -227,11 +234,12 @@ async function loopModify(
       },
     },
     model,
-    tools: buildDiscoveryTools({ check }),
+    tools: buildDiscoveryTools({ check, ...(runCandidates ? { run } : {}) }),
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: c.instruction,
     source,
     check,
+    ...(runCandidates ? { run } : {}),
     shapeOf: (src) => shapeOf(src, resolveDir),
     before,
   });
@@ -249,7 +257,7 @@ async function runCase(
   examplesDir: string,
   outDir: string,
   withRepair: boolean,
-  loop: { model: string | undefined } | null,
+  loop: { model: string | undefined; run: boolean } | null,
 ): Promise<Outcome> {
   const started = Date.now();
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
@@ -283,7 +291,7 @@ async function runCase(
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
     const result = loop
-      ? await loopModify(loop.model, c, source, before, sourceDir, keep)
+      ? await loopModify(loop.model, c, source, before, sourceDir, keep, loop.run)
       : await guardedModify({
           attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
           shapeOf: (src) => shapeOf(src, sourceDir),
@@ -378,8 +386,8 @@ async function main(): Promise<void> {
   const backendKind = arg("backend", "openrouter") ?? "openrouter";
   if (loopRequested && backendKind !== "openrouter") throw new Error("--loop needs --backend openrouter (a chat engine with tools)");
   const backend = await makeBackend(backendKind, arg("model"), arg("reasoning"));
-  const loop = loopRequested ? { model: arg("model") } : null;
-  console.log(`backend=${backend.name}${loop ? " via the modify LOOP" : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  const loop = loopRequested ? { model: arg("model"), run: process.argv.includes("--run") } : null;
+  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
