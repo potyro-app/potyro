@@ -126,13 +126,25 @@ async function openStudio(page: Page): Promise<void> {
   await expect(studioOf(page)).toBeVisible();
 }
 
-/** Ask the Studio for a change and wait for the generated app to reach the preview. */
-async function askFor(page: Page, instruction: string, expectTitle: string): Promise<void> {
+/**
+ * Ask the Studio for a change and wait for it to be kept as the version `seq`, with the page title
+ * it was meant to produce in the saved source. (The preview beside the conversation is narrow enough
+ * to wear the phone chrome, where a one-page app shows no page tab — so the source is what is read;
+ * `expectNotesIntact` checks the tab on the running app.)
+ */
+async function askFor(page: Page, instruction: string, expectTitle: string, seq: string): Promise<void> {
   const studio = studioOf(page);
   await studio.getByRole("textbox", { name: "Describe the app" }).fill(instruction);
   await studio.getByRole("button", { name: /Modify the app/ }).click();
-  await expect(pageTab(studio, expectTitle)).toBeVisible({ timeout: 60_000 });
+  await kept(page, seq);
+  expect(await storedSource(page)).toContain(`title: ${JSON.stringify(expectTitle)}`);
 }
+
+const storedSource = (page: Page): Promise<string> =>
+  page.evaluate((id: string) => {
+    const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
+    return apps.find((a) => a.id === id)?.source ?? "";
+  }, APP_ID);
 
 /** Add a note through the app's own generated form. */
 async function addNote(page: Page, note: { title: string; body: string }): Promise<void> {
@@ -161,10 +173,10 @@ async function expectNotesIntact(page: Page, pageTitle: string): Promise<void> {
 /**
  * The version log, wherever it lives.
  *
- * In the Studio it is a TAB beside Preview and Source — the timeline IS the view, so there is
- * nothing to dismiss and a restore simply drops you back on the preview. The markup underneath is
- * the same `<History>` the modal renders (see `history-trusted.spec.ts`), so every assertion below
- * reads identically; only the way in and the way out differ.
+ * In the Studio it is behind the menu, in the code-and-history sheet (#261); a restore closes the
+ * sheet and drops you back on the conversation, with the app beside it. The markup underneath is the
+ * same `<History>` the modal renders (see `history-trusted.spec.ts`), so every assertion below reads
+ * identically; only the way in and the way out differ.
  */
 const timeline = (page: Page) => studioOf(page).locator(".k-studio-history");
 
@@ -175,34 +187,34 @@ const entry = (page: Page, seq: string) =>
   timeline(page).locator(".k-timeline-entry").filter({ has: page.locator(".k-history-seq", { hasText: seq }) });
 
 async function openHistory(page: Page): Promise<void> {
-  await studioOf(page).getByRole("tab", { name: "History" }).click();
+  await studioOf(page).getByRole("button", { name: "Studio menu" }).click();
+  await page.getByRole("menuitem", { name: "History" }).click();
   await expect(timeline(page)).toBeVisible();
 }
 
-/** Leave the timeline the way a person does: back to the preview. */
+/** Leave the timeline the way a person does: close the sheet. */
 async function closeHistory(page: Page): Promise<void> {
-  await studioOf(page).getByRole("tab", { name: "Preview" }).click();
+  await studioOf(page).getByRole("button", { name: "Close code and history" }).click();
   await expect(timeline(page)).toHaveCount(0);
 }
 
 /**
- * Save, and wait until it has been saved.
+ * Wait until a change has been KEPT.
  *
- * Writing a version is a round trip to the storage worker now, not a synchronous poke at
- * localStorage, so clicking Save and navigating in the same breath can outrun the write — the app
- * keeps the old source and history never hears about the change. The toast is the product's own
- * word that it is done, which is the thing a person waits for too.
+ * Every version is saved as it is made (#261), and its card is the product's own word that it is
+ * done: the card appears after the version is written, so navigating away from here cannot outrun
+ * the write — the thing a person waits for too.
  */
-async function saveChanges(page: Page): Promise<void> {
-  await studioOf(page).getByRole("button", { name: "Save changes" }).click();
-  await expect(studioOf(page).locator(".k-studio-saved")).toHaveText(/Saved/, { timeout: 30_000 });
+async function kept(page: Page, seq: string): Promise<void> {
+  await expect(studioOf(page).locator(".k-card[data-current] .k-card-seq")).toHaveText(seq, { timeout: 30_000 });
 }
 
 /** Open a saved app in the Studio, so `currentId` is set and History/Save changes apply to it. */
 async function reopenInStudio(page: Page): Promise<void> {
+  // Opened from inside the app, the Studio is already on it, with the app beside the conversation.
   await openStudio(page);
-  await studioOf(page).getByRole("button", { name: "Field Notes", exact: true }).click();
-  await expect(studioOf(page).locator(".k-studio-preview h1")).toHaveText("Field Notes", { timeout: 30_000 });
+  await expect(studioOf(page).locator(".k-studio-name")).toHaveText("Field Notes");
+  await expect(studioOf(page).locator(".k-studio-preview h1").first()).toHaveText("Field Notes", { timeout: 30_000 });
 }
 
 test.describe("create, change twice, and get back", () => {
@@ -222,9 +234,9 @@ test.describe("create, change twice, and get back", () => {
     // One action button, not one button per engine: `claude -p` is the default engine and is named
     // on the Model settings button beside it, so there is nothing to choose here.
     await studio.getByRole("button", { name: /Create the app/ }).click();
-    await expect(studio.locator(".k-studio-preview h1")).toHaveText("Field Notes", { timeout: 60_000 });
-    await studio.getByRole("button", { name: "Save to My Apps" }).click();
-    await expect(studio.getByRole("button", { name: "Field Notes", exact: true })).toBeVisible();
+    // Saved as it is made — its card says so, and the app opens beside the conversation.
+    await kept(page, "v1");
+    await expect(studio.locator(".k-studio-preview h1").first()).toHaveText("Field Notes", { timeout: 60_000 });
 
     // ---- 2. put two distinguishable notes in it ---------------------------------------------
     await page.goto(`/?user=${APP_ID}`);
@@ -234,10 +246,8 @@ test.describe("create, change twice, and get back", () => {
 
     // ---- 3. two source-changing modifications, through the product path ----------------------
     await reopenInStudio(page);
-    await askFor(page, MOD_1, "Notes & tags");
-    await saveChanges(page);
-    await askFor(page, MOD_2, "Pinned first");
-    await saveChanges(page);
+    await askFor(page, MOD_1, "Notes & tags", "v2");
+    await askFor(page, MOD_2, "Pinned first", "v3");
     expect(generator.calls(), "one call to generate, one per modification").toBe(3);
 
     // Both migrations run on the real app, and both notes come through them.
@@ -264,7 +274,7 @@ test.describe("create, change twice, and get back", () => {
     // ---- 5. restore the source from BEFORE the second modification ---------------------------
     await timeline(page).getByRole("button", { name: "Restore v2" }).click();
     await expect(timeline(page)).toHaveCount(0);
-    await expect(pageTab(studio, "Notes & tags")).toBeVisible({ timeout: 30_000 });
+    await expect(studio.locator(".k-thread-event", { hasText: "rolled back to version 2" })).toBeVisible({ timeout: 30_000 });
 
     const stored = await page.evaluate((id: string) => {
       const apps = JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as { id: string; source: string }[];
@@ -290,7 +300,8 @@ test.describe("create, change twice, and get back", () => {
     await entry(page, "v3").getByRole("button").first().click();
     await timeline(page).getByRole("button", { name: "Restore v3" }).click();
     await expect(timeline(page)).toHaveCount(0);
-    await expect(pageTab(studio, "Pinned first")).toBeVisible({ timeout: 30_000 });
+    await expect(studio.locator(".k-thread-event", { hasText: "rolled back to version 3" })).toBeVisible({ timeout: 30_000 });
+    expect(await storedSource(page)).toContain('title: "Pinned first"');
 
     // The Studio is still open on the restored app — no need to reopen it.
     await openHistory(page);

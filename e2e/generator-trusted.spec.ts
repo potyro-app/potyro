@@ -1,31 +1,23 @@
 import { test, expect } from "@playwright/test";
 import { tileAction } from "./launcher-actions.js";
+import { openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The Studio: a full-screen surface that generates/edits an app, previews it live, and saves it to a
-// local "My Apps" library. The preview is the default view, and it runs TRUSTED — an app authored
-// here is the user's own (CLAUDE.md rule 3). It also has to, to be truthful: custom views never run
-// untrusted (React is stubbed inside the isolate), so an isolate preview renders every custom view
-// as a blank panel and shows the author something their app will never do. The isolate remains the
-// fallback for a malformed app, and the path for anything that arrived from someone else.
+// local "My Apps" library. The preview runs TRUSTED — an app authored here is the user's own
+// (CLAUDE.md rule 3). It also has to, to be truthful: custom views never run untrusted (React is
+// stubbed inside the isolate), so an isolate preview renders every custom view as a blank panel and
+// shows the author something their app will never do. The isolate remains the fallback for a
+// malformed app, and the path for anything that arrived from someone else.
 
 test("studio previews an app trusted by default and saves it to My Apps", async ({ page }) => {
-  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
-  // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio).toBeVisible();
+  // From the home screen: a Studio opened there is for making a new app (#261: a conversation).
+  const studio = await openNewStudio(page);
 
-  // Preview-first: the starter app renders immediately, nothing to click.
-  const preview = studio.locator(".k-studio-preview");
-  await expect(preview.locator("h1")).toHaveText("My App", { timeout: 30_000 });
-  await expect(preview.locator(".k-app")).toHaveAttribute("data-provenance", "trusted"); // the user's own app runs direct
-
-  // ONE action, and one engine chosen in one place. The starter is an empty page, so the action is
-  // "Create"; it becomes "Modify" once there is a real app.
+  // ONE action, and one engine chosen in one place. Nothing is made yet, so the action is "Create";
+  // it becomes "Modify" once there is a real app.
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
   const go = studio.getByRole("button", { name: /Create the app|Modify the app/ });
-  await expect(go).toHaveText(/Create the app/);
+  await expect(go).toHaveAccessibleName("Create the app");
   await expect(go).toBeEnabled(); // claude -p needs no key
 
   const settings = studio.getByRole("button", { name: "Model settings" });
@@ -55,14 +47,15 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   }
   await models.getByRole("button", { name: "Close model settings" }).click();
 
-
-  // Source is behind a toggle, not the default view.
-  await studio.getByRole("tab", { name: "Source" }).click();
-  await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
-
-  // Save to the local library → it appears in "My Apps".
-  await studio.getByRole("button", { name: /Save to My Apps/ }).click();
-  await expect(studio.locator(".k-myapps .k-myapp-open", { hasText: "My App" })).toHaveCount(1);
+  // The code is behind the menu, not on the main screen. Written by hand and saved, it is an app:
+  // its card is in the conversation, and the app it opens runs TRUSTED — it is the user's own.
+  const tools = await openSource(page, studio);
+  await expect(tools.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
+  await tools.getByRole("button", { name: "Save changes" }).click();
+  await tools.getByRole("button", { name: "Close code and history" }).click();
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
+  await expect(preview.locator(".k-app")).toHaveAttribute("data-provenance", "trusted"); // the user's own app runs direct
 
   // The saved app is launchable full-screen from its route, and runs TRUSTED: it is the user's own.
   await page.goto("/?user=my-app");

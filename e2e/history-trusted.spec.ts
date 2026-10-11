@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { openSource } from "./studio-helpers.js";
 
 // App history: what a change did to an app, and the way back from it.
 //
@@ -51,17 +52,17 @@ test("a saved change is diffable and reversible", async ({ page }) => {
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible();
-  await studio.getByRole("button", { name: "History Target", exact: true }).click();
-
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const source = studio.getByRole("textbox", { name: "App source" });
+  // Opened from the app, the Studio is on it; the code is behind its menu (#261).
+  const tools = await openSource(page, studio);
+  const source = tools.getByRole("textbox", { name: "App source" });
   await expect(source).toContainText('title: "Notes"', { timeout: 30_000 });
   await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
-  await studio.getByRole("button", { name: "Save changes" }).click();
+  await tools.getByRole("button", { name: "Save changes" }).click();
+  await expect(studio.locator(".k-card[data-current] .k-card-seq")).toHaveText("v2", { timeout: 30_000 });
 
-  // 2. History is a TAB beside Preview and Source — one click, at the same altitude as the app — and
-  //    it opens on the timeline with no diff in sight.
-  await studio.getByRole("tab", { name: "History" }).click();
+  // 2. History is the code's neighbour — one click from it — and it opens on the timeline with no
+  //    diff in sight.
+  await tools.getByRole("tab", { name: "History" }).click();
   const history = studio.locator(".k-studio-history");
   await expect(history).toBeVisible();
   const entry = (seq: string) =>
