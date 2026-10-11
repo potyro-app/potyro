@@ -5484,191 +5484,780 @@ body:has(.k-tabbar) .k-toasts {
   }
 }
 
-/* Studio — full-screen app builder */
+/* ---- Studio: making an app is a conversation (#261) -----------------------------------------
+   The conversation is the screen: a reading column of paper, the person's words in their own tinted
+   bubbles on the right, the agent's under them on the left, and a CARD wherever something was made —
+   the one raised, shadowed thing in the thread, because it is the thing you act on. The app opens
+   from it: the whole screen on a phone, a pane beside the conversation from 1100px. */
 .k-studio {
   position: fixed;
   inset: 0;
   z-index: 50;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* One row the height of the screen: the conversation scrolls inside it, the box stays at the bottom. */
+  grid-template-rows: minmax(0, 1fr);
+  background: var(--paper);
+  animation: k-studio-in var(--dur-slow) var(--ease);
+}
+@keyframes k-studio-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.k-studio-chat {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg, #f6f4ee);
 }
 .k-studio-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  padding-top: calc(0.75rem + var(--k-safe-top)); /* under a phone's status bar otherwise (#253) */
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  padding-top: calc(var(--space-3) + var(--k-safe-top)); /* under a phone's status bar otherwise (#253) */
   border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  background: color-mix(in oklab, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px);
 }
-/* Three regions: the prompt and its action (controls), saving + the saved list (side), and the
-   stage. Named areas so the phone can reorder them without touching the DOM: on a desktop the two
-   asides stack in a left rail; on a phone it is prompt → stage → side, one column (#80). */
-.k-studio-body {
+.k-studio-close,
+.k-studio-more,
+.k-tools-close {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-studio-close:hover,
+.k-studio-more:hover,
+.k-tools-close:hover,
+.k-studio-close:focus-visible,
+.k-studio-more:focus-visible,
+.k-tools-close:focus-visible {
+  background: var(--surface-sunken);
+  border-color: var(--line);
+  color: var(--ink);
+  outline: none;
+}
+.k-studio-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.k-studio-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-studio-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The way into the app, once there is one: a pill in the accent, the one coloured thing on the bar. */
+.k-studio-open {
+  flex: none;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-studio-open:hover,
+.k-studio-open:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+  outline: none;
+}
+.k-studio-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.k-studio-column {
+  width: min(44rem, 100%);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  box-sizing: border-box;
+}
+.k-studio-problem {
+  margin-top: var(--space-4);
+}
+
+/* Nothing said yet: an invitation, set like the opening of an article rather than an empty form. */
+.k-studio-empty {
+  padding: clamp(1.5rem, 8vh, 5rem) 0 var(--space-4);
+  animation: k-route-in var(--dur-slow) var(--ease);
+}
+.k-studio-empty .k-studio-eyebrow {
+  display: block;
+  margin: 0 0 var(--space-2);
+  color: var(--warn);
+}
+.k-studio-hero {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.k-studio-lede {
+  max-width: 34rem;
+  margin: 0 0 var(--space-6);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.k-studio-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-studio-chip {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.k-studio-chip:hover,
+.k-studio-chip:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* The thread. Each turn arrives with a short rise, so a new message reads as arriving. */
+.k-studio .k-thread {
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-4);
+}
+.k-studio .k-thread > li {
+  animation: k-turn-in var(--dur-slow) var(--ease);
+}
+@keyframes k-turn-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.k-thread-mine {
+  align-items: flex-end;
+}
+.k-studio .k-thread-ask {
+  max-width: min(32rem, 86%);
+  padding: 0.65rem 0.95rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0.3rem var(--radius-lg);
+}
+.k-studio .k-thread-theirs > .k-thread-answer {
+  max-width: 36rem;
+  padding: 0.15rem 0 0.15rem var(--space-3);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* A question waits on the person: it gets the accent and a mark, so it is not read past. */
+.k-studio .k-thread-answer[data-tone="question"] {
+  border-left-color: var(--accent);
+  border-left-width: 3px;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+}
+.k-thread-q {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 700;
+  vertical-align: 0.1em;
+}
+.k-studio .k-thread-answer[data-tone="failure"] {
+  border-left-color: var(--danger-line);
+  color: var(--ink-soft);
+}
+.k-thread-working {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-soft) !important;
+}
+.k-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.k-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: k-dot 1.1s var(--ease) infinite;
+}
+.k-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.k-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes k-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* A version, as a card. The newest is the app as it is now — raised, ringed in the accent, with Open.
+   Older ones sit flatter and offer the way back. */
+.k-card {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) 1fr;
-  grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas:
-    "controls stage"
-    "side stage";
-  gap: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(30rem, 100%);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-sizing: border-box;
 }
-.k-studio-controls {
-  grid-area: controls;
-  border-right: 1px solid var(--line);
-  padding: 1.25rem;
+.k-card[data-current] {
+  background: var(--surface-raised);
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow);
+}
+.k-card-mark {
+  /* The app's own colour, set on the element from its identity; the accent until it is. */
+  --card-accent: var(--accent);
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: color-mix(in oklab, var(--card-accent) var(--tile-tint), var(--surface));
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.k-card-body {
+  min-width: 0;
+}
+.k-card-name {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.k-studio .k-card-seq {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.k-studio .k-card-what {
+  margin: 0.15rem 0 0;
+  padding: 0;
+  border: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.k-card-open,
+.k-card-back {
+  flex: none;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.k-card-open {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-card-back {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+}
+.k-card-open:hover,
+.k-card-open:focus-visible,
+.k-card-back:hover,
+.k-card-back:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent);
+  outline: none;
+}
+.k-card-open:active,
+.k-card-back:active {
+  transform: translateY(0);
+}
+/* Made, and held back: not the app yet. Dashed, because it is not settled. */
+.k-card-held {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-style: dashed;
+  border-color: var(--warn);
+}
+.k-card-flag {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warn);
+}
+.k-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* The box at the bottom: one rounded field with its send button inside it, and the model named
+   under it — a request is never anonymous. */
+.k-composer {
+  padding: var(--space-2) var(--space-4) calc(var(--space-3) + var(--k-safe-bottom));
+  background: linear-gradient(to bottom, transparent, var(--paper) 30%);
+}
+.k-composer-box {
+  width: min(44rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 1.4rem;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.k-composer-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint), var(--shadow);
+}
+.k-composer-input {
+  flex: 1 1 auto;
+  min-height: 2.6rem;
+  max-height: 40vh;
+  padding: 0.5rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  field-sizing: content;
+  outline: none;
+}
+.k-composer-input::placeholder {
+  color: var(--ink-faint);
+}
+.k-composer-send {
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.k-composer-send:hover:not(:disabled),
+.k-composer-send:focus-visible {
+  transform: scale(1.06);
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.k-composer-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.k-composer-meta {
+  width: min(44rem, 100%);
+  margin: var(--space-1) auto 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  box-sizing: border-box;
+}
+.k-composer-engine {
+  max-width: 100%;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.k-composer-engine:hover,
+.k-composer-engine:focus-visible {
+  color: var(--ink);
+  background: var(--surface-sunken);
+  outline: none;
+}
+.k-composer-warn {
+  font-size: 0.78rem;
+  color: var(--warn);
+}
+
+/* The opened app. A screen of its own: anything fixed inside the app (its tab bar, a full-screen
+   page, a form sheet portalled here) is placed against THIS box, not the window — layout
+   containment makes it their containing block. */
+.k-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   background: var(--paper);
+  animation: k-preview-in var(--dur-slow) var(--ease);
 }
-.k-studio-side {
-  grid-area: side;
+@keyframes k-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+.k-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  padding-top: calc(var(--space-2) + var(--k-safe-top));
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+.k-preview-back,
+.k-preview-code {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-preview-code {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.k-preview-hide-word {
+  display: none;
+}
+.k-preview-back:hover,
+.k-preview-back:focus-visible,
+.k-preview-code:hover,
+.k-preview-code:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  outline: none;
+}
+.k-preview-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.k-preview-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k-preview-seq,
+.k-preview-unsaved {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+.k-preview-unsaved {
+  color: var(--warn);
+}
+.k-preview-screen {
+  position: relative;
+  flex: 1 1 auto;
   min-height: 0;
-  border-right: 1px solid var(--line);
-  padding: 0 1.25rem 1.25rem;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  overflow: clip;
+  contain: layout;
+  isolation: isolate;
   background: var(--paper);
 }
+.k-preview-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.k-preview-scroll .k-app {
+  min-height: 100%;
+}
+/* The app's forms, framed: its screen is the frame, not the window, so they are sized by it. */
+.k-preview-screen .k-sheet {
+  max-height: 90%;
+}
+@media (max-width: 640px) {
+  .k-preview-screen .k-sheet {
+    height: 100%;
+    max-height: none;
+  }
+  .k-preview-screen .k-sheet-stacked {
+    height: calc(100% - var(--space-6));
+  }
+  .k-preview-screen .k-form-head {
+    padding-top: var(--space-4);
+  }
+}
+
+/* Wide: the conversation and the app side by side. The app gets the room; the conversation keeps a
+   reading measure. */
+@media (min-width: 1100px) {
+  .k-studio[data-preview] {
+    grid-template-columns: minmax(24rem, 36rem) minmax(0, 1fr);
+  }
+  .k-studio[data-preview] .k-studio-open {
+    display: none;
+  }
+  .k-studio[data-preview] .k-preview {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    border-left: 1px solid var(--line);
+    box-shadow: -12px 0 32px -24px var(--scrim);
+    animation: k-pane-in var(--dur-slow) var(--ease);
+  }
+  .k-studio[data-preview] .k-preview-bar {
+    padding-top: var(--space-2);
+  }
+  .k-studio[data-preview] .k-preview-back > span {
+    display: none;
+  }
+  .k-studio[data-preview] .k-preview-back > .k-preview-hide-word {
+    display: inline;
+  }
+  @keyframes k-pane-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+  }
+}
+
+/* The code and the history: a sheet over the Studio, the whole screen on a phone. */
+.k-tools-scrim {
+  align-items: stretch;
+  padding: 3vh 2vw;
+}
+.k-tools-sheet {
+  width: min(72rem, 100%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: modal-in var(--dur) var(--ease);
+}
+.k-tools-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+.k-tools-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow: auto;
+}
+@media (max-width: 760px) {
+  .k-tools-scrim {
+    padding: 0;
+  }
+  .k-tools-sheet {
+    border-radius: 0;
+    padding-top: var(--k-safe-top);
+  }
+  .k-studio-column {
+    padding-top: var(--space-4);
+  }
+}
+
+/* Unfinished apps on the home screen: a row of conversations to pick up, quieter than the tiles. */
+.k-drafts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-draft {
+  display: flex;
+  align-items: stretch;
+  max-width: min(24rem, 100%);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.k-draft-open {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.k-draft-open:hover,
+.k-draft-open:focus-visible {
+  background: var(--accent-tint);
+  outline: none;
+}
+.k-draft-mark {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--warn);
+}
+.k-draft-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.k-draft-when {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.k-draft-del {
+  padding: 0 var(--space-3);
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.k-draft-del:hover,
+.k-draft-del:focus-visible {
+  color: var(--danger);
+  background: var(--danger-tint);
+  outline: none;
+}
+
 .k-field-label {
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--muted, #6b6b6b);
-}
-.k-studio-desc {
-  resize: vertical;
-  line-height: 1.5;
-  /* A flex child with overflow shrinks to nothing under pressure; at 375px this textarea was 31px
-     tall with its own button on top of it. The prompt is the Studio's reason to exist — it keeps
-     its size. */
-  flex-shrink: 0;
-  min-height: 6.5rem;
-}
-/* One action, one engine. The primary button carries the weight; the engine sits beside it as a
-   quieter chip that still always names the model — an anonymous request is what made "is this even
-   using OpenRouter?" unanswerable. */
-.k-gen-run {
-  display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-  flex-wrap: wrap;
-}
-.k-gen-go {
-  flex: 1 1 12rem;
-  font-weight: 600;
-}
-.k-gen-engine {
-  flex: 0 1 auto;
-  max-width: 100%;
-  font-size: 0.8rem;
-  color: var(--muted, #6b6b6b);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.k-gen-engine:hover {
-  color: inherit;
-}
-
-.k-gen-modify {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed var(--line);
-}
-.k-gen-edge {
-  display: inline-flex;
-  gap: 0.35rem;
-  align-items: center;
-}
-.k-gen-model {
-  width: auto;
-  font-size: 0.8rem;
-  padding-block: 0.35rem;
-}
-.k-studio-progress {
-  font-size: 0.8rem;
-}
-.k-studio-savebar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--line);
-}
-
-/* The "Saved" line under the save button. Always in the DOM so a screen reader announces it when it
-   fills, and out of the way — no margin — while it is empty. */
-.k-studio-saved {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  min-height: 1.1em;
-}
-.k-myapps-title {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-}
-.k-myapps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.k-myapp-row {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.k-myapp-row[data-active="true"] {
-  border-color: var(--accent, #1f6feb);
-  box-shadow: inset 0 0 0 1px var(--accent, #1f6feb);
-}
-.k-myapp-open {
-  flex: 1 1 auto;
-  text-align: left;
-  padding: 0.5rem 0.7rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-.k-myapp-open:hover {
-  background: color-mix(in oklab, var(--accent, #1f6feb) 10%, transparent);
-}
-.k-myapp-del {
-  padding: 0.4rem 0.6rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted, #888);
-}
-.k-myapp-del:hover {
-  color: #c0392b;
-}
-.k-studio-stage {
-  grid-area: stage;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 1.25rem 1.25rem;
-  gap: 0.6rem;
 }
 .k-studio-tabs {
   display: flex;
@@ -5707,20 +6296,6 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-studio-error {
   margin: 0;
-}
-.k-studio-preview {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--paper);
-}
-.k-studio-preview .k-app {
-  min-height: 100%;
-}
-.k-studio-building {
-  padding: 2rem;
 }
 .k-studio-source {
   flex: 1 1 auto;
@@ -5843,38 +6418,6 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-syntax .token.namespace {
   opacity: 0.7;
-}
-/* A phone: one column that scrolls as a whole. The prompt and its action first and in full, the
-   stage next at a height that is worth looking at, saving and the saved list after it. */
-@media (max-width: 760px) {
-  .k-studio-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "controls"
-      "stage"
-      "side";
-    overflow: auto;
-  }
-  .k-studio-controls {
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    padding: 1rem;
-  }
-  .k-studio-side {
-    border-right: none;
-    border-top: 1px solid var(--line);
-    padding: 1rem;
-    overflow: visible;
-  }
-  .k-studio-side .k-studio-savebar {
-    padding-top: 0;
-    border-top: none;
-  }
-  .k-studio-stage {
-    min-height: 75vh;
-    padding: 0.75rem 1rem 1rem;
-  }
 }
 
 /* Switching apps in place (#89): what arrives fades in over the moment the last thing left. Opacity
