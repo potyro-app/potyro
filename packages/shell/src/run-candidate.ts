@@ -4,7 +4,9 @@
 // what a developer does before calling a change done: run it. On a throwaway store seeded with
 // sample records, every computed, filter, sort, binding, action and reminder runs (the generator's
 // smoke run), and then every page is mounted for real (render-pages.tsx). What threw comes back as
-// errors; a page that matched nothing, stayed loading or came up blank comes back as warnings.
+// errors; a page that matched nothing, stayed loading or came up blank comes back as warnings. The
+// caller judges a candidate against the original's own run (`regressionGate`), so failures the app
+// already had are context, not a reason to refuse the change.
 //
 // It runs UNTRUSTED, with a budget, for the reason verify-candidate.ts gives: these are candidates
 // nobody has looked at yet, most of them rejected, and a generated app with a runaway loop once froze

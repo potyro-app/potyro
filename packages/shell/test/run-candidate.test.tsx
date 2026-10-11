@@ -13,6 +13,8 @@ import type { MemoryStore } from "@potyro/store";
 import { compose } from "../src/compose.js";
 import { createNavBridge } from "../src/ui-bridge.js";
 import { runCandidate } from "../src/run-candidate.js";
+import { regressionGate } from "@potyro/generator/backends";
+import { activeFailureListeners } from "@potyro/host";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -89,5 +91,61 @@ describe("runCandidate", () => {
     const report = await runCandidate("", { compose: direct(notes({ custom: () => createElement("div") })), settleMs: 400 });
     expect(report.errors).toEqual([]);
     expect(report.warnings).toContain('page "board" showed nothing at all');
+  });
+});
+
+describe("the Studio's gate is a regression gate (#262)", () => {
+  // The source string picks the app: the original already has a failing computed; the candidate keeps
+  // it and adds a field — or adds a crashing page.
+  const broken = (_r: never, ctx: never) => (ctx as unknown as { nutrition: { lookup(): number } }).nutrition.lookup();
+  const apps: Record<string, PotyroApp> = {
+    original: notes({ kcal: broken }),
+    "adds-a-field": notes({ kcal: broken }),
+    "adds-a-crash": notes({ kcal: broken, custom: () => { throw new Error("no steps"); } }),
+  };
+  const compose = (source: string, store: MemoryStore) => direct(apps[source]!)(source, store);
+
+  it("accepts a change that leaves the app's own failure as it was, and says it was already there", async () => {
+    quiet();
+    const gate = regressionGate((s) => runCandidate(s, { compose, settleMs: 300 }), "original");
+    const { report, preexisting } = await gate("adds-a-field");
+    expect(report.errors).toEqual([]);
+    expect(preexisting.errors.join("\n")).toMatch(/computed note\.kcal/);
+  });
+
+  it("blocks only what the change broke", async () => {
+    quiet();
+    const gate = regressionGate((s) => runCandidate(s, { compose, settleMs: 300 }), "original");
+    const { report } = await gate("adds-a-crash");
+    expect(report.errors).toEqual(['page "board" crashed while showing: no steps']);
+  });
+});
+
+describe("running many candidates (#262: the --run eval died of a leak)", () => {
+  it("disposes every app, removes every off-screen page and listener, and gives the console back", async () => {
+    quiet();
+    const warn = console.warn;
+    const error = console.error;
+    const disposed: number[] = [];
+    const bodyBefore = document.body.childElementCount;
+    for (let i = 0; i < 25; i++) {
+      await runCandidate("", {
+        settleMs: 50,
+        compose: async (src, store) => {
+          const composed = await direct(notes({ custom: () => createElement("p", null, "board") }))(src, store);
+          const dispose = composed.loaded.dispose?.bind(composed.loaded);
+          composed.loaded.dispose = () => {
+            disposed.push(i);
+            dispose?.();
+          };
+          return composed;
+        },
+      });
+    }
+    expect(disposed).toHaveLength(25);
+    expect(document.body.childElementCount).toBe(bodyBefore);
+    expect(activeFailureListeners()).toBe(0);
+    expect(console.warn).toBe(warn);
+    expect(console.error).toBe(error);
   });
 });

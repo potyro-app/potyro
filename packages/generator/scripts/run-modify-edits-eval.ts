@@ -38,7 +38,7 @@ import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modi
 import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
 import { smokeApp, smokeReport } from "../src/smoke.js";
-import type { RunReport } from "../src/run-report.js";
+import { regressionGate, type RunReport } from "../src/run-report.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@potyro/runtime";
 
@@ -213,7 +213,7 @@ async function loopModify(
   keep: (text: string) => string,
   runCandidates: boolean,
 ): Promise<GuardedModifyResult> {
-  const run = async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never));
+  const run = regressionGate(async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never)), source);
   const check = async (src: string): Promise<string[]> => {
     const r = await scoreSource(src, resolveDir);
     if (!r.compiles) throw new Error(r.errors.join("; "));

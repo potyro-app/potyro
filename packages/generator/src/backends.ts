@@ -44,7 +44,7 @@ export {
 } from "./concurrency-smoke.js";
 export { seedRecords, smokeRuntime, smokeReport, paramsForPage, type SmokeResult, type SmokeOptions } from "./smoke.js";
 // Running a candidate for the model (#262): the shell composes the runtime, these run and describe it.
-export { describeRun, mergeRuns, runSafely, type RunReport } from "./run-report.js";
+export { describeRun, mergeRuns, runSafely, regressionGate, type RunReport, type RunGate, type GatedRun } from "./run-report.js";
 
 
 export {

@@ -8,8 +8,10 @@
 // after the model has actually looked — a NOT-IN-APP with no tool call behind it is sent back once.
 //
 // #262: when the caller can run a candidate (`run`), passing the validator is no longer enough. The
-// candidate is run on sample records; anything that throws sends it back with the error in words, and
-// a page that shows nothing is pointed out once — resending the same candidate means "that is meant".
+// candidate is run on sample records and compared with the app as first shown; anything it newly
+// breaks sends it back with the error in words, and a page that newly shows nothing is pointed out
+// once — resending the same candidate means "that is meant". What was already failing is said as
+// context and never holds a change back.
 // This replaces the single repair round: the loop itself keeps going until the app runs.
 //
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
@@ -22,7 +24,7 @@ import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
 import { NOT_IN_APP, buildModifyMessage, buildModifyOpener } from "../prompt.js";
-import { describeRun, runSafely, type RunReport } from "../run-report.js";
+import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 
@@ -55,9 +57,10 @@ export interface ModifyLoopDeps {
   /** The candidate's shape, for the loss gate (entities and pages must survive a change). */
   shapeOf: (source: string) => Promise<AppShape>;
   before: AppShape;
-  /** Run a candidate that passed the check on sample records (#262). Without it the gate stops at
-   *  compile + validate + shape, as before. */
-  run?: (source: string) => Promise<RunReport>;
+  /** Run a candidate that passed the check on sample records, against the app as first shown
+   *  (`regressionGate`, #262): only what the candidate breaks holds it back. Without it the gate stops
+   *  at compile + validate + shape, as before. */
+  run?: RunGate;
   maxSteps?: number;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
@@ -177,18 +180,21 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       const loss = shape ? structuralLoss(deps.before, shape) : null;
       if (loss) problem = retryInstruction("", loss).trim();
     }
-    let ran: RunReport | null = null;
+    let gated: GatedRun | null = null;
     if (!problem && deps.run) {
-      ran = await runSafely(deps.run, candidate);
-      if (ran.errors.length) problem = `It compiles and validates, but it breaks when it runs. ${describeRun(ran)}`;
-      else if (ran.warnings.length && !warned.has(candidate)) {
+      gated = await deps.run(candidate);
+      const { report, preexisting } = gated;
+      if (report.errors.length) problem = `It compiles and validates, but your change breaks it when it runs. ${describeRun(report, preexisting)}`;
+      else if (report.warnings.length && !warned.has(candidate)) {
         warned.add(candidate);
         problem =
-          `It compiles and validates, and nothing threw — but look at this. ${describeRun(ran)}\n` +
+          `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
           "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
       }
     }
-    const passed = ran ? `compiles, validates, keeps the app's shape, and runs (${ran.ran || "nothing to run"})` : "compiles, validates, keeps the app's shape";
+    const passed = gated
+      ? `compiles, validates, keeps the app's shape, and runs without breaking anything (${gated.report.ran || "nothing to run"})`
+      : "compiles, validates, keeps the app's shape";
     deps.onStep?.({ kind: "candidate", passed: problem === null, detail: problem ?? passed });
     if (problem === null) {
       return {

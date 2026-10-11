@@ -175,6 +175,7 @@ Studio, running a candidate app before it ships — listens:
 ```ts
 export interface AppFailure { app: string; what: string; message: string } // what: "computed meal.kcal"
 export function onAppFailure(listener: (f: AppFailure) => void): () => void; // returns unsubscribe
+export function activeFailureListeners(): number; // for tests: a run must leave none behind
 ```
 
 Listening changes nothing about the containment; a listener that throws is ignored.

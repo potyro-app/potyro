@@ -3,6 +3,7 @@ import { runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js"
 import type { AgentTool } from "../src/agent/tools.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 import { NOT_IN_APP } from "../src/prompt.js";
+import { regressionGate, type RunReport } from "../src/run-report.js";
 
 // The modify loop (#131): the Studio's "change this app" on the same footing as the fix loop —
 // tools to discover with, a check gate every candidate must pass, and a refusal that is only
@@ -117,8 +118,8 @@ describe("runModifyLoop", () => {
 
     it("sends a candidate that validates but throws when it runs back with the error", async () => {
       const { engine, seen } = scripted([rename("boom"), rename("y")]);
-      const run = async (src: string) =>
-        src.includes("boom") ? { errors: ["action city.visit: ctx.travel is not a function"], warnings: [], ran: "1 action" } : { errors: [], warnings: [], ran: "1 action" };
+      const run = regressionGate(async (src: string) =>
+        src.includes("boom") ? { errors: ["action city.visit: ctx.travel is not a function"], warnings: [], ran: "1 action" } : { errors: [], warnings: [], ran: "1 action" }, SOURCE);
       const out = await runModifyLoop(base({ engine, run }));
       expect(out.kind === "source" && out.source).toContain('id: "y"');
       expect(seen[1]!.messages.at(-1)!.content).toContain("ctx.travel is not a function");
@@ -127,7 +128,7 @@ describe("runModifyLoop", () => {
 
     it("points a warning out once; the same candidate sent again is accepted as meant", async () => {
       const { engine, seen } = scripted([rename("y"), rename("y")]);
-      const run = async () => ({ errors: [], warnings: ['page "overdue" showed nothing'], ran: "2 pages" });
+      const run = regressionGate(async (src: string) => ({ errors: [], warnings: src === SOURCE ? [] : ['page "overdue" showed nothing'], ran: "2 pages" }), SOURCE);
       const out = await runModifyLoop(base({ engine, run }));
       expect(out.kind).toBe("source");
       expect(seen).toHaveLength(2);
@@ -136,8 +137,34 @@ describe("runModifyLoop", () => {
 
     it("does not hold a change back when the run itself cannot start", async () => {
       const { engine } = scripted([rename("y"), rename("y")]);
-      const out = await runModifyLoop(base({ engine, run: async () => { throw new Error("no DOM"); } }));
+      const out = await runModifyLoop(base({ engine, run: regressionGate(async () => { throw new Error("no DOM"); }, SOURCE) }));
       expect(out.kind).toBe("source");
+    });
+
+    it("accepts a change that leaves a failure the app already had as it was (#262 regression gate)", async () => {
+      const { engine, seen } = scripted([rename("y")]);
+      const failing = (): RunReport => ({ errors: ["computed city.population: no census for record 4f2a91c0"], warnings: [], ran: "1 page" });
+      const out = await runModifyLoop(base({ engine, run: regressionGate(async () => failing(), SOURCE) }));
+      expect(out.kind).toBe("source");
+      expect(seen).toHaveLength(1);
+    });
+
+    it("sends back only what the change broke, with what was already failing as context", async () => {
+      const { engine, seen } = scripted([rename("boom"), rename("y")]);
+      const run = regressionGate(
+        async (src: string) => ({
+          errors: ["computed city.population: no census", ...(src.includes("boom") ? ["action city.visit: ctx.travel is not a function"] : [])],
+          warnings: [],
+          ran: "1 action",
+        }),
+        SOURCE,
+      );
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind).toBe("source");
+      const sentBack = seen[1]!.messages.at(-1)!.content;
+      expect(sentBack).toContain("ctx.travel is not a function");
+      expect(sentBack).toMatch(/already failing before this change/i);
+      expect(sentBack.indexOf("ctx.travel")).toBeLessThan(sentBack.indexOf("no census"));
     });
 
     it("counts search_corpus as looking before a refusal", async () => {

@@ -56,6 +56,6 @@ describe("describeRun", () => {
 
   it("says when nothing went wrong, and merges two runs", () => {
     const both = mergeRuns({ errors: [], warnings: [], ran: "2 pages" }, { errors: [], warnings: [], ran: "2 pages rendered" });
-    expect(describeRun(both)).toBe("Ran it on sample records (2 pages, 2 pages rendered).\nNothing threw and every page showed something.");
+    expect(describeRun(both)).toBe("Ran it on sample records (2 pages, 2 pages rendered).\nNothing new threw and no page newly showed nothing.");
   });
 });
