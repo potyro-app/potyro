@@ -10,7 +10,6 @@
 import { defineApp } from "potyro";
 import type { Ctx, Resolved, ViewProps } from "potyro";
 import { useCallback, useEffect, useRef, useState } from "react";
-import planJson from "./plan.json";
 import { blocksForWeek, mainWeeks, resolveLink, startingWeekNumber, validatePlan } from "./plan.js";
 import type { Plan, PlanLink, PlanModule } from "./plan.js";
 import {
@@ -39,10 +38,17 @@ import {
 import type { DayBlock, Progress } from "./progress.js";
 import { CSS } from "./styles.js";
 
-// ---- the built-in plan: checked once, at load. A broken plan.json fails here, not on a Tuesday. ----
-const builtIn = validatePlan(planJson);
-if (!builtIn.ok) throw new Error(`plan.json is not a valid plan:\n${builtIn.errors.join("\n")}`);
-const BUILT_IN_PLAN: Plan = builtIn.plan;
+// ---- the built-in plan ships WITH the app, as `plan.json` in its own folder (#253) ----
+// Read through ctx.files rather than inlined: the plan can change without rebuilding the app, and a
+// new version of the app replaces it unless you edited it. Checked on every read; a broken plan says
+// so on the Plan page rather than silently falling back.
+async function builtInPlan(ctx: Ctx): Promise<Plan> {
+  const raw = await ctx.files.json("plan.json");
+  if (raw == null) throw new Error("plan.json has not reached this device yet");
+  const checked = validatePlan(raw);
+  if (!checked.ok) throw new Error(`plan.json is not a valid plan:\n${checked.errors.join("\n")}`);
+  return checked.plan;
+}
 
 const PLAN_KEY = "plan";
 const PLAN_SOURCE_KEY = "planSource";
@@ -64,20 +70,29 @@ async function loadState(ctx: Ctx): Promise<State> {
   const today = ctx.today();
   const stored = await ctx.storage.get<unknown>(PLAN_KEY);
   const checked = stored ? validatePlan(stored) : null;
-  const plan = checked && checked.ok ? checked.plan : BUILT_IN_PLAN;
+  const plan = checked && checked.ok ? checked.plan : await builtInPlan(ctx);
   const planSource = (checked && checked.ok && (await ctx.storage.get<string>(PLAN_SOURCE_KEY))) || "built-in";
   const saved = await ctx.storage.get<Progress>(PROGRESS_KEY);
   const progress = reconcileProgress(plan, saved ?? defaultProgress(plan, today), today);
   return { plan, planSource, progress };
 }
 
-function usePianoState(ctx: Ctx): { state: State | null; update: (fn: (p: Progress) => Progress) => Promise<void>; reload: () => Promise<void> } {
+function usePianoState(ctx: Ctx): { state: State | null; error: string | null; update: (fn: (p: Progress) => Progress) => Promise<void>; reload: () => Promise<void> } {
   const [state, setState] = useState<State | null>(null);
+  // A plan that cannot be read says why, instead of "Loading…" forever.
+  const [error, setError] = useState<string | null>(null);
   // `runtime.ctx` is a fresh object on every access, so it must never be a hook dependency: read
   // the latest one through a ref and keep the callbacks stable for the life of the view.
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
-  const reload = useCallback(async () => setState(await loadState(ctxRef.current)), []);
+  const reload = useCallback(async () => {
+    try {
+      setState(await loadState(ctxRef.current));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
   useEffect(() => {
     void reload();
     listeners.add(reload);
@@ -92,7 +107,7 @@ function usePianoState(ctx: Ctx): { state: State | null; update: (fn: (p: Progre
     await ctxRef.current.storage.set(PROGRESS_KEY, next);
     announce();
   }, []);
-  return { state, update, reload };
+  return { state, error, update, reload };
 }
 
 const mmss = (totalSec: number): string => `${Math.floor(totalSec / 60)}:${String(Math.max(0, totalSec % 60)).padStart(2, "0")}`;
@@ -126,7 +141,7 @@ interface Timer {
 function Today(props: ViewProps) {
   const { runtime, navigate } = props;
   const ctx = runtime.ctx;
-  const { state, update } = usePianoState(ctx);
+  const { state, error, update } = usePianoState(ctx);
   const today = ctx.today();
   const todayKey = isoDay(today);
   const { rows: sessions, loading } = runtime.useQuery("session");
@@ -161,7 +176,7 @@ function Today(props: ViewProps) {
     return () => clearInterval(id);
   }, [timer?.endsAt]);
 
-  if (!state) return <div className="pn-load">Loading…</div>;
+  if (!state) return <div className="pn-load">{error ?? "Loading…"}</div>;
   const { plan, progress } = state;
   const cur = currentWeek(plan, progress, today);
   if (!cur) return <div className="pn-load">This plan has no weeks. Load one on the Modules tab.</div>;
@@ -406,8 +421,8 @@ function Today(props: ViewProps) {
 
 function PlanView(props: ViewProps) {
   const ctx = props.runtime.ctx;
-  const { state, update } = usePianoState(ctx);
-  if (!state) return <div className="pn-load">Loading…</div>;
+  const { state, error, update } = usePianoState(ctx);
+  if (!state) return <div className="pn-load">{error ?? "Loading…"}</div>;
   const { plan, progress } = state;
   const today = ctx.today();
   const cur = currentWeek(plan, progress, today);
@@ -512,8 +527,8 @@ function PlanView(props: ViewProps) {
 
 function ModulesView(props: ViewProps) {
   const ctx = props.runtime.ctx;
-  const { state, update, reload } = usePianoState(ctx);
-  if (!state) return <div className="pn-load">Loading…</div>;
+  const { state, error, update, reload } = usePianoState(ctx);
+  if (!state) return <div className="pn-load">{error ?? "Loading…"}</div>;
   const { plan, progress, planSource } = state;
   const today = ctx.today();
   const cur = currentWeek(plan, progress, today);
@@ -554,16 +569,11 @@ function ModulesView(props: ViewProps) {
     await update((p) => setReviewWeekday(p, choice));
   };
   const loadPlan = async (): Promise<void> => {
-    if (!ctx.caps.filesystem) {
-      ctx.ui.toast("No file access on this device");
-      return;
-    }
-    let blob: Blob;
-    try {
-      blob = await ctx.caps.filesystem.pick();
-    } catch {
-      return;
-    }
+    // Imported into the app's folder (plans/), so the person picks it once and it stays with the
+    // app; no file permission is needed for that, in the sealed box either.
+    const [file] = await ctx.files.import({ folder: "plans", accept: ".json,application/json" });
+    if (!file) return; // cancelled
+    const blob = { text: async () => (await ctx.files.text(file)) ?? "", name: file.name };
     let parsed: unknown;
     try {
       parsed = JSON.parse(await blob.text());
@@ -576,7 +586,7 @@ function ModulesView(props: ViewProps) {
       await ctx.ui.confirm("The plan file has problems", { detail: checked.errors.slice(0, 6).join("\n"), ok: "OK" });
       return;
     }
-    const name = (blob as Blob & { name?: string }).name ?? "file";
+    const name = blob.name;
     if (!(await ctx.ui.confirm(`Use “${checked.plan.title}” (${checked.plan.version})?`, { detail: "Your progress and logs are kept; a week the new plan does not have falls back to its first week.", ok: "Use this plan" }))) return;
     await ctx.storage.set(PLAN_KEY, checked.plan);
     await ctx.storage.set(PLAN_SOURCE_KEY, name);
@@ -585,7 +595,8 @@ function ModulesView(props: ViewProps) {
     ctx.ui.toast("Plan loaded");
   };
   const useBuiltIn = async (): Promise<void> => {
-    if (!(await ctx.ui.confirm("Go back to the built-in plan?", { detail: `${BUILT_IN_PLAN.title} (${BUILT_IN_PLAN.version})`, ok: "Use built-in" }))) return;
+    const builtIn = await builtInPlan(ctx);
+    if (!(await ctx.ui.confirm("Go back to the built-in plan?", { detail: `${builtIn.title} (${builtIn.version})`, ok: "Use built-in" }))) return;
     await ctx.storage.delete(PLAN_KEY);
     await ctx.storage.delete(PLAN_SOURCE_KEY);
     announce();
@@ -724,7 +735,7 @@ export default defineApp({
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#C9772B" },
-  permissions: { haptics: true, filesystem: true }, // a buzz when a timer ends; a plan file to load
+  permissions: { haptics: true }, // a buzz when a timer ends (a plan file comes in through ctx.files, which needs none)
   nav: "tabs",
 
   quickActions: [{ id: "log-week", label: "Log this week", icon: "📝", entity: "weekLog", mode: "form" }],
