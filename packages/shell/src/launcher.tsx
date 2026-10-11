@@ -27,6 +27,7 @@ import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
+import { AddAppDialog } from "./add-app-dialog.js";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 
@@ -360,6 +361,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // You and your other devices — reachable from every launcher, nagged from none.
   const [identity, setIdentity] = useState(false);
   const [lookOpen, setLookOpen] = useState(false);
+  // Add an app (#253). `#add=<link>` opens it with the link filled in: an install link anyone can send.
+  const [adding, setAdding] = useState<{ link?: string } | null>(() => {
+    const m = /^#add=(.+)$/.exec(globalThis.location?.hash ?? "");
+    if (!m) return null;
+    globalThis.history.replaceState(null, "", `${location.pathname}${location.search}`);
+    try {
+      return { link: decodeURIComponent(m[1]!) };
+    } catch {
+      return { link: m[1] };
+    }
+  });
 
   // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
   // bottom edge, inside the thumb's reach; on a desktop a drawer. Both are a compact list, not the
@@ -613,6 +625,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               ＋ New app
             </button>
           ) : null}
+          {variant === "home" ? (
+            <button type="button" className="k-add k-launch-addbtn" aria-label="Add an app" title="Add an app someone sent you" onClick={() => setAdding({})}>
+              <span aria-hidden>⤓</span>
+              <span className="k-launch-addbtn-word">Add an app</span>
+            </button>
+          ) : null}
           {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
           <LookButton onClick={() => setLookOpen(true)} />
           <YouButton onClick={() => setIdentity(true)} />
@@ -626,6 +644,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
