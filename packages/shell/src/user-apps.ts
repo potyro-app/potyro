@@ -12,6 +12,7 @@
 import { clearHistory, recordVersion, type VersionOrigin } from "./app-history.js";
 import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
+import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
 
 const KEY = "potyro:user-apps";
@@ -159,6 +160,8 @@ export async function removeUserApp(id: string): Promise<void> {
   // Ids are name slugs (see `slug` above), so a deleted app's id can be reused by an unrelated app
   // created later. Without this, that new app would silently inherit the dead app's cases.
   await clearCases(id);
+  // And for the same reason its conversation: the next app called this must start its own.
+  await clearChat(id);
 }
 
 /** Promote/demote a saved app's trust. Trusted apps run directly (not in the isolate). */
