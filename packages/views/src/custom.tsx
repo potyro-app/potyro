@@ -8,6 +8,9 @@ import type { CustomViewMount, ViewProps } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 
+/** Fired on `window` when a view asks the shell to open its trust dialog. */
+export const TRUST_REQUEST = "potyro:trust-request";
+
 export function CustomView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate } = props;
   const view = getView(runtime, pageId) as { entity: string };
@@ -19,10 +22,13 @@ export function CustomView(props: BuiltinViewProps) {
     // control in the header they have no reason to associate with it. Say what to press.
     return (
       <div className="k-custom-fallback">
-        <p>This screen is built with the app’s own code, so it only runs when the app is trusted.</p>
+        <p>This screen is built with the app’s own code, so it only runs when the app runs as yours.</p>
         <p>
-          Use the <strong>“untrusted ▾”</strong> button in the header to trust this app and show
-          this screen.
+          {/* The shell owns the decision (views never change trust): this asks it to open its own
+              dialog, the same one the 🛡 mark at the top opens. */}
+          <button type="button" className="k-add k-primary-action" onClick={() => globalThis.dispatchEvent(new CustomEvent(TRUST_REQUEST))}>
+            Run it as mine…
+          </button>
         </p>
       </div>
     );
