@@ -39,6 +39,17 @@ test.describe("phone", () => {
     await expect(page.getByRole("dialog", { name: "App studio" })).toBeVisible({ timeout: 30_000 });
   });
 
+  test("the floating New app offers to describe one or add one someone sent (#253)", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".k-launch-fab").tap();
+    await page.getByRole("menuitem", { name: /Add an app someone sent you/ }).tap();
+    await expect(page.getByRole("dialog", { name: "Add an app" })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).tap();
+    await page.locator(".k-launch-fab").tap();
+    await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
+    await expect(page.getByRole("dialog", { name: "App studio" })).toBeVisible({ timeout: 30_000 });
+  });
+
   test("once an app has been opened, home is the apps and the floating New app", async ({ page }) => {
     await page.goto("/?app=recipes");
     await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
