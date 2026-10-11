@@ -6107,7 +6107,7 @@ body:has(.k-tabbar) .k-toasts {
    reading measure. */
 @media (min-width: 1100px) {
   .k-studio[data-preview] {
-    grid-template-columns: minmax(24rem, 36rem) minmax(0, 1fr);
+    grid-template-columns: minmax(22rem, 32rem) minmax(0, 1fr);
   }
   .k-studio[data-preview] .k-studio-open {
     display: none;

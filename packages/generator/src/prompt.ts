@@ -647,13 +647,15 @@ function pickAppBlock(blocks: Array<{ code: string; index: number }>): { code: s
 /**
  * The question a create reply asks instead of building (#261), or null when it built — or talked.
  *
- * Only a reply that is not an app, and only at the start of a line, so a comment in the source or a
- * sentence that mentions questions is never mistaken for one. Models dress markers in bold or
- * backticks; that is read through.
+ * Only a reply that is not an app, and only when the reply OPENS with the marker, so a comment in the
+ * source or prose that mentions questions is never mistaken for one. Models dress markers in bold or
+ * backticks; that is read through. The question is the first line.
  */
 export function questionIn(reply: string): string | null {
   if (looksLikeApp(reply)) return null;
-  const m = /^[\s*`_]*QUESTION:[*`_]*\s*(.*?)[\s*`_]*$/m.exec(reply.trim());
+  // Some models put everything they send in a code block, a question included.
+  const opened = reply.trim().replace(/^```[\w-]*[ \t]*\n/, "");
+  const m = /^[\s*`_]*QUESTION:[*`_]*[ \t]*([^\n]*?)[\s*`_]*(?:\n|$)/.exec(opened);
   return m && m[1]!.trim() ? m[1]!.trim() : null;
 }
 
