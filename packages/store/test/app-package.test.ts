@@ -32,6 +32,31 @@ describe("app packages", () => {
     expect(pkg.seed).toEqual({ session: [{ minutes: 20 }] });
   });
 
+  it("carries how the app was made when the author chose to include it, and nothing when not (#261)", () => {
+    const chat = { format: "potyro-chat/1", messages: [{ at: "2026-10-11T00:00:00.000Z", kind: "ask", text: "a piano practice log" }] };
+    const withChat = readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], chat }));
+    expect(withChat.chat).toEqual(chat);
+    // `chat.json` is not one of the app's shipped files: it is about the app, not in it.
+    expect(withChat.files).toEqual([]);
+    expect(readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [] })).chat).toBeUndefined();
+
+    // An export bundle carries it the same way.
+    const bundle = packBundle({
+      sqlite: new Uint8Array([1]),
+      manifest: { format: "potyro-bundle/1" } as never,
+      appSource: SOURCE,
+      chat,
+    });
+    expect(readAppPackage(bundle).chat).toEqual(chat);
+  });
+
+  it("a conversation that is not JSON is dropped, never fatal — the app is what was asked for", () => {
+    const zip = zipSync({ "app.tsx": strToU8(SOURCE), "chat.json": strToU8("{not json") });
+    const pkg = readAppPackage(zip);
+    expect(pkg.source).toBe(SOURCE);
+    expect(pkg.chat).toBeUndefined();
+  });
+
   it("reads a zip made by hand: one wrapping folder, a *.app.tsx source, no manifest", () => {
     const zip = zipSync({ "piano/piano.app.tsx": strToU8(SOURCE), "piano/files/plan.json": plan });
     const pkg = readAppPackage(zip);
