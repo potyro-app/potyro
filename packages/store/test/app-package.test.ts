@@ -1,5 +1,9 @@
 // App packages (#253): source + shipped files + a one-time seed, as one zip.
 import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { AppPackageError, isZip, packAppPackage, packBundle, readAppPackage } from "../src/index.js";
 
@@ -51,5 +55,28 @@ describe("app packages", () => {
     expect(() => readAppPackage(strToU8("hello"))).toThrow(AppPackageError);
     expect(() => readAppPackage(zipSync({ "readme.md": strToU8("x") }))).toThrow(/No app source/);
     expect(() => readAppPackage(zipSync({ "app.ts": strToU8(SOURCE), "seed.json": strToU8('{"a":1}') }))).toThrow(/"a" must be a list of records/);
+  });
+});
+
+describe("pnpm pack:app", () => {
+  it("makes a zip the real reader installs: source, loose files, a folder, and the seed", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pack-app-"));
+    writeFileSync(join(dir, "piano.app.tsx"), SOURCE);
+    writeFileSync(join(dir, "plan.json"), '{"weeks":12}');
+    mkdirSync(join(dir, "assets", "img"), { recursive: true });
+    writeFileSync(join(dir, "assets", "img", "hands.png"), new Uint8Array([137, 80]));
+    writeFileSync(join(dir, "seed.json"), '{"session":[{"minutes":20}]}');
+    const script = new URL("../../../scripts/pack-app.mjs", import.meta.url).pathname;
+
+    execFileSync("node", [script, "piano.app.tsx", "plan.json", "--files", "assets", "--seed", "seed.json", "-o", "out.zip"], {
+      cwd: dir,
+      env: { ...process.env, INIT_CWD: dir },
+    });
+
+    const pkg = readAppPackage(new Uint8Array(readFileSync(join(dir, "out.zip"))));
+    expect(pkg.source).toBe(SOURCE);
+    expect(pkg.sourceName).toBe("app.tsx");
+    expect(pkg.files.map((f) => f.path).sort()).toEqual(["img/hands.png", "plan.json"]);
+    expect(pkg.seed).toEqual({ session: [{ minutes: 20 }] });
   });
 });
