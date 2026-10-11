@@ -185,7 +185,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
     <div
       className="k-app-phone"
       data-recording={recording || undefined}
-      style={{ ["--k-chrome-bottom" as string]: tabs ? "calc(4.75rem + env(safe-area-inset-bottom))" : "env(safe-area-inset-bottom)" }}
+      style={{ ["--k-chrome-bottom" as string]: tabs ? "calc(4.75rem + var(--k-safe-bottom))" : "var(--k-safe-bottom)" }}
     >
       <header className="k-topbar">
         {onBack ? (
