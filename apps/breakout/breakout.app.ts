@@ -82,8 +82,13 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   // Sizing: a 3:4 board that fits the space it was given and stays sharp on a phone's screen.
   let W = 360;
   let H = 480;
+  // How much of the bottom the shell's own bars take: the custom property it gives views for exactly
+  // this (0 on a full-screen page). Measured, because it is a calc() the stylesheet resolves.
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;visibility:hidden;height:var(--k-chrome-bottom, 0px)";
+  el.appendChild(probe);
   const fit = (): void => {
-    const room = Math.max(240, window.innerHeight - el.getBoundingClientRect().top - 110);
+    const room = Math.max(240, window.innerHeight - el.getBoundingClientRect().top - probe.offsetHeight - 24);
     W = Math.min(el.clientWidth || 360, 520, Math.floor((room * 3) / 4));
     H = Math.floor((W * 4) / 3);
     const dpr = window.devicePixelRatio || 1;
@@ -329,6 +334,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     window.removeEventListener("resize", fit);
     document.removeEventListener("visibilitychange", onHide);
     canvas.remove();
+    probe.remove();
   };
 }
 
@@ -354,7 +360,7 @@ export default defineApp({
     },
   },
   pages: [
-    { id: "play", title: "Play", icon: "🎮", view: { type: "custom", entity: "run", mount: mountGame } },
+    { id: "play", title: "Play", icon: "🎮", fullscreen: true, view: { type: "custom", entity: "run", mount: mountGame } },
     {
       id: "scores",
       title: "Scores",
