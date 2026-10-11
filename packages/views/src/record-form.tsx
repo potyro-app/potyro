@@ -7,8 +7,8 @@
 // gets the focus, and is marked invalid; there is no summary line at the top to walk back from.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { Field } from "karta";
-import { FN_SENTINEL, type KartaRuntime } from "@karta/runtime";
+import type { Field } from "potyro";
+import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
 import { FieldInput } from "./field-input.js";
 import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
@@ -16,7 +16,7 @@ import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { SwitchRow } from "./switch.js";
 
 export interface RecordFormProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   entity: string;
   /** Present → edit that record; absent → create a new one. */
   recordId?: string;
@@ -38,7 +38,7 @@ function relId(value: unknown): string | null {
 }
 
 /** Convert a resolved value back to raw (relations → ids); recurse into list rows. */
-function toRaw(runtime: KartaRuntime, field: Field, val: unknown): unknown {
+function toRaw(runtime: PotyroRuntime, field: Field, val: unknown): unknown {
   if (val == null) return val;
   if (field.type === "relation") {
     return field.many ? (Array.isArray(val) ? val.map(relId).filter(Boolean) : []) : relId(val);
@@ -50,7 +50,7 @@ function toRaw(runtime: KartaRuntime, field: Field, val: unknown): unknown {
   return val;
 }
 
-function rawRow(runtime: KartaRuntime, of: Record<string, Field>, row: Record<string, unknown>): Record<string, unknown> {
+function rawRow(runtime: PotyroRuntime, of: Record<string, Field>, row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, sub] of Object.entries(of)) out[k] = toRaw(runtime, sub, row?.[k]);
   return out;
@@ -59,9 +59,9 @@ function rawRow(runtime: KartaRuntime, of: Record<string, Field>, row: Record<st
 /**
  * A field's starting value. A function default (KA-25, `(ctx) => ctx.now()`) is evaluated by the
  * host where the function lives: for an untrusted app the definition out here holds only the
- * sentinel string, and a form that used it pre-filled "__karta_fn__".
+ * sentinel string, and a form that used it pre-filled "__potyro_fn__".
  */
-async function defaultFor(runtime: KartaRuntime, entity: string, key: string, field: Field): Promise<unknown> {
+async function defaultFor(runtime: PotyroRuntime, entity: string, key: string, field: Field): Promise<unknown> {
   const d = (field as { default?: unknown }).default;
   if (typeof d === "function" || d === FN_SENTINEL) {
     try {
@@ -69,7 +69,7 @@ async function defaultFor(runtime: KartaRuntime, entity: string, key: string, fi
       return v ?? undefined;
     } catch (e) {
       // A default is app code; one that throws starts the field empty rather than blocking the form.
-      console.warn(`[karta] default for ${entity}.${key} failed:`, e);
+      console.warn(`[potyro] default for ${entity}.${key} failed:`, e);
       return undefined;
     }
   }
@@ -86,7 +86,7 @@ async function defaultFor(runtime: KartaRuntime, entity: string, key: string, fi
 }
 
 async function initialFormState(
-  runtime: KartaRuntime,
+  runtime: PotyroRuntime,
   entity: string,
   resolved: Record<string, unknown> | null,
   preset?: Record<string, unknown>,
@@ -107,7 +107,7 @@ function isEmpty(v: unknown): boolean {
 /** Default-filled raw values for a NEW record of `entity`, with optional presets applied. Mirrors
  *  what the create form seeds, so a programmatic create (e.g. a quick action) matches a form create
  *  — including field defaults like a `datetime` default of `ctx.now()`. */
-export function createDefaults(runtime: KartaRuntime, entity: string, preset?: Record<string, unknown>): Promise<Record<string, unknown>> {
+export function createDefaults(runtime: PotyroRuntime, entity: string, preset?: Record<string, unknown>): Promise<Record<string, unknown>> {
   return initialFormState(runtime, entity, null, preset);
 }
 
@@ -135,6 +135,7 @@ function FormField({
   error,
   focusToken,
   plain,
+  tag,
   children,
 }: {
   label: string;
@@ -144,6 +145,8 @@ function FormField({
   focusToken: number;
   /** The control names itself (a switch row) or is several controls (a number with its stepper). */
   plain?: boolean;
+  /** `entity.key` when this row is a record field — how edit mode finds the label it can rename. */
+  tag?: string;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -176,7 +179,7 @@ function FormField({
   );
 
   return (
-    <div className="k-form-field" ref={ref} data-width={hints.width ?? "full"} data-invalid={error ? "true" : undefined}>
+    <div className="k-form-field" ref={ref} data-k-field={tag} data-width={hints.width ?? "full"} data-invalid={error ? "true" : undefined}>
       {plain ? (
         children
       ) : (
@@ -211,17 +214,19 @@ function FieldRow({
   onChange,
   error,
   focusToken,
+  tag,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: Field;
   label: string;
   value: unknown;
   onChange: (v: unknown) => void;
   error?: string;
   focusToken: number;
+  tag?: string;
 }) {
   const hints = field as Hints;
-  const common = { label, hints, error, focusToken };
+  const common = { label, hints, error, focusToken, tag };
   if (field.type === "boolean") {
     // A boolean is a switch row (#97): the label and the toggle are one hit target, not a grey
     // caption over a bare checkbox. The row carries its own help line.
@@ -351,6 +356,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       runtime={runtime}
       field={fields[key]!}
       label={fieldLabel(runtime, entity, key)}
+      tag={`${entity}.${key}`}
       value={form[key]}
       onChange={(v) => set(key, v)}
       error={errors[key]}
@@ -418,7 +424,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
 }
 
 export interface ValuesFormProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   title: string;
   fields: Record<string, Field>;
   initial?: Record<string, unknown>;

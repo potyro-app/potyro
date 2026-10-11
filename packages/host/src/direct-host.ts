@@ -3,8 +3,8 @@
 // returns the real React component. No isolate, no marshalling. This is the runner for the
 // user's own apps and for tests.
 
-import { resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "karta";
-import type { Binding, ReminderWhen } from "karta";
+import { actionRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "potyro";
+import type { Binding, ReminderWhen } from "potyro";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
 type Fn = (...args: unknown[]) => unknown;
@@ -71,7 +71,7 @@ export class DirectLoadedApp implements LoadedApp {
   }
 
   async callAction(entity: string, key: string, record: Resolved, ctx: unknown, input?: unknown): Promise<void> {
-    const fn = this.definition.entities[entity]?.actions?.[key];
+    const fn = actionRun(this.definition.entities[entity], key);
     if (!fn) throw new Error(`action ${entity}.${key} not found`);
     await fn(record, ctx as never, input);
   }

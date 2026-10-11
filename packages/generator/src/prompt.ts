@@ -5,9 +5,9 @@
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
 import { SCHEMA_REFERENCE } from "./reference.generated.js";
-import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "karta";
+import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "potyro";
 
-export const EXAMPLE_TODO = `import { defineApp } from "karta";
+export const EXAMPLE_TODO = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "todo",
@@ -30,7 +30,7 @@ export default defineApp({
   ],
 });`;
 
-export const EXAMPLE_COMPUTED = `import { defineApp } from "karta";
+export const EXAMPLE_COMPUTED = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "books",
@@ -77,7 +77,7 @@ export default defineApp({
   ],
 });`;
 
-export const EXAMPLE_CUSTOM_VIEW = `import { defineApp, type ViewProps } from "karta";
+export const EXAMPLE_CUSTOM_VIEW = `import { defineApp, type ViewProps } from "potyro";
 import { useEffect, useState } from "react";
 
 // A custom view is a NORMAL React component in the same file. Import React hooks from "react";
@@ -122,12 +122,12 @@ export default defineApp({
 });`;
 
 /**
- * The model's reference: the `karta` module's declarations, verbatim (see reference.ts). The
+ * The model's reference: the `potyro` module's declarations, verbatim (see reference.ts). The
  * hand-written catalogue this replaces said less than the schema did, and every gap was a refusal
  * (#130). Now what the model is told exists is, byte for byte, what the validator enforces.
  */
 function fullReferenceSection(): string {
-  return `REFERENCE — THE \`karta\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the complete and authoritative
+  return `REFERENCE — THE \`potyro\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the complete and authoritative
 surface: every field type, every view type and each option it accepts, every member of \`ctx\`, with the
 doc comment that says what it does. If an option is declared here, it works; if it is not declared
 here, it does not exist — do not invent one and do not assume one is missing without reading the
@@ -156,10 +156,10 @@ An option not listed here does not exist; one listed here works.`;
 }
 
 function assembleSystemPrompt(reference: string): string {
-  return `You generate a single Karta app module (a \`.app.ts\` file) from a natural-language description.
+  return `You generate a single Potyro app module (a \`.app.ts\` file) from a natural-language description.
 
 CONTRACT
-- The file default-exports \`defineApp({ ... })\` imported from "karta".
+- The file default-exports \`defineApp({ ... })\` imported from "potyro".
 - Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`entities\`, \`pages\`.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
 - Field \`type\` is one of the \`Field\` union in the REFERENCE below. There is NO "object" type.
@@ -318,7 +318,7 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
 - Order a detail page's \`actions\` with the one people came for FIRST: it is the page's one filled
   button; the rest sit beside it, plain. Edit and Delete are the shell's, behind "More actions".
 - Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a
-  float; lists total it. Split with \`splitEvenly(total, people)\` from \`karta\`.
+  float; lists total it. Split with \`splitEvenly(total, people)\` from \`potyro\`.
 - Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"days"\`) and \`integer: true\` when
   it counts things; the form shows the unit inside the field and a − / + stepper, and the phone opens
   the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
@@ -402,11 +402,11 @@ export const SYSTEM_PROMPT_COMPACT = assembleSystemPrompt(compactReferenceSectio
 
 
 export function buildUserMessage(prompt: GenPrompt): string {
-  return `Create a Karta app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+  return `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
 }
 
 /**
- * Opens a modify exchange, in place of the generate turn's "Create a Karta app for this request".
+ * Opens a modify exchange, in place of the generate turn's "Create a Potyro app for this request".
  *
  * The app being edited is not an answer to the edit being asked for. Opening with the generate
  * framing says the app to write is the one described BY the change, which makes the real source in
@@ -415,7 +415,7 @@ export function buildUserMessage(prompt: GenPrompt): string {
  */
 export function buildModifyOpener(): string {
   return [
-    "Here is the current Karta app. It is the app the user already has and wants to keep.",
+    "Here is the current Potyro app. It is the app the user already has and wants to keep.",
     "You will be asked to change it — edit this source, do not replace it with a different app.",
   ].join("\n");
 }

@@ -10,16 +10,16 @@
 // computed evaluation, every page's filter/sort, display bindings, entity actions, and reminder
 // `when`. That is where hallucinated `ctx` APIs and unguarded field access actually surface.
 
-import type { AppDefinition, Field, Id, Resolved } from "karta";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime } from "@karta/runtime";
-import { MemoryStore } from "@karta/store";
+import { actionInfo, type AppDefinition, type EntityDef, type Field, type Id, type Resolved } from "potyro";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime } from "@potyro/runtime";
+import { MemoryStore } from "@potyro/store";
 
 const SEED_ROWS = 3;
 const DAY_MS = 86_400_000;
 
-/** Every view binding path a `BindingRef` can address (see @karta/host BindingRef). */
+/** Every view binding path a `BindingRef` can address (see @potyro/host BindingRef). */
 const VIEW_BINDING_PATHS = ["display.primary", "display.secondary", "date", "title", "color", "text", "geo"] as const;
 
 export interface SmokeResult {
@@ -260,7 +260,10 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
       const id = created[name]?.[0];
       if (!id) continue;
       try {
-        await runtime.runAction(name, key, id);
+        const input = seededInput(entity, key, created);
+        // `core`, not `runtime.runAction`: the latter turns a failure into a toast (right for a button,
+        // wrong here) and this bridge drops toasts, so a hallucinated ctx method passed silently.
+        await runtime.core.runAction(name, key, id, input);
         ran.actions++;
       } catch (e) {
         actionsOk = false;
@@ -286,6 +289,21 @@ export async function smokeApp(app: AppDefinition & { id: string }): Promise<Smo
 /** True when the app not only validates but actually executed its own logic without throwing. */
 export function smokePassed(s: SmokeResult): boolean {
   return s.seeded && s.computedOk && s.bindingsOk && s.actionsOk && s.remindersOk && s.customViewsOk;
+}
+
+/**
+ * What to run a declared action (#213) with: seeded values for its input. With none it would ask with
+ * a form, which nobody answers in a harness, and its code would never run — the thing a gate exists
+ * to run. Undefined for an action that declares no input.
+ */
+export function seededInput(entity: EntityDef | undefined, key: string, created: Record<string, Id[]>): Record<string, unknown> | undefined {
+  const declared = actionInfo(entity, key)?.input;
+  if (!declared) return undefined;
+  return Object.fromEntries(
+    Object.entries(declared)
+      .map(([k, f]) => [k, f.type === "relation" ? created[f.to]?.[0] : seedValue(f, 0, k)])
+      .filter(([, v]) => v !== undefined),
+  );
 }
 
 /**

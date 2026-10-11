@@ -1,16 +1,16 @@
 // Composition root (docs/02). Wires Store + Capabilities + Host + Runtime for one app, at one
 // provenance. Swap store/caps/target here and nothing else changes.
 
-import type { KartaApp, Person, Space } from "karta";
-import { createHost, type LoadedApp, type NavBridge, type Provenance, type UiBridge } from "@karta/host";
-import type { Store } from "@karta/store";
-import type { Capabilities } from "@karta/capabilities";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import type { PotyroApp, Person, Space } from "potyro";
+import { createHost, type LoadedApp, type NavBridge, type Provenance, type UiBridge } from "@potyro/host";
+import type { Store } from "@potyro/store";
+import type { Capabilities } from "@potyro/capabilities";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import type { LoadIsolated } from "./isolate-bridge.js";
 
 export interface ComposeOptions {
   /** Required for the trusted (direct) path; the untrusted (isolate) path loads from `bundleCode`. */
-  app?: KartaApp;
+  app?: PotyroApp;
   provenance: Provenance;
   /** Bundle source for the untrusted (isolate) path. */
   bundleCode?: string;
@@ -31,7 +31,7 @@ export interface ComposeOptions {
 }
 
 export interface Composed {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   loaded: LoadedApp;
 }
 
@@ -60,7 +60,7 @@ function requireBundle(code: string | undefined): string {
   return code;
 }
 
-function requireApp(app: KartaApp | undefined): KartaApp {
+function requireApp(app: PotyroApp | undefined): PotyroApp {
   if (!app) throw new Error("compose: trusted provenance requires an app module");
   return app;
 }

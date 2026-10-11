@@ -2,7 +2,7 @@
 // (M2/M3). Each consumes the runtime only.
 
 import type { ReactNode } from "react";
-import type { Resolved } from "karta";
+import { actionInfo, type Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -31,6 +31,15 @@ export function mapOnOpen(onOpen: { page: string; param?: Record<string, string>
  * (there is no undo yet), which is exactly why it asks first, through the host's own `ctx.ui.confirm`
  * rather than `window.confirm`.
  */
+/** A page whose data could not be read says so, instead of loading forever. */
+function LoadError({ message }: { message: string }) {
+  return (
+    <p className="k-load-error" role="alert">
+      This page could not load: {message}
+    </p>
+  );
+}
+
 export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: string): (id: string, label: string) => Promise<boolean> {
   // Resolves to whether the record is gone: a caller that leaves the page afterwards must not
   // leave it on "no" — declining used to send you back to the list as if you had deleted.
@@ -79,7 +88,7 @@ export function RowActions({
           onClick={() => void runtime.runAction(entity, a, id)}
         >
           {/* The action KEY is an identifier, not a label — "startWorkout" is not a button name. */}
-          {humanizeKey(a)}
+          {actionInfo(runtime.definition.entities[entity], a)?.label ?? humanizeKey(a)}
         </button>
       ))}
       {onEdit ? (
@@ -104,7 +113,7 @@ export function RowActions({
 
 export function ListView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as {
     entity: string;
@@ -129,8 +138,15 @@ export function ListView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
+  if (!rows.length) {
+    return (
+      <p className="k-empty" data-k-wording>
+        {emptyText}
+      </p>
+    );
+  }
 
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
   // lives on the detail page (#111). Only a row with nowhere to open keeps its Delete.
@@ -154,8 +170,8 @@ export function ListView(props: BuiltinViewProps) {
           >
             {cell.mediaUrl ? <img className="k-thumb" src={cell.mediaUrl} alt="" width={48} height={48} /> : null}
             <span className="k-list-text">
-              <span className="k-primary">{cell.primary ?? String(row.id)}</span>
-              {cell.secondary ? <span className="k-secondary">{cell.secondary}</span> : null}
+              <span className="k-primary" data-k-value>{cell.primary ?? String(row.id)}</span>
+              {cell.secondary ? <span className="k-secondary" data-k-value>{cell.secondary}</span> : null}
               {cell.badges?.length ? (
                 <span className="k-badges">
                   {cell.badges.map((b) => (
@@ -240,7 +256,7 @@ function Grouped({
 
 export function GalleryView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; group?: unknown; collapsible?: boolean };
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
@@ -252,8 +268,15 @@ export function GalleryView(props: BuiltinViewProps) {
     ? (row: Resolved) => onEdit(view.entity, String(row.id))
     : undefined;
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">{emptyText}</p>;
+  if (!rows.length) {
+    return (
+      <p className="k-empty" data-k-wording>
+        {emptyText}
+      </p>
+    );
+  }
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
   const renderCards = (list: Resolved[]) => (
@@ -268,8 +291,8 @@ export function GalleryView(props: BuiltinViewProps) {
             onClick={openCard ? () => openCard(row) : undefined}
           >
             {cell.mediaUrl ? <img className="k-card-media" src={cell.mediaUrl} alt="" /> : <div className="k-card-media k-placeholder" />}
-            <span className="k-primary">{cell.primary ?? String(row.id)}</span>
-            {cell.secondary ? <span className="k-secondary">{cell.secondary}</span> : null}
+            <span className="k-primary" data-k-value>{cell.primary ?? String(row.id)}</span>
+            {cell.secondary ? <span className="k-secondary" data-k-value>{cell.secondary}</span> : null}
           </button>
         );
       })}
@@ -280,11 +303,12 @@ export function GalleryView(props: BuiltinViewProps) {
 
 export function TableView(props: BuiltinViewProps) {
   const { runtime, pageId, params, onEdit } = props;
-  const { rows, loading } = runtime.usePageQuery(pageId, params);
+  const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
   const columns = view.display?.columns ?? [];
   const groups = useRowGroups(runtime, pageId, rows, view);
 
+  if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
   if (!rows.length) return <p className="k-empty">No matching rows.</p>;
 
@@ -299,8 +323,11 @@ export function TableView(props: BuiltinViewProps) {
             {columns.map((c) => (
               // The field's own label, or its key made readable. Printed raw, `caloriesPerServing`
               // becomes one twenty-character word that cannot wrap, which is most of what made these
-              // tables too wide in the first place.
-              <th key={c}>{fieldLabel(runtime, view.entity, c)}</th>
+              // tables too wide in the first place. `data-k-field` is how the shell's edit mode finds
+              // it to rename in place; `data-k-value` marks a record's own text, which it never offers.
+              <th key={c} data-k-field={`${view.entity}.${c}`}>
+                {fieldLabel(runtime, view.entity, c)}
+              </th>
             ))}
             {onEdit ? <th aria-label="Edit" /> : null}
           </tr>
@@ -309,7 +336,9 @@ export function TableView(props: BuiltinViewProps) {
           {list.map((row) => (
             <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
               {columns.map((c) => (
-                <td key={c}>{formatValue(row[c])}</td>
+                <td key={c} data-k-value>
+                  {formatValue(row[c])}
+                </td>
               ))}
               {onEdit ? (
                 <td>
@@ -374,10 +403,13 @@ export function DetailView(props: BuiltinViewProps) {
         <div className="k-field" key={f}>
           {/* A section that is one field already says its name in the heading; saying it again
               under the heading ("Ingredients / Ingredients") is noise. It stays for assistive tech. */}
-          <dt className={group.fields.length === 1 && group.title === fieldLabel(runtime, view.entity, f) ? "k-visually-hidden" : undefined}>
+          <dt
+            className={group.fields.length === 1 && group.title === fieldLabel(runtime, view.entity, f) ? "k-visually-hidden" : undefined}
+            data-k-field={`${view.entity}.${f}`}
+          >
             {fieldLabel(runtime, view.entity, f)}
           </dt>
-          <dd>
+          <dd data-k-value>
             <FieldValue runtime={runtime} entity={view.entity} fieldKey={f} value={record[f]} />
           </dd>
         </div>
@@ -396,7 +428,7 @@ export function DetailView(props: BuiltinViewProps) {
             typeof a === "string" ? (
               <button key={ai} type="button" className={`k-add${ai === 0 ? " k-primary-action" : ""}`} onClick={() => void runtime.runAction(view.entity, a, id)}>
                 {/* The action KEY is an identifier, not a label — "snapPhoto" is not a button name. */}
-                {humanizeKey(a)}
+                {actionInfo(runtime.definition.entities[view.entity], a)?.label ?? humanizeKey(a)}
               </button>
             ) : (
               <button
@@ -404,6 +436,7 @@ export function DetailView(props: BuiltinViewProps) {
                 type="button"
                 className={`k-add${ai === 0 ? " k-primary-action" : ""}`}
                 onClick={() => navigate(a.navigate.page, mapDetailNav(a.navigate.param, record))}
+                data-k-wording
               >
                 {a.label}
               </button>
@@ -456,7 +489,7 @@ export function DetailView(props: BuiltinViewProps) {
           </section>
         ) : (
           <section key={si} className="k-section">
-            {group.title ? <h3>{group.title}</h3> : null}
+            {group.title ? <h3 data-k-wording>{group.title}</h3> : null}
             {fieldsOf(group)}
           </section>
         ),

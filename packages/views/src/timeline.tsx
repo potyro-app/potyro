@@ -10,7 +10,7 @@
 // crosses the isolate bridge per row).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EnumField, Resolved, DateTimeField } from "karta";
+import type { EnumField, Resolved, DateTimeField } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { useDisplayCells } from "./cells.js";
 import { getView } from "./format.js";
@@ -157,7 +157,7 @@ export function TimelineView(props: BuiltinViewProps) {
       : undefined;
 
   if (loading || dated === null) return <p className="k-loading">Loading…</p>;
-  if (!dated.length) return <p className="k-empty">{emptyText}</p>;
+  if (!dated.length) return <p className="k-empty" data-k-wording>{emptyText}</p>;
 
   return (
     <div className="k-tl">

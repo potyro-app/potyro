@@ -3,19 +3,19 @@
 // SAME Zod schema + referential checks the trusted path uses, against a source's definition — used by
 // the Studio (generate/preview/save) and by in-app Edit-mode (quick modify) so both catch + repair.
 
-import { structureSchema, checkReferences, describeIssue } from "karta";
-import type { AppShape } from "@karta/runtime";
-import { MemoryStore } from "@karta/store";
-import { createWebCapabilities } from "@karta/capabilities";
+import { structureSchema, checkReferences, describeIssue } from "potyro";
+import type { AppShape } from "@potyro/runtime";
+import { MemoryStore } from "@potyro/store";
+import { createWebCapabilities } from "@potyro/capabilities";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 
-// The isolate serializes the app def with every function replaced by the marker "__karta_fn__"
+// The isolate serializes the app def with every function replaced by the marker "__potyro_fn__"
 // (host/isolate). Revive those to no-op functions so structure validation checks the DATA shape
 // without tripping the "expected a function" check on legitimate computed/binding fields.
-const FN_MARKER = "__karta_fn__";
+const FN_MARKER = "__potyro_fn__";
 function reviveFns(v: unknown): unknown {
   if (v === FN_MARKER) return () => undefined;
   if (Array.isArray(v)) return v.map(reviveFns);

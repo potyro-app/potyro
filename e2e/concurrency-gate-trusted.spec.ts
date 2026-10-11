@@ -7,7 +7,7 @@ import { tileAction } from "./launcher-actions.js";
 // right; only this proves they can run where they have to run — and that sharing an unsafe app tells
 // you so before the link exists.
 
-const UNSAFE = `import { defineApp } from "karta";
+const UNSAFE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "gate-demo",
@@ -40,9 +40,9 @@ test("sharing an app that loses concurrent edits says so first", async ({ page }
   test.slow();
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "gate-demo", name: "Gate Demo", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

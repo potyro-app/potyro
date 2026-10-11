@@ -1,4 +1,4 @@
-# 13 · Native Android (Capacitor) — run Karta on a device
+# 13 · Native Android (Capacitor) — run Potyro on a device
 
 The Capacitor target wraps the **shell's web build** into a native Android app. Nothing about the app
 code, the QuickJS isolate, or the capability seam changes — the composition root just swaps
@@ -25,7 +25,7 @@ The generated `android/` project is **git-ignored** — it's reproduced determin
 
 ```bash
 # 1. Build the web app the native shell will wrap
-pnpm --filter @karta/shell build:web
+pnpm --filter @potyro/shell build:web
 
 # 2. Generate the Android project (first time only) — also patches the manifest for exact alarms
 cd packages/native
@@ -41,12 +41,12 @@ launch it will Gradle-sync; then pick your device and Run.
 ## Iterating (after web changes)
 
 ```bash
-pnpm --filter @karta/shell build:web      # rebuild web
-pnpm --filter @karta/native cap:sync      # copy dist → android + re-patch manifest
-# then Run ▶ again in Android Studio (or `pnpm --filter @karta/native cap:open`)
+pnpm --filter @potyro/shell build:web      # rebuild web
+pnpm --filter @potyro/native cap:sync      # copy dist → android + re-patch manifest
+# then Run ▶ again in Android Studio (or `pnpm --filter @potyro/native cap:open`)
 ```
 
-Shortcut for the whole loop: `pnpm --filter @karta/native android` (build web → sync → open).
+Shortcut for the whole loop: `pnpm --filter @potyro/native android` (build web → sync → open).
 
 ## What to test on the device
 
@@ -57,7 +57,7 @@ Shortcut for the whole loop: `pnpm --filter @karta/native android` (build web �
 | **Background or close the app**, wait for the due time | The reminder **fires with the app closed** — the deciding feature |
 | Places → **+ New Place → Use my location** | Native **GPS** fills lat/lng (grant the permission prompt) |
 | Add a photo field / capture | Native **camera** returns the image |
-| Export an app | Writes the `.karta.zip` into **Documents** via the native filesystem |
+| Export an app | Writes the `.potyro.zip` into **Documents** via the native filesystem |
 
 The first schedule/GPS/camera call triggers the Android **permission prompt** — grant it. Exact alarms
 use `USE_EXACT_ALARM` (Android 14+, no prompt) with `SCHEDULE_EXACT_ALARM` as the Android 12/13
@@ -84,8 +84,8 @@ committed file. Both scripts are idempotent.
 On a newer Studio, take the template's own versions instead:
 
 ```
-KARTA_AGP=keep pnpm cap:sync                       # leave whatever Capacitor generated
-KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
+POTYRO_AGP=keep pnpm cap:sync                       # leave whatever Capacitor generated
+POTYRO_AGP=8.13.0 POTYRO_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
 ```
 
 ## What has actually been checked on a device
@@ -109,7 +109,7 @@ KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
   declaring one to take a photo would be asking for every photo on the phone.
 - Still unchecked on a device: store builds.
 
-Useful while checking: `adb shell dumpsys alarm | grep -A3 io.karta.app` for what is scheduled, and
+Useful while checking: `adb shell dumpsys alarm | grep -A3 app.potyro` for what is scheduled, and
 `adb shell dumpsys notification --noredact | grep -B4 -A10 "<title>"` for what actually fired. The
 WebView can be driven from a laptop over CDP — `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`,
 then connect Playwright to `http://localhost:9222` — which is how the checks above were run. The

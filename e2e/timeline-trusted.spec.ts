@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 // is fixed so the seeded history lands in known weeks — Wednesday 9 September.
 
 const NOW = new Date(2026, 8, 9, 12, 0, 0);
-const SHOTS = process.env.KARTA_SHOTS;
+const SHOTS = process.env.POTYRO_SHOTS;
 
 async function openHistory(page: Page, phone = false): Promise<void> {
   await page.clock.setFixedTime(NOW);
@@ -59,7 +59,7 @@ test.describe("desktop", () => {
   test("500 entries: the first cards paint within 200ms, only the first weeks render, and more load on scroll", async ({ page }) => {
     const source = readFileSync(fileURLToPath(new URL("./fixtures/journal-500.app.tsx", import.meta.url)), "utf8");
     await page.addInitScript(([src]) => {
-      localStorage.setItem("karta:user-apps", JSON.stringify([{ id: "journal-500", name: "Journal 500", source: src, trusted: true, updatedAt: new Date().toISOString() }]));
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "journal-500", name: "Journal 500", source: src, trusted: true, updatedAt: new Date().toISOString() }]));
     }, [source]);
     await page.clock.setFixedTime(new Date(2026, 8, 10, 9, 0));
     await page.goto("/?user=journal-500");

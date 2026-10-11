@@ -6,7 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 // Wednesday 9 September, so this week holds one session and last week two.
 
 const NOW = new Date(2026, 8, 9, 12, 0, 0);
-const SHOTS = process.env.KARTA_SHOTS;
+const SHOTS = process.env.POTYRO_SHOTS;
 
 async function openProgress(page: Page, phone = false): Promise<void> {
   await page.clock.setFixedTime(NOW);

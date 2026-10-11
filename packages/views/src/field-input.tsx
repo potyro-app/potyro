@@ -3,8 +3,8 @@
 // so the result can go straight into create()/patch(). Recurses for `list` fields.
 
 import { useEffect, useRef, useState } from "react";
-import type { Field, Geo, MediaRef } from "karta";
-import type { KartaRuntime } from "@karta/runtime";
+import type { Field, Geo, MediaRef } from "potyro";
+import type { PotyroRuntime } from "@potyro/runtime";
 import { MAP_STYLE } from "./map.js";
 import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
@@ -16,7 +16,7 @@ import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
 
 export interface FieldInputProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
@@ -195,7 +195,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
         if (disposed) return;
         onTileError();
         // eslint-disable-next-line no-console
-        console.warn("[karta] map tiles failed to load", e?.error);
+        console.warn("[potyro] map tiles failed to load", e?.error);
       });
       if (hasPoint) {
         markerRef.current = new maplibre.Marker().setLngLat([value.lng, value.lat]).addTo(map) as never;
@@ -214,7 +214,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
         if (disposed) return;
         onTileError();
         // eslint-disable-next-line no-console
-        console.warn("[karta] map picker unavailable", e);
+        console.warn("[potyro] map picker unavailable", e);
       }
     })();
     return () => {
@@ -237,7 +237,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
   return <div ref={ref} className="k-geo-map" aria-label="Pick a point on the map" />;
 }
 
-function GeoInput({ runtime, value, onChange }: { runtime: KartaRuntime; value: Geo | null; onChange: (v: unknown) => void }) {
+function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value: Geo | null; onChange: (v: unknown) => void }) {
   const g: Geo = value ?? { lat: 0, lng: 0 };
   const set = (patch: Partial<Geo>) => onChange({ ...g, ...patch });
   const geo = runtime.ctx.caps.geo;
@@ -321,7 +321,7 @@ function MemberInput({
   value,
   onChange,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: Extract<Field, { type: "member" }>;
   value: unknown;
   onChange: (v: unknown) => void;

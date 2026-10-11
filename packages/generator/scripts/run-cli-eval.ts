@@ -2,8 +2,8 @@
 // judgements: the automated gates (compiles/validates/renders) and a human review sheet, because
 // the harness cannot tell whether the app is the app the person asked for.
 //
-//   pnpm --filter @karta/generator eval:cli -- --corpus wild --concurrency 4
-//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @karta/generator eval:cli -- \
+//   pnpm --filter @potyro/generator eval:cli -- --corpus wild --concurrency 4
+//   OPENROUTER_API_KEY=sk-or-… pnpm --filter @potyro/generator eval:cli -- \
 //     --backend openrouter --model deepseek/deepseek-v4-flash-0731 --corpus wild
 //
 // Flags: --backend claude-cli|openrouter  --model <alias|openrouter model id>

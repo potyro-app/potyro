@@ -5,9 +5,9 @@
 // runs UNTRUSTED in the QuickJS isolate, the same safe path a shared app takes.
 
 import { useEffect, useRef, useState } from "react";
-import { MemoryStore, type Store } from "@karta/store";
-import { createWebCapabilities } from "@karta/capabilities";
-import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@karta/runtime";
+import { MemoryStore, type Store } from "@potyro/store";
+import { createWebCapabilities } from "@potyro/capabilities";
+import { replayCase, type Case, type ReplayReport, type ReplayTarget, type AppShape } from "@potyro/runtime";
 import { caseLabel, listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
@@ -20,12 +20,12 @@ import {
   buildRepairInstruction,
   extractSource,
   looksLikeApp,
-} from "@karta/generator/backends";
+} from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { loadTrustedModule } from "./trusted-loader.js";
-import type { Provenance } from "@karta/host";
+import type { Provenance } from "@potyro/host";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
 import { backendFor, modifyTurn } from "./model-turn.js";
@@ -33,6 +33,7 @@ import { UiHost } from "./ui-host.js";
 import { generateViaCli } from "./generate-client.js";
 import { openStore } from "./open-store.js";
 import { duplicateUserApp, getUserApp, listUserApps, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { turnsFromHistory, type Turn } from "./studio-thread.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { History } from "./history.js";
 import { EngineSettings } from "./engine-settings.js";
@@ -41,13 +42,13 @@ import { useEngineConfig } from "./engine-store.js";
 import { CodeEditor } from "./code-editor.js";
 import { shellDialogs } from "./dialog.js";
 import { App } from "./App.js";
-import { guardedModify } from "@karta/generator/backends";
+import { guardedModify } from "@potyro/generator/backends";
 import { Toaster } from "./toaster.js";
 
 const CLI_TIMEOUT_MS = 300_000; // matches the dev endpoint's own cap
 const POLL_MS = 1_500;
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "my-app",
@@ -78,18 +79,6 @@ interface Preview {
   questions: UiHost;
   /** Which path actually ran — the isolate fallback is only taken if the trusted load throws. */
   provenance: Provenance;
-}
-
-/** One exchange in the Studio: what was asked, and what came back. */
-interface Turn {
-  id: string;
-  prompt: string;
-  /** What the app did about it, once it is known — absent while the model is still working. */
-  outcome?: string;
-  /** A turn that changed nothing: a refusal, a question, or a failure. Shown differently. */
-  refused?: boolean;
-  /** The version this became, for turns read back from history. */
-  seq?: number;
 }
 
 export function Studio({
@@ -240,13 +229,7 @@ export function Studio({
     void import("./app-history.js").then(async ({ listVersions }) => {
       const versions = await listVersions(currentId);
       if (!alive) return;
-      setTurns(
-        versions
-          .slice()
-          .reverse()
-          .filter((v) => v.note)
-          .map((v) => ({ id: `v${v.seq}`, prompt: v.note!, outcome: v.rationale, seq: v.seq })),
-      );
+      setTurns(turnsFromHistory(versions));
     });
     return () => {
       alive = false;
@@ -300,7 +283,7 @@ export function Studio({
       try {
         composed = await compose({ provenance: "trusted", app: await loadTrustedModule(src), ...base });
       } catch {
-        // A malformed app can't produce a KartaApp — fall back to the isolate so the user still
+        // A malformed app can't produce a PotyroApp — fall back to the isolate so the user still
         // gets a preview plus the validation issues, rather than a hard failure.
         provenance = "untrusted";
         const bundle = await createAppBundler();
@@ -329,7 +312,8 @@ export function Studio({
   // Preview-first, nothing to click: the app it was opened for, or else the starter.
   useEffect(() => {
     const app = initialAppId ? getUserApp(initialAppId) : undefined;
-    if (app) openSaved(app);
+    // The request it was opened with (edit mode's "Ask the Studio") stays; only switching apps clears it.
+    if (app) openSaved(app, initialDescription);
     else void buildPreview(STARTER, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -665,9 +649,10 @@ export function Studio({
     void buildPreview(source, record.id);
   };
 
-  const openSaved = (app: UserApp): void => {
+  /** `description` is what to ask for next — empty, unless the Studio was opened with a request. */
+  const openSaved = (app: UserApp, description = ""): void => {
     setSource(app.source);
-    setDescription("");
+    setDescription(description);
     setCurrentId(app.id);
     void buildPreview(app.source, app.id);
   };
@@ -772,21 +757,28 @@ export function Studio({
         <aside className="k-studio-controls">
           {turns.length ? (
             <ol className="k-thread" aria-label="What has been asked of this app">
-              {turns.map((turn) => (
-                <li key={turn.id} className="k-thread-turn">
-                  <p className="k-thread-ask">{turn.prompt}</p>
-                  {turn.outcome ? (
-                    <p className="k-thread-answer" data-refused={turn.refused || undefined}>
-                      {turn.outcome}
-                      {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
-                    </p>
-                  ) : (
-                    <p className="k-thread-answer k-muted" aria-live="polite">
-                      Working…
-                    </p>
-                  )}
-                </li>
-              ))}
+              {turns.map((turn) =>
+                turn.event ? (
+                  <li key={turn.id} className="k-thread-event">
+                    {turn.prompt}
+                    {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
+                  </li>
+                ) : (
+                  <li key={turn.id} className="k-thread-turn">
+                    <p className="k-thread-ask">{turn.prompt}</p>
+                    {turn.outcome ? (
+                      <p className="k-thread-answer" data-refused={turn.refused || undefined}>
+                        {turn.outcome}
+                        {turn.seq ? <span className="k-thread-seq">v{turn.seq}</span> : null}
+                      </p>
+                    ) : (
+                      <p className="k-thread-answer k-muted" aria-live="polite">
+                        Working…
+                      </p>
+                    )}
+                  </li>
+                ),
+              )}
             </ol>
           ) : null}
           <label className="k-field-label" htmlFor="k-studio-desc">Describe an app — or a change to make</label>

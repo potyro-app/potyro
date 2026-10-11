@@ -19,10 +19,10 @@ import type { JazzKeyStore } from "../src/index.js";
 
 /** The rule as implemented in `openJazzStore`. Kept in step by the tests below. */
 function chooseDb(appId: string, keys: JazzKeyStore): string {
-  const recorded = keys.get(`karta:jazz:db:${appId}`);
-  const predatesMove = !recorded && !!keys.get(`karta:jazz:group:${appId}`);
+  const recorded = keys.get(`potyro:jazz:db:${appId}`);
+  const predatesMove = !recorded && !!keys.get(`potyro:jazz:group:${appId}`);
   const name = recorded ?? (predatesMove ? `${appId}-jazz` : "karta-jazz");
-  keys.set(`karta:jazz:db:${appId}`, name);
+  keys.set(`potyro:jazz:db:${appId}`, name);
   return name;
 }
 
@@ -34,7 +34,7 @@ function store(entries: Record<string, string> = {}): { keys: JazzKeyStore; map:
 describe("choosing an app's cojson database", () => {
   it("keeps the legacy file for a space that already existed", () => {
     // The exact shape of the reported failure: a group id saved, no database marker.
-    const { keys } = store({ "karta:jazz:group:user:city-places": "co_zbGaeSGYa5qT9nkU6JnJP8bz2LZ" });
+    const { keys } = store({ "potyro:jazz:group:user:city-places": "co_zbGaeSGYa5qT9nkU6JnJP8bz2LZ" });
     expect(chooseDb("user:city-places", keys)).toBe("user:city-places-jazz");
   });
 
@@ -45,18 +45,18 @@ describe("choosing an app's cojson database", () => {
 
   it("records the choice, so it cannot drift on a later open", () => {
     // Without this, anything that later writes a group id would flip an app's database underneath it.
-    const { keys, map } = store({ "karta:jazz:group:user:city-places": "co_zGroup" });
+    const { keys, map } = store({ "potyro:jazz:group:user:city-places": "co_zGroup" });
     const first = chooseDb("user:city-places", keys);
-    expect(map.get("karta:jazz:db:user:city-places")).toBe(first);
+    expect(map.get("potyro:jazz:db:user:city-places")).toBe(first);
 
-    map.set("karta:jazz:group:user:city-places", "co_zSomethingElse");
+    map.set("potyro:jazz:group:user:city-places", "co_zSomethingElse");
     expect(chooseDb("user:city-places", keys)).toBe(first);
   });
 
   it("does not send a new app to a legacy file just because another app has one", () => {
     const { keys } = store({
-      "karta:jazz:group:user:city-places": "co_zGroup",
-      "karta:jazz:db:user:city-places": "user:city-places-jazz",
+      "potyro:jazz:group:user:city-places": "co_zGroup",
+      "potyro:jazz:db:user:city-places": "user:city-places-jazz",
     });
     expect(chooseDb("user:brand-new", keys)).toBe("karta-jazz");
   });
@@ -65,8 +65,8 @@ describe("choosing an app's cojson database", () => {
     // Each was created in its own database before the move; neither can be moved without copying
     // CoValues, which is not something a name change can do.
     const { keys } = store({
-      "karta:jazz:group:user:a": "co_zA",
-      "karta:jazz:group:user:b": "co_zB",
+      "potyro:jazz:group:user:a": "co_zA",
+      "potyro:jazz:group:user:b": "co_zB",
     });
     expect(chooseDb("user:a", keys)).toBe("user:a-jazz");
     expect(chooseDb("user:b", keys)).toBe("user:b-jazz");

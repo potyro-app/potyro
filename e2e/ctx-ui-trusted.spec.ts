@@ -6,7 +6,7 @@ import { installQuestions } from "./ui-questions.js";
 // short choice, a progress bar, and a confirm whose button says what it does. Workout uses the form
 // to log a set and the sheet to finish a workout; a small fixture covers the menu and the progress.
 
-const SHOTS = process.env.KARTA_SHOTS;
+const SHOTS = process.env.POTYRO_SHOTS;
 const A11Y = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const violations = async (page: Page, selector: string) =>
   (await new AxeBuilder({ page }).include(selector).withTags(A11Y).analyze()).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`);

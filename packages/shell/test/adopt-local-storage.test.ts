@@ -8,7 +8,7 @@
 // key that nothing reads any more.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MemoryStore } from "@karta/store";
+import { MemoryStore } from "@potyro/store";
 import { adoptLocalStorageData } from "../src/open-store.js";
 
 const NS = "user:notes";
@@ -29,7 +29,7 @@ async function target(): Promise<MemoryStore> {
 describe("adopting what an app left in localStorage", () => {
   it("brings the records across, ids and dates intact", async () => {
     localStorage.setItem(
-      `karta:${NS}`,
+      `potyro:${NS}`,
       stored({ note: { n1: { id: "n1", title: "Buy stamps", createdAt: now, updatedAt: now } } }),
     );
     const store = await target();
@@ -43,7 +43,7 @@ describe("adopting what an app left in localStorage", () => {
   });
 
   it("does it once, however many times the app is opened", async () => {
-    localStorage.setItem(`karta:${NS}`, stored({ note: { n1: { id: "n1", title: "Buy stamps", createdAt: now, updatedAt: now } } }));
+    localStorage.setItem(`potyro:${NS}`, stored({ note: { n1: { id: "n1", title: "Buy stamps", createdAt: now, updatedAt: now } } }));
     const store = await target();
 
     await adoptLocalStorageData(store, NS);
@@ -51,16 +51,16 @@ describe("adopting what an app left in localStorage", () => {
     await adoptLocalStorageData(store, NS);
 
     expect(await store.all("note")).toHaveLength(1);
-    expect(localStorage.getItem(`karta:moved:${NS}`)).toBeTruthy();
+    expect(localStorage.getItem(`potyro:moved:${NS}`)).toBeTruthy();
   });
 
   it("leaves the old copy where it is", async () => {
     // Until someone is sure the move worked, that key is the only copy of their data.
     const raw = stored({ note: { n1: { id: "n1", title: "Buy stamps", createdAt: now, updatedAt: now } } });
-    localStorage.setItem(`karta:${NS}`, raw);
+    localStorage.setItem(`potyro:${NS}`, raw);
     await adoptLocalStorageData(await target(), NS);
 
-    expect(localStorage.getItem(`karta:${NS}`)).toBe(raw);
+    expect(localStorage.getItem(`potyro:${NS}`)).toBe(raw);
   });
 
   it("does nothing for an app that never wrote there", async () => {
@@ -68,11 +68,11 @@ describe("adopting what an app left in localStorage", () => {
     await adoptLocalStorageData(store, NS);
     expect(await store.all("note")).toHaveLength(0);
     // And nothing is marked: an app with nothing to move has not been moved.
-    expect(localStorage.getItem(`karta:moved:${NS}`)).toBeNull();
+    expect(localStorage.getItem(`potyro:moved:${NS}`)).toBeNull();
   });
 
   it("does not choke on a key holding something it did not write", async () => {
-    localStorage.setItem(`karta:${NS}`, "not json at all");
+    localStorage.setItem(`potyro:${NS}`, "not json at all");
     const store = await target();
     await expect(adoptLocalStorageData(store, NS)).resolves.toBeUndefined();
     expect(await store.all("note")).toHaveLength(0);

@@ -11,14 +11,14 @@
 // offers to try again, rather than leaving an empty field and no reason.
 
 import { useEffect, useRef, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { MediaField, MediaRef } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { MediaField, MediaRef } from "potyro";
 import { ActionMenu, type MenuEntry } from "./menu.js";
 import { usePhone } from "./media.js";
 import { shrinkImage } from "./image-scale.js";
 
 export interface MediaInputProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: MediaField;
   value: MediaRef | MediaRef[] | null;
   onChange: (v: unknown) => void;
@@ -175,7 +175,7 @@ export function MediaTile({
   onRemove,
   removeLabel,
 }: {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   mediaRef: MediaRef;
   onRemove?: () => void;
   removeLabel?: string;
@@ -240,7 +240,7 @@ const RETRY_MS = [400, 900, 1800, 3000, 5000];
 
 export type MediaState = "ready" | "waiting" | "absent";
 
-export function useMedia(runtime: KartaRuntime, ref: MediaRef | null | undefined): { url: string | null; state: MediaState } {
+export function useMedia(runtime: PotyroRuntime, ref: MediaRef | null | undefined): { url: string | null; state: MediaState } {
   const [url, setUrl] = useState<string | null>(null);
   const [state, setState] = useState<MediaState>("waiting");
   const [attempt, setAttempt] = useState(0);
@@ -297,7 +297,7 @@ export function useMedia(runtime: KartaRuntime, ref: MediaRef | null | undefined
 }
 
 /** Retry now — what the "tap to get it" placeholder does once the automatic tries have stopped. */
-export function useMediaRetry(runtime: KartaRuntime, ref: MediaRef | null | undefined): () => void {
+export function useMediaRetry(runtime: PotyroRuntime, ref: MediaRef | null | undefined): () => void {
   const [, force] = useState(0);
   return () => {
     void runtime.ctx.media.url(ref as MediaRef).then((u) => {
@@ -308,7 +308,7 @@ export function useMediaRetry(runtime: KartaRuntime, ref: MediaRef | null | unde
 }
 
 /** The URL only, for callers that do not care whether it is still arriving. */
-export function useMediaUrl(runtime: KartaRuntime, ref: MediaRef | null | undefined): string | null {
+export function useMediaUrl(runtime: PotyroRuntime, ref: MediaRef | null | undefined): string | null {
   return useMedia(runtime, ref).url;
 }
 

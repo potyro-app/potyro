@@ -1,7 +1,7 @@
 // What the replay found, in the user's terms. Their expectation leads, because that is the question
 // being answered — the steps are the evidence, not the headline.
 
-import type { ReplayReport } from "@karta/runtime";
+import type { ReplayReport } from "@potyro/runtime";
 
 export function CaseReport({
   report,

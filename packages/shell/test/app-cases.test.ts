@@ -6,8 +6,8 @@
 // MemoryStore implements the same interface).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryStore } from "@karta/store";
-import { newCase, addStep, type Case } from "@karta/runtime";
+import { MemoryStore } from "@potyro/store";
+import { newCase, addStep, type Case } from "@potyro/runtime";
 
 // A switch the tests can flip, so the "store is unavailable" path is genuinely exercised rather
 // than asserted against a store that happens to be empty (mirrors app-diagnoses.test.ts).

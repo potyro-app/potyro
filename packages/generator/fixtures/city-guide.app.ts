@@ -1,4 +1,4 @@
-import { defineApp } from "karta";
+import { defineApp } from "potyro";
 
 export default defineApp({
   id: "city-guide",

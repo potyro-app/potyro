@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ([source]) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "dates", name: "Dates", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

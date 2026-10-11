@@ -1,18 +1,18 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { BoardView } from "../src/board.js";
 
 // Records in columns by an enum field (#107): columns in the enum's order with counts, a card in its
 // column, "Move to…" patching the field, an empty column offering Add pre-filled, and read-only when
 // the board says so.
 
-const app = (board: Record<string, unknown> = {}): KartaApp =>
+const app = (board: Record<string, unknown> = {}): PotyroApp =>
   defineApp({
     id: "board-fixture",
     name: "Board",
@@ -31,7 +31,7 @@ const app = (board: Record<string, unknown> = {}): KartaApp =>
     pages: [{ id: "board", title: "Board", view: { type: "board", entity: "task", column: "status", display: { primary: "title" }, ...board } }],
   } as never);
 
-async function makeRuntime(def: KartaApp): Promise<KartaRuntime> {
+async function makeRuntime(def: PotyroApp): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open(def.id);
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

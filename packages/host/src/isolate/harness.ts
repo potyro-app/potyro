@@ -1,9 +1,9 @@
 // The in-VM harness (plain ES2020 for QuickJS). Concatenated after the app bundle, which must
-// set `globalThis.__kartaApp` to the app definition. The host injects ONE bridge:
+// set `globalThis.__potyroApp` to the app definition. The host injects ONE bridge:
 //   - `__hostSync(opJson) -> void` : synchronous. Fire-and-forget ops (toast/log/nav) are handled
 //                                    on the spot; a host CALL (a query, a patch, a question for
 //                                    the person) is registered under an id and answered later
-//                                    through `__karta.settle`, which resolves the waiting promise.
+//                                    through `__potyro.settle`, which resolves the waiting promise.
 //
 // Why not an asyncified function that suspends the VM until the host is done (what this used to
 // be): QuickJS's asyncify build allows one suspended call per WebAssembly module, and a suspended
@@ -158,7 +158,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     return typeof b2 === "function" ? b2(record, ctx) : (typeof b2 === "string" ? record[b2] : null);
   }
 
-  globalThis.__karta = {
+  globalThis.__potyro = {
     settle: function(id, ok, json){
       var c = calls[id];
       delete calls[id];
@@ -167,7 +167,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     },
     call: async function(payloadJson){
       var p = __deserialize(payloadJson);
-      var app = globalThis.__kartaApp;
+      var app = globalThis.__potyroApp;
       if (!app) return __serialize({ ok:false, error:"no app loaded" });
       var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope);
       var record = (p.record !== undefined && p.record !== null) ? p.record : null;
@@ -175,7 +175,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         var result = null;
         switch (p.kind){
           case "computed": result = await app.entities[p.entity].computed[p.key](record, ctx); break;
-          case "action": await app.entities[p.entity].actions[p.key](record, ctx, p.input); result = null; break;
+          case "action": { var act = app.entities[p.entity].actions[p.key]; await (typeof act === "function" ? act : act.run)(record, ctx, p.input); result = null; break; }
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
           case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b, ctx)) : 0; break; }
           case "viewOption": { var vo = findView(app, p.pageId); var opt = vo ? vo[p.key] : undefined; result = (opt === undefined) ? null : (typeof opt === "function" ? await opt(ctx) : opt); break; }

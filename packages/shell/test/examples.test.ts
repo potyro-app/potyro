@@ -64,7 +64,7 @@ describe("seedExamples", () => {
 // Groceries groups its aisles, how Split divides a bill — reached only people who had never opened
 // it. A copy still exactly as we seeded it now follows the build; a copy you have touched does not.
 describe("keeping the examples up to date", () => {
-  const SEEDED_KEY = "karta:examples:seeded";
+  const SEEDED_KEY = "potyro:examples:seeded";
   const older = (source: string): string => source.replace(/^(\s*version:\s*)"[^"]+"/m, '$1"0.0.1"');
 
   /** Put this device back to where it was when it was seeded with `source`. */
@@ -107,7 +107,7 @@ describe("keeping the examples up to date", () => {
   });
 
   it("updates an untouched copy on a device seeded before fingerprints, and leaves an edited one", async () => {
-    // Every device that had ever used Karta was in this state, so refusing to touch any of them
+    // Every device that had ever used Potyro was in this state, so refusing to touch any of them
     // meant the update mechanism reached nobody. An app with no history has never been saved here.
     await seedExamples({ trusted: true, now: NOW });
     const shipped = getUserApp("split")!.source;

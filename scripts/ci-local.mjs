@@ -6,6 +6,8 @@
 //   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N
 //   node scripts/ci-local.mjs status           what has passed for HEAD, and what is left
 //   node scripts/ci-local.mjs status --post    ...and, if everything passed, mark HEAD green on GitHub
+//   node scripts/ci-local.mjs deploy           put HEAD on apps.vaz.io — only if it IS origin/main and
+//                                              every step passed for it (docs/16 §8)
 //
 // Why steps and not one command: the full run takes longer than one sitting of most tools, and a
 // machine short on memory kills long processes. Each step records its result under
@@ -20,7 +22,7 @@
 //   - Flaky tests get one retry, as they do on GitHub.
 
 import { spawnSync, execSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { createConnection } from "node:net";
 
@@ -144,9 +146,67 @@ function status(post) {
   return green;
 }
 
+/**
+ * Build the shell and put it live. Refuses anything but a green origin/main, so what is live is
+ * always something that passed the gate — never a branch, never an edit on top of a commit.
+ *
+ * Where it goes is `POTYRO_DEPLOY_TARGET`, an rsync destination. The default is the path on the
+ * server; vazio's watcher uses an ssh alias whose key is locked to the web root by `rrsync`, so its
+ * target is relative to that root (docs/16 §8). `version.json` in the web root names the live commit.
+ */
+function deploy() {
+  const target = process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/";
+  for (const s of ["ok", "fail"]) rmSync(join(dir, `deploy.${s}`), { force: true });
+  if (dirty()) {
+    console.error("✘ not deploying: tracked files are modified.");
+    process.exit(2);
+  }
+  sh("git fetch -q origin main");
+  if (sha !== sh("git rev-parse origin/main")) {
+    console.error(`✘ not deploying: ${short} is not origin/main. Only main goes live.`);
+    process.exit(2);
+  }
+  if (!status(false)) {
+    console.error(`✘ not deploying: ${short} has not passed every step.`);
+    process.exit(2);
+  }
+  const live = liveCommit(target);
+  if (live === sha) {
+    process.stdout.write(`✓ ${short} is already live\n`);
+    return;
+  }
+  const built = run("deploy-build", "pnpm", ["--filter", "@potyro/shell", "exec", "vite", "build"]);
+  if (!built.ok) return record("deploy", built);
+  const dist = join(ROOT, "packages/shell/dist");
+  writeFileSync(join(dist, "version.json"), `${JSON.stringify({ commit: sha, deployedAt: new Date().toISOString() })}\n`);
+  // `--delete`, or old hashed assets pile up on the server forever.
+  record("deploy", run("deploy-upload", "rsync", ["-az", "--delete", `${dist}/`, target]));
+  if (liveCommit(target) !== sha) {
+    console.error(`✘ uploaded, but ${target}version.json does not name ${short}`);
+    process.exit(1);
+  }
+  process.stdout.write(`✓ ${short} is live (was ${live ? live.slice(0, 7) : "unknown"})\n`);
+}
+
+/** The commit the target is serving, from its `version.json`, or null when it doesn't say. */
+function liveCommit(target) {
+  const tmp = join(dir, "live-version.json");
+  rmSync(tmp, { force: true });
+  const res = spawnSync("rsync", ["-q", `${target}version.json`, tmp], { encoding: "utf8" });
+  if (res.status !== 0 || !existsSync(tmp)) return null;
+  try {
+    return JSON.parse(readFileSync(tmp, "utf8")).commit ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (!cmd || cmd === "status") {
   process.exit(status(rest.includes("--post")) ? 0 : 1);
+} else if (cmd === "deploy") {
+  deploy();
+  process.exit(existsSync(join(dir, "deploy.fail")) ? 1 : 0);
 } else if (cmd === "all") {
   for (const s of STEPS) {
     const f = s.replace(":", "-");

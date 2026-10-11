@@ -10,7 +10,7 @@
 // a screen reader. The series colour is a token validated against both themes' surfaces.
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { ChartPoint, Resolved } from "karta";
+import type { ChartPoint, Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { useDynamicText } from "./dynamic.js";
 import { usePhone } from "./media.js";
@@ -86,7 +86,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
 
   const head = (
     <figcaption className="k-chart-head">
-      {title ? <span className="k-chart-title">{title}</span> : null}
+      {title ? <span className="k-chart-title" data-k-wording>{title}</span> : null}
       {subtitle ? <span className="k-chart-sub">{subtitle}</span> : null}
     </figcaption>
   );

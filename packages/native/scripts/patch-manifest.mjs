@@ -40,6 +40,23 @@ export function withPermissions(xml) {
   return { xml: xml.replace(/<\/manifest>\s*$/, `${block}</manifest>\n`), added: missing.map(nameOf) };
 }
 
+// Potyro in Android's share sheet (#213): text shared from another app — what another AI made —
+// arrives as ACTION_SEND text/*, which @capgo/capacitor-share-target hands to the shell. Text only for
+// now; images come later. Inside the main activity, where the plugin reads the intent.
+export const SHARE_FILTER = `<intent-filter android:label="Add to Potyro">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>`;
+
+/** The manifest with the share intent filter in the main activity, once. Pure. */
+export function withShareTarget(xml) {
+  if (xml.includes("android.intent.action.SEND")) return { xml, added: false };
+  const activity = /(<activity\b[^>]*android:name="[^"]*MainActivity"[\s\S]*?)(\s*<\/activity>)/;
+  if (!activity.test(xml)) return { xml, added: false };
+  return { xml: xml.replace(activity, (_, body, close) => `${body}\n            ${SHARE_FILTER}${close}`), added: true };
+}
+
 // Running it (rather than importing it) patches the generated project.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop())) {
   const manifest = fileURLToPath(new URL("../android/app/src/main/AndroidManifest.xml", import.meta.url));
@@ -48,10 +65,12 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
     process.exit(1);
   }
   const { xml, added } = withPermissions(readFileSync(manifest, "utf8"));
-  if (added.length === 0) {
-    console.log("[patch-manifest] permissions already present — nothing to do.");
+  const share = withShareTarget(xml);
+  if (added.length === 0 && !share.added) {
+    console.log("[patch-manifest] permissions and share target already present — nothing to do.");
   } else {
-    writeFileSync(manifest, xml);
-    console.log(`[patch-manifest] added ${added.length} permission(s): ${added.join(", ")}.`);
+    writeFileSync(manifest, share.xml);
+    if (added.length) console.log(`[patch-manifest] added ${added.length} permission(s): ${added.join(", ")}.`);
+    if (share.added) console.log("[patch-manifest] added the share target (text/*) to MainActivity.");
   }
 }

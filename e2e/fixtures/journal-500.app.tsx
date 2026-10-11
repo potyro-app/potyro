@@ -1,7 +1,7 @@
 // A journal with 500 entries, for the timeline's first-paint budget (#110). The Seed page writes the
 // entries once, in one transaction; the Journal page is the timeline under test.
 
-import { defineApp, type ViewProps } from "karta";
+import { defineApp, type ViewProps } from "potyro";
 import { useEffect, useState } from "react";
 
 const MOODS = ["good", "okay", "rough"] as const;

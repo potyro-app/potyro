@@ -8,8 +8,8 @@
 // Why refuse at all, when the app's own code wrote it? Because in a shared app the other copies
 // would have to survive it too, and the next reader cannot tell a bug from a tampered change.
 
-import { FieldValueError, fieldValueProblem, humanizeKey, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "karta";
-import type { Store } from "@karta/store";
+import { FieldValueError, fieldValueProblem, humanizeKey, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "potyro";
+import type { Store } from "@potyro/store";
 
 /**
  * The account ids a `member` value may name (KA-19). Absent = nobody to check against (a solo app,

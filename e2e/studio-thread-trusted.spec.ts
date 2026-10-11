@@ -11,7 +11,7 @@ import { tileAction } from "./launcher-actions.js";
 // Every version already stored the prompt that produced it, so the thread is that material read as
 // a conversation rather than a list of versions.
 
-const APP = (title: string) => `import { defineApp } from "karta";
+const APP = (title: string) => `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "notes",
@@ -53,10 +53,10 @@ async function seedApp(page: Page): Promise<void> {
   await page.addInitScript(
     (source) => {
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
-      localStorage.setItem("karta:generator:engine", JSON.stringify({ engine: "cli" }));
+      localStorage.setItem("potyro:generator:engine", JSON.stringify({ engine: "cli" }));
     },
     APP("Notes"),
   );
@@ -111,6 +111,50 @@ test("reopening an app shows what was asked of it before", async ({ page }) => {
   await page.getByRole("button", { name: "Studio", exact: true }).click();
 
   await expect(studio(page).locator(".k-thread")).toContainText("rename the page to Jotter", { timeout: 30_000 });
+  // Finished, not pending: it was saved. Read back, it used to show "Working…" for ever.
+  await expect(studio(page).locator(".k-thread")).not.toContainText("Working…");
+});
+
+test("a change that wasn't a request reads as something that happened, never as waiting", async ({ page }) => {
+  // Reported on apps.vaz.io: a shared app's Studio showed "shared with you" and under it "Working…",
+  // for ever. Any version that was not a model request — arriving from someone, a rollback, a hand
+  // edit — was shown as a question with no answer. A hand edit is the one a test can make here.
+  await seedApp(page);
+  await page.goto("/?user=notes");
+  await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+
+  // Rename the tab in edit mode: saved as an `adjusted` version, with a note.
+  await page.getByRole("button", { name: "Edit mode" }).click();
+  const tab = page.locator(".k-nav .k-tab-label", { hasText: "Notes" }).first();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const h = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get("k-editable");
+        return h ? [...h].some((r) => r.toString().trim() === "Notes") : false;
+      }),
+    )
+    .toBe(true);
+  const box = (await tab.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const pop = page.getByRole("dialog", { name: "Change page name" });
+  await pop.getByRole("textbox").fill("Jottings");
+  await pop.getByRole("button", { name: "Save" }).click();
+  await expect(pop).toHaveCount(0);
+  // The rename is a version now. (`seedApp` re-seeds the source on every load, so the reload that
+  // "Done" does would put the old name back on screen — History is what this is about.)
+  const MARK = "__potyro_pre_reload";
+  await page.evaluate((key: string) => ((globalThis as Record<string, unknown>)[key] = true), MARK);
+  await page.locator(".k-inline-bar").getByRole("button", { name: "Done" }).click();
+  await expect
+    .poll(() => page.evaluate((key: string) => (globalThis as Record<string, unknown>)[key] === undefined, MARK).catch(() => false), { timeout: 30_000 })
+    .toBe(true);
+  await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await expect(studio(page).locator(".k-thread-event", { hasText: "Jottings" })).toBeVisible({ timeout: 30_000 });
+  await expect(studio(page).locator(".k-thread")).not.toContainText("Working…");
+  // An event, not an exchange: no question bubble made out of it.
+  await expect(studio(page).locator(".k-thread-ask", { hasText: "Jottings" })).toHaveCount(0);
 });
 
 test("Save is refused while the model is still working", async ({ page }) => {

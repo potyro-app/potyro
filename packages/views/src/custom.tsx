@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from "react";
 import type { FC } from "react";
-import type { CustomViewMount, ViewProps } from "karta";
+import type { CustomViewMount, ViewProps } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 
@@ -58,14 +58,14 @@ function MountedView({ mount, props }: { mount: CustomViewMount; props: ViewProp
       teardown = mount(el, propsRef.current);
     } catch (e) {
       // A custom view is app code. A throw here must not take the shell down with it.
-      console.warn("[karta] custom view failed to mount:", e);
+      console.warn("[potyro] custom view failed to mount:", e);
       el.textContent = "This screen could not be displayed.";
     }
     return () => {
       try {
         teardown?.();
       } catch (e) {
-        console.warn("[karta] custom view failed to clean up:", e);
+        console.warn("[potyro] custom view failed to clean up:", e);
       }
     };
   }, [mount]);

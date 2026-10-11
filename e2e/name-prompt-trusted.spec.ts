@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { tileAction } from "./launcher-actions.js";
 
-// When Karta asks what to call you — and, more importantly, when it must NOT.
+// When Potyro asks what to call you — and, more importantly, when it must NOT.
 //
 // Sharing and joining ask once, because until then the name is private and asking would be signup
 // ceremony for an app only you can see. The trap is what "once" means: the first version recorded
@@ -12,7 +12,7 @@ import { tileAction } from "./launcher-actions.js";
 //
 // So the claim under test is about the NAME, not about the flag.
 
-const STARTER = `import { defineApp } from "karta";
+const STARTER = `import { defineApp } from "potyro";
 export default defineApp({
   id: "namecheck", name: "Name Check", version: "1.0.0", schemaVersion: 1,
   entities: { item: { label: "Item", icon: "x", displayField: "title", fields: { title: { type: "text", required: true } } } },
@@ -36,10 +36,10 @@ async function showLauncher(page: Page): Promise<void> {
 async function open(page: Page): Promise<void> {
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("karta:sync:relay", "ws://localhost:4201");
-      if (localStorage.getItem("karta:user-apps")) return;
+      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id: "namecheck", name: "Name Check", source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

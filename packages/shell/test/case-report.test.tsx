@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReplayReport } from "@karta/runtime";
+import type { ReplayReport } from "@potyro/runtime";
 import { CaseReport } from "../src/case-report.js";
 
 afterEach(cleanup);

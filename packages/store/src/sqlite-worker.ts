@@ -73,7 +73,7 @@ async function open(name: string): Promise<void> {
     if (!sqlite3.installOpfsSAHPoolVfs) throw new Error("this worker has no OPFS SAH-pool VFS");
     // Room for the device database, every app's, and the shell's own — with space to grow. The pool
     // preallocates this many handles; running out is the failure this file exists to avoid.
-    pool = await sqlite3.installOpfsSAHPoolVfs({ name: "karta", directory: "/karta", initialCapacity: 32 });
+    pool = await sqlite3.installOpfsSAHPoolVfs({ name: "potyro", directory: "/potyro", initialCapacity: 32 });
   })().catch((err: unknown) => {
     installing = null; // a failed install must be retryable, not remembered
     throw err;

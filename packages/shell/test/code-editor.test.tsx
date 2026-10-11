@@ -24,7 +24,7 @@ function renderEditor(value: string, onChange = vi.fn()) {
 
 describe("CodeEditor", () => {
   it("paints exactly the textarea's text, once highlighted", async () => {
-    const src = 'import { defineApp } from "karta";\n\nconst n = 1; // one\n';
+    const src = 'import { defineApp } from "potyro";\n\nconst n = 1; // one\n';
     const { textarea } = renderEditor(src);
 
     await waitFor(() => expect(document.querySelector(".k-code-paint .token")).not.toBeNull());

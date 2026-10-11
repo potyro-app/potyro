@@ -10,7 +10,7 @@
 // can be pointed at it. That is exactly what turning sync on already does, so this is not a second
 // mechanism — it is the same one, applied to everything, and to everything made from here on.
 //
-// It is OFF until asked for, because nothing in Karta sends data anywhere until someone says so
+// It is OFF until asked for, because nothing in Potyro sends data anywhere until someone says so
 // (docs/01). Turning it on is a decision with a size: the apps move one at a time and photos are
 // slow, so it reports progress rather than pretending to be instant.
 

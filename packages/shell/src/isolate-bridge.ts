@@ -1,10 +1,10 @@
-// Bridge to the untrusted (QuickJS-WASM) runner. The isolate runner lives in @karta/host; the
+// Bridge to the untrusted (QuickJS-WASM) runner. The isolate runner lives in @potyro/host; the
 // shell supplies the QuickJS async-context factory + the app's Store. Loaded lazily so the
 // trusted path (`pnpm dev`) never pulls in the WASM engine.
 
-import type { CreateHostOptions } from "@karta/host";
-import type { QuickJSAsyncContextLike } from "@karta/host/isolate";
-import type { Store } from "@karta/store";
+import type { CreateHostOptions } from "@potyro/host";
+import type { QuickJSAsyncContextLike } from "@potyro/host/isolate";
+import type { Store } from "@potyro/store";
 
 export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
@@ -24,7 +24,7 @@ export async function createSandboxLoader(
   opts?: { timeoutMs?: number; memoryLimitBytes?: number; loadTimeoutMs?: number },
 ): Promise<LoadIsolated> {
   const [{ createIsolateLoader }, quickjs] = await Promise.all([
-    import("@karta/host/isolate"),
+    import("@potyro/host/isolate"),
     import("quickjs-emscripten"),
   ]);
   return createIsolateLoader({

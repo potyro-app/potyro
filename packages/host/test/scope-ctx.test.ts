@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from "vitest";
 import { newAsyncContext } from "quickjs-emscripten";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { defineApp, type Ctx } from "karta";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { defineApp, type Ctx } from "potyro";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
 import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
 
@@ -56,9 +56,9 @@ const trusted = () =>
     ],
   });
 
-// The same app as the isolate sees it: a bundle that sets __kartaApp.
+// The same app as the isolate sees it: a bundle that sets __potyroApp.
 const UNTRUSTED_BUNDLE = `
-globalThis.__kartaApp = {
+globalThis.__potyroApp = {
   id: "trips", name: "Trips", version: "1.0.0", schemaVersion: 1,
   scope: { entity: "trip" },
   entities: {

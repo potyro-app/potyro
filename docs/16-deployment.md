@@ -1,4 +1,4 @@
-# Deploying Karta on your own domain (KA-34)
+# Deploying Potyro on your own domain (KA-34)
 
 **`https://apps.vaz.io` is live and this is how it was done** — a real recipe, not a sketch. It was
 written by deploying it, so the awkward parts below are the ones that actually bit.
@@ -25,9 +25,9 @@ working with the relay down; it just stops reaching other people until it comes 
 |---|---|
 | Host | `vaz.io` (Debian 13), Apache 2 already serving ~28 other vhosts |
 | Site | `/var/www/karta` ← `packages/shell/dist` |
-| Relay | Docker container `karta-relay`, `127.0.0.1:4201`, db at `/var/lib/karta/sync.db` |
+| Relay | Docker container `potyro-relay`, `127.0.0.1:4201`, db at `/var/lib/potyro/sync.db` |
 | Vhost | `/etc/apache2/sites-available/apps.vaz.io.conf` |
-| Gate | Basic auth, `/etc/apache2/karta.htpasswd`, user `karta` |
+| Gate | Basic auth, `/etc/apache2/karta.htpasswd`, user `potyro` |
 | TLS | the existing **wildcard** `*.vaz.io` certificate — nothing new to issue or renew |
 
 ---
@@ -36,15 +36,15 @@ working with the relay down; it just stops reaching other people until it comes 
 
 ```bash
 pnpm i
-pnpm --filter @karta/shell exec vite build     # → packages/shell/dist  (~33 MB)
+pnpm --filter @potyro/shell exec vite build     # → packages/shell/dist  (~33 MB)
 ```
 
 Two build-time knobs, both optional:
 
 | Variable | Default | When to set it |
 |---|---|---|
-| `VITE_KARTA_RELAY` | same origin, `/sync` | Only if the relay is on a different host. |
-| `VITE_KARTA_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
+| `VITE_POTYRO_RELAY` | same origin, `/sync` | Only if the relay is on a different host. |
+| `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
 
 `apps.vaz.io` sets **neither**. The build derives `wss://apps.vaz.io/sync` from the origin it is
 served from, which is the whole point of the default: proxy one path and sync works with no
@@ -66,16 +66,16 @@ that makes `--db` fail on some machines.
 
 ```bash
 # once: pin the version, install it with the right Node
-sudo mkdir -p /opt/karta-relay /var/lib/karta && sudo chown -R "$USER": /opt/karta-relay /var/lib/karta
-cat > /opt/karta-relay/package.json <<'JSON'
-{ "name": "karta-relay", "private": true, "dependencies": { "jazz-run": "0.20.19" } }
+sudo mkdir -p /opt/potyro-relay /var/lib/potyro && sudo chown -R "$USER": /opt/potyro-relay /var/lib/potyro
+cat > /opt/potyro-relay/package.json <<'JSON'
+{ "name": "potyro-relay", "private": true, "dependencies": { "jazz-run": "0.20.19" } }
 JSON
-docker run --rm -v /opt/karta-relay:/app -w /app node:22-bookworm npm install --omit=dev
+docker run --rm -v /opt/potyro-relay:/app -w /app node:22-bookworm npm install --omit=dev
 
 # the service itself
-docker run -d --name karta-relay --restart unless-stopped \
+docker run -d --name potyro-relay --restart unless-stopped \
   -p 127.0.0.1:4201:4201 \
-  -v /opt/karta-relay:/app -v /var/lib/karta:/data -w /app \
+  -v /opt/potyro-relay:/app -v /var/lib/potyro:/data -w /app \
   node:22-bookworm \
   node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4201 --db /data/sync.db
 ```
@@ -120,7 +120,7 @@ a reboot. The client reconnects on its own when the relay bounces.
     # credentials on the upgrade request.
     <Location "/">
         AuthType Basic
-        AuthName "Karta"
+        AuthName "Potyro"
         AuthUserFile /etc/apache2/karta.htpasswd
         Require valid-user
     </Location>
@@ -153,7 +153,7 @@ Cache headers are worth getting right too — hashed assets `immutable`, `index.
 ## 5. Gate it
 
 ```bash
-sudo htpasswd -cB /etc/apache2/karta.htpasswd karta      # -c only the first time
+sudo htpasswd -cB /etc/apache2/karta.htpasswd potyro      # -c only the first time
 sudo chown root:www-data /etc/apache2/karta.htpasswd && sudo chmod 640 /etc/apache2/karta.htpasswd
 ```
 
@@ -206,14 +206,58 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## Redeploying
 
+**It is automatic:** every commit that lands on `main` goes live once it passes the local CI — see
+[§8](#8-merging-and-deploying-through-the-ci-machine). By hand, from a clean checkout of `origin/main`:
+
 ```bash
-pnpm --filter @karta/shell exec vite build
-rsync -az --delete packages/shell/dist/ e@vaz.io:/var/www/karta/
+pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
+pnpm ci:local deploy         # build, rsync to e@vaz.io:/var/www/karta/, write version.json
 ```
 
-That is all — no restart, no reload. The relay only needs touching when `cojson` changes version, in
-which case bump the pin in `/opt/karta-relay/package.json`, re-run the `npm install` container, and
-`docker restart karta-relay`.
+`deploy` refuses a commit that is not `origin/main` or has not passed every step, so what is live is
+always something the gate passed. `https://apps.vaz.io/version.json` names the live commit.
+
+No restart, no reload. The relay only needs touching when `cojson` changes version, in
+which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
+`docker restart potyro-relay`.
+
+## 8. Merging and deploying through the CI machine
+
+GitHub Actions is unavailable, so the CI machine (`vazio`) is both the gate and the deployer.
+**Merge with `pnpm ship <pr-number>`**:
+
+```
+laptop:  pnpm ship 232          merge commit on GitHub's main, pushed to vazio:appinator.git
+vazio:   pre-receive            refuses at once anything but main, or a main not built on GitHub's
+         post-receive           in the background: full local CI on that exact commit
+           green →              pushed to GitHub's main (the PR shows merged) → deployed
+           red   →              nothing moves; the local-ci check on the commit says why
+```
+
+The gate runs **before** main moves, so a red commit never reaches GitHub's main. The push returns
+at once; follow with `ssh vazio tail -f ci-watch.log`. `ship` wakes vazio if it is asleep.
+
+**Merged on GitHub instead?** cron is the backstop. Every five minutes `ci-watch.mjs` checks
+GitHub's main; when it is new, it runs the gate on it and deploys it when green. A red main leaves
+the site on the last green commit. It also moves the bare repo along, so the next `ship` builds on
+it. **While vazio sleeps, neither runs.** They catch up when it wakes.
+
+The pieces on `vazio`:
+
+| | |
+|---|---|
+| Bare repo | `~/appinator.git`, with `hooks/pre-receive` and `hooks/post-receive` from [`deploy/vazio-hooks/`](../deploy/vazio-hooks/). |
+| Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
+| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so only one suite ever holds the test ports. |
+| Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
+| ssh alias | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` with that key. |
+| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET=karta-deploy: flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+
+The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
+`ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.
+
+`POTYRO_DEPLOY_TARGET=karta-deploy:` is relative to the web root, because `rrsync` anchors every path
+there. After changing a hook in `deploy/vazio-hooks/`, copy it to `~/appinator.git/hooks/` on vazio.
 
 ## The agent
 
@@ -223,7 +267,7 @@ middleware, so the route does not exist in a build. Rather than offer buttons th
 
 Structural editing (✎ Edit's controls) and History are **not** affected — neither calls a model.
 
-Turning generation on needs a real endpoint and then `VITE_KARTA_GENERATOR=1` at build time. That is
+Turning generation on needs a real endpoint and then `VITE_POTYRO_GENERATOR=1` at build time. That is
 a piece of work, not a flag: an API key held server-side, plus auth and rate limiting in front of it,
 or it is your bill and anyone's to spend. `ClaudeBackend` in `packages/generator` is the client half;
 the server half does not exist yet.

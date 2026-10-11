@@ -52,7 +52,7 @@ describe("the device's look", () => {
     expect(root().style.getPropertyValue("--accent")).toBe("oklch(72% 0.13 205)");
     expect(accentColour()).toBe("oklch(72% 0.13 205)");
 
-    // Back to Karta's own: the property is removed rather than set to gold, so the stylesheet's
+    // Back to Potyro's own: the property is removed rather than set to gold, so the stylesheet's
     // own value (and any future change to it) is what shows.
     setLook({ appearance: "system" });
     expect(root().style.getPropertyValue("--accent")).toBe("");
@@ -60,10 +60,10 @@ describe("the device's look", () => {
   });
 
   it("reads a damaged or ancient setting as the default rather than throwing", () => {
-    localStorage.setItem("karta:look", "{not json");
+    localStorage.setItem("potyro:look", "{not json");
     expect(readLook()).toEqual(DEFAULT_LOOK);
 
-    localStorage.setItem("karta:look", JSON.stringify({ appearance: "chartreuse", accent: "blue" }));
+    localStorage.setItem("potyro:look", JSON.stringify({ appearance: "chartreuse", accent: "blue" }));
     expect(readLook()).toEqual(DEFAULT_LOOK);
   });
 });

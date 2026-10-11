@@ -58,10 +58,10 @@ export interface IdentityAccount {
   secret: string;
 }
 
-const SEED = "karta:identity:seed";
-const SECRET = "karta:identity:secret";
-const ID = "karta:identity:id";
-const NAME = "karta:identity:name";
+const SEED = "potyro:identity:seed";
+const SECRET = "potyro:identity:secret";
+const ID = "potyro:identity:id";
+const NAME = "potyro:identity:name";
 
 /**
  * Where `packages/store` used to keep the account, before identity moved here.
@@ -75,9 +75,9 @@ const NAME = "karta:identity:name";
  * `recoveryPassphrase` refuses for them and says why. That is the honest outcome: the words for such
  * an account do not exist and cannot be derived after the fact.
  */
-const LEGACY_ID = "karta:jazz:accountID";
-const LEGACY_SECRET = "karta:jazz:accountSecret";
-const LEGACY_SEED = "karta:jazz:accountSeed";
+const LEGACY_ID = "potyro:jazz:accountID";
+const LEGACY_SECRET = "potyro:jazz:accountSecret";
+const LEGACY_SEED = "potyro:jazz:accountSeed";
 
 /**
  * How the identity on this device came to be: `minted` | `adopted` | `passphrase`.
@@ -88,7 +88,7 @@ const LEGACY_SEED = "karta:jazz:accountSeed";
  * safe if a deliberate sign-in can be told apart from that automatic mint — otherwise linking a
  * device would be silently undone by leftover keys from before.
  */
-const ORIGIN = "karta:identity:origin";
+const ORIGIN = "potyro:identity:origin";
 
 /**
  * The name a brand-new identity gets.

@@ -9,7 +9,7 @@
 
 ## Context
 
-Karta has no sync. `Store` has three implementations (`MemoryStore`, `LocalStore`,
+Potyro has no sync. `Store` has three implementations (`MemoryStore`, `LocalStore`,
 `SqliteStore`) and all three are single-device. The business plan (§8.4 Step B) makes an
 E2E-encrypted sync subscription the primary recurring-revenue lever, and `docs/01` promises the
 `Store` seam keeps that door open.
@@ -20,10 +20,10 @@ tracker**. Working through it surfaced that the CRDT engine is *not* the hard pa
 ### The thing the backlog missed
 
 KA-08/09/10/11 cover the CRDT store, presence, and the community/registry layer. None of them
-cover **identity**. Karta today has no concept of a person:
+cover **identity**. Potyro today has no concept of a person:
 
 - `Ctx` (`docs/04`) has data, time, params, storage, caps, media, ui, navigate, log. No `me`.
-- `KartaRecord` is `{ id, createdAt, updatedAt, ... }`. No author.
+- `PotyroRecord` is `{ id, createdAt, updatedAt, ... }`. No author.
 - The 13 field types (`packages/schema/src/validate.ts`) include no `member`/`user`.
 - `PermissionManifest` has camera/filesystem/notifications/geo/haptics/network. No sync.
 
@@ -34,7 +34,7 @@ rather than merely working.**
 
 ### Two meanings of "trusted" that must not merge
 
-Karta already uses "trusted" for provenance-decides-execution (hard rule 3). Sharing an app
+Potyro already uses "trusted" for provenance-decides-execution (hard rule 3). Sharing an app
 with a friend introduces a second, orthogonal axis:
 
 - **Code trust** (existing) — direct execution vs. QuickJS isolate. Binary, per-app.
@@ -120,7 +120,7 @@ just data any writer can forge. `createdBy` has to be the verifiable one (see th
   `{ id, name }` is cached, so every later boot answers `ctx.me` from the key store with no
   cojson load at all. Only the very first run pays for the wasm crypto.
 - **`packages/store` stops minting accounts.** `jazz-backend.ts` currently owns
-  `karta:jazz:accountID` / `:accountSecret`. Ownership of the secret moves to
+  `potyro:jazz:accountID` / `:accountSecret`. Ownership of the secret moves to
   `packages/identity`, and the store consumes it — one place responsible for the most
   security-sensitive value we hold.
 
@@ -138,7 +138,7 @@ design:
    and `getCurrentAccountPassphrase` recovers the words from a stored seed. An account created the
    default way is therefore unlinkable **forever** — you cannot invent the seed of an existing key,
    so no migration can rescue it. `createJazzStore` now derives from an explicit
-   `newRandomSecretSeed()` and keeps it (`karta:jazz:accountSeed`), pinned by
+   `newRandomSecretSeed()` and keeps it (`potyro:jazz:accountSeed`), pinned by
    `jazz-account-seed.test.ts`. Accounts created before this change cannot be linked; sync is
    unreleased, so the blast radius is development data only.
 
@@ -196,7 +196,7 @@ interface Member { id: string; name: string; pubKey: string; role: "admin" | "wr
 behavioral change from today. This is what keeps `docs/01`'s "no server requirement" true and
 makes sync opt-in per app rather than a property of the product.
 
-Invites are `https://karta.app/join/<spaceId>#<inviteSecret>` — the secret lives in the URL
+Invites are `https://potyro.app/join/<spaceId>#<inviteSecret>` — the secret lives in the URL
 **fragment**, which is never transmitted to the relay. Sent over any existing channel.
 
 ### D4 — A dumb encrypted store-and-forward **relay** is the primary transport; P2P is an optimization
@@ -256,7 +256,7 @@ at the same seam as every other host power (hard rule 2).
 > while Evolu was later upgraded on the strength of a real experiment. That asymmetry — assertion
 > for one candidate, evidence for the other — is how Evolu came to be recommended. The spike below
 > applies the same standard to Jazz and reverses the conclusion. The original objection was that
-> "adopting CoValues means Karta's data model becomes Jazz's… a translation layer, not a swap."
+> "adopting CoValues means Potyro's data model becomes Jazz's… a translation layer, not a swap."
 > That objection applies *far harder to Evolu*, which requires rewriting `SqliteStore` into
 > per-field columns and redoing `migrate.ts` as DDL. Jazz was held to a stricter standard than the
 > option that was recommended.
@@ -314,7 +314,7 @@ be stated plainly in any privacy claim rather than marketed as unqualified "zero
 
 ### Loro / Automerge
 
-Excellent engines. Both are Rust→WASM. Karta already ships a WASM blob (QuickJS) and lazily
+Excellent engines. Both are Rust→WASM. Potyro already ships a WASM blob (QuickJS) and lazily
 loads a second (SQLite); a third is real bundle and complexity cost for no capability Yjs lacks
 at personal scale. Yjs is pure JS, ~30 kB, and the most production-hardened of the set.
 
@@ -339,16 +339,16 @@ and browser + Electron + React Native support. Its sync protocol is a compact bi
 designed for SQLite. That is most of D2, D3, and D4 — including **key management, the single
 largest piece of net-new security-sensitive code this ADR commits to writing**.
 
-**The one blocking unknown: merge granularity.** Karta stores a record as one JSON `data`
+**The one blocking unknown: merge granularity.** Potyro stores a record as one JSON `data`
 column in a generic `records(entity, id, data)` table (`docs/06`). If Evolu's CRDT resolves
 per *column*, then two peers editing different fields of the same record collide at
 whole-document last-write-wins — losing exactly the field-level merge that D1's
 `Y.Map`-per-record gets for free, and losing it silently. Recovering it would mean a column per
 field, i.e. tables generated per app entity at runtime, which fights both Evolu's typed static
-schema (Kysely) and Karta's runtime-defined entities + `docs/06` migrations.
+schema (Kysely) and Potyro's runtime-defined entities + `docs/06` migrations.
 
 **Two real but lesser frictions.** Evolu's headline ergonomic win is typed SQL through Kysely —
-a win Karta *explicitly declined* (`docs/05`: "no `QuerySpec` with a `where` string, no
+a win Potyro *explicitly declined* (`docs/05`: "no `QuerySpec` with a `where` string, no
 SQL-pushdown/residual planner"; filtering is JS predicates in the runtime). And the relay is the
 piece the business plan most wants to own, though Evolu's is MIT and self-hostable, which
 largely defuses that.
@@ -367,7 +367,7 @@ Answered from Evolu's own source and then demonstrated. `@evolu/common@7.4.1`
 
 | Storage shape | Two peers concurrently edit different fields of one record |
 |---|---|
-| **A — Karta today**: generic `records(entity, id, data JSON)` | ❌ `description` edit **silently lost**; whole-document LWW |
+| **A — Potyro today**: generic `records(entity, id, data JSON)` | ❌ `description` edit **silently lost**; whole-document LWW |
 | **B — one column per field**: `expense(id, description, amountCents, …)` | ✅ both survive, and identically under reversed delivery order |
 
 So the answer is not "Evolu loses" — it is **"Evolu is excellent, but only on storage shape B"**.
@@ -376,10 +376,10 @@ So the answer is not "Evolu loses" — it is **"Evolu is excellent, but only on 
 
 1. **Runtime schema generation works.** `EvoluSchema` is
    `ReadonlyRecord<string, ReadonlyRecord<string, Type<…>>>` — a plain runtime record;
-   `ValidateSchema` is a compile-time-only type check. So Karta can build the schema from
+   `ValidateSchema` is a compile-time-only type check. So Potyro can build the schema from
    `definition.entities` at load time, which it is unusually well placed to do: the declarative
    half already names every field and its type. Evolu also adds `createdAt`/`updatedAt`/
-   `isDeleted`/`ownerId` as system columns, matching `KartaRecord` and giving soft-delete free.
+   `isDeleted`/`ownerId` as system columns, matching `PotyroRecord` and giving soft-delete free.
 2. **Version skew is already solved.** `evolu_message_quarantine` +
    `tryApplyQuarantinedMessages` hold messages referencing tables/columns the local schema does
    not yet know, and replay them after a schema update. That is **KA-22's hazard**, handled.
@@ -388,7 +388,7 @@ So the answer is not "Evolu loses" — it is **"Evolu is excellent, but only on 
 
 The analysis below stands on its own evidence, but its *conclusion* was overturned once Jazz was
 measured to the same standard (see the Jazz section above). Evolu's per-column granularity taxes
-exactly the data model Karta has: it buys identity and roles at the price of a storage rewrite,
+exactly the data model Potyro has: it buys identity and roles at the price of a storage rewrite,
 whereas Jazz supplies both without one. Retained in full because the measurement is sound and the
 `docs/06` consequences it maps out would apply to any per-column engine.
 
@@ -408,7 +408,7 @@ The trade has inverted since this ADR was first drafted:
 
 Evolu removes the expensive, security-critical, easy-to-get-wrong work (key management, roles,
 invites, relay, skew) and adds mechanical work (generate tables from field definitions) that
-Karta's declarative schema makes cheap. That is a good trade.
+Potyro's declarative schema makes cheap. That is a good trade.
 
 **Residual risks, both real:**
 
@@ -435,7 +435,7 @@ later only as optional "sync to my own DB" adapters.
 ### Solid (solidproject.org) — **rejected as foundation; keep as a future optional adapter**
 
 Evaluated at the request of the project owner. Solid solves *hosting, identity, and access
-control*; Karta's blocker is *merge*. The overlap is thin:
+control*; Potyro's blocker is *merge*. The overlap is thin:
 
 - **No merge semantics.** Solid is LDP over HTTP with ETag/`If-Match` optimistic concurrency —
   a `412 Conflict`, not a merge. A CRDT would still be required on top.
@@ -443,7 +443,7 @@ control*; Karta's blocker is *merge*. The overlap is thin:
   (hard rule 6).
 - **No E2E in the model.** Pod providers read your data unless self-hosted, and encrypting
   inside a Pod destroys the interop that is Solid's entire justification.
-- **RDF impedance.** Karta records are Zod-validated JSON documents. Solid is RDF triples with
+- **RDF impedance.** Potyro records are Zod-validated JSON documents. Solid is RDF triples with
   shared vocabularies. Storing opaque JSON blobs in a Pod is possible but forfeits the interop,
   at which point WebDAV or S3 is simpler.
 - **Onboarding tax.** Both parties need a Pod and a WebID; WebID resolution requires an HTTP
@@ -452,9 +452,9 @@ control*; Karta's blocker is *merge*. The overlap is thin:
 - **Adoption shape.** 2026 momentum is EU government/enterprise data spaces (ODI roadmap,
   Solid CG), not consumer personal apps.
 
-What Solid genuinely has that Karta lacks is **WebID + ACP as a mature per-resource permission
+What Solid genuinely has that Potyro lacks is **WebID + ACP as a mature per-resource permission
 model**, which is worth studying for D3's roles. And like every data-plane technology surveyed,
-it does nothing about running someone else's *logic* safely — Karta's actual moat.
+it does nothing about running someone else's *logic* safely — Potyro's actual moat.
 
 **Revisit as** one optional transport adapter among several ("sync via my own Pod"), the same
 treatment §2A prescribes for PowerSync/Electric. Costs nothing today provided D4's transport
@@ -482,7 +482,7 @@ seam stays clean.
   as such; ledger shape (D6) is the mitigation.
 - **A malicious member can write arbitrary values into a shared doc.** The relay is
   zero-knowledge and therefore *cannot* validate. Mitigated by validating inbound updates
-  client-side against the declarative schema — Karta already has those Zod validators, which
+  client-side against the declarative schema — Potyro already has those Zod validators, which
   makes this unusually cheap and is a differentiated safety property.
 - **`ctx` grows**, which is a trust-sensitive seam. Per `docs/08`, no new `ctx` member or field
   type ships without types + impl + tests + fixtures + reconciled docs in the same PR, and

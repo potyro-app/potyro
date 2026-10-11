@@ -7,11 +7,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { RecordForm } from "../src/record-form.js";
 import { resolveGroups } from "../src/groups.js";
 
@@ -46,7 +46,7 @@ const app = defineApp({
 /** What the shell's confirm dialog would answer; a test decides. */
 const confirm = vi.fn(async (_message: string) => true);
 
-async function makeRuntime(): Promise<KartaRuntime> {
+async function makeRuntime(): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open("groups-fixture");
   const ui: UiBridge = { toast: () => {}, confirm: (message) => confirm(message), prompt: async () => null, pick: async () => null };

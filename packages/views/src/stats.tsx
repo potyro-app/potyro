@@ -6,7 +6,7 @@
 // by an arrow AND words ("▲ 1 more than last week"), never by colour alone.
 
 import { useEffect, useState } from "react";
-import type { Field, Resolved, StatItem } from "karta";
+import type { Field, Resolved, StatItem } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 import { figureValue } from "./summary.js";
@@ -62,7 +62,7 @@ export function StatsView({ runtime, pageId, params }: BuiltinViewProps) {
           return tile;
         } catch (e) {
           // One bad figure shows a dash and says why on hover; it does not blank its neighbours.
-          console.warn(`[karta] stat "${item.label}" failed:`, e);
+          console.warn(`[potyro] stat "${item.label}" failed:`, e);
           return { label: item.label, text: "–", error: e instanceof Error ? e.message : String(e) };
         }
       }),
@@ -81,7 +81,7 @@ export function StatsView({ runtime, pageId, params }: BuiltinViewProps) {
     <ul className="k-stats">
       {tiles.map((t, i) => (
         <li key={i} className="k-stat">
-          <span className="k-stat-label">{t.label}</span>
+          <span className="k-stat-label" data-k-wording>{t.label}</span>
           <span className="k-stat-value" title={t.error}>
             {t.text}
           </span>

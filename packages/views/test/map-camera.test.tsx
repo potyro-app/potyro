@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { defineApp, type Ctx, type Dynamic, type MapCamera } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type Ctx, type Dynamic, type MapCamera } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 
 // How the built-in map frames itself — the `camera` field, and the auto-fit rule around it. None of
 // this is reachable from an app module beyond declaring `camera`, so it is host behaviour and belongs
@@ -122,7 +122,7 @@ function fixture(camera?: Dynamic<MapCamera>) {
   });
 }
 
-async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
+async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promise<{ runtime: PotyroRuntime; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("map-camera-fixture");
   await store.insert("place", { name: "Cozy Bar", location: { lat: 52.52, lng: 13.405 } });
@@ -135,7 +135,7 @@ async function makeRuntime(camera?: Dynamic<MapCamera>, saved?: unknown): Promis
   return { runtime: createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav }), store };
 }
 
-function View({ runtime }: { runtime: KartaRuntime }) {
+function View({ runtime }: { runtime: PotyroRuntime }) {
   return <MapView runtime={runtime} pageId="map" params={{}} navigate={() => {}} onCreate={() => {}} />;
 }
 
@@ -190,15 +190,18 @@ describe("camera", () => {
   });
 
   it('"fit" ignores a saved position and re-frames instead', async () => {
-    const { runtime } = await makeRuntime("fit", { center: [13.4, 52.5], zoom: 14 });
+    const { runtime, store } = await makeRuntime("fit", { center: [13.4, 52.5], zoom: 14 });
     render(<View runtime={runtime} />);
     gate.open();
 
     await waitFor(() => expect(spies.markers).toBe(1));
     expect(spies.built[0]).toEqual({ center: [0, 20], zoom: 1 });
     expect(spies.fits).toBe(1);
-    // ...and it does not quietly start remembering.
-    expect(spies.handlers.has("moveend")).toBe(false);
+    // ...and it does not quietly start remembering: a move the user makes changes nothing saved.
+    const before = await store.kvGet(CAMERA_KV);
+    spies.center = { lng: 9.9, lat: 45.1 };
+    spies.handlers.get("moveend")?.({ originalEvent: new Event("wheel") });
+    expect(await store.kvGet(CAMERA_KV)).toBe(before);
   });
 
   // #133 / #134: "the map opens on the trip I am in". The camera is a function of ctx and reads the
@@ -219,7 +222,8 @@ describe("camera", () => {
     expect(spies.built[0]).toEqual({ center: [13.405, 52.52], zoom: 11 });
     expect(spies.fits).toBe(0);
     // Not "remember": a computed position must not be overwritten by a saved one.
-    expect(spies.handlers.has("moveend")).toBe(false);
+    spies.handlers.get("moveend")?.({ originalEvent: new Event("wheel") });
+    expect(await store.kvGet(CAMERA_KV)).toBeNull();
   });
 
   it("a fixed camera opens there and stays there", async () => {

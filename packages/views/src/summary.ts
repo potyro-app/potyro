@@ -10,7 +10,7 @@
 // Kept separate from the component so the arithmetic is testable without rendering, and so a
 // `value` function throwing can be contained here rather than taking the page down with it.
 
-import type { Ctx, Resolved, SummaryValue } from "karta";
+import type { Ctx, Resolved, SummaryValue } from "potyro";
 
 /** Invoke a figure's `value` function through the host, whichever runner the app is in. */
 export type CallSummaryValue = (rows: readonly Resolved[]) => Promise<unknown>;
@@ -61,7 +61,7 @@ export function formatFigure(v: unknown, unit?: string): string {
 export async function figureValue(spec: SummaryValue, rows: readonly Resolved[], ctx: Ctx, callValue?: CallSummaryValue): Promise<unknown> {
   if (spec.value != null) {
     // `spec.value` is only a real function when the app runs trusted. Under the isolate the
-    // definition carries the `__karta_fn__` SENTINEL STRING here — the function stayed in the VM
+    // definition carries the `__potyro_fn__` SENTINEL STRING here — the function stayed in the VM
     // — so calling it directly throws and the figure silently renders a dash. Routing through the
     // host makes both provenances take the same path (the `resolveBinding` pattern).
     if (callValue) return callValue(rows);
@@ -108,7 +108,7 @@ export async function computeFigure(
   } catch (e) {
     // Reported, not swallowed: the figure shows a dash and says why on hover.
     const reason = e instanceof Error ? e.message : String(e);
-    console.warn(`[karta] summary "${spec.label}" failed:`, e);
+    console.warn(`[potyro] summary "${spec.label}" failed:`, e);
     return { label: spec.label, text: null, error: reason };
   }
 }

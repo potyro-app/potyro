@@ -53,4 +53,4 @@ export function orderApps(apps: readonly InstalledApp[], mode: SortMode, now: nu
 }
 
 /** The keys of `list` with `key` moved to index `to` (clamped). Same order back if nothing moves. */
-export { moveKey } from "@karta/views";
+export { moveKey } from "@potyro/views";

@@ -3,7 +3,7 @@
 // later). All state (records, blobs, kv, schema version) is serialized under one namespaced
 // key and rewritten after each mutation. Personal-scale data only.
 
-import type { Id, KartaRecord } from "karta";
+import type { Id, PotyroRecord } from "potyro";
 import { MemoryStore } from "./memory-store.js";
 
 /** The subset of the Web Storage API we use. */
@@ -14,7 +14,7 @@ export interface StorageLike {
 }
 
 interface Persisted {
-  records: Record<string, Record<Id, KartaRecord>>;
+  records: Record<string, Record<Id, PotyroRecord>>;
   blobs: Record<string, { mime: string; base64: string }>;
   kv: Record<string, string>;
   schemaVersion: number;
@@ -51,7 +51,7 @@ export class LocalStore extends MemoryStore {
 
   override async open(appId: string): Promise<void> {
     await super.open(appId);
-    this.storageKey = `karta:${appId}`;
+    this.storageKey = `potyro:${appId}`;
     this.load();
   }
 

@@ -2,13 +2,13 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, Field, Id, KartaRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "karta";
-import { checkFormFields } from "karta";
+import type { Ctx, Field, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "potyro";
+import { checkFormFields } from "potyro";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
-import { resolveRecord, type ResolveDeps } from "./resolve.js";
+import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase } from "./types.js";
 
 const KV_PREFIX = "kv:";
@@ -26,7 +26,7 @@ function checkItems<T>(opts: { title?: string; items: UiItem<T>[] }): { title?: 
  *
  * `ctx.me` is always *present* — that is the contract app code is written against, and the reason
  * it never has to branch on whether sync exists. The composition root supplies the real person from
- * `@karta/identity`; this only keeps a `MemoryStore` test from having to mint an account.
+ * `@potyro/identity`; this only keeps a `MemoryStore` test from having to mint an account.
  */
 const ANONYMOUS: Person = { id: "local", name: "Me" };
 
@@ -58,13 +58,20 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     ctx: undefined as unknown as Ctx,
     memo: new Map(),
     computing: new Set(),
+    records: new Map(),
+  };
+  // Data changed: nothing this pass has read may be served again.
+  const forget = (): void => {
+    deps.memo.clear();
+    deps.records?.clear();
   };
 
   // Resolve rows sequentially (not Promise.all): computed may call ctx.query and resolve shared
   // records, so a single-threaded resolution chain keeps the cycle guard's `computing` set a
   // valid stack (concurrent resolution of the same computed would look like a false cycle).
   // Memoization makes the repeated work cheap; personal scale makes the lost parallelism moot.
-  const resolveMany = async (entity: string, rows: KartaRecord[]): Promise<Resolved[]> => {
+  const resolveMany = async (entity: string, rows: PotyroRecord[]): Promise<Resolved[]> => {
+    await prefetchRelated(deps, entity, rows);
     const out: Resolved[] = [];
     for (const r of rows) out.push(await resolveRecord(deps, entity, r));
     return out;
@@ -99,8 +106,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       // Who entered a record is not who it is about (spike F5): that is a `member` field.
       const clean = stampAuthor(data, me.id);
       assertValuesFit(deps.definition, entity, clean, currentPeople(base.space, me));
-      const row = await store.insert(entity, clean as Partial<KartaRecord>);
-      deps.memo.clear(); // data changed → invalidate memoized computed for this pass
+      const row = await store.insert(entity, clean as Partial<PotyroRecord>);
+      forget(); // data changed → invalidate memoized computed and related rows for this pass
       return resolveRecord(deps, entity, row);
     },
 
@@ -111,8 +118,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         now: currentPeople(base.space, me),
         ever: everyone(store),
       });
-      const row = await store.update(entity, id, clean as Partial<KartaRecord>);
-      deps.memo.clear();
+      const row = await store.update(entity, id, clean as Partial<PotyroRecord>);
+      forget();
       return resolveRecord(deps, entity, row);
     },
 
@@ -126,9 +133,9 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       } else {
         const current = await store.get(entity, id);
         const base = Number((current as Record<string, unknown> | null)?.[field] ?? 0);
-        await store.update(entity, id, { [field]: base + delta } as Partial<KartaRecord>);
+        await store.update(entity, id, { [field]: base + delta } as Partial<PotyroRecord>);
       }
-      deps.memo.clear();
+      forget();
       const row = await store.get(entity, id);
       if (!row) throw new Error(`increment: ${entity}/${id} not found`);
       return resolveRecord(deps, entity, row);
@@ -136,7 +143,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
 
     async delete(entity, id) {
       await store.delete(entity, id);
-      deps.memo.clear();
+      forget();
     },
 
     async transaction(fn) {

@@ -8,15 +8,15 @@
 //
 // Why pin down rather than tell people to upgrade Studio: the Android target is built by whoever has
 // a device, and a toolchain that will not open is a worse default than one release behind. Override
-// with `KARTA_AGP=8.13.0 KARTA_GRADLE=8.14.3 pnpm cap:sync` (or `KARTA_AGP=keep`) on a newer Studio.
+// with `POTYRO_AGP=8.13.0 POTYRO_GRADLE=8.14.3 pnpm cap:sync` (or `POTYRO_AGP=keep`) on a newer Studio.
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const AGP = process.env.KARTA_AGP ?? "8.9.2";
-const GRADLE = process.env.KARTA_GRADLE ?? "8.11.1"; // the newest Gradle AGP 8.9 accepts
+const AGP = process.env.POTYRO_AGP ?? "8.9.2";
+const GRADLE = process.env.POTYRO_GRADLE ?? "8.11.1"; // the newest Gradle AGP 8.9 accepts
 
 if (AGP === "keep") {
-  console.log("[pin-gradle] KARTA_AGP=keep — leaving the generated versions alone.");
+  console.log("[pin-gradle] POTYRO_AGP=keep — leaving the generated versions alone.");
   process.exit(0);
 }
 

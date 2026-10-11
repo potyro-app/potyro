@@ -3,12 +3,12 @@
 // it to their live maps; SqliteStore loads rows, applies it, and writes back. Keeping this in one
 // place means the existing MemoryStore test suite also validates the logic SqliteStore relies on.
 
-import type { Id, KartaRecord, Migration, MigrationStep } from "karta";
+import type { Id, PotyroRecord, Migration, MigrationStep } from "potyro";
 
 /** Records grouped by entity, preserving per-entity creation (insertion) order. */
-export type EntityRecords = Map<string, Map<Id, KartaRecord>>;
+export type EntityRecords = Map<string, Map<Id, PotyroRecord>>;
 
-function entityMap(records: EntityRecords, entity: string): Map<Id, KartaRecord> {
+function entityMap(records: EntityRecords, entity: string): Map<Id, PotyroRecord> {
   let m = records.get(entity);
   if (!m) {
     m = new Map();

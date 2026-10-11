@@ -2,12 +2,12 @@
 //
 // PROVENANCE (read this before quoting any number from a run against it):
 //   `prompts.ts` is a FEATURE-COVERAGE matrix. Its ids mirror our own examples (recipes, plants,
-//   places, workouts) and its tags are Karta surface areas (nested-list, computed, geo). It answers
+//   places, workouts) and its tags are Potyro surface areas (nested-list, computed, geo). It answers
 //   "does the generator cover what we built" — a regression suite, and biased toward passing.
 //
 //   This file answers a different question: "does the generator survive what people actually ask
 //   for?" The prompts are written in end-user voice — vague, over-stuffed, occasionally demanding
-//   things Karta may not support at all. Several are here PRECISELY because we expect them to fail;
+//   things Potyro may not support at all. Several are here PRECISELY because we expect them to fail;
 //   the failure boundary is the finding, not a defect in the corpus.
 //
 //   These are AUTHOR-WRITTEN in a realistic register, not scraped from real posts. Categories are

@@ -1,4 +1,4 @@
-// @karta/identity — who you are on this device (KA-16 · ADR 0001 D2 amended, D2a).
+// @potyro/identity — who you are on this device (KA-16 · ADR 0001 D2 amended, D2a).
 export {
   peekIdentity,
   ensureIdentity,
@@ -13,4 +13,4 @@ export {
   type IdentityAccount,
   type IdentityKeys,
 } from "./identity.js";
-export { browserVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";
+export { browserVault, currentVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";

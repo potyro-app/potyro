@@ -1,17 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { ListView } from "../src/builtins.js";
 
 // Rows under headings and sections that fold (#108): every group at once in the enum's order, a
 // count in each heading, a fold remembered on this device, and a record page whose section folds.
 
-function app(listExtra: Record<string, unknown>): KartaApp {
+function app(listExtra: Record<string, unknown>): PotyroApp {
   return defineApp({
     id: "grouped-fixture",
     name: "Grouped",
@@ -38,7 +38,7 @@ function app(listExtra: Record<string, unknown>): KartaApp {
   } as never);
 }
 
-async function makeRuntime(def: KartaApp): Promise<KartaRuntime> {
+async function makeRuntime(def: PotyroApp): Promise<PotyroRuntime> {
   const store = new MemoryStore();
   await store.open(def.id);
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };

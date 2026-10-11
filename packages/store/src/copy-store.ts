@@ -20,7 +20,7 @@
 // of guessing, the result names what could not be moved so the caller can refuse or warn. Nothing
 // here deletes from the source: a failed migration must leave the original intact.
 
-import type { KartaRecord, MediaRef } from "karta";
+import type { PotyroRecord, MediaRef } from "potyro";
 import type { Store } from "./types.js";
 
 export interface CopyStoreResult {
@@ -74,7 +74,7 @@ export async function copyStoreData(
     for (const row of rows) {
       collectMediaRefs(row, mediaRefs);
       // `insert` honours a supplied id/createdAt, so relations and history survive the move.
-      await to.insert(entity, row as Partial<KartaRecord>);
+      await to.insert(entity, row as Partial<PotyroRecord>);
       result.records++;
     }
   }

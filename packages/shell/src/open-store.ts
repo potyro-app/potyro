@@ -15,7 +15,7 @@
 // degrade that way, because LocalStore has no CRDT: rather than silently drop the guarantee the
 // user switched on, it fails loudly and the caller decides.
 
-import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type Store } from "@karta/store";
+import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type Store } from "@potyro/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -25,7 +25,7 @@ import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSq
  * and its `Store` return type is deliberately engine-free — widening it would leak Jazz into every
  * call site for the benefit of one. Read immediately after the call that set it.
  */
-let lastSyncHandle: Awaited<ReturnType<typeof import("@karta/store").openJazzStore>> | null = null;
+let lastSyncHandle: Awaited<ReturnType<typeof import("@potyro/store").openJazzStore>> | null = null;
 
 type SpaceShape = {
   id: string;
@@ -81,7 +81,7 @@ export async function watchSpace(): Promise<void> {
   const handle = lastSyncHandle;
   if (!handle) return;
 
-  const { subscribeSpace, subscribeMemberProfiles } = await import("@karta/store");
+  const { subscribeSpace, subscribeMemberProfiles } = await import("@potyro/store");
 
   let stopProfiles: (() => void) | null = null;
   /** Whose profiles are currently watched, so the set is only rebuilt when the PEOPLE change. */
@@ -126,7 +126,7 @@ export async function watchSpace(): Promise<void> {
 export async function republishName(name: string): Promise<void> {
   const handle = lastSyncHandle;
   if (handle) {
-    const { publishName, publishNameToAccount } = await import("@karta/store");
+    const { publishName, publishNameToAccount } = await import("@potyro/store");
     await publishName(handle, name);
     // And on the account's registry, which is the copy a device linked later actually finds.
     const node = await openAccountNodeForDevice();
@@ -138,7 +138,7 @@ export async function republishName(name: string): Promise<void> {
   // and nothing else, and the next device to be linked introduces you as "Me".
   const node = await openAccountNodeForDevice();
   if (!node) return;
-  const { publishAccountName, publishNameToAccount } = await import("@karta/store");
+  const { publishAccountName, publishNameToAccount } = await import("@potyro/store");
   // Both channels: the profile, which is what members of a shared space read, and the account's own
   // registry, which is what a newly linked device reads before it has anything else.
   await publishAccountName(node, name);
@@ -151,7 +151,7 @@ export async function republishName(name: string): Promise<void> {
 export async function removeMember(accountId: string): Promise<{ invitesRevoked: number }> {
   const handle = lastSyncHandle;
   if (!handle) throw new Error("This app is not shared.");
-  const { removeSpaceMember } = await import("@karta/store");
+  const { removeSpaceMember } = await import("@potyro/store");
   const result = removeSpaceMember(handle, accountId);
   await handle.whenDurable();
   return result;
@@ -163,7 +163,7 @@ export async function currentSpace(): Promise<
 > {
   const handle = lastSyncHandle;
   if (!handle) return null;
-  const { spaceMembers, myRole } = await import("@karta/store");
+  const { spaceMembers, myRole } = await import("@potyro/store");
   const raw = await spaceMembers(handle);
   return {
     id: handle.groupID,
@@ -180,7 +180,7 @@ export interface OpenStoreOpts {
 }
 
 /** Where a device's own choice of relay is kept. Exported so the settings UI writes the same key. */
-export const RELAY_KEY = "karta:sync:relay";
+export const RELAY_KEY = "potyro:sync:relay";
 
 /**
  * Sync relay URL, or undefined for local-only.
@@ -190,7 +190,7 @@ export const RELAY_KEY = "karta:sync:relay";
  *   1. **This device's setting.** `localStorage`, written by the ⌾ You panel. "Bring your own relay"
  *      is the free self-host escape hatch the ethos promises (business plan §8.4), and it must not
  *      require a rebuild.
- *   2. **A build-time default**, `VITE_KARTA_RELAY`, for a deployment that puts its relay elsewhere.
+ *   2. **A build-time default**, `VITE_POTYRO_RELAY`, for a deployment that puts its relay elsewhere.
  *   3. **`ws://localhost:4201` in dev**, because `pnpm dev` starts one alongside the shell. Without
  *      it, turning sync on appeared to do nothing until you knew to set a key by hand.
  *   4. **Same origin, `/sync`.** A deployment that terminates TLS and proxies that path gets working
@@ -208,7 +208,7 @@ export function syncRelayUrl(): string | undefined {
   const configured = globalThis.localStorage?.getItem(RELAY_KEY);
   if (configured) return configured;
 
-  const built = (import.meta.env?.VITE_KARTA_RELAY as string | undefined)?.trim();
+  const built = (import.meta.env?.VITE_POTYRO_RELAY as string | undefined)?.trim();
   if (built) return built;
 
   if (import.meta.env?.DEV) return "ws://localhost:4201";
@@ -228,7 +228,7 @@ export function syncRelayUrl(): string | undefined {
  */
 /** Was this device told who it is with the recovery words? Then its account exists somewhere else. */
 function linkedDevice(): boolean {
-  return globalThis.localStorage?.getItem("karta:identity:origin") === "passphrase";
+  return globalThis.localStorage?.getItem("potyro:identity:origin") === "passphrase";
 }
 
 export function canSync(): boolean {
@@ -248,13 +248,13 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     // Imported lazily so the default (non-sync) path never pays for the CRDT engine — the same
     // treatment the SQLite engine and MapLibre already get. The shell deliberately does not import
     // cojson itself: the engine stays behind the store seam.
-    // The account comes from `@karta/identity`, never from the store (ADR D2 amended). Identity is
+    // The account comes from `@potyro/identity`, never from the store (ADR D2 amended). Identity is
     // minted with crypto alone, so it already exists here whether or not this device has ever
     // synced — and `ctx.me` therefore names the same person before and after sync is switched on.
     // An id that changed on toggle would orphan every `createdBy` already stamped.
     const [{ openJazzStore }, identity] = await Promise.all([
-      import("@karta/store"),
-      import("@karta/identity"),
+      import("@potyro/store"),
+      import("@potyro/identity"),
     ]);
     // Awaited before the name is read, not inline: `identityAccount()` mints the identity on a
     // device that has never had one, and `peekIdentity()` answers null until it has.
@@ -286,7 +286,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       modes.set(namespace, "worker");
       return store;
     } catch (err) {
-      console.info(`[karta] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
+      console.info(`[potyro] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
     }
   }
 
@@ -296,7 +296,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     return store;
   } catch {
     // Expected on Firefox / no-OPFS browsers — data still persists via localStorage.
-    console.info(`[karta] Using local storage for "${namespace}" (OPFS SQLite unavailable in this browser).`);
+    console.info(`[potyro] Using local storage for "${namespace}" (OPFS SQLite unavailable in this browser).`);
     const store = new LocalStore();
     await store.open(namespace);
     modes.set(namespace, "local-storage");
@@ -319,8 +319,8 @@ export function storageModes(): ReadonlyMap<string, StorageMode> {
 }
 
 /** Where `LocalStore` keeps an app, and the note saying its contents have been moved out. */
-const localKey = (namespace: string) => `karta:${namespace}`;
-const movedKey = (namespace: string) => `karta:moved:${namespace}`;
+const localKey = (namespace: string) => `potyro:${namespace}`;
+const movedKey = (namespace: string) => `potyro:moved:${namespace}`;
 
 /**
  * Bring across what an app wrote while it was living in `localStorage`.
@@ -352,7 +352,7 @@ export async function adoptLocalStorageData(store: Store, namespace: string): Pr
   await old.open(namespace);
   const moved = await copyStoreData(old, store, { entities });
   globalThis.localStorage?.setItem(movedKey(namespace), new Date().toISOString());
-  console.info(`[karta] moved "${namespace}" out of local storage: ${moved.records} records, ${moved.blobs} files.`);
+  console.info(`[potyro] moved "${namespace}" out of local storage: ${moved.records} records, ${moved.blobs} files.`);
 }
 
 
@@ -372,7 +372,7 @@ export async function rememberAppOnAccount(app: { id: string; name: string; icon
   const handle = lastSyncHandle;
   if (!handle) return false;
   try {
-    const { publishAppToAccount } = await import("@karta/store");
+    const { publishAppToAccount } = await import("@potyro/store");
     return await publishAppToAccount(handle.node, {
       id: app.id,
       name: app.name,
@@ -393,7 +393,7 @@ export async function forgetAppOnAccount(appId: string): Promise<boolean> {
   const handle = lastSyncHandle;
   if (!handle) return false;
   try {
-    const { removeAppFromAccount } = await import("@karta/store");
+    const { removeAppFromAccount } = await import("@potyro/store");
     return await removeAppFromAccount(handle.node, appId);
   } catch {
     return false;
@@ -409,7 +409,7 @@ export async function forgetAppOnAccount(appId: string): Promise<boolean> {
 export async function openAccountNodeForDevice(): Promise<unknown | null> {
   if (!canSync()) return null;
   try {
-    const [{ openAccountNodeInBrowser }, identity] = await Promise.all([import("@karta/store"), import("@karta/identity")]);
+    const [{ openAccountNodeInBrowser }, identity] = await Promise.all([import("@potyro/store"), import("@potyro/identity")]);
     const saved = identity.peekIdentity();
     if (!saved) return null;
     const opened = await openAccountNodeInBrowser({
@@ -430,21 +430,21 @@ export async function openAccountNodeForDevice(): Promise<unknown | null> {
  * The first version of this recorded an app when that app was opened, which is a backup you have to
  * remember to make: a laptop with four synced apps that had opened one of them this month put one of
  * them on the account, and a new device — or a replacement for a laptop that died — was offered that
- * one. The space ids are already written down per app (`karta:jazz:group:user:<id>`), so the whole
+ * one. The space ids are already written down per app (`potyro:jazz:group:user:<id>`), so the whole
  * list can be published in a single pass from what the device already knows.
  *
  * Returns how many were recorded. Best-effort: never throws, never blocks boot.
  */
 export async function publishAppListToAccount(node: unknown): Promise<number> {
   try {
-    const [{ publishAppToAccount }, { listUserApps }] = await Promise.all([import("@karta/store"), import("./user-apps.js")]);
+    const [{ publishAppToAccount }, { listUserApps }] = await Promise.all([import("@potyro/store"), import("./user-apps.js")]);
     const { getEntry, appKey } = await import("./launcher-store.js");
     const now = new Date().toISOString();
     let recorded = 0;
     for (const app of listUserApps()) {
       if (!app.sync) continue;
-      const group = globalThis.localStorage?.getItem(`karta:jazz:group:user:${app.id}`);
-      const root = globalThis.localStorage?.getItem(`karta:jazz:root:user:${app.id}`);
+      const group = globalThis.localStorage?.getItem(`potyro:jazz:group:user:${app.id}`);
+      const root = globalThis.localStorage?.getItem(`potyro:jazz:root:user:${app.id}`);
       // No ids means this device has never actually opened its space — there is nothing to point a
       // new device at, and pointing it at a space that does not exist is worse than not listing it.
       if (!group || !root) continue;

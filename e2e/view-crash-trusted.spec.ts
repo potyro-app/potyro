@@ -12,7 +12,7 @@ import { test, expect } from "@playwright/test";
 const APP_ID = "towns-app";
 const APP_NAME = "Towns";
 
-const BROKEN_SOURCE = `import { defineApp } from "karta";
+const BROKEN_SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
   id: "${APP_ID}",
@@ -53,9 +53,9 @@ test.beforeEach(async ({ page }) => {
   // is that it is a saved app with a real id, not how it got saved.
   await page.addInitScript(
     ([source, id, name]) => {
-      if (localStorage.getItem("karta:user-apps")) return;
+      if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
-        "karta:user-apps",
+        "potyro:user-apps",
         JSON.stringify([{ id, name, source, trusted: true, updatedAt: new Date().toISOString() }]),
       );
     },

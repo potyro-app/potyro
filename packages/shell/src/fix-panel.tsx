@@ -15,7 +15,7 @@
 // `unverifiedAttempt` below is the ONLY place `lastAttempt` is rendered, and it renders no button.
 
 import { useState } from "react";
-import type { LoopOutcome, LoopStep } from "@karta/generator/agent";
+import type { LoopOutcome, LoopStep } from "@potyro/generator/agent";
 
 export interface FixPanelProps {
   /** `undefined` while the loop is still running; one of six shapes once it's done. */

@@ -30,7 +30,7 @@
 // that data does not exist here. What is bought is real: the failure shrinks from "one person's
 // whole edit disappears" to "one element, edited in opposite directions in the same instant".
 
-import type { Field } from "karta";
+import type { Field } from "potyro";
 
 /**
  * Separates a field name from one element of its set.

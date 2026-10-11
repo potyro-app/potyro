@@ -12,7 +12,7 @@
 // Versions are `version` records carrying their `appId`, filtered in JS — the same personal-scale
 // approach the runtime takes (docs/05).
 
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
 
 const NAMESPACE = "app-history";
@@ -102,7 +102,7 @@ export async function listVersions(appId: string): Promise<AppVersion[]> {
   try {
     return await readAll(appId);
   } catch (e) {
-    console.warn("[karta] app history unavailable:", e);
+    console.warn("[potyro] app history unavailable:", e);
     return [];
   }
 }
@@ -155,7 +155,7 @@ export async function recordVersion(
 
     return toVersion(written as Record<string, unknown>) ?? undefined;
   } catch (e) {
-    console.warn("[karta] could not record app version:", e);
+    console.warn("[potyro] could not record app version:", e);
     return undefined;
   }
 }
@@ -166,6 +166,6 @@ export async function clearHistory(appId: string): Promise<void> {
     const s = await store();
     for (const v of await readAll(appId)) await s.delete(ENTITY, v.id);
   } catch (e) {
-    console.warn("[karta] could not clear app history:", e);
+    console.warn("[potyro] could not clear app history:", e);
   }
 }

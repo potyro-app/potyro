@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { DateTimeField } from "karta";
+import type { DateTimeField } from "potyro";
 import { DateInput } from "../src/date-input.js";
 import { formatDateAbsolute, formatDateForInput, formatDateRelative, parseTypedDay, relativeDay, startOfDay } from "../src/dates.js";
 

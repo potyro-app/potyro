@@ -3,7 +3,7 @@
 // (haptics is non-sensitive → manifest-gated, no consent prompt).
 
 import { describe, expect, it } from "vitest";
-import { FakeCapabilities } from "@karta/capabilities";
+import { FakeCapabilities } from "@potyro/capabilities";
 import type { UiBridge } from "../src/index.js";
 import { mediateCaps } from "../src/index.js";
 

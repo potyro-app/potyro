@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFromAccount } from "../src/restore-apps.js";
 import { getUserApp, listUserApps, saveUserApp, setUserAppSync } from "../src/user-apps.js";
-import type { AccountApp } from "@karta/store";
+import type { AccountApp } from "@potyro/store";
 
 vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
 vi.mock("../src/app-diagnoses.js", () => ({ clearDiagnoses: async () => {} }));
@@ -21,7 +21,7 @@ const APP: AccountApp = {
   id: "split",
   name: "Split",
   icon: "🧾",
-  source: 'import { defineApp } from "karta";\nexport default defineApp({ id: "split", name: "Split" });\n',
+  source: 'import { defineApp } from "potyro";\nexport default defineApp({ id: "split", name: "Split" });\n',
   group: "co_zGROUP",
   root: "co_zROOT",
   updatedAt: NOW,
@@ -39,12 +39,12 @@ describe("loading an app from your account", () => {
     expect(app.source).toContain("defineApp");
     // The ids the store looks for. Without them, opening this app mints a new empty space and the
     // records on the relay become unreachable — the app would look like it had lost everything.
-    expect(localStorage.getItem("karta:jazz:group:user:split")).toBe("co_zGROUP");
-    expect(localStorage.getItem("karta:jazz:root:user:split")).toBe("co_zROOT");
+    expect(localStorage.getItem("potyro:jazz:group:user:split")).toBe("co_zGROUP");
+    expect(localStorage.getItem("potyro:jazz:root:user:split")).toBe("co_zROOT");
     // And WHICH database that space is in. Without this marker the store reads "a group id and no
     // marker" as an app older than the device database, opens a per-app file that never existed,
     // and the app arrives empty beside its own data — which is how it failed in two real browsers.
-    expect(localStorage.getItem("karta:jazz:db:user:split")).toBe("karta-jazz");
+    expect(localStorage.getItem("potyro:jazz:db:user:split")).toBe("karta-jazz");
   });
 
   it("replaces a copy this device only has because it seeded one", async () => {
@@ -58,8 +58,8 @@ describe("loading an app from your account", () => {
     const app = getUserApp("split")!;
     expect(app.source).toContain("defineApp"); // the account's code, not the seed's
     expect(app.sync).toBe(true);
-    expect(localStorage.getItem("karta:jazz:group:user:split")).toBe("co_zGROUP");
-    expect(localStorage.getItem("karta:jazz:db:user:split")).toBe("karta-jazz");
+    expect(localStorage.getItem("potyro:jazz:group:user:split")).toBe("co_zGROUP");
+    expect(localStorage.getItem("potyro:jazz:db:user:split")).toBe("karta-jazz");
     expect(listUserApps()).toHaveLength(1);
   });
 
@@ -68,12 +68,12 @@ describe("loading an app from your account", () => {
     // it. Whatever it is, it is not this device's to overwrite.
     await saveUserApp({ id: "split", name: "My Split", source: "// mine\n", trusted: true }, NOW);
     setUserAppSync("split", true, NOW);
-    localStorage.setItem("karta:jazz:group:user:split", "co_zMINE");
+    localStorage.setItem("potyro:jazz:group:user:split", "co_zMINE");
 
     await installFromAccount(APP, "2026-09-19T00:00:00.000Z");
 
     expect(getUserApp("split")?.source).toBe("// mine\n");
-    expect(localStorage.getItem("karta:jazz:group:user:split")).toBe("co_zMINE");
+    expect(localStorage.getItem("potyro:jazz:group:user:split")).toBe("co_zMINE");
     expect(listUserApps()).toHaveLength(1);
   });
 });

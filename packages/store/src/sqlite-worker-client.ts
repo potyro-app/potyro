@@ -48,16 +48,48 @@ export function openWorkerSqlite(name: string, factory?: WorkerFactory): Promise
   // of two callers wanting the same database (an app's store and the account node the launcher
   // reads both want `karta-jazz`) and of one pool per app, which is how a device with a handful of
   // apps ran out of handles and simply stopped part-way through a save.
-  const open = openings.get(name) ?? spawn(name, factory);
-  openings.set(name, open);
+  const entry = openings.get(name) ?? { open: spawn(name, factory), holders: 0 };
+  openings.set(name, entry);
+  entry.holders++;
   // A failed open must not be remembered, or one bad boot poisons every later attempt.
-  return open.catch((err: unknown) => {
-    if (openings.get(name) === open) openings.delete(name);
-    throw err;
-  });
+  return entry.open.then(
+    (connection) => heldBy(name, entry, connection),
+    (err: unknown) => {
+      if (openings.get(name) === entry) openings.delete(name);
+      throw err;
+    },
+  );
 }
 
-const openings = new Map<string, Promise<WorkerSqlite>>();
+/**
+ * One caller's handle on a shared connection.
+ *
+ * The worker's `close` shuts a database for EVERYONE using it, and the connection used to be handed
+ * out as-is — so the first caller to close took the database away from the rest (an app and the
+ * Data panel both holding `user-groceries`), and the closed connection stayed cached: the next open
+ * of that name got it, failed with "is not open", and the app fell back to `localStorage`, showing
+ * none of its real records. Each caller now releases its own hold, once; the database closes, and
+ * leaves the cache, when the last one lets go.
+ */
+function heldBy(name: string, entry: Opening, connection: WorkerSqlite): WorkerSqlite {
+  let released = false;
+  const closeDb = async (): Promise<void> => {
+    if (released) return;
+    released = true;
+    if (--entry.holders > 0) return;
+    if (openings.get(name) === entry) openings.delete(name);
+    await connection.driver.closeDb();
+  };
+  return { ...connection, driver: { ...connection.driver, closeDb } };
+}
+
+interface Opening {
+  open: Promise<WorkerSqlite>;
+  /** Callers that opened this database and have not closed it. */
+  holders: number;
+}
+
+const openings = new Map<string, Opening>();
 
 /** The one worker, and the calls waiting on it. Shared by every database. */
 let shared: { worker: ReturnType<WorkerFactory>; send: Sender } | null = null;

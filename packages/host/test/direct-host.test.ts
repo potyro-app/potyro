@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { defineApp, type Ctx, type KartaApp, type Resolved } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
+import { defineApp, type Ctx, type PotyroApp, type Resolved } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
 
 // A compact recipes-shaped app exercising the M1 surface: relation, computed macros (with a
 // cross-computed reference), a JS filter, and an action that patches + toasts.
-function recipesApp(): KartaApp {
+function recipesApp(): PotyroApp {
   return defineApp({
     id: "recipes",
     name: "Recipes",
@@ -45,6 +45,13 @@ function recipesApp(): KartaApp {
           markCooked: async (r, ctx) => {
             await ctx.patch("recipe", r.id, { lastCookedAt: ctx.now(), timesCooked: (r.timesCooked ?? 0) + 1 });
             ctx.ui.toast(`cooked ${(r.timesCooked ?? 0) + 1}x`);
+          },
+          cookFor: {
+            label: "Cook for",
+            input: { people: { type: "number", required: true } },
+            run: async (r, ctx, input) => {
+              await ctx.patch("recipe", r.id, { servings: (input as { people: number }).people });
+            },
           },
         },
       },
@@ -175,6 +182,13 @@ describe("callAction — patch + toast through ctx", () => {
     expect(updated!.timesCooked).toBe(1);
     expect(updated!.lastCookedAt).toBeInstanceOf(Date);
     expect(ui.toasts).toEqual(["cooked 1x"]);
+  });
+
+  it("runs a declared action ({ run, input }) with its input", async () => {
+    const { ctx, loaded, store, ids } = await setup();
+    const [recipe] = await ctx.query("recipe");
+    await loaded.callAction("recipe", "cookFor", recipe, ctx, { people: 6 });
+    expect((await store.get("recipe", ids.pancake))!.servings).toBe(6);
   });
 });
 

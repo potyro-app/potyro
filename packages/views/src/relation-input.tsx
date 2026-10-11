@@ -9,14 +9,14 @@
 // second sheet over the form, and selects it — a relation to an empty table is never a dead end.
 
 import { useRef, useState } from "react";
-import type { KartaRuntime } from "@karta/runtime";
-import type { RelationField } from "karta";
+import type { PotyroRuntime } from "@potyro/runtime";
+import type { RelationField } from "potyro";
 import { displayFieldFor } from "./format.js";
 import { PickList } from "./pick-list.js";
 import { RecordForm } from "./record-form.js";
 
 export interface RelationInputProps {
-  runtime: KartaRuntime;
+  runtime: PotyroRuntime;
   field: RelationField;
   value: unknown;
   onChange: (v: unknown) => void;

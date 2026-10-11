@@ -12,15 +12,16 @@ import { duplicateUserApp, renameUserApp, type UserApp } from "./user-apps.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
-import { useReorder } from "@karta/views";
+import { useReorder } from "@potyro/views";
 import { hueColour, tileIdentity } from "./tile-identity.js";
-import { personHue, personInitials } from "@karta/runtime";
+import { personHue, personInitials } from "@potyro/runtime";
 import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
 import { LookPanel } from "./look-panel.js";
-import { DEFAULT_NAME, peekIdentity } from "@karta/identity";
+import { DatabaseIcon } from "./data-icon.js";
+import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
@@ -142,6 +143,8 @@ interface UserActions {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  /** Its records, on the Data page. */
+  onData: () => void;
 }
 
 function TileMenu({
@@ -227,6 +230,7 @@ function TileMenu({
             {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
             {item("edit-tile", "Edit tile", user.onEditTile)}
             {item("history", "History", user.onHistory)}
+            {item("data", "Data", user.onData)}
             {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
             {item("share", "Share", user.onShare)}
             {item("rename", "Rename", user.onRename)}
@@ -240,10 +244,18 @@ function TileMenu({
   );
 }
 
-const WELCOME_KEY = "karta:welcome:dismissed";
+const WELCOME_KEY = "potyro:welcome:dismissed";
 
 /** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
 /** Light or dark, and the colour the shell wears. A device thing, so it lives with the device. */
+function DataButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="k-add k-data-btn" aria-label="Your data — every app’s records" title="Your data" onClick={onClick}>
+      <DatabaseIcon size="1.15em" />
+    </button>
+  );
+}
+
 function LookButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="k-add k-look-btn" aria-label="Look — appearance and colour" title="Look" onClick={onClick}>
@@ -286,7 +298,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   }, [liveIds]);
 
   // First run (#90): nothing has ever been opened on this device and the welcome was not dismissed.
-  // Then the home screen says what Karta is and offers one thing to do, and the apps below are
+  // Then the home screen says what Potyro is and offers one thing to do, and the apps below are
   // examples to try — not a grid with the create action as one more tile.
   const [welcomeDismissed, setWelcomeDismissed] = useState(() => {
     try {
@@ -580,6 +592,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         onRename: () => void rename(a.user),
         onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
+        onData: () => navigateTo({ kind: "data", id: a.id }),
       }}
     />
   );
@@ -589,7 +602,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       <header className="k-launcher-head">
         <div className="k-brand">
           <span className="k-logo" aria-hidden>◆</span>
-          <strong>Karta</strong>
+          <strong>Potyro</strong>
           <span className="k-muted">{variant === "home" ? "· choose an app" : "· switch app"}</span>
         </div>
         <div className="k-launcher-head-actions">
@@ -600,6 +613,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               ＋ New app
             </button>
           ) : null}
+          {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
           <LookButton onClick={() => setLookOpen(true)} />
           <YouButton onClick={() => setIdentity(true)} />
           {onClose ? (
@@ -617,7 +631,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
         <section className="k-welcome" aria-labelledby="k-welcome-h">
           <h2 id="k-welcome-h">Make the app you need</h2>
           <p>
-            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Karta builds it. Or open one
+            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one
             of the examples below and change it.
           </p>
           <div className="k-welcome-actions">

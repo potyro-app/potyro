@@ -16,7 +16,7 @@
 //
 // Storage mirrors app-history.ts: its own durable Store namespace, records filtered in JS.
 
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
 
 const NAMESPACE = "app-diagnoses";
@@ -77,7 +77,7 @@ export async function listDiagnoses(appId: string): Promise<AppDiagnosis[]> {
       .filter((d): d is AppDiagnosis => d !== null && d.appId === appId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   } catch (e) {
-    console.warn("[karta] app diagnoses unavailable:", e);
+    console.warn("[potyro] app diagnoses unavailable:", e);
     return [];
   }
 }
@@ -104,7 +104,7 @@ export async function recordDiagnosis(
     for (const old of existing.slice(MAX_DIAGNOSES - 1)) await s.delete(ENTITY, old.id);
     return toDiagnosis(written as Record<string, unknown>) ?? undefined;
   } catch (e) {
-    console.warn("[karta] could not record diagnosis:", e);
+    console.warn("[potyro] could not record diagnosis:", e);
     return undefined;
   }
 }
@@ -115,6 +115,6 @@ export async function clearDiagnoses(appId: string): Promise<void> {
     const s = await store();
     for (const d of await listDiagnoses(appId)) await s.delete(ENTITY, d.id);
   } catch (e) {
-    console.warn("[karta] could not clear app diagnoses:", e);
+    console.warn("[potyro] could not clear app diagnoses:", e);
   }
 }

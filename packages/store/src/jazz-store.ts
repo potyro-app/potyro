@@ -42,7 +42,7 @@
 //   `SqliteStore` (which `JSON.stringify`s its `doc`) rather than `MemoryStore` (which uses
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
-import type { Id, KartaRecord, MediaRef, Value } from "karta";
+import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
 import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
@@ -394,15 +394,15 @@ export class JazzStore implements Store {
    * peers. `createdAt` then `id` is stable everywhere, and ULIDs already sort by creation time —
    * so two devices list the same rows in the same order.
    */
-  private async readEntity(entity: string): Promise<KartaRecord[]> {
+  private async readEntity(entity: string): Promise<PotyroRecord[]> {
     const index = await this.entityIndexIfPresent(entity);
     if (!index) return [];
-    const rows: KartaRecord[] = [];
+    const rows: PotyroRecord[] = [];
     if (this.creatorOnly.has(entity)) {
       // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
       for (const recordId of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
         const found = await this.scoped(entity, recordId);
-        if (found) rows.push(JazzStore.materialise(found.m) as unknown as KartaRecord);
+        if (found) rows.push(JazzStore.materialise(found.m) as unknown as PotyroRecord);
       }
       return rows.sort((a, b) =>
         a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -411,7 +411,7 @@ export class JazzStore implements Store {
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push(JazzStore.materialise(await this.loadMap(refId)) as unknown as KartaRecord);
+      rows.push(JazzStore.materialise(await this.loadMap(refId)) as unknown as PotyroRecord);
     }
     return rows.sort((a, b) =>
       a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -585,7 +585,7 @@ export class JazzStore implements Store {
 
   // ---- reads ------------------------------------------------------------------------------
 
-  async all(entity: string, narrow?: Narrow): Promise<KartaRecord[]> {
+  async all(entity: string, narrow?: Narrow): Promise<PotyroRecord[]> {
     let rows = await this.readEntity(entity);
     if (narrow?.ids) {
       const want = new Set(narrow.ids);
@@ -596,9 +596,9 @@ export class JazzStore implements Store {
     return rows.slice(offset, end);
   }
 
-  async get(entity: string, id: Id): Promise<KartaRecord | null> {
+  async get(entity: string, id: Id): Promise<PotyroRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? (JazzStore.materialise(m) as unknown as KartaRecord) : null;
+    return m ? (JazzStore.materialise(m) as unknown as PotyroRecord) : null;
   }
 
   /**
@@ -842,13 +842,13 @@ export class JazzStore implements Store {
       .sort((a, b) => a.at.getTime() - b.at.getTime());
   }
 
-  async byIndex(entity: string, field: string, value: Value): Promise<KartaRecord[]> {
+  async byIndex(entity: string, field: string, value: Value): Promise<PotyroRecord[]> {
     return (await this.readEntity(entity)).filter((r) => r[field] === value);
   }
 
   // ---- writes -----------------------------------------------------------------------------
 
-  async insert(entity: string, data: Partial<KartaRecord>): Promise<KartaRecord> {
+  async insert(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const id = (data.id as Id) ?? ulid();
     const ts = nowIso();
     const record = {
@@ -856,7 +856,7 @@ export class JazzStore implements Store {
       id,
       createdAt: (data.createdAt as string) ?? ts,
       updatedAt: ts,
-    } as KartaRecord;
+    } as PotyroRecord;
     // One CoMap per record — this is what makes concurrent edits to different fields merge.
     const index = await this.entityIndex(entity);
     // This write may be what creates the index. A watcher parked on the container would notice and
@@ -876,7 +876,7 @@ export class JazzStore implements Store {
     return record;
   }
 
-  async update(entity: string, id: Id, patch: Partial<KartaRecord>): Promise<KartaRecord> {
+  async update(entity: string, id: Id, patch: Partial<PotyroRecord>): Promise<PotyroRecord> {
     if (this.creatorOnly.has(entity)) {
       const found = await this.scoped(entity, id);
       if (found) this.assertCreator(found.creator, "change");
@@ -919,7 +919,7 @@ export class JazzStore implements Store {
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return JazzStore.materialise(m) as unknown as KartaRecord;
+    return JazzStore.materialise(m) as unknown as PotyroRecord;
   }
 
   /**
@@ -1042,7 +1042,7 @@ export class JazzStore implements Store {
     // Compensating write, not a rollback — see the header. Snapshot every entity's rows, and on
     // failure restore them.
     const entityNames = (await this.childIfPresent(this.root, ROOT_ENTITIES))?.keys() ?? [];
-    const snapshot = new Map<string, KartaRecord[]>();
+    const snapshot = new Map<string, PotyroRecord[]>();
     for (const entity of entityNames) snapshot.set(entity, await this.readEntity(entity));
     try {
       return await fn(this);
@@ -1249,7 +1249,7 @@ export class JazzStore implements Store {
    * peers replicate.
    */
   async runMigrations(plan: MigrationPlan): Promise<void> {
-    const records = new Map<string, Map<Id, KartaRecord>>();
+    const records = new Map<string, Map<Id, PotyroRecord>>();
     for (const entity of (await this.childIfPresent(this.root, ROOT_ENTITIES))?.keys() ?? []) {
       records.set(entity, new Map((await this.readEntity(entity)).map((r) => [r.id, r])));
     }

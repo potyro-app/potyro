@@ -283,7 +283,7 @@ describe("JazzStore — two peers through the Store seam", () => {
   });
 
   // KA-21: writes a copy was not allowed to make do not surface anywhere else. This is cojson's
-  // guarantee, not Karta's — every transaction is signed and checked against the writer's role AT
+  // guarantee, not Potyro's — every transaction is signed and checked against the writer's role AT
   // THE TIME it was made (cojson permissions.ts `determineValidTransactions`) — but it is the
   // property shared apps stand on, so it is pinned here through the Store seam.
   it("a write by someone who was removed while offline never reaches the others (KA-21)", async () => {

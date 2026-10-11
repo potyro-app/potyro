@@ -8,14 +8,14 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { defineApp, type KartaApp } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "@karta/runtime";
+import { defineApp, type PotyroApp } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { ChecklistView } from "../src/checklist.js";
 
-const app = (view: Record<string, unknown>): KartaApp =>
+const app = (view: Record<string, unknown>): PotyroApp =>
   defineApp({
     id: "groceries-fixture",
     name: "Groceries",
@@ -36,7 +36,7 @@ const app = (view: Record<string, unknown>): KartaApp =>
     pages: [{ id: "list", title: "Shopping", view: { type: "checklist", entity: "item", done: "bought", text: "name", detail: "qty", group: "aisle", quickAdd: true, ...view } as never }],
   });
 
-async function makeRuntime(def: KartaApp): Promise<{ runtime: KartaRuntime; store: MemoryStore }> {
+async function makeRuntime(def: PotyroApp): Promise<{ runtime: PotyroRuntime; store: MemoryStore }> {
   const store = new MemoryStore();
   await store.open("groceries-fixture");
   await store.insert("item", { name: "Milk", aisle: "dairy", qty: "1 l", bought: false, status: "todo" });
@@ -49,7 +49,7 @@ async function makeRuntime(def: KartaApp): Promise<{ runtime: KartaRuntime; stor
   return { runtime: createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav }), store };
 }
 
-const props = (runtime: KartaRuntime) => ({ runtime, pageId: "list", params: {}, setParam: () => {}, navigate: vi.fn() });
+const props = (runtime: PotyroRuntime) => ({ runtime, pageId: "list", params: {}, setParam: () => {}, navigate: vi.fn() });
 
 afterEach(cleanup);
 

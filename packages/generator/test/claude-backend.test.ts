@@ -10,7 +10,7 @@ import {
 
 // Drives the cloud backend with an injected fake client — no API key, deterministic.
 
-const GOOD = `import { defineApp } from "karta";
+const GOOD = `import { defineApp } from "potyro";
 export default defineApp({
   id: "todo", name: "Todo", version: "1.0.0", schemaVersion: 1,
   entities: { task: { label: "Task", displayField: "title", fields: { title: { type: "text", required: true } } } },

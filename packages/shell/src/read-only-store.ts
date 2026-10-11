@@ -9,7 +9,7 @@
 // Refusing loudly is the point. A silent no-op would look like the app was broken; the error names
 // the cause and the way out.
 
-import type { Store } from "@karta/store";
+import type { Store } from "@potyro/store";
 
 export class SchemaBehindError extends Error {
   constructor(message: string) {

@@ -5,16 +5,16 @@
 
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import workout from "../../../examples/workout.app.js";
-import { defineApp, type AppDefinition } from "karta";
-import { MemoryStore } from "@karta/store";
-import { FakeCapabilities } from "@karta/capabilities";
-import { createHost, type NavBridge, type UiBridge } from "@karta/host";
-import { createRuntime, type KartaRuntime } from "../src/index.js";
+import { defineApp, type AppDefinition } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
+import { createRuntime, type PotyroRuntime } from "../src/index.js";
 
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const nav: NavBridge = { navigate: () => {} };
 
-async function harness(app: AppDefinition, appId = "workout"): Promise<{ store: MemoryStore; runtime: KartaRuntime }> {
+async function harness(app: AppDefinition, appId = "workout"): Promise<{ store: MemoryStore; runtime: PotyroRuntime }> {
   const store = new MemoryStore();
   await store.open(appId);
   const host = createHost();
@@ -25,7 +25,7 @@ async function harness(app: AppDefinition, appId = "workout"): Promise<{ store: 
 
 describe("nested list fields (session → entries → sets)", () => {
   let store: MemoryStore;
-  let runtime: KartaRuntime;
+  let runtime: PotyroRuntime;
   let benchId: string;
 
   beforeEach(async () => {
