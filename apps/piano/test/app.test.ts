@@ -24,7 +24,9 @@ describe("the built file", () => {
     const imports = [...text.matchAll(/^import\s[\s\S]*?\sfrom\s+"([^"]+)";/gm)].map((m) => m[1]);
     expect(imports.every((s) => s === "potyro" || s === "react" || s.startsWith("react/"))).toBe(true);
     expect(text).not.toMatch(/^export\s(?!default)/m);
-    expect(text).toContain('"id": "piano-6-months"');
+    // The plan is a file the app ships with now, not part of the code (#253).
+    expect(text).not.toContain('"id": "piano-6-months"');
+    expect(text).toContain('ctx.files.json("plan.json")');
     expect(text).toContain("function validatePlan(");
     expect(text).toContain("function goalMet(");
   });
