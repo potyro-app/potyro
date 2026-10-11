@@ -34,6 +34,7 @@ import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { NavHost } from "./nav-host.js";
 import { Dialogs, shellDialogs } from "./dialog.js";
+import { askToIncludeChat } from "./share-chat.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
@@ -69,8 +70,12 @@ async function exportApp(
   provenance: Provenance,
   appSource: string | undefined,
   toaster: Toaster,
+  /** The saved app, whose Studio conversation may go along — only if the person says so (#261). */
+  appId?: string,
 ): Promise<void> {
   const def = runtime.definition;
+  // Asked before anything is packed, so the answer is the first thing that happens after Export.
+  const chat = appId ? await askToIncludeChat(appId) : undefined;
   const rowsByEntity: Record<string, PotyroRecord[]> = {};
   for (const entity of Object.keys(def.entities)) rowsByEntity[entity] = await store.all(entity);
 
@@ -95,6 +100,7 @@ async function exportApp(
         entities: Object.keys(def.entities),
       },
       appSource,
+      chat,
       rowsByEntity,
     });
     await caps.filesystem.save(`${def.id}.potyro.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
@@ -188,11 +194,16 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
 // The launcher home — first surface when no app is selected. A tile launches (reload → ?user=);
 // "New app" opens the Studio in place.
 function Home() {
-  const [studio, setStudio] = useState<{ prefill?: string } | null>(null);
+  const [studio, setStudio] = useState<{ prefill?: string; draftId?: string } | null>(null);
   return (
     <>
-      <Launcher variant="home" onOpen={openInstalledApp} onNewApp={(prefill) => setStudio({ prefill })} />
-      {studio ? <Studio onClose={() => setStudio(null)} initialDescription={studio.prefill} /> : null}
+      <Launcher
+        variant="home"
+        onOpen={openInstalledApp}
+        onNewApp={(prefill) => setStudio({ prefill })}
+        onResumeDraft={(draftId) => setStudio({ draftId })}
+      />
+      {studio ? <Studio onClose={() => setStudio(null)} initialDescription={studio.prefill} initialDraftId={studio.draftId} /> : null}
     </>
   );
 }
@@ -539,7 +550,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       appAccent={appHue === undefined ? undefined : hueColour(appHue)}
       currentKind="user"
       lock={syncAllowed && saved.sync ? lock : undefined}
-      onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster)}
+      onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster, id)}
       onImport={() => void importApp(caps, toaster)}
       onData={() => navigateTo({ kind: "data", id })}
       generator

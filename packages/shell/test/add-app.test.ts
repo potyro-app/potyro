@@ -9,6 +9,13 @@ import { MemoryStore, fileSpace, packAppPackage, type Store } from "@potyro/stor
 
 vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
 vi.mock("../src/app-store.js", () => ({ openAppStore: async () => new MemoryStore(), syncAllowedFor: async () => false }));
+// The Studio conversation's store (#261): one in-memory store for the whole file, as a device has one.
+vi.mock("../src/open-store.js", async () => {
+  const { MemoryStore: Memory } = await import("@potyro/store");
+  const chats = new Memory();
+  await chats.open("studio-chat");
+  return { openStore: async () => chats };
+});
 vi.mock("../src/validate-app.js", () => ({
   inspectSource: async (source: string) => ({
     definition: source.includes("BROKEN")
@@ -38,10 +45,11 @@ const openFor = async (app: { id: string }) => {
   return byApp.get(app.id)!;
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
   stores = [];
   byApp.clear();
+  await (await import("../src/studio-chat.js")).clearChat("piano");
 });
 
 describe("gathering files the person picked", () => {
@@ -135,6 +143,28 @@ describe("installing", () => {
     expect(copy.app.id).not.toBe("piano");
     expect(copy.updated).toBe(false);
     expect(copy.seeded).toBe(1);
+  });
+
+  it("a package that carries how it was made lands that conversation as the app's own (#261)", async () => {
+    const chat = { format: "potyro-chat/1", messages: [{ at: "2026-10-11T00:00:00.000Z", kind: "ask", text: "a piano practice log" }] };
+    const { readAppPackage } = await import("@potyro/store");
+    const packaged = readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], chat }));
+    const done = await installPackage(packaged, await inspectPackage(packaged), { source: "file", mine: false, mode: "replace", openStore: openFor });
+
+    const { listMessages } = await import("../src/studio-chat.js");
+    const landed = await listMessages(done.app.id);
+    expect(landed.map((m) => [m.kind, m.text])).toEqual([
+      ["ask", "a piano practice log"],
+      ["event", "how it was made, as shared by its author"],
+    ]);
+  });
+
+  it("a conversation that is not one is ignored, and the app still installs", async () => {
+    const packaged = (await import("@potyro/store")).readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], chat: { format: "something else" } }));
+    const done = await installPackage(packaged, await inspectPackage(packaged), { source: "file", mine: false, mode: "replace", openStore: openFor });
+    expect(getUserApp(done.app.id)).toBeDefined();
+    const { listMessages } = await import("../src/studio-chat.js");
+    expect(await listMessages(done.app.id)).toEqual([]);
   });
 
   it("an app with structure problems is refused, and nothing is saved", async () => {
