@@ -9,6 +9,7 @@
 
 import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "@potyro/capabilities";
+import { pickFilesFromInput } from "@potyro/capabilities";
 
 // --- Minimal plugin shapes (a subset of the real @capacitor/* APIs we actually use) -------------
 
@@ -179,6 +180,8 @@ export class CapacitorCapabilities implements Capabilities {
 
     this.filesystem = {
       pick: () => pickFile(),
+      // The webview's own file input: on Android it opens the system picker, Files and Drive included.
+      pickFiles: (opts) => pickFilesFromInput(opts),
       save: async (name, data) => {
         await Filesystem.writeFile({
           path: name,

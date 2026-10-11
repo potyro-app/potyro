@@ -3853,6 +3853,262 @@ button.k-fold-head {
   color: var(--ink-faint);
 }
 /* tokens-only: end — list rows */
+/* tokens-only: start — add an app */
+/* Add an app (#253): three ways in, then a card that says what the app is before anything is saved. */
+.k-launch-addbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 759px) {
+  .k-launch-addbtn-word {
+    display: none;
+  }
+}
+.k-add-app {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.k-add-app-head h2 {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-add-app-head .k-muted {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add-app-sources {
+  display: grid;
+  gap: var(--space-2);
+}
+.k-add-app-source {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  column-gap: var(--space-3);
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-add-app-source:hover,
+.k-add-app-source:focus-visible,
+.k-add-app-source[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+.k-add-app-source-glyph {
+  grid-row: span 2;
+  font-size: 1.3rem;
+  text-align: center;
+}
+.k-add-app-source-title {
+  font-weight: 600;
+}
+.k-add-app-source .k-muted {
+  font-size: 0.85rem;
+}
+.k-add-app-entry {
+  display: flex;
+  gap: var(--space-2);
+}
+.k-add-app-entry .k-input {
+  flex: 1;
+  min-width: 0;
+}
+.k-add-app-entry-paste {
+  flex-direction: column;
+  align-items: flex-end;
+}
+.k-add-app-paste {
+  width: 100%;
+  min-height: 10rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.k-add-app-busy {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--ink-soft);
+}
+.k-add-app-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.k-add-app-ident {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.k-add-app-ident h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-add-app-ident .k-muted {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add-app-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.k-add-app-facts > div {
+  display: contents;
+}
+.k-add-app-facts dt {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+.k-add-app-facts dd {
+  margin: 0;
+}
+.k-add-app-choice {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.k-add-app-choice legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.k-add-app-choice label,
+.k-add-app-mine {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  cursor: pointer;
+}
+.k-add-app-choice label > span,
+.k-add-app-mine > span {
+  display: grid;
+}
+.k-add-app-choice .k-muted,
+.k-add-app-mine .k-muted {
+  font-size: 0.85rem;
+}
+.k-add-app-trust {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.k-add-app-issues {
+  color: var(--danger);
+}
+.k-add-app-issues p,
+.k-add-app-issues ul {
+  margin: 0;
+}
+.k-add-app-error {
+  margin: 0;
+  color: var(--danger);
+  white-space: pre-line;
+}
+.k-add-app-updated p {
+  margin: 0 0 var(--space-2);
+}
+/* tokens-only: end — add an app */
+/* tokens-only: start — files */
+/* The file field (#252): a chip naming the file, a menu to bring one in or pick one from the app's
+   folder. The chip opens the file; on the record page a second button saves a copy outside. */
+.k-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.k-file-chip[data-gone] {
+  border-style: dashed;
+}
+.k-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+button.k-file-name {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+button.k-file-name:hover,
+button.k-file-name:focus-visible {
+  text-decoration-color: var(--accent);
+}
+.k-file-size {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.k-file-pick,
+.k-file-clear,
+.k-file-export {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-file-pick:hover,
+.k-file-clear:hover,
+.k-file-export:hover,
+.k-file-pick:focus-visible,
+.k-file-clear:focus-visible,
+.k-file-export:focus-visible {
+  border-color: var(--accent);
+}
+.k-file-clear {
+  color: var(--ink-soft);
+  border-color: transparent;
+  background: none;
+}
+.k-file-failed {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
+/* tokens-only: end — files */
 /* tokens-only: start — media */
 /* The photo field (#102): a tile, not the browser's file button. Empty it is a dashed square that
    says what it wants; filled it shows the thing with a way to take it off. A `multiple` field is a

@@ -26,6 +26,33 @@ interface FsAccessGlobals {
 
 const hasDom = (): boolean => typeof document !== "undefined";
 
+/**
+ * Files chosen in a transient `<input type=file>`, `[]` if the person cancels.
+ *
+ * Cancelling fires `cancel` on the input in current browsers. Where it does not, focus coming back
+ * to the window with nothing chosen means the same thing; the delay lets a real `change` land first.
+ */
+export function pickFilesFromInput(opts: { accept?: string; multiple?: boolean } = {}): Promise<File[]> {
+  return new Promise<File[]>((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    if (opts.accept) input.accept = opts.accept;
+    input.multiple = opts.multiple === true;
+    let settled = false;
+    const done = (files: File[]) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("focus", onFocus);
+      resolve(files);
+    };
+    const onFocus = () => setTimeout(() => done(Array.from(input.files ?? [])), 400);
+    input.onchange = () => done(Array.from(input.files ?? []));
+    input.addEventListener("cancel", () => done([]));
+    window.addEventListener("focus", onFocus);
+    input.click();
+  });
+}
+
 /** Read a Blob from a transient file input (optionally cueing the camera on mobile). */
 function pickFile(opts: { accept?: string; capture?: string } = {}): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
@@ -108,6 +135,7 @@ function makeFilesystem(): FileCap {
       }
       return pickFile();
     },
+    pickFiles: (opts) => pickFilesFromInput(opts),
     save: async (name, data) => {
       if (fs.showSaveFilePicker) {
         const handle = await fs.showSaveFilePicker({ suggestedName: name });

@@ -24,6 +24,11 @@ export interface GeoCap {
 export interface FileCap {
   pick(): Promise<Blob>;
   save(name: string, data: Blob): Promise<void>;
+  /**
+   * Ask for one or more files, with their names (`ctx.files.import`, #252). Resolves `[]` when the
+   * person cancels, rather than never: a picker closed without a choice must not hang the app.
+   */
+  pickFiles?(opts?: { accept?: string; multiple?: boolean }): Promise<File[]>;
 }
 
 export interface NetworkCap {

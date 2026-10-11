@@ -9,7 +9,7 @@ export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueErro
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- shared value types ----
-export type { Id, Value, PotyroRecord, Resolved, MediaRef, Geo } from "./types/core.js";
+export type { Id, Value, PotyroRecord, Resolved, MediaRef, Geo, FileInfo, FileRef, FileOrigin } from "./types/core.js";
 
 // ---- field types ----
 export type {
@@ -30,6 +30,7 @@ export type {
   UrlField,
   GeoField,
   MediaField,
+  FileField,
   RelationField,
   MemberField,
   ListField,
@@ -50,6 +51,7 @@ export type {
   UiItem,
   UiProgress,
   CtxMedia,
+  CtxFiles,
   CameraCapability,
   NotificationCapability,
   GeoCapability,

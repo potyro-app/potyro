@@ -56,6 +56,9 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     getBlob: (ref) => store.getBlob(ref),
     subscribeBlob: store.subscribeBlob ? (ref, cb) => store.subscribeBlob!(ref, cb) : undefined,
     kvGet: (k) => store.kvGet(k),
+    listFiles: () => store.listFiles(),
+    getFile: (id) => store.getFile(id),
+    subscribeFiles: store.subscribeFiles ? (cb) => store.subscribeFiles!(cb) : undefined,
     kvKeys: store.kvKeys ? (prefix) => store.kvKeys!(prefix) : undefined,
     subscribeKv: store.subscribeKv ? (cb) => store.subscribeKv!(cb) : undefined,
     memberIds: store.memberIds ? () => store.memberIds!() : undefined,
@@ -78,6 +81,11 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     putBlob: write((b: Blob) => store.putBlob(b)),
     putBlobWithKey: store.putBlobWithKey ? write((key: string, b: Blob) => store.putBlobWithKey!(key, b)) : undefined,
     kvSet: write((k: string, v: string) => store.kvSet(k, v)),
+    // A file is app data like a record: an old copy writing one could put it where the current app
+    // does not expect it, so the folder is read-only while the app is.
+    deleteBlob: write((key: string) => store.deleteBlob(key)),
+    setFile: write((entry: Parameters<Store["setFile"]>[0]) => store.setFile(entry)),
+    deleteFile: write((id: string) => store.deleteFile(id)),
     kvDelete: write((k: string) => store.kvDelete(k)),
     runMigrations: write((plan: Parameters<Store["runMigrations"]>[0]) => store.runMigrations(plan)),
     // A transaction that could only fail should fail immediately, not part-way through.

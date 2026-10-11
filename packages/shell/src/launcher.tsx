@@ -27,6 +27,7 @@ import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
+import { AddAppDialog } from "./add-app-dialog.js";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 
@@ -274,6 +275,33 @@ function YouButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/**
+ * The link in an install address (`#add=<link>`, #253), taken once and cleared from the address bar.
+ *
+ * Taken outside React and remembered: a state initializer runs twice in strict mode, and the first
+ * run clearing the hash left the second with nothing — the dialog never opened.
+ */
+let addLink: string | null | undefined;
+function takeAddLink(): string | null {
+  if (addLink === undefined) {
+    const m = /^#add=(.+)$/.exec(globalThis.location?.hash ?? "");
+    addLink = null;
+    if (m) {
+      globalThis.history.replaceState(null, "", `${location.pathname}${location.search}`);
+      try {
+        addLink = decodeURIComponent(m[1]!);
+      } catch {
+        addLink = m[1]!;
+      }
+    }
+  }
+  const link = addLink;
+  // Handed to one launcher, the first that asks; strict mode's second render asks again and must
+  // get the same answer, so it is cleared on the next tick rather than now.
+  if (link) setTimeout(() => (addLink = null), 0);
+  return link;
+}
+
 export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: LauncherProps) {
   // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
@@ -360,6 +388,11 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
   // You and your other devices — reachable from every launcher, nagged from none.
   const [identity, setIdentity] = useState(false);
   const [lookOpen, setLookOpen] = useState(false);
+  // Add an app (#253). `#add=<link>` opens it with the link filled in: an install link anyone can send.
+  const [adding, setAdding] = useState<{ link?: string } | null>(() => {
+    const link = takeAddLink();
+    return link ? { link } : null;
+  });
 
   // The switcher (#88): on a phone a bottom sheet you can swipe away, with a search field at the
   // bottom edge, inside the thumb's reach; on a desktop a drawer. Both are a compact list, not the
@@ -613,6 +646,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
               ＋ New app
             </button>
           ) : null}
+          {variant === "home" ? (
+            <button type="button" className="k-add k-launch-addbtn" aria-label="Add an app" title="Add an app someone sent you" onClick={() => setAdding({})}>
+              <span aria-hidden>⤓</span>
+              <span className="k-launch-addbtn-word">Add an app</span>
+            </button>
+          ) : null}
           {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
           <LookButton onClick={() => setLookOpen(true)} />
           <YouButton onClick={() => setIdentity(true)} />
@@ -626,6 +665,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
