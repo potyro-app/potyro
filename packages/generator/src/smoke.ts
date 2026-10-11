@@ -93,6 +93,8 @@ function seedValue(field: Field, i: number, key: string): unknown {
       return { lat: 52.37 + i * 0.01, lng: 4.89 + i * 0.01, label: `Place ${i + 1}` };
     case "media":
       return undefined; // needs a real Blob through ctx.media — out of scope for a smoke seed
+    case "file":
+      return undefined; // a file in the app's folder, not a value to invent
     case "relation":
       return undefined; // filled in the second pass, once targets exist
     case "list":

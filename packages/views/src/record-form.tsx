@@ -242,6 +242,7 @@ function FieldRow({
     field.type === "datetime" ||
     field.type === "enum" ||
     field.type === "media" ||
+    field.type === "file" ||
     field.type === "list" ||
     field.type === "relation"
   ) {

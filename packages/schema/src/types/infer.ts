@@ -8,7 +8,7 @@
 
 import type { Field } from "./fields.js";
 import type { Ctx } from "./ctx.js";
-import type { Geo, Id, MediaRef, Value } from "./core.js";
+import type { FileRef, Geo, Id, MediaRef, Value } from "./core.js";
 
 /** Identity + timestamps present on every record. */
 export interface RecordBase {
@@ -59,6 +59,8 @@ type FieldValue<Fld, E extends EntitiesShape> = Fld extends { type: "text" }
                       ? MediaRef[]
                       : Fld extends { type: "media" }
                         ? MediaRef
+                        : Fld extends { type: "file" }
+                          ? FileRef
                         : Fld extends { type: "relation"; to: infer To; many: true }
                           ? To extends keyof E
                             ? ResolvedFields<E[To], E>[]

@@ -76,6 +76,12 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     full: z.boolean().optional(),
     ...common,
   });
+  const file = z.object({
+    type: z.literal("file"),
+    accept: z.string().optional(),
+    folder: z.string().optional(),
+    ...common,
+  });
   const relation = z.object({
     type: z.literal("relation"),
     to: z.string().min(1),
@@ -141,6 +147,7 @@ const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     url,
     geo,
     media,
+    file,
     relation,
     member,
     list,
@@ -562,6 +569,7 @@ const pageSchema = z
     actions: z.array(pageActionSchema).optional(),
     view: viewSchema.optional(),
     layout: layoutSchema.optional(),
+    fullscreen: z.boolean().optional(),
   })
   .strict()
   .superRefine((page, ctx) => {

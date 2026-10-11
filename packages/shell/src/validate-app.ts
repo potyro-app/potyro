@@ -88,6 +88,15 @@ export async function buildAndValidate(source: string): Promise<string[]> {
   return validateDefinition((await composeUntrusted(source)).definition);
 }
 
+/**
+ * What a source would install as, read in the sealed box and never run with authority (#253): its
+ * definition, or the reason it cannot load, and its structure issues.
+ */
+export async function inspectSource(source: string): Promise<{ definition: unknown; issues: string[] }> {
+  const { definition } = await composeUntrusted(source);
+  return { definition, issues: validateDefinition(definition) };
+}
+
 /** The shape `guardedModify` compares: pages and entities of a source, loaded in the isolate. */
 export async function loadDefinition(source: string): Promise<{ pages: AppShape["pages"]; entities: AppShape["entities"] }> {
   const def = (await composeUntrusted(source)).definition as { pages: AppShape["pages"]; entities?: AppShape["entities"] };

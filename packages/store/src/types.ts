@@ -3,7 +3,7 @@
 // with optional cheap narrowing, plus writes, reactivity, blobs, kv, and migrations. A CRDT
 // store later implements the same interface.
 
-import type { Field, Id, PotyroRecord, MediaRef, Migration, Value } from "potyro";
+import type { Field, FileInfo, Id, PotyroRecord, MediaRef, Migration, Value } from "potyro";
 
 export type Unsubscribe = () => void;
 
@@ -42,6 +42,11 @@ export type StoreSchema = Record<string, Record<string, Field>>;
  */
 export interface StoreRules {
   creatorOnly?: readonly string[];
+}
+
+/** A file's index entry as a store keeps it: what the app sees, plus the blob key of its bytes. */
+export interface StoredFile extends FileInfo {
+  blob: string;
 }
 
 export interface Store {
@@ -116,6 +121,23 @@ export interface Store {
   getBlob(r: MediaRef): Promise<Blob | null>;
   /** Fires when a blob's bytes arrive. Only a synced store has anything to wait for. */
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;
+  /**
+   * Drop a blob's bytes. Called when a file is replaced or removed and nothing else points at the
+   * old bytes. A synced store may only forget its index entry; the bytes there are history.
+   */
+  deleteBlob(key: string): Promise<void>;
+
+  // ---- the app's own folder (#252) ----
+  // The store keeps an INDEX of files, by id; the bytes are blobs under `entry.blob`. Paths, types,
+  // hashing and the rule that a path is taken once live in `file-space.ts`, the same for every store.
+  /** Every file entry, in no particular order. */
+  listFiles(): Promise<StoredFile[]>;
+  getFile(id: string): Promise<StoredFile | null>;
+  /** Create or replace the entry with this id. */
+  setFile(entry: StoredFile): Promise<void>;
+  deleteFile(id: string): Promise<void>;
+  /** Fires when any file entry changes, including from a peer. */
+  subscribeFiles?(cb: () => void): Unsubscribe;
   kvGet(k: string): Promise<string | null>;
   kvSet(k: string, v: string): Promise<void>;
   kvDelete(k: string): Promise<void>;
