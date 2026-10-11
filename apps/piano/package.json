@@ -1,0 +1,19 @@
+{
+  "name": "@karta/app-piano",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal piano practice app: the plan is data (plan.json), the UI reads it",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "karta": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12"
+  }
+}

@@ -1,0 +1,395 @@
+{
+  "id": "piano-6-months",
+  "title": "Piano Learning Plan",
+  "version": "2026-10-10",
+  "rules": [
+    "Slow and correct beats fast and sloppy. Use a metronome and only raise the tempo after three clean repetitions.",
+    "Hands separately first, then together. Every new piece, every time.",
+    "Move on when a week's goal is met, not when the week ends. Repeating a week is normal.",
+    "Record yourself once a week (phone is fine). You will hear problems you can't feel while playing.",
+    "On a bad day, 15 minutes of the warm-up and technique blocks beats skipping."
+  ],
+  "blocks": [
+    { "id": "warmup", "label": "Warm-up", "minutes": 5, "source": "Five-finger patterns or scales, slowly, with metronome" },
+    { "id": "technique", "label": "Technique", "minutes": 8, "source": "The week's specific exercise (posture, independence, chords)" },
+    { "id": "reading", "label": "Reading", "minutes": 10, "source": "Next 1–2 pages of the method book, sight-read one short new piece" },
+    { "id": "repertoire", "label": "Repertoire", "minutes": 12, "source": "One flowkey song in practice mode: hands separate, slow, then together" },
+    { "id": "ear", "label": "Ear and theory", "minutes": 5, "source": "One short theory lesson or ear exercise, then play something for fun" }
+  ],
+  "restDay": {
+    "text": "Rest day or free day: play whatever you enjoy, no metronome, no goals."
+  },
+  "reviewDay": {
+    "label": "Record + log",
+    "text": "Record the week's piece on your phone, note one thing to fix, and fill in the progress log."
+  },
+  "resources": [
+    {
+      "id": "alfred",
+      "title": "Alfred's Basic Adult All-in-One Course, Book 1",
+      "url": "https://juilliardstore.com/products/alfred-adult-all-in-1-lvl-1-00-5753",
+      "kind": "Method book",
+      "why": "Lesson, theory and technique in one book for adult beginners; the “Method book” in the weekly reading block (item 00-5753, 160 pages, lay-flat comb binding).",
+      "when": "Daily, block 3, weeks 1–24"
+    },
+    {
+      "id": "flowkey",
+      "title": "flowkey",
+      "url": "https://www.flowkey.com/en/online-piano-lessons",
+      "kind": "App",
+      "why": "Courses “Introduction to the Piano” → “Playing With Both Hands” → “Intermediate Piano Playing”, plus scale drills and 8 sight-reading lessons; use Wait Mode and slow tempo.",
+      "when": "Daily, block 4"
+    },
+    {
+      "id": "musictheory",
+      "title": "musictheory.net lessons",
+      "url": "https://www.musictheory.net/lessons/10",
+      "kind": "Free website",
+      "why": "Short animated theory lessons, from staff and clefs to seventh chords. Every lesson named in the plan is in the menu on this page.",
+      "when": "Block 5, 2–3 times a week"
+    },
+    {
+      "id": "pianote-7days",
+      "title": "Pianote: 7 Days To Learning Piano",
+      "url": "https://www.youtube.com/watch?v=bzNKQ2FkEJI",
+      "kind": "Free video",
+      "why": "Keyboard, five-finger scale, first chords. The free mini-courses Getting Started, Chord Hacks and Sight-Reading Made Simple are linked from its description.",
+      "when": "Week 1, block 5"
+    },
+    {
+      "id": "pianote-notes",
+      "title": "Pianote: How To Read Notes",
+      "url": "https://www.youtube.com/watch?v=gEI7uYOCQXo",
+      "kind": "Free video",
+      "why": "Reading the staff, one video.",
+      "when": "Week 3, block 5"
+    },
+    {
+      "id": "pianote-reading-guide",
+      "title": "Pianote: guide to reading piano notes",
+      "url": "https://www.pianote.com/blog/how-to-read-piano-notes/",
+      "kind": "Written guide",
+      "why": "A reference to keep open while reading.",
+      "when": "Phase 1"
+    },
+    {
+      "id": "musopen-minuet",
+      "title": "Minuet in G, BWV Anh. 114 (Petzold) on Musopen",
+      "url": "https://musopen.org/music/19797-menuets-in-g-major-bwv-anh-114-115/",
+      "kind": "Free score",
+      "why": "3/4, G major, the standard first classical piece. Long credited to Bach; now attributed to Christian Petzold.",
+      "when": "Months 4–5"
+    },
+    {
+      "id": "imslp-schumann",
+      "title": "Schumann, Album für die Jugend, Op. 68 on IMSLP",
+      "url": "https://imslp.org/wiki/Album_f%C3%BCr_die_Jugend,_Op.68_(Schumann,_Robert)",
+      "kind": "Free score",
+      "why": "Public-domain editions plus recordings; No. 1 “Melodie” is the first target.",
+      "when": "Month 6"
+    },
+    {
+      "id": "pianote-blues",
+      "title": "Pianote: Play The Blues In 10 Minutes",
+      "url": "https://www.youtube.com/watch?v=bR9QkdOVIrc",
+      "kind": "Free video",
+      "why": "Chapters for the 12-bar form, boogie pattern, the slide, two riffs and triplet rhythm. Learn one chapter per day.",
+      "when": "Blues module"
+    },
+    {
+      "id": "richards-blues",
+      "title": "Tim Richards: Improvising Blues Piano (Schott)",
+      "url": "https://www.crescendo-music.com/shop/45135-improvising-blues-piano-47787",
+      "kind": "Book",
+      "why": "Assumes about Grade 3, roughly a year of steady practice. Keep it for year 2.",
+      "when": "Not now"
+    },
+    {
+      "id": "jazztutorial-shells",
+      "title": "jazztutorial.com: Shell Voicings lesson",
+      "url": "https://jazztutorial.com/video-library/chord-voicings/shell-voicings-lesson",
+      "kind": "Free lesson",
+      "why": "Root + 3rd + 7th voicings, the first jazz left hand.",
+      "when": "Jazz module"
+    },
+    {
+      "id": "jazztutorial-251",
+      "title": "jazztutorial.com: ii–V–I voicings guide",
+      "url": "https://jazztutorial.com/articles/chord-voicings-for-jazz-piano",
+      "kind": "Free article",
+      "why": "Shell section only at first.",
+      "when": "Jazz module"
+    },
+    {
+      "id": "richards-jazz",
+      "title": "Tim Richards: Beginning Jazz Piano, Part 1 (Schott; MusicGurus video course)",
+      "url": "https://www.musicgurus.com/gurus/tim-richards/",
+      "kind": "Book + video course",
+      "why": "The book for the jazz module. His Exploring Jazz Piano vol. 1 suits Grade 4 and above, so it comes later.",
+      "when": "Jazz module"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p1",
+      "title": "Foundations",
+      "span": "Weeks 1–4",
+      "goal": "Correct posture and hand shape, find any note on the keyboard instantly, read treble and bass clef in the C position, and play a short piece hands together at a slow tempo.",
+      "notes": [
+        "One video per week in block 5 (playing beats watching): Pianote's 7 Days To Learning Piano in week 1, How To Read Notes in week 3. Keep Pianote's written guide to reading notes open as a reference."
+      ],
+      "weeks": [
+        {
+          "id": "w1",
+          "label": "Week 1",
+          "blocks": {
+            "warmup": { "text": "Finger numbers 1–5. C five-finger pattern (C–G) in each hand, quarter notes at 60 bpm, with metronome." },
+            "technique": { "text": "Posture, bench height, curved fingers. Check them before every block this week." },
+            "reading": {
+              "text": "Keyboard geography: groups of 2 and 3 black keys, all white note names. musictheory.net lesson “The Staff, Clefs, and Ledger Lines”.",
+              "links": [{ "resource": "musictheory" }, { "resource": "pianote-reading-guide" }]
+            },
+            "repertoire": { "text": "flowkey course “Introduction to the Piano”, first lessons.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "Watch Pianote's 7 Days To Learning Piano (keyboard, five-finger scale, first chords), a chapter at a time. Then play something for fun.", "links": [{ "resource": "pianote-7days" }] }
+          },
+          "doneWhen": "You can name any white key in under 2 seconds."
+        },
+        {
+          "id": "w2",
+          "label": "Week 2",
+          "blocks": {
+            "warmup": { "text": "C five-finger pattern, hands separate, then parallel, at 60 bpm." },
+            "technique": { "text": "Legato (smooth) vs staccato (detached) on the C pattern. Alternate one bar of each." },
+            "reading": { "text": "Note values: whole, half, quarter; 4/4 time. Method book lessons 1–3.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "“Introduction to the Piano”: right-hand lessons and the first song.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lessons “Note Duration” and “Measures and Time Signature”. Clap and count rhythms.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "You clap and count a 4-bar rhythm without stopping."
+        },
+        {
+          "id": "w3",
+          "label": "Week 3",
+          "blocks": {
+            "warmup": { "text": "C pattern in contrary motion (hands mirror outward), at 60 bpm." },
+            "technique": { "text": "G five-finger pattern (G–D), each hand, then parallel." },
+            "reading": { "text": "Bass clef notes in C position. Method book lessons 4–6.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "“Introduction to the Piano”: left-hand lessons.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "Rests: musictheory.net lesson “Rest Duration”. Watch Pianote's How To Read Notes.", "links": [{ "resource": "musictheory" }, { "resource": "pianote-notes" }] }
+          },
+          "doneWhen": "You read single notes in both clefs within C–G."
+        },
+        {
+          "id": "w4",
+          "label": "Week 4",
+          "blocks": {
+            "warmup": { "text": "Both five-finger patterns (C and G) at 72 bpm." },
+            "technique": { "text": "Simple dynamics on the patterns: piano, then forte, then alternating by bar." },
+            "reading": { "text": "Intervals 2nd–5th by sight. Method book lessons 7–9.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "Start flowkey course “Playing With Both Hands”.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lesson “Generic Intervals”. Play the intervals you read.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "One piece hands together, no stops, at any tempo."
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "title": "Hands together and chords",
+      "span": "Weeks 5–12",
+      "goal": "Play melody in the right hand over block chords in the left, read beyond the five-finger position, and use the sustain pedal cleanly.",
+      "notes": [
+        "The biggest hurdle here is hand independence. If hands-together stalls, cut the tempo in half and practise just the two bars that fail; never restart from bar 1.",
+        "flowkey: finish “Playing With Both Hands”, then the scales and arpeggios drills and the 8 sight-reading lessons.",
+        "Theory: musictheory.net “The Major Scale”, “Introduction to Chords”, “Triad Inversion” and “Diatonic Triads”, one per fortnight.",
+        "Free courses: Pianote's “Chord Hacks” and “Sight-Reading Made Simple”, linked from the description of the 7 Days video."
+      ],
+      "weeks": [
+        {
+          "id": "w5-6",
+          "label": "Weeks 5–6",
+          "spanWeeks": 2,
+          "blocks": {
+            "warmup": { "text": "C major scale, one octave, hands separate, with metronome." },
+            "technique": { "text": "Thumb-under crossing: fingers 1-2-3-1-2-3-4-5 going up, slowly. Stop at the crossing and check the hand stays level." },
+            "reading": { "text": "Eighth notes, dotted quarter; key signature of G. Method book continues.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "Easy-level songs with melody + single bass notes. Finish “Playing With Both Hands”.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lesson “The Major Scale”.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "Scale at 72 bpm, even and without accents."
+        },
+        {
+          "id": "w7-8",
+          "label": "Weeks 7–8",
+          "spanWeeks": 2,
+          "blocks": {
+            "warmup": { "text": "C major scale, hands separate, then hands together at a slow tempo." },
+            "technique": { "text": "Primary chords in C: C, F, G in root position, left hand, changing on the beat with metronome." },
+            "reading": { "text": "Triads: how a major chord is built (root, major 3rd, perfect 5th). Chord symbols. Method book continues.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "Songs where the left hand plays chords.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lesson “Introduction to Chords”. Pianote's free “Chord Hacks” course.", "links": [{ "resource": "musictheory" }, { "resource": "pianote-7days" }] }
+          },
+          "doneWhen": "You switch C–F–G–C at 80 bpm without looking."
+        },
+        {
+          "id": "w9-10",
+          "label": "Weeks 9–10",
+          "spanWeeks": 2,
+          "blocks": {
+            "warmup": { "text": "G major scale, one octave, hands separate (mind the F♯)." },
+            "technique": { "text": "Chords in G: G, C, D, left hand, changing on the beat." },
+            "reading": { "text": "Minor triads; the relative minor (A minor). Method book continues.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "Start flowkey course “Intermediate Piano Playing” (fingering, sharps and flats).", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lesson “Triad Inversion”. Harmonise a simple melody with I–IV–V by ear.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "You harmonise a simple melody with I–IV–V."
+        },
+        {
+          "id": "w11-12",
+          "label": "Weeks 11–12",
+          "spanWeeks": 2,
+          "blocks": {
+            "warmup": { "text": "C and G major scales, hands together, slowly." },
+            "technique": { "text": "Pedal: legato pedalling. Lift and press right after each chord change, listening for the gap or the smear." },
+            "reading": { "text": "Sight-read one new 8-bar piece per day, never stopping for mistakes. flowkey's 8 sight-reading lessons.", "links": [{ "resource": "flowkey" }] },
+            "repertoire": { "text": "One full song you love, polished, with pedal.", "links": [{ "resource": "flowkey" }] },
+            "ear": { "text": "musictheory.net lesson “Diatonic Triads”. Pianote's free “Sight-Reading Made Simple”.", "links": [{ "resource": "musictheory" }, { "resource": "pianote-7days" }] }
+          },
+          "doneWhen": "A recorded piece you'd play for someone."
+        }
+      ]
+    },
+    {
+      "id": "p3",
+      "title": "Real music",
+      "span": "Months 4–6",
+      "goal": "Play from a lead sheet (melody + chord symbols), accompany a song with a left-hand pattern, and finish two pieces from the classical beginner repertoire.",
+      "notes": [
+        "Theory for this phase: musictheory.net “Key Signatures”, “Seventh Chords” and “Roman Numeral Analysis: Triads”.",
+        "At month 6, decide the next direction (classical, blues, jazz, pop accompaniment) and ask for a new plan. Month 5's seventh chords are placed so that blues or jazz can branch off cleanly from there."
+      ],
+      "weeks": [
+        {
+          "id": "m4",
+          "label": "Month 4",
+          "spanWeeks": 4,
+          "blocks": {
+            "warmup": { "text": "Scales C, G, D, F, two octaves, hands together." },
+            "technique": { "text": "Chord inversions of C, F, G. Move between them with the hand barely leaving the keys." },
+            "reading": { "text": "Reading a lead sheet (melody + chord symbols). Method book continues.", "links": [{ "resource": "alfred" }] },
+            "repertoire": { "text": "Bach/Petzold “Minuet in G”: start, hands separate. Plus a flowkey song of choice.", "links": [{ "resource": "musopen-minuet" }, { "resource": "flowkey" }] },
+            "ear": { "text": "The circle of fifths. musictheory.net lesson “Key Signatures”.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "You play I–IV–V with inversions, hand barely moving."
+        },
+        {
+          "id": "m5",
+          "label": "Month 5",
+          "spanWeeks": 4,
+          "blocks": {
+            "warmup": { "text": "Arpeggios C and G, hands separate." },
+            "technique": { "text": "Left-hand accompaniment patterns: broken chord, then Alberti bass, over I–IV–V." },
+            "reading": { "text": "Minuet in G from the score, hands together in sections.", "links": [{ "resource": "musopen-minuet" }] },
+            "repertoire": { "text": "Finish Minuet in G. A pop song from a lead sheet with your own accompaniment.", "links": [{ "resource": "musopen-minuet" }] },
+            "ear": { "text": "Seventh chords (maj7, dom7, m7), the bridge to blues and jazz. musictheory.net lesson “Seventh Chords”.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "You accompany a melody from chord symbols alone."
+        },
+        {
+          "id": "m6",
+          "label": "Month 6",
+          "spanWeeks": 4,
+          "blocks": {
+            "warmup": { "text": "Minor scales: A natural and A harmonic, hands separate, then together." },
+            "technique": { "text": "A minor chords; the ii–V–I progression in C (Dm–G–C) in the left hand." },
+            "reading": { "text": "Schumann “Melody” (Album for the Young, No. 1) from the score.", "links": [{ "resource": "imslp-schumann" }] },
+            "repertoire": { "text": "A second classical piece: Schumann's “Melody”. Review and re-record the pieces of the year.", "links": [{ "resource": "imslp-schumann" }] },
+            "ear": { "text": "Simple transposition: play a known melody in G. musictheory.net lesson “Roman Numeral Analysis: Triads”.", "links": [{ "resource": "musictheory" }] }
+          },
+          "doneWhen": "Two recorded pieces + one self-arranged song."
+        }
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "id": "blues",
+      "title": "Blues",
+      "intro": "A good detour from week 9 onward, once you have I–IV–V chords. Before that it mostly produces frustration. Swaps into the technique and repertoire blocks; warm-up, reading and theory follow the main plan.",
+      "availableFrom": "w9-10",
+      "suggestedWeeks": [2, 4],
+      "weeks": [
+        {
+          "id": "blues-1",
+          "blocks": {
+            "technique": { "text": "12-bar blues in C with a left-hand boogie pattern, slowly, with metronome.", "links": [{ "resource": "pianote-blues" }] },
+            "repertoire": { "text": "Pianote's Play The Blues In 10 Minutes, one chapter per day: the 12-bar form, the boogie pattern, the slide.", "links": [{ "resource": "pianote-blues" }] }
+          },
+          "doneWhen": "You play the 12-bar form in C with the boogie pattern without stopping."
+        },
+        {
+          "id": "blues-2",
+          "blocks": {
+            "technique": { "text": "Dominant 7th chords C7, F7, G7 over the 12-bar form. Swing / triplet feel on the boogie pattern." },
+            "repertoire": { "text": "Chapters: the two riffs and the triplet rhythm. Put one riff over the form.", "links": [{ "resource": "pianote-blues" }] }
+          },
+          "doneWhen": "12-bar blues with C7–F7–G7 in a swing feel, at a steady tempo."
+        },
+        {
+          "id": "blues-3",
+          "blocks": {
+            "technique": { "text": "The blues scale in C (C, E♭, F, F♯, G, B♭), up and down, then over the boogie pattern." },
+            "repertoire": { "text": "Improvise with the riffs and the blues scale over the 12-bar form. Record one chorus." }
+          },
+          "doneWhen": "A recorded 12-bar blues with one riff and a few bars of your own."
+        }
+      ],
+      "notes": [
+        "Next step, not now: Tim Richards, Improvising Blues Piano (Schott) assumes about Grade 3, roughly a year of steady practice. Keep it for year 2."
+      ]
+    },
+    {
+      "id": "jazz",
+      "title": "Jazz",
+      "intro": "Works best after month 5, once you have seventh chords. Swaps into the technique and repertoire blocks; warm-up, reading and theory follow the main plan.",
+      "availableFrom": "m6",
+      "suggestedWeeks": [4, 6],
+      "weeks": [
+        {
+          "id": "jazz-1",
+          "blocks": {
+            "technique": { "text": "Shell voicings (root + 3rd + 7th) for ii–V–I in C: Dm7–G7–Cmaj7, left hand.", "links": [{ "resource": "jazztutorial-shells" }] },
+            "repertoire": { "text": "“Autumn Leaves” from a lead sheet: melody in the right hand, shells in the left, first 8 bars." }
+          },
+          "doneWhen": "ii–V–I in C with shells, both hands, slowly."
+        },
+        {
+          "id": "jazz-2",
+          "blocks": {
+            "technique": { "text": "Shell voicings for ii–V–I in F and B♭.", "links": [{ "resource": "jazztutorial-251" }] },
+            "repertoire": { "text": "Autumn Leaves: the A sections, melody + shells." }
+          },
+          "doneWhen": "ii–V–I shells in C, F and B♭ without stopping."
+        },
+        {
+          "id": "jazz-3",
+          "blocks": {
+            "technique": { "text": "Chord-scale basics: Dorian over m7, Mixolydian over dom7. Play each scale over its shell." },
+            "repertoire": { "text": "Autumn Leaves: the whole form, melody + shells, slowly." }
+          },
+          "doneWhen": "Autumn Leaves, whole form, without stopping."
+        },
+        {
+          "id": "jazz-4",
+          "blocks": {
+            "technique": { "text": "Reading jazz chord symbols on a lead sheet: a shell for every chord in Autumn Leaves." },
+            "repertoire": { "text": "Autumn Leaves recorded, plus a few bars of improvisation with the chord scales." }
+          },
+          "doneWhen": "A recorded Autumn Leaves with shells in the left hand."
+        }
+      ],
+      "notes": [
+        "Book: Tim Richards, Beginning Jazz Piano, Part 1 (Schott; also a MusicGurus video course). His Exploring Jazz Piano vol. 1 suits Grade 4 and above, so it comes later."
+      ]
+    }
+  ]
+}
