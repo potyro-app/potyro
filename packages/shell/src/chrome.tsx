@@ -10,7 +10,7 @@
 // never sit above the app's content again: they were what a phone scrolled past before the first
 // row, and none of them is what someone opened a recipe list to do.
 
-import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
 
 const WIDE_FROM = 760;
@@ -103,6 +103,8 @@ export interface AppChromeProps {
   fullBleed?: boolean;
   /** This copy may not write (KA-22): quick actions are announced as unavailable. */
   locked?: boolean;
+  /** The page asked for the whole screen: no bars, only the shell's own way out. */
+  fullscreen?: { onExit: () => void };
   children: ReactNode;
 }
 
@@ -117,9 +119,47 @@ export function primaryQuick(quick: ChromeQuick[], currentEntity: string | undef
 export function AppChrome(props: AppChromeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const phone = useNarrow(ref, usePhone());
+  if (props.fullscreen) return <FullscreenFrame onExit={props.fullscreen.onExit}>{props.children}</FullscreenFrame>;
   return (
     <div ref={ref} className="k-app-chrome" data-layout={phone ? "phone" : "wide"}>
       {phone ? <PhoneChrome {...props} /> : <WideChrome {...props} />}
+    </div>
+  );
+}
+
+/**
+ * A page that asked for the whole screen: a game, a slideshow.
+ *
+ * No top bar, no tabs, and on Android no status or navigation bar either. The way out belongs to the
+ * shell, not the app: a small ✕ that is always there (quiet until touched), Escape, and Android's
+ * back gesture. An app — a sealed one included — can ask for the screen; it cannot keep it.
+ */
+function FullscreenFrame({ onExit, children }: { onExit: () => void; children: ReactNode }) {
+  useEffect(() => {
+    let live = true;
+    void import("@potyro/native").then((n) => (live ? n.setImmersive(true) : undefined));
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onExit();
+    };
+    window.addEventListener("keydown", onKey);
+    // Android's back gesture: one step back leaves full screen rather than the app.
+    history.pushState({ potyroFullscreen: true }, "");
+    const onPop = (): void => onExit();
+    window.addEventListener("popstate", onPop);
+    return () => {
+      live = false;
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
+      if ((history.state as { potyroFullscreen?: boolean } | null)?.potyroFullscreen) history.back();
+      void import("@potyro/native").then((n) => n.setImmersive(false));
+    };
+  }, [onExit]);
+  return (
+    <div className="k-fullscreen">
+      <button type="button" className="k-fullscreen-exit" aria-label="Leave full screen" title="Leave full screen" onClick={onExit}>
+        ✕
+      </button>
+      <div className="k-fullscreen-page">{children}</div>
     </div>
   );
 }

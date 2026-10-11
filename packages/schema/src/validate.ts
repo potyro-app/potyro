@@ -569,6 +569,7 @@ const pageSchema = z
     actions: z.array(pageActionSchema).optional(),
     view: viewSchema.optional(),
     layout: layoutSchema.optional(),
+    fullscreen: z.boolean().optional(),
   })
   .strict()
   .superRefine((page, ctx) => {
