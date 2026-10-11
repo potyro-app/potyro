@@ -8,14 +8,20 @@
 // folder, keeping its sub-folders. The format is `potyro-app/1` (packages/store/src/app-package.ts);
 // packages/store/test/app-package.test.ts runs this script and reads its zip back with the real
 // reader, so the two cannot drift apart.
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(new URL("../packages/store/package.json", import.meta.url));
 const { zipSync, strToU8 } = require("fflate");
 
-const cwd = process.env.INIT_CWD ?? process.cwd();
+// Paths are the caller's. `pnpm pack:app` runs from the repo root and says where it was called from in
+// INIT_CWD; a package script (`pnpm --filter x build`) runs in the package, while INIT_CWD names the
+// root. So the current folder wins when the path is there, and INIT_CWD is the fallback.
+const here = process.cwd();
+const there = process.env.INIT_CWD ?? here;
+const cwd = here;
+const at = (p) => (existsSync(resolve(here, p)) ? resolve(here, p) : resolve(there, p));
 const args = process.argv.slice(2);
 const take = (flag) => {
   const i = args.indexOf(flag);
@@ -35,9 +41,9 @@ if (!sourcePath) {
 
 const sourceName = /x$/i.test(sourcePath) ? "app.tsx" : "app.ts";
 const shipped = new Map();
-for (const f of loose) shipped.set(basename(f), readFileSync(resolve(cwd, f)));
+for (const f of loose) shipped.set(basename(f), readFileSync(at(f)));
 if (filesDir) {
-  const root = resolve(cwd, filesDir);
+  const root = at(filesDir);
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
@@ -52,15 +58,15 @@ const entries = {
   "manifest.json": strToU8(
     JSON.stringify({ format: "potyro-app/1", source: sourceName, files: [...shipped].map(([path, data]) => ({ path, size: data.byteLength })) }, null, 2),
   ),
-  [sourceName]: readFileSync(resolve(cwd, sourcePath)),
+  [sourceName]: readFileSync(at(sourcePath)),
 };
 for (const [path, data] of shipped) entries[`files/${path}`] = new Uint8Array(data);
 if (seedPath) {
-  const seed = readFileSync(resolve(cwd, seedPath), "utf8");
+  const seed = readFileSync(at(seedPath), "utf8");
   JSON.parse(seed); // fail here, not on someone's device
   entries["seed.json"] = strToU8(seed);
 }
 
-const target = resolve(cwd, out ?? `${basename(sourcePath).replace(/\.app\.[jt]sx?$|\.[jt]sx?$/, "")}.potyro-app.zip`);
+const target = resolve(existsSync(resolve(here, sourcePath)) ? here : there, out ?? `${basename(sourcePath).replace(/\.app\.[jt]sx?$|\.[jt]sx?$/, "")}.potyro-app.zip`);
 writeFileSync(target, zipSync(entries));
-console.log(`${relative(cwd, target)}: the app and ${shipped.size} file${shipped.size === 1 ? "" : "s"}${seedPath ? ", with a seed" : ""}`);
+console.log(`${relative(process.cwd(), target)}: the app and ${shipped.size} file${shipped.size === 1 ? "" : "s"}${seedPath ? ", with a seed" : ""}`);
