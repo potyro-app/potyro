@@ -61,7 +61,9 @@ test("a candidate that validates but throws when it runs is sent back with the e
   const sentBack = requests[2]!.at(-1)!;
   expect(sentBack.role).toBe("user");
   // The run's own words: what broke, where, and that it ran on sample records — not the validator's.
-  expect(sentBack.content).toMatch(/breaks when it runs/);
+  // Judged against the app as first shown (#262): the failure is the change's, so it is named as such.
+  expect(sentBack.content).toMatch(/your change breaks it when it runs/);
+  expect(sentBack.content).not.toMatch(/already failing before this change/i);
   expect(sentBack.content).toMatch(/computed book\.score/);
   // QuickJS's own words for `ctx.ratings.lookup` on a ctx with no `ratings`.
   expect(sentBack.content).toMatch(/cannot read property 'lookup' of undefined/);
