@@ -98,6 +98,10 @@ pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub
 # generated from them, and test/reference.test.ts fails while it is stale (#130)
 pnpm --filter @potyro/generator gen:reference
 
+# after ANY change to examples/, apps/, docs/04, docs/05 or the schema types: the corpus the
+# Studio's model searches is generated from them, and test/corpus.test.ts fails while it is stale (#262)
+pnpm --filter @potyro/generator gen:corpus
+
 # does changing an app that holds records keep the records? (docs/12 §8)
 pnpm --filter @potyro/generator eval:modify:fixture   # no model, no money — sample review sheet
 pnpm --filter @potyro/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6
