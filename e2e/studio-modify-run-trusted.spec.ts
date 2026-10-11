@@ -63,7 +63,8 @@ test("a candidate that validates but throws when it runs is sent back with the e
   // The run's own words: what broke, where, and that it ran on sample records — not the validator's.
   expect(sentBack.content).toMatch(/breaks when it runs/);
   expect(sentBack.content).toMatch(/computed book\.score/);
-  expect(sentBack.content).toMatch(/ratings/);
+  // QuickJS's own words for `ctx.ratings.lookup` on a ctx with no `ratings`.
+  expect(sentBack.content).toMatch(/cannot read property 'lookup' of undefined/);
 
   await studio.getByRole("tab", { name: "Source" }).click();
   await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/String\(b\.title/);
