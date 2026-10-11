@@ -32,7 +32,10 @@ export default defineApp({
       },
     },
   },
-  pages: [{ id: "all", title: "Notes", view: { type: "list", entity: "note", display: { primary: "title" } } }],
+  pages: [
+    { id: "all", title: "Notes", view: { type: "list", entity: "note", display: { primary: "title" }, onOpen: { page: "note", param: { noteId: "id" } } } },
+    { id: "note", title: "Note", hidden: true, view: { type: "detail", entity: "note", param: "noteId", actions: ["readIt", "writeSummary"] } },
+  ],
 });
 `;
 
@@ -52,7 +55,7 @@ async function install(page: Page, trusted: boolean): Promise<void> {
 }
 
 async function openNote(page: Page, title: string): Promise<void> {
-  await page.locator(".k-list-row", { hasText: title }).first().click();
+  await page.getByRole("listitem").filter({ hasText: title }).first().click();
   await expect(page.locator("article.k-detail")).toBeVisible({ timeout: 15_000 });
 }
 
