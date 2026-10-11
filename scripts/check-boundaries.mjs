@@ -29,8 +29,8 @@ const rules = [
   },
   {
     pkg: "apps",
-    forbidden: [/@karta\/store/, /@karta\/host/, /@karta\/capabilities/, /@karta\/runtime/, /@karta\/views/, /@karta\/shell/],
-    note: "personal apps are app modules too: import `karta` only",
+    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
+    note: "personal apps are app modules too: import `potyro` only",
   },
 ];
 

@@ -35,7 +35,7 @@ importers:
 
   apps/piano:
     dependencies:
-      karta:
+      potyro:
         specifier: workspace:*
         version: link:../../packages/schema
       react:

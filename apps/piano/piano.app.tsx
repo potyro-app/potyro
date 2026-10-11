@@ -7,8 +7,8 @@
 //
 // `build.mjs` inlines plan.json, plan.ts and progress.ts into `dist/piano.app.tsx` — the one file
 // the shell imports. Edit THIS file and the plan, then rebuild.
-import { defineApp } from "karta";
-import type { Ctx, Resolved, ViewProps } from "karta";
+import { defineApp } from "potyro";
+import type { Ctx, Resolved, ViewProps } from "potyro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import planJson from "./plan.json";
 import { blocksForWeek, mainWeeks, resolveLink, startingWeekNumber, validatePlan } from "./plan.js";
