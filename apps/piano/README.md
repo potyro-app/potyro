@@ -7,29 +7,33 @@ goals and optional modules.
 plan.json        the plan: phases → weeks → blocks, resources with URLs, goals, blues/jazz modules
 plan.ts          the contract plan.json must satisfy, and validatePlan()
 progress.ts      where you are and how you move: goal-based advance, repeat, modules, rest/review day
-piano.app.tsx    the UI (Today, Log, Plan, Modules, Sessions)
-build.mjs        inlines the three files above into dist/piano.app.tsx — the ONE file you import
+piano.app.tsx    the UI (Today, Log, Plan, Modules, Sessions); reads plan.json with ctx.files
+build.mjs        inlines plan.ts and progress.ts into dist/piano.app.tsx, then packs it with plan.json
 test/            the plan validates, the progress logic, the app and its built file
 ```
 
-## Build and import
+## Build and install
 
 ```
-pnpm --filter @potyro/app-piano build     # → apps/piano/dist/piano.app.tsx
+pnpm --filter @potyro/app-piano build     # → apps/piano/dist/piano.potyro-app.zip
 ```
 
-Open the shell, go to the **Studio**, switch the stage to **Source**, paste the whole of
-`dist/piano.app.tsx`, **Run ▶**, then **Save to My Apps**. Apps saved from the Studio run trusted,
-which the custom screens need; if the header badge says **untrusted ▾**, tap it and **Promote to
-trusted**. Rebuild and paste again to update it (History keeps the previous version).
+In the shell: **Add an app → From this device**, choose `dist/piano.potyro-app.zip`. The card says
+it comes with `plan.json`; tick **I wrote this. Run it as mine.** (the custom screens want it), then
+**Add app**. To update, build again and add the zip again: **Replace it, keep its data** is already
+chosen, History keeps the previous version, and your progress stays.
 
-Why a build step: the shell bundles an imported app from one source string, where only `potyro` and
-`react` resolve. The build keeps the output readable TypeScript (comments and types intact).
+`plan.json` is not part of the code any more. It ships in the app's own folder, so a new plan only
+needs a new package, and a plan you edited inside the app is kept when the app is updated.
+
+Why there is still a build step: the app's code is three modules (`piano.app.tsx`, `plan.ts`,
+`progress.ts`) and the shell bundles an app from one source module. The build inlines the two
+helpers and keeps the output readable TypeScript (comments and types intact).
 
 ## Changing the plan
 
-Edit `plan.json` and rebuild, or — without touching the app — pick the file from inside it:
-**Modules → Settings → Load plan file…**. Either way the file is checked against `plan.ts` first and
+Edit `plan.json` and rebuild, or — without touching the app — bring a plan file in from inside it:
+**Modules → Settings → Load plan file…** (it lands in the app's `plans/` folder). Either way the file is checked against `plan.ts` first and
 every problem is reported by path. Progress is keyed by week id, so a week the new plan keeps is
 still where you were; one it drops lands you on the first week. Sessions and logs are never touched.
 
