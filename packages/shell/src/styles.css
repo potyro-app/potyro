@@ -3895,7 +3895,12 @@ button.k-fold-head {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+}
+/* The page's view gets all of it. Not centred: a view measures where it starts to know how much room
+   it has, and centring an empty one put its top halfway down the screen. A view centres itself. */
+.k-fullscreen-page > * {
+  flex: 1;
+  min-height: 0;
 }
 .k-fullscreen-exit {
   position: absolute;
