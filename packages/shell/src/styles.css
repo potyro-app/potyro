@@ -15,6 +15,16 @@
      (see `.wk-bar` in the workout example). */
   --k-chrome-bottom: 0px;
 
+  /* The phone's status bar, cutout and gesture bar (#253 on a Pixel 10). A browser reports them as
+     env(safe-area-inset-*); Capacitor 8 on Android reports them as --safe-area-inset-* variables on
+     <html> when the WebView's own env() is not passed through, and env() is then 0 — which put the
+     home screen's buttons under the status bar. Every inset in the shell reads these: the larger of
+     the two, so whichever the platform provides is used. */
+  --k-safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --k-safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --k-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --k-safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+
   /* Surfaces: paper is the ground, surface sits on it, raised floats above, sunken recedes. */
   --paper: oklch(97% 0.012 85);
   --surface: oklch(99% 0.006 85);
@@ -357,7 +367,7 @@ button {
   z-index: 3;
   left: var(--space-3);
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -379,7 +389,7 @@ button {
   position: absolute;
   z-index: 3;
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -405,7 +415,7 @@ button {
   position: absolute;
   z-index: 3;
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -424,7 +434,7 @@ button {
 }
 /* Above the "add here" pill when there is one, so the thumb reads them as one stack. */
 .k-map-locate[data-stacked] {
-  bottom: calc(var(--space-3) + 3.5rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + 3.5rem + var(--k-safe-bottom));
 }
 .k-map-locate:hover,
 .k-map-locate:focus-visible {
@@ -442,13 +452,13 @@ button {
 /* On a phone the map runs under the fixed tab bar — that is the look — so its chrome clears it. */
 .k-app-phone .k-page[data-full] .k-map-add,
 .k-app-phone .k-page[data-full] .k-map-bar {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
 }
 .k-app-phone .k-page[data-full] .k-map-locate {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
 }
 .k-app-phone .k-page[data-full] .k-map-locate[data-stacked] {
-  bottom: calc(4.75rem + 3.5rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + 3.5rem + var(--k-safe-bottom));
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {
@@ -549,7 +559,7 @@ button {
 }
 /* The map runs under the phone's tab bar, so a sheet filling it would end underneath one too. */
 .k-app-phone .k-map-sheet {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(5.5rem + var(--k-safe-bottom));
 }
 .k-map-sheet-close {
   position: absolute;
@@ -751,7 +761,7 @@ button {
 .k-inline-bar {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom) + var(--space-4));
+  bottom: calc(var(--k-safe-bottom) + var(--space-4));
   transform: translateX(-50%);
   z-index: 85;
   display: flex;
@@ -768,7 +778,7 @@ button {
   animation: k-inline-rise var(--dur-slow) var(--ease);
 }
 body:has(.k-app-phone .k-tabbar) .k-inline-bar {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom) + var(--space-3));
+  bottom: calc(4.75rem + var(--k-safe-bottom) + var(--space-3));
 }
 .k-inline-bar-mark {
   display: inline-grid;
@@ -1713,7 +1723,7 @@ th.k-data-raw {
 }
 .k-filter-foot {
   display: flex;
-  padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
 }
 .k-filter-foot .k-add {
@@ -2105,7 +2115,7 @@ th.k-data-raw {
   flex: 0 0 auto;
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--space-3) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
   background: var(--surface);
   border-radius: 0 0 var(--radius) var(--radius);
@@ -2137,7 +2147,7 @@ th.k-data-raw {
     border-radius: var(--radius) var(--radius) 0 0;
   }
   .k-form-head {
-    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+    padding-top: calc(var(--space-4) + var(--k-safe-top));
     min-height: 2.75rem;
   }
   .k-form-close {
@@ -2391,7 +2401,7 @@ details.k-form-group > summary:focus-visible {
   gap: var(--space-2);
   min-height: 3.25rem;
   padding: var(--space-1) var(--space-2);
-  padding-top: calc(var(--space-1) + env(safe-area-inset-top));
+  padding-top: calc(var(--space-1) + var(--k-safe-top));
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -2454,7 +2464,7 @@ details.k-form-group > summary:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-3) calc(7.5rem + env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-3) calc(7.5rem + var(--k-safe-bottom));
 }
 .k-recbar {
   display: flex;
@@ -2505,7 +2515,7 @@ details.k-form-group > summary:focus-visible {
   z-index: 20;
   display: flex;
   justify-content: space-around;
-  padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+  padding: var(--space-1) var(--space-1) calc(var(--space-1) + var(--k-safe-bottom));
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
@@ -2556,7 +2566,7 @@ details.k-form-group > summary:focus-visible {
 .k-fab {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
   z-index: 21;
   display: inline-flex;
   align-items: center;
@@ -2598,7 +2608,7 @@ details.k-form-group > summary:focus-visible {
 .k-fab-dial {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  bottom: calc(8.5rem + var(--k-safe-bottom));
   z-index: 21;
   display: flex;
   flex-direction: column;
@@ -2902,7 +2912,7 @@ details.k-form-group > summary:focus-visible {
     bottom: 0;
     max-width: none;
     border-radius: var(--radius) var(--radius) 0 0;
-    padding: var(--space-2) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom));
+    padding: var(--space-2) var(--space-3) calc(var(--space-3) + var(--k-safe-bottom));
     animation: k-sheet-up var(--dur) var(--ease);
   }
   .k-menu-grip {
@@ -3594,7 +3604,7 @@ button.k-tl-card:focus-visible {
   .k-dialog {
     width: 100%;
     margin: 0;
-    padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation: k-sheet-up var(--dur) var(--ease);
   }
@@ -3617,7 +3627,7 @@ button.k-tl-card:focus-visible {
     min-height: 2.9rem;
   }
   .k-progress-stack {
-    bottom: calc(5.2rem + env(safe-area-inset-bottom));
+    bottom: calc(5.2rem + var(--k-safe-bottom));
   }
 }
 /* tokens-only: end — questions */
@@ -3628,7 +3638,7 @@ button.k-tl-card:focus-visible {
    its group scrolls past, under the phone's top bar. A record page's section heading keeps the
    section's own type. Either one, when it folds, is a button with a chevron and a count. */
 .k-app-phone {
-  --k-sticky-top: calc(3.25rem + env(safe-area-inset-top));
+  --k-sticky-top: calc(3.25rem + var(--k-safe-top));
 }
 .k-groups {
   display: flex;
@@ -4482,7 +4492,7 @@ button.k-file-name:focus-visible {
   max-width: none;
   max-height: 80vh;
   border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
   animation: k-sheet-up var(--dur) var(--ease);
 }
 .k-enum-list .k-menu-grip {
@@ -4777,7 +4787,7 @@ button.k-file-name:focus-visible {
   width: auto;
   max-width: none;
   border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
   animation: k-sheet-up var(--dur) var(--ease);
 }
 /* Four shortcuts on one line inside the picker, which is narrower than the form. */
@@ -5395,7 +5405,7 @@ button.k-switch:focus-visible {
    toast lay on top of the bar's labels. Lifted clear of both (bar 4.75rem + button 3.25rem + gap), so
    it neither hides them nor takes the tap meant for them. */
 body:has(.k-tabbar) .k-toasts {
-  bottom: calc(8.75rem + env(safe-area-inset-bottom));
+  bottom: calc(8.75rem + var(--k-safe-bottom));
 }
 .k-toast {
   background: var(--ink);
@@ -5979,7 +5989,7 @@ body:has(.k-tabbar) .k-toasts {
     width: 100%;
     margin: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--space-4) + var(--k-safe-bottom));
   }
 }
 /* tokens-only: end — people */
@@ -5998,7 +6008,7 @@ body:has(.k-tabbar) .k-toasts {
      that draws under them: the in-app chrome has its own inset (`.k-topbar`), the home screen had
      none, so its title and the You button sat behind the clock. `viewport-fit=cover` is deliberate —
      the app paints edge to edge — which makes the insets ours to add back. */
-  padding: calc(var(--space) + env(safe-area-inset-top)) var(--space) calc(var(--space) + env(safe-area-inset-bottom));
+  padding: calc(var(--space) + var(--k-safe-top)) var(--space) calc(var(--space) + var(--k-safe-bottom));
   min-height: 100%;
 }
 .k-launcher-head {
@@ -6270,7 +6280,7 @@ body:has(.k-tabbar) .k-toasts {
     right: 0;
     bottom: 0;
     border-radius: var(--radius) var(--radius) 0 0;
-    padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    padding: 0.5rem 0.75rem calc(0.75rem + var(--k-safe-bottom));
     animation: k-sheet-up var(--dur) var(--ease);
     min-width: 0;
   }
@@ -6310,7 +6320,7 @@ body:has(.k-tabbar) .k-toasts {
   width: min(420px, 92vw);
   height: 100%;
   overflow: auto;
-  padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+  padding: calc(1.25rem + var(--k-safe-top)) 1.25rem calc(1.25rem + var(--k-safe-bottom));
   background: var(--paper);
   border-right: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -6609,7 +6619,7 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-switcher-search {
   flex: 0 0 auto;
-  padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-3) calc(var(--space-2) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
@@ -6679,7 +6689,7 @@ body:has(.k-tabbar) .k-toasts {
 .k-launch-fab {
   position: fixed;
   right: var(--space-4);
-  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-4) + var(--k-safe-bottom));
   z-index: 21;
   display: none;
   align-items: center;
@@ -9236,7 +9246,7 @@ body:has(.k-tabbar) .k-toasts {
 .k-share-page {
   max-width: 36rem;
   margin: 0 auto;
-  padding: var(--space) 1rem calc(var(--space) + env(safe-area-inset-bottom));
+  padding: var(--space) 1rem calc(var(--space) + var(--k-safe-bottom));
   display: grid;
   gap: 0.9rem;
 }
