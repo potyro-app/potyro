@@ -3877,6 +3877,49 @@ button.k-fold-head {
   color: var(--ink-faint);
 }
 /* tokens-only: end — list rows */
+/* tokens-only: start — full screen */
+/* A page that asked for the whole screen: no bars; the shell's ✕ is the way out, quiet until
+   touched so a game is not drawn around it, never gone. */
+.k-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  padding: var(--k-safe-top) var(--k-safe-right) var(--k-safe-bottom) var(--k-safe-left);
+}
+.k-fullscreen-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.k-fullscreen-exit {
+  position: absolute;
+  top: calc(var(--k-safe-top) + var(--space-2));
+  right: calc(var(--k-safe-right) + var(--space-2));
+  z-index: 1;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity var(--dur) var(--ease);
+}
+.k-fullscreen-exit:hover,
+.k-fullscreen-exit:focus-visible,
+.k-fullscreen-exit:active {
+  opacity: 1;
+  border-color: var(--accent);
+}
+/* tokens-only: end — full screen */
 /* tokens-only: start — add an app */
 /* Add an app (#253): three ways in, then a card that says what the app is before anything is saved. */
 .k-launch-addbtn {

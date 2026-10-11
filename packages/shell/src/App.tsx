@@ -3,7 +3,7 @@
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
 import { DatabaseIcon } from "./data-icon.js";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
 import { LayoutHost, RecordForm, TRUST_REQUEST, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
@@ -759,6 +759,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ...visiblePages.map((p) => ({ id: p.id, title: titles[p.id] ?? p.id, icon: pageIcon(p), active: p.id === pageId, onOpen: () => navigate(p.id) })),
   ];
   const currentPage = def.pages.find((p) => p.id === pageId);
+  // A page that asks for the whole screen gets it each time it opens; leaving full screen holds until
+  // the person goes to another page (or asks for it back from the tools).
+  const [leftFullscreen, setLeftFullscreen] = useState<string | null>(null);
+  const fullscreen = Boolean(currentPage?.fullscreen) && leftFullscreen !== pageId;
+  const exitFullscreen = useCallback(() => setLeftFullscreen(pageId), [pageId]);
+  useEffect(() => setLeftFullscreen(null), [pageId]);
   const currentEntity = (currentPage?.view as { entity?: string } | undefined)?.entity;
   // A view with its own way to add (the checklist's "Add an item…", the map's "Add place here")
   // already does the one thing the floating button would, and better — the map's puts the new record
@@ -786,6 +792,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     navigate(list?.id ?? landingPage());
   };
   const chromeTools: ChromeTool[] = [
+    ...(currentPage?.fullscreen && !fullscreen
+      ? [{ key: "fullscreen", label: "Full screen", icon: "⛶", onSelect: () => setLeftFullscreen(null) }]
+      : []),
     ...(askOn ? [{ key: "ask", label: "Ask", icon: "✧", hint: "add with AI", onSelect: () => setAskOpen(true) }] : []),
     // The Studio needs no model: its source editor and History are how a broken app gets repaired
     // on a build with no engine at all.
@@ -936,6 +945,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         // it edge to edge with the controls on top.
         fullBleed={pageView?.type === "map" && !currentPage?.layout}
         locked={Boolean(locked)}
+        fullscreen={fullscreen ? { onExit: exitFullscreen } : undefined}
       >
       {locked ? <LockBanner state={locked} /> : null}
       {pageId === HOME ? (
