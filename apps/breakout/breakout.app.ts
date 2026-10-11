@@ -79,7 +79,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   const g = canvas.getContext("2d")!;
   const beep = sound();
 
-  // Sizing: a 3:4 board that fits the space it was given and stays sharp on a phone's screen.
+  // Sizing: a portrait board that fits the space it was given and stays sharp on a phone's screen.
   let W = 360;
   let H = 480;
   // How much of the bottom the shell's own bars take: the custom property it gives views for exactly
@@ -89,8 +89,10 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   el.appendChild(probe);
   const fit = (): void => {
     const room = Math.max(240, window.innerHeight - el.getBoundingClientRect().top - probe.offsetHeight - 24);
+    // As wide as it may be, then as tall as the room allows — up to a tall phone's shape, never
+    // shorter than 4:3 portrait.
     W = Math.min(el.clientWidth || 360, 520, Math.floor((room * 3) / 4));
-    H = Math.floor((W * 4) / 3);
+    H = Math.min(Math.floor(room), Math.floor(W * 1.9));
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(W * dpr);
     canvas.height = Math.floor(H * dpr);
