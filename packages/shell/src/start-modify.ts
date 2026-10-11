@@ -3,7 +3,8 @@
 // The loop (`runModifyLoop`), the discovery tools (`buildDiscoveryTools`), the prompt that explains
 // them (`MODIFY_AGENT_SYSTEM_PROMPT`), the check gate (`buildAndValidate`, the same validator the
 // preview runs) and the loss gate (`loadDefinition`, the same shape `guardedModify` compares) are
-// each built elsewhere; this constructs `ModifyLoopDeps` for real.
+// each built elsewhere; this constructs `ModifyLoopDeps` for real. Since #262 a candidate that passes
+// those is also RUN (`runCandidate`): on sample records, every page mounted, in the isolate.
 
 import {
   runModifyLoop,
@@ -17,6 +18,7 @@ import { createOpenRouterEngine } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
+import { runCandidate } from "./run-candidate.js";
 
 export interface StartModifyOpts {
   /** The app as the person has it. */
@@ -43,14 +45,16 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   const refused = modifyLoopRefusal(opts.engine);
   if (refused) return { kind: "failed", reason: refused };
   const check = (source: string): Promise<string[]> => buildAndValidate(source);
+  const run = (source: string) => runCandidate(source);
   return runModifyLoop({
     engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
     model: opts.engine.openrouterModel,
-    tools: buildDiscoveryTools({ check }),
+    tools: buildDiscoveryTools({ check, run }),
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: opts.instruction,
     source: opts.source,
     check,
+    run,
     shapeOf: loadDefinition,
     before: opts.before,
     onStep: opts.onStep,
