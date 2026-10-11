@@ -550,7 +550,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       appAccent={appHue === undefined ? undefined : hueColour(appHue)}
       currentKind="user"
       lock={syncAllowed && saved.sync ? lock : undefined}
-      onExport={() => void exportApp(composed!.runtime, store, caps, provenance, appSource, toaster, id)}
+      // The app's own source, not `appSource`: that is set only for an app running in the isolate,
+      // and it is the BUNDLED code — so a trusted app exported no app at all, and a bundle could not
+      // be added on another device ("No app source in the zip"), which is what carrying how an app
+      // was made (#261) depends on.
+      onExport={() => void exportApp(composed!.runtime, store, caps, provenance, saved.source, toaster, id)}
       onImport={() => void importApp(caps, toaster)}
       onData={() => navigateTo({ kind: "data", id })}
       generator
