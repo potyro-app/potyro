@@ -54,9 +54,13 @@ async function install(page: Page, trusted: boolean): Promise<void> {
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", trusted ? "trusted" : "untrusted", { timeout: 30_000 });
 }
 
+/** The note's detail page: already open after creating it or a reload, otherwise reached from the list. */
 async function openNote(page: Page, title: string): Promise<void> {
-  await page.getByRole("listitem").filter({ hasText: title }).first().click();
-  await expect(page.locator("article.k-detail")).toBeVisible({ timeout: 15_000 });
+  const detail = page.locator("article.k-detail, article").filter({ has: page.getByRole("heading", { name: title, level: 2 }) });
+  const row = page.getByRole("listitem").filter({ hasText: title }).first();
+  await expect(detail.or(row).first()).toBeVisible({ timeout: 30_000 });
+  if (!(await detail.first().isVisible())) await row.click();
+  await expect(detail.first()).toBeVisible({ timeout: 15_000 });
 }
 
 test.use({ viewport: { width: 1280, height: 800 } });
@@ -78,8 +82,8 @@ for (const trusted of [true, false]) {
     await form.getByRole("button", { name: /^(Create|Save)/ }).click();
 
     await openNote(page, "Groceries");
-    await expect(page.locator("article.k-detail .k-file-chip")).toContainText("hello.md");
-    await page.getByRole("button", { name: "Read it" }).click();
+    await expect(page.locator("article .k-file-chip")).toContainText("hello.md");
+    await page.getByRole("button", { name: "Read It" }).click();
     // A toast is one line: the file's blank line collapses, so check both ends of the contents.
     await expect(page.locator(".k-toast").last()).toContainText("# Hello");
     await expect(page.locator(".k-toast").last()).toContainText("milk, eggs");
@@ -87,9 +91,9 @@ for (const trusted of [true, false]) {
     await page.reload();
     await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", trusted ? "trusted" : "untrusted", { timeout: 30_000 });
     await openNote(page, "Groceries");
-    await expect(page.locator("article.k-detail .k-file-chip")).toContainText("hello.md");
-    await expect(page.locator("article.k-detail .k-file-size")).toHaveText("19 B");
-    await page.getByRole("button", { name: "Read it" }).click();
+    await expect(page.locator("article .k-file-chip")).toContainText("hello.md");
+    await expect(page.locator("article .k-file-size")).toHaveText("19 B");
+    await page.getByRole("button", { name: "Read It" }).click();
     await expect(page.locator(".k-toast").last()).toContainText("milk, eggs");
   });
 
@@ -102,13 +106,13 @@ for (const trusted of [true, false]) {
     await form.getByRole("button", { name: /^(Create|Save)/ }).click();
     await openNote(page, "Trip");
 
-    await page.getByRole("button", { name: "Write summary" }).click();
-    await expect(page.locator("article.k-detail .k-file-chip")).toContainText("summary.md");
+    await page.getByRole("button", { name: "Write Summary" }).click();
+    await expect(page.locator("article .k-file-chip")).toContainText("summary.md");
 
     await page.reload();
     await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", trusted ? "trusted" : "untrusted", { timeout: 30_000 });
     await openNote(page, "Trip");
-    await page.getByRole("button", { name: "Read it" }).click();
+    await page.getByRole("button", { name: "Read It" }).click();
     await expect(page.locator(".k-toast").last()).toHaveText("# Summary of Trip");
 
     const download = page.waitForEvent("download");
