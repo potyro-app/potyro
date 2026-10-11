@@ -5,6 +5,7 @@
 
 import type { Id, PotyroRecord } from "potyro";
 import { MemoryStore } from "./memory-store.js";
+import type { StoredFile } from "./types.js";
 
 /** The subset of the Web Storage API we use. */
 export interface StorageLike {
@@ -17,6 +18,8 @@ interface Persisted {
   records: Record<string, Record<Id, PotyroRecord>>;
   blobs: Record<string, { mime: string; base64: string }>;
   kv: Record<string, string>;
+  /** Absent in data written before files existed (#252). */
+  files?: Record<string, StoredFile>;
   schemaVersion: number;
 }
 
@@ -63,6 +66,7 @@ export class LocalStore extends MemoryStore {
       this.records = new Map();
       this.blobs = new Map();
       this.kv = new Map();
+      this.files = new Map();
       this.loaded = true;
       return;
     }
@@ -74,6 +78,7 @@ export class LocalStore extends MemoryStore {
       Object.entries(data.blobs).map(([key, b]) => [key, { mime: b.mime, bytes: base64ToBytes(b.base64) }]),
     );
     this.kv = new Map(Object.entries(data.kv));
+    this.files = new Map(Object.entries(data.files ?? {}));
     this.schemaVersion = data.schemaVersion ?? 0;
     this.loaded = true;
   }
@@ -84,7 +89,7 @@ export class LocalStore extends MemoryStore {
     for (const [entity, m] of this.records) records[entity] = Object.fromEntries(m);
     const blobs: Persisted["blobs"] = {};
     for (const [key, b] of this.blobs) blobs[key] = { mime: b.mime, base64: bytesToBase64(b.bytes) };
-    const data: Persisted = { records, blobs, kv: Object.fromEntries(this.kv), schemaVersion: this.schemaVersion };
+    const data: Persisted = { records, blobs, kv: Object.fromEntries(this.kv), files: Object.fromEntries(this.files), schemaVersion: this.schemaVersion };
     try {
       this.backend.setItem(this.storageKey, JSON.stringify(data));
     } catch (e) {

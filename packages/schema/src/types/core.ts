@@ -65,6 +65,32 @@ export type Resolved = {
   [field: string]: any;
 };
 
+/** Where a file came from: with the app, written by its code, or imported by the person (#251). */
+export type FileOrigin = "shipped" | "app" | "imported";
+
+/** A file in the app's own folder (`ctx.files`). `id` never changes; `path` can (rename/move). */
+export interface FileInfo {
+  id: string;
+  /** e.g. `notes/2026-10-11.md`, no leading slash */
+  path: string;
+  /** last segment of `path` */
+  name: string;
+  mime: string;
+  size: number;
+  hash: string;
+  origin: FileOrigin;
+  created: string;
+  updated: string;
+}
+
+/** A `file` field's value. Build it from a `FileInfo`: `{ id, path, name, mime }`. */
+export interface FileRef {
+  id: string;
+  path?: string;
+  name?: string;
+  mime?: string;
+}
+
 /** Reference to a stored blob (media field value). */
 export interface MediaRef {
   key: string;

@@ -62,6 +62,19 @@ const DEFAULT_MEMORY = 64 * 1024 * 1024; // 64 MB
 const DEFAULT_TIMEOUT = 1000; // ms per invoke() call — NOT the load; see DEFAULT_LOAD_TIMEOUT
 const DEFAULT_LOAD_TIMEOUT = 5000; // ms for loadIsolated (parse + eval bundle + harness install)
 
+function base64OfBytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
+function bytesOfBase64(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
 class IsolateLoadedApp implements LoadedApp {
   readonly definition: AppDefinition;
   readonly provenance: Provenance = "untrusted";
@@ -231,6 +244,62 @@ class IsolateLoadedApp implements LoadedApp {
         return nul;
       case "media.url":
         return serialize((await this.ctxHost?.media.url(op.ref as { key: string; mime: string })) ?? "");
+      // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /
+      // export go through a dialog the person answers, which is the consent. Bytes travel as base64.
+      case "files.list":
+      case "files.stat":
+      case "files.text":
+      case "files.bytes":
+      case "files.url":
+      case "files.write":
+      case "files.rename":
+      case "files.remove":
+      case "files.import":
+      case "files.export": {
+        const files = this.ctxHost?.files;
+        if (!files) throw new Error("ctx.files is not available here");
+        const file = op.file as string | { id: string };
+        switch (kind) {
+          case "files.list":
+            return serialize(await files.list((op.folder as string | null) ?? undefined));
+          case "files.stat":
+            return serialize(await files.stat(file));
+          case "files.text":
+            return serialize(await files.text(file));
+          case "files.bytes": {
+            const bytes = await files.bytes(file);
+            return serialize(bytes ? base64OfBytes(bytes) : null);
+          }
+          case "files.url":
+            return serialize(await files.url(file));
+          case "files.write": {
+            const data = op.enc === "base64" ? bytesOfBase64(op.data as string) : (op.data as string);
+            return serialize(await files.write(op.path as string, data, op.mime ? { mime: op.mime as string } : undefined));
+          }
+          case "files.rename":
+            return serialize(await files.rename(file, op.to as string));
+          case "files.remove":
+            await files.remove(file);
+            return nul;
+          case "files.import": {
+            const o = (op.opts ?? null) as { folder: string | null; accept: string | null; multiple: boolean } | null;
+            this.openQuestion(); // a dialog the person answers: the call's budget pauses, as for ui.*
+            try {
+              return serialize(await files.import(o ? { folder: o.folder ?? undefined, accept: o.accept ?? undefined, multiple: o.multiple } : undefined));
+            } finally {
+              this.closeQuestion();
+            }
+          }
+          default:
+            this.openQuestion();
+            try {
+              await files.export(file);
+            } finally {
+              this.closeQuestion();
+            }
+            return nul;
+        }
+      }
       // Move a view that is on screen (`ctx.views`). One op for every verb on purpose: the set of
       // things a view can be told will grow, and each addition should be a case in the view's own
       // handler rather than another op here, another method in the harness, and a release of both.

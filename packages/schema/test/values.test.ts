@@ -65,6 +65,12 @@ describe("a value against its field", () => {
     expect(fits({ type: "media" }, { key: "k", mime: "image/png" })).toBe(true);
     expect(fits({ type: "media", multiple: true }, [{ key: "k", mime: "image/png" }])).toBe(true);
     expect(fits({ type: "media" }, "https://evil.example/x.png")).toBe(false);
+    // A file field holds a FileRef: an id, with path/name/mime as they were when it was set (#252).
+    expect(fits({ type: "file" }, { id: "01J", path: "notes/a.md", name: "a.md", mime: "text/markdown" })).toBe(true);
+    expect(fits({ type: "file" }, { id: "01J" })).toBe(true);
+    expect(fits({ type: "file" }, "notes/a.md")).toBe(false);
+    expect(fits({ type: "file" }, { id: "" })).toBe(false);
+    expect(fits({ type: "file" }, { id: "01J", path: 7 })).toBe(false);
     expect(fits({ type: "relation", to: "shop" }, "01J…")).toBe(true);
     expect(fits({ type: "relation", to: "shop" }, { id: "01J", name: "Aldi" })).toBe(true);
     expect(fits({ type: "relation", to: "shop", many: true }, "01J")).toBe(false);
