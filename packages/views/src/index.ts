@@ -15,6 +15,7 @@ export { FieldInput, type FieldInputProps } from "./field-input.js";
 export { resolveGroups, type ResolvedGroup, type GroupSurface } from "./groups.js";
 export { RecordForm, ValuesForm, createDefaults, type RecordFormProps, type ValuesFormProps } from "./record-form.js";
 export { FormSheet, type FormSheetProps } from "./form-sheet.js";
+export { PortalRootContext, usePortalRoot } from "./portal-root.js";
 export { ActionMenu, ChoicePanel, type ActionMenuProps, type ChoicePanelProps, type ChoiceItem, type MenuEntry, type MenuItem } from "./menu.js";
 export { usePhone, PHONE_QUERY } from "./media.js";
 export { useReorder, moveKey, type ReorderProps, type ReorderOptions } from "./reorder.js";

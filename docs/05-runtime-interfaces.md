@@ -204,3 +204,8 @@ export interface ViewRegistration { type: string; component: ViewComponent; requ
 
 The `custom` view type is registered like any other; its component simply delegates to the
 app-provided `customView` (trusted apps only, per Host policy).
+
+A view's full-screen layer (a form sheet) is portalled to `usePortalRoot()`, which is
+`document.body` unless a host frames the app in a screen of its own (`PortalRootContext`, #261):
+the Studio shows an app beside its conversation, and the app's forms belong to that screen, not
+to the page. Popovers anchored to a control keep the page — they are placed by page coordinates.
