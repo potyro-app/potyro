@@ -77,7 +77,12 @@ describe("SYSTEM_PROMPT", () => {
     // first and is what the budget was buying: the cuts landed on the examples that show the model
     // how to USE these, which is the documentation that decides whether a capability gets reached
     // for at all. ~500 cached tokens against apps that can be searched.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(72_000);
+    //
+    // Raised 72k -> 75k on 2026-10-11 (#252) for the app's own folder: `ctx.files`, `FileInfo`,
+    // `FileRef` and the `file` field, without which the model cannot build an app that keeps
+    // documents, ships a data file or imports anything. Their comments were cut to one line each
+    // first (from ~3.9k to ~2.3k characters); what is left is the API itself. ~600 cached tokens.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(75_000);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {

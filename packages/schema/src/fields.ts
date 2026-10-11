@@ -11,6 +11,7 @@ import type {
   GeoField,
   ListField,
   MediaField,
+  FileField,
   MemberField,
   NumberField,
   RelationField,
@@ -34,6 +35,7 @@ export const f = {
   url: (o: Omit1<UrlField, "type"> = {}): UrlField => ({ type: "url", ...o }),
   geo: (o: Omit1<GeoField, "type"> = {}): GeoField => ({ type: "geo", ...o }),
   media: (o: Omit1<MediaField, "type"> = {}): MediaField => ({ type: "media", ...o }),
+  file: (o: Omit1<FileField, "type"> = {}): FileField => ({ type: "file", ...o }),
   relation: (to: string, o: Omit1<RelationField, "type" | "to"> = {}): RelationField => ({ type: "relation", to, ...o }),
   /** A person in this app's space (KA-19). No target entity — membership is space metadata. */
   member: (o: Omit1<MemberField, "type"> = {}): MemberField => ({ type: "member", ...o }),

@@ -2,10 +2,11 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, Field, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "potyro";
+import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "potyro";
 import { checkFormFields } from "potyro";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
-import type { Store } from "@potyro/store";
+import { fileInfo, fileSpace, mimeOf, type Store } from "@potyro/store";
+import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
@@ -42,6 +43,77 @@ async function mediaUrl(store: Store, ref: MediaRef): Promise<string> {
   // Node / non-DOM fallback: inline data URL.
   const bytes = Buffer.from(await blob.arrayBuffer());
   return `data:${ref.mime};base64,${bytes.toString("base64")}`;
+}
+
+/** `folder` + `name`, for a file arriving from outside. */
+function joinPath(folder: string | undefined, name: string): string {
+  const f = (folder ?? "").trim().replace(/^\/+|\/+$/g, "");
+  return f ? `${f}/${name}` : name;
+}
+
+/**
+ * `ctx.files` (#252): the app's own folder, over its own Store.
+ *
+ * `import` and `export` use the platform's file dialogs directly, NOT the trust-mediated `caps`: the
+ * person picks every file in a system dialog, which is the consent, and what comes in lands only in
+ * this app's folder. So they work the same for an app in the sealed box.
+ */
+export function filesFor(store: Store, caps: Capabilities): CtxFiles {
+  const space = fileSpace(store);
+  const toBlob = (path: string, data: string | Uint8Array | Blob, mime?: string): Blob =>
+    data instanceof Blob ? data : new Blob([data as BlobPart], { type: mimeOf(path, mime) });
+  const name = (f: string | FileRef) => (typeof f === "string" ? f : (f.path ?? f.name ?? f.id));
+
+  return {
+    list: (folder) => space.list(folder),
+    async stat(f) {
+      const e = await space.find(f);
+      return e ? fileInfo(e) : null;
+    },
+    async text(f) {
+      const b = await space.read(f);
+      return b ? b.text() : null;
+    },
+    async json<T = unknown>(f: string | FileRef): Promise<T | null> {
+      const b = await space.read(f);
+      if (!b) return null;
+      try {
+        return JSON.parse(await b.text()) as T;
+      } catch (e) {
+        throw new Error(`"${name(f)}" is not valid JSON: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    },
+    async bytes(f) {
+      const b = await space.read(f);
+      return b ? new Uint8Array(await b.arrayBuffer()) : null;
+    },
+    async url(f) {
+      const e = await space.find(f);
+      if (!e) throw new Error(`No file "${name(f)}" in this app`);
+      const url = await mediaUrl(store, { key: e.blob, mime: e.mime });
+      return url || null;
+    },
+    write: (path, data, opts) => space.write(path, toBlob(path, data, opts?.mime), { mime: opts?.mime }),
+    rename: (f, to) => space.rename(f, to),
+    remove: (f) => space.remove(f),
+    async import(opts) {
+      const pick = caps.filesystem.pickFiles;
+      if (!pick) throw new Error("This device cannot open files from outside the app");
+      const chosen = await pick({ accept: opts?.accept, multiple: opts?.multiple });
+      const landed = [];
+      for (const file of chosen) {
+        landed.push(await space.write(joinPath(opts?.folder, file.name), file, { origin: "imported", mime: file.type || undefined }));
+      }
+      return landed;
+    },
+    async export(f) {
+      const e = await space.find(f);
+      if (!e) throw new Error(`No file "${name(f)}" in this app`);
+      const bytes = await space.read({ id: e.id });
+      if (!bytes) throw new Error(`"${e.name}" has not reached this device yet`);
+      await caps.filesystem.save(e.name, bytes);
+    },
+  };
 }
 
 export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
@@ -192,6 +264,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       put: (bytes) => store.putBlob(bytes),
       url: (ref) => mediaUrl(store, ref),
     },
+
+    files: filesFor(store, caps),
 
     ui: {
       toast: (msg) => ui.toast(msg),

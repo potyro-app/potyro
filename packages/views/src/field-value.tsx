@@ -4,13 +4,14 @@
 // computed keys (which have no field definition — their value is already final).
 
 import { useEffect, useState } from "react";
-import type { Field, Geo, MediaRef, DateTimeField, MoneyField } from "potyro";
+import type { Field, FileRef, Geo, MediaRef, DateTimeField, MoneyField } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
 import { EnumPill } from "./enum-input.js";
 import { MediaTile, mediaList } from "./media-input.js";
+import { FileValue } from "./file-input.js";
 import { MoneyValue } from "./money-input.js";
 
 export function FieldValue({
@@ -129,6 +130,8 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
     }
     case "media":
       return <MediaValue runtime={runtime} value={value as MediaRef | MediaRef[]} />;
+    case "file":
+      return <FileValue runtime={runtime} value={(value as FileRef | null) ?? null} />;
     case "tags": {
       const tags = Array.isArray(value) ? value : [value];
       return (

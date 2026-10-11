@@ -3,7 +3,7 @@
 // so the result can go straight into create()/patch(). Recurses for `list` fields.
 
 import { useEffect, useRef, useState } from "react";
-import type { Field, Geo, MediaRef } from "potyro";
+import type { Field, FileRef, Geo, MediaRef } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { MAP_STYLE } from "./map.js";
 import { Switch } from "./switch.js";
@@ -12,6 +12,7 @@ import { DateInput } from "./date-input.js";
 import { EnumInput } from "./enum-input.js";
 import { ListInput } from "./list-input.js";
 import { MediaInput } from "./media-input.js";
+import { FileInput } from "./file-input.js";
 import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
 
@@ -76,6 +77,10 @@ export function FieldInput({ runtime, field, value, onChange, label }: FieldInpu
       // A tile that shows what you chose, with Camera / Library on a phone and drag-and-drop on a
       // desktop — not the browser's bare file button (#102).
       return <MediaInput runtime={runtime} field={field} value={value as MediaRef | MediaRef[] | null} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
+
+    case "file":
+      // A chip naming the file, and a menu: bring one in, or pick one already in the app's folder (#252).
+      return <FileInput runtime={runtime} field={field} value={(value as FileRef | null) ?? null} onChange={onChange} label={label ?? (field as { label?: string }).label} />;
 
     case "relation":
       // A searchable picker, not a browser <select> — and several are chips you can take off.
