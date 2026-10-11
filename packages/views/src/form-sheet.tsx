@@ -12,6 +12,7 @@
 
 import { useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { usePortalRoot } from "./portal-root.js";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 const SWIPE_CLOSE_PX = 80;
@@ -37,6 +38,7 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
   const ref = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const swipe = useRef<{ id: number; y: number } | null>(null);
+  const portalRoot = usePortalRoot();
 
   // Focus: the opener gets it back on close, whatever happened in between.
   useLayoutEffect(() => {
@@ -139,6 +141,6 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
         {children}
       </div>
     </div>,
-    document.body,
+    portalRoot,
   );
 }
