@@ -9,7 +9,7 @@
 // — the store lives host-side, never inside the app sandbox.
 
 import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
-import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { MigrationPlan, Narrow, Store, StoredFile, Unsubscribe } from "./types.js";
 import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
@@ -48,6 +48,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS ix_records_entity ON records(entity, seq)`,
   `CREATE TABLE IF NOT EXISTS blobs(key TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
+  // The app's own folder (#252): the index entry as JSON, by id. The bytes are a row in \`blobs\`.
+  `CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY, doc TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
 ];
 
@@ -252,6 +254,40 @@ export class SqliteStore implements Store {
       throw new Error(`getBlob: unexpected blob column type for key ${r.key}`);
     }
     return new Blob([buf], { type: row.mime as string });
+  }
+
+  async deleteBlob(key: string): Promise<void> {
+    await this.db.exec({ sql: "DELETE FROM blobs WHERE key=?", bind: [key] });
+  }
+
+  // ── files (#252) ────────────────────────────────────────────────────────────
+  private fileListeners = new Set<() => void>();
+
+  async listFiles(): Promise<StoredFile[]> {
+    return (await this.db.selectObjects("SELECT doc FROM files")).map((r) => JSON.parse(r.doc as string) as StoredFile);
+  }
+
+  async getFile(id: string): Promise<StoredFile | null> {
+    const doc = await this.db.selectValue("SELECT doc FROM files WHERE id=?", [id]);
+    return doc == null ? null : (JSON.parse(doc as string) as StoredFile);
+  }
+
+  async setFile(entry: StoredFile): Promise<void> {
+    await this.db.exec({
+      sql: "INSERT INTO files(id, doc) VALUES(?, ?) ON CONFLICT(id) DO UPDATE SET doc=excluded.doc",
+      bind: [entry.id, JSON.stringify(entry)],
+    });
+    for (const cb of [...this.fileListeners]) cb();
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    await this.db.exec({ sql: "DELETE FROM files WHERE id=?", bind: [id] });
+    for (const cb of [...this.fileListeners]) cb();
+  }
+
+  subscribeFiles(cb: () => void): Unsubscribe {
+    this.fileListeners.add(cb);
+    return () => this.fileListeners.delete(cb);
   }
 
   // ── kv ──────────────────────────────────────────────────────────────────────

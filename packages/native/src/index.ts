@@ -37,3 +37,4 @@ export async function maybeCreateNativeCapabilities(): Promise<Capabilities | nu
   const { createCapacitorCapabilities } = await import("./capacitor-capabilities.js");
   return createCapacitorCapabilities();
 }
+export { setImmersive, onBackButton } from "./immersive.js";

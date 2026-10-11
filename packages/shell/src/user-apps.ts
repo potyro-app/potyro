@@ -32,6 +32,8 @@ export interface UserApp {
    *  composition root opens, and the two stores hold data in different files — so a flip does NOT
    *  migrate existing records. See `setUserAppSync`. */
   sync?: boolean;
+  /** Where the app was installed from, when that was a link (#253): what "check for updates" asks. */
+  link?: string;
   /**
    * This app's data lives in a space that came from ELSEWHERE — someone's invite, or this user's own
    * account on another device — rather than one this device created.
@@ -89,7 +91,7 @@ export function getUserApp(id: string): UserApp | undefined {
  *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
  *  where the new source came from; they are what the History panel shows next to each version. */
 export async function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; joined?: boolean; origin?: VersionOrigin; note?: string; rationale?: string },
+  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; joined?: boolean; link?: string; origin?: VersionOrigin; note?: string; rationale?: string },
   now: string,
 ): Promise<UserApp> {
   const apps = read();
@@ -130,6 +132,8 @@ export async function saveUserApp(
     // left out is dropped — and an app that forgot it had joined someone's space would be seeded
     // into that space on its next open.
     joined: input.joined ?? prev?.joined,
+    // Carried for the same reason: a link the app came from is how it can be updated later.
+    link: input.link ?? prev?.link,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the

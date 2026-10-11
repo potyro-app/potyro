@@ -21,7 +21,9 @@ test.describe("phone", () => {
 
   test("the prompt is whole and on screen, with nothing on top of it", async ({ page }) => {
     await page.goto("/");
+    // The floating New app asks first on a phone: make one, or add one someone sent (#253).
     await page.locator(".k-launch-fab").tap();
+    await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
     const studio = page.getByRole("dialog", { name: "App studio" });
     const prompt = studio.getByRole("textbox", { name: "Describe the app" });
     await expect(prompt).toBeVisible();

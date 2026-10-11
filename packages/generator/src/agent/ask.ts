@@ -128,7 +128,7 @@ export const MATERIAL_MAX = 60_000;
 const MAX_STEPS_WITH_SOURCES = 12;
 
 /** Field types a model cannot fill: a photo it does not have, a person it cannot see. */
-const UNSETTABLE = new Set<Field["type"]>(["media", "member"]);
+const UNSETTABLE = new Set<Field["type"]>(["media", "file", "member"]);
 
 const labelOf = (key: string, field: Field): string => field.label ?? humanizeKey(key);
 

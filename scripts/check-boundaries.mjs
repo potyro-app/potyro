@@ -27,6 +27,11 @@ const rules = [
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
     note: "app modules reach host power only via ctx; import `potyro` only",
   },
+  {
+    pkg: "apps",
+    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
+    note: "personal apps are app modules too: import `potyro` only",
+  },
 ];
 
 const IGNORE_DIRS = new Set(["node_modules", "dist", ".vite", "coverage"]);

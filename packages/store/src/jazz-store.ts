@@ -43,7 +43,7 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
@@ -126,6 +126,12 @@ export interface JazzStoreDeps {
 const ROOT_ENTITIES = "entities";
 const ROOT_KV = "kv";
 const ROOT_BLOBS = "blobs";
+/**
+ * The app's own folder (#252): file id -> its index entry. The bytes are blobs (a stream each, under
+ * `ROOT_BLOBS`), so a member who has never opened a file has its entry and not its bytes — which is
+ * exactly "on demand" (#255).
+ */
+const ROOT_FILES = "files";
 
 /** Base64 helpers, kept for blobs written before KA-20 moved bytes into their own CoValue. */
 function base64Of(bytes: Uint8Array): string {
@@ -571,6 +577,9 @@ export class JazzStore implements Store {
     // rival copy of them.
     await this.child(this.root, ROOT_BLOBS);
     await this.child(this.root, ROOT_KV);
+    // The folder too (#252). A root made before files existed gets it lazily on the first write,
+    // like the chat: see #255 for making that safe between two devices writing first at once.
+    await this.child(this.root, ROOT_FILES);
     // And the entities container — the one that was left lazy, and the one that holds the data.
     // Every read below takes the non-creating path now, so without this a brand-new app would have
     // nowhere to put its first record until something wrote one.
@@ -1192,6 +1201,59 @@ export class JazzStore implements Store {
   }
 
   // ---- kv ---------------------------------------------------------------------------------
+
+  /**
+   * Forget a blob. Only the index entry goes: the stream is a CoValue other members may hold, and
+   * history in a CRDT is not deleted. What a person sees is that the old bytes are no longer anyone's.
+   */
+  async deleteBlob(key: string): Promise<void> {
+    const index = await this.childIfPresent(this.root, ROOT_BLOBS);
+    if (!index || index.get(key) === undefined) return;
+    index.delete(key);
+    await this.whenDurable?.();
+  }
+
+  // ---- files (#252) ------------------------------------------------------------------------
+
+  async listFiles(): Promise<StoredFile[]> {
+    const map = await this.childIfPresent(this.root, ROOT_FILES);
+    if (!map) return [];
+    return map
+      .keys()
+      .map((id) => map.get(id))
+      .filter((v): v is StoredFile => !!v && typeof v === "object" && typeof (v as StoredFile).id === "string")
+      .map((f) => ({ ...f }));
+  }
+
+  async getFile(id: string): Promise<StoredFile | null> {
+    const v = (await this.childIfPresent(this.root, ROOT_FILES))?.get(id) as StoredFile | undefined;
+    return v && typeof v === "object" ? { ...v } : null;
+  }
+
+  async setFile(entry: StoredFile): Promise<void> {
+    (await this.child(this.root, ROOT_FILES)).set(entry.id, { ...entry });
+    await this.whenDurable?.();
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    const map = await this.childIfPresent(this.root, ROOT_FILES);
+    if (!map || map.get(id) === undefined) return;
+    map.delete(id);
+    await this.whenDurable?.();
+  }
+
+  subscribeFiles(cb: () => void): Unsubscribe {
+    let stop: (() => void) | null = null;
+    let alive = true;
+    void this.childIfPresent(this.root, ROOT_FILES).then((map) => {
+      if (!alive || !map) return;
+      stop = map.subscribe(() => cb());
+    });
+    return () => {
+      alive = false;
+      stop?.();
+    };
+  }
 
   async kvGet(k: string): Promise<string | null> {
     const v = (await this.childIfPresent(this.root, ROOT_KV))?.get(k);

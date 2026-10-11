@@ -99,6 +99,14 @@ export interface GeoField extends FieldCommon {
   type: "geo";
 }
 
+/** A file in the app's own folder; the value is a `FileRef`. `accept` like `".md,.txt"`. */
+export interface FileField extends FieldCommon {
+  type: "file";
+  accept?: string;
+  /** where imported files land */
+  folder?: string;
+}
+
 export interface MediaField extends FieldCommon {
   type: "media";
   accept?: "image" | "video" | "audio" | "any";
@@ -160,6 +168,7 @@ export type Field =
   | UrlField
   | GeoField
   | MediaField
+  | FileField
   | RelationField
   | MemberField
   | ListField;
@@ -178,6 +187,7 @@ export const FIELD_TYPES = [
   "url",
   "geo",
   "media",
+  "file",
   "relation",
   "member",
   "list",

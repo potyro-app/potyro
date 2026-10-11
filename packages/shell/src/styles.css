@@ -15,6 +15,16 @@
      (see `.wk-bar` in the workout example). */
   --k-chrome-bottom: 0px;
 
+  /* The phone's status bar, cutout and gesture bar (#253 on a Pixel 10). A browser reports them as
+     env(safe-area-inset-*); Capacitor 8 on Android reports them as --safe-area-inset-* variables on
+     <html> when the WebView's own env() is not passed through, and env() is then 0 — which put the
+     home screen's buttons under the status bar. Every inset in the shell reads these: the larger of
+     the two, so whichever the platform provides is used. */
+  --k-safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --k-safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --k-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --k-safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+
   /* Surfaces: paper is the ground, surface sits on it, raised floats above, sunken recedes. */
   --paper: oklch(97% 0.012 85);
   --surface: oklch(99% 0.006 85);
@@ -357,7 +367,7 @@ button {
   z-index: 3;
   left: var(--space-3);
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -379,7 +389,7 @@ button {
   position: absolute;
   z-index: 3;
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -405,7 +415,7 @@ button {
   position: absolute;
   z-index: 3;
   right: var(--space-3);
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -424,7 +434,7 @@ button {
 }
 /* Above the "add here" pill when there is one, so the thumb reads them as one stack. */
 .k-map-locate[data-stacked] {
-  bottom: calc(var(--space-3) + 3.5rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + 3.5rem + var(--k-safe-bottom));
 }
 .k-map-locate:hover,
 .k-map-locate:focus-visible {
@@ -442,13 +452,13 @@ button {
 /* On a phone the map runs under the fixed tab bar — that is the look — so its chrome clears it. */
 .k-app-phone .k-page[data-full] .k-map-add,
 .k-app-phone .k-page[data-full] .k-map-bar {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
 }
 .k-app-phone .k-page[data-full] .k-map-locate {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
 }
 .k-app-phone .k-page[data-full] .k-map-locate[data-stacked] {
-  bottom: calc(4.75rem + 3.5rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + 3.5rem + var(--k-safe-bottom));
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {
@@ -549,7 +559,7 @@ button {
 }
 /* The map runs under the phone's tab bar, so a sheet filling it would end underneath one too. */
 .k-app-phone .k-map-sheet {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(5.5rem + var(--k-safe-bottom));
 }
 .k-map-sheet-close {
   position: absolute;
@@ -751,7 +761,7 @@ button {
 .k-inline-bar {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom) + var(--space-4));
+  bottom: calc(var(--k-safe-bottom) + var(--space-4));
   transform: translateX(-50%);
   z-index: 85;
   display: flex;
@@ -768,7 +778,7 @@ button {
   animation: k-inline-rise var(--dur-slow) var(--ease);
 }
 body:has(.k-app-phone .k-tabbar) .k-inline-bar {
-  bottom: calc(4.75rem + env(safe-area-inset-bottom) + var(--space-3));
+  bottom: calc(4.75rem + var(--k-safe-bottom) + var(--space-3));
 }
 .k-inline-bar-mark {
   display: inline-grid;
@@ -1183,6 +1193,8 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   align-items: center;
   gap: var(--space-3);
   padding: 0.7rem var(--space);
+  /* Clear the phone's status bar: this page paints edge to edge like the rest (#253). */
+  padding-top: calc(0.7rem + var(--k-safe-top));
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
@@ -1713,7 +1725,7 @@ th.k-data-raw {
 }
 .k-filter-foot {
   display: flex;
-  padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
 }
 .k-filter-foot .k-add {
@@ -2105,7 +2117,7 @@ th.k-data-raw {
   flex: 0 0 auto;
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--space-3) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
   background: var(--surface);
   border-radius: 0 0 var(--radius) var(--radius);
@@ -2137,7 +2149,7 @@ th.k-data-raw {
     border-radius: var(--radius) var(--radius) 0 0;
   }
   .k-form-head {
-    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+    padding-top: calc(var(--space-4) + var(--k-safe-top));
     min-height: 2.75rem;
   }
   .k-form-close {
@@ -2391,7 +2403,7 @@ details.k-form-group > summary:focus-visible {
   gap: var(--space-2);
   min-height: 3.25rem;
   padding: var(--space-1) var(--space-2);
-  padding-top: calc(var(--space-1) + env(safe-area-inset-top));
+  padding-top: calc(var(--space-1) + var(--k-safe-top));
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -2454,7 +2466,7 @@ details.k-form-group > summary:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-3) calc(7.5rem + env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-3) calc(7.5rem + var(--k-safe-bottom));
 }
 .k-recbar {
   display: flex;
@@ -2488,12 +2500,24 @@ details.k-form-group > summary:focus-visible {
 }
 /* The quiet marks: the sandbox pill and the sync state. */
 .k-prov {
+  font: inherit;
   font-size: 0.7rem;
   padding: 0.15em 0.55em;
   border-radius: 999px;
   border: 1px solid var(--line);
+  background: none;
   color: var(--ink-soft);
   white-space: nowrap;
+}
+/* The sandbox mark is a button (#253): tapping it is how a phone reaches the trust dialog. */
+button.k-prov {
+  cursor: pointer;
+  min-height: 1.75rem;
+}
+button.k-prov:hover,
+button.k-prov:focus-visible {
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 /* Bottom tab bar: four pages and More, each a 44px column with its glyph over its name. */
@@ -2505,7 +2529,7 @@ details.k-form-group > summary:focus-visible {
   z-index: 20;
   display: flex;
   justify-content: space-around;
-  padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+  padding: var(--space-1) var(--space-1) calc(var(--space-1) + var(--k-safe-bottom));
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
@@ -2556,7 +2580,7 @@ details.k-form-group > summary:focus-visible {
 .k-fab {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  bottom: calc(4.75rem + var(--k-safe-bottom));
   z-index: 21;
   display: inline-flex;
   align-items: center;
@@ -2598,7 +2622,7 @@ details.k-form-group > summary:focus-visible {
 .k-fab-dial {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  bottom: calc(8.5rem + var(--k-safe-bottom));
   z-index: 21;
   display: flex;
   flex-direction: column;
@@ -2902,7 +2926,7 @@ details.k-form-group > summary:focus-visible {
     bottom: 0;
     max-width: none;
     border-radius: var(--radius) var(--radius) 0 0;
-    padding: var(--space-2) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom));
+    padding: var(--space-2) var(--space-3) calc(var(--space-3) + var(--k-safe-bottom));
     animation: k-sheet-up var(--dur) var(--ease);
   }
   .k-menu-grip {
@@ -3594,7 +3618,7 @@ button.k-tl-card:focus-visible {
   .k-dialog {
     width: 100%;
     margin: 0;
-    padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation: k-sheet-up var(--dur) var(--ease);
   }
@@ -3617,7 +3641,7 @@ button.k-tl-card:focus-visible {
     min-height: 2.9rem;
   }
   .k-progress-stack {
-    bottom: calc(5.2rem + env(safe-area-inset-bottom));
+    bottom: calc(5.2rem + var(--k-safe-bottom));
   }
 }
 /* tokens-only: end — questions */
@@ -3628,7 +3652,7 @@ button.k-tl-card:focus-visible {
    its group scrolls past, under the phone's top bar. A record page's section heading keeps the
    section's own type. Either one, when it folds, is a button with a chevron and a count. */
 .k-app-phone {
-  --k-sticky-top: calc(3.25rem + env(safe-area-inset-top));
+  --k-sticky-top: calc(3.25rem + var(--k-safe-top));
 }
 .k-groups {
   display: flex;
@@ -3853,6 +3877,310 @@ button.k-fold-head {
   color: var(--ink-faint);
 }
 /* tokens-only: end — list rows */
+/* tokens-only: start — full screen */
+/* A page that asked for the whole screen: no bars; the shell's ✕ is the way out, quiet until
+   touched so a game is not drawn around it, never gone. */
+.k-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  padding: var(--k-safe-top) var(--k-safe-right) var(--k-safe-bottom) var(--k-safe-left);
+}
+.k-fullscreen-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* The page's view gets all of it. Not centred: a view measures where it starts to know how much room
+   it has, and centring an empty one put its top halfway down the screen. A view centres itself. */
+.k-fullscreen-page > * {
+  flex: 1;
+  min-height: 0;
+}
+.k-fullscreen-exit {
+  position: absolute;
+  top: calc(var(--k-safe-top) + var(--space-2));
+  right: calc(var(--k-safe-right) + var(--space-2));
+  z-index: 1;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity var(--dur) var(--ease);
+}
+.k-fullscreen-exit:hover,
+.k-fullscreen-exit:focus-visible,
+.k-fullscreen-exit:active {
+  opacity: 1;
+  border-color: var(--accent);
+}
+/* tokens-only: end — full screen */
+/* tokens-only: start — add an app */
+/* Add an app (#253): three ways in, then a card that says what the app is before anything is saved. */
+.k-launch-addbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 759px) {
+  .k-launch-addbtn-word {
+    display: none;
+  }
+}
+.k-add-app {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.k-add-app-head h2 {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.k-add-app-head .k-muted {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add-app-sources {
+  display: grid;
+  gap: var(--space-2);
+}
+.k-add-app-source {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  column-gap: var(--space-3);
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-add-app-source:hover,
+.k-add-app-source:focus-visible,
+.k-add-app-source[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+.k-add-app-source-glyph {
+  grid-row: span 2;
+  font-size: 1.3rem;
+  text-align: center;
+}
+.k-add-app-source-title {
+  font-weight: 600;
+}
+.k-add-app-source .k-muted {
+  font-size: 0.85rem;
+}
+.k-add-app-entry {
+  display: flex;
+  gap: var(--space-2);
+}
+.k-add-app-entry .k-input {
+  flex: 1;
+  min-width: 0;
+}
+.k-add-app-entry-paste {
+  flex-direction: column;
+  align-items: flex-end;
+}
+.k-add-app-paste {
+  width: 100%;
+  min-height: 10rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.k-add-app-busy {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--ink-soft);
+}
+.k-add-app-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.k-add-app-ident {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.k-add-app-ident h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-add-app-ident .k-muted {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add-app-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.k-add-app-facts > div {
+  display: contents;
+}
+.k-add-app-facts dt {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+.k-add-app-facts dd {
+  margin: 0;
+}
+.k-add-app-choice {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.k-add-app-choice legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.k-add-app-choice label,
+.k-add-app-mine {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  cursor: pointer;
+}
+.k-add-app-choice label > span,
+.k-add-app-mine > span {
+  display: grid;
+}
+.k-add-app-choice .k-muted,
+.k-add-app-mine .k-muted {
+  font-size: 0.85rem;
+}
+.k-add-app-trust {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.k-add-app-issues {
+  color: var(--danger);
+}
+.k-add-app-issues p,
+.k-add-app-issues ul {
+  margin: 0;
+}
+.k-add-app-error {
+  margin: 0;
+  color: var(--danger);
+  white-space: pre-line;
+}
+.k-add-app-updated p {
+  margin: 0 0 var(--space-2);
+}
+/* tokens-only: end — add an app */
+/* tokens-only: start — files */
+/* The file field (#252): a chip naming the file, a menu to bring one in or pick one from the app's
+   folder. The chip opens the file; on the record page a second button saves a copy outside. */
+.k-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.k-file-chip[data-gone] {
+  border-style: dashed;
+}
+.k-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+button.k-file-name {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+button.k-file-name:hover,
+button.k-file-name:focus-visible {
+  text-decoration-color: var(--accent);
+}
+.k-file-size {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.k-file-pick,
+.k-file-clear,
+.k-file-export {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-file-pick:hover,
+.k-file-clear:hover,
+.k-file-export:hover,
+.k-file-pick:focus-visible,
+.k-file-clear:focus-visible,
+.k-file-export:focus-visible {
+  border-color: var(--accent);
+}
+.k-file-clear {
+  color: var(--ink-soft);
+  border-color: transparent;
+  background: none;
+}
+.k-file-failed {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
+/* tokens-only: end — files */
 /* tokens-only: start — media */
 /* The photo field (#102): a tile, not the browser's file button. Empty it is a dashed square that
    says what it wants; filled it shows the thing with a way to take it off. A `multiple` field is a
@@ -4226,7 +4554,7 @@ button.k-fold-head {
   max-width: none;
   max-height: 80vh;
   border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
   animation: k-sheet-up var(--dur) var(--ease);
 }
 .k-enum-list .k-menu-grip {
@@ -4521,7 +4849,7 @@ button.k-fold-head {
   width: auto;
   max-width: none;
   border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--k-safe-bottom));
   animation: k-sheet-up var(--dur) var(--ease);
 }
 /* Four shortcuts on one line inside the picker, which is narrower than the form. */
@@ -5139,7 +5467,7 @@ button.k-switch:focus-visible {
    toast lay on top of the bar's labels. Lifted clear of both (bar 4.75rem + button 3.25rem + gap), so
    it neither hides them nor takes the tap meant for them. */
 body:has(.k-tabbar) .k-toasts {
-  bottom: calc(8.75rem + env(safe-area-inset-bottom));
+  bottom: calc(8.75rem + var(--k-safe-bottom));
 }
 .k-toast {
   background: var(--ink);
@@ -5171,6 +5499,7 @@ body:has(.k-tabbar) .k-toasts {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
+  padding-top: calc(0.75rem + var(--k-safe-top)); /* under a phone's status bar otherwise (#253) */
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
@@ -5723,7 +6052,7 @@ body:has(.k-tabbar) .k-toasts {
     width: 100%;
     margin: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--space-4) + var(--k-safe-bottom));
   }
 }
 /* tokens-only: end — people */
@@ -5742,7 +6071,7 @@ body:has(.k-tabbar) .k-toasts {
      that draws under them: the in-app chrome has its own inset (`.k-topbar`), the home screen had
      none, so its title and the You button sat behind the clock. `viewport-fit=cover` is deliberate —
      the app paints edge to edge — which makes the insets ours to add back. */
-  padding: calc(var(--space) + env(safe-area-inset-top)) var(--space) calc(var(--space) + env(safe-area-inset-bottom));
+  padding: calc(var(--space) + var(--k-safe-top)) var(--space) calc(var(--space) + var(--k-safe-bottom));
   min-height: 100%;
 }
 .k-launcher-head {
@@ -6014,7 +6343,7 @@ body:has(.k-tabbar) .k-toasts {
     right: 0;
     bottom: 0;
     border-radius: var(--radius) var(--radius) 0 0;
-    padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    padding: 0.5rem 0.75rem calc(0.75rem + var(--k-safe-bottom));
     animation: k-sheet-up var(--dur) var(--ease);
     min-width: 0;
   }
@@ -6054,7 +6383,7 @@ body:has(.k-tabbar) .k-toasts {
   width: min(420px, 92vw);
   height: 100%;
   overflow: auto;
-  padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+  padding: calc(1.25rem + var(--k-safe-top)) 1.25rem calc(1.25rem + var(--k-safe-bottom));
   background: var(--paper);
   border-right: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -6353,7 +6682,7 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-switcher-search {
   flex: 0 0 auto;
-  padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-3) calc(var(--space-2) + var(--k-safe-bottom));
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
@@ -6423,7 +6752,7 @@ body:has(.k-tabbar) .k-toasts {
 .k-launch-fab {
   position: fixed;
   right: var(--space-4);
-  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-4) + var(--k-safe-bottom));
   z-index: 21;
   display: none;
   align-items: center;
@@ -8980,7 +9309,7 @@ body:has(.k-tabbar) .k-toasts {
 .k-share-page {
   max-width: 36rem;
   margin: 0 auto;
-  padding: var(--space) 1rem calc(var(--space) + env(safe-area-inset-bottom));
+  padding: var(--space) 1rem calc(var(--space) + var(--k-safe-bottom));
   display: grid;
   gap: 0.9rem;
 }

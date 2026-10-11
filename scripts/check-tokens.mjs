@@ -25,6 +25,11 @@ const INLINE = new Set([
   "--swatch",
   // Where a balloon's tail sits, measured against the button it hangs off (`useAnchored`).
   "--k-tail",
+  // Set on <html> by Capacitor 8 on Android: the status and gesture bars, when env() reports 0.
+  "--safe-area-inset-top",
+  "--safe-area-inset-right",
+  "--safe-area-inset-bottom",
+  "--safe-area-inset-left",
 ]);
 
 const problems = [];

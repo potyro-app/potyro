@@ -25,7 +25,8 @@
     "dev:shell-only": "pnpm --filter @potyro/shell dev",
     "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json",
     "test:e2e:prod": "POTYRO_PROD=1 playwright test --project=prod",
-    "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox"
+    "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox",
+    "pack:app": "node scripts/pack-app.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

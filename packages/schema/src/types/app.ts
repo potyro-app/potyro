@@ -543,6 +543,8 @@ export interface Page {
   view: View;
   /** Several views on one page (#105). A page declares EITHER `view` OR `layout`. */
   layout?: PageLayout;
+  /** Open with no bars (a game, a slideshow). The shell keeps its own way out. */
+  fullscreen?: boolean;
 }
 
 /** A page as an app declares it: `view` or `layout` (one of the two; `defineApp` fills `view` from a
