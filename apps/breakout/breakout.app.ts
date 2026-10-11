@@ -74,7 +74,7 @@ function sound(): (freq: number, ms?: number) => void {
 function mountGame(el: HTMLElement, props: ViewProps): () => void {
   const ctx = (props.runtime as { ctx: Ctx }).ctx;
   const canvas = document.createElement("canvas");
-  canvas.style.cssText = "display:block;margin:0 auto;touch-action:none;border-radius:14px;max-width:100%;";
+  canvas.style.cssText = "display:block;margin:12px auto;touch-action:none;border-radius:14px;max-width:100%;";
   el.appendChild(canvas);
   const g = canvas.getContext("2d")!;
   const beep = sound();
@@ -82,18 +82,42 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   // Sizing: a portrait board that fits the space it was given and stays sharp on a phone's screen.
   let W = 360;
   let H = 480;
+  let prevW = 0;
+  let prevH = 0;
   // How much of the bottom the shell's own bars take: the custom property it gives views for exactly
   // this (0 on a full-screen page). Measured, because it is a calc() the stylesheet resolves.
   const probe = document.createElement("div");
   probe.style.cssText = "position:absolute;visibility:hidden;height:var(--k-chrome-bottom, 0px)";
   el.appendChild(probe);
   const fit = (): void => {
-    const room = Math.max(240, window.innerHeight - el.getBoundingClientRect().top - probe.offsetHeight - 24);
+    const room = Math.max(240, window.innerHeight - el.getBoundingClientRect().top - probe.offsetHeight - 32);
     // As wide as it may be, then as tall as the room allows — up to a tall phone's shape, never
     // shorter than 4:3 portrait.
     W = Math.min(el.clientWidth || 360, 520, Math.floor((room * 3) / 4));
     H = Math.min(Math.floor(room), Math.floor(W * 1.9));
     const dpr = window.devicePixelRatio || 1;
+    if (W === prevW && H === prevH) return;
+    // The board can change size while you play: Android hides its bars a moment after full screen
+    // opens, a phone turns. Everything on it scales with it, so nothing is left where the old board was.
+    if (prevW && levels) {
+      const sx = W / prevW;
+      const sy = H / prevH;
+      for (const b of bricks) {
+        b.x *= sx;
+        b.w *= sx;
+        b.y *= sy;
+        b.h *= sy;
+      }
+      paddle.x *= sx;
+      paddle.w *= sx;
+      ball.x *= sx;
+      ball.y *= sy;
+      ball.vx *= sx;
+      ball.vy *= sy;
+      ball.r = Math.max(5, W / 70);
+    }
+    prevW = W;
+    prevH = H;
     canvas.width = Math.floor(W * dpr);
     canvas.height = Math.floor(H * dpr);
     canvas.style.width = `${W}px`;
@@ -312,6 +336,9 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
   canvas.addEventListener("pointerdown", onPointerDown);
   window.addEventListener("keydown", onKey);
   window.addEventListener("resize", fit);
+  // The page around the game can change without the window doing so (full screen opening or closing).
+  const watch = new ResizeObserver(() => fit());
+  watch.observe(el);
   document.addEventListener("visibilitychange", onHide);
   fit();
   frame = requestAnimationFrame(loop);
@@ -334,6 +361,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     canvas.removeEventListener("pointerdown", onPointerDown);
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("resize", fit);
+    watch.disconnect();
     document.removeEventListener("visibilitychange", onHide);
     canvas.remove();
     probe.remove();
