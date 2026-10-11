@@ -7,7 +7,7 @@ export { StepsView } from "./steps.js";
 export { ChecklistView } from "./checklist.js";
 export { CalendarView, buildMonthGrid, sameDay, type CalendarCell, type CalendarEvent } from "./calendar.js";
 export { MapView, mapArea, subscribeMapArea, useMapMarkers, type MapMarker } from "./map.js";
-export { CustomView } from "./custom.js";
+export { CustomView, TRUST_REQUEST } from "./custom.js";
 export { useDisplayCells } from "./cells.js";
 export { useDynamicText, usePageTitles } from "./dynamic.js";
 export { FieldValue } from "./field-value.js";

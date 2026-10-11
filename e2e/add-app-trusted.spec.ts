@@ -137,3 +137,35 @@ test("a file that is not an app is refused with a reason, and nothing is added",
   await (await chooser).setFiles([file("notes.md", "# not an app")]);
   await expect(dialog.getByRole("alert")).toContainText("None of these is an app");
 });
+
+test("a sealed app's own screen offers to run it as yours, and the sandbox mark opens the same dialog", async ({ page }) => {
+  const custom = `import { defineApp } from "potyro";
+export default defineApp({
+  id: "custom-screen",
+  name: "Custom screen",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: { note: { fields: { title: { type: "text" } } } },
+  pages: [{ id: "home", title: "Home", view: { type: "custom", entity: "note", render: () => "Hello from my own code" } }],
+});
+`;
+  await page.goto("/");
+  const dialog = await openAdd(page);
+  await dialog.getByRole("button", { name: /Paste the source/ }).click();
+  await dialog.getByRole("textbox", { name: "The app's source" }).fill(custom);
+  await dialog.getByRole("button", { name: "Check it" }).click();
+  await expect(dialog.getByRole("region", { name: "About Custom screen" })).toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole("button", { name: "Add app" }).click();
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+
+  // The mark at the top is a button now.
+  await page.getByRole("button", { name: "Runs in a sandbox: review" }).click();
+  await expect(page.getByRole("heading", { name: "Promote to trusted?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  // And the screen that needs trust asks for it itself.
+  await page.getByRole("button", { name: "Run it as mine…" }).click();
+  await page.getByRole("button", { name: "Promote to trusted" }).click();
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
+  await expect(page.getByText("Hello from my own code")).toBeVisible();
+});
