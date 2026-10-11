@@ -85,34 +85,42 @@ test("the prompt box empties on submit and the ask joins the thread", async ({ p
   // And what was asked is on screen, where it can be read back.
   const thread = studio(page).locator(".k-thread");
   await expect(thread).toContainText("rename the page to Jotter", { timeout: 60_000 });
-  // With an answer under it once the model has been heard from.
-  await expect(thread.locator(".k-thread-answer")).not.toHaveText("Working…", { timeout: 60_000 });
+  // With an answer under it once the model has been heard from: the version it made.
+  await expect(thread.locator(".k-card[data-current]")).toBeVisible({ timeout: 60_000 });
+  await expect(thread.locator(".k-thread-working")).toHaveCount(0);
 });
 
-test("reopening an app shows what was asked of it before", async ({ page }) => {
+test("reopening an app shows the whole conversation, even after a reload", async ({ page }) => {
+  // #261: the thread used to be rebuilt from version notes, so only requests that produced a version
+  // survived. The agent's question and the answer to it did not — and those are most of a real
+  // conversation about what an app should be.
   test.slow();
   await seedApp(page);
-  await stubGenerator(page, [APP("Jotter")]);
+  await stubGenerator(page, ["QUESTION: Should the page be called Jotter, or Jottings?", APP("Jotter")]);
 
   await page.goto("/?user=notes");
   await page.getByRole("button", { name: "Studio", exact: true }).click();
-  await studio(page).getByRole("textbox", { name: "Describe the app" }).fill("rename the page to Jotter");
+  const box = studio(page).getByRole("textbox", { name: "Describe the app" });
+  await box.fill("rename the page");
   await studio(page).getByRole("button", { name: /Modify the app/ }).click();
-  // Wait for the ANSWER, not just the ask: the ask appears the instant it is sent, and saving
-  // while the model is still working saves the source it has not changed yet.
-  await expect(studio(page).locator(".k-thread-answer").last()).not.toHaveText("Working…", { timeout: 60_000 });
-  await studio(page).getByRole("button", { name: /Save changes/ }).first().click();
-  // The save writes a version; let it land before the Studio is torn down.
-  await expect(studio(page).getByText(/Saved|My Apps/).first()).toBeVisible({ timeout: 30_000 });
+  // The agent asked rather than guessed; nothing was changed for it.
+  const question = studio(page).locator('.k-thread-answer[data-tone="question"]');
+  await expect(question).toContainText("Jotter, or Jottings?", { timeout: 60_000 });
+  await box.fill("Jotter");
+  await studio(page).getByRole("button", { name: /Modify the app/ }).click();
+  await expect(studio(page).locator(".k-card[data-current]")).toBeVisible({ timeout: 60_000 });
 
-  // Close the Studio, come back to it: the thread is read from the app's own history, so it
-  // survives — this is not session state.
-  await studio(page).getByRole("button", { name: /Close studio/ }).click();
+  // Leave entirely: a reload, then the Studio again. Every message is still there, in order, and
+  // nothing reads as pending.
+  await page.reload();
+  await expect(page.locator("h1").first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Studio", exact: true }).click();
-
-  await expect(studio(page).locator(".k-thread")).toContainText("rename the page to Jotter", { timeout: 30_000 });
-  // Finished, not pending: it was saved. Read back, it used to show "Working…" for ever.
-  await expect(studio(page).locator(".k-thread")).not.toContainText("Working…");
+  const thread = studio(page).locator(".k-thread");
+  await expect(thread).toContainText("rename the page", { timeout: 30_000 });
+  await expect(thread).toContainText("Jotter, or Jottings?");
+  await expect(thread.locator(".k-thread-ask").last()).toHaveText("Jotter");
+  await expect(thread.locator(".k-card[data-current]")).toBeVisible();
+  await expect(thread).not.toContainText("Working…");
 });
 
 test("a change that wasn't a request reads as something that happened, never as waiting", async ({ page }) => {
@@ -157,10 +165,9 @@ test("a change that wasn't a request reads as something that happened, never as 
   await expect(studio(page).locator(".k-thread-ask", { hasText: "Jottings" })).toHaveCount(0);
 });
 
-test("Save is refused while the model is still working", async ({ page }) => {
-  // Saving mid-answer saves the app as it WAS, under a version that records the prompt — so the app
-  // is left with a version claiming a change it does not contain. My own test did this by accident;
-  // a person clicking Save while the spinner runs does the same thing.
+test("nothing more can be sent while the model is still working", async ({ page }) => {
+  // A second request mid-answer would be made to the app as it WAS, and land on top of the first
+  // one's result — two changes racing to be the next version. One turn at a time.
   test.slow();
   await seedApp(page);
   await stubGenerator(page, [APP("Jotter")]);
@@ -168,16 +175,18 @@ test("Save is refused while the model is still working", async ({ page }) => {
   await page.goto("/?user=notes");
   await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
   await page.getByRole("button", { name: "Studio", exact: true }).click();
-  await studio(page).getByRole("textbox", { name: "Describe the app" }).fill("rename the page to Jotter");
+  const box = studio(page).getByRole("textbox", { name: "Describe the app" });
+  await box.fill("rename the page to Jotter");
 
-  const save = studio(page).getByRole("button", { name: /Save changes/ }).first();
-  await expect(save).toBeEnabled();
-  await studio(page).getByRole("button", { name: /Modify the app/ }).click();
-  await expect(save).toBeDisabled();
+  const send = studio(page).getByRole("button", { name: /Modify the app/ });
+  await expect(send).toBeEnabled();
+  await send.click();
+  await box.fill("and another thing");
+  await expect(send).toBeDisabled();
 
   // And it comes back once the answer has landed.
-  await expect(studio(page).locator(".k-thread-answer").last()).not.toHaveText("Working…", { timeout: 60_000 });
-  await expect(save).toBeEnabled({ timeout: 30_000 });
+  await expect(studio(page).locator(".k-card[data-current]")).toBeVisible({ timeout: 60_000 });
+  await expect(send).toBeEnabled({ timeout: 30_000 });
 });
 
 test("an app can be duplicated from the launcher", async ({ page }) => {

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The modify LOOP (#131), end to end in the Studio with a scripted OpenRouter: the model refuses
 // without looking, is sent to the tools, calls `lookup`, gets the real declaration back inside the
@@ -27,25 +28,15 @@ test("modify runs on the loop: an unlooked refusal is sent to lookup, then edits
 
   // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
   // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+  const studio = await openNewStudio(page);
+  await chooseOpenRouter(page, studio);
 
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  await ask(studio, "a reading tracker");
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  const go = studio.getByRole("button", { name: /Create the app|Modify the app/ });
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await go.click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
-
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("add a 5-star rating field");
-  await go.click();
-  await expect(studio.getByText(/Applied 1 edit/)).toBeVisible({ timeout: 60_000 });
+  await ask(studio, "add a 5-star rating field");
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
 
   // The exchange the loop guarantees: nudge after the blind refusal, then the tool's answer.
   expect(requests).toHaveLength(4);
@@ -57,6 +48,6 @@ test("modify runs on the loop: an unlooked refusal is sent to lookup, then edits
   // The declaration came from the reference inside the browser, not from the model.
   expect(toolTurn.content).toContain("interface NumberField");
 
-  await studio.getByRole("tab", { name: "Source" }).click();
-  await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/rating: \{ type: "number"/);
+  const tools = await openSource(page, studio);
+  await expect(tools.getByRole("textbox", { name: "App source" })).toHaveValue(/rating: \{ type: "number"/);
 });
