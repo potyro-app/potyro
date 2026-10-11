@@ -27,6 +27,11 @@ const rules = [
     forbidden: [/@karta\/store/, /@karta\/host/, /@karta\/capabilities/, /@karta\/runtime/, /@karta\/views/, /@karta\/shell/],
     note: "app modules reach host power only via ctx; import `karta` only",
   },
+  {
+    pkg: "apps",
+    forbidden: [/@karta\/store/, /@karta\/host/, /@karta\/capabilities/, /@karta\/runtime/, /@karta\/views/, /@karta\/shell/],
+    note: "personal apps are app modules too: import `karta` only",
+  },
 ];
 
 const IGNORE_DIRS = new Set(["node_modules", "dist", ".vite", "coverage"]);
