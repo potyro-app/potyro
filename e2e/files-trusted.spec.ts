@@ -115,8 +115,21 @@ for (const trusted of [true, false]) {
     await page.getByRole("button", { name: "Read It" }).click();
     await expect(page.locator(".k-toast").last()).toHaveText("# Summary of Trip");
 
-    const download = page.waitForEvent("download");
+    // Chromium has the native save dialog, which a headless run cannot answer. Stand in for it and
+    // check what the shell hands it: the file's own name, and its contents.
+    await page.evaluate(() => {
+      const w = window as unknown as { __saved?: { name: string; text: string }; showSaveFilePicker: unknown };
+      w.showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => ({
+        createWritable: async () => ({
+          write: async (data: Blob) => void (w.__saved = { name: suggestedName, text: await data.text() }),
+          close: async () => {},
+        }),
+      });
+    });
     await page.getByRole("button", { name: "Save a copy of summary.md" }).click();
-    expect((await download).suggestedFilename()).toBe("summary.md");
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __saved?: unknown }).__saved)).toEqual({
+      name: "summary.md",
+      text: "# Summary of Trip",
+    });
   });
 }
