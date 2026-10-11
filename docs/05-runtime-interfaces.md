@@ -49,6 +49,13 @@ export interface Store {
   subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;  // KA-20: a photo's bytes arrived
   memberIds?(): readonly string[];  // synced stores: every account ever in the space, removed ones too (KA-19)
+  deleteBlob(key: string): Promise<void>;  // a replaced or removed file's old bytes
+  // the app's own folder (#252): an INDEX of files by id; bytes are blobs under `entry.blob`.
+  // Paths, types, hashing and "one file per path" live once in `file-space.ts` (`fileSpace(store)`),
+  // so stores only keep entries. In a synced store the index syncs and bytes come on demand (#255).
+  listFiles(): Promise<StoredFile[]>;  getFile(id: string): Promise<StoredFile | null>;
+  setFile(entry: StoredFile): Promise<void>;  deleteFile(id: string): Promise<void>;
+  subscribeFiles?(cb: () => void): Unsubscribe;
   // what the app declared: field types (KA-38 set merge) and who may edit what (KA-21 creatorOnly,
   // enforced by a synced store from its signed log — another member's edit to such a row does not take)
   describe?(schema: StoreSchema, rules?: { creatorOnly?: readonly string[] }): void;

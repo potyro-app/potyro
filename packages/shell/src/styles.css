@@ -3853,6 +3853,89 @@ button.k-fold-head {
   color: var(--ink-faint);
 }
 /* tokens-only: end — list rows */
+/* tokens-only: start — files */
+/* The file field (#252): a chip naming the file, a menu to bring one in or pick one from the app's
+   folder. The chip opens the file; on the record page a second button saves a copy outside. */
+.k-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.k-file-chip[data-gone] {
+  border-style: dashed;
+}
+.k-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+button.k-file-name {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+button.k-file-name:hover,
+button.k-file-name:focus-visible {
+  text-decoration-color: var(--accent);
+}
+.k-file-size {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.k-file-pick,
+.k-file-clear,
+.k-file-export {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.k-file-pick:hover,
+.k-file-clear:hover,
+.k-file-export:hover,
+.k-file-pick:focus-visible,
+.k-file-clear:focus-visible,
+.k-file-export:focus-visible {
+  border-color: var(--accent);
+}
+.k-file-clear {
+  color: var(--ink-soft);
+  border-color: transparent;
+  background: none;
+}
+.k-file-failed {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
+/* tokens-only: end — files */
 /* tokens-only: start — media */
 /* The photo field (#102): a tile, not the browser's file button. Empty it is a dashed square that
    says what it wants; filled it shows the thing with a way to take it off. A `multiple` field is a

@@ -28,6 +28,30 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   }
   function bridgeSync(obj){ __hostSync(__serialize(obj)); }
 
+  // Bytes cross the bridge as base64: it carries JSON, and QuickJS has neither Blob nor atob (#252).
+  var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  function toBase64(u8){
+    var out = "", i = 0;
+    for (; i + 2 < u8.length; i += 3) {
+      var n = (u8[i] << 16) | (u8[i+1] << 8) | u8[i+2];
+      out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + B64[(n >> 6) & 63] + B64[n & 63];
+    }
+    if (i < u8.length) {
+      var m = u8[i] << 16 | (i + 1 < u8.length ? u8[i+1] << 8 : 0);
+      out += B64[(m >> 18) & 63] + B64[(m >> 12) & 63] + (i + 1 < u8.length ? B64[(m >> 6) & 63] : "=") + "=";
+    }
+    return out;
+  }
+  function fromBase64(s){
+    var clean = s.replace(/=+$/, ""), bytes = new Uint8Array(Math.floor(clean.length * 3 / 4)), j = 0, buf = 0, bits = 0;
+    for (var i = 0; i < clean.length; i++) {
+      buf = (buf << 6) | B64.indexOf(clean[i]); bits += 6;
+      if (bits >= 8) { bits -= 8; bytes[j++] = (buf >> bits) & 255; }
+    }
+    return bytes;
+  }
+  function fileArg(f){ return typeof f === "string" ? f : (f && typeof f === "object" ? {id:f.id, path:f.path, name:f.name, mime:f.mime} : f); }
+
   // A page ref may name a layout item ("today#1", #105): the same rule as resolveView in the schema.
   function findView(app, pageRef){
     var at = String(pageRef).indexOf("#");
@@ -97,6 +121,32 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       media: {
         put: async function(){ throw new Error("ctx.media.put is not available to untrusted apps in v1"); },
         url: async function(ref){ return bridge({op:"media.url", ref:ref}); }
+      },
+      // The app's own folder (#252): the same surface as a trusted app's, answered by the host.
+      files: {
+        list: function(folder){ return bridge({op:"files.list", folder: folder == null ? null : String(folder)}); },
+        stat: function(f){ return bridge({op:"files.stat", file:fileArg(f)}); },
+        text: function(f){ return bridge({op:"files.text", file:fileArg(f)}); },
+        json: async function(f){
+          var t = await bridge({op:"files.text", file:fileArg(f)});
+          if (t == null) return null;
+          try { return JSON.parse(t); }
+          catch (e) { throw new Error('"' + (typeof f === "string" ? f : (f.path || f.name || f.id)) + '" is not valid JSON: ' + e.message); }
+        },
+        bytes: async function(f){
+          var b = await bridge({op:"files.bytes", file:fileArg(f)});
+          return b == null ? null : fromBase64(b);
+        },
+        url: function(f){ return bridge({op:"files.url", file:fileArg(f)}); },
+        write: function(path, data, o){
+          var enc = typeof data === "string" ? "text" : "base64";
+          if (enc === "base64" && !(data instanceof Uint8Array)) throw new Error("ctx.files.write takes a string or a Uint8Array");
+          return bridge({op:"files.write", path:String(path), enc:enc, data: enc === "text" ? data : toBase64(data), mime: (o && o.mime) || null});
+        },
+        rename: function(f, to){ return bridge({op:"files.rename", file:fileArg(f), to:String(to)}); },
+        remove: async function(f){ await bridge({op:"files.remove", file:fileArg(f)}); },
+        import: function(o){ return bridge({op:"files.import", opts: o ? {folder:o.folder || null, accept:o.accept || null, multiple: !!o.multiple} : null}); },
+        export: async function(f){ await bridge({op:"files.export", file:fileArg(f)}); }
       },
       ui: {
         toast: function(m){ bridgeSync({op:"ui.toast", msg:String(m)}); },

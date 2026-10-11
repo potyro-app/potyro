@@ -2,7 +2,7 @@
 // durable. SqliteStore (OPFS + JSON1) implements the same interface for the PWA (WP3, later).
 
 import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
-import type { MigrationPlan, Narrow, Store, Unsubscribe } from "./types.js";
+import type { MigrationPlan, Narrow, Store, StoredFile, Unsubscribe } from "./types.js";
 import { applyMigrationStep, type EntityRecords } from "./migrate.js";
 import { ulid } from "./ulid.js";
 
@@ -25,7 +25,9 @@ export class MemoryStore implements Store {
   protected records = new Map<string, Map<Id, PotyroRecord>>();
   protected blobs = new Map<string, BlobEntry>();
   protected kv = new Map<string, string>();
+  protected files = new Map<string, StoredFile>();
   private listeners = new Map<string, Set<() => void>>();
+  private fileListeners = new Set<() => void>();
   protected schemaVersion = 0;
 
   /** Subclass hook fired after every mutation (LocalStore persists here). */
@@ -150,6 +152,36 @@ export class MemoryStore implements Store {
     const e = this.blobs.get(r.key);
     if (!e) return null;
     return new Blob([e.bytes], { type: e.mime });
+  }
+
+  async deleteBlob(key: string): Promise<void> {
+    if (this.blobs.delete(key)) this.changed();
+  }
+
+  async listFiles(): Promise<StoredFile[]> {
+    return [...this.files.values()].map((f) => ({ ...f }));
+  }
+
+  async getFile(id: string): Promise<StoredFile | null> {
+    const f = this.files.get(id);
+    return f ? { ...f } : null;
+  }
+
+  async setFile(entry: StoredFile): Promise<void> {
+    this.files.set(entry.id, { ...entry });
+    this.changed();
+    for (const cb of [...this.fileListeners]) cb();
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    if (!this.files.delete(id)) return;
+    this.changed();
+    for (const cb of [...this.fileListeners]) cb();
+  }
+
+  subscribeFiles(cb: () => void): Unsubscribe {
+    this.fileListeners.add(cb);
+    return () => this.fileListeners.delete(cb);
   }
 
   async kvGet(k: string): Promise<string | null> {

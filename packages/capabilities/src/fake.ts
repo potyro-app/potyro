@@ -14,6 +14,8 @@ export interface FakeOptions {
   position?: Geo;
   /** Bytes returned by camera.capture() and filesystem.pick(). */
   blob?: Blob;
+  /** What filesystem.pickFiles() returns; `[]` (a cancel) when absent. */
+  files?: File[];
   /** If provided, network.fetch delegates here; otherwise it throws (offline). */
   fetch?: (input: string, init?: RequestInit) => Promise<Response>;
   /** notifications.supportsExactScheduling (default false — web-like). */
@@ -72,6 +74,7 @@ export class FakeCapabilities implements Capabilities {
 
     this.filesystem = {
       pick: async () => blob,
+      pickFiles: async () => [...(opts.files ?? [])],
       save: async (name, data) => {
         this.saved.set(name, data);
       },

@@ -36,6 +36,12 @@ function isMediaRef(v: unknown): boolean {
   return isObject(v) && typeof v.key === "string" && typeof v.mime === "string";
 }
 
+/** A `file` field's value: the file's id, with optional path/name/mime as it was when set. */
+function isFileRef(v: unknown): boolean {
+  if (!isObject(v) || typeof v.id !== "string" || v.id === "") return false;
+  return (["path", "name", "mime"] as const).every((k) => v[k] == null || typeof v[k] === "string");
+}
+
 /** A stored relation is an id; an embedded related record (with its id) is accepted as well. */
 function isRelationRef(v: unknown): boolean {
   return (typeof v === "string" && v !== "") || (isObject(v) && typeof v.id === "string");
@@ -113,6 +119,9 @@ export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck
       const ok = Array.isArray(value) ? value.every(isMediaRef) : isMediaRef(value);
       return ok ? null : `${label} must be a photo or file.`;
     }
+
+    case "file":
+      return isFileRef(value) ? null : `${label} must be a file in this app.`;
 
     case "relation": {
       const ok = field.many ? Array.isArray(value) && value.every(isRelationRef) : isRelationRef(value);

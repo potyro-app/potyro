@@ -6,7 +6,7 @@
 // present; its `caps` members are real+unmediated for trusted apps and mediated (or absent)
 // for untrusted apps. App code sees the same interface either way — authority is what differs.
 
-import type { Geo, Id, MediaRef, Resolved, Value } from "./core.js";
+import type { FileInfo, FileRef, Geo, Id, MediaRef, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
@@ -174,6 +174,29 @@ export interface CtxViews {
   map(pageId: string): MapViewControl;
 }
 
+/**
+ * The app's own folder (#252). Name a file by path (`"notes/a.md"`) or by a `file` field's value.
+ * Reading a missing path throws; `null` means the bytes have not reached this device yet.
+ */
+export interface CtxFiles {
+  /** All files, or those under `folder`. */
+  list(folder?: string): Promise<FileInfo[]>;
+  stat(file: string | FileRef): Promise<FileInfo | null>;
+  text(file: string | FileRef): Promise<string | null>;
+  json<T = unknown>(file: string | FileRef): Promise<T | null>;
+  bytes(file: string | FileRef): Promise<Uint8Array | null>;
+  /** For `<img>`, `<audio>`, `<video>`, a link. */
+  url(file: string | FileRef): Promise<string | null>;
+  /** Create or replace (keeps the id). */
+  write(path: string, data: string | Uint8Array | Blob, opts?: { mime?: string }): Promise<FileInfo>;
+  rename(file: string | FileRef, to: string): Promise<FileInfo>;
+  remove(file: string | FileRef): Promise<void>;
+  /** The person picks files; they land under `folder`. `[]` if they cancel. No permission needed. */
+  import(opts?: { folder?: string; accept?: string; multiple?: boolean }): Promise<FileInfo[]>;
+  /** Save a copy outside the app. */
+  export(file: string | FileRef): Promise<void>;
+}
+
 /** Media helpers (docs/04). */
 export interface CtxMedia {
   put(bytes: Blob): Promise<MediaRef>;
@@ -251,6 +274,9 @@ export interface Ctx {
 
   // ---- media helpers ----
   media: CtxMedia;
+
+  // ---- the app's own folder (#252) ----
+  files: CtxFiles;
 
   // ---- UI affordances provided by the shell ----
   ui: CtxUi;

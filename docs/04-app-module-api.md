@@ -96,6 +96,19 @@ interface Ctx {
   // ---- media helpers ----
   media: { put(bytes: Blob): Promise<MediaRef>; url(ref: MediaRef): Promise<string>; };
 
+  // ---- the app's own folder (#252) ----
+  // A file is named by path ("notes/a.md") or by a `file` field's value (a FileRef, by id, so it
+  // survives a rename). A missing path throws; `null` = bytes not on this device yet (shared app).
+  files: {
+    list(folder?: string): Promise<FileInfo[]>;          stat(f): Promise<FileInfo | null>;
+    text(f): Promise<string | null>;  json<T>(f): Promise<T | null>;  bytes(f): Promise<Uint8Array | null>;
+    url(f): Promise<string | null>;                       // for <img>/<audio>/<video>/a link
+    write(path, data: string | Uint8Array | Blob, opts?: { mime?: string }): Promise<FileInfo>;  // create or replace, keeps the id
+    rename(f, to: string): Promise<FileInfo>;             remove(f): Promise<void>;
+    import(opts?: { folder?; accept?; multiple? }): Promise<FileInfo[]>;  // the person picks; [] on cancel
+    export(f): Promise<void>;                             // save a copy outside the app
+  };
+
   // ---- UI affordances provided by the shell ----
   ui: { toast(msg: string): void;
         confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
@@ -153,6 +166,11 @@ present. Its `caps` members are:
   denied (member is `undefined`) or granted after a **one-time user consent prompt**, and when
   granted is a **mediated** wrapper (e.g. `network` may be domain-scoped, `filesystem` limited
   to an app-private area). App code sees the same interface; the authority behind it differs.
+
+`ctx.files` is not a cap. The folder belongs to the app and nothing else sees into it, so reading
+and writing it needs no permission. `import` and `export` open the system's file dialog, where the
+person chooses every file; that choice is the consent, so they work the same in the sealed box. The
+isolate carries bytes across its JSON bridge as base64.
 
 This is the entire safety model. The language is full JS; `caps` is where power is governed.
 
