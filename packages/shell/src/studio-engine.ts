@@ -32,6 +32,18 @@ export interface StudioEngine {
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
 
+/** A turn that came back as a question — thrown past the edit guard, caught as an outcome. */
+class Asked extends Error {
+  constructor(readonly question: string) {
+    super(question);
+  }
+}
+
+/** The modify loop says `ASK:`, a create says `QUESTION:`; either, at the head of a reply that is not an app. */
+function askedIn(reply: string): string | null {
+  return questionIn(reply.replace(/^([\s*`_]*)ASK:/, "$1QUESTION:"));
+}
+
 /** The shape a repair is judged against. A source that does not load has no shape to lose. */
 export async function shapeOrEmpty(src: string): Promise<AppShape> {
   try {
@@ -64,9 +76,15 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     }
   };
 
-  /** One raw model turn, for a modify or a repair. Returns the REPLY: `guardedModify` reads it. */
-  const attempt = (source: string, instruction: string): Promise<string> =>
-    modifyTurn({
+  /**
+   * One raw model turn, for a modify or a repair. Returns the REPLY: `guardedModify` reads it.
+   *
+   * A reply that is a question is not a change and not a failure: the one-turn guard would call it
+   * "an explanation instead of a change", so it is taken out here, before the guard sees it, and
+   * comes back to the conversation as the question it is.
+   */
+  const attempt = async (source: string, instruction: string): Promise<string> => {
+    const reply = await modifyTurn({
       engine,
       source,
       instruction,
@@ -75,6 +93,10 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
         else if (isCli) progress(`Changing it via ${label}… ${secs}s`);
       },
     });
+    const question = askedIn(reply);
+    if (question) throw new Asked(question);
+    return reply;
+  };
 
   const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string =>
     notDone?.length ? `${applied} Not done yet: ${notDone.join("; ")}` : applied;
@@ -149,6 +171,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       if (result.loss !== null) return { kind: "loss", source: result.source, summary, loss: result.loss };
       return { kind: "source", source: result.source, summary, notDone: result.notDone };
     } catch (e) {
+      if (e instanceof Asked) return { kind: "question", text: e.question };
       return { kind: "failed", text: `Not changed — ${e instanceof Error ? e.message : String(e)}` };
     }
   };

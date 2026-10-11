@@ -16,11 +16,14 @@ describe("a create may answer with a question", () => {
     // Dressed the way models dress a marker.
     expect(questionIn("**QUESTION:** Indoor or outdoor plants?")).toBe("Indoor or outdoor plants?");
     expect(questionIn("`QUESTION: Who uses it?`")).toBe("Who uses it?");
+    expect(questionIn("```ts\nQUESTION: Who uses it?\n```")).toBe("Who uses it?");
   });
 
   it("is not read from an app, nor from prose that mentions the word", () => {
     expect(questionIn('import { defineApp } from "potyro";\n// QUESTION: none\nexport default defineApp({})')).toBeNull();
     expect(questionIn("I had a question about this but decided to build the smaller app.")).toBeNull();
     expect(questionIn("QUESTION:   ")).toBeNull();
+    // Only when the reply opens with it.
+    expect(questionIn("Renaming the page.\nQUESTION: this line is not the reply")).toBeNull();
   });
 });

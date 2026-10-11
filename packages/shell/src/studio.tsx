@@ -21,7 +21,10 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { getUserApp, saveUserApp } from "./user-apps.js";
+import { duplicateUserApp, getUserApp, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { loadTrustedModule } from "./trusted-loader.js";
+import { confirmAndRemoveApp } from "./remove-app.js";
+import { navigateTo } from "./router.js";
 import { listVersions, type VersionOrigin } from "./app-history.js";
 import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineReady } from "./engines.js";
@@ -71,6 +74,24 @@ function useWide(): boolean {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return wide;
+}
+
+/**
+ * What a saved app is called after a change.
+ *
+ * The person's name wins: an app renamed in the launcher or here keeps what it was called, whatever
+ * its source says. An app that was never renamed — still called what its source said — follows its
+ * source, so "call the app Shopping" or editing `name:` by hand renames it.
+ */
+async function nameAfter(app: UserApp, nextDefined: string | undefined): Promise<string> {
+  if (!nextDefined) return app.name;
+  let before: string | undefined;
+  try {
+    before = (await loadTrustedModule(app.source)).name;
+  } catch {
+    before = undefined;
+  }
+  return before === undefined || before === app.name ? nextDefined : app.name;
 }
 
 /** A version that was made and failed a gate, so it was not saved. */
@@ -190,8 +211,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const keep = async (next: string, built: Preview | null, summary: string, note: string, origin?: VersionOrigin): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
     const defined = built?.composed.runtime.definition.name;
-    // A renamed app keeps the name it was given; a new one is called what its source says.
-    const name = existing?.name ?? (defined || note.split("\n")[0]!.slice(0, 40) || "Untitled app");
+    const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || "Untitled app";
     const record = await saveUserApp({ id: existing?.id, name, source: next, note: note || undefined, rationale: summary || undefined, origin }, new Date().toISOString());
     const seq = (await listVersions(record.id))[0]?.seq;
     if (!existing) {
@@ -372,12 +392,53 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     startOver();
   };
 
+  // --- The app itself: rename, copy, delete — here, where you are working on it ------------------
+
+  const [, renamed] = useState(0);
+  const rename = async (): Promise<void> => {
+    const app = appRef.current ? getUserApp(appRef.current) : undefined;
+    if (!app) return;
+    const next = await shellDialogs.prompt("Rename app", { default: app.name });
+    if (!next?.trim()) return;
+    renameUserApp(app.id, next, new Date().toISOString());
+    renamed((n) => n + 1);
+  };
+
+  /** A copy to work on, opened straight away: in here a copy is something you made in order to change it. */
+  const duplicate = async (): Promise<void> => {
+    const copy = appRef.current ? await duplicateUserApp(appRef.current, new Date().toISOString()) : null;
+    if (!copy) return;
+    setChatId(copy.id);
+    setAppId(copy.id);
+    setSource(copy.source);
+    setDraftSource(copy.source);
+    setHeld(null);
+    setPreview((await buildPreview(copy.source, copy.id)).preview);
+    await refresh();
+  };
+
+  const remove = async (): Promise<void> => {
+    const app = appRef.current ? getUserApp(appRef.current) : undefined;
+    if (!app || !(await confirmAndRemoveApp(app))) return;
+    // The app it was opened from is gone: home, not back to it.
+    onClose();
+    navigateTo({ kind: "home" });
+  };
+
   const menu: MenuEntry[] = [
     { key: "code", label: hasApp ? "See the code" : "Write the code yourself", icon: "⌘", onSelect: () => setTools("source") },
     { key: "history", label: "History", icon: "⟲", hint: cases.length ? `${cases.length} reported` : undefined, onSelect: () => setTools("history") },
     { key: "model", label: "Model settings", icon: "⚙", hint: label, onSelect: () => setSettingsOpen(true) },
+    ...(hasApp
+      ? ([
+          "separator",
+          { key: "rename", label: "Rename", icon: "✎", onSelect: () => void rename() },
+          { key: "duplicate", label: "Duplicate", icon: "⧉", hint: "the app, not its data", onSelect: () => void duplicate(), disabled: busy },
+        ] as MenuEntry[])
+      : []),
     "separator",
     { key: "new", label: "Start a new app", icon: "＋", onSelect: startOver, disabled: busy },
+    ...(hasApp ? [{ key: "delete", label: `Delete ${appName}`, danger: true, onSelect: () => void remove() } as const] : []),
     ...(!hasApp && items.length ? [{ key: "delete", label: "Delete this conversation", danger: true, onSelect: () => void deleteDraft() } as const] : []),
   ];
 
