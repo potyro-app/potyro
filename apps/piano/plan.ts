@@ -2,7 +2,7 @@
 // plan — the built-in one at build time (test) and any file loaded later from inside the app.
 //
 // No imports on purpose: this module is inlined into the single-file app by `build.mjs`, where the
-// only resolvable imports are `karta` and `react`. The validation is written by hand for the same
+// only resolvable imports are `potyro` and `react`. The validation is written by hand for the same
 // reason (Zod never enters an app bundle).
 
 /** A link on a block: an inline `{ title, url }`, or a pointer into `plan.resources`. */

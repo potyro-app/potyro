@@ -15,7 +15,7 @@ test/            the plan validates, the progress logic, the app and its built f
 ## Build and import
 
 ```
-pnpm --filter @karta/app-piano build     # → apps/piano/dist/piano.app.tsx
+pnpm --filter @potyro/app-piano build     # → apps/piano/dist/piano.app.tsx
 ```
 
 Open the shell, go to the **Studio**, switch the stage to **Source**, paste the whole of
@@ -23,7 +23,7 @@ Open the shell, go to the **Studio**, switch the stage to **Source**, paste the 
 which the custom screens need; if the header badge says **untrusted ▾**, tap it and **Promote to
 trusted**. Rebuild and paste again to update it (History keeps the previous version).
 
-Why a build step: the shell bundles an imported app from one source string, where only `karta` and
+Why a build step: the shell bundles an imported app from one source string, where only `potyro` and
 `react` resolve. The build keeps the output readable TypeScript (comments and types intact).
 
 ## Changing the plan
@@ -62,6 +62,6 @@ Shape, in brief (see `plan.ts` for the full contract):
 ## Checks
 
 ```
-pnpm --filter @karta/app-piano test        # also rebuilds dist/ from the sources
-pnpm --filter @karta/app-piano typecheck   # covers dist/ once it exists
+pnpm --filter @potyro/app-piano test        # also rebuilds dist/ from the sources
+pnpm --filter @potyro/app-piano typecheck   # covers dist/ once it exists
 ```
