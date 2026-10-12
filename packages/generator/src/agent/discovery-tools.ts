@@ -6,8 +6,14 @@
 // `check` runs a candidate through the real bundler and validator, and `example` returns the
 // few-shot app that uses a feature. A refusal is only worth anything after these have been used —
 // `runModifyLoop` enforces that; this module only makes it possible.
+//
+// #262 added what a developer has beyond the declarations: `search_corpus` / `read` open the
+// release's corpus — the example apps, the personal apps, the API docs and the schema types — so the
+// model can see how a real app puts the parts together, and `example` falls back to it.
 
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
+import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
+import { loadCorpus } from "../load-corpus.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
@@ -68,6 +74,8 @@ export function lookupReference(reference: string, rawQuery: string): string {
 export interface DiscoveryDeps {
   /** Bundle + validate a candidate; the validator's issues, empty when it is a well-formed app. Throws when it does not compile. */
   check: (source: string) => Promise<string[]>;
+  /** The release's corpus. Defaults to the one shipped with this build, loaded on first use. */
+  corpus?: () => Promise<Corpus>;
 }
 
 const EXAMPLES: ReadonlyArray<{ title: string; source: string }> = [
@@ -77,6 +85,7 @@ const EXAMPLES: ReadonlyArray<{ title: string; source: string }> = [
 ];
 
 export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
+  const corpus = deps.corpus ?? loadCorpus;
   return [
     {
       name: "lookup",
@@ -104,14 +113,37 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
     },
     {
       name: "example",
-      description: "A complete example app that uses a feature (quickActions, computed, custom view, onOpen, actions…), to copy the shape from.",
+      description:
+        "A real app that uses a feature (quickActions, computed, a custom view, onOpen, ctx.files…), to copy the shape from — " +
+        "the smallest one in the examples and personal apps that uses it.",
       parameters: { type: "object", properties: { feature: { type: "string" } }, required: ["feature"] },
       run: async (args) => {
         const feature = String(args.feature ?? "").trim();
-        const hit = EXAMPLES.find((e) => feature && e.source.includes(feature));
-        if (!hit) return { ok: false, detail: `No example uses "${feature}". Look its declaration up instead.` };
-        return { ok: true, detail: `${hit.title}:\n\`\`\`ts\n${hit.source}\n\`\`\`` };
+        const inline = EXAMPLES.find((e) => feature && e.source.includes(feature));
+        if (inline) return { ok: true, detail: `${inline.title}:\n\`\`\`ts\n${inline.source}\n\`\`\`` };
+        const found = feature ? exampleFromCorpus(await corpus(), feature) : undefined;
+        if (found) return { ok: true, detail: found };
+        return { ok: false, detail: `No app uses "${feature}". search_corpus for it, or look its declaration up.` };
       },
+    },
+    {
+      name: "search_corpus",
+      description:
+        "Search this release's example apps, personal apps, API docs (docs/04, docs/05) and schema types for a few words, and get the " +
+        "best passages with their file and lines. Use it to see how a real app does something before writing it: " +
+        'search_corpus("custom view canvas"), search_corpus("ctx.files read json"), search_corpus("relation many detail").',
+      parameters: { type: "object", properties: { query: { type: "string", description: "A few words: a feature, a ctx member, a field type" } }, required: ["query"] },
+      run: async (args) => ({ ok: true, detail: searchCorpus(await corpus(), String(args.query ?? "")) }),
+    },
+    {
+      name: "read",
+      description: "Read a file from the corpus by its path (as search_corpus shows it), from a line. Long files come in pages; the answer says how to continue.",
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string" }, line: { type: "number", description: "First line to show, 1-based (default 1)" } },
+        required: ["path"],
+      },
+      run: async (args) => ({ ok: true, detail: readCorpus(await corpus(), String(args.path ?? ""), Number(args.line ?? 1)) }),
     },
   ];
 }
