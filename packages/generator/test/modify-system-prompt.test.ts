@@ -8,7 +8,7 @@ describe("MODIFY_AGENT_SYSTEM_PROMPT", () => {
   });
 
   it("explains every discovery tool by name", () => {
-    for (const tool of ["lookup", "check", "example"]) expect(MODIFY_AGENT_SYSTEM_PROMPT).toContain(`\`${tool}\``);
+    for (const tool of ["lookup", "check", "example", "search_corpus", "read"]) expect(MODIFY_AGENT_SYSTEM_PROMPT).toContain(`\`${tool}\``);
   });
 
   it("says a refusal without looking is not accepted, and that the marker must open the reply", () => {

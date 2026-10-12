@@ -55,10 +55,12 @@ export interface ModifyLoopDeps {
   resumeFrom?: ChatMessage[];
 }
 
-const DEFAULT_MAX_STEPS = 8;
+// Raised from 8 with #262: reading the corpus takes steps, and a change grounded in a real app is
+// worth the extra turns.
+const DEFAULT_MAX_STEPS = 12;
 const ASK = "ASK:";
 /** The tools whose use makes a refusal informed. */
-const DISCOVERY = new Set(["lookup", "check", "example"]);
+const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read"]);
 
 export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOutcome> {
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
