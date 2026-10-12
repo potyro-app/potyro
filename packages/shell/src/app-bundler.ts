@@ -47,6 +47,7 @@ export interface EsbuildLike {
     target?: string;
     logLevel?: string;
     footer?: { js?: string };
+    supported?: Record<string, boolean>;
     plugins?: EsbuildPlugin[];
   }): Promise<{ outputFiles: Array<{ text: string }>; warnings?: Array<{ text: string }> }>;
 }
