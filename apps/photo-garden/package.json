@@ -1,0 +1,15 @@
+{
+  "name": "@potyro/app-photo-garden",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Photo Garden: a photo becomes a living generative artwork, drawn with p5.js loaded by URL (#266)",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs photo-garden.app.ts -o dist/photo-garden.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  }
+}
