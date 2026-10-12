@@ -23,7 +23,7 @@ describe("corpus sources", () => {
     for (const p of ["examples/recipes.app.tsx", "apps/piano/piano.app.tsx", "apps/piano/plan.ts", "apps/piano/README.md", "docs/04-app-module-api.md", "packages/schema/src/types/ctx.ts"]) {
       expect(inCorpus(p), p).toBe(true);
     }
-    for (const p of ["examples/test/recipes.test.ts", "apps/piano/vitest.config.ts", "apps/piano/test/plan.test.ts", "docs/16-ci.md", "packages/schema/src/index.ts", "apps/piano/dist/piano.potyro-app.zip"]) {
+    for (const p of ["examples/test/recipes.test.ts", "apps/piano/vitest.config.ts", "apps/piano/test/plan.test.ts", "docs/16-ci.md", "packages/schema/src/index.ts", "apps/piano/dist/piano.app.tsx"]) {
       expect(inCorpus(p), p).toBe(false);
     }
   });
