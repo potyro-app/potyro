@@ -73,6 +73,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
   if (!canObserveRender()) return { errors: [], warnings: ["the pages were not rendered: there is no screen to render them on here"], ran: "" };
   const errors: string[] = [];
   const warnings: string[] = [];
+  const shown: string[] = [];
   let rendered = 0;
   let current = "";
 
@@ -129,6 +130,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
         });
         await settled(host, settleMs);
         rendered++;
+        shown.push(page.id);
         if (crashed) continue;
         if (host.querySelector(".k-loading")) warnings.push(`page "${page.id}" was still loading after ${settleMs / 1000}s`);
         else if (!(host.textContent ?? "").trim() && !host.querySelector("img, canvas, svg, video, input, button")) {
@@ -151,5 +153,5 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
     window.removeEventListener("error", onError);
     window.removeEventListener("unhandledrejection", onRejection);
   }
-  return { errors, warnings: [...new Set(warnings)], ran: rendered ? `${rendered} page${rendered === 1 ? "" : "s"} rendered` : "" };
+  return { errors, warnings: [...new Set(warnings)], ran: rendered ? `${rendered} page${rendered === 1 ? "" : "s"} rendered` : "", pages: shown };
 }

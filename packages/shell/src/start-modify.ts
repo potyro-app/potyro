@@ -15,7 +15,7 @@ import {
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
 } from "@potyro/generator/agent";
-import { createOpenRouterEngine, regressionGate } from "@potyro/generator/backends";
+import { createOpenRouterEngine, loadCorpus, regressionGate } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
@@ -52,7 +52,10 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   return runModifyLoop({
     engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
     model: opts.engine.openrouterModel,
-    tools: buildDiscoveryTools({ check, run }),
+    tools: buildDiscoveryTools({ check, run, source: opts.source }),
+    // The passages from this release's examples and docs that speak to the request go in the first
+    // message, so the model starts from how a real app does it (#262).
+    corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: opts.instruction,
     source: opts.source,

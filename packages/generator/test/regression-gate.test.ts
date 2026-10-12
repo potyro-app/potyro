@@ -57,4 +57,26 @@ describe("regressionGate", () => {
     }, "ORIGINAL");
     expect((await gate("candidate")).report.errors).toEqual(["boom"]);
   });
+
+  it("does not warn about a NEW page that matches no sample records; does warn about a page that stopped showing them", async () => {
+    const gate = regressionGate(
+      async (src) =>
+        src === "ORIGINAL"
+          ? { errors: [], warnings: [], ran: "2 pages", pages: ["all", "today"] }
+          : {
+              errors: [],
+              warnings: ['page "favourites" showed none of the sample records — a filter that can never match?', 'page "today" showed none of the sample records — a filter that can never match?'],
+              ran: "3 pages",
+              pages: ["all", "today", "favourites"],
+            },
+      "ORIGINAL",
+    );
+    const { report } = await gate("candidate");
+    expect(report.warnings).toEqual(['page "today" showed none of the sample records — a filter that can never match?']);
+  });
+
+  it("keeps a warning about a new page when the original's pages are unknown", async () => {
+    const gate = regressionGate(async (src) => (src === "ORIGINAL" ? report([]) : report([], ['page "favourites" showed nothing at all'])), "ORIGINAL");
+    expect((await gate("candidate")).report.warnings).toEqual(['page "favourites" showed nothing at all']);
+  });
 });

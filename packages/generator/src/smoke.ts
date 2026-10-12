@@ -39,6 +39,8 @@ export interface SmokeResult {
   /** Counts, so a vacuous pass (nothing to run) is distinguishable from a real one. */
   ran: { entities: number; records: number; pages: number; computed: number; actions: number; reminders: number; customViews: number };
   errors: string[];
+  /** The pages that were queried, in order — what a run can be compared with (#262). */
+  pages: string[];
   /**
    * Pages that filtered EVERY seeded record away.
    *
@@ -197,6 +199,7 @@ async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRu
   const errors: string[] = [];
   const ran = { entities: 0, records: 0, pages: 0, computed: 0, actions: 0, reminders: 0, customViews: 0 };
   const emptyPages: string[] = [];
+  const pages: string[] = [];
   let seeded = false;
   let computedOk = true;
   let bindingsOk = true;
@@ -237,6 +240,7 @@ async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRu
     try {
       const { rows, ctx } = await runtime.queryPage(page.id, params);
       ran.pages++;
+      pages.push(page.id);
       // Everything filtered away, on data seeded so that it should not be. See `emptyPages`.
       // Detail pages are excluded: one record is the whole point, and an unresolvable id is
       // already reported elsewhere.
@@ -324,7 +328,7 @@ async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRu
     }
   }
 
-  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors, emptyPages };
+  return { seeded, computedOk, bindingsOk, actionsOk, remindersOk, customViewsOk, ran, errors, pages, emptyPages };
 }
 
 /** A smoke run as feedback for a model (#262): what threw, and which pages filtered everything away. */
@@ -339,6 +343,7 @@ export function smokeReport(s: SmokeResult): RunReport {
   ];
   return {
     errors: s.errors,
+    pages: s.pages,
     warnings: s.emptyPages.map((p) => `page "${p}" showed none of the sample records — a filter that can never match?`),
     ran: counts
       .filter(([n]) => n > 0)
