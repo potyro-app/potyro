@@ -58,6 +58,20 @@ describe("export bundle round-trip", () => {
     reopened.destroy();
   });
 
+  it("still opens a bundle exported before the rename, as karta-bundle/1", async () => {
+    const first = await createMemorySqliteStore("demo");
+    await first.store.insert("note", { title: "Kept" });
+    const zip = packBundle({ sqlite: first.store.exportSqlite(), manifest: manifest({ format: "karta-bundle/1" as never }) });
+    first.destroy();
+
+    const unpacked = unpackBundle(zip);
+    expect(unpacked.manifest.format).toBe("potyro-bundle/1");
+    const reopened = await createMemorySqliteStore("demo", { bytes: unpacked.sqlite });
+    expect((await reopened.store.all("note")).map((r) => r.title)).toEqual(["Kept"]);
+    reopened.destroy();
+    expect(() => unpackBundle(packBundle({ sqlite: new Uint8Array([1]), manifest: manifest({ format: "other/1" as never }) }))).toThrow(/unsupported format/);
+  });
+
   it("rejects a malformed bundle", () => {
     expect(() => unpackBundle(new Uint8Array([1, 2, 3]))).toThrow();
   });

@@ -28,6 +28,14 @@ export interface ExportManifest {
   app?: AppDeclaration;
 }
 
+/**
+ * Is this a data-export bundle? `karta-bundle/1` is the same format under the name builds before
+ * the rename (#248) wrote, and people hold those files: a rename does not make a backup unreadable.
+ */
+export function isBundleFormat(format: unknown): boolean {
+  return format === "potyro-bundle/1" || format === "karta-bundle/1";
+}
+
 export interface BundleInputs {
   sqlite: Uint8Array;
   manifest: ExportManifest;
@@ -87,7 +95,8 @@ export function unpackBundle(zip: Uint8Array): UnpackedBundle {
   const manifestBytes = files[MANIFEST];
   if (!manifestBytes) throw new Error("bundle: missing manifest.json");
   const manifest = JSON.parse(strFromU8(manifestBytes)) as ExportManifest;
-  if (manifest.format !== "potyro-bundle/1") throw new Error(`bundle: unsupported format "${manifest.format}"`);
+  if (!isBundleFormat(manifest.format)) throw new Error(`bundle: unsupported format "${manifest.format}"`);
+  manifest.format = "potyro-bundle/1"; // one name from here on, whichever build wrote it
   const app = files[APP];
   return { manifest, sqlite, appSource: app ? strFromU8(app) : undefined };
 }
