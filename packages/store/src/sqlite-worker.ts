@@ -50,8 +50,37 @@ export type WorkerReply = { id: number; ok: true; rows?: Record<string, unknown>
  * cannot take a handle does not fail, it waits, so the app simply stopped part-way through saving.
  * A pool holds as many database FILES as you like, so every app's database lives in this one.
  */
-let pool: { OpfsSAHPoolDb: new (f: string) => Sqlite3Db } | null = null;
+interface Pool {
+  OpfsSAHPoolDb: new (f: string) => Sqlite3Db;
+  getFileNames(): string[];
+}
+let pool: Pool | null = null;
 let installing: Promise<void> | null = null;
+
+/**
+ * The pool as builds before the rename (#248) installed it. The rename moved it from `/karta` to
+ * `/potyro` and brought nothing across, so on every browser that had used the app each local app's
+ * database, and the device's sync database, were still in `/karta` while the app opened new, empty
+ * ones in `/potyro`.
+ *
+ * Installed only where that directory already exists, and used only for the files it holds: a
+ * database the old pool has is opened THERE, in place, and everything else goes to the current
+ * pool. Nothing is copied and nothing is removed, so the choice is the same on every start. Where
+ * both pools hold the same name, the copy in `/potyro` was made after the rename by an app that
+ * opened empty — it stays on disk untouched, and the data from before the rename is what opens.
+ */
+const LEGACY_POOL = { name: "karta", directory: "/karta" } as const;
+let legacyPool: Pool | null = null;
+
+async function legacyPoolExists(): Promise<boolean> {
+  try {
+    const root = await (self.navigator as Navigator).storage.getDirectory();
+    await root.getDirectoryHandle(LEGACY_POOL.directory.slice(1)); // no `create`: throws when absent
+    return true;
+  } catch {
+    return false;
+  }
+}
 const dbs = new Map<string, Sqlite3Db>();
 
 /** The module's own types do not describe its config argument; `sqlite-backend.ts` narrows it the
@@ -61,7 +90,7 @@ type InitFn = (config: { print?(): void; printErr?(): void }) => Promise<{
     name?: string;
     directory?: string;
     initialCapacity?: number;
-  }): Promise<{ OpfsSAHPoolDb: new (f: string) => Sqlite3Db }>;
+  }): Promise<Pool>;
 }>;
 
 async function open(name: string): Promise<void> {
@@ -74,13 +103,19 @@ async function open(name: string): Promise<void> {
     // Room for the device database, every app's, and the shell's own — with space to grow. The pool
     // preallocates this many handles; running out is the failure this file exists to avoid.
     pool = await sqlite3.installOpfsSAHPoolVfs({ name: "potyro", directory: "/potyro", initialCapacity: 32 });
+    // A failure here fails the open, as the current pool's does: opening `/potyro` instead would show
+    // an app empty, and then hide whatever was written there once `/karta` opened again.
+    if (await legacyPoolExists()) legacyPool = await sqlite3.installOpfsSAHPoolVfs({ ...LEGACY_POOL, initialCapacity: 32 });
   })().catch((err: unknown) => {
     installing = null; // a failed install must be retryable, not remembered
     throw err;
   });
   await installing;
   if (!pool) throw new Error("the storage pool did not install");
-  if (!dbs.has(name)) dbs.set(name, new pool.OpfsSAHPoolDb(`/${name}.sqlite3`));
+  if (dbs.has(name)) return;
+  const file = `/${name}.sqlite3`;
+  const home = legacyPool?.getFileNames().includes(file) ? legacyPool : pool;
+  dbs.set(name, new home.OpfsSAHPoolDb(file));
 }
 
 function handle(msg: WorkerRequest): Record<string, unknown>[] | undefined {
