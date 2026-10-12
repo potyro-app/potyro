@@ -26,13 +26,21 @@ vi.mock("../src/open-store.js", async () => {
   return { openStore: async () => chats };
 });
 vi.mock("../src/validate-app.js", () => ({
-  inspectSource: async (source: string) => ({
+  // A source marked NEEDS_DOM stands for an app whose library reaches for `window` when it loads: it
+  // fails in the sealed box once the library's real bytes are there, as `wrapForIsolate` says it.
+  inspectSource: async (source: string, modules?: { lock: Record<string, unknown> }, opts?: { standIns?: boolean }) => {
+    if (source.includes("NEEDS_DOM") && !opts?.standIns && Object.keys(modules?.lock ?? {}).some((k) => k.startsWith("https://"))) {
+      throw new Error("Error: fancy-chart 4.4.1 needs a full web page to work (window is not defined). Apps in the sealed box do not get one, so this app can only run as yours.");
+    }
+    return inspected(source);
+  },
+}));
+const inspected = (source: string) => ({
     definition: source.includes("BROKEN")
       ? { id: "piano", name: "Piano", entities: { session: {} } }
       : { id: "piano", name: "Piano", icon: "🎹", permissions: { notifications: true }, entities: { session: { label: "Session" } } },
     issues: source.includes("BROKEN") ? ["pages: an app needs at least one page"] : [],
-  }),
-}));
+});
 
 const { gatherFromFiles, inspectPackage, installPackage, applyShippedFiles } = await import("../src/add-app.js");
 const { describeLibrary } = await import("../src/package-libraries.js");
@@ -247,6 +255,19 @@ describe("an app's own modules and its libraries (#258, #266)", () => {
     await installPackage(packaged, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: none });
     expect(none).not.toHaveBeenCalled();
     expect(getUserApp("piano")!.lock).toEqual(lock);
+  });
+
+  it("a library fetched at install that cannot start in the sealed box is said right away, not by an app that does not open", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", `// NEEDS_DOM\n${LIB_SOURCE}`), file("plan.ts", "export const weeks = 12;")]);
+    const inspected = await inspectPackage(pkg, { esbuild, get: net(SITE) });
+    expect(inspected.sealedProblem).toBeUndefined(); // the card could not know: nothing was fetched
+    const sealed = await installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: net(SITE) });
+    expect(sealed.sealedProblem).toMatch(/^fancy-chart 4\.4\.1 needs a full web page/);
+
+    localStorage.clear();
+    byApp.clear();
+    const mine = await installPackage(pkg, inspected, { source: "file", mine: true, mode: "replace", openStore: openFor, esbuild, get: net(SITE) });
+    expect(mine.sealedProblem).toBeUndefined();
   });
 
   it("a library that cannot be fetched leaves nothing behind", async () => {
