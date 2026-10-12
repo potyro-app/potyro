@@ -29,6 +29,7 @@ import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { buildAndValidate } from "./validate-app.js";
+import { modulesOf } from "./app-modules.js";
 import { AskPanel } from "./ask-panel.js";
 import { useAskEnabled } from "./ask-setting.js";
 import { clearAskMaterial, peekAskMaterial } from "./share-inbox.js";
@@ -344,7 +345,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     // themselves apart from the run that's current by the time they actually fire.
     const runId = fixRunId.current;
     setFixOutcome(undefined);
-    void startFix({
+    void modulesOf(appId).then((modules) => startFix({
+      modules,
       source,
       theCase: caseReport.theCase,
       runtime,
@@ -356,7 +358,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       },
       signal: controller.signal,
       resumeFrom,
-    }).then((outcome) => {
+    })).then((outcome) => {
       if (fixRunId.current !== runId) return; // a superseded run's outcome; do not overwrite the current one
       setFixOutcome(outcome);
     });
@@ -700,7 +702,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     const app = appId ? getUserApp(appId) : undefined;
     if (!appId || !app) return "This app isn't saved on this device, so it can't be changed here.";
     try {
-      const issues = await buildAndValidate(next);
+      const issues = await buildAndValidate(next, await modulesOf(appId));
       // A change that doesn't validate is a bug in the editor, not something to hand to a model to
       // repair. Discard it and say so rather than saving a broken app.
       if (issues.length) return `That change didn't validate, so nothing was saved: ${issues[0]}`;

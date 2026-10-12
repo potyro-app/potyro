@@ -34,6 +34,7 @@ import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessag
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { ThreadView } from "./studio-thread-view.js";
+import { modulesOf } from "./app-modules.js";
 import { StudioTools, type ToolsTab } from "./studio-tools.js";
 
 /** What "Write the code yourself" starts from when there is no app yet. */
@@ -87,7 +88,7 @@ async function nameAfter(app: UserApp, nextDefined: string | undefined): Promise
   if (!nextDefined) return app.name;
   let before: string | undefined;
   try {
-    before = (await loadTrustedModule(app.source)).name;
+    before = (await loadTrustedModule(app.source, await modulesOf(app.id))).name;
   } catch {
     before = undefined;
   }
@@ -202,7 +203,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     };
   }, [appId]);
 
-  const engine = () => studioEngine(engineCfg, (text) => setWorking(text ?? ""));
+  const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
 
   /**
    * Keep a version: save it, give the conversation its card, and — when this was the first — make
@@ -239,7 +240,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     let { preview: built, issues } = await buildPreview(src, appRef.current);
     if (issues.length && ready) {
       try {
-        const fixed = await engine().repair(src, issues);
+        const fixed = await (await engine()).repair(src, issues);
         src = fixed.source;
         said = `${said} ${fixed.summary}`.trim();
         lost = lost ?? fixed.loss;
@@ -288,7 +289,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       const brief = briefSince(await listMessages(chatRef.current)) || asked;
       setHeld(null);
       const current = sourceRef.current;
-      const outcome = current !== null ? await engine().modify(current, await shapeOrEmpty(current), brief) : await engine().create(brief);
+      const modules = await modulesOf(appRef.current ?? undefined);
+      const outcome = current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief) : await (await engine()).create(brief);
       await answer(outcome, brief);
     } finally {
       setWorking(null);
@@ -299,7 +301,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!held || busy) return;
     setWorking("");
     try {
-      const fixed = await engine().repair(held.source, held.issues);
+      const fixed = await (await engine()).repair(held.source, held.issues);
       await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss);
     } catch (e) {
       await say({ kind: "failure", text: `Could not fix it: ${e instanceof Error ? e.message : String(e)}` });

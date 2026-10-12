@@ -451,14 +451,25 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let composed: Composed;
   let provenance: Provenance = "untrusted";
   let appSource: string | undefined;
+  // Its libraries and its own modules (#266, #258), read from its space and checked against its lock.
+  const [{ storeModules, rememberModules, forgetModules }, { ModuleError }] = await Promise.all([import("./app-modules.js"), import("./package-modules.js")]);
+  const modules = storeModules(store, saved.lock);
+  rememberModules(id, saved.lock, modules);
+  const failed = async (e: unknown): Promise<null> => {
+    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} />);
+    await rawStore.close();
+    return null;
+  };
 
   if (saved.trusted) {
     try {
       const { loadTrustedModule } = await import("./trusted-loader.js");
-      const app = await loadTrustedModule(saved.source); // real defineApp validates or throws
+      const app = await loadTrustedModule(saved.source, modules); // real defineApp validates or throws
       composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me, space });
       provenance = "trusted";
     } catch (e) {
+      // A library or module that does not match its lock is not a reason to try the sealed box.
+      if (e instanceof ModuleError) return failed(e);
       toaster.push(`Couldn't run "${saved.name}" trusted; opening safely. ${e instanceof Error ? e.message : ""}`.trim());
     }
   }
@@ -467,8 +478,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       import("./app-bundler.js"),
       import("./isolate-bridge.js"),
     ]);
-    appSource = await (await createAppBundler())(saved.source);
-    composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSandboxLoader(store) });
+    try {
+      appSource = await (await createAppBundler())(saved.source, modules);
+      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSandboxLoader(store) });
+    } catch (e) {
+      return failed(e);
+    }
   }
   // Membership changes re-render the app. Wired here because the runtime does not exist when the
   // space is first read, and a view showing "who is in this list" is otherwise stale until some
@@ -511,6 +526,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       open = false;
       liveApps(-1);
       for (const stop of stops.splice(0)) stop();
+      forgetModules(id);
       // Writes still on their way land first — a tick then Home used to close the store under its
       // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
       await composed!.runtime.settle();
