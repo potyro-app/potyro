@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openHistory, openNewStudio, openSource } from "./studio-helpers.js";
 
 // One action and one engine. The engine is chosen in Model settings and used by BOTH create and
 // modify — it used to follow whichever generate button you last pressed, so reaching the cloud for
@@ -27,50 +28,41 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
   // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
   // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+  const studio = await openNewStudio(page);
 
-  // An untouched starter is an empty page, not an app to edit.
+  // Nothing made yet: the one send action creates.
   const go = studio.getByRole("button", { name: /Create the app|Modify the app/ });
-  await expect(go).toHaveText(/Create the app/);
+  await expect(go).toHaveAccessibleName("Create the app");
 
   // The engine is named on its own button, and chosen in one modal.
   const settings = studio.getByRole("button", { name: "Model settings" });
   await expect(settings).toContainText("claude -p");
-  await settings.click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
-  await expect(settings).toContainText("OpenRouter \u00b7 DeepSeek V4 Flash");
+  await chooseOpenRouter(page, studio);
+  await expect(settings).toContainText("OpenRouter · DeepSeek V4 Flash");
 
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
   await go.click();
-  await expect(studio.getByText(/via OpenRouter \u00b7 DeepSeek V4 Flash\u2026 \d+s/)).toBeVisible({ timeout: 10_000 });
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+  await expect(studio.getByText(/via OpenRouter · DeepSeek V4 Flash… \d+s/)).toBeVisible({ timeout: 10_000 });
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
   // Now there IS an app, so the SAME button becomes the edit action — no second engine to choose.
-  await expect(go).toHaveText(/Modify the app/);
+  await expect(go).toHaveAccessibleName("Modify the app");
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("add a 5-star rating field");
-  await go.click();
-  // The h1 already reads "Reader" before the modify, so wait for what the Studio SAYS it did (the
-  // stub answers with the whole file, which the loop accepts and labels) rather than racing the
-  // source. That answer lives in the thread now (#219): the note under the box is not printed when
-  // the thread is already carrying the same sentence.
-  await expect(studio.locator(".k-thread-answer").last()).toHaveText(/whole file|Applied/, { timeout: 60_000 });
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+  await ask(studio, "add a 5-star rating field");
+  // Wait for what the Studio SAYS it did — the new version's card (the stub answers with the whole
+  // file, which the loop accepts and labels) — rather than racing the source.
+  await expect(currentCard(studio).locator(".k-card-seq")).toHaveText("v2", { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/whole file|Applied/);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const after = await studio.getByRole("textbox", { name: "App source" }).inputValue();
+  const tools = await openSource(page, studio);
+  const after = await tools.getByRole("textbox", { name: "App source" }).inputValue();
   expect(after).toContain("rating"); // the change landed
   expect(after).toContain('id: "reader"'); // and the app was not replaced
   expect(sent[1]).toContain("reader"); // the CURRENT source travelled with the edit
   expect(sent[1]).toContain("add a 5-star rating field");
   expect(hits).toEqual(["openrouter", "openrouter"]); // claude -p never touched
-
 });
 
 // The edit contract, end to end in the Studio. The model's reply is prose plus ONE SEARCH/REPLACE
@@ -113,40 +105,32 @@ test("an edit-block reply changes only the lines it names, and the Studio says h
     });
   });
 
-  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
-  // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+  const studio = await openNewStudio(page);
+  await chooseOpenRouter(page, studio);
 
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  await ask(studio, "a reading tracker");
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await studio.getByRole("button", { name: /Create the app/ }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+  await ask(studio, "call the page Every book");
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("call the page Every book");
-  await studio.getByRole("button", { name: /Modify the app/ }).click();
+  // How the change arrived, on the new version's card — not as an error, and nothing held back.
+  await expect(currentCard(studio).locator(".k-card-seq")).toHaveText("v2", { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText("Applied 1 edit.");
+  await expect(studio.locator(".k-card-held")).toHaveCount(0);
 
-  // How the change arrived, in the neutral note rather than as an error.
-  // In the thread, like every other answer to something you asked for (#219).
-  await expect(studio.locator(".k-thread-answer").last()).toHaveText("Applied 1 edit.", { timeout: 60_000 });
-  await expect(studio.locator(".k-modify-loss")).toHaveCount(0);
-
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const after = await studio.getByRole("textbox", { name: "App source" }).inputValue();
+  const tools = await openSource(page, studio);
+  const after = await tools.getByRole("textbox", { name: "App source" }).inputValue();
   expect(after).toContain('title: "Every book"'); // the edit landed
   expect(after).not.toContain('title: "Books"');
   expect(after).toContain(ENTITIES_LINE); // and the line next to it was never retyped
   expect(after).toContain('id: "reader"');
 });
 
-test("the History tab shows this session before anything is saved, and New draft asks first", async ({ page }) => {
+// Every version is kept as it is made (#261). The old Studio held a draft until Save, so a closed tab
+// lost the app AND what had been asked for it; now the app is in the launcher the moment it exists,
+// History has the request, and starting another app leaves nothing behind.
+test("a made app is kept at once, with what was asked in its history", async ({ page }) => {
   await page.route("**/openrouter.ai/**", (route) =>
     route.fulfill({
       status: 200,
@@ -164,44 +148,31 @@ test("the History tab shows this session before anything is saved, and New draft
     }),
   );
 
-  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
-  // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+  const studio = await openNewStudio(page);
 
-  await studio.getByRole("tab", { name: "History" }).click();
-  await expect(studio.getByText(/Nothing yet/)).toBeVisible();
+  // Before anything is made, History says there is nothing yet rather than showing an empty list.
+  const empty = await openHistory(page, studio);
+  await expect(empty.getByText(/Nothing yet/)).toBeVisible();
+  await empty.getByRole("button", { name: "Close code and history" }).click();
 
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  await chooseOpenRouter(page, studio);
+  await ask(studio, "a reading tracker");
+  await expect(currentCard(studio)).toBeVisible({ timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-name")).toContainText("Reader");
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await studio.getByRole("button", { name: /Create the app/ }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+  // Saved, with nothing pressed: it is in My Apps, and its history carries the request.
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; name: string }>);
+  expect(saved.map((a) => a.name)).toContain("Reader");
+  const history = await openHistory(page, studio);
+  await expect(history.locator(".k-studio-history").getByText("a reading tracker")).toBeVisible();
+  await history.getByRole("button", { name: "Close code and history" }).click();
 
-  // The prompt is in history immediately — before any save.
-  await studio.getByRole("tab", { name: "History" }).click();
-  await expect(studio.locator(".k-studio-history").getByText("a reading tracker")).toBeVisible();
-
-  // New draft discards an app that was never saved, so it must ask.
-  page.once("dialog", () => {});
-  await studio.getByRole("button", { name: "New draft" }).click();
-  const confirm = page.locator(".k-dialog");
-  await expect(confirm).toBeVisible();
-  await expect(confirm).toContainText(/never been saved/);
-  await confirm.getByRole("button", { name: "Cancel" }).click();
-  await studio.getByRole("tab", { name: "Preview" }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader"); // cancel kept it
-
-  await studio.getByRole("button", { name: "New draft" }).click();
-  await confirm.getByRole("button", { name: "Confirm" }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
-  await expect(studio.getByRole("button", { name: /Create the app/ })).toBeVisible(); // back to empty
+  // Starting another app asks nothing — there is nothing to lose — and starts from empty.
+  await studio.getByRole("button", { name: "Studio menu" }).click();
+  await page.getByRole("menuitem", { name: "Start a new app" }).click();
+  await expect(page.locator(".k-dialog")).toHaveCount(0);
+  await expect(studio.getByRole("heading", { name: "What would you like to make?" })).toBeVisible();
+  await expect(studio.getByRole("button", { name: "Create the app" })).toBeVisible();
 });
 
 // A generate that comes back structurally broken is repaired through the SAME gate as a modify — an
@@ -259,29 +230,20 @@ test("a generate that needs repair is repaired with an edit, through the same ga
     });
   });
 
-  // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
-  // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
+  const studio = await openNewStudio(page);
+  await chooseOpenRouter(page, studio);
 
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  await ask(studio, "a reading tracker");
+  // The repair round runs after the first (invalid) build, so the card waits out both.
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await studio.getByRole("button", { name: /Create the app/ }).click();
-  // withGen's autoRepair round runs after the first (invalid) preview build, so this waits out both.
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
-
-  await expect(studio.locator(".k-modify-note")).toHaveText("Repaired with 1 edit.", { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toContainText("Repaired with 1 edit.");
+  await expect(studio.locator(".k-card-held")).toHaveCount(0);
   await expect(page.locator(".k-form-error")).toHaveCount(0);
 
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const after = await studio.getByRole("textbox", { name: "App source" }).inputValue();
+  const tools = await openSource(page, studio);
+  const after = await tools.getByRole("textbox", { name: "App source" }).inputValue();
   expect(after).toContain('type: "list"'); // the repair landed
   expect(after).not.toContain('type: "lisst"');
 

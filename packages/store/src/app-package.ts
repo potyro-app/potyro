@@ -4,6 +4,7 @@
 //   files/<path>         files the app ships with; installed into its own folder as `shipped`
 //   seed.json            first records, `{ entity: [row, …] }`; applied once, on first install
 //   manifest.json        `{ format: "potyro-app/1", source, files: [{ path, size }] }`
+//   chat.json            optional: the Studio conversation that made it, when the author included it
 //
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
 // seed — and an export bundle (`potyro-bundle/1`, which carries `app.ts` beside its data) is read as
@@ -25,11 +26,17 @@ export interface AppPackage {
   seed?: Record<string, Array<Record<string, unknown>>>;
   /** What the package was read from, for the record of where an app came from. */
   kind: "package" | "bundle" | "source";
+  /**
+   * How the app was made — its Studio conversation, when the author chose to include it (#261). Read
+   * as plain JSON and nothing more: the shell decides whether it is a conversation at all.
+   */
+  chat?: unknown;
 }
 
 export const APP_PACKAGE_FORMAT = "potyro-app/1";
 const MANIFEST = "manifest.json";
 const SEED = "seed.json";
+const CHAT = "chat.json";
 const FILES = "files/";
 const SOURCE_NAMES = ["app.tsx", "app.ts", "app.jsx", "app.js"];
 
@@ -60,6 +67,19 @@ function parseSeed(raw: Uint8Array | undefined, where: string): AppPackage["seed
     }
   }
   return seed as AppPackage["seed"];
+}
+
+/**
+ * A conversation that does not parse is dropped, not fatal: it is about the app, and the app is what
+ * the person asked to add.
+ */
+function parseChat(raw: Uint8Array | undefined): unknown {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(strFromU8(raw)) as unknown;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read a package or an export bundle from zip bytes. */
@@ -104,12 +124,13 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
     sourceName,
     files,
     seed: isBundle ? undefined : parseSeed(at(SEED), SEED),
+    chat: parseChat(at(CHAT)),
     kind: isBundle ? "bundle" : "package",
   };
 }
 
 /** Make a package zip. The inverse of `readAppPackage` for a `potyro-app/1` package. */
-export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed">): Uint8Array {
+export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat">): Uint8Array {
   const sourceName = SOURCE_NAMES.includes(pkg.sourceName) ? pkg.sourceName : /x$/.test(pkg.sourceName) ? "app.tsx" : "app.ts";
   const out: Record<string, Uint8Array> = {
     [MANIFEST]: strToU8(
@@ -123,6 +144,7 @@ export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "
   };
   for (const f of pkg.files) out[FILES + f.path] = f.data;
   if (pkg.seed) out[SEED] = strToU8(JSON.stringify(pkg.seed, null, 2));
+  if (pkg.chat !== undefined) out[CHAT] = strToU8(JSON.stringify(pkg.chat, null, 2));
   return zipSync(out);
 }
 

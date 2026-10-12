@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
+import { openSource } from "./studio-helpers.js";
 
 // The whole loop, with the model stubbed: a recorded failing path, an agent that investigates and
 // proposes, verification against the user's own recording, and an applied fix that lands in
@@ -230,16 +231,17 @@ test("a reported problem is investigated, verified and applied", async ({ page }
   // source-changing path in App.tsx follows (applyModify, applyStructuralEdit, setTrust).
   await expect(page.locator("h1").first()).toHaveText(APP_NAME, { timeout: 30_000 });
 
-  // The Studio's Source tab shows the corrected app, not a reprompt or a placeholder.
+  // The Studio's code shows the corrected app, not a reprompt or a placeholder. Opened from the app,
+  // the Studio is on its saved, CURRENT source.
   await page.getByRole("button", { name: "Studio" }).click();
   const studio2 = page.locator(".k-studio");
   await expect(studio2).toBeVisible();
-  await studio2.locator(".k-myapp-open").getByText(APP_NAME).click(); // load the saved app's CURRENT source
-  await expect(studio2.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
-  await studio2.getByRole("tab", { name: "Source" }).click();
-  const source = await studio2.getByRole("textbox", { name: "App source" }).inputValue();
+  await expect(studio2.locator(".k-studio-preview h1").first()).toHaveText(APP_NAME, { timeout: 30_000 });
+  const tools = await openSource(page, studio2);
+  const source = await tools.getByRole("textbox", { name: "App source" }).inputValue();
   expect(source).toContain('id: "map"'); // the page the action was missing now exists
   expect(source).toContain(`id: "${APP_ID}"`); // the app was fixed, not replaced
+  await tools.getByRole("button", { name: "Close code and history" }).click();
   await studio2.getByRole("button", { name: "Close studio" }).click();
 
   // History shows a version whose note names the CASE — the person's own recorded expectation, not

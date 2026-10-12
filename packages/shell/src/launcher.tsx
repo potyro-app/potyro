@@ -31,6 +31,7 @@ import { AddAppDialog } from "./add-app-dialog.js";
 import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
+import { DraftStrip } from "./draft-strip.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -55,6 +56,8 @@ interface LauncherProps {
   onOpen: (app: InstalledApp) => void;
   /** Open the Studio; a search that found nothing passes what was typed as the prompt to start from. */
   onNewApp: (prefill?: string) => void;
+  /** Pick up a conversation in the Studio that has not made an app yet (#261). */
+  onResumeDraft?: (draftId: string) => void;
   onClose?: () => void;
 }
 
@@ -303,7 +306,7 @@ function takeAddLink(): string | null {
   return link;
 }
 
-export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: LauncherProps) {
+export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, onClose }: LauncherProps) {
   // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
   // this render. Nothing is read once and kept (#78).
@@ -707,6 +710,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onClose }: Launc
           </button>
         </p>
       ) : null}
+
+      {/* Conversations that have not made an app yet (#261), before the apps: they are what you were last doing. */}
+      {variant === "home" && onResumeDraft && !q ? <DraftStrip onResume={onResumeDraft} /> : null}
 
       {pinned.length ? (
         <section className="k-launch-section" aria-labelledby="k-launch-pinned">
