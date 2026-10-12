@@ -7,7 +7,7 @@
 // for as long as the lock stays the same.
 import { fileSpace, type AppLock, type Store } from "@potyro/store";
 import { memoryModules, type ModuleSource } from "./package-modules.js";
-import { getUserApp, type UserApp } from "./user-apps.js";
+import { duplicateUserApp, getUserApp, type UserApp } from "./user-apps.js";
 
 const hasEntries = (lock: AppLock | undefined): lock is AppLock => !!lock && Object.keys(lock).length > 0;
 
@@ -80,4 +80,31 @@ export async function modulesOf(appId: string | undefined, open?: (app: UserApp)
   cache.set(appId, { lock: app.lock, modules });
   modules.catch(() => cache.delete(appId));
   return modules;
+}
+
+async function openFor(app: UserApp): Promise<Store> {
+  const { openAppStore, syncAllowedFor } = await import("./app-store.js");
+  return openAppStore(app, { sync: await syncAllowedFor(app) });
+}
+
+/**
+ * `duplicateUserApp`, for an app whose code is more than its source: the copy starts empty of DATA,
+ * but its libraries and own modules come with it, into its own folder — otherwise it could not open.
+ */
+export async function duplicateApp(id: string, now: string): Promise<UserApp | null> {
+  const copy = await duplicateUserApp(id, now);
+  if (!copy || !hasEntries(copy.lock)) return copy;
+  const modules = await modulesOf(id, openFor);
+  if (!modules) return copy;
+  const store = await openFor(copy);
+  try {
+    const space = fileSpace(store);
+    for (const entry of Object.values(copy.lock)) {
+      const bytes = await modules.read(entry.file);
+      if (bytes) await space.write(entry.file, new Blob([bytes as BlobPart]), { origin: "shipped" });
+    }
+  } finally {
+    await store.close();
+  }
+  return copy;
 }

@@ -21,7 +21,7 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { duplicateUserApp, getUserApp, lockToRestore, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { getUserApp, lockToRestore, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
@@ -34,7 +34,7 @@ import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessag
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { ThreadView } from "./studio-thread-view.js";
-import { modulesOf } from "./app-modules.js";
+import { duplicateApp, modulesOf } from "./app-modules.js";
 import { describeLibrary } from "./package-libraries.js";
 import { keepLibraryFiles, librariesToFetch, prepareStudioLibraries, type StudioLibraries } from "./studio-libraries.js";
 import { StudioTools, type ToolsTab } from "./studio-tools.js";
@@ -469,7 +469,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   /** A copy to work on, opened straight away: in here a copy is something you made in order to change it. */
   const duplicate = async (): Promise<void> => {
-    const copy = appRef.current ? await duplicateUserApp(appRef.current, new Date().toISOString()) : null;
+    const copy = appRef.current ? await duplicateApp(appRef.current, new Date().toISOString()) : null;
     if (!copy) return;
     setChatId(copy.id);
     setAppId(copy.id);

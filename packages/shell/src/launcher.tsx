@@ -8,7 +8,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { shellDialogs } from "./dialog.js";
-import { duplicateUserApp, renameUserApp, type UserApp } from "./user-apps.js";
+import { renameUserApp, type UserApp } from "./user-apps.js";
+import { duplicateApp } from "./app-modules.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
@@ -600,7 +601,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
    * the owner's friend had to do. The copy carries no records and no space: it is a new app here.
    */
   const duplicate = async (a: UserApp): Promise<void> => {
-    const copy = await duplicateUserApp(a.id, new Date().toISOString());
+    const copy = await duplicateApp(a.id, new Date().toISOString());
     // Said out loud, with the name: the copy lands wherever this launcher's sort puts it, which on
     // a long list is not necessarily anywhere you are looking.
     if (copy) await shellDialogs.confirm(`Copied to “${copy.name}”. It starts empty — the app, not the data.`);
