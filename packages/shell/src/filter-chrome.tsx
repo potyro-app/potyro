@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { FilterChip } from "potyro";
+import { usePortalRoot } from "@potyro/views";
 
 interface ChromeProps {
   runtime: PotyroRuntime;
@@ -203,6 +204,7 @@ function FilterSheet({
   onClose: () => void;
   onClear: () => void;
 }) {
+  const screen = usePortalRoot();
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") onClose();
@@ -217,7 +219,10 @@ function FilterSheet({
   //
   // Into the APP's root, not the document body: the app's accent is a custom property set there, and
   // a sheet outside it comes out wearing the shell's default colour instead of the app's.
-  const host = document.querySelector(".k-app") ?? document.body;
+  //
+  // The app's root within its own screen: framed in the Studio there are two apps on the page (the
+  // one the Studio was opened from, under it, comes first), and the first match was the wrong one.
+  const host = (screen !== document.body ? screen.querySelector(".k-app") : null) ?? document.querySelector(".k-app") ?? document.body;
   return createPortal(
     <div className="k-modal-scrim k-filter-scrim" onClick={onClose}>
       <div className="k-filter-sheet" role="dialog" aria-label="Filter" data-k-view onClick={(e) => e.stopPropagation()}>

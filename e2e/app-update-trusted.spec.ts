@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { openSource } from "./studio-helpers.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -76,12 +77,11 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
   // A edits the app — the thing the owner did (adding buttons to the list).
   await a.getByRole("button", { name: "Studio" }).click();
   const studio = a.locator(".k-studio");
-  await studio.getByRole("button", { name: "Shared Todo", exact: true }).click();
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const source = studio.getByRole("textbox", { name: "App source" });
+  const tools = await openSource(a, studio);
+  const source = tools.getByRole("textbox", { name: "App source" });
   await expect(source).toContainText('title: "Notes"', { timeout: 30_000 });
   await source.fill(STARTER.replace('title: "Notes"', 'title: "Journal"'));
-  await studio.getByRole("button", { name: "Save changes" }).click();
+  await tools.getByRole("button", { name: "Save changes" }).click();
   // Wait on the SAVE, not on a clock. A fixed sleep here reloaded mid-write under a loaded parallel
   // run, so the newer source never reached the space and the whole spec failed downstream.
   await expect

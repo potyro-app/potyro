@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openSource } from "./studio-helpers.js";
 
 // Three things that were true but unproven in a real browser:
 //
@@ -132,10 +133,10 @@ test("an unknown view key is refused with a message you can act on", async ({ pa
   await page.goto("/?app=recipes");
   await page.getByRole("button", { name: "Studio" }).click();
   const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toBeVisible();
-  await studio.getByRole("tab", { name: "Source" }).click();
+  await expect(studio.locator(".k-studio-preview h1").first()).toBeVisible();
+  const tools = await openSource(page, studio);
 
-  const source = studio.getByRole("textbox", { name: "App source" });
+  const source = tools.getByRole("textbox", { name: "App source" });
   await source.fill(`import { defineApp } from "potyro";
 
 export default defineApp({
@@ -144,9 +145,9 @@ export default defineApp({
   pages: [{ id: "p", title: "P", view: { type: "list", entity: "thing", zoomLevel: 12 } }],
 });
 `);
-  await studio.getByRole("button", { name: /Run/ }).click();
+  await tools.getByRole("button", { name: /Run/ }).click();
 
-  const error = studio.locator(".k-studio-error");
+  const error = tools.locator(".k-studio-error");
   await expect(error).toBeVisible();
   // Names the offending key and where it is — not just "invalid".
   await expect(error).toContainText("zoomLevel");
