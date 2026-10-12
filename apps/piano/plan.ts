@@ -1,9 +1,9 @@
 // The plan contract: what `plan.json` must look like, and a checker the app runs before it trusts a
 // plan — the built-in one at build time (test) and any file loaded later from inside the app.
 //
-// No imports on purpose: the shell bundles it from the app package's `src/` (#258), where `potyro`,
-// `react` and the package's own modules resolve. The validation is written by hand because Zod never
-// enters an app bundle.
+// No imports on purpose: this module is inlined into the single-file app by `build.mjs`, where the
+// only resolvable imports are `potyro` and `react`. The validation is written by hand for the same
+// reason (Zod never enters an app bundle).
 
 /** A link on a block: an inline `{ title, url }`, or a pointer into `plan.resources`. */
 export interface PlanLink {
