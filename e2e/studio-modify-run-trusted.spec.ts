@@ -1,9 +1,10 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 
-// The modify loop RUNS a candidate before accepting it (#262), end
-// to end in the Studio with a scripted OpenRouter. The run happens in the browser: the candidate is
-// bundled, loaded in the isolate on a throwaway store, seeded, and its pages mounted. Fails if a
-// candidate that validates but throws when it runs is still accepted. (The corpus tool has its own spec,
+// The modify loop RUNS a candidate before accepting it (#262), end to end in the conversation-first
+// Studio with a scripted OpenRouter. The run happens in the browser: the candidate is bundled, loaded
+// in the isolate on a throwaway store, seeded, and its pages mounted. Fails if a candidate that
+// validates but throws when it runs is still accepted. (The corpus tool has its own spec,
 // studio-corpus-trusted.spec.ts.)
 
 const APP =
@@ -25,49 +26,36 @@ const FIXED = edit(
 type Msg = { role: string; content: string; tool_calls?: unknown };
 const reply = (message: Record<string, unknown>) => ({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }] }) });
 
-async function createReader(page: Page, script: (n: number) => Record<string, unknown>): Promise<Msg[][]> {
+test("a candidate that validates but throws when it runs is sent back with the error", async ({ page }) => {
   const requests: Msg[][] = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Msg[] };
     requests.push(body.messages);
     const n = requests.length;
-    return route.fulfill(reply(n === 1 ? { content: "```ts\n" + APP + "\n```" } : script(n)));
+    return route.fulfill(reply(n === 1 ? { content: "```ts\n" + APP + "\n```" } : { content: n === 2 ? BROKEN : FIXED }));
   });
 
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  const studio = await openNewStudio(page);
+  await chooseOpenRouter(page, studio);
+  await ask(studio, "a reading tracker");
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
-  return requests;
-}
-
-test("a candidate that validates but throws when it runs is sent back with the error", async ({ page }) => {
-  const requests = await createReader(page, (n) => ({ content: n === 2 ? BROKEN : FIXED }));
-  const studio = page.locator(".k-studio");
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("give each book a score");
-  await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
-  await expect(studio.getByText(/Applied 1 edit/)).toBeVisible({ timeout: 90_000 });
+  await ask(studio, "give each book a score");
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 90_000 });
 
   expect(requests).toHaveLength(3);
   const sentBack = requests[2]!.at(-1)!;
   expect(sentBack.role).toBe("user");
-  // The run's own words: what broke, where, and that it ran on sample records — not the validator's.
-  // Judged against the app as first shown (#262): the failure is the change's, so it is named as such.
+  // The run's own words, judged against the app as first shown: the failure is the change's, and
+  // QuickJS's own message for `ctx.ratings.lookup` on a ctx with no `ratings`.
   expect(sentBack.content).toMatch(/your change breaks it when it runs/);
-  expect(sentBack.content).not.toMatch(/already failing before this change/i);
   expect(sentBack.content).toMatch(/computed book\.score/);
-  // QuickJS's own words for `ctx.ratings.lookup` on a ctx with no `ratings`.
   expect(sentBack.content).toMatch(/cannot read property 'lookup' of undefined/);
+  expect(sentBack.content).not.toMatch(/already failing before this change/i);
+  // The app is in the conversation exactly once: the first message, and nowhere after.
+  expect(requests[2]!.filter((m) => m.content.includes('id: "reader"'))).toHaveLength(1);
 
-  await studio.getByRole("tab", { name: "Source" }).click();
-  await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/String\(b\.title/);
+  const tools = await openSource(page, studio);
+  await expect(tools.getByRole("textbox", { name: "App source" })).toHaveValue(/String\(b\.title/);
 });

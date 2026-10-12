@@ -377,6 +377,7 @@ every field they did not ask for is a form they scroll past on every single entr
 
 OUTPUT
 - Return ONLY the \`.app.ts\` source in a single \`\`\`ts code block. No prose before or after.
+- Unless one answer would change which app to build: then reply with one line \`QUESTION: <it, in plain words>\`. One question at a time; never once the request holds the answer.
 
 EXAMPLE 1 — a simple list:
 \`\`\`ts
@@ -641,6 +642,21 @@ function pickAppBlock(blocks: Array<{ code: string; index: number }>): { code: s
   const real = blocks.filter((b) => /defineApp\s*\(/.test(b.code));
   const pool = real.length ? real : blocks;
   return pool.length ? pool.reduce((a, b) => (b.code.length > a.code.length ? b : a)) : null;
+}
+
+/**
+ * The question a create reply asks instead of building (#261), or null when it built — or talked.
+ *
+ * Only a reply that is not an app, and only when the reply OPENS with the marker, so a comment in the
+ * source or prose that mentions questions is never mistaken for one. Models dress markers in bold or
+ * backticks; that is read through. The question is the first line.
+ */
+export function questionIn(reply: string): string | null {
+  if (looksLikeApp(reply)) return null;
+  // Some models put everything they send in a code block, a question included.
+  const opened = reply.trim().replace(/^```[\w-]*[ \t]*\n/, "");
+  const m = /^[\s*`_]*QUESTION:[*`_]*[ \t]*([^\n]*?)[\s*`_]*(?:\n|$)/.exec(opened);
+  return m && m[1]!.trim() ? m[1]!.trim() : null;
 }
 
 /** Does this look like an app module at all, or did the model just talk? */

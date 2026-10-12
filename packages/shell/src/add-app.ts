@@ -14,6 +14,7 @@
 import { fileSpace, isZip, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { inspectSource } from "./validate-app.js";
 import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { sourceHttp } from "./ask-sources.js";
 
@@ -263,5 +264,10 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
   const store = await open(app, { sync: await syncAllowedFor(app) });
   const files = await applyShippedFiles(store, pkg.files, { update });
   const seeded = update ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
+  // How it was made, when its author chose to send that too (#261). Only on a first install: an
+  // update must not overwrite the conversation the person has had with it since. Anything that is
+  // not a conversation is ignored rather than refusing the app.
+  const chat = pkg.chat === undefined || update ? null : parseChatRecord(pkg.chat);
+  if (chat) await importChat(app.id, chat, now);
   return { app, updated: update, files, seeded };
 }

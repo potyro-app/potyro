@@ -1,4 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { openSource } from "./studio-helpers.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -96,12 +97,11 @@ test("a newer version locks an open copy, and data changes shape only when asked
   // ---- Ana saves a version that stores its data differently ----
   await a.getByRole("button", { name: "Studio" }).click();
   const studio = a.locator(".k-studio");
-  await studio.getByRole("button", { name: "Shared Todo", exact: true }).click();
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const source = studio.getByRole("textbox", { name: "App source" });
+  const tools = await openSource(a, studio);
+  const source = tools.getByRole("textbox", { name: "App source" });
   await expect(source).toContainText("schemaVersion: 1", { timeout: 30_000 });
   await source.fill(V2);
-  await studio.getByRole("button", { name: "Save changes" }).click();
+  await tools.getByRole("button", { name: "Save changes" }).click();
   await expect
     .poll(
       async () =>

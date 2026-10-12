@@ -83,6 +83,12 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   replaced unless the person changed them (they are then `app`, not `shipped`) and kept; shipped files
   the new version dropped are removed. The seed never runs on an update. *Add as a second app* makes
   an empty copy under a new id.
+- **How it was made** (#261): a package or an export bundle may carry `chat.json` — the Studio
+  conversation that made the app (`potyro-chat/1`: what was asked, the agent's questions and answers,
+  a line per version). It goes in only when the person answers yes to "Include how this app was
+  made?" on Export; on a first install it becomes the app's conversation, ending with a line that
+  says it came from the author. An update never overwrites the conversation the receiver has had
+  since, and anything in `chat.json` that is not a conversation is ignored, never fatal.
 - **Install links**: `https://<shell>/#add=<url-encoded link>` opens the dialog with the link filled in.
 
 ## Authoring loop (offline)

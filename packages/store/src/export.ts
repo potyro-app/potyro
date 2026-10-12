@@ -31,6 +31,8 @@ export interface BundleInputs {
   appSource?: string;
   /** All entity rows keyed by entity, for the universal JSON + CSV exports. */
   rowsByEntity?: Record<string, PotyroRecord[]>;
+  /** The Studio conversation that made the app, when the person chose to include it (#261). */
+  chat?: unknown;
 }
 
 export interface UnpackedBundle {
@@ -64,6 +66,7 @@ export function packBundle(input: BundleInputs): Uint8Array {
     [MANIFEST]: strToU8(JSON.stringify(input.manifest, null, 2)),
   };
   if (input.appSource) files[APP] = strToU8(input.appSource);
+  if (input.chat !== undefined) files["chat.json"] = strToU8(JSON.stringify(input.chat, null, 2));
   if (input.rowsByEntity) {
     files["data.json"] = strToU8(JSON.stringify(input.rowsByEntity, null, 2));
     for (const [entity, rows] of Object.entries(input.rowsByEntity)) {

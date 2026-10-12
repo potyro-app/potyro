@@ -38,7 +38,8 @@ const EVENTS: ReadonlySet<AppVersion["origin"]> = new Set(["imported", "restored
  */
 export const SYSTEM_NOTES: readonly RegExp[] = [/^example app$/, /^copied from /, /^the source before history was kept$/, /^from your account/];
 
-const isEvent = (v: AppVersion): boolean =>
+/** A version that records something that happened to the app, never something asked of the model. */
+export const isEvent = (v: AppVersion): boolean =>
   EVENTS.has(v.origin) || (v.origin === "created" && !v.rationale && SYSTEM_NOTES.some((re) => re.test(v.note ?? "")));
 
 /** `versions` newest-first, as `listVersions` returns them; the thread reads oldest-first. */

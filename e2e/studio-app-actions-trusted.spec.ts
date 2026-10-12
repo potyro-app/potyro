@@ -13,6 +13,8 @@ import { tileAction } from "./launcher-actions.js";
 // The last one is three names that were never agreed: the one written in the app's source, the one
 // on your saved copy (Rename), and the one on the launcher tile (Edit tile). The top bar read the
 // source's, so a renamed app went on calling itself by the name the model gave it.
+//
+// Since #261 the Studio is about one app at a time, and these are in its menu, beside the code.
 
 const APP = `import { defineApp } from "potyro";
 
@@ -53,12 +55,18 @@ const openStudio = async (page: Page): Promise<void> => {
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(studio(page)).toBeVisible();
 };
+const menuItem = async (page: Page, name: string | RegExp): Promise<void> => {
+  await studio(page).getByRole("button", { name: "Studio menu" }).click();
+  await page.getByRole("menuitem", { name }).click();
+};
+const saved = (page: Page) =>
+  page.evaluate(() => (JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ name: string }>).map((a) => a.name).sort());
 
 test("deleting an app from the Studio asks first, and says the data goes too", async ({ page }) => {
   await seedApp(page);
   await openStudio(page);
 
-  await studio(page).getByRole("button", { name: "Delete Notes" }).click();
+  await menuItem(page, "Delete Notes");
 
   // The question, and what it costs. It used to delete on the click, with nothing said.
   const dialog = page.locator(".k-dialog");
@@ -67,12 +75,15 @@ test("deleting an app from the Studio asks first, and says the data goes too", a
 
   // Backing out keeps it.
   await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(studio(page).getByRole("button", { name: "Delete Notes" })).toBeVisible();
+  expect(await saved(page)).toContain("Notes");
+  await expect(studio(page)).toBeVisible();
 
-  // Going through with it does not.
-  await studio(page).getByRole("button", { name: "Delete Notes" }).click();
+  // Going through with it does not — and the app it was opened from is gone, so it goes home.
+  await menuItem(page, "Delete Notes");
   await page.locator(".k-dialog").getByRole("button", { name: "Delete" }).click();
-  await expect(studio(page).getByRole("button", { name: "Delete Notes" })).toHaveCount(0);
+  await expect(studio(page)).toHaveCount(0);
+  await expect(page.locator(".k-launcher")).toBeVisible({ timeout: 30_000 });
+  expect(await saved(page)).not.toContain("Notes");
 });
 
 test("an app can be renamed and duplicated from the Studio", async ({ page }) => {
@@ -80,18 +91,19 @@ test("an app can be renamed and duplicated from the Studio", async ({ page }) =>
   await openStudio(page);
 
   // Duplicate opens the copy — in here a copy is something you made in order to change it.
-  await studio(page).getByRole("button", { name: "Duplicate Notes" }).click();
-  await expect(studio(page).getByRole("button", { name: "Delete Notes (copy)" })).toBeVisible({ timeout: 30_000 });
+  await menuItem(page, "Duplicate");
+  await expect(studio(page).locator(".k-studio-name")).toHaveText("Notes (copy)", { timeout: 30_000 });
 
-  await studio(page).getByRole("button", { name: "Rename Notes (copy)" }).click();
+  await menuItem(page, "Rename");
   const dialog = page.locator(".k-dialog");
   await expect(dialog).toContainText("Rename app");
   await dialog.locator("input").fill("Todo");
   await dialog.getByRole("button", { name: /^(Confirm|OK|Save)$/ }).first().click();
 
-  await expect(studio(page).getByRole("button", { name: "Delete Todo" })).toBeVisible({ timeout: 30_000 });
+  await expect(studio(page).locator(".k-studio-name")).toHaveText("Todo", { timeout: 30_000 });
   // And the original is untouched.
-  await expect(studio(page).getByRole("button", { name: "Delete Notes" })).toBeVisible();
+  expect(await saved(page)).toEqual(expect.arrayContaining(["Notes", "Todo"]));
+  expect(await saved(page)).not.toContain("Notes (copy)");
 });
 
 test("a renamed app is called what you called it, not what its source says", async ({ page }) => {
