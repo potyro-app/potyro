@@ -1,0 +1,18 @@
+{
+  "name": "@potyro/app-mood-sleep",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "How did you sleep? A daily check-in, charted with chart.js loaded by URL (#266)",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs mood-sleep.app.ts --seed seed.json -o dist/mood-sleep.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  },
+  "devDependencies": {
+    "chart.js": "4.5.1"
+  }
+}
