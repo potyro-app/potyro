@@ -111,4 +111,14 @@ describe("runModifyLoop", () => {
     expect(out.kind).toBe("failed");
     expect(out.kind === "failed" && out.reason).toMatch(/2 step/);
   });
+
+  it("counts search_corpus as looking before a refusal (#262)", async () => {
+    const search: AgentTool = { ...lookup, name: "search_corpus" };
+    const { engine } = scripted([
+      { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "search_corpus", arguments: '{"query":"bluetooth"}' } }] },
+      { content: `${NOT_IN_APP} nothing in the apps or docs uses bluetooth.` },
+    ]);
+    const out = await runModifyLoop(base({ engine, tools: [search] }));
+    expect(out.kind).toBe("diagnosis");
+  });
 });
