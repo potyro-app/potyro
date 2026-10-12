@@ -129,34 +129,3 @@ describe("corpus tools (#262)", () => {
     expect(r.detail).toMatch(/--- (examples|apps)\//);
   });
 });
-
-describe("corpus tools (#262)", () => {
-  const corpus = async () =>
-    buildCorpus([
-      { path: "apps/piano/piano.app.tsx", text: 'const plan = await ctx.files.read("plan.json");\nexport default defineApp({ id: "piano" });' },
-      { path: "docs/04-app-module-api.md", text: "## ctx.files\n\nEvery app owns a folder." },
-    ]);
-  const tools = buildDiscoveryTools({ check: async () => [], corpus });
-
-  it("search_corpus finds passages with their file", async () => {
-    const r = await runTool(tools, { id: "1", name: "search_corpus", args: { query: "ctx.files folder" } });
-    expect(r.detail).toContain("docs/04-app-module-api.md:1-");
-  });
-
-  it("read returns a file by path", async () => {
-    const r = await runTool(tools, { id: "2", name: "read", args: { path: "apps/piano/piano.app.tsx" } });
-    expect(r.detail).toContain('defineApp({ id: "piano" })');
-  });
-
-  it("example falls back to the corpus when no inline example uses the feature", async () => {
-    const r = await runTool(tools, { id: "3", name: "example", args: { feature: "ctx.files.read" } });
-    expect(r.ok).toBe(true);
-    expect(r.detail).toContain("apps/piano/piano.app.tsx");
-  });
-
-  it("search_corpus answers from the release's own corpus by default", async () => {
-    const real = buildDiscoveryTools({ check: async () => [] });
-    const r = await runTool(real, { id: "4", name: "search_corpus", args: { query: "defineApp custom view" } });
-    expect(r.detail).toMatch(/--- (examples|apps)\//);
-  });
-});

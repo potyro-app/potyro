@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// The modify loop RUNS a candidate before accepting it, and can read the release's corpus (#262), end
+// The modify loop RUNS a candidate before accepting it (#262), end
 // to end in the Studio with a scripted OpenRouter. The run happens in the browser: the candidate is
 // bundled, loaded in the isolate on a throwaway store, seeded, and its pages mounted. Fails if a
-// candidate that validates but throws when it runs is still accepted, or if the corpus tool answers
-// from anywhere but the release.
+// candidate that validates but throws when it runs is still accepted. (The corpus tool has its own spec,
+// studio-corpus-trusted.spec.ts.)
 
 const APP =
   'import { defineApp } from "potyro";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});';
@@ -70,20 +70,4 @@ test("a candidate that validates but throws when it runs is sent back with the e
 
   await studio.getByRole("tab", { name: "Source" }).click();
   await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/String\(b\.title/);
-});
-
-test("search_corpus answers from the release's example apps, inside the browser", async ({ page }) => {
-  const requests = await createReader(page, (n) =>
-    n === 2
-      ? { content: "", tool_calls: [{ id: "call_1", type: "function", function: { name: "search_corpus", arguments: '{"query":"custom view render"}' } }] }
-      : { content: FIXED },
-  );
-  const studio = page.locator(".k-studio");
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("give each book a score");
-  await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
-  await expect(studio.getByText(/Applied 1 edit/)).toBeVisible({ timeout: 90_000 });
-
-  const toolTurn = requests[2]!.at(-1)!;
-  expect(toolTurn.role).toBe("tool");
-  expect(toolTurn.content).toMatch(/^--- (examples|apps)\/[^\n]+\.app\.tsx?:\d+-\d+/m);
 });
