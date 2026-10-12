@@ -14,6 +14,8 @@
 //        --loop  --run   (`--run`, with `--loop`: candidates are also RUN on sample records, as the
 //                         Studio does since #262 — here the logic run only; pages are not mounted
 //                         in Node)
+//        --case-timeout S  a hard limit per case (default 900): the loop is told to stop and the case
+//                          is recorded as crashed with the reason — three cases once hung ten hours
 //
 // Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
 // read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
@@ -26,13 +28,14 @@
 // plus LANDED (the change is present) and VALIDATES (the result is a well-formed app), so a model
 // that keeps the app by ignoring the request does not score as a win.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
 import { createOpenRouterBackend, createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
 import { guardedModify, type GuardedModifyResult } from "../src/guarded-modify.js";
 import { runModifyLoop } from "../src/agent/modify-loop.js";
 import { buildDiscoveryTools } from "../src/agent/discovery-tools.js";
+import { loadCorpus } from "../src/load-corpus.js";
 import { MODIFY_AGENT_SYSTEM_PROMPT } from "../src/agent/modify-system-prompt.js";
 import { MODIFY_CASES, type DefinitionShape, type ModifyCase } from "../src/modify-corpus.js";
 import { buildRepairInstruction } from "../src/prompt.js";
@@ -75,6 +78,8 @@ interface Outcome {
   refusedWhenFeasible: boolean;
   ms: number;
   crashed?: string;
+  /** Why the loop gave up, when via = failed: the thing to read before anything else in a failed case. */
+  reason?: string;
 }
 
 function arg(name: string, fallback?: string): string | undefined {
@@ -212,6 +217,8 @@ async function loopModify(
   resolveDir: string,
   keep: (text: string) => string,
   runCandidates: boolean,
+  outDir: string,
+  signal: AbortSignal,
 ): Promise<GuardedModifyResult> {
   const run = regressionGate(async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never)), source);
   const check = async (src: string): Promise<string[]> => {
@@ -234,7 +241,8 @@ async function loopModify(
       },
     },
     model,
-    tools: buildDiscoveryTools({ check, ...(runCandidates ? { run } : {}) }),
+    tools: buildDiscoveryTools({ check, source, ...(runCandidates ? { run } : {}) }),
+    corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: c.instruction,
     source,
@@ -242,13 +250,51 @@ async function loopModify(
     ...(runCandidates ? { run } : {}),
     shapeOf: (src) => shapeOf(src, resolveDir),
     before,
+    signal,
+    // Step trace, for diagnosing a case that gave up while still calling tools (no reply is kept then).
+    onStep: (s) => {
+      const line =
+        s.kind === "tool" ? `tool ${s.name} ${s.ok ? "ok" : "FAIL"}: ${s.detail}` : s.kind === "candidate" ? `candidate ${s.passed ? "PASSED" : "REJECTED"}: ${s.detail}` : s.kind === "unusable" ? `unusable: ${s.detail}` : "thinking";
+      appendFileSync(join(outDir, `${c.id}.steps.log`), `--- ${new Date().toISOString()} ${line}\n`);
+    },
   });
   const trace = { attempts: 1, noMatchRetry: false, lossRetry: false };
   if (out.kind === "source") {
     return { kind: "source", source: out.source, via: out.via, applied: out.applied, loss: null, trace, ...(out.rationale ? { rationale: out.rationale } : {}), ...(out.notDone ? { notDone: out.notDone } : {}) };
   }
   if (out.kind === "diagnosis") return { kind: "diagnosis", text: out.text, trace };
-  return { kind: "failed", reason: out.kind === "question" ? `asked: ${out.text}` : out.kind === "stopped" ? "stopped" : out.reason, trace };
+  return { kind: "failed", reason: out.kind === "question" ? `asked: ${out.text}` : out.kind === "stopped" ? "stopped: the case's time limit" : out.reason, trace };
+}
+
+/**
+ * A case ends within `ms`, whatever it is waiting on. The loop is told to stop (its next step returns
+ * `stopped`); if even that does not return — a body that never ends — the case is recorded as crashed
+ * with the reason, and the run moves on instead of sitting on three stuck cases for ten hours.
+ */
+async function withTimeLimit(c: ModifyCase, ms: number, run: (signal: AbortSignal) => Promise<Outcome>): Promise<Outcome> {
+  const controller = new AbortController();
+  const started = Date.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<Outcome>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      // Grace for the loop to notice the signal; then the case is over whether it noticed or not.
+      setTimeout(
+        () =>
+          resolve({
+            id: c.id, app: c.app, via: "failed", applied: 0, noMatchRetry: false, rewroteFirst: false, rewroteFinal: false, loss: null, landed: null,
+            validates: false, declined: false, repair: null, notDone: [], namedNotDone: null, refusedWhenFeasible: false, ms: Date.now() - started,
+            crashed: `timed out after ${Math.round(ms / 1000)}s`,
+          }),
+        5_000,
+      );
+    }, ms);
+  });
+  try {
+    return await Promise.race([run(controller.signal), limit]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function runCase(
@@ -258,6 +304,7 @@ async function runCase(
   outDir: string,
   withRepair: boolean,
   loop: { model: string | undefined; run: boolean } | null,
+  signal: AbortSignal,
 ): Promise<Outcome> {
   const started = Date.now();
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
@@ -291,7 +338,7 @@ async function runCase(
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
     const result = loop
-      ? await loopModify(loop.model, c, source, before, sourceDir, keep, loop.run)
+      ? await loopModify(loop.model, c, source, before, sourceDir, keep, loop.run, outDir, signal)
       : await guardedModify({
           attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
           shapeOf: (src) => shapeOf(src, sourceDir),
@@ -309,7 +356,8 @@ async function runCase(
       return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ...feasibility, ms: Date.now() - started };
     }
     if (result.kind === "failed") {
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started };
+      appendFileSync(join(outDir, `${c.id}.steps.log`), `--- gave up: ${result.reason}\n`);
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started, reason: result.reason };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
@@ -387,11 +435,12 @@ async function main(): Promise<void> {
   if (loopRequested && backendKind !== "openrouter") throw new Error("--loop needs --backend openrouter (a chat engine with tools)");
   const backend = await makeBackend(backendKind, arg("model"), arg("reasoning"));
   const loop = loopRequested ? { model: arg("model"), run: process.argv.includes("--run") } : null;
+  const caseTimeoutMs = Number(arg("case-timeout", "900")) * 1000;
   console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await runCase(backend, c, examplesDir, outDir, repairRequested, loop);
+    const o = await withTimeLimit(c, caseTimeoutMs, (signal) => runCase(backend, c, examplesDir, outDir, repairRequested, loop, signal));
     // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
     //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
     const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";

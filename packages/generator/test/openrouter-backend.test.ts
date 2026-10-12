@@ -304,3 +304,22 @@ describe("what a call cost", () => {
     expect(res.usage).toEqual({ cost: 0.00731, promptTokens: 1200, completionTokens: 80 });
   });
 });
+
+describe("a response whose body never finishes (#262: three eval cases hung for ten hours)", () => {
+  it("is an error within the body timeout, and the request is aborted", async () => {
+    let aborted = false;
+    const fetch: FetchLike = async (_url, init) => {
+      init?.signal?.addEventListener("abort", () => {
+        aborted = true;
+      });
+      // Headers arrive; the body stream opens and then nothing more ever comes.
+      const stream = new ReadableStream<Uint8Array>({ start() {} });
+      return new Response(stream, { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const engine = createOpenRouterEngine({ apiKey: "sk-or-test", fetch, bodyTimeoutMs: 50 });
+    const started = Date.now();
+    await expect(engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }] })).rejects.toThrow(/stalled|no more of the response/i);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(aborted).toBe(true);
+  });
+});
