@@ -5,6 +5,11 @@
 // names (`karta-jazz` on OPFS, `karta-jazz-idb` in IndexedDB): the moved `…:jazz:db:` keys still
 // name them, and renaming a file on every device buys nothing a person can see.
 //
+// localStorage is not the only place the rename changed a name. Each of the others is handled
+// where it is opened, and the old copy is never deleted: the vault (`karta-vault`, vault.ts), the OPFS
+// pool every database lives in (`/karta`, sqlite-worker.ts), the app list on the account
+// (`kartaApps`, account-apps.ts) and export bundles (`karta-bundle/1`, export.ts).
+//
 // main.tsx imports this module before anything else, because several shell modules read
 // localStorage while they are being evaluated, and the move has to be done by then.
 

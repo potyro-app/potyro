@@ -36,6 +36,13 @@ export interface AccountApp {
 /** The key on the account CoMap pointing at the registry. */
 const REGISTRY = "potyroApps";
 
+/**
+ * The key builds before the rename (#248) used, which renamed it and moved nothing. Every
+ * account that recorded an app before then has its list HERE, synced to every device it is on; it
+ * is read as part of the registry, and becomes the registry when this account has no other.
+ */
+const LEGACY_REGISTRY = "kartaApps";
+
 interface CoMapish {
   id: string;
   get(key: string): unknown;
@@ -81,34 +88,76 @@ function parse(id: string, raw: unknown): AccountApp | null {
   }
 }
 
+/** The registry under each key, as far as it has arrived. `named` without `map` = not here YET. */
+interface Found {
+  current: { named: boolean; map: CoMapish | null };
+  legacy: { named: boolean; map: CoMapish | null };
+}
+
+async function find(node: Nodeish, waitMs: number): Promise<Found> {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    const account = await node.expectCurrentAccount("potyro apps");
+    const at = async (key: string): Promise<Found["current"]> => {
+      const id = account.get(key);
+      if (typeof id !== "string") return { named: false, map: null };
+      const loaded = await node.load(id);
+      return { named: true, map: loaded && loaded !== "unavailable" ? loaded : null };
+    };
+    const found = { current: await at(REGISTRY), legacy: await at(LEGACY_REGISTRY) };
+    // Waits while nothing has arrived — a just-linked device reads before the relay's copy reaches
+    // it — and while either named one is still on its way.
+    const pending =
+      (!found.current.map && !found.legacy.map) ||
+      (found.current.named && !found.current.map) ||
+      (found.legacy.named && !found.legacy.map);
+    if (!pending || Date.now() >= deadline) return found;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
 /**
- * The registry CoMap, creating it the first time.
+ * The registry CoMap to WRITE to, creating it the first time.
  *
  * Owned by a group of its own with the account as its only member, so it is encrypted to you and to
  * nobody else — unlike the profile, which is deliberately readable by the people you share with.
  * Its id is kept on the account CoMap, which is the only thing a new device can reach knowing just
- * the words.
+ * the words. An account with only the pre-rename registry keeps writing to that one (and names it
+ * under the current key), so its list is never split in two.
  */
 async function registry(node: Nodeish, create: boolean, waitMs = 0): Promise<CoMapish | null> {
-  const deadline = Date.now() + waitMs;
-  for (;;) {
-    const account = await node.expectCurrentAccount("potyro apps");
-    const existing = account.get(REGISTRY);
-    if (typeof existing === "string") {
-      const loaded = await node.load(existing);
-      if (loaded && loaded !== "unavailable") return loaded;
-      // Named but not here YET. Creating a second one would split the list in two and leave a later
-      // device reading whichever won the race — so this waits, and never makes another.
-    }
-    if (Date.now() >= deadline) break;
-    await new Promise((r) => setTimeout(r, 250));
-  }
-
+  const { current, legacy } = await find(node, waitMs);
+  if (current.map) return current.map;
+  // Named but not here YET. Creating a second one would split the list in two and leave a later
+  // device reading whichever won the race — so this waits, and never makes another.
+  if (current.named) return null;
   const account = await node.expectCurrentAccount("potyro apps");
-  if (typeof account.get(REGISTRY) === "string" || !create) return null;
+  if (legacy.map) {
+    if (create) account.set(REGISTRY, legacy.map.id, "private");
+    return legacy.map;
+  }
+  if (legacy.named || !create || typeof account.get(REGISTRY) === "string") return null;
   const map = node.createGroup().createMap();
   account.set(REGISTRY, map.id, "private");
   return map;
+}
+
+/**
+ * Every entry the account holds, read across both registries.
+ *
+ * Two exist only where a device created a new one after the rename while the old list was still on
+ * the account. The current one decides for every key it has — including a removal, which is an
+ * empty value — and the old one fills in the rest.
+ */
+async function entries(node: Nodeish, waitMs: number): Promise<Map<string, unknown>> {
+  const { current, legacy } = await find(node, waitMs);
+  const out = new Map<string, unknown>();
+  for (const map of [current.map, legacy.map]) {
+    if (!map) continue;
+    const keys = typeof map.keys === "function" ? map.keys() : [];
+    for (const key of keys) if (!out.has(key)) out.set(key, map.get(key));
+  }
+  return out;
 }
 
 /**
@@ -137,8 +186,7 @@ export async function publishNameToAccount(node: unknown, name: string): Promise
 /** The name on this account, or null when it has never been set (or has not arrived). */
 export async function readAccountName(node: unknown, opts?: { waitMs?: number }): Promise<string | null> {
   try {
-    const map = await registry(node as Nodeish, false, opts?.waitMs ?? 0);
-    const value = map?.get(NAME_KEY);
+    const value = (await entries(node as Nodeish, opts?.waitMs ?? 0)).get(NAME_KEY);
     return typeof value === "string" && value.trim() ? value : null;
   } catch {
     return null;
@@ -164,6 +212,9 @@ export async function removeAppFromAccount(node: unknown, appId: string): Promis
     const map = await registry(node as Nodeish, false);
     if (!map) return false;
     map.set(appId, "", "private");
+    // And in the pre-rename list, if it is a different map: it must not offer the app back.
+    const { legacy } = await find(node as Nodeish, 0);
+    if (legacy.map && legacy.map.id !== map.id && legacy.map.get(appId)) legacy.map.set(appId, "", "private");
     return true;
   } catch {
     return false;
@@ -179,13 +230,10 @@ export async function removeAppFromAccount(node: unknown, appId: string): Promis
  */
 export async function readAccountApps(node: unknown, opts?: { waitMs?: number }): Promise<AccountApp[]> {
   try {
-    const map = await registry(node as Nodeish, false, opts?.waitMs ?? 0);
-    if (!map) return [];
     const out: AccountApp[] = [];
-    const keys = typeof map.keys === "function" ? map.keys() : [];
-    for (const key of keys) {
+    for (const [key, value] of await entries(node as Nodeish, opts?.waitMs ?? 0)) {
       if (key === NAME_KEY) continue; // your name lives here too; it is not an app
-      const app = parse(key, map.get(key));
+      const app = parse(key, value);
       if (app) out.push(app);
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));

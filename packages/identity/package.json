@@ -15,5 +15,8 @@
   "dependencies": {
     "@scure/bip39": "^1.6.0",
     "cojson": "^0.20.19"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5"
   }
 }
