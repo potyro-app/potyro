@@ -83,7 +83,80 @@ describe("app packages", () => {
   });
 });
 
+describe("modules and libraries (#258, #266)", () => {
+  const lib = strToU8("export const x = 1;");
+  const libFile = ".modules/" + "b".repeat(64) + ".js";
+  const lock = { "https://esm.sh/x@1.0.0?bundle": { file: libFile, integrity: "sha256-abc=", size: lib.byteLength } };
+
+  it("round-trip: the package's own modules apart from its files, and the lock beside them", () => {
+    const zip = packAppPackage({
+      source: SOURCE,
+      sourceName: "app.tsx",
+      files: [
+        { path: "plan.json", data: plan },
+        { path: libFile, data: lib },
+      ],
+      modules: [
+        { path: "plan.ts", data: strToU8("export const weeks = 12;") },
+        { path: "lib/progress.ts", data: strToU8("export {};") },
+      ],
+      lock,
+    });
+    const pkg = readAppPackage(zip);
+    expect(pkg.modules.map((m) => m.path).sort()).toEqual(["lib/progress.ts", "plan.ts"]);
+    expect(pkg.files.map((f) => f.path).sort()).toEqual([libFile, "plan.json"]);
+    expect(pkg.lock).toEqual(lock);
+  });
+
+  it("a package with neither has none", () => {
+    const pkg = readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [] }));
+    expect(pkg.modules).toEqual([]);
+    expect(pkg.lock).toBeUndefined();
+  });
+
+  it("refuses a lock that would point a library at the app's data", () => {
+    const zip = zipSync({
+      "app.ts": strToU8(SOURCE),
+      "lock.json": strToU8(JSON.stringify({ "https://esm.sh/x@1.0.0": { file: "plan.json", integrity: "sha256-a=", size: 1 } })),
+    });
+    expect(() => readAppPackage(zip)).toThrow(/\.modules/);
+  });
+});
+
 describe("pnpm pack:app", () => {
+  const script = new URL("../../../scripts/pack-app.mjs", import.meta.url).pathname;
+
+  it("packs the modules the source imports into src/, following their own imports, and only those", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pack-app-src-"));
+    writeFileSync(
+      join(dir, "piano.app.tsx"),
+      'import { defineApp } from "potyro";\nimport { weeks } from "./plan.js";\nimport type { P } from "./types";\nexport default defineApp({ id: "piano", weeks } as never);\n',
+    );
+    writeFileSync(join(dir, "plan.ts"), 'import { clamp } from "./util/clamp.ts";\nexport const weeks = clamp(12);\n');
+    mkdirSync(join(dir, "util"));
+    writeFileSync(join(dir, "util", "clamp.ts"), "export const clamp = (n: number) => n;\n");
+    writeFileSync(join(dir, "types.ts"), "export type P = number;\n");
+    writeFileSync(join(dir, "unused.ts"), "export const nope = 1;\n");
+    writeFileSync(join(dir, "plan.json"), '{"weeks":12}');
+
+    execFileSync("node", [script, "piano.app.tsx", "plan.json", "-o", "out.zip"], { cwd: dir, env: { ...process.env, INIT_CWD: dir } });
+
+    const pkg = readAppPackage(new Uint8Array(readFileSync(join(dir, "out.zip"))));
+    // `types.ts` is imported for a type only: nothing of it runs, so it is not part of the app.
+    expect(pkg.modules.map((m) => m.path).sort()).toEqual(["plan.ts", "util/clamp.ts"]);
+    expect(pkg.files.map((f) => f.path)).toEqual(["plan.json"]);
+  });
+
+  it("refuses a module import that leaves the app's folder", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pack-app-out-"));
+    mkdirSync(join(dir, "app"));
+    writeFileSync(join(dir, "app", "x.app.ts"), 'import { y } from "../y.ts";\nexport default y;\n');
+    writeFileSync(join(dir, "y.ts"), "export const y = 1;\n");
+    expect(() => execFileSync("node", [script, "app/x.app.ts", "-o", "out.zip"], { cwd: dir, env: { ...process.env, INIT_CWD: dir }, stdio: "pipe" })).toThrow(/outside/);
+  });
+});
+
+describe("pnpm pack:app, files", () => {
   it("makes a zip the real reader installs: source, loose files, a folder, and the seed", () => {
     const dir = mkdtempSync(join(tmpdir(), "pack-app-"));
     writeFileSync(join(dir, "piano.app.tsx"), SOURCE);
