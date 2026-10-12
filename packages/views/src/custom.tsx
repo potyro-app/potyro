@@ -2,11 +2,12 @@
 // React component with full ctx access. For untrusted apps the host returns null (docs/05
 // policy: custom views run only for trusted apps) and we fall back to a promote prompt.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";
 import type { CustomViewMount, ViewProps } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
+import { PartProblem, describePartFailure } from "./part-failure.js";
 
 /** Fired on `window` when a view asks the shell to open its trust dialog. */
 export const TRUST_REQUEST = "potyro:trust-request";
@@ -43,7 +44,7 @@ export function CustomView(props: BuiltinViewProps) {
   };
   // The framework-neutral form: hand over a container and keep the teardown. The host does not know
   // or care what rendered into it — the same deal MapLibre gets.
-  if (mount) return <MountedView mount={mount} props={viewProps} />;
+  if (mount) return <MountedView mount={mount} props={viewProps} what={`view ${pageId}`} host={runtime} />;
 
   // Render as a proper React element so the custom view gets its own fiber + hook context
   // (rather than being called inline as a plain function).
@@ -51,8 +52,10 @@ export function CustomView(props: BuiltinViewProps) {
   return <Rendered {...viewProps} />;
 }
 
-function MountedView({ mount, props }: { mount: CustomViewMount; props: ViewProps }) {
+function MountedView({ mount, props, what, host }: { mount: CustomViewMount; props: ViewProps; what: string; host: BuiltinViewProps["runtime"] }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  // A throw in an effect never reaches an error boundary, so this part says it failed itself (#271).
+  const [failed, setFailed] = useState<string | null>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
 
@@ -65,7 +68,8 @@ function MountedView({ mount, props }: { mount: CustomViewMount; props: ViewProp
     } catch (e) {
       // A custom view is app code. A throw here must not take the shell down with it.
       console.warn("[potyro] custom view failed to mount:", e);
-      el.textContent = "This screen could not be displayed.";
+      host.reportFailure?.(what, e);
+      setFailed(e instanceof Error ? e.message : String(e));
     }
     return () => {
       try {
@@ -76,5 +80,6 @@ function MountedView({ mount, props }: { mount: CustomViewMount; props: ViewProp
     };
   }, [mount]);
 
+  if (failed !== null) return <PartProblem text={describePartFailure({ what, message: failed }, host)} />;
   return <div className="k-custom-mounted" ref={ref} />;
 }

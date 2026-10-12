@@ -359,6 +359,35 @@ button {
   align-self: flex-start;
 }
 
+/* One part of an app failed — a view, a computed value, a page's records (#271). Said in its place,
+   quietly enough that the parts around it, which still work, stay the point of the page. */
+.k-part-problem {
+  border: 1px solid var(--danger-line);
+  border-left-width: 3px;
+  background: var(--danger-tint);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.k-part-problem p {
+  margin: 0;
+}
+.k-part-problem strong {
+  color: var(--danger);
+  font-weight: 600;
+}
+.k-add-app-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.k-add-app-missing p {
+  margin: 0;
+}
+
 /* Map chrome: arming a placement, and what a pin says when you tap it. Both float ON the map — it
    fills its page, so anything that sat above it would be taking a bite out of the map. */
 /* At the BOTTOM, where the button that armed it was, and clear of the filters at the top. */

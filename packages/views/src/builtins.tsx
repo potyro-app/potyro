@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { actionInfo, type Resolved } from "potyro";
+import { PartProblem } from "./part-failure.js";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -31,12 +32,15 @@ export function mapOnOpen(onOpen: { page: string; param?: Record<string, string>
  * (there is no undo yet), which is exactly why it asks first, through the host's own `ctx.ui.confirm`
  * rather than `window.confirm`.
  */
-/** A page whose data could not be read says so, instead of loading forever. */
+/**
+ * A page whose data could not be read says so, instead of loading forever — in the words every part
+ * of an app uses when it fails (#271). ViewHost leaves these views to say it themselves.
+ */
 function LoadError({ message }: { message: string }) {
   return (
-    <p className="k-load-error" role="alert">
-      This page could not load: {message}
-    </p>
+    <div className="k-load-error">
+      <PartProblem text={`its records could not be listed: ${message}`} />
+    </div>
   );
 }
 

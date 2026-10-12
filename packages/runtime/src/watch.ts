@@ -12,6 +12,7 @@
 // all along.
 
 import type { Id, Resolved } from "potyro";
+import { reportAppFailure } from "@potyro/host";
 import type { RuntimeCore } from "./core.js";
 
 export type Unsubscribe = () => void;
@@ -116,7 +117,13 @@ export function watchPageQuery(
     () =>
       core.queryPage(pageId, read()).then(
         ({ rows }): QueryState => ({ rows, loading: false }),
-        (e: unknown): QueryState => ({ rows: [], loading: false, error: failed(`page "${pageId}"`, e) }),
+        (e: unknown): QueryState => {
+          // A page's rows are its filter, sort and query: app code. Whoever shows the page says so
+          // where the rows would be (#271); the rest of the app is untouched.
+          const error = failed(`page "${pageId}"`, e);
+          reportAppFailure({ app: core.definition.id, what: `page ${pageId}`, message: error });
+          return { rows: [], loading: false, error };
+        },
       ),
     cb,
   );
