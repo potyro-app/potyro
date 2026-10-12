@@ -16,6 +16,7 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { libraryLock, LockError, parseLock, type AppLock } from "./app-lock.js";
 import { parseDeclaration, type AppDeclaration } from "./app-declaration.js";
+import { isBundleFormat } from "./export.js";
 
 export interface PackagedFile {
   path: string;
@@ -136,7 +137,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
     names.map((n) => n.slice(prefix.length)).find((n) => !n.includes("/") && /\.app\.[jt]sx?$/.test(n));
   if (!sourceName) throw new AppPackageError("No app source in the zip (expected app.ts or app.tsx)");
 
-  const isBundle = manifest.format === "potyro-bundle/1";
+  const isBundle = isBundleFormat(manifest.format);
   const declared = parseDeclaration(manifest.app);
   const under = (folder: string): PackagedFile[] =>
     isBundle
