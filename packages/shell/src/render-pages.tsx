@@ -100,6 +100,14 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
   };
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onRejection);
+  // A view that crashes is held in its own part (views/part-failure.tsx, #271), so it never reaches the
+  // boundary below: the runtime hears it instead, and here it is the same error it always was.
+  let crashedNow = false;
+  const stopListening = runtime.onFailure((f) => {
+    if (!f.what.startsWith("view ")) return;
+    crashedNow = true;
+    errors.push(`page "${current}" crashed while showing: ${f.message}`);
+  });
 
   try {
     for (const page of pages) {
@@ -114,6 +122,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
       document.body.appendChild(host);
       const root = createRoot(host);
       let crashed = false;
+      crashedNow = false;
       try {
         const props = { runtime, pageId: page.id, params: page.params, setParam: () => {}, navigate: () => {} };
         const view = page.layout ? createElement(LayoutHost, { ...props, layout: page.layout }) : createElement(ViewHost, props);
@@ -131,7 +140,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
         await settled(host, settleMs);
         rendered++;
         shown.push(page.id);
-        if (crashed) continue;
+        if (crashed || crashedNow) continue;
         if (host.querySelector(".k-loading")) warnings.push(`page "${page.id}" was still loading after ${settleMs / 1000}s`);
         else if (!(host.textContent ?? "").trim() && !host.querySelector("img, canvas, svg, video, input, button")) {
           warnings.push(`page "${page.id}" showed nothing at all`);
@@ -148,6 +157,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
       }
     }
   } finally {
+    stopListening();
     console.warn = original.warn;
     console.error = original.error;
     window.removeEventListener("error", onError);

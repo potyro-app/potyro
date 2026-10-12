@@ -246,6 +246,26 @@ async function loadAccountThroughRelay<T>(
   }
 }
 
+/** The storage opening in progress, if any: the next one waits for it. */
+let lastStorageOpening: Promise<unknown> = Promise.resolve();
+
+/**
+ * cojson's storage over a driver, one opening at a time.
+ *
+ * Opening storage runs cojson's schema migrations: it reads `user_version`, then runs every migration
+ * past it. The worker database is SHARED — one connection per name for every caller, each with its
+ * own driver wrapper (see `openWorkerSqlite`) — so an app's store and the launcher's account read can
+ * open storage over the same database at the same moment. Both then read version 0, both run the
+ * migrations, and the second dies on "duplicate column name: bytesSinceLastSignature", failing the
+ * app's boot on a device's first sync. Queued, the second reads the version the first wrote and runs
+ * nothing. Openings are a handful per boot, so one queue for all of them costs nothing measurable.
+ */
+export function storageOver(driver: SqliteDriverAsync): ReturnType<typeof getSqliteStorageAsync> {
+  const opening = lastStorageOpening.then(() => getSqliteStorageAsync(driver as never));
+  lastStorageOpening = opening.catch(() => undefined);
+  return opening;
+}
+
 /**
  * The account half of opening a store: the device's identity, its profile, and the relay — without
  * any app's space.
@@ -269,7 +289,7 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
   // built over the handle it passed. Only the storage differs — everything below is identical.
   const driver = opts.driver ?? (opts.db ? createJazzSqliteDriver(opts.db) : null);
   if (!driver) throw new Error("createJazzStore needs either a database handle or a driver.");
-  const storage = await getSqliteStorageAsync(driver as never);
+  const storage = await storageOver(driver);
   const durability = createDurabilityTracker();
 
   // ---- 1. device identity --------------------------------------------------------------------

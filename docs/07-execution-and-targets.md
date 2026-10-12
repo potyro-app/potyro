@@ -71,8 +71,23 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   no files; an export bundle installs as one too. `pnpm pack:app <app.tsx> [file …] [--files dir]
   [--seed seed.json]` makes one.
 - **Add an app** (launcher) takes a package or the app's file with the files it uses from this
-  device, a link, or pasted source. It reads the app **in the sealed box** to show a card — name,
-  what it keeps, what it asks for, what it ships — before anything is saved.
+  device, a link, or pasted source. It shows a card — name, what it keeps, what it asks for, what it
+  ships — before anything is saved.
+- **The card never runs code** (#271). `pnpm pack:app`, and the Export bundle, write what the app
+  declares into `manifest.json` as `app`: the definition with every function replaced by the
+  isolate's marker (`store/src/app-declaration.ts`). `pack:app` reads it where the author packs it,
+  in Node, so a top level that needs `Intl` still declares itself. The card is drawn from that. A
+  package without it (an older one, pasted source) is read in the sealed box instead; if that
+  throws, the card still comes up and says the app could not be previewed — never "does not load".
+  If the code, once loaded, names a different app than its declaration, it is not added.
+- **A test load at install** (#271). Before the person confirms, the module and its libraries load in
+  the sealed box on a throwaway store and the generator's smoke run puts sample records through its
+  computed values, filters, actions and reminders (`shell/src/app-trial.ts`). A ReferenceError or
+  TypeError on a global the box lacks is named in plain words on the card ("It uses a feature shared
+  apps don't have yet: date and number formatting (Intl)", `missing-features.ts`), with "Run it as my
+  own app" beside it for a file or paste. An install link (`#add=`) goes through the same card and
+  the same test load. (A `#join=` invite asks about trust before the app's code has arrived, so it
+  cannot be tried first.)
 - **Trust at install** (owner, 2026-10-11): everything comes in **sealed**. For a file from this
   device or pasted source the card offers "I wrote this, run it as mine"; **a link never does**,
   and an update from a link drops a trusted app back into the sealed box, so a link cannot put new

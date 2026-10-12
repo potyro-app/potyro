@@ -8,7 +8,7 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
-import { copyStoreData, createMemorySqliteStore, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { copyStoreData, createMemorySqliteStore, declareApp, packBundle, unpackBundle, type Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
 import { guardedStore } from "./read-only-store.js";
@@ -98,6 +98,8 @@ async function exportApp(
         mode: "snapshot",
         exportedAt: new Date().toISOString(),
         entities: Object.keys(def.entities),
+        // What the app is, as data: a device adding this bundle describes it without running it (#271).
+        app: declareApp(def),
       },
       appSource,
       chat,

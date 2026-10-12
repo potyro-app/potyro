@@ -2,7 +2,7 @@
 // few page-aware extras the shell/views use. Views consume this; never Store/Host/Caps.
 
 import type { AppDefinition, Ctx, Id, PotyroRecord, Resolved, Runtime } from "potyro";
-import type { BindingRef } from "@potyro/host";
+import { onAppFailure, reportAppFailure, type AppFailure, type BindingRef } from "@potyro/host";
 import { RuntimeCore, type RuntimeDeps } from "./core.js";
 import { useEntityQuery, usePageQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 import { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
@@ -55,7 +55,17 @@ export interface PotyroRuntime extends Runtime {
    * the store: a write still on its way would otherwise land on a closed database and be lost.
    */
   settle(): Promise<void>;
+  /**
+   * Hear this app's contained failures (#271): a computed value, a filter, an action or a view that
+   * threw and was kept to that part. `what` names the part in the app's own terms — `computed
+   * meal.kcal`, `page today`, `view today#1`, `action meal.log`. Returns the unsubscribe.
+   */
+  onFailure(cb: (failure: AppFailure) => void): () => void;
+  /** Say that a part of this app failed and was contained — for the views that contain it. */
+  reportFailure(what: string, error: unknown): void;
 }
+
+const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
   const core = new RuntimeCore(deps);
@@ -90,10 +100,20 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       try {
         await core.runPageAction(pageId, index, params);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = messageOf(e);
         deps.ui.toast(message);
+        reportAppFailure({ app: core.definition.id, what: `page action ${pageId}[${index}]`, message });
         console.warn(`[potyro] page action ${pageId}[${index}] failed:`, e);
       }
+    },
+    onFailure(cb) {
+      const app = core.definition.id;
+      return onAppFailure((f) => {
+        if (f.app === app) cb(f);
+      });
+    },
+    reportFailure(what, error) {
+      reportAppFailure({ app: core.definition.id, what, message: messageOf(error) });
     },
     core,
     get definition(): AppDefinition {
@@ -160,8 +180,9 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       try {
         await core.runAction(entity, key, id, input);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = messageOf(e);
         deps.ui.toast(message);
+        reportAppFailure({ app: core.definition.id, what: `action ${entity}.${key}`, message });
         console.warn(`[potyro] action ${entity}.${key} failed:`, e);
       }
     },

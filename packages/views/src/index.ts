@@ -1,5 +1,6 @@
 // @potyro/views — view registry + built-in views.
 export { ViewHost } from "./host.js";
+export { PartBoundary, PartProblem, PART_PROBLEM, describePartFailure, usePartFailures } from "./part-failure.js";
 export { LayoutHost, type LayoutHostProps } from "./layout-host.js";
 export { defaultRegistry, resolveViewComponent } from "./registry.js";
 export { ListView, GalleryView, TableView, DetailView } from "./builtins.js";

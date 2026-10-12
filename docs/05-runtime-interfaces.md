@@ -180,6 +180,20 @@ export function activeFailureListeners(): number; // for tests: a run must leave
 
 Listening changes nothing about the containment; a listener that throws is ignored.
 
+**A failure stays where it happens (#271).** Every part of an app is code that can throw — on data
+it did not expect, or in the sealed box on a feature it does not have — and one part failing fails
+only that part. Each is reported under a name in the app's own terms:
+
+| `what` | Contained by | What the person sees |
+|---|---|---|
+| `computed meal.kcal` | host/resolve.ts — the value is empty | on every view of `meal`: "This part of the app hit a problem: “Kcal” could not be worked out for some records: …" |
+| `page today` | runtime/watch.ts — the page's filter, sort or query | where its rows would be: "… its records could not be listed: …" |
+| `view today#1` | views `PartBoundary`, around each view a page shows | in that view's place: "… it could not be shown: …"; the views beside it and every other page carry on |
+| `action meal.log`, `page action today[0]` | runtime `runAction` / `runPageAction` | a toast, as before |
+
+A library that throws while it loads takes the module with it: the bundle is one script, so there is
+no smaller part to fail. The Add-an-app card's test load is what catches that, before install.
+
 ## Runtime API (packages/runtime) — what views consume
 
 ```ts
@@ -194,6 +208,9 @@ export interface Runtime {
   patch(entity: string, id: Id, data: Partial<Record>): Promise<void>;
   remove(entity: string, id: Id): Promise<void>;
   reconcileReminders(): Promise<void>;
+  // #271: this app's contained failures (above), and a way for a view to report its own.
+  onFailure(cb: (f: AppFailure) => void): () => void;
+  reportFailure(what: string, error: unknown): void;
 }
 ```
 
