@@ -3,12 +3,15 @@
 // The card is the point. Before anything is saved it says what the app is called, what it keeps,
 // what it would ask this device for, what it ships with, which libraries it fetches and from where
 // (#266), and — when the same app is here already — that this is an update. Trust is chosen on the card, never assumed: sealed unless the person says
-// "I wrote this", which a link cannot offer.
+// "I wrote this", which a link cannot offer. The card is drawn from what the package declares, never by
+// running the app (#271); a test load in the sealed box then says, in plain words, what the app would
+// miss there, and offers to run it as theirs instead.
 import { useEffect, useRef, useState } from "react";
 import { pickFilesFromInput } from "@potyro/capabilities";
 import type { AppPackage } from "@potyro/store";
 import { gatherFromFiles, gatherFromLink, gatherFromPaste, inspectPackage, installPackage, type AddSource, type Inspected, type Installed } from "./add-app.js";
 import { describeLibrary, formatSize } from "./package-libraries.js";
+import { describeMissing } from "./missing-features.js";
 import { navigateTo } from "./router.js";
 
 type Step =
@@ -67,7 +70,7 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
       const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode, link: step.link });
       // Something to say before opening: changed files kept, files the new version dropped, or a
       // library that cannot start in the sealed box (known only once it was fetched).
-      if (done.sealedProblem || (done.updated && (done.files.kept.length || done.files.removed.length))) setStep({ kind: "updated", done });
+      if (done.sealedProblem || done.missing?.length || (done.updated && (done.files.kept.length || done.files.removed.length))) setStep({ kind: "updated", done });
       else navigateTo({ kind: "user", id: done.app.id });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -158,7 +161,11 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
             <p>
               <strong>{step.done.app.name}</strong> {step.done.updated ? "is updated, with your data as it was." : "is added."}
             </p>
-            {step.done.sealedProblem ? (
+            {step.done.missing?.length ? (
+              <p className="k-add-app-sealed" role="alert">
+                <span aria-hidden>⚠</span> {describeMissing(step.done.missing)} In the sealed box, the parts of it that use {step.done.missing.length === 1 ? "it" : "them"} will not work until you let it run as yours.
+              </p>
+            ) : step.done.sealedProblem ? (
               <p className="k-add-app-sealed" role="alert">
                 <span aria-hidden>⚠</span> {step.done.sealedProblem} In the sealed box it will not open until you let it run as yours.
               </p>
@@ -235,11 +242,11 @@ function Card({
       <dl className="k-add-app-facts">
         <div>
           <dt>Keeps</dt>
-          <dd>{app.keeps.length ? list(app.keeps) : "nothing of its own"}</dd>
+          <dd>{app.keeps.length ? list(app.keeps) : app.preview === "unavailable" ? "not known until it runs" : "nothing of its own"}</dd>
         </div>
         <div>
           <dt>Asks for</dt>
-          <dd>{app.asks.length ? list(app.asks) : "nothing on this device"}</dd>
+          <dd>{app.asks.length ? list(app.asks) : app.preview === "unavailable" ? "not known until it runs" : "nothing on this device"}</dd>
         </div>
         {app.files.length ? (
           <div>
@@ -282,7 +289,30 @@ function Card({
           {fetches === 1 ? "It is" : "They are"} fetched once, when you add the app, and kept with it: after that the app works without the internet.
         </p>
       ) : null}
-      {app.sealedProblem ? (
+      {app.preview === "unavailable" ? (
+        <p className="k-add-app-note k-add-app-unpreviewed" role="note">
+          This app could not be previewed here, so what it keeps and asks for is not shown yet.
+          {app.previewProblem ? <span className="k-muted"> ({app.previewProblem})</span> : null}
+        </p>
+      ) : null}
+      {sealed && app.missing.length ? (
+        <div className="k-add-app-sealed k-add-app-missing" role="note">
+          <p>
+            <span aria-hidden>⚠</span> {describeMissing(app.missing)} In the sealed box, the parts of it that use {app.missing.length === 1 ? "it" : "them"} will not work.
+          </p>
+          {source === "link" ? (
+            <p className="k-muted">Once it is added and you trust it, you can let it run as yours from its badge.</p>
+          ) : (
+            <button type="button" className="k-add" onClick={() => setMine(true)}>
+              Run it as my own app
+            </button>
+          )}
+        </div>
+      ) : sealed && app.trialProblem ? (
+        <p className="k-add-app-sealed" role="note">
+          <span aria-hidden>⚠</span> It could not be tried in the sealed box: {app.trialProblem}
+        </p>
+      ) : app.sealedProblem ? (
         <p className="k-add-app-sealed" role="note">
           <span aria-hidden>⚠</span> {app.sealedProblem}
           {sealed ? " In the sealed box it will not open until you let it run as yours." : null}
