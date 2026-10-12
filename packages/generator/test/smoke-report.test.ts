@@ -42,6 +42,7 @@ describe("smokeReport", () => {
     const report = smokeReport(await smokeApp(app((r) => ((r as { grams?: number }).grams ?? 0) * 2) as never));
     expect(report.errors).toEqual([]);
     expect(report.ran).toMatch(/3 records, 2 pages, 3 computed values/);
+    expect(report.pages).toEqual(["meals", "heavy"]);
   });
 });
 

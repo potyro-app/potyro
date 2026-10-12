@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCorpus, exampleFromCorpus, inCorpus, readCorpus, searchCorpus, type Corpus } from "../src/corpus.js";
+import { buildCorpus, exampleFromCorpus, inCorpus, primeCorpus, readCorpus, searchCorpus, type Corpus } from "../src/corpus.js";
 import { collectCorpusFiles } from "../src/corpus-files.js";
 import { CORPUS } from "../src/corpus.generated.js";
 import { loadCorpus } from "../src/load-corpus.js";
@@ -92,5 +92,36 @@ describe("exampleFromCorpus", () => {
 
   it("is undefined when no app uses it", () => {
     expect(exampleFromCorpus(small, "ctx.bluetooth")).toBeUndefined();
+  });
+});
+
+describe("primeCorpus — retrieval done by the harness before the first turn (#262)", () => {
+  const corpus = buildCorpus([
+    { path: "examples/recipes.app.tsx", text: 'export default defineApp({ id: "recipes", entities: { recipe: { fields: { rating: { type: "number", min: 1, max: 5 } } } } });' },
+    { path: "examples/places.app.ts", text: 'export default defineApp({ id: "places", pages: [{ id: "map", view: { type: "map", entity: "place", camera: { lat: 1, lng: 2 } } }] });' },
+    { path: "docs/04-app-module-api.md", text: "## Map camera\n\nA map view takes `camera` to open on a place. The camera can be a function of ctx." },
+    { path: "packages/schema/src/types/app.ts", text: "export interface MapView { camera?: Dynamic<MapCamera>; }" },
+  ]);
+  const editing = 'export default defineApp({ id: "trips", pages: [{ id: "all", view: { type: "list", entity: "trip" } }] });';
+
+  it("puts the passages that answer the request first, from at most two files, with their paths", () => {
+    const out = primeCorpus(corpus, "open the map on the camera position of the selected place", editing);
+    expect(out).toContain("docs/04-app-module-api.md");
+    expect(out).toContain("examples/places.app.ts");
+    expect(out).not.toContain("recipes.app.tsx");
+    expect((out.match(/^--- /gm) ?? []).length).toBeLessThanOrEqual(2);
+  });
+
+  it("never offers the app being edited back to itself", () => {
+    const self = 'export default defineApp({ id: "recipes", entities: {} });';
+    expect(primeCorpus(corpus, "add a rating to recipes", self)).not.toContain("recipes.app.tsx");
+  });
+
+  it("is empty when nothing in the corpus speaks to the request", () => {
+    expect(primeCorpus(corpus, "bluetooth heart-rate pairing", editing)).toBe("");
+  });
+
+  it("stays small", () => {
+    expect(primeCorpus(CORPUS, "a custom view with a canvas that draws the week", editing).length).toBeLessThan(3500);
   });
 });

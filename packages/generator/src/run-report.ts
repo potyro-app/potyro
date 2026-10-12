@@ -12,6 +12,8 @@ export interface RunReport {
   warnings: string[];
   /** What actually ran, so a pass with nothing to run is visible: "3 pages, 2 actions". */
   ran: string;
+  /** The pages that ran, when known: a warning about a page the original never had is not a regression. */
+  pages?: string[];
 }
 
 const MAX_LINES = 12;
@@ -97,8 +99,16 @@ export function regressionGate(run: (source: string) => Promise<RunReport>, orig
     const [before, now] = await Promise.all([baseline, runSafely(run, candidate)]);
     const errors = split(now.errors, before.errors);
     const warnings = split(now.warnings, before.warnings);
+    // A warning about a page the original did not have is the new page being new — a Favourites page
+    // with nothing favourited yet shows nothing, and that is right. Only a page that changed is a
+    // regression. Errors are never excused this way: a new page that crashes is the change's.
+    const known = before.pages ? new Set(before.pages) : null;
+    const aboutNewPage = (w: string): boolean => {
+      const m = /page "([^"]+)"/.exec(w);
+      return Boolean(known && m && !known.has(m[1]!));
+    };
     return {
-      report: { errors: errors.added, warnings: warnings.added, ran: now.ran },
+      report: { errors: errors.added, warnings: warnings.added.filter((w) => !aboutNewPage(w)), ran: now.ran, ...(now.pages ? { pages: now.pages } : {}) },
       preexisting: { errors: errors.kept, warnings: warnings.kept, ran: before.ran },
     };
   };
@@ -118,9 +128,11 @@ export async function runSafely(run: (source: string) => Promise<RunReport>, sou
 
 /** Two reports as one — the logic run and the render, say. */
 export function mergeRuns(a: RunReport, b: RunReport): RunReport {
+  const pages = a.pages || b.pages ? [...new Set([...(a.pages ?? []), ...(b.pages ?? [])])] : undefined;
   return {
     errors: [...a.errors, ...b.errors],
     warnings: [...a.warnings, ...b.warnings],
     ran: [a.ran, b.ran].filter(Boolean).join(", "),
+    ...(pages ? { pages } : {}),
   };
 }

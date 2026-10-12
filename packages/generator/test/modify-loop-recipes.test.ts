@@ -61,7 +61,7 @@ async function addRating(original: string) {
   try {
     const out = await runModifyLoop({
       engine,
-      tools: buildDiscoveryTools({ check, run }),
+      tools: buildDiscoveryTools({ check, run, source: original }),
       system: "contract",
       instruction: "add a 1-5 star rating",
       source: original,
