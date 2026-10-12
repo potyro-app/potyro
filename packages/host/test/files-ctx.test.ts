@@ -112,6 +112,32 @@ describe("ctx.files", () => {
     expect(await ctx.files.list()).toEqual([]);
   });
 
+  it("the app's own code (.modules/, .src/) is not the app's to see or change (#266, #258)", async () => {
+    const store = new MemoryStore();
+    await store.open("folder");
+    const space = fileSpace(store);
+    const lib = await space.write(".modules/abc.js", new Blob(["export const x = 1;"]), { origin: "shipped" });
+    await space.write(".src/plan.ts", new Blob(["export const weeks = 12;"]), { origin: "shipped" });
+    await space.write("plan.json", new Blob(["{}"]), { origin: "shipped" });
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app: defineApp(DEFINITION as never) });
+    const ctx = host.makeCtx(loaded, { store, caps: new FakeCapabilities({ files: picked() }), ui, nav } as MakeCtxBase);
+
+    expect((await ctx.files.list()).map((f) => f.path)).toEqual(["plan.json"]);
+    expect(await ctx.files.list(".src")).toEqual([]);
+    expect(await ctx.files.stat(".src/plan.ts")).toBeNull();
+    expect(await ctx.files.stat({ id: lib.id })).toBeNull();
+    await expect(ctx.files.text(".modules/abc.js")).rejects.toThrow(/No file/);
+    await expect(ctx.files.bytes({ id: lib.id })).rejects.toThrow(/No file/);
+    await expect(ctx.files.write(".src/plan.ts", "export const weeks = 1;")).rejects.toThrow(/kept for the app's own code/);
+    await expect(ctx.files.write("./.modules/abc.js", "x")).rejects.toThrow(/kept for the app's own code/);
+    await expect(ctx.files.rename("plan.json", ".src/plan.json")).rejects.toThrow(/kept for the app's own code/);
+    await expect(ctx.files.remove(".src/plan.ts")).rejects.toThrow(/No file/);
+    await expect(ctx.files.import({ folder: ".modules" })).rejects.toThrow(/kept for the app's own code/);
+    await expect(ctx.files.export(".src/plan.ts")).rejects.toThrow(/No file/);
+    expect(await (await space.read(".src/plan.ts"))!.text()).toBe("export const weeks = 12;");
+  });
+
   it("says which file is not valid JSON", async () => {
     const store = new MemoryStore();
     await store.open("folder");

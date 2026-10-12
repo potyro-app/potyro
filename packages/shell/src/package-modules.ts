@@ -72,6 +72,12 @@ ${code}
 }`;
 }
 
+/** Whether an error is `wrapForIsolate`'s: a library that could not start in the sealed box. */
+export function isLibraryStartError(e: unknown): boolean {
+  const message = e instanceof Error ? e.message : String(e);
+  return /needs a full web page to work \(|could not start: /.test(message);
+}
+
 /** Anything, called or read or built, is itself: enough for an app's top level to run and say who it is. */
 const STAND_IN = `var h = new Proxy(function () {}, {
   get: function (_t, k) {

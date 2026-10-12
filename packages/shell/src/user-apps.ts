@@ -14,6 +14,7 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
+import type { AppLock } from "@potyro/store";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -47,6 +48,14 @@ export interface UserApp {
    * worked perfectly and made it look like a sync bug.
    */
   joined?: boolean;
+  /**
+   * What the app's code is made of beyond `source` (#266, #258): each library it imports by URL and
+   * each of its package's own modules, by the file in its space that holds it and that file's digest.
+   * The bundler runs nothing that does not match. It lives HERE, beside the source, rather than in
+   * the app's file space, because that space syncs: someone sharing the app must not be able to
+   * change code that runs on this device by changing a file.
+   */
+  lock?: AppLock;
 }
 
 function read(): UserApp[] {
@@ -92,7 +101,19 @@ export function getUserApp(id: string): UserApp | undefined {
  *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
  *  where the new source came from; they are what the History panel shows next to each version. */
 export async function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; joined?: boolean; link?: string; origin?: VersionOrigin; note?: string; rationale?: string },
+  input: {
+    id?: string;
+    name: string;
+    source: string;
+    trusted?: boolean;
+    sync?: boolean;
+    joined?: boolean;
+    link?: string;
+    lock?: AppLock;
+    origin?: VersionOrigin;
+    note?: string;
+    rationale?: string;
+  },
   now: string,
 ): Promise<UserApp> {
   const apps = read();
@@ -135,6 +156,8 @@ export async function saveUserApp(
     joined: input.joined ?? prev?.joined,
     // Carried for the same reason: a link the app came from is how it can be updated later.
     link: input.link ?? prev?.link,
+    // Carried too: an edit to the source must not cut the app off from the libraries it imports.
+    lock: input.lock ?? prev?.lock,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the

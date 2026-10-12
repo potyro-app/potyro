@@ -7,7 +7,8 @@ import { structureSchema, checkReferences, describeIssue } from "potyro";
 import type { AppShape } from "@potyro/runtime";
 import { MemoryStore } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
-import { createAppBundler } from "./app-bundler.js";
+import { createAppBundler, type BundleOptions } from "./app-bundler.js";
+import type { ModuleSource } from "./package-modules.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -64,10 +65,11 @@ export function validateDefinition(def: unknown): string[] {
 
 /** Compose a source UNTRUSTED (in the isolate, throwaway store) and return its runtime definition.
  *  Throws if the source fails to compile/bundle. Never runs the source directly: Edit mode edits
- *  imported apps too, and their code must not get ambient authority just to be inspected. */
-async function composeUntrusted(source: string): Promise<{ definition: unknown }> {
+ *  imported apps too, and their code must not get ambient authority just to be inspected.
+ *  `modules` is the app's package — its libraries and its own modules — when it has one. */
+async function composeUntrusted(source: string, modules?: ModuleSource, opts?: BundleOptions): Promise<{ definition: unknown }> {
   const bundle = await createAppBundler();
-  const bundleCode = await bundle(source);
+  const bundleCode = await bundle(source, modules, opts);
   const store = new MemoryStore();
   await store.open("validate");
   const composed = await compose({
@@ -84,21 +86,21 @@ async function composeUntrusted(source: string): Promise<{ definition: unknown }
 
 /** Bundle a source, run it untrusted with a throwaway store, and return its structure issues. Throws
  *  if the source fails to compile/bundle (that surfaces to the caller as a hard error). */
-export async function buildAndValidate(source: string): Promise<string[]> {
-  return validateDefinition((await composeUntrusted(source)).definition);
+export async function buildAndValidate(source: string, modules?: ModuleSource): Promise<string[]> {
+  return validateDefinition((await composeUntrusted(source, modules)).definition);
 }
 
 /**
  * What a source would install as, read in the sealed box and never run with authority (#253): its
  * definition, or the reason it cannot load, and its structure issues.
  */
-export async function inspectSource(source: string): Promise<{ definition: unknown; issues: string[] }> {
-  const { definition } = await composeUntrusted(source);
+export async function inspectSource(source: string, modules?: ModuleSource, opts?: BundleOptions): Promise<{ definition: unknown; issues: string[] }> {
+  const { definition } = await composeUntrusted(source, modules, opts);
   return { definition, issues: validateDefinition(definition) };
 }
 
 /** The shape `guardedModify` compares: pages and entities of a source, loaded in the isolate. */
-export async function loadDefinition(source: string): Promise<{ pages: AppShape["pages"]; entities: AppShape["entities"] }> {
-  const def = (await composeUntrusted(source)).definition as { pages: AppShape["pages"]; entities?: AppShape["entities"] };
+export async function loadDefinition(source: string, modules?: ModuleSource): Promise<{ pages: AppShape["pages"]; entities: AppShape["entities"] }> {
+  const def = (await composeUntrusted(source, modules)).definition as { pages: AppShape["pages"]; entities?: AppShape["entities"] };
   return { pages: def.pages, entities: def.entities };
 }
