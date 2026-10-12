@@ -116,3 +116,47 @@ describe("the apps your account knows about", () => {
     expect(apps[0]).toMatchObject({ group: "co_zGROUP", root: "co_zROOT" });
   });
 });
+
+describe("an account from before the rename", () => {
+  // Builds before #248 kept the list under `kartaApps` on the account; the rename changed the key and
+  // moved nothing, so every account's list looked empty to the new build.
+  type Node = {
+    expectCurrentAccount(hint: string): Promise<{ get(k: string): unknown; set(k: string, v: unknown, p?: string): void }>;
+    createGroup(): { createMap(): { id: string; set(k: string, v: unknown, p?: string): void; get(k: string): unknown } };
+  };
+  async function writtenBeforeTheRename(node: unknown, apps: Array<typeof APP>) {
+    const n = node as Node;
+    const map = n.createGroup().createMap();
+    for (const { id, ...rest } of apps) map.set(id, JSON.stringify(rest), "private");
+    (await n.expectCurrentAccount("test")).set("kartaApps", map.id, "private");
+    return map;
+  }
+
+  it("still lists the apps recorded under the old key", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    await writtenBeforeTheRename(handle.node, [APP, { ...APP, id: "plants", name: "Plants" }]);
+    expect((await readAccountApps(handle.node)).map((a) => a.id)).toEqual(["plants", "split"]);
+  });
+
+  it("keeps writing to that list rather than starting a second, empty one", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    const old = await writtenBeforeTheRename(handle.node, [APP]);
+    await publishAppToAccount(handle.node, { ...APP, id: "groceries", name: "Groceries" });
+
+    expect(old.get("groceries")).toBeTruthy();
+    const account = await (handle.node as unknown as Node).expectCurrentAccount("test");
+    expect(account.get("potyroApps")).toBe(old.id);
+    expect((await readAccountApps(handle.node)).map((a) => a.id)).toEqual(["groceries", "split"]);
+  });
+
+  it("reads both where a device already started a new list, and a removal holds", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    // A new list first (a device on the renamed build), then the old one arriving from the relay.
+    await publishAppToAccount(handle.node, { ...APP, id: "groceries", name: "Groceries" });
+    await writtenBeforeTheRename(handle.node, [APP, { ...APP, id: "plants", name: "Plants" }]);
+    expect((await readAccountApps(handle.node)).map((a) => a.id)).toEqual(["groceries", "plants", "split"]);
+
+    expect(await removeAppFromAccount(handle.node, "split")).toBe(true);
+    expect((await readAccountApps(handle.node)).map((a) => a.id)).toEqual(["groceries", "plants"]);
+  });
+});
