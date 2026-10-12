@@ -33,7 +33,7 @@ export { runAgentLoop, type LoopOutcome, type LoopStep, type LoopDeps } from "./
 export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
-export { runModifyLoop, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
+export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
 export { MATERIAL_MAX } from "./ask.js";

@@ -308,7 +308,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
     if (outcome.kind === "question") return say({ kind: "question", text: outcome.text });
     if (outcome.kind === "refusal") return say({ kind: "refusal", text: outcome.text });
-    if (outcome.kind === "failed") return say({ kind: "failure", text: outcome.text });
+    if (outcome.kind === "failed") return say({ kind: "failure", text: outcome.text, ...(outcome.detail ? { detail: outcome.detail } : {}) });
     // The ladder's third rung (#132): what could not be done is a host gap, filed with the app's
     // diagnoses so Edit mode reads it back as already reported.
     if (outcome.kind === "source" && outcome.notDone?.length && appRef.current) {
