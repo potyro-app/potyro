@@ -139,6 +139,13 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   that touches `window`/`document` while loading fails with its own name: "chart.js 4.4.1 needs a
   full web page to work … this app can only run as yours". The card says so when the bytes came with
   the package; when they were fetched at install, the dialog says it right after.
+- **The Studio's checks stand libraries in.** Checking or running a candidate change — the modify
+  loop's check, run and shape gates, the Fix agent's verification, Edit mode's save check — happens in
+  the sealed box on purpose, so a library that needs a full web page would fail the app as the person
+  has it, and no change to it could pass. There every library the lock names loads as an inert
+  stand-in (`withLibrariesStoodIn`), the same for the original and the candidate; the app's own
+  modules stay real, a library the lock does not name is still refused, and the run says which
+  libraries it stood in for. Opening, saving and installing the app still run and check the real ones.
 - **History**: each version carries the libraries part of the lock as `lock.json` text; an upgrade is
   a version with a `lock.json` diff, and Restore brings its libraries back (their old bytes stay on
   the device, so offline), keeping the ones the app has now under them for its current modules.

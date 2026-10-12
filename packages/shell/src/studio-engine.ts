@@ -6,6 +6,7 @@
 // goes through the same contract, so changing engine changes the model and nothing else.
 
 import type { AppShape } from "@potyro/runtime";
+import type { GiveUp } from "@potyro/generator/agent";
 import { SYSTEM_PROMPT, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
@@ -22,7 +23,36 @@ export type Outcome =
   | { kind: "question"; text: string }
   /** Not the app's to change — an answer, not a failure. */
   | { kind: "refusal"; text: string }
-  | { kind: "failed"; text: string };
+  /** `text` is for the person; `detail`, when there is one, is what a developer needs to see why. */
+  | { kind: "failed"; text: string; detail?: string };
+
+/**
+ * A change that could not be made, as the person reads it (#266 follow-up).
+ *
+ * The loop's own reasons — "the model repeated itself (the reply repeats the previous one word for
+ * word; 3 candidates failed the check, 0 replies were not a change)" — are a developer's: they went
+ * on the card verbatim, to people who never write code. The card now says in plain words what
+ * happened and what to try; the loop's words are kept as `detail`, shown folded away under it.
+ */
+export function notChanged(result: { kind: "failed"; reason: string; cause?: GiveUp } | { kind: "stopped" } | { kind: "error"; error: unknown }): Extract<Outcome, { kind: "failed" }> {
+  if (result.kind === "stopped") return { kind: "failed", text: "Stopped. Nothing was changed." };
+  if (result.kind === "error") {
+    const detail = result.error instanceof Error ? result.error.message : String(result.error);
+    return { kind: "failed", text: "I couldn't make this change: something went wrong while working on it. Try again in a moment.", detail };
+  }
+  const text = {
+    candidates: "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way.",
+    repeated: "I couldn't make this change: I kept coming back to the same answer without finding one that works. Try saying it another way, or ask for a smaller step.",
+    steps: "I couldn't make this change: I ran out of tries before finding a version that works. Try asking for a smaller step.",
+    engine: "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key.",
+    // The one-turn guard (`guardedModify`): what came back could not be applied to the app.
+    none: "I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way.",
+  }[result.cause ?? "none"];
+  return { kind: "failed", text, detail: result.reason };
+}
+
+/** A request that is not the app's to change — an answer, said as one. */
+const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ kind: "refusal", text: `I didn't change the app: this isn't something it can change. ${text}` });
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
@@ -145,10 +175,10 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
             else progress(`Asked to try again: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
           },
         });
-        if (result.kind === "diagnosis") return { kind: "refusal", text: `Not changed — this is not the app's to change: ${result.text}` };
+        if (result.kind === "diagnosis") return notTheApps(result.text);
         if (result.kind === "question") return { kind: "question", text: result.text };
-        if (result.kind === "failed") return { kind: "failed", text: `Not changed — ${result.reason}` };
-        if (result.kind === "stopped") return { kind: "failed", text: "Not changed — stopped." };
+        if (result.kind === "failed") return notChanged(result);
+        if (result.kind === "stopped") return notChanged(result);
         const applied = result.via === "edits" ? `Applied ${plural(result.applied, "edit")}.` : "The model sent the whole file back instead of edits.";
         return { kind: "source", source: result.source, summary: describeNotDone(applied, result.notDone), notDone: result.notDone };
       }
@@ -166,8 +196,8 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       );
       // An answer, not a failure: red reads as "retry me", which is how the same wrong edit gets
       // asked for five times.
-      if (result.kind === "diagnosis") return { kind: "refusal", text: `Not changed — this is not the app's to change: ${result.text}` };
-      if (result.kind === "failed") return { kind: "failed", text: `Not changed — ${result.reason}` };
+      if (result.kind === "diagnosis") return notTheApps(result.text);
+      if (result.kind === "failed") return notChanged(result);
       const applied =
         result.via === "edits" ? `Applied ${plural(result.applied, "edit")}.` : "The model sent the whole file back instead of edits. Check that nothing else changed.";
       const summary = describeNotDone(applied, result.notDone);
@@ -175,7 +205,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       return { kind: "source", source: result.source, summary, notDone: result.notDone };
     } catch (e) {
       if (e instanceof Asked) return { kind: "question", text: e.question };
-      return { kind: "failed", text: `Not changed — ${e instanceof Error ? e.message : String(e)}` };
+      return notChanged({ kind: "error", error: e });
     }
   };
 

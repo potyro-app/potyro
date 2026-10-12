@@ -51,8 +51,18 @@ export type ModifyLoopOutcome =
     }
   | { kind: "diagnosis"; text: string }
   | { kind: "question"; text: string; transcript: ChatMessage[] }
-  | { kind: "failed"; reason: string }
+  /**
+   * It gave up. `reason` is for a developer (the step log, a transcript); `cause` is which way it
+   * gave up, so the person can be told in their own words (studio-engine.ts).
+   */
+  | { kind: "failed"; reason: string; cause: GiveUp }
   | { kind: "stopped" };
+
+/**
+ * How it gave up: the model repeated itself, every candidate failed the check, or the steps ran out
+ * — or, before the loop began, the chosen engine cannot drive it (`engine`, start-modify.ts).
+ */
+export type GiveUp = "repeated" | "candidates" | "steps" | "engine";
 
 export interface ModifyLoopDeps {
   engine: ChatEngine;
@@ -141,12 +151,12 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** Candidates whose warnings were already pointed out: sent again unchanged, they are accepted. */
   const warned = new Set<string>();
 
-  const gaveUp = (why: string): ModifyLoopOutcome => {
+  const gaveUp = (cause: GiveUp, why: string): ModifyLoopOutcome => {
     if (held) {
       deps.onStep?.({ kind: "candidate", passed: true, detail: `${why} — keeping the candidate that passed every check but a warning` });
       return held;
     }
-    return { kind: "failed", reason: why };
+    return { kind: "failed", reason: why, cause };
   };
   const budgetLine = (): string =>
     `${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed the check, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not a change`;
@@ -187,7 +197,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     previousReply = text;
     if (repeated) {
       deps.onStep?.({ kind: "unusable", detail: repeated });
-      return gaveUp(`the model repeated itself (${repeated}; ${budgetLine()})`);
+      return gaveUp("repeated", `the model repeated itself (${repeated}; ${budgetLine()})`);
     }
 
     const head = text.trimStart();
@@ -277,7 +287,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     deps.onStep?.({ kind: "candidate", passed: problem === null, detail: problem ?? passed });
     if (problem === null) return accepted;
     failedCandidates += 1;
-    if (candidates >= maxCandidates) return gaveUp(`${candidates} candidate${candidates === 1 ? "" : "s"} failed the check — the candidate budget is spent`);
+    if (candidates >= maxCandidates) return gaveUp("candidates", `${candidates} candidate${candidates === 1 ? "" : "s"} failed the check — the candidate budget is spent`);
     messages.push({ role: "assistant", content: text });
     messages.push({
       role: "user",
@@ -289,5 +299,5 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   }
 
   if (deps.signal?.aborted) return { kind: "stopped" };
-  return gaveUp(`gave up after ${maxSteps} step${maxSteps === 1 ? "" : "s"} (${budgetLine()})`);
+  return gaveUp("steps", `gave up after ${maxSteps} step${maxSteps === 1 ? "" : "s"} (${budgetLine()})`);
 }
