@@ -104,6 +104,14 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
                 {item.tone === "question" ? <span className="k-thread-q" aria-hidden>?</span> : null}
                 {item.text}
               </p>
+              {item.detail ? (
+                // The developer's words behind the plain ones, folded away: a person never needs them,
+                // and whoever reports the problem can still copy them.
+                <details className="k-thread-detail">
+                  <summary>Details</summary>
+                  <p>{item.detail}</p>
+                </details>
+              ) : null}
             </li>
           );
         }

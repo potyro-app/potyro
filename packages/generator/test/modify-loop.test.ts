@@ -112,6 +112,7 @@ describe("runModifyLoop", () => {
     const out = await runModifyLoop(base({ engine, maxSteps: 2 }));
     expect(out.kind).toBe("failed");
     expect(out.kind === "failed" && out.reason).toMatch(/2 step/);
+    expect(out.kind === "failed" && out.cause).toBe("steps");
   });
 
   describe("running the candidate (#262)", () => {
@@ -221,6 +222,7 @@ describe("runModifyLoop", () => {
       const out = await runModifyLoop(base({ engine }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
+      expect(out.kind === "failed" && out.cause).toBe("repeated");
     });
 
     it("a reply that is mostly one line said over and over stops the loop", async () => {
@@ -229,6 +231,7 @@ describe("runModifyLoop", () => {
       const out = await runModifyLoop(base({ engine }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
+      expect(out.kind === "failed" && out.cause).toBe("repeated");
       expect(seen).toHaveLength(1);
     });
   });
@@ -242,6 +245,7 @@ describe("runModifyLoop", () => {
       const out = await runModifyLoop(base({ engine, maxCandidates: 2, check: async (src) => (src.includes("bad") ? ["pages: bad"] : []) }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/2 candidates/);
+      expect(out.kind === "failed" && out.cause).toBe("candidates");
       expect(seen).toHaveLength(2);
     });
 
@@ -256,6 +260,7 @@ describe("runModifyLoop", () => {
       const out = await runModifyLoop(base({ engine, maxSteps: 3 }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/3 steps/);
+      expect(out.kind === "failed" && out.cause).toBe("steps");
     });
   });
 });

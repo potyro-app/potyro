@@ -47,7 +47,7 @@ export function modifyLoopRefusal(cfg: EngineConfig): string | undefined {
 
 export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutcome> {
   const refused = modifyLoopRefusal(opts.engine);
-  if (refused) return { kind: "failed", reason: refused };
+  if (refused) return { kind: "failed", reason: refused, cause: "engine" };
   // Every gate reads the app with its libraries standing in as inert values (#266): a library that
   // needs a full web page cannot start in the sealed box these checks run in, and with its real bytes
   // the app as the person has it failed the check too — so no change to it could ever pass. Its own

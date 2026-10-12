@@ -639,7 +639,7 @@ button {
    token it is, and a status line that says plainly whether Copy worked. The status keeps its height
    when empty so the buttons do not jump when it fills. */
 .k-input.k-share-link {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 0.82rem;
   color: var(--ink-soft);
 }
@@ -5772,6 +5772,29 @@ body:has(.k-tabbar) .k-toasts {
 .k-studio .k-thread-answer[data-tone="failure"] {
   border-left-color: var(--danger-line);
   color: var(--ink-soft);
+}
+/* The developer's words behind a failure: folded, quiet, and copyable when opened. */
+.k-studio .k-thread-detail {
+  max-width: 36rem;
+  margin: var(--space-1) 0 0 var(--space-3);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.k-studio .k-thread-detail > summary {
+  cursor: pointer;
+  width: fit-content;
+  border-radius: var(--radius-sm);
+}
+.k-studio .k-thread-detail > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-studio .k-thread-detail > p {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
 }
 .k-thread-working {
   display: flex;
