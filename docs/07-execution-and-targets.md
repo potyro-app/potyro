@@ -123,7 +123,11 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   the library's **whole import graph** (absolute and relative paths, literal dynamic imports) and
   locks every file, or refuses by the library's name: a URL without an exact version, a file the
   host does not serve, a bare package name inside a library, an `import()` of a value decided at run
-  time, a file loaded beside itself (`import.meta.url`). Nothing half-locked is kept.
+  time, a file loaded beside itself (`import.meta.url`). Nothing half-locked is kept. A library that
+  only *mentions* `require` (a browserify prelude's `typeof require == "function" && require`, as in
+  p5 1.x) is not refused: a browser has no `require`, so that code loads nothing, online or off.
+  Tested against the real esm.sh by `e2e/mood-sleep-trusted.spec.ts` (chart.js 4.5.1) and
+  `e2e/photo-garden-trusted.spec.ts` (p5 1.11.11); the demo apps are in `apps/`.
 - **The lock lives on the app's record** (`UserApp.lock`, beside its source), not in its synced file
   space: someone sharing the app must not be able to change code that runs here by changing a file.
   `.modules/` and `.src/` are hidden from `ctx.files` and cannot be written by the app.

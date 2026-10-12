@@ -104,6 +104,29 @@ describe("fetchLibraries", () => {
     await expect(fetchLibraries([ROOT], { esbuild, get: network(site) })).rejects.toThrow(/fancy-chart 4\.4\.1.*while it runs/);
   });
 
+  it("keeps a library that only mentions `require` — in a browser that never loads anything", async () => {
+    // A browserify bundle starts with `var r = typeof require == "function" && require` and calls `r`
+    // only for a module missing from its own map; esm.sh's build of p5 1.x is one. In the browser
+    // `require` does not exist, so nothing is loaded at run time, online or offline. The same goes for
+    // `Function("return this")().require("fs")`, which esbuild does not treat as an import at all.
+    const site = {
+      ...SITE,
+      [HELPER]: `var r = typeof require == "function" && require;\nexport const hex = (n) => "#" + n.toString(16);\nexport const maybe = () => r && r("vertx");\nexport const node = () => Function("return this")().require("fs");\n`,
+    };
+    const { lock, files } = await fetchLibraries([ROOT], { esbuild, get: network(site) });
+    expect(Object.keys(lock).sort()).toEqual([BUNDLE, COLOR, HELPER, ROOT].sort());
+
+    const mods = memoryModules(lock, new Map(files.map((f) => [f.path, f.data])));
+    const g: Record<string, unknown> = {};
+    new Function("globalThis", await bundleAppSource(`import { chart } from "${ROOT}";\nexport default { name: chart(1, 2) };`, esbuild, stubs, mods))(g);
+    expect((g.__potyroApp as { name: string }).name).toBe("chart of #1+#2");
+  });
+
+  it("still refuses a template-literal import that only resolves while it runs", async () => {
+    const site = { ...SITE, [HELPER]: "export const hex = (n) => import(`/locale/${n}.mjs`);\n" };
+    await expect(fetchLibraries([ROOT], { esbuild, get: network(site) })).rejects.toThrow(/fancy-chart 4\.4\.1.*while it runs/);
+  });
+
   it("refuses a library that fetches files of its own beside it while it runs", async () => {
     const site = { ...SITE, [HELPER]: `export const hex = (n) => "#" + n;\nexport const wasm = () => fetch(new URL("./color.wasm", import.meta.url));\n` };
     await expect(fetchLibraries([ROOT], { esbuild, get: network(site) })).rejects.toThrow(/@kurkle\/color 0\.3\.2 loads files of its own while it runs/);
