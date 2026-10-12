@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { lockEntryFor, moduleFileFor, srcKey, type AppLock } from "@potyro/store";
 import { bundleAppSource, bundleTrustedWith, type EsbuildLike } from "../src/app-bundler.js";
-import { memoryModules, type ModuleSource } from "../src/package-modules.js";
+import { memoryModules, standInNote, withLibrariesStoodIn, type ModuleSource } from "../src/package-modules.js";
 
 // The bundler's second plugin (#266, #258): libraries imported by URL and the package's own modules
 // are served from the app's file space, checked against the lock, and never fetched. Verified with
@@ -147,6 +147,22 @@ describe("libraries by URL (#266)", () => {
     const code = await bundleAppSource(`import { sum } from "${LIB}";\nconst boom = (globalThis as any).nope.x;\nexport default sum;`, esbuild, stubs, mods);
     expect(() => run(code)).toThrow(TypeError);
     expect(() => run(code)).not.toThrow(/fancy-sum/);
+  });
+
+  it("for the Studio's checks, every library the app has stands in, its own modules stay real, and one it lacks is still refused", async () => {
+    const DOM = "https://esm.sh/needs-dom@2.0.0?bundle";
+    const mods = withLibrariesStoodIn(await space({ libs: { [DOM]: `export const width = window.innerWidth;\n` }, src: { "plan.ts": `export const name = "Planned";\n` } }));
+    const code = await bundleAppSource(app(`import { width } from "${DOM}";\nimport { name } from "./plan.js";\nvoid width;`, `name`), esbuild, stubs, mods);
+    expect(run(code).name).toBe("Planned");
+    expect(standInNote(mods)).toMatch(/^needs-dom 2\.0\.0 was not run here/);
+    await expect(bundleAppSource(app(`import x from "${LIB}";\nvoid x;`, `"x"`), esbuild, stubs, mods)).rejects.toThrow(/fancy-sum 1\.2\.3.*not part of this app yet/);
+  });
+
+  it("a stand-in's prototype chain ends, so asking `instanceof` of it — as the isolate's marshalling does — returns", async () => {
+    const DOM = "https://esm.sh/needs-dom@2.0.0?bundle";
+    const mods = withLibrariesStoodIn(await space({ libs: { [DOM]: `export const width = window.innerWidth;\n` } }));
+    const code = await bundleAppSource(app(`import { width } from "${DOM}";\nconst isDate = String(width instanceof Date);`, `isDate`), esbuild, stubs, mods);
+    expect(run(code).name).toBe("false");
   });
 
   it("while inspecting, a library not fetched yet stands in as an inert value, so the card can be drawn", async () => {
