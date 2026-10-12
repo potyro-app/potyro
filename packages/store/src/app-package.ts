@@ -1,15 +1,18 @@
 // An app package (#253): what travels when an app is shared or installed.
 //
 //   app.ts | app.tsx     the source — the whole app, as today
+//   src/<path>           the app's own modules, imported from the source as `./plan.ts` (#258)
 //   files/<path>         files the app ships with; installed into its own folder as `shipped`
+//   lock.json            libraries the source imports by URL → their bytes in files/.modules/ (#266)
 //   seed.json            first records, `{ entity: [row, …] }`; applied once, on first install
-//   manifest.json        `{ format: "potyro-app/1", source, files: [{ path, size }] }`
+//   manifest.json        `{ format: "potyro-app/1", source, files: [{ path, size }], modules: […] }`
 //   chat.json            optional: the Studio conversation that made it, when the author included it
 //
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
 // seed — and an export bundle (`potyro-bundle/1`, which carries `app.ts` beside its data) is read as
 // one too, so a backup can be installed on a device that never had the app.
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { libraryLock, LockError, parseLock, type AppLock } from "./app-lock.js";
 
 export interface PackagedFile {
   path: string;
@@ -22,6 +25,17 @@ export interface AppPackage {
   /** What the source file was called (`app.tsx`, `piano.app.tsx`): decides JSX or not on bundling. */
   sourceName: string;
   files: PackagedFile[];
+  /**
+   * The app's own modules (#258), by path under `src/`: what `./plan.ts` in the source resolves to.
+   * Code, not data — kept apart from `files`, which the app reads at run time.
+   */
+  modules: PackagedFile[];
+  /**
+   * The libraries the source imports by URL and what their bytes must hash to (#266). Bytes the
+   * package carries are under `files/.modules/`; a library listed here without them is fetched at
+   * install, and must then match.
+   */
+  lock?: AppLock;
   /** First records by entity. Applied once, on first install; never on an update. */
   seed?: Record<string, Array<Record<string, unknown>>>;
   /** What the package was read from, for the record of where an app came from. */
@@ -38,6 +52,8 @@ const MANIFEST = "manifest.json";
 const SEED = "seed.json";
 const CHAT = "chat.json";
 const FILES = "files/";
+const SRC = "src/";
+const LOCK = "lock.json";
 const SOURCE_NAMES = ["app.tsx", "app.ts", "app.jsx", "app.js"];
 
 export class AppPackageError extends Error {
@@ -113,16 +129,26 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   if (!sourceName) throw new AppPackageError("No app source in the zip (expected app.ts or app.tsx)");
 
   const isBundle = manifest.format === "potyro-bundle/1";
-  const files: PackagedFile[] = isBundle
-    ? []
-    : names
-        .filter((n) => n.startsWith(prefix + FILES))
-        .map((n) => ({ path: n.slice(prefix.length + FILES.length), data: entries[n]! }))
-        .filter((f) => f.path !== "");
+  const under = (folder: string): PackagedFile[] =>
+    isBundle
+      ? []
+      : names
+          .filter((n) => n.startsWith(prefix + folder))
+          .map((n) => ({ path: n.slice(prefix.length + folder.length), data: entries[n]! }))
+          .filter((f) => f.path !== "");
+  const rawLock = isBundle ? undefined : at(LOCK);
+  let lock: AppLock | undefined;
+  try {
+    lock = rawLock ? parseLock(strFromU8(rawLock)) : undefined;
+  } catch (e) {
+    throw new AppPackageError(e instanceof LockError ? e.message : String(e));
+  }
   return {
     source: strFromU8(at(sourceName)!),
     sourceName,
-    files,
+    files: under(FILES),
+    modules: under(SRC),
+    lock,
     seed: isBundle ? undefined : parseSeed(at(SEED), SEED),
     chat: parseChat(at(CHAT)),
     kind: isBundle ? "bundle" : "package",
@@ -130,12 +156,20 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
 }
 
 /** Make a package zip. The inverse of `readAppPackage` for a `potyro-app/1` package. */
-export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat">): Uint8Array {
+export function packAppPackage(
+  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock">>,
+): Uint8Array {
+  const modules = pkg.modules ?? [];
   const sourceName = SOURCE_NAMES.includes(pkg.sourceName) ? pkg.sourceName : /x$/.test(pkg.sourceName) ? "app.tsx" : "app.ts";
   const out: Record<string, Uint8Array> = {
     [MANIFEST]: strToU8(
       JSON.stringify(
-        { format: APP_PACKAGE_FORMAT, source: sourceName, files: pkg.files.map((f) => ({ path: f.path, size: f.data.byteLength })) },
+        {
+          format: APP_PACKAGE_FORMAT,
+          source: sourceName,
+          files: pkg.files.map((f) => ({ path: f.path, size: f.data.byteLength })),
+          ...(modules.length ? { modules: modules.map((m) => ({ path: m.path, size: m.data.byteLength })) } : {}),
+        },
         null,
         2,
       ),
@@ -143,6 +177,9 @@ export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "
     [sourceName]: strToU8(pkg.source),
   };
   for (const f of pkg.files) out[FILES + f.path] = f.data;
+  for (const m of modules) out[SRC + m.path] = m.data;
+  const libraries = pkg.lock ? libraryLock(pkg.lock) : {};
+  if (Object.keys(libraries).length) out[LOCK] = strToU8(JSON.stringify(libraries, null, 2));
   if (pkg.seed) out[SEED] = strToU8(JSON.stringify(pkg.seed, null, 2));
   if (pkg.chat !== undefined) out[CHAT] = strToU8(JSON.stringify(pkg.chat, null, 2));
   return zipSync(out);
@@ -150,5 +187,5 @@ export function packAppPackage(pkg: Pick<AppPackage, "source" | "sourceName" | "
 
 /** A bare source as a package. */
 export function sourcePackage(source: string, sourceName = "app.tsx"): AppPackage {
-  return { source, sourceName, files: [], kind: "source" };
+  return { source, sourceName, files: [], modules: [], kind: "source" };
 }

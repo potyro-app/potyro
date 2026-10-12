@@ -1,6 +1,28 @@
 // @potyro/store — persistence seam.
 export type { StoredFile } from "./types.js";
 export { readAppPackage, packAppPackage, sourcePackage, isZip, AppPackageError, APP_PACKAGE_FORMAT, type AppPackage, type PackagedFile } from "./app-package.js";
+export {
+  MODULES_DIR,
+  SRC_DIR,
+  srcKey,
+  LockError,
+  isReservedPath,
+  sha256Hex,
+  integrityOf,
+  moduleFileFor,
+  lockEntryFor,
+  matchesLock,
+  libraryLabel,
+  libraryHost,
+  isPinned,
+  importsOf,
+  urlImportsOf,
+  relativeImportsOf,
+  parseLock,
+  libraryLock,
+  type AppLock,
+  type LockEntry,
+} from "./app-lock.js";
 export { fileSpace, fileInfo, digest, FileSpaceError, normalisePath, mimeOf, type FileSpace, type FileTarget } from "./file-space.js";
 export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
 export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
