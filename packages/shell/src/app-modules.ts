@@ -39,10 +39,17 @@ export async function snapshotModules(store: Store, lock: AppLock): Promise<Modu
 
 const cache = new Map<string, { lock: AppLock; modules: Promise<ModuleSource> }>();
 
-/** Keep what an app that is open right now already read, so a check on it does not read it again. */
-export function rememberModules(appId: string, lock: AppLock | undefined, store: Store): void {
-  if (!hasEntries(lock)) return;
-  cache.set(appId, { lock, modules: snapshotModules(store, lock) });
+/**
+ * While an app is open, a check on it (Ask, Edit, the preview) reads its code through the store the
+ * app has open, rather than opening a second one. Forgotten when the app closes.
+ */
+export function rememberModules(appId: string, lock: AppLock | undefined, modules: ModuleSource | undefined): void {
+  if (!hasEntries(lock) || !modules) return;
+  cache.set(appId, { lock, modules: Promise.resolve(modules) });
+}
+
+export function forgetModules(appId: string): void {
+  cache.delete(appId);
 }
 
 /**

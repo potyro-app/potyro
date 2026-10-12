@@ -6486,6 +6486,18 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--ink-soft);
   font-size: 0.9rem;
 }
+/* It did not open: the tile holds still and the reason sits under it, in plain words. */
+.k-splash-failed .k-splash-tile {
+  animation: none;
+  filter: saturate(0.4);
+}
+.k-splash-why {
+  margin: 0 0 var(--space-2);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
 .k-splash-bar {
   position: relative;
   width: 7rem;

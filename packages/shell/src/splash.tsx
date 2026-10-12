@@ -12,6 +12,7 @@
 
 import { tileIdentity } from "./tile-identity.js";
 import { appKey, getEntry } from "./launcher-store.js";
+import { navigateTo } from "./router.js";
 
 export interface SplashProps {
   /** The app's id, so its tile identity (and any override on this device) can be looked up. */
@@ -25,13 +26,19 @@ export interface SplashProps {
   icon?: string;
   /** "Opening" while a local app starts, "Joining" while an invite is accepted. */
   verb?: "Opening" | "Joining";
+  /**
+   * Why it did not open, when it did not: one of its libraries cannot start in the sealed box, or
+   * no longer matches the copy it was installed with (#266). Said where the app would have been,
+   * in the app's own colours, rather than a blank page or a line of text in the corner.
+   */
+  failed?: string;
 }
 
 /** Read a declaration out of an app's source without running it — the trick `examples.ts` uses. */
 const declared = (source: string | undefined, key: string): string | undefined =>
   source ? (new RegExp(`^\\s*${key}:\\s*"([^"]+)"`, "m").exec(source)?.[1] ?? undefined) : undefined;
 
-export function Splash({ id, name, source, icon, verb = "Opening" }: SplashProps) {
+export function Splash({ id, name, source, icon, verb = "Opening", failed }: SplashProps) {
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
   // colour someone picked (#83) — so the splash matches the tile that was tapped, not the app's
   // own idea of itself.
@@ -45,16 +52,28 @@ export function Splash({ id, name, source, icon, verb = "Opening" }: SplashProps
   });
 
   return (
-    <div className="k-splash" role="status" aria-live="polite">
+    <div className={failed ? "k-splash k-splash-failed" : "k-splash"} role={failed ? "alert" : "status"} aria-live="polite">
       <div className="k-splash-body" style={{ ["--tile-accent" as string]: identity.accent }}>
         <span className={`k-splash-tile k-splash-tile-${identity.kind}`} aria-hidden>
           {identity.glyph}
         </span>
         <p className="k-splash-name">{entry?.displayName ?? name}</p>
-        <p className="k-splash-verb">{verb}…</p>
-        {/* Indeterminate on purpose: nothing here knows how far along it is, and a bar that
-            pretends to would be lying at a moment the person is already waiting. */}
-        <span className="k-splash-bar" aria-hidden />
+        {failed ? (
+          <>
+            <p className="k-splash-verb">It could not open.</p>
+            <p className="k-splash-why">{failed}</p>
+            <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
+              Back to my apps
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="k-splash-verb">{verb}…</p>
+            {/* Indeterminate on purpose: nothing here knows how far along it is, and a bar that
+                pretends to would be lying at a moment the person is already waiting. */}
+            <span className="k-splash-bar" aria-hidden />
+          </>
+        )}
       </div>
     </div>
   );
