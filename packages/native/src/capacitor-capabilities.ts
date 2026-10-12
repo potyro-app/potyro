@@ -24,6 +24,10 @@ export interface CameraPlugin {
    * the call still fails with "Missing the following permissions in AndroidManifest.xml", the
    * rejection travels back through `ctx.caps.camera`, and the menu simply closes: tapping "Take a
    * photo" did nothing at all. Found on a Pixel, 2026-09-16.
+   *
+   * And NEVER for `photos` alone: that alias carries no Android permission, so with CAMERA declared
+   * the plugin hands Capacitor an empty request whose callback never comes — "Choose one" did
+   * nothing while "Take a photo" worked. Found on a Pixel, 2026-10-13.
    */
   requestPermissions?(opts?: { permissions?: Array<"camera" | "photos"> }): Promise<unknown>;
 }
@@ -128,8 +132,9 @@ export class CapacitorCapabilities implements Capabilities {
       capture: async (o) => {
         const fromLibrary = o?.source === "library";
         // Only what this capture needs: asking for both aliases fails over a storage permission the
-        // camera path never uses (see CameraPlugin above).
-        await Camera.requestPermissions?.({ permissions: [fromLibrary ? "photos" : "camera"] });
+        // camera path never uses (see CameraPlugin above). The library needs nothing — the plugin's
+        // `photos` alias names no Android permission, and a request for it never answers.
+        if (!fromLibrary) await Camera.requestPermissions?.({ permissions: ["camera"] });
         const photo = await Camera.getPhoto({ resultType: "uri", source: fromLibrary ? "PHOTOS" : "CAMERA" });
         if (!photo.webPath) throw new Error("camera returned no image");
         return (await fetchImpl(photo.webPath)).blob();
