@@ -137,10 +137,20 @@ const goalLine = (pal: () => Palette): Plugin<"line"> => ({
     g.lineTo(right, at);
     g.stroke();
     g.setLineDash([]);
-    g.fillStyle = css(p.sleep, 0.9);
+    // The label sits on a small pill of the card's colour, so a line passing under it cannot hide it.
+    const label = `${LONG}h goal`;
     g.font = `600 11px ${p.font}`;
+    const w = g.measureText(label).width + 10;
+    g.fillStyle = p.surface;
+    g.beginPath();
+    g.roundRect(left + 4, at - 9, w, 18, 9);
+    g.fill();
+    g.strokeStyle = css(p.sleep, 0.35);
+    g.stroke();
+    g.fillStyle = css(p.sleep);
     g.textAlign = "left";
-    g.fillText(`${LONG}h goal`, left + 4, at - 5);
+    g.textBaseline = "middle";
+    g.fillText(label, left + 9, at);
     g.restore();
   },
 });
