@@ -7,9 +7,9 @@ goals and optional modules.
 plan.json        the plan: phases → weeks → blocks, resources with URLs, goals, blues/jazz modules
 plan.ts          the contract plan.json must satisfy, and validatePlan()
 progress.ts      where you are and how you move: goal-based advance, repeat, modules, rest/review day
-styles.ts        the app's stylesheet, as a string
 piano.app.tsx    the UI (Today, Log, Plan, Modules, Sessions); reads plan.json with ctx.files
-test/            the plan validates, the progress logic, the app
+build.mjs        inlines plan.ts and progress.ts into dist/piano.app.tsx, then packs it with plan.json
+test/            the plan validates, the progress logic, the app and its built file
 ```
 
 ## Build and install
@@ -20,20 +20,19 @@ pnpm --filter @potyro/app-piano build     # → apps/piano/dist/piano.potyro-app
 
 In the shell: **Add an app → From this device**, choose `dist/piano.potyro-app.zip`. The card says
 it comes with `plan.json`; tick **I wrote this. Run it as mine.** (the custom screens want it), then
-**Add app**. To update, pack again and add the zip again: **Replace it, keep its data** is already
+**Add app**. To update, build again and add the zip again: **Replace it, keep its data** is already
 chosen, History keeps the previous version, and your progress stays.
 
 `plan.json` is not part of the code any more. It ships in the app's own folder, so a new plan only
 needs a new package, and a plan you edited inside the app is kept when the app is updated.
 
-There is no build step of the app's own. `build` is `pnpm pack:app`: it packs `piano.app.tsx` as it is
-here, the modules it imports (`plan.ts`, `progress.ts`, `styles.ts`) as the package's `src/`, and
-`plan.json` as a file in `files/` (#258). The shell resolves `./plan.js` from `src/` when it bundles
-the app; `piano.app.tsx` stays the one file the Studio, History and Ask edit.
+Why there is still a build step: the app's code is three modules (`piano.app.tsx`, `plan.ts`,
+`progress.ts`) and the shell bundles an app from one source module. The build inlines the two
+helpers and keeps the output readable TypeScript (comments and types intact).
 
 ## Changing the plan
 
-Edit `plan.json` and pack again, or — without touching the app — bring a plan file in from inside it:
+Edit `plan.json` and rebuild, or — without touching the app — bring a plan file in from inside it:
 **Modules → Settings → Load plan file…** (it lands in the app's `plans/` folder). Either way the file is checked against `plan.ts` first and
 every problem is reported by path. Progress is keyed by week id, so a week the new plan keeps is
 still where you were; one it drops lands you on the first week. Sessions and logs are never touched.
@@ -67,7 +66,6 @@ Shape, in brief (see `plan.ts` for the full contract):
 ## Checks
 
 ```
-pnpm --filter @potyro/app-piano test
-pnpm --filter @potyro/app-piano typecheck
-pnpm --filter @potyro/shell exec vitest run test/piano-package.test.ts   # packs it and bundles it as the shell does
+pnpm --filter @potyro/app-piano test        # also rebuilds dist/ from the sources
+pnpm --filter @potyro/app-piano typecheck   # covers dist/ once it exists
 ```
