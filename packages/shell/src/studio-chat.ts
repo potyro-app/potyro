@@ -55,9 +55,11 @@ export interface ChatMessage {
   seq?: number;
   /** For a `version`: what the app was called then. */
   name?: string;
+  /** For a `failure`: what went wrong in a developer's words, kept folded away under the plain one. */
+  detail?: string;
 }
 
-export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name">>;
+export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail">>;
 
 export interface DraftChat {
   id: string;
@@ -87,7 +89,7 @@ function announce(): void {
 }
 
 function toMessage(record: Record<string, unknown>): ChatMessage | null {
-  const { id, chatId, n, at, kind, text, seq, name } = record as Partial<ChatMessage>;
+  const { id, chatId, n, at, kind, text, seq, name, detail } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
   return {
@@ -99,6 +101,7 @@ function toMessage(record: Record<string, unknown>): ChatMessage | null {
     text,
     ...(typeof seq === "number" ? { seq } : {}),
     ...(typeof name === "string" ? { name } : {}),
+    ...(typeof detail === "string" ? { detail } : {}),
   };
 }
 
@@ -136,6 +139,7 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     text: message.text,
     ...(message.seq !== undefined ? { seq: message.seq } : {}),
     ...(message.name !== undefined ? { name: message.name } : {}),
+    ...(message.detail !== undefined ? { detail: message.detail } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
   const stored = toMessage(written as Record<string, unknown>);
@@ -201,7 +205,7 @@ export async function clearChat(chatId: string): Promise<void> {
 /** One thing on screen in the Studio's conversation. */
 export type ChatItem =
   | { type: "ask"; id: string; text: string }
-  | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure" }
+  | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure"; detail?: string }
   | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean }
   | { type: "event"; id: string; text: string; seq?: number };
 
@@ -211,7 +215,7 @@ function fromMessage(m: ChatMessage): ChatItem {
   if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text };
   if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false };
   if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq };
-  return { type: "agent", id: m.id, text: m.text, tone: m.kind };
+  return { type: "agent", id: m.id, text: m.text, tone: m.kind, ...(m.detail ? { detail: m.detail } : {}) };
 }
 
 function fromVersion(v: AppVersion): ChatItem[] {

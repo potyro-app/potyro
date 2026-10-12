@@ -13,6 +13,11 @@
 // the tab when it ran direct. The isolate turns that into a failed run instead of a dead browser. The
 // cost is that custom views — which run only as the person's own app — are not mounted here; the run
 // says so, rather than passing them silently.
+//
+// The same goes for the app's libraries (#266). Many need a full web page and cannot start in the
+// isolate, which used to fail the app as the person has it — so no change to it could pass. Here
+// they stand in as inert values (`withLibrariesStoodIn`), identically for the original and the
+// candidate, and the run says which ones, so a model does not chase an error a stand-in caused.
 
 import type { AppDefinition } from "potyro";
 import { MemoryStore } from "@potyro/store";
@@ -20,7 +25,7 @@ import { FakeCapabilities } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { mergeRuns, paramsForPage, smokeReport, smokeRuntime, type RunReport } from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
-import type { ModuleSource } from "./package-modules.js";
+import { standInNote, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
@@ -36,7 +41,8 @@ export interface RunCandidateDeps {
   compose?: (source: string, store: MemoryStore) => Promise<Composed>;
   /** How long a page may take to settle. Defaults to observe-render's SETTLE_MS. */
   settleMs?: number;
-  /** The app's libraries and own modules (#266, #258), when it has any. */
+  /** The app's libraries and own modules (#266, #258), when it has any. Its libraries stand in as
+   *  inert values here (`withLibrariesStoodIn`): the run judges the app's own code, not theirs. */
   modules?: ModuleSource;
 }
 
@@ -81,7 +87,8 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
   await store.open("run-candidate");
   let composed: Composed | undefined;
   try {
-    composed = deps.compose ? await deps.compose(source, store) : await composeIsolated(source, store, deps.modules);
+    const modules = withLibrariesStoodIn(deps.modules);
+    composed = deps.compose ? await deps.compose(source, store) : await composeIsolated(source, store, modules);
     const runtime = composed.runtime;
     const def = runtime.definition as AppDefinition & { id: string };
     // Custom views are mounted below with the real views, effects and all; the smoke run's
@@ -90,8 +97,11 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
     const { pages, sealed } = await pagesToRender(def, runtime);
     const screens = await renderPages(runtime, pages, deps.settleMs);
     const report = mergeRuns(logic, screens);
-    if (!sealed) return report;
-    return { ...report, ran: `${report.ran}; ${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` };
+    const notes = [
+      sealed ? `${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` : null,
+      standInNote(modules),
+    ].filter((n): n is string => n !== null);
+    return notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
   } finally {
     try {
       composed?.loaded.dispose();
