@@ -182,17 +182,19 @@ export async function saveUserApp(
 /**
  * The lock to put back with a version from History: the libraries that version ran with, and the
  * app's own modules as they are now — History keeps the entry source, not the package's other files
- * (#258). A version from before the app had libraries put back none.
+ * (#258). The libraries the app has now stay too, under the version's: those modules are the current
+ * ones, and may import a library the version never did; without it the restored app would not open.
+ * Their bytes are still on the device (an update never removes `.modules/`), so this needs no network.
  */
 export function lockToRestore(version: { lock?: string }, app: Pick<UserApp, "lock">): AppLock | undefined {
-  const own = Object.fromEntries(Object.entries(app.lock ?? {}).filter(([k]) => !/^https?:\/\//.test(k)));
+  const own = app.lock ?? {};
   let libraries: AppLock = {};
   try {
     libraries = version.lock ? parseLock(version.lock) : {};
   } catch {
     libraries = libraryLock(app.lock ?? {});
   }
-  const lock = { ...libraries, ...own };
+  const lock = { ...own, ...libraries };
   return Object.keys(lock).length ? lock : app.lock && Object.keys(app.lock).length ? {} : undefined;
 }
 

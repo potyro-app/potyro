@@ -160,8 +160,18 @@ describe("libraries in history", () => {
     await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: v2 }, at(2));
     const old = (await listVersions(created.id)).find((v) => v.seq === 1)!;
     await saveUserApp({ id: created.id, name: "Chart", source: old.source, lock: lockToRestore(old, getUserApp(created.id)!), origin: "restored" }, at(3));
-    expect(getUserApp(created.id)!.lock).toEqual(v1);
+    // Its libraries are back; the newer one stays beside them, for the modules the app has now.
+    expect(getUserApp(created.id)!.lock).toEqual({ ...v2, ...v1 });
     expect(await listVersions(created.id)).toHaveLength(3);
+  });
+
+  it("restoring keeps a library the app's current modules import, though the version never did", async () => {
+    const own = { "src/format.ts": { file: ".src/format.ts", integrity: "sha256-c=", size: 3 } };
+    const created = await saveUserApp({ name: "Chart", source: "imports 4.4.0", lock: { ...v1, ...own } }, at(1));
+    // The next build: the module moves to 4.4.1, the main file keeps 4.4.0.
+    await saveUserApp({ id: created.id, name: "Chart", source: "imports 4.4.0, again", lock: { ...v1, ...v2, ...own } }, at(2));
+    const old = (await listVersions(created.id)).find((v) => v.seq === 1)!;
+    expect(lockToRestore(old, getUserApp(created.id)!)).toEqual({ ...v1, ...v2, ...own });
   });
 
   it("restoring keeps the app's own modules as they are now", async () => {
@@ -169,7 +179,7 @@ describe("libraries in history", () => {
     const created = await saveUserApp({ name: "Chart", source: "same", lock: { ...v1, ...own } }, at(1));
     await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: { ...v2, ...own } }, at(2));
     const old = (await listVersions(created.id)).find((v) => v.seq === 1)!;
-    expect(lockToRestore(old, getUserApp(created.id)!)).toEqual({ ...v1, ...own });
+    expect(lockToRestore(old, getUserApp(created.id)!)).toEqual({ ...v2, ...v1, ...own });
   });
 });
 

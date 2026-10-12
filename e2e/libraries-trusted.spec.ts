@@ -143,6 +143,10 @@ test("a library that needs a web page fails in the sealed box with a message nam
   await expect(card).toContainText("Some libraries only work in an app that runs as yours");
   await dialog.getByRole("button", { name: "Add app" }).click();
 
+  // Said as soon as it is added, now that the library's bytes are here to try...
+  await expect(dialog.getByRole("alert")).toContainText("needs-window 1.0.0 needs a full web page to work", { timeout: 30_000 });
+  await dialog.getByRole("button", { name: /^Open / }).click();
+  // ...and again in place of the app, never a blank screen.
   const splash = page.getByRole("alert");
   await expect(splash).toContainText("needs-window 1.0.0 needs a full web page to work", { timeout: 30_000 });
   await expect(splash).toContainText("can only run as yours");
