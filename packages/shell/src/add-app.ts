@@ -153,6 +153,8 @@ export interface Inspected {
    * words (#271): "date and number formatting (Intl)". Empty when nothing was missing or it was not tried.
    */
   missing: string[];
+  /** Its top level threw in the sealed box: there it would not open at all, not just miss a part. */
+  failsToOpenSealed: boolean;
   /** Its top level threw in the sealed box for another reason: it could not be tried there. */
   trialProblem?: string;
 }
@@ -258,6 +260,7 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
     ...(preview === "unavailable" ? { previewProblem: trial?.unreadable ?? trial?.loadFailed } : {}),
     sealedProblem: trial?.libraryProblem,
     missing: trial?.missing ?? [],
+    failsToOpenSealed: !!trial?.loadFailed,
     ...(trial?.loadFailed && !trial.missing.length && !trial.libraryProblem && preview !== "unavailable" ? { trialProblem: trial.loadFailed } : {}),
   };
 }

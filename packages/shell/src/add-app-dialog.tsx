@@ -161,13 +161,13 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
             <p>
               <strong>{step.done.app.name}</strong> {step.done.updated ? "is updated, with your data as it was." : "is added."}
             </p>
-            {step.done.missing?.length ? (
-              <p className="k-add-app-sealed" role="alert">
-                <span aria-hidden>⚠</span> {describeMissing(step.done.missing)} In the sealed box, the parts of it that use {step.done.missing.length === 1 ? "it" : "them"} will not work until you let it run as yours.
-              </p>
-            ) : step.done.sealedProblem ? (
+            {step.done.sealedProblem ? (
               <p className="k-add-app-sealed" role="alert">
                 <span aria-hidden>⚠</span> {step.done.sealedProblem} In the sealed box it will not open until you let it run as yours.
+              </p>
+            ) : step.done.missing?.length ? (
+              <p className="k-add-app-sealed" role="alert">
+                <span aria-hidden>⚠</span> {describeMissing(step.done.missing)} In the sealed box, the parts of it that use {step.done.missing.length === 1 ? "it" : "them"} will not work until you let it run as yours.
               </p>
             ) : null}
             {step.done.files.kept.length ? <p>Kept your own version of {list(step.done.files.kept)}: you changed {step.done.files.kept.length === 1 ? "it" : "them"} after it came with the app.</p> : null}
@@ -295,10 +295,16 @@ function Card({
           {app.previewProblem ? <span className="k-muted"> ({app.previewProblem})</span> : null}
         </p>
       ) : null}
-      {sealed && app.missing.length ? (
+      {app.sealedProblem ? (
+        <p className="k-add-app-sealed" role="note">
+          <span aria-hidden>⚠</span> {app.sealedProblem}
+          {sealed ? " In the sealed box it will not open until you let it run as yours." : null}
+        </p>
+      ) : sealed && app.missing.length ? (
         <div className="k-add-app-sealed k-add-app-missing" role="note">
           <p>
-            <span aria-hidden>⚠</span> {describeMissing(app.missing)} In the sealed box, the parts of it that use {app.missing.length === 1 ? "it" : "them"} will not work.
+            <span aria-hidden>⚠</span> {describeMissing(app.missing)}{" "}
+            {app.failsToOpenSealed ? "In the sealed box it will not open." : `In the sealed box, the parts of it that use ${app.missing.length === 1 ? "it" : "them"} will not work.`}
           </p>
           {source === "link" ? (
             <p className="k-muted">Once it is added and you trust it, you can let it run as yours from its badge.</p>
@@ -311,11 +317,6 @@ function Card({
       ) : sealed && app.trialProblem ? (
         <p className="k-add-app-sealed" role="note">
           <span aria-hidden>⚠</span> It could not be tried in the sealed box: {app.trialProblem}
-        </p>
-      ) : app.sealedProblem ? (
-        <p className="k-add-app-sealed" role="note">
-          <span aria-hidden>⚠</span> {app.sealedProblem}
-          {sealed ? " In the sealed box it will not open until you let it run as yours." : null}
         </p>
       ) : fetches && sealed ? (
         <p className="k-muted k-add-app-note">

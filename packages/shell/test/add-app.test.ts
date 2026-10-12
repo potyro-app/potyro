@@ -359,6 +359,7 @@ describe("the card, from what a package declares", () => {
     expect(inspected).toMatchObject({ id: "piano", name: "Piano", icon: "🎹", keeps: ["Session"], asks: ["camera"], issues: [], preview: "declared" });
     expect(inspected.missing).toEqual(["date and number formatting (Intl)"]);
     expect(inspected.trialProblem).toBeUndefined(); // the missing feature IS the reason; it is not said twice
+    expect(inspected.failsToOpenSealed).toBe(true);
 
     const done = await installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor });
     expect(getUserApp(done.app.id)?.name).toBe("Piano");
@@ -368,6 +369,7 @@ describe("the card, from what a package declares", () => {
     const inspected = await inspectPackage(await packaged(`// USES_INTL\n${SOURCE}`));
     expect(trials.calls).toEqual([{ standIns: false, smoke: true }]);
     expect(inspected.missing).toEqual(["date and number formatting (Intl)"]);
+    expect(inspected.failsToOpenSealed).toBe(false);
   });
 
   it("a declaration that is not a valid app is a problem on the card; one that is not the code's is refused", async () => {
