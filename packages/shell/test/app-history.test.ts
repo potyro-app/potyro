@@ -19,7 +19,7 @@ vi.mock("../src/open-store.js", () => ({
 }));
 
 const { listVersions, recordVersion, clearHistory, resetHistoryStore } = await import("../src/app-history.js");
-const { saveUserApp, removeUserApp, getUserApp } = await import("../src/user-apps.js");
+const { saveUserApp, removeUserApp, getUserApp, lockToRestore } = await import("../src/user-apps.js");
 
 const at = (n: number): string => new Date(Date.UTC(2026, 0, n)).toISOString();
 
@@ -119,6 +119,57 @@ describe("saveUserApp", () => {
     const created = await saveUserApp({ name: "Notes", source: "v1" }, at(1));
     await removeUserApp(created.id);
     expect(await listVersions(created.id)).toEqual([]);
+  });
+});
+
+// A library upgrade (#266) changes no line of the source — only which bytes `chart.js@…` means. It is
+// still a change to what runs, so it is a version, and History can show it as a diff of lock.json.
+describe("libraries in history", () => {
+  const entry = (hex: string, size: number) => ({ file: `.modules/${hex.repeat(64)}.js`, integrity: `sha256-${hex}=`, size });
+  const v1 = { "https://esm.sh/chart.js@4.4.0?bundle": entry("a", 100) };
+  const v2 = { "https://esm.sh/chart.js@4.4.1?bundle": entry("b", 120) };
+
+  it("records a version when only the lock changed, carrying lock.json", async () => {
+    const created = await saveUserApp({ name: "Chart", source: "same", lock: v1 }, at(1));
+    await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: v2, origin: "imported", note: "Updated from a file" }, at(2));
+    const versions = await listVersions(created.id);
+    expect(versions.map((v) => v.seq)).toEqual([2, 1]);
+    expect(versions[0]!.lock).toContain("chart.js@4.4.1");
+    expect(versions[1]!.lock).toContain("chart.js@4.4.0");
+    expect(JSON.parse(versions[0]!.lock!)).toEqual(v2);
+  });
+
+  it("keeps the app's own modules out of lock.json: they are not libraries", async () => {
+    const created = await saveUserApp({ name: "Piano", source: "s", lock: { ...v1, "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-c=", size: 3 } } }, at(1));
+    expect(Object.keys(JSON.parse((await listVersions(created.id))[0]!.lock!))).toEqual(["https://esm.sh/chart.js@4.4.0?bundle"]);
+  });
+
+  it("does not record a version when neither the source nor the libraries changed", async () => {
+    const created = await saveUserApp({ name: "Chart", source: "same", lock: v1 }, at(1));
+    await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: { ...v1 } }, at(2));
+    expect(await listVersions(created.id)).toHaveLength(1);
+  });
+
+  it("an app with no libraries keeps no lock.json", async () => {
+    const created = await saveUserApp({ name: "Notes", source: "v1" }, at(1));
+    expect((await listVersions(created.id))[0]!.lock).toBeUndefined();
+  });
+
+  it("restoring a version puts back the libraries it ran with", async () => {
+    const created = await saveUserApp({ name: "Chart", source: "same", lock: v1 }, at(1));
+    await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: v2 }, at(2));
+    const old = (await listVersions(created.id)).find((v) => v.seq === 1)!;
+    await saveUserApp({ id: created.id, name: "Chart", source: old.source, lock: lockToRestore(old, getUserApp(created.id)!), origin: "restored" }, at(3));
+    expect(getUserApp(created.id)!.lock).toEqual(v1);
+    expect(await listVersions(created.id)).toHaveLength(3);
+  });
+
+  it("restoring keeps the app's own modules as they are now", async () => {
+    const own = { "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-c=", size: 3 } };
+    const created = await saveUserApp({ name: "Chart", source: "same", lock: { ...v1, ...own } }, at(1));
+    await saveUserApp({ id: created.id, name: "Chart", source: "same", lock: { ...v2, ...own } }, at(2));
+    const old = (await listVersions(created.id)).find((v) => v.seq === 1)!;
+    expect(lockToRestore(old, getUserApp(created.id)!)).toEqual({ ...v1, ...own });
   });
 });
 

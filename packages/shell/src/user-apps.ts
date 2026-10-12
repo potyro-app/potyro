@@ -14,7 +14,7 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
-import type { AppLock } from "@potyro/store";
+import { libraryLock, lockJson, parseLock, type AppLock } from "@potyro/store";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -170,10 +170,30 @@ export async function saveUserApp(
       note: input.note,
       rationale: input.rationale,
       baseline: prev?.source,
+      // Which bytes its libraries are: an upgrade is a version even when no line of source changed.
+      lock: lockJson(record.lock),
+      baselineLock: lockJson(prev?.lock),
     },
     now,
   );
   return record;
+}
+
+/**
+ * The lock to put back with a version from History: the libraries that version ran with, and the
+ * app's own modules as they are now — History keeps the entry source, not the package's other files
+ * (#258). A version from before the app had libraries put back none.
+ */
+export function lockToRestore(version: { lock?: string }, app: Pick<UserApp, "lock">): AppLock | undefined {
+  const own = Object.fromEntries(Object.entries(app.lock ?? {}).filter(([k]) => !/^https?:\/\//.test(k)));
+  let libraries: AppLock = {};
+  try {
+    libraries = version.lock ? parseLock(version.lock) : {};
+  } catch {
+    libraries = libraryLock(app.lock ?? {});
+  }
+  const lock = { ...libraries, ...own };
+  return Object.keys(lock).length ? lock : app.lock && Object.keys(app.lock).length ? {} : undefined;
 }
 
 export async function removeUserApp(id: string): Promise<void> {

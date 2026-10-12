@@ -20,6 +20,7 @@ export {
   relativeImportsOf,
   parseLock,
   libraryLock,
+  lockJson,
   type AppLock,
   type LockEntry,
 } from "./app-lock.js";

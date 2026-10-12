@@ -10,7 +10,13 @@ import { MemoryStore, fileSpace, packAppPackage, type PackagedFile, type Store }
 import type { EsbuildLike } from "../src/app-bundler.js";
 import type { HttpGet } from "../src/library-fetch.js";
 
-vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
+const history = vi.hoisted(() => ({ notes: [] as Array<string | undefined> }));
+vi.mock("../src/app-history.js", () => ({
+  recordVersion: async (_id: string, v: { note?: string }) => {
+    history.notes.push(v.note);
+  },
+  clearHistory: async () => {},
+}));
 vi.mock("../src/app-store.js", () => ({ openAppStore: async () => new MemoryStore(), syncAllowedFor: async () => false }));
 // The Studio conversation's store (#261): one in-memory store for the whole file, as a device has one.
 vi.mock("../src/open-store.js", async () => {
@@ -29,6 +35,7 @@ vi.mock("../src/validate-app.js", () => ({
 }));
 
 const { gatherFromFiles, inspectPackage, installPackage, applyShippedFiles } = await import("../src/add-app.js");
+const { describeLibrary } = await import("../src/package-libraries.js");
 const { getUserApp } = await import("../src/user-apps.js");
 
 const SOURCE = 'import { defineApp } from "potyro"; export default defineApp({ id: "piano" } as never);';
@@ -256,6 +263,45 @@ describe("an app's own modules and its libraries (#258, #266)", () => {
     const inspected = await inspectPackage(pkg, { esbuild, get: net(SITE) });
     expect(inspected.issues.join("\n")).toMatch(/exact version/);
     await expect(installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild })).rejects.toThrow(/exact version/);
+  });
+});
+
+describe("a library upgrade (#266)", () => {
+  const esbuild = { build } as unknown as EsbuildLike;
+  const url = (v: string) => `https://esm.sh/fancy-chart@${v}?bundle`;
+  const site = (v: string): Record<string, string> => ({ [url(v)]: `export const chart = (n) => "chart ${v} " + n;\n` });
+  const src = (v: string) => `import { chart } from "${url(v)}";\n${SOURCE}\nexport const shown = chart(1);`;
+  const net = (s: Record<string, string>) => vi.fn<HttpGet>(async (u) => (s[u] === undefined ? { ok: false, status: 404, url: u, bytes: async () => new Uint8Array() } : { ok: true, status: 200, url: u, bytes: async () => new TextEncoder().encode(s[u]) }));
+  const add = async (v: string) => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", src(v))]);
+    const get = net(site(v));
+    return installPackage(pkg, await inspectPackage(pkg, { esbuild, get }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get });
+  };
+
+  it("the version it makes says which library changed", async () => {
+    history.notes.length = 0;
+    await add("4.4.0");
+    await add("4.4.1");
+    expect(history.notes.at(-1)).toBe("Updated from a file · fancy-chart 4.4.1 (was 4.4.0)");
+  });
+
+  it("keeps the old library's bytes, so History can go back to the version that used them", async () => {
+    const before = (await add("4.4.0")).app.lock![url("4.4.0")]!.file;
+    await add("4.4.1");
+    const space = fileSpace(byApp.get("piano")!);
+    expect(await (await space.read(before))!.text()).toContain("chart 4.4.0");
+    expect(Object.keys(getUserApp("piano")!.lock!)).toEqual([url("4.4.1")]);
+  });
+});
+
+describe("what the card says about a library", () => {
+  const line = { url: "https://esm.sh/chart.js@4.4.1?bundle", label: "chart.js 4.4.1", host: "esm.sh" };
+  it("one still to fetch: what, how big when known, and from where", () => {
+    expect(describeLibrary({ ...line, here: false, size: 194_560 })).toBe("fetches chart.js 4.4.1, 190 KB, from esm.sh");
+    expect(describeLibrary({ ...line, here: false })).toBe("fetches chart.js 4.4.1 from esm.sh");
+  });
+  it("one that came with the app fetches nothing", () => {
+    expect(describeLibrary({ ...line, here: true, size: 194_560 })).toBe("chart.js 4.4.1, 190 KB, came with the app");
   });
 });
 

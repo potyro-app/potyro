@@ -308,3 +308,14 @@ export function parseLock(text: string): AppLock {
 export function libraryLock(lock: AppLock): AppLock {
   return Object.fromEntries(Object.entries(lock).filter(([k]) => /^https?:\/\//.test(k)));
 }
+
+/**
+ * `lock.json` as text: the libraries only, by URL in order, so the same lock is always the same text.
+ * What History keeps beside each version and diffs (#266). Undefined for an app with no libraries.
+ */
+export function lockJson(lock: AppLock | undefined): string | undefined {
+  const libraries = libraryLock(lock ?? {});
+  const urls = Object.keys(libraries).sort();
+  if (!urls.length) return undefined;
+  return JSON.stringify(Object.fromEntries(urls.map((u) => [u, libraries[u]])), null, 2) + "\n";
+}
