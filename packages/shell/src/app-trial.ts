@@ -20,13 +20,13 @@ import type { AppDefinition } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { smokeRuntime } from "@potyro/generator/backends";
-import { createAppBundler } from "./app-bundler.js";
+import { createAppBundler, type AppBundler } from "./app-bundler.js";
 import { isLibraryStartError, type ModuleSource } from "./package-modules.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
 import { validateDefinition } from "./validate-app.js";
-import { missingFeature, missingFeatures } from "./missing-features.js";
+import { missingFeature, missingFeatures, type MissingFeature } from "./missing-features.js";
 
 const CALL_MS = 5_000;
 const MEMORY_BYTES = 64 * 1024 * 1024;
@@ -53,11 +53,24 @@ export interface TrialOptions {
   standIns?: boolean;
   /** Put sample records through its logic. Off when only the definition is wanted. */
   smoke?: boolean;
+  /** Test seam: the isolate bundler. Defaults to the browser's (esbuild-wasm). */
+  bundler?: AppBundler;
 }
 
 const firstLine = (e: unknown): string => (e instanceof Error ? e.message : String(e)).split("\n")[0]!;
 /** The sentence `wrapForIsolate` wrote, without whatever the isolate put in front of it. */
 const startProblem = (e: unknown): string => firstLine(e).replace(/^.*?Error: /, "");
+
+/**
+ * A library that could not start, said by its name. `wrapForIsolate` calls every missing global "a
+ * full web page"; when the missing thing is something else — `Intl` — the sentence names that instead.
+ */
+function libraryProblemOf(e: unknown, found: MissingFeature | undefined): string {
+  const sentence = startProblem(e);
+  const library = /^(.*?) (?:needs a full web page to work \(|could not start: )/.exec(sentence)?.[1];
+  if (!library || !found || found.words.startsWith("a full web page")) return sentence;
+  return `${library} uses a feature shared apps don’t have yet: ${found.words}. Apps in the sealed box do not get it, so this app can only run as yours.`;
+}
 
 function within<T>(ms: number, work: Promise<T>): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -84,7 +97,7 @@ async function load(code: string, store: MemoryStore): Promise<Composed> {
 export async function trySealed(source: string, modules?: ModuleSource, opts: TrialOptions = {}): Promise<Trial> {
   let code: string;
   try {
-    code = await (await createAppBundler())(source, modules, { standIns: opts.standIns });
+    code = await (opts.bundler ?? (await createAppBundler()))(source, modules, { standIns: opts.standIns });
   } catch (e) {
     return { issues: [], missing: [], unreadable: firstLine(e) };
   }
@@ -99,7 +112,7 @@ export async function trySealed(source: string, modules?: ModuleSource, opts: Tr
       issues: [],
       missing: found ? [found.words] : [],
       loadFailed: firstLine(e),
-      ...(isLibraryStartError(e) ? { libraryProblem: startProblem(e) } : {}),
+      ...(isLibraryStartError(e) ? { libraryProblem: libraryProblemOf(e, found) } : {}),
     };
   }
   try {
