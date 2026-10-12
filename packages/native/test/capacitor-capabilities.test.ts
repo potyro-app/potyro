@@ -105,8 +105,19 @@ describe("asking for camera permission", () => {
     await caps.camera.capture();
     expect(plugins.Camera.requestPermissions).toHaveBeenCalledWith({ permissions: ["camera"] });
 
+  });
+
+  it("asks for nothing to pick from the library — the photos request never answers on Android", async () => {
+    // The plugin's `photos` alias names no Android permission. With CAMERA declared, the request goes
+    // to Capacitor as an empty set and its callback never comes: "Choose one" did nothing at all
+    // while "Take a photo" worked (Pixel, 2026-10-13, logcat showed no getPhoto after it).
+    const { plugins } = fakePlugins();
+    plugins.Camera.requestPermissions = vi.fn(() => new Promise(() => {}));
+    const caps = new CapacitorCapabilities(plugins, helpers);
+
     await caps.camera.capture({ source: "library" });
-    expect(plugins.Camera.requestPermissions).toHaveBeenLastCalledWith({ permissions: ["photos"] });
+    expect(plugins.Camera.requestPermissions).not.toHaveBeenCalled();
+    expect(plugins.Camera.getPhoto).toHaveBeenCalledWith({ resultType: "uri", source: "PHOTOS" });
   });
 });
 
