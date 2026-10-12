@@ -31,9 +31,9 @@ export {
 export { HybridBackend } from "./hybrid-backend.js";
 export { PROMPTS } from "./prompts.js";
 
-// The concurrency gate, for the shell. `smokeApp`'s single-user checks stay out of the browser
-// bundle — nothing there runs them — but the two-peer ones are a product feature: they are what
-// tells someone their app is unsafe to share.
+// The concurrency gate, for the shell — the two-peer checks are a product feature: they are what
+// tells someone their app is unsafe to share. The single-user smoke reaches the browser too since
+// #262, as `smokeRuntime` against a runtime the shell composes: it is what the modify loop runs.
 export {
   concurrencyChecks,
   concurrencySmoke,
@@ -42,7 +42,11 @@ export {
   type ConcurrencyResult,
   type Hazard,
 } from "./concurrency-smoke.js";
-export { seedRecords } from "./smoke.js";
+export { seedRecords, smokeRuntime, smokeReport, paramsForPage, type SmokeResult, type SmokeOptions } from "./smoke.js";
+// Running a candidate for the model (#262): the shell composes the runtime, these run and describe it.
+export { describeRun, mergeRuns, runSafely, regressionGate, type RunReport, type RunGate, type GatedRun } from "./run-report.js";
+// The release's corpus, for the loop's first message (#262).
+export { loadCorpus } from "./load-corpus.js";
 
 
 export {

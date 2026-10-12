@@ -14,3 +14,4 @@ export { DirectLoadedApp } from "./direct-host.js";
 export { buildCtx } from "./make-ctx.js";
 export { mediateCaps } from "./mediate.js";
 export { resolveRecord, type ResolveDeps } from "./resolve.js";
+export { onAppFailure, reportAppFailure, activeFailureListeners, type AppFailure } from "./failures.js";

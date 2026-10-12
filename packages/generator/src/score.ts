@@ -5,9 +5,8 @@
 // Deterministic and offline; no network. This is the measurement KA-05/KA-07 report against.
 
 import { build } from "esbuild";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
 import { createRuntime } from "@potyro/runtime";
@@ -53,7 +52,10 @@ async function bundle(source: string, resolveDir: string = RESOLVE_DIR): Promise
     // Apps generated before the rename import the codename; the shell resolves both, so must this.
     alias: { karta: "potyro" },
     write: false,
-    format: "esm",
+    // CommonJS, evaluated as a function (`evaluateModule`) rather than imported: an imported module
+    // is never released, and every candidate carries its own copy of potyro (#262 — the paid eval
+    // died of it). A function's result is garbage the moment nothing refers to the app.
+    format: "cjs",
     platform: "node",
     target: "es2020",
     logLevel: "silent",
@@ -66,24 +68,22 @@ async function bundle(source: string, resolveDir: string = RESOLVE_DIR): Promise
   return res.outputFiles[0]!.text;
 }
 
-/** Import a bundled ESM string via a temp file (native import; bypasses any test transform).
- *  The file lives INSIDE the package so Node resolves the externalized `react` to this package's
- *  copy — the same instance react-dom/server uses. */
-async function importModule(code: string): Promise<{ default?: unknown }> {
-  const dir = mkdtempSync(join(RESOLVE_DIR, ".potyro-eval-"));
-  const file = join(dir, "gen.mjs");
-  try {
-    writeFileSync(file, code);
-    return (await import(pathToFileURL(file).href)) as { default?: unknown };
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+// React must be the harness's own instance (see `external` above); resolved from this package, as the
+// imported module used to be, so it is the same module react-dom/server uses.
+const requireHere = createRequire(new URL("../package.json", import.meta.url));
+
+/** Run a bundled CommonJS module and return its exports. Nothing keeps it once its exports are gone. */
+function evaluateModule(code: string): { default?: unknown } {
+  const module: { exports: Record<string, unknown> } = { exports: {} };
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- the bundle IS the code under test
+  new Function("require", "module", "exports", code)(requireHere, module, module.exports);
+  return module.exports as { default?: unknown };
 }
 
-/** Bundle + import a generated source, returning the validated app. Throws on compile/validate
+/** Bundle + run a generated source, returning the validated app. Throws on compile/validate
  *  failure — `scoreSource` reports those as gates; `smoke.ts` needs the app itself. */
 export async function loadApp(source: string, resolveDir?: string): Promise<LoadedPotyroApp> {
-  const mod = await importModule(await bundle(source, resolveDir));
+  const mod = evaluateModule(await bundle(source, resolveDir));
   const candidate = mod.default as LoadedPotyroApp | undefined;
   if (!candidate?.__potyroApp) throw new Error("default export is not a validated PotyroApp");
   return candidate;
@@ -102,7 +102,7 @@ export async function scoreSource(source: string, resolveDir?: string): Promise<
 
   let app: LoadedPotyroApp;
   try {
-    const mod = await importModule(bundled); // defineApp() runs (validates) at import time
+    const mod = evaluateModule(bundled); // defineApp() runs (validates) as the module runs
     const candidate = mod.default as LoadedPotyroApp | undefined;
     if (!candidate?.__potyroApp) throw new Error("default export is not a validated PotyroApp");
     app = candidate;
