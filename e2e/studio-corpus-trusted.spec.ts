@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio } from "./studio-helpers.js";
 
 // The modify loop can read the release's corpus (#262), end to end in the Studio with a scripted
 // OpenRouter: the model calls `search_corpus`, and the answer comes from the example apps bundled with
@@ -24,24 +25,16 @@ test("search_corpus answers from the release's example apps, inside the browser"
     return route.fulfill(reply({ content: EDITS }));
   });
 
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-  const studio = page.locator(".k-studio");
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 60_000 });
-  await studio.getByRole("button", { name: "Model settings" }).click();
-  const modal = page.getByRole("dialog", { name: "Model settings" });
-  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
-  await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
-  await modal.getByRole("button", { name: "Close model settings" }).click();
+  // The Studio is a conversation (#261): the app is made, its card appears, and it opens from there.
+  const studio = await openNewStudio(page);
+  await chooseOpenRouter(page, studio);
 
-  const go = studio.getByRole("button", { name: /Create the app|Modify the app/ });
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
-  await go.click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("Reader", { timeout: 60_000 });
+  await ask(studio, "a reading tracker");
+  const preview = await openFromCard(studio);
+  await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await studio.getByRole("textbox", { name: "Describe the app" }).fill("add a 5-star rating field");
-  await go.click();
-  await expect(studio.getByText(/Applied 1 edit/)).toBeVisible({ timeout: 60_000 });
+  await ask(studio, "add a 5-star rating field");
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
 
   expect(requests).toHaveLength(3);
   const toolTurn = requests[2]!.at(-1)!;
