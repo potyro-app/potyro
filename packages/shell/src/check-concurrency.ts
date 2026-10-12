@@ -55,7 +55,8 @@ async function run(source: string, appId: string): Promise<ConcurrencyResult | n
   ]);
 
   const bundle = await createAppBundler();
-  const bundleCode = await bundle(source);
+  const { modulesOf } = await import("./app-modules.js");
+  const bundleCode = await bundle(source, await modulesOf(appId));
   const pair = await createPeerPair(`check:${appId}`);
 
   try {

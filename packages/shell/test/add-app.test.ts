@@ -5,9 +5,18 @@
 // 2026-10-11: sealed by default; "mine" only for a file or paste; Replace keeps data and the trust
 // the app had, except from a link; a shipped file the person changed is kept.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryStore, fileSpace, packAppPackage, type Store } from "@potyro/store";
+import { build } from "esbuild";
+import { MemoryStore, fileSpace, packAppPackage, type PackagedFile, type Store } from "@potyro/store";
+import type { EsbuildLike } from "../src/app-bundler.js";
+import type { HttpGet } from "../src/library-fetch.js";
 
-vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
+const history = vi.hoisted(() => ({ notes: [] as Array<string | undefined> }));
+vi.mock("../src/app-history.js", () => ({
+  recordVersion: async (_id: string, v: { note?: string }) => {
+    history.notes.push(v.note);
+  },
+  clearHistory: async () => {},
+}));
 vi.mock("../src/app-store.js", () => ({ openAppStore: async () => new MemoryStore(), syncAllowedFor: async () => false }));
 // The Studio conversation's store (#261): one in-memory store for the whole file, as a device has one.
 vi.mock("../src/open-store.js", async () => {
@@ -26,6 +35,7 @@ vi.mock("../src/validate-app.js", () => ({
 }));
 
 const { gatherFromFiles, inspectPackage, installPackage, applyShippedFiles } = await import("../src/add-app.js");
+const { describeLibrary } = await import("../src/package-libraries.js");
 const { getUserApp } = await import("../src/user-apps.js");
 
 const SOURCE = 'import { defineApp } from "potyro"; export default defineApp({ id: "piano" } as never);';
@@ -172,6 +182,126 @@ describe("installing", () => {
     const inspected = await inspectPackage(pkg);
     await expect(installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor })).rejects.toThrow(/at least one page/);
     expect(getUserApp("piano")).toBeUndefined();
+  });
+});
+
+describe("an app's own modules and its libraries (#258, #266)", () => {
+  const esbuild = { build } as unknown as EsbuildLike;
+  const ROOT = "https://esm.sh/fancy-chart@4.4.1?bundle";
+  const INNER = "https://esm.sh/fancy-chart@4.4.1/es2022/fancy-chart.bundle.mjs";
+  const SITE: Record<string, string> = {
+    [ROOT]: `export * from "/fancy-chart@4.4.1/es2022/fancy-chart.bundle.mjs";\n`,
+    [INNER]: `export const chart = (n) => "chart " + n;\n`,
+  };
+  const LIB_SOURCE = `import { chart } from "${ROOT}";\nimport { weeks } from "./plan.js";\n${SOURCE}\nexport const shown = chart(weeks);`;
+  const net = (site: Record<string, string>) =>
+    vi.fn<HttpGet>(async (url) => (site[url] === undefined ? { ok: false, status: 404, url, bytes: async () => new Uint8Array() } : { ok: true, status: 200, url, bytes: async () => new TextEncoder().encode(site[url]) }));
+
+  it("scripts picked beside the app are its modules, not files it reads", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("plan.ts", "export const weeks = 12;"), file("plan.json", "{}")]);
+    expect(pkg.modules.map((m) => m.path)).toEqual(["plan.ts"]);
+    expect(pkg.files.map((f) => f.path)).toEqual(["plan.json"]);
+  });
+
+  it("the card names a library still to be fetched, and nothing is fetched to draw it", async () => {
+    const get = net(SITE);
+    const pkg = await gatherFromFiles([file("piano.app.tsx", LIB_SOURCE), file("plan.ts", "export const weeks = 12;")]);
+    const inspected = await inspectPackage(pkg, { esbuild, get });
+    expect(inspected.libraries).toEqual([{ url: ROOT, label: "fancy-chart 4.4.1", host: "esm.sh", here: false, size: undefined }]);
+    expect(inspected.modules).toEqual(["plan.ts"]);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("installing fetches the library's whole graph once, keeps it with the app's modules, and locks all of it on the app's record", async () => {
+    const get = net(SITE);
+    const pkg = await gatherFromFiles([file("piano.app.tsx", LIB_SOURCE), file("plan.ts", "export const weeks = 12;"), file("plan.json", "{}")]);
+    const done = await installPackage(pkg, await inspectPackage(pkg, { esbuild, get }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get });
+
+    expect(get.mock.calls.map((c) => c[0]).sort()).toEqual([INNER, ROOT].sort());
+    const lock = getUserApp(done.app.id)!.lock!;
+    expect(Object.keys(lock).sort()).toEqual([INNER, ROOT, "src/plan.ts"].sort());
+    const space = fileSpace(byApp.get("piano")!);
+    expect(await (await space.read(lock[INNER]!.file))!.text()).toBe(SITE[INNER]);
+    expect(await (await space.read(".src/plan.ts"))!.text()).toBe("export const weeks = 12;");
+    // What the person is told about is their files; the app's code is not one of them.
+    expect(done.files.written).toEqual(["plan.json"]);
+  });
+
+  it("a package that already carries its library installs with no network", async () => {
+    const first = net(SITE);
+    const pkg = await gatherFromFiles([file("piano.app.tsx", LIB_SOURCE), file("plan.ts", "export const weeks = 12;")]);
+    const done = await installPackage(pkg, await inspectPackage(pkg, { esbuild, get: first }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: first });
+    const space = fileSpace(byApp.get("piano")!);
+    const lock = getUserApp(done.app.id)!.lock!;
+    const carried: PackagedFile[] = [];
+    for (const url of [ROOT, INNER]) carried.push({ path: lock[url]!.file, data: new Uint8Array(await (await space.read(lock[url]!.file))!.arrayBuffer()) });
+    const zip = packAppPackage({ source: LIB_SOURCE, sourceName: "app.tsx", files: carried, modules: pkg.modules, lock });
+    const { readAppPackage } = await import("@potyro/store");
+    const packaged = readAppPackage(zip);
+
+    localStorage.clear();
+    byApp.clear();
+    const none = net({});
+    const inspected = await inspectPackage(packaged, { esbuild, get: none });
+    expect(inspected.libraries[0]).toMatchObject({ label: "fancy-chart 4.4.1", here: true, size: SITE[ROOT]!.length + SITE[INNER]!.length });
+    await installPackage(packaged, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: none });
+    expect(none).not.toHaveBeenCalled();
+    expect(getUserApp("piano")!.lock).toEqual(lock);
+  });
+
+  it("a library that cannot be fetched leaves nothing behind", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", LIB_SOURCE), file("plan.ts", "export const weeks = 12;")]);
+    const get = net({ [ROOT]: SITE[ROOT]! });
+    await expect(installPackage(pkg, await inspectPackage(pkg, { esbuild, get }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get })).rejects.toThrow(
+      /fancy-chart 4\.4\.1.*404/,
+    );
+    expect(getUserApp("piano")).toBeUndefined();
+  });
+
+  it("a library URL without an exact version is a problem on the card, and the app is not added", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", `import x from "https://esm.sh/fancy-chart?bundle";\n${SOURCE}\nexport const y = x;`)]);
+    const inspected = await inspectPackage(pkg, { esbuild, get: net(SITE) });
+    expect(inspected.issues.join("\n")).toMatch(/exact version/);
+    await expect(installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild })).rejects.toThrow(/exact version/);
+  });
+});
+
+describe("a library upgrade (#266)", () => {
+  const esbuild = { build } as unknown as EsbuildLike;
+  const url = (v: string) => `https://esm.sh/fancy-chart@${v}?bundle`;
+  const site = (v: string): Record<string, string> => ({ [url(v)]: `export const chart = (n) => "chart ${v} " + n;\n` });
+  const src = (v: string) => `import { chart } from "${url(v)}";\n${SOURCE}\nexport const shown = chart(1);`;
+  const net = (s: Record<string, string>) => vi.fn<HttpGet>(async (u) => (s[u] === undefined ? { ok: false, status: 404, url: u, bytes: async () => new Uint8Array() } : { ok: true, status: 200, url: u, bytes: async () => new TextEncoder().encode(s[u]) }));
+  const add = async (v: string) => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", src(v))]);
+    const get = net(site(v));
+    return installPackage(pkg, await inspectPackage(pkg, { esbuild, get }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get });
+  };
+
+  it("the version it makes says which library changed", async () => {
+    history.notes.length = 0;
+    await add("4.4.0");
+    await add("4.4.1");
+    expect(history.notes.at(-1)).toBe("Updated from a file · fancy-chart 4.4.1 (was 4.4.0)");
+  });
+
+  it("keeps the old library's bytes, so History can go back to the version that used them", async () => {
+    const before = (await add("4.4.0")).app.lock![url("4.4.0")]!.file;
+    await add("4.4.1");
+    const space = fileSpace(byApp.get("piano")!);
+    expect(await (await space.read(before))!.text()).toContain("chart 4.4.0");
+    expect(Object.keys(getUserApp("piano")!.lock!)).toEqual([url("4.4.1")]);
+  });
+});
+
+describe("what the card says about a library", () => {
+  const line = { url: "https://esm.sh/chart.js@4.4.1?bundle", label: "chart.js 4.4.1", host: "esm.sh" };
+  it("one still to fetch: what, how big when known, and from where", () => {
+    expect(describeLibrary({ ...line, here: false, size: 194_560 })).toBe("fetches chart.js 4.4.1, 190 KB, from esm.sh");
+    expect(describeLibrary({ ...line, here: false })).toBe("fetches chart.js 4.4.1 from esm.sh");
+  });
+  it("one that came with the app fetches nothing", () => {
+    expect(describeLibrary({ ...line, here: true, size: 194_560 })).toBe("chart.js 4.4.1, 190 KB, came with the app");
   });
 });
 

@@ -20,6 +20,7 @@ import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
+import type { ModuleSource } from "./package-modules.js";
 
 export interface StartModifyOpts {
   /** The app as the person has it. */
@@ -32,6 +33,8 @@ export interface StartModifyOpts {
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: ModifyLoopDeps["resumeFrom"];
+  /** The app's libraries and own modules (#266, #258): a candidate is checked with them. */
+  modules?: ModuleSource;
 }
 
 /** Whether this engine can drive the modify loop at all (a chat engine with a key); else why not. */
@@ -45,10 +48,10 @@ export function modifyLoopRefusal(cfg: EngineConfig): string | undefined {
 export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutcome> {
   const refused = modifyLoopRefusal(opts.engine);
   if (refused) return { kind: "failed", reason: refused };
-  const check = (source: string): Promise<string[]> => buildAndValidate(source);
+  const check = (source: string): Promise<string[]> => buildAndValidate(source, opts.modules);
   // A regression gate: the app as the person has it is run once, and a candidate is held back only
   // by what IT breaks — never by what was already failing (#262).
-  const run = regressionGate((source) => runCandidate(source), opts.source);
+  const run = regressionGate((source) => runCandidate(source, { modules: opts.modules }), opts.source);
   return runModifyLoop({
     engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
     model: opts.engine.openrouterModel,
@@ -61,7 +64,7 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     source: opts.source,
     check,
     run,
-    shapeOf: loadDefinition,
+    shapeOf: (source) => loadDefinition(source, opts.modules),
     before: opts.before,
     onStep: opts.onStep,
     signal: opts.signal,

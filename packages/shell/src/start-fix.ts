@@ -19,6 +19,7 @@ import {
 import { createOpenRouterEngine } from "@potyro/generator/backends";
 import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
+import type { ModuleSource } from "./package-modules.js";
 
 export interface StartFixOpts {
   /** The current app's source — what the agent starts from and, if it gives up, the last thing tried. */
@@ -33,6 +34,8 @@ export interface StartFixOpts {
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: LoopDeps["resumeFrom"];
+  /** The app's libraries and own modules (#266, #258), when it has any. */
+  modules?: ModuleSource;
 }
 
 /**
@@ -183,6 +186,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
         source,
         theCase: opts.theCase,
         appStore: opts.store,
+        modules: opts.modules,
         // The app AS IT IS, so a candidate cannot pass by deleting the feature it was meant to fix.
         original: opts.runtime.definition,
       }),
