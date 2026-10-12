@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { currentCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The Studio's History tab surfaces cases reported against a SAVED app (app-cases.ts: `listCases`
 // filters by `appId`, and cases only mean anything once an app has an id to hang them on). This
@@ -85,22 +86,12 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   // --- 1. Author + save an app by hand, no model call -------------------------------------------
   // From the home screen: a Studio opened there is for making a new app. Opened from inside an app
   // it is for changing THAT app, and opens on it (reported 2026-09-13).
-  await page.goto("/");
-  await page.getByRole("button", { name: /New app/ }).click();
-
-  const studio = page.locator(".k-studio");
-  await expect(studio).toBeVisible();
-  // Preview-first default (the starter app) — wait for it before touching anything else.
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText("My App", { timeout: 30_000 });
-
-  await studio.getByRole("tab", { name: "Source" }).click();
-  const sourceBox = studio.getByRole("textbox", { name: "App source" });
-  await sourceBox.fill(SOURCE_V1);
-  await studio.getByRole("button", { name: "Run ▶" }).click();
-  await expect(studio.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
-
-  await studio.getByRole("button", { name: "Save to My Apps" }).click();
-  await expect(studio.locator(".k-myapps .k-myapp-open", { hasText: APP_NAME })).toHaveCount(1);
+  const studio = await openNewStudio(page);
+  const tools = await openSource(page, studio);
+  await tools.getByRole("textbox", { name: "App source" }).fill(SOURCE_V1);
+  await tools.getByRole("button", { name: "Save changes" }).click();
+  // Saved as an app: its card is in the conversation.
+  await expect(currentCard(studio).locator(".k-card-name")).toContainText(APP_NAME, { timeout: 30_000 });
 
   // Read back the id the UI actually assigned — not assumed from the slugging rule — so the rest of
   // the test drives the exact record the app just created.
@@ -146,17 +137,16 @@ test("a case recorded against a saved app shows up in Studio history and its rep
   await expect(studio2).toBeVisible();
   // Opened from inside the app, the Studio is already on it — no detour through the starter and My
   // Apps, which is the workaround this step used to need.
-  await expect(studio2.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
-  await expect(studio2.locator(".k-studio-bar")).toContainText(`· ${APP_NAME}`);
+  await expect(studio2.locator(".k-studio-preview h1").first()).toHaveText(APP_NAME, { timeout: 30_000 });
+  await expect(studio2.locator(".k-studio-name")).toHaveText(APP_NAME);
 
-  await studio2.getByRole("tab", { name: "Source" }).click();
-  await studio2.getByRole("textbox", { name: "App source" }).fill(SOURCE_V2);
-  await studio2.getByRole("button", { name: "Run ▶" }).click();
-  await expect(studio2.locator(".k-studio-preview h1")).toHaveText(APP_NAME, { timeout: 30_000 });
-  await studio2.getByRole("button", { name: "Save changes" }).click();
+  const tools2 = await openSource(page, studio2);
+  await tools2.getByRole("textbox", { name: "App source" }).fill(SOURCE_V2);
+  await tools2.getByRole("button", { name: "Save changes" }).click();
+  await expect(currentCard(studio2).locator(".k-card-seq")).toHaveText("v2", { timeout: 30_000 });
 
   // --- 4. The case is in History, and replay tells the truth about the app it is against now ------
-  await studio2.getByRole("tab", { name: "History" }).click();
+  await tools2.getByRole("tab", { name: "History" }).click();
   const casesSection = studio2.locator(".k-cases-section");
   await expect(casesSection).toBeVisible();
   await expect(casesSection.locator(".k-case-title")).toHaveText(EXPECTATION); // caseLabel() falls back to the expect note

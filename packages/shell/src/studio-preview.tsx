@@ -1,0 +1,151 @@
+// The app as the Studio shows it — built from a source, and opened like an artifact (#261).
+//
+// Building and showing are separate on purpose. Every version is BUILT the moment it arrives, because
+// that is how it is validated: a version that does not load, or whose structure is wrong, is not
+// saved. It is SHOWN only when someone opens it — tapping its card, or Preview — because the
+// conversation is the screen now, and an app pushed underneath it could not be seen as it will run.
+//
+// Opened, it is a screen of its own. On a phone it is the whole screen; on a wide one it stands
+// beside the conversation. Either way the app's fixed bars, its full-screen pages and its dialogs
+// belong to THAT screen: the frame is a containing block for anything fixed inside it, the app's
+// form sheets are portalled into it (`PortalRootContext`), and it has its own dialog host. Before
+// this, a form opened in the preview covered the Studio, and the app's dialogs opened over the chat.
+
+import { useRef, useState, useEffect } from "react";
+import { MemoryStore, type Store } from "@potyro/store";
+import { createWebCapabilities } from "@potyro/capabilities";
+import { PortalRootContext } from "@potyro/views";
+import type { Provenance } from "@potyro/host";
+import { createAppBundler } from "./app-bundler.js";
+import { createSandboxLoader } from "./isolate-bridge.js";
+import { compose, type Composed } from "./compose.js";
+import { loadTrustedModule } from "./trusted-loader.js";
+import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { PickerHost } from "./picker.js";
+import { UiHost } from "./ui-host.js";
+import { openStore } from "./open-store.js";
+import { validateDefinition } from "./validate-app.js";
+import { DialogHost, Dialogs } from "./dialog.js";
+import { Toaster } from "./toaster.js";
+import { App } from "./App.js";
+
+export interface Preview {
+  composed: Composed;
+  toaster: Toaster;
+  picker: PickerHost;
+  questions: UiHost;
+  /** The app's own dialogs, shown inside its screen — not the shell's, which cover everything. */
+  dialogs: DialogHost;
+  /** Which path actually ran — the isolate is taken only when the trusted load throws. */
+  provenance: Provenance;
+  /** Bumped per build, so a rebuilt app remounts rather than keeping the last one's state. */
+  build: number;
+}
+
+let builds = 0;
+
+async function draftStore(): Promise<Store> {
+  const store = new MemoryStore();
+  await store.open("studio-draft");
+  return store;
+}
+
+/**
+ * Build an app from source and validate its structure.
+ *
+ * `storeNamespace` is a saved app's id, so the app opens on its own durable data; without one (a
+ * conversation that has not made an app yet) it runs on an empty store that nothing keeps. A source
+ * that does not load at all comes back as `{ preview: null, issues }`.
+ */
+export async function buildPreview(source: string, storeNamespace: string | null): Promise<{ preview: Preview | null; issues: string[] }> {
+  try {
+    const store = storeNamespace ? await openStore(`user:${storeNamespace}`) : await draftStore();
+    const toaster = new Toaster();
+    const picker = new PickerHost();
+    const questions = new UiHost();
+    const dialogs = new DialogHost();
+    const base = {
+      store,
+      caps: createWebCapabilities(),
+      ui: createUiBridge(toaster.push, picker, dialogs, questions),
+      nav: createNavBridge(() => {}),
+    };
+    // TRUSTED: this is the person's own app (CLAUDE.md rule 3). It also has to run directly for the
+    // preview to be truthful — custom views never render in the isolate.
+    let composed: Composed;
+    let provenance: Provenance = "trusted";
+    try {
+      composed = await compose({ provenance: "trusted", app: await loadTrustedModule(source), ...base });
+    } catch {
+      // A malformed app cannot produce a definition — the isolate still reports what is wrong with it.
+      provenance = "untrusted";
+      const bundle = await createAppBundler();
+      composed = await compose({ provenance: "untrusted", bundleCode: await bundle(source), ...base, loadIsolated: await createSandboxLoader(store) });
+    }
+    builds += 1;
+    return {
+      preview: { composed, toaster, picker, questions, dialogs, provenance, build: builds },
+      issues: validateDefinition(composed.runtime.definition),
+    };
+  } catch (e) {
+    return { preview: null, issues: [e instanceof Error ? e.message : String(e)] };
+  }
+}
+
+export interface PreviewScreenProps {
+  preview: Preview;
+  /** The name and version on the bar, so it is never unclear which app this is. */
+  title: string;
+  version?: number;
+  /** Shown instead of the version when this is not saved — a version with problems, held back. */
+  unsaved?: boolean;
+  onBack: () => void;
+  onSource: () => void;
+}
+
+/** The opened app: a bar with the way back, and the app's own screen under it. */
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource }: PreviewScreenProps) {
+  const screenRef = useRef<HTMLDivElement>(null);
+  // The portal root is the screen element itself, which exists only after the first render.
+  const [screen, setScreen] = useState<HTMLDivElement | null>(null);
+  useEffect(() => setScreen(screenRef.current), []);
+  return (
+    <section className="k-preview" aria-label="App preview">
+      <header className="k-preview-bar">
+        <button type="button" className="k-preview-back" aria-label="Back to the chat" onClick={onBack}>
+          {/* Beside the conversation the chat is already there, so this closes the app instead. */}
+          <span aria-hidden>←</span> <span className="k-preview-back-word">Chat</span>
+          <span className="k-preview-hide-word">Close</span>
+        </button>
+        <p className="k-preview-title">
+          <strong>{title}</strong>
+          {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
+        </p>
+        <button type="button" className="k-preview-code" onClick={onSource}>
+          Code
+        </button>
+      </header>
+      {/* The screen does not scroll; the app scrolls INSIDE it. Anything fixed in the app is placed
+          against the screen, so a tab bar or a floating button stays put while the app scrolls —
+          were the screen itself the scroller, they would scroll away with the content. */}
+      <div className="k-preview-screen" ref={screenRef}>
+        {screen ? (
+          <PortalRootContext.Provider value={screen}>
+            {/* `k-studio-preview` kept from the old stage: what a spec or a person points at is the app. */}
+            <div className="k-preview-scroll k-studio-preview">
+              <App
+                key={preview.build}
+                runtime={preview.composed.runtime}
+                provenance={preview.provenance}
+                toaster={preview.toaster}
+                picker={preview.picker}
+                questions={preview.questions}
+              />
+            </div>
+            <Dialogs host={preview.dialogs} />
+          </PortalRootContext.Provider>
+        ) : null}
+      </div>
+    </section>
+  );
+}

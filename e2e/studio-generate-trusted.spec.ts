@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { claudeCliAvailable } from "../packages/generator/src/cli-available.js";
+import { openFromCard, openSource } from "./studio-helpers.js";
 
 // Generation driven through the ACTUAL browser path, because curl proves only that the endpoint
 // answers — not that the Studio's polling client works. The bug this covers ("claude -p failed:
@@ -48,14 +49,16 @@ test("the Studio generates an app end to end, surviving a long run", async ({ pa
   await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
 
   // Progress must appear — a silent multi-minute wait is what made this feel broken.
-  await expect(studio.getByText(/Generating via claude -p… \d+s/)).toBeVisible({ timeout: 30_000 });
+  await expect(studio.getByText(/Making it via claude -p… \d+s/)).toBeVisible({ timeout: 30_000 });
 
-  // The generated app replaces the starter in the live preview.
-  const preview = studio.locator(".k-studio-preview");
-  await expect(preview.locator("h1")).not.toHaveText("My App", { timeout: 330_000 });
-
-  await studio.getByRole("tab", { name: "Source" }).click();
-  await expect(studio.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
+  // The made app — or the one question a model may ask first (#261), which is an answer too.
+  await expect(studio.locator('.k-card[data-current], .k-thread-answer[data-tone="question"]').first()).toBeVisible({ timeout: 330_000 });
+  if (await studio.locator(".k-card[data-current]").count()) {
+    const preview = await openFromCard(studio);
+    await expect(preview.locator("h1").first()).toBeVisible({ timeout: 30_000 });
+    const tools = await openSource(page, studio);
+    await expect(tools.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
+  }
 
   // POST starts the job; at least one GET polls it. A single long-held request is the old shape.
   expect(generateCalls.some((c) => c.startsWith("POST"))).toBe(true);
