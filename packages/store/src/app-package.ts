@@ -5,7 +5,9 @@
 //   files/<path>         files the app ships with; installed into its own folder as `shipped`
 //   lock.json            libraries the source imports by URL → their bytes in files/.modules/ (#266)
 //   seed.json            first records, `{ entity: [row, …] }`; applied once, on first install
-//   manifest.json        `{ format: "potyro-app/1", source, files: [{ path, size }], modules: […] }`
+//   manifest.json        `{ format: "potyro-app/1", source, files: [{ path, size }], modules: […], app }`
+//                        `app` is what the app declares — name, icon, entities, pages, permissions —
+//                        as data (#271): what the Add-an-app card reads instead of running the code
 //   chat.json            optional: the Studio conversation that made it, when the author included it
 //
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
@@ -13,6 +15,7 @@
 // one too, so a backup can be installed on a device that never had the app.
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { libraryLock, LockError, parseLock, type AppLock } from "./app-lock.js";
+import { parseDeclaration, type AppDeclaration } from "./app-declaration.js";
 
 export interface PackagedFile {
   path: string;
@@ -45,6 +48,11 @@ export interface AppPackage {
    * as plain JSON and nothing more: the shell decides whether it is a conversation at all.
    */
   chat?: unknown;
+  /**
+   * What the app declares, from the manifest, when whoever packed it wrote that (#271): the card is
+   * drawn from this without running the app. Absent in an older package or a bare source.
+   */
+  declared?: AppDeclaration;
 }
 
 export const APP_PACKAGE_FORMAT = "potyro-app/1";
@@ -113,7 +121,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   const prefix = roots.size === 1 && names.every((n) => n.includes("/")) ? `${[...roots][0]}/` : "";
   const at = (name: string): Uint8Array | undefined => entries[prefix + name];
 
-  let manifest: { format?: string; source?: string } = {};
+  let manifest: { format?: string; source?: string; app?: unknown } = {};
   const rawManifest = at(MANIFEST);
   if (rawManifest) {
     try {
@@ -129,6 +137,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   if (!sourceName) throw new AppPackageError("No app source in the zip (expected app.ts or app.tsx)");
 
   const isBundle = manifest.format === "potyro-bundle/1";
+  const declared = parseDeclaration(manifest.app);
   const under = (folder: string): PackagedFile[] =>
     isBundle
       ? []
@@ -152,12 +161,14 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
     seed: isBundle ? undefined : parseSeed(at(SEED), SEED),
     chat: parseChat(at(CHAT)),
     kind: isBundle ? "bundle" : "package",
+    // A declaration that is not one is ignored, not fatal: the card then reads the app itself.
+    ...(declared ? { declared } : {}),
   };
 }
 
 /** Make a package zip. The inverse of `readAppPackage` for a `potyro-app/1` package. */
 export function packAppPackage(
-  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock">>,
+  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock" | "declared">>,
 ): Uint8Array {
   const modules = pkg.modules ?? [];
   const sourceName = SOURCE_NAMES.includes(pkg.sourceName) ? pkg.sourceName : /x$/.test(pkg.sourceName) ? "app.tsx" : "app.ts";
@@ -169,6 +180,7 @@ export function packAppPackage(
           source: sourceName,
           files: pkg.files.map((f) => ({ path: f.path, size: f.data.byteLength })),
           ...(modules.length ? { modules: modules.map((m) => ({ path: m.path, size: m.data.byteLength })) } : {}),
+          ...(pkg.declared ? { app: pkg.declared } : {}),
         },
         null,
         2,

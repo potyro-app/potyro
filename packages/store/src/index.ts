@@ -1,5 +1,6 @@
 // @potyro/store — persistence seam.
 export type { StoredFile } from "./types.js";
+export { declareApp, parseDeclaration, FN_MARKER, type AppDeclaration } from "./app-declaration.js";
 export { readAppPackage, packAppPackage, sourcePackage, isZip, AppPackageError, APP_PACKAGE_FORMAT, type AppPackage, type PackagedFile } from "./app-package.js";
 export {
   MODULES_DIR,

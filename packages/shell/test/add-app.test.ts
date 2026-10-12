@@ -25,14 +25,25 @@ vi.mock("../src/open-store.js", async () => {
   await chats.open("studio-chat");
   return { openStore: async () => chats };
 });
-vi.mock("../src/validate-app.js", () => ({
-  // A source marked NEEDS_DOM stands for an app whose library reaches for `window` when it loads: it
-  // fails in the sealed box once the library's real bytes are there, as `wrapForIsolate` says it.
-  inspectSource: async (source: string, modules?: { lock: Record<string, unknown> }, opts?: { standIns?: boolean }) => {
-    if (source.includes("NEEDS_DOM") && !opts?.standIns && Object.keys(modules?.lock ?? {}).some((k) => k.startsWith("https://"))) {
-      throw new Error("Error: fancy-chart 4.4.1 needs a full web page to work (window is not defined). Apps in the sealed box do not get one, so this app can only run as yours.");
+// The test load in the sealed box (#271), as its outcomes: the real one is exercised in a browser.
+const trials = vi.hoisted(() => ({ calls: [] as Array<{ standIns?: boolean; smoke?: boolean }> }));
+vi.mock("../src/app-trial.js", () => ({
+  trySealed: async (source: string, modules?: { lock: Record<string, unknown> }, opts: { standIns?: boolean; smoke?: boolean } = {}) => {
+    trials.calls.push(opts);
+    // A source marked NEEDS_DOM stands for an app whose library reaches for `window` when it loads: it
+    // fails in the sealed box once the library's real bytes are there, as `wrapForIsolate` says it.
+    if (source.includes("NEEDS_DOM") && !opts.standIns && Object.keys(modules?.lock ?? {}).some((k) => k.startsWith("https://"))) {
+      const sentence = "fancy-chart 4.4.1 needs a full web page to work ('window' is not defined). Apps in the sealed box do not get one, so this app can only run as yours.";
+      return { issues: [], missing: ["a full web page (window)"], loadFailed: `Error: ${sentence}`, libraryProblem: sentence };
     }
-    return inspected(source);
+    // Its top level makes a date formatter, which the sealed box cannot.
+    if (source.includes("TOP_INTL")) return { issues: [], missing: ["date and number formatting (Intl)"], loadFailed: "ReferenceError: 'Intl' is not defined" };
+    if (source.includes("THROWS")) return { issues: [], missing: [], loadFailed: "Error: not today" };
+    if (source.includes("SYNTAX")) return { issues: [], missing: [], unreadable: "Expected \";\" but found \"}\"" };
+    // A computed that formats dates: it loads, and the smoke run meets the missing feature.
+    if (source.includes("USES_INTL") && opts.smoke) return { ...inspected(source), missing: ["date and number formatting (Intl)"] };
+    if (source.includes("OTHER_ID")) return { ...inspected(source), definition: { ...inspected(source).definition, id: "not-piano" }, missing: [] };
+    return { ...inspected(source), missing: [] };
   },
 }));
 const inspected = (source: string) => ({
@@ -66,6 +77,7 @@ const openFor = async (app: { id: string }) => {
 beforeEach(async () => {
   localStorage.clear();
   stores = [];
+  trials.calls = [];
   byApp.clear();
   await (await import("../src/studio-chat.js")).clearChat("piano");
 });
@@ -323,6 +335,67 @@ describe("what the card says about a library", () => {
   });
   it("one that came with the app fetches nothing", () => {
     expect(describeLibrary({ ...line, here: true, size: 194_560 })).toBe("chart.js 4.4.1, 190 KB, came with the app");
+  });
+});
+
+// The card never runs code, and a test load names what the sealed box lacks (#271).
+describe("the card, from what a package declares", () => {
+  const declared = {
+    id: "piano",
+    name: "Piano",
+    icon: "🎹",
+    version: "1.0.0",
+    schemaVersion: 1,
+    permissions: { camera: true },
+    entities: { session: { label: "Session", displayField: "minutes", fields: { minutes: { type: "number" } }, computed: { month: "__potyro_fn__" } } },
+    pages: [{ id: "all", title: "Sessions", view: { type: "list", entity: "session", display: { primary: "minutes" } } }],
+  };
+  const packaged = async (source: string, withDeclaration = true) =>
+    (await import("@potyro/store")).readAppPackage(packAppPackage({ source, sourceName: "app.tsx", files: [], ...(withDeclaration ? { declared } : {}) }));
+
+  it("a package whose top level throws in the sealed box shows its whole card, names what is missing, and installs", async () => {
+    const pkg = await packaged(`// TOP_INTL\n${SOURCE}`);
+    const inspected = await inspectPackage(pkg);
+    expect(inspected).toMatchObject({ id: "piano", name: "Piano", icon: "🎹", keeps: ["Session"], asks: ["camera"], issues: [], preview: "declared" });
+    expect(inspected.missing).toEqual(["date and number formatting (Intl)"]);
+    expect(inspected.trialProblem).toBeUndefined(); // the missing feature IS the reason; it is not said twice
+    expect(inspected.failsToOpenSealed).toBe(true);
+
+    const done = await installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor });
+    expect(getUserApp(done.app.id)?.name).toBe("Piano");
+  });
+
+  it("the test load puts sample records through its logic, and what that meets is named on the card", async () => {
+    const inspected = await inspectPackage(await packaged(`// USES_INTL\n${SOURCE}`));
+    expect(trials.calls).toEqual([{ standIns: false, smoke: true }]);
+    expect(inspected.missing).toEqual(["date and number formatting (Intl)"]);
+    expect(inspected.failsToOpenSealed).toBe(false);
+  });
+
+  it("a declaration that is not a valid app is a problem on the card; one that is not the code's is refused", async () => {
+    const bad = (await import("@potyro/store")).readAppPackage(
+      packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], declared: { ...declared, pages: [{ id: "all", title: "All", view: { type: "list", entity: "nope" } }] } }),
+    );
+    expect((await inspectPackage(bad)).issues.join("\n")).toMatch(/nope/);
+    const other = await inspectPackage(await packaged(`// OTHER_ID\n${SOURCE}`));
+    expect(other.issues.join("\n")).toMatch(/“piano”.*“not-piano”/);
+  });
+
+  it("without a declaration, a top level that throws gives a card that could not preview the app — never 'does not load'", async () => {
+    const pkg = await packaged(`// THROWS\nimport { defineApp } from "potyro"; export default defineApp({ id: "piano", name: "Piano practice" } as never);`, false);
+    const inspected = await inspectPackage(pkg);
+    expect(inspected).toMatchObject({ id: "piano", name: "Piano practice", preview: "unavailable", previewProblem: "Error: not today", issues: [], keeps: [] });
+    // It can still be added: run as theirs, it may be fine.
+    const done = await installPackage(pkg, inspected, { source: "file", mine: true, mode: "replace", openStore: openFor });
+    expect(done.app.trusted).toBe(true);
+  });
+
+  it("source that cannot be read at all is a problem on the card, and is not added", async () => {
+    const pkg = await packaged(`// SYNTAX\n${SOURCE}`, false);
+    const inspected = await inspectPackage(pkg);
+    expect(inspected.preview).toBe("unavailable");
+    expect(inspected.issues.join("\n")).toMatch(/could not be read/);
+    await expect(installPackage(pkg, inspected, { source: "file", mine: true, mode: "replace", openStore: openFor })).rejects.toThrow(/could not be read/);
   });
 });
 
