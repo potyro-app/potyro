@@ -18,6 +18,11 @@ export interface ModuleSource {
   lock: AppLock;
   /** The bytes of a file in the app's space (`.modules/…`, `.src/…`), or null when it is not here. */
   read(file: string): Promise<Uint8Array | null>;
+  /**
+   * The Studio's checks (#266): every library the lock names loads as an inert stand-in instead of
+   * its bytes. See `withLibrariesStoodIn`. Never set for opening, saving or installing an app.
+   */
+  standInLibraries?: boolean;
 }
 
 export interface ModulePluginOptions {
@@ -38,6 +43,49 @@ export class ModuleError extends Error {
     super(message);
     this.name = "ModuleError";
   }
+}
+
+/**
+ * The same modules, with every library the app has standing in as an inert value — for the Studio
+ * checking or running a candidate change, never for opening, saving or installing the app.
+ *
+ * Those checks run in the sealed box on purpose (a runaway candidate once froze the tab when it ran
+ * direct), and a library that reaches for `window` as it loads cannot start there. Checked with its
+ * real bytes, such an app fails before the change is even looked at — the app as the person has it
+ * too — so no change to it could ever pass. A stand-in lets the app's own code load and be judged;
+ * the original and the candidate get the same stand-ins, so comparing them stays fair. The app's own
+ * modules stay real, and a library the lock does not name is still refused: a candidate cannot pass
+ * by importing something the app was never installed with.
+ *
+ * The real libraries are still what runs: opening the app checks them against the lock as before.
+ */
+export function withLibrariesStoodIn(mods: ModuleSource | undefined): ModuleSource | undefined {
+  return mods && hasLibraries(mods) ? { ...mods, standInLibraries: true } : mods;
+}
+
+/** The libraries a check stood in for, by name ("p5 1.11.11"), each once. Empty when none were. */
+export function librariesStoodIn(mods: ModuleSource | undefined): string[] {
+  if (!mods?.standInLibraries) return [];
+  return [...new Set(Object.keys(mods.lock).filter(isLibraryKey).map(libraryLabel))];
+}
+
+/**
+ * What a check says about the libraries it stood in for — as it says custom views were not run — so
+ * a model does not chase an error a stand-in caused. Null when none were.
+ */
+export function standInNote(mods: ModuleSource | undefined): string | null {
+  const names = librariesStoodIn(mods);
+  if (!names.length) return null;
+  const one = names.length === 1;
+  const which = one ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)!}`;
+  return (
+    `${which} ${one ? "was" : "were"} not run here — in this check ${one ? "it is an inert stand-in" : "they are inert stand-ins"}, ` +
+    `so nothing drawn or computed with ${one ? "it" : "them"} is checked, and an error that comes from a stand-in is not the change's`
+  );
+}
+
+function isLibraryKey(key: string): boolean {
+  return /^https?:\/\//.test(key);
 }
 
 /** A `ModuleSource` over bytes in memory: a package being inspected, and tests. */
@@ -79,17 +127,22 @@ export function isLibraryStartError(e: unknown): boolean {
 }
 
 /** Anything, called or read or built, is itself: enough for an app's top level to run and say who it is. */
-const STAND_IN = `var h = new Proxy(function () {}, {
-  get: function (_t, k) {
-    if (k === Symbol.toPrimitive) return function () { return ""; };
-    if (k === Symbol.iterator) return function () { return [][Symbol.iterator](); };
-    if (k === "then" || k === "__esModule") return undefined;
-    return h;
-  },
+const STAND_IN = `var get = function (_t, k) {
+  if (k === Symbol.toPrimitive) return function () { return ""; };
+  if (k === Symbol.iterator) return function () { return [][Symbol.iterator](); };
+  if (k === "then" || k === "__esModule" || k === "toJSON") return undefined;
+  return h;
+};
+// esbuild reads a named import off an object whose prototype is this module's, so that prototype
+// answers every name the same way. Its own prototype is null: a chain that led back to the stand-in
+// would never end, and \`instanceof\` — which the isolate's marshalling asks of every value a computed
+// returns — would walk it forever.
+var proto = new Proxy({}, { get: get, getPrototypeOf: function () { return null; } });
+var h = new Proxy(function () {}, {
+  get: get,
   apply: function () { return h; },
   construct: function () { return h; },
-  // esbuild reads a named import off an object whose prototype is this module's: point it back here.
-  getPrototypeOf: function () { return h; },
+  getPrototypeOf: function () { return proto; },
 });
 module.exports = h;`;
 
@@ -158,6 +211,7 @@ export function packageModulesPlugin(mods: ModuleSource | undefined, opts: Modul
       build.onLoad({ filter: /.*/, namespace: "potyro-lib" }, async (args) => {
         const label = libraryLabel(args.path);
         const entry = lock[args.path];
+        if (entry && mods?.standInLibraries) return { contents: STAND_IN, loader: "js" };
         const bytes = entry && mods ? await mods.read(entry.file) : null;
         if (!entry || !bytes) {
           if (opts.standIns) return { contents: STAND_IN, loader: "js" };
@@ -187,7 +241,7 @@ export function packageModulesPlugin(mods: ModuleSource | undefined, opts: Modul
 
 /** Whether a lock names any library: only then does an isolate bundle need the loading marks. */
 export function hasLibraries(mods: ModuleSource | undefined): boolean {
-  return !!mods && Object.keys(mods.lock).some((k) => /^https?:\/\//.test(k));
+  return !!mods && !mods.standInLibraries && Object.keys(mods.lock).some(isLibraryKey);
 }
 
 /** esbuild reports a plugin's error inside its own framing; a person should read just the sentence. */

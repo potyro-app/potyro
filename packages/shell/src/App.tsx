@@ -30,6 +30,7 @@ import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { buildAndValidate } from "./validate-app.js";
 import { modulesOf } from "./app-modules.js";
+import { withLibrariesStoodIn } from "./package-modules.js";
 import { AskPanel } from "./ask-panel.js";
 import { useAskEnabled } from "./ask-setting.js";
 import { clearAskMaterial, peekAskMaterial } from "./share-inbox.js";
@@ -702,7 +703,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     const app = appId ? getUserApp(appId) : undefined;
     if (!appId || !app) return "This app isn't saved on this device, so it can't be changed here.";
     try {
-      const issues = await buildAndValidate(next, await modulesOf(appId));
+      // Its libraries stand in (#266): this checks the structure of the change, and a library that
+      // needs a full web page cannot start in the sealed box the check runs in. Opening the app still
+      // runs, and checks, the real ones.
+      const issues = await buildAndValidate(next, withLibrariesStoodIn(await modulesOf(appId)));
       // A change that doesn't validate is a bug in the editor, not something to hand to a model to
       // repair. Discard it and say so rather than saving a broken app.
       if (issues.length) return `That change didn't validate, so nothing was saved: ${issues[0]}`;

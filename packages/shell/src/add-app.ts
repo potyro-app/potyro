@@ -19,7 +19,7 @@ import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePa
 import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
-import { memoryModules, type ModuleSource } from "./package-modules.js";
+import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
 import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
@@ -170,12 +170,6 @@ const CAP_WORDS: Record<string, string> = {
   sync: "sharing",
 };
 
-/** The same modules with no libraries: each then stands in, so the rest of the app can be read. */
-const withoutLibraries = (m: ModuleSource): ModuleSource => ({
-  lock: Object.fromEntries(Object.entries(m.lock).filter(([k]) => !/^https?:\/\//.test(k))),
-  read: m.read,
-});
-
 interface AppFacts {
   id?: string;
   name?: string;
@@ -228,7 +222,7 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
   let read = trial?.definition as AppFacts | undefined;
   if (!declared && !read && trial?.libraryProblem) {
     // The app may be fine and one of its libraries not, in the sealed box: read it without them.
-    const again = await trySealed(pkg.source, withoutLibraries(libs.modules), { standIns: true });
+    const again = await trySealed(pkg.source, withLibrariesStoodIn(libs.modules), { standIns: true });
     read = again.definition as AppFacts | undefined;
     if (read) trial = { ...trial, definition: read, issues: again.issues };
   }

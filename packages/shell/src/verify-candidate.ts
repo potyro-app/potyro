@@ -35,7 +35,7 @@ import { MemoryStore, type Store } from "@potyro/store";
 import { replayCase, replayPassed, structuralLoss, viewSubstitutions, type AppShape, type Case, type ReplayTarget } from "@potyro/runtime";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { createAppBundler } from "./app-bundler.js";
-import type { ModuleSource } from "./package-modules.js";
+import { standInNote, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
 import { observeRender } from "./observe-render.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
@@ -140,10 +140,14 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
   // warning on `storeForTests`. Combined with the isolate's `network.fetch` throwing outright, a
   // candidate under verification can neither exfiltrate nor mutate what it reads.
   const store = readOnlyStore(rawStore, "verifyCandidate runs a candidate read-only; writes are refused");
+  const modules = withLibrariesStoodIn(deps.modules);
+  const stoodIn = standInNote(modules);
   let bundleCode: string;
   try {
     const bundle = await createAppBundler();
-    bundleCode = await bundle(deps.source, deps.modules);
+    // The app's libraries stand in as inert values: many cannot start in the isolate at all, which
+    // would fail every candidate of such an app before its replay began (see run-candidate.ts).
+    bundleCode = await bundle(deps.source, modules);
   } catch (e) {
     // A candidate that does not compile is a failed verdict, not an exception — the loop has to be
     // able to hand this back to the model as something to fix.
@@ -203,7 +207,7 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
     const lines = report.outcomes.map((o) => `${o.ok ? "ok" : "FAILED"}: ${o.detail}`);
     // Lead with the substitution when there is one: a person skimming a passing verdict needs to see
     // "this swapped your custom view for the built-in map" BEFORE they press Apply, not after.
-    const detail = [...swaps.map((s) => `NOTE: ${s}`), ...lines].join("\n");
+    const detail = [...swaps.map((s) => `NOTE: ${s}`), ...(stoodIn ? [`NOTE: ${stoodIn}`] : []), ...lines].join("\n");
     return { passed: replayPassed(report), detail };
   } catch (e) {
     return { passed: false, detail: `the candidate could not run: ${e instanceof Error ? e.message : String(e)}` };
