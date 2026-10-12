@@ -3,6 +3,7 @@
 // The generator's SYSTEM_PROMPT teaches how to write an app and carries the schema reference; the
 // modify message (`buildModifyMessage`) carries the ladder. This adds the two things the loop
 // depends on: what the tools are for, and that a refusal is only accepted after they were used.
+// #262 added the corpus tools.
 
 import { SYSTEM_PROMPT } from "../prompt.js";
 
@@ -21,10 +22,14 @@ YOU HAVE TOOLS. Use them instead of guessing:
   is a fact you can quote; if it shows the option, use it.
 - \`check\` — bundle and validate a complete candidate source, returning the validator's own issues.
   Call it to TRY something you are unsure of. The edits you finally send are checked the same way.
-- \`example\` — a complete example app that uses a feature, to copy the shape from.
+- \`example\` — a real app that uses a feature, to copy the shape from.
+- \`search_corpus\` — search this release's example apps, personal apps, API docs and schema types for
+  a few words. Real apps show how the parts fit together, which a declaration cannot. Search before
+  writing something you have not seen done.
+- \`read\` — read a file search_corpus pointed to, page by page.
 
-A NOT-IN-APP reply that is not preceded by a \`lookup\` or \`check\` is not accepted: you will be asked
-to look first. Refusing a request you could mostly do is worse than any edit — do the parts that can
+A NOT-IN-APP reply without a \`lookup\`, \`search_corpus\` or \`check\` before it is not accepted:
+you will be asked to look first. Refusing a request you could mostly do is worse than any edit — do the parts that can
 be done and list the rest under \`Not done:\`, as the ladder in the request says.
 
 Every candidate you send is bundled, validated and compared with the app's shape automatically. If
