@@ -29,10 +29,6 @@ vi.mock("@potyro/store", async (importOriginal) => ({
   },
   openJazzStore: async () => ({}),
   peekAppSpace: (namespace: string) => spaceOnDevice[namespace] ?? null,
-  // What `saveUserApp` reads to keep an app's libraries in History (#266); these apps have none.
-  lockJson: () => undefined,
-  libraryLock: () => ({}),
-  parseLock: () => ({}),
 }));
 
 vi.mock("../src/open-store.js", () => ({ syncRelayUrl: () => "wss://relay.example" }));
