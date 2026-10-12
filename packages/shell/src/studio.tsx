@@ -35,6 +35,8 @@ import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { ThreadView } from "./studio-thread-view.js";
 import { modulesOf } from "./app-modules.js";
+import { describeLibrary } from "./package-libraries.js";
+import { keepLibraryFiles, librariesToFetch, prepareStudioLibraries, type StudioLibraries } from "./studio-libraries.js";
 import { StudioTools, type ToolsTab } from "./studio-tools.js";
 
 /** What "Write the code yourself" starts from when there is no app yet. */
@@ -103,6 +105,8 @@ interface Held {
   note: string;
   issues: string[];
   loss: string | null;
+  /** Its libraries, already fetched with the person's say-so (#266). */
+  libraries: StudioLibraries | null;
 }
 
 export interface StudioProps {
@@ -209,11 +213,17 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
    * Keep a version: save it, give the conversation its card, and — when this was the first — make
    * the draft the app's conversation.
    */
-  const keep = async (next: string, built: Preview | null, summary: string, note: string, origin?: VersionOrigin): Promise<void> => {
+  const keep = async (next: string, built: Preview | null, summary: string, note: string, origin?: VersionOrigin, libraries?: StudioLibraries | null): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
     const defined = built?.composed.runtime.definition.name;
     const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || "Untitled app";
-    const record = await saveUserApp({ id: existing?.id, name, source: next, note: note || undefined, rationale: summary || undefined, origin }, new Date().toISOString());
+    // A library's bytes are in the app's folder before its record names them, so no open finds one missing.
+    if (existing && libraries?.files.length) await keepLibraryFiles(existing, libraries.files);
+    const record = await saveUserApp(
+      { id: existing?.id, name, source: next, lock: libraries?.lock, note: note || undefined, rationale: summary || undefined, origin },
+      new Date().toISOString(),
+    );
+    if (!existing && libraries?.files.length) await keepLibraryFiles(record, libraries.files);
     const seq = (await listVersions(record.id))[0]?.seq;
     if (!existing) {
       if (isDraftId(chatRef.current)) await adoptDraft(chatRef.current, record.id);
@@ -231,26 +241,58 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (wide) setPreviewOpen(true);
   };
 
+  /**
+   * The libraries a version imports (#266), the way Add an app does it: what will be fetched is said
+   * first — "fetches chart.js 4.4.1 from esm.sh" — and fetched once, now, only if the person agrees.
+   * Null for an app with none; a sentence when the version cannot be kept as it is.
+   */
+  const librariesFor = async (src: string): Promise<StudioLibraries | null | string> => {
+    const have = await modulesOf(appRef.current ?? undefined);
+    const { lines, issues } = await librariesToFetch(src, have);
+    if (issues.length) return `Not saved: ${issues[0]}`;
+    if (lines.length) {
+      const go = await shellDialogs.confirm(lines.length === 1 ? "Fetch the library this version uses?" : "Fetch the libraries this version uses?", {
+        detail: `${lines.map((l) => describeLibrary(l)).join("\n")}\n\nOnce, now, and kept with the app: after that it works without the internet.`,
+        ok: "Fetch",
+      });
+      if (!go) return `Not saved: it uses ${lines.map((l) => l.label).join(", ")}, which ${lines.length === 1 ? "was" : "were"} not fetched.`;
+    }
+    try {
+      const libraries = await prepareStudioLibraries(src, have);
+      const fetched = libraries?.fetched.map((l) => describeLibrary(l, { done: true })) ?? [];
+      if (fetched.length) await say({ kind: "event", text: `${fetched.join("; ").replace(/^f/, "F")}.` });
+      return libraries;
+    } catch (e) {
+      return `Not saved: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  };
+
   /** A source arrived: check it, repair it once if its structure is wrong, then keep it or hold it. */
   const land = async (next: string, summary: string, note: string, loss: string | null): Promise<void> => {
     setWorking("Checking it…");
     let src = next;
     let said = summary;
     let lost = loss;
-    let { preview: built, issues } = await buildPreview(src, appRef.current);
+    const first = await librariesFor(src);
+    if (typeof first === "string") return say({ kind: "failure", text: first });
+    let libraries = first;
+    let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules);
     if (issues.length && ready) {
       try {
         const fixed = await (await engine()).repair(src, issues);
         src = fixed.source;
         said = `${said} ${fixed.summary}`.trim();
         lost = lost ?? fixed.loss;
-        ({ preview: built, issues } = await buildPreview(src, appRef.current));
+        const again = await librariesFor(src);
+        if (typeof again === "string") return say({ kind: "failure", text: again });
+        libraries = again;
+        ({ preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules));
       } catch {
         // The problems stand, and are said below.
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries });
       setPreview(built ?? preview);
       await say({
         kind: "failure",
@@ -260,7 +302,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       });
       return;
     }
-    await keep(src, built, said, note);
+    await keep(src, built, said, note, undefined, libraries);
   };
 
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
@@ -318,7 +360,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       { detail: "You can go back to the version before from History.", ok: "Keep it" },
     );
     if (!go) return;
-    await keep(h.source, preview, `${h.summary} Kept with problems.`.trim(), h.note);
+    await keep(h.source, preview, `${h.summary} Kept with problems.`.trim(), h.note, undefined, h.libraries);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */
@@ -343,9 +385,23 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   // --- The code, by hand ------------------------------------------------------------------------
 
+  /** The libraries the hand-written code imports, fetched for Run and reused by Save of the same code. */
+  const draftLibraries = useRef<{ source: string; libraries: StudioLibraries | null } | null>(null);
+  const librariesForDraft = async (): Promise<StudioLibraries | null | string> => {
+    if (draftLibraries.current?.source === draftSource) return draftLibraries.current.libraries;
+    const libraries = await librariesFor(draftSource);
+    if (typeof libraries !== "string") draftLibraries.current = { source: draftSource, libraries };
+    return libraries;
+  };
+
   const runDraft = async (): Promise<void> => {
     setToolsBusy(true);
-    const { preview: built, issues } = await buildPreview(draftSource, appRef.current);
+    const libraries = await librariesForDraft();
+    if (typeof libraries === "string") {
+      setToolsBusy(false);
+      return setToolsError(libraries);
+    }
+    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
     setToolsBusy(false);
     if (built) setPreview(built);
     setToolsError(issues.length ? `Invalid app structure:\n- ${issues.join("\n- ")}` : null);
@@ -357,7 +413,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   const saveDraft = async (): Promise<void> => {
     setToolsBusy(true);
-    const { preview: built, issues } = await buildPreview(draftSource, appRef.current);
+    const libraries = await librariesForDraft();
+    if (typeof libraries === "string") {
+      setToolsBusy(false);
+      return setToolsError(libraries);
+    }
+    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
     setToolsBusy(false);
     if (issues.length) {
       setToolsError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
@@ -365,7 +426,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       if (!(await shellDialogs.confirm(`This app has structure problems:\n\n${issues.join("\n")}\n\nSave anyway?`))) return;
     }
     setToolsError(null);
-    await keep(draftSource, built, "Changed by hand, in the code.", "edited the code by hand", "edited");
+    await keep(draftSource, built, "Changed by hand, in the code.", "edited the code by hand", "edited", libraries);
   };
 
   const replay = async (c: Case): Promise<void> => {

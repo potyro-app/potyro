@@ -21,6 +21,7 @@ import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { storeModules } from "./app-modules.js";
+import type { ModuleSource } from "./package-modules.js";
 import { getUserApp } from "./user-apps.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
@@ -59,7 +60,12 @@ async function draftStore(): Promise<Store> {
  * conversation that has not made an app yet) it runs on an empty store that nothing keeps. A source
  * that does not load at all comes back as `{ preview: null, issues }`.
  */
-export async function buildPreview(source: string, storeNamespace: string | null): Promise<{ preview: Preview | null; issues: string[] }> {
+export async function buildPreview(
+  source: string,
+  storeNamespace: string | null,
+  /** A version's libraries before they are saved (a Studio save that fetched one, #266). */
+  pending?: ModuleSource,
+): Promise<{ preview: Preview | null; issues: string[] }> {
   try {
     const store = storeNamespace ? await openStore(`user:${storeNamespace}`) : await draftStore();
     const toaster = new Toaster();
@@ -73,7 +79,7 @@ export async function buildPreview(source: string, storeNamespace: string | null
       nav: createNavBridge(() => {}),
     };
     // Its libraries and own modules (#266, #258), from the store the preview just opened.
-    const modules = storeNamespace ? storeModules(store, getUserApp(storeNamespace)?.lock) : undefined;
+    const modules = pending ?? (storeNamespace ? storeModules(store, getUserApp(storeNamespace)?.lock) : undefined);
     // TRUSTED: this is the person's own app (CLAUDE.md rule 3). It also has to run directly for the
     // preview to be truthful — custom views never render in the isolate.
     let composed: Composed;

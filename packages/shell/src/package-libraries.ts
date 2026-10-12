@@ -140,9 +140,9 @@ export function formatSize(bytes: number): string {
  * One library, as the Add-an-app card and the Studio say it: "fetches chart.js 4.4.1, 190 KB, from
  * esm.sh" before the fetch, "chart.js 4.4.1, 190 KB, came with the app" when nothing is fetched.
  */
-export function describeLibrary(line: Pick<LibraryLine, "label" | "host" | "here" | "size">): string {
+export function describeLibrary(line: Pick<LibraryLine, "label" | "host" | "here" | "size">, opts: { done?: boolean } = {}): string {
   const what = line.size !== undefined ? `${line.label}, ${formatSize(line.size)},` : line.label;
-  return line.here ? `${what} came with the app` : `fetches ${what} from ${line.host}`;
+  return line.here ? `${what} came with the app` : `${opts.done ? "fetched" : "fetches"} ${what} from ${line.host}`;
 }
 
 /** Each library in a lock as "name" → "version", from every file of it the lock holds. */
