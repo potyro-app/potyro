@@ -145,6 +145,18 @@ describe("a name for what you kept", () => {
     expect(colorName(flat(4, 4, [128, 128, 128]))).toBe("Stone");
   });
 
+  it("names a mixed picture by its main colour, not by a muddy average", () => {
+    // 70% leaf green, 30% flower pink: the average is a yellowish olive that is in neither.
+    const w = 10;
+    const data = new Uint8ClampedArray(w * w * 4);
+    for (let i = 0; i < w * w; i++) data.set(i % 10 < 7 ? [70, 140, 80, 255] : [222, 58, 120, 255], i * 4);
+    expect(colorName({ w, h: w, data })).toBe("Fern");
+    // A grey picture with a few vivid pixels is still grey.
+    const grey = flat(10, 10, [128, 128, 128]);
+    (grey.data as Uint8ClampedArray).set([255, 0, 0, 255], 0);
+    expect(colorName(grey)).toBe("Stone");
+  });
+
   it("gives each style its noun and numbers a repeat", () => {
     const rose = flat(2, 2, [222, 58, 120]);
     expect(titleFor(rose, "flow")).toBe("Rose Drift");
