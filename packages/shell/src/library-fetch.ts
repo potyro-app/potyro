@@ -12,7 +12,8 @@
 //   - a URL without an exact version (it could mean different code tomorrow);
 //   - a file the host does not serve;
 //   - a bare package name inside a library (`import "left-pad"` has no address to fetch);
-//   - a library that decides while it runs what else to load (`import(someVariable)`);
+//   - a library that decides while it runs what else to load (`import(someVariable)`) — mentioning
+//     `require` is not that: a browser has none, so it loads nothing;
 //   - a library that fetches files of its own beside it while it runs (`new URL("x.wasm",
 //     import.meta.url)`): those are not imports, so no walk can find them ahead of time.
 import { integrityOf, isPinned, libraryLabel, lockEntryFor, matchesLock, moduleFileFor, type AppLock, type PackagedFile } from "@potyro/store";
@@ -46,8 +47,14 @@ export class LibraryFetchError extends Error {
 }
 
 const FETCH_PLUGIN = "potyro-fetch";
-/** esbuild's helper for a `require`/`import()` it could not resolve at build time. */
-const UNRESOLVED = 'typeof require !== "undefined" ? require';
+/**
+ * What esbuild makes of an `import(x)` it could not follow, with dynamic imports marked unsupported:
+ * `Promise.resolve().then(() => __toESM(__require(x)))`. Only that shape counts. A library that merely
+ * mentions `require` — a browserify prelude's `typeof require == "function" && require`, esm.sh's own
+ * require shim, `globalThis.require("vertx")` — also gets the `__require` helper, but in a
+ * browser `require` loads nothing, so it behaves the same offline as online (p5 1.x is one, #266).
+ */
+const UNRESOLVED_IMPORT = /\.then\(\(\) => __toESM\d*\(__require\d*\(/;
 /** A file located relative to the module itself, to be loaded at run time: a worker, wasm, a font. */
 const BESIDE_ITSELF = /\bimport\.meta\.(url|resolve)\b/;
 
@@ -146,7 +153,7 @@ export async function fetchLibraries(urls: string[], deps: FetchLibrariesDeps): 
       const first = errors?.[0]?.text;
       throw new LibraryFetchError(`${libraryLabel(root)} could not be read as a JavaScript module${first ? `: ${first}` : ""}.`);
     }
-    if (out.includes(UNRESOLVED)) {
+    if (UNRESOLVED_IMPORT.test(out)) {
       throw new LibraryFetchError(`${libraryLabel(root)} decides while it runs what else to load, so it cannot be kept on this device for use offline.`);
     }
   }
