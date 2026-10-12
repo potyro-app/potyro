@@ -26,7 +26,7 @@ import { diffLines, diffStat, toHunks, type DiffLine } from "./diff.js";
 import { listVersions, type AppVersion } from "./app-history.js";
 import { listDiagnoses, type AppDiagnosis } from "./app-diagnoses.js";
 import { highlightLines, type CodeRun } from "./highlight.js";
-import { saveUserApp, getUserApp } from "./user-apps.js";
+import { saveUserApp, getUserApp, lockToRestore } from "./user-apps.js";
 
 const ORIGIN_LABEL: Record<AppVersion["origin"], string> = {
   created: "created",
@@ -145,7 +145,9 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
   const candidate = against === "current" ? newest : parent ?? newest;
   const before = current && candidate && candidate.seq !== current.seq ? candidate : null;
   const lines = current && before ? diffLines(before.source, current.source) : [];
-  const stat = diffStat(lines);
+  // A library upgrade (#266) is a change to lock.json, often with no line of source changed.
+  const lockLines = current && before && (before.lock ?? "") !== (current.lock ?? "") ? diffLines(before.lock ?? "", current.lock ?? "") : [];
+  const stat = diffStat([...lines, ...lockLines]);
 
   // Highlight each SIDE once, not each row: tokenising a diff line alone loses the context that
   // tells a `}` from the inside of a template literal.
@@ -174,7 +176,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
     setError(null);
     try {
       await saveUserApp(
-        { id: appId, name: app.name, source: v.source, origin: "restored", note: `rolled back to version ${v.seq}` },
+        { id: appId, name: app.name, source: v.source, lock: lockToRestore(v, app), origin: "restored", note: `rolled back to version ${v.seq}` },
         new Date().toISOString(),
       );
       onRestored?.(v.source);
@@ -274,7 +276,15 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                         </div>
                       </div>
                       {error ? <p className="k-form-error">{error}</p> : null}
-                      <Diff lines={lines} painted={painted} />
+                      {lockLines.length && !toHunks(lines).length ? null : <Diff lines={lines} painted={painted} />}
+                      {lockLines.length ? (
+                        <div className="k-history-lock">
+                          <p className="k-muted">
+                            <code>lock.json</code> — the libraries it uses, and the exact copy of each
+                          </p>
+                          <Diff lines={lockLines} painted={null} />
+                        </div>
+                      ) : null}
                     </section>
                   ) : null}
                 </li>

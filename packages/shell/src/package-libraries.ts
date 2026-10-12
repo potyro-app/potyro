@@ -128,3 +128,49 @@ export async function prepareCode(pkg: AppPackage, deps: PackageDeps = {}): Prom
   const libraries = libraryUrlsOf(ready).length ? (ready.lock ?? {}) : {};
   return { lock: { ...libraries, ...own.lock }, files: [...ready.files, ...own.files], pkg: ready };
 }
+
+/** "190 KB": the size a person reads on the card. */
+export function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * One library, as the Add-an-app card and the Studio say it: "fetches chart.js 4.4.1, 190 KB, from
+ * esm.sh" before the fetch, "chart.js 4.4.1, 190 KB, came with the app" when nothing is fetched.
+ */
+export function describeLibrary(line: Pick<LibraryLine, "label" | "host" | "here" | "size">): string {
+  const what = line.size !== undefined ? `${line.label}, ${formatSize(line.size)},` : line.label;
+  return line.here ? `${what} came with the app` : `fetches ${what} from ${line.host}`;
+}
+
+/** Each library in a lock as "name" → "version", from every file of it the lock holds. */
+function versionsIn(lock: AppLock | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const url of Object.keys(lock ?? {})) {
+    if (!/^https?:\/\//.test(url)) continue;
+    const label = libraryLabel(url);
+    const cut = label.lastIndexOf(" ");
+    if (cut > 0) out.set(label.slice(0, cut), label.slice(cut + 1));
+  }
+  return out;
+}
+
+/**
+ * What changed in an app's libraries between two locks, for the note on its History version:
+ * "chart.js 4.4.1 (was 4.4.0)", "now uses date-fns 3.6.0", "no longer uses tone 14.7.77". Empty when
+ * nothing did.
+ */
+export function libraryChanges(before: AppLock | undefined, after: AppLock | undefined): string {
+  const was = versionsIn(before);
+  const now = versionsIn(after);
+  const parts: string[] = [];
+  for (const [name, v] of now) {
+    const old = was.get(name);
+    if (old === undefined) parts.push(`now uses ${name} ${v}`);
+    else if (old !== v) parts.push(`${name} ${v} (was ${old})`);
+  }
+  for (const [name, v] of was) if (!now.has(name)) parts.push(`no longer uses ${name} ${v}`);
+  return parts.join(", ");
+}

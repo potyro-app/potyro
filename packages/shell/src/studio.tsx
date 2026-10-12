@@ -21,7 +21,7 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { duplicateUserApp, getUserApp, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { duplicateUserApp, getUserApp, lockToRestore, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
@@ -329,7 +329,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const app = getUserApp(id);
     if (!version || !app) return;
     if (!(await shellDialogs.confirm(`Go back to version ${seq}?`, { detail: "The versions after it stay in History.", ok: "Go back" }))) return;
-    await saveUserApp({ id, name: app.name, source: version.source, origin: "restored", note: `went back to version ${seq}` }, new Date().toISOString());
+    await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note: `went back to version ${seq}` }, new Date().toISOString());
     await afterRestore(version.source);
   };
 

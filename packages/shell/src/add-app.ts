@@ -13,9 +13,9 @@
 // be marked "I wrote this, run it as mine" on the card; a link may not, it can be promoted later.
 // The same app already installed: Replace is the default, through the ordinary update path, so
 // History keeps the old version and the data check runs on the next open.
-import { fileSpace, isReservedPath, isZip, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { inspectSource } from "./validate-app.js";
-import { inspectLibraries, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
+import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
 import { isLibraryStartError, type ModuleSource } from "./package-modules.js";
 import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
@@ -220,7 +220,7 @@ export interface ShippedResult {
  * Put a package's files in the app's folder as `shipped`. On an update, a shipped file is replaced
  * unless the person changed it since (it is then `app`, not `shipped`), and a shipped file the new
  * version dropped goes, unless the person changed it. The app's code (`.modules/`, `.src/`) is
- * never "changed by the person": it is always the new version's.
+ * never "changed by the person": it is always the new version's — and a library's old bytes stay.
  */
 export async function applyShippedFiles(store: Store, files: PackagedFile[], opts: { update: boolean }): Promise<ShippedResult> {
   const space = fileSpace(store);
@@ -238,7 +238,9 @@ export async function applyShippedFiles(store: Store, files: PackagedFile[], opt
   }
   if (opts.update) {
     for (const f of await space.list()) {
-      if (f.origin === "shipped" && !incoming.has(f.path)) {
+      // A library's bytes stay when a newer version stops using them: they are named by their digest,
+      // so they never clash, and History can go back to the version that ran them (#266).
+      if (f.origin === "shipped" && !incoming.has(f.path) && !f.path.startsWith(MODULES_DIR)) {
         await space.remove(f.path);
         result.removed.push(f.path);
       }
@@ -300,7 +302,8 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
       origin: "imported",
-      note: update ? `Updated from ${from}` : `Added from ${from}`,
+      // A library upgrade may change no line of the source: the note says what it did change.
+      note: [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
     },
     now,
   );

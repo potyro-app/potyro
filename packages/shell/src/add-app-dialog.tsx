@@ -1,13 +1,14 @@
 // The Add an app dialog (#253): pick where it comes from, see what it is, decide how it runs.
 //
 // The card is the point. Before anything is saved it says what the app is called, what it keeps,
-// what it would ask this device for, what it ships with, and — when the same app is here already —
-// that this is an update. Trust is chosen on the card, never assumed: sealed unless the person says
+// what it would ask this device for, what it ships with, which libraries it fetches and from where
+// (#266), and — when the same app is here already — that this is an update. Trust is chosen on the card, never assumed: sealed unless the person says
 // "I wrote this", which a link cannot offer.
 import { useEffect, useRef, useState } from "react";
 import { pickFilesFromInput } from "@potyro/capabilities";
 import type { AppPackage } from "@potyro/store";
 import { gatherFromFiles, gatherFromLink, gatherFromPaste, inspectPackage, installPackage, type AddSource, type Inspected, type Installed } from "./add-app.js";
+import { describeLibrary, formatSize } from "./package-libraries.js";
 import { navigateTo } from "./router.js";
 
 type Step =
@@ -17,11 +18,6 @@ type Step =
   | { kind: "installing"; name: string }
   | { kind: "updated"; done: Installed };
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 const list = (words: string[]): string =>
   words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
@@ -215,6 +211,9 @@ function Card({
 }) {
   const { inspected: app, source } = step;
   const shippedBytes = app.files.reduce((n, f) => n + f.size, 0);
+  const fetches = app.libraries.filter((l) => !l.here).length;
+  // Whether it will run in the sealed box once added: what decides if a library that needs a web page matters.
+  const sealed = source === "link" || (!mine && !(app.installed?.trusted && mode === "replace"));
   return (
     <section className="k-add-app-card" aria-label={`About ${app.name}`}>
       <div className="k-add-app-ident">
@@ -244,6 +243,24 @@ function Card({
             </dd>
           </div>
         ) : null}
+        {app.modules.length ? (
+          <div>
+            <dt>Code files</dt>
+            <dd>{list(app.modules)}</dd>
+          </div>
+        ) : null}
+        {app.libraries.length ? (
+          <div>
+            <dt>Libraries</dt>
+            <dd>
+              <ul className="k-add-app-libraries">
+                {app.libraries.map((l) => (
+                  <li key={l.url}>{describeLibrary(l)}</li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        ) : null}
         {app.seedRows && !(app.installed && mode === "replace") ? (
           <div>
             <dt>Starts with</dt>
@@ -253,6 +270,22 @@ function Card({
           </div>
         ) : null}
       </dl>
+
+      {fetches ? (
+        <p className="k-muted k-add-app-note">
+          {fetches === 1 ? "It is" : "They are"} fetched once, when you add the app, and kept with it: after that the app works without the internet.
+        </p>
+      ) : null}
+      {app.sealedProblem ? (
+        <p className="k-add-app-sealed" role="note">
+          <span aria-hidden>⚠</span> {app.sealedProblem}
+          {sealed ? " In the sealed box it will not open until you let it run as yours." : null}
+        </p>
+      ) : fetches && sealed ? (
+        <p className="k-muted k-add-app-note">
+          Some libraries only work in an app that runs as yours. If one of these does, the app says so when it opens.
+        </p>
+      ) : null}
 
       {app.issues.length ? (
         <div className="k-add-app-issues" role="alert">
