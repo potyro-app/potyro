@@ -103,7 +103,7 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   `import Chart from "https://esm.sh/chart.js@4.4.1?bundle"`. URL imports only — no bare npm names.
   A package may carry `lock.json` (`url → { file: ".modules/<sha256>.js", integrity: "sha256-…",
   size }`) and the bytes under `files/.modules/`; otherwise the card says what will be fetched
-  ("fetches chart.js 4.4.1, from esm.sh, when you add it") and the fetch happens host-side, once,
+  ("fetches chart.js 4.4.1 from esm.sh") and the fetch happens host-side, once,
   when the person presses Add — never to draw the card, never at run time (rule 6). The fetch follows
   the library's **whole import graph** (absolute and relative paths, literal dynamic imports) and
   locks every file, or refuses by the library's name: a URL without an exact version, a file the
