@@ -104,6 +104,11 @@ describe("fetchLibraries", () => {
     await expect(fetchLibraries([ROOT], { esbuild, get: network(site) })).rejects.toThrow(/fancy-chart 4\.4\.1.*while it runs/);
   });
 
+  it("refuses a library that fetches files of its own beside it while it runs", async () => {
+    const site = { ...SITE, [HELPER]: `export const hex = (n) => "#" + n;\nexport const wasm = () => fetch(new URL("./color.wasm", import.meta.url));\n` };
+    await expect(fetchLibraries([ROOT], { esbuild, get: network(site) })).rejects.toThrow(/@kurkle\/color 0\.3\.2 loads files of its own while it runs/);
+  });
+
   it("reuses bytes the app already has, and fetches only what is missing", async () => {
     const have: AppLock = {};
     const kept = new Map<string, Uint8Array>();

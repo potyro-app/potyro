@@ -12,7 +12,9 @@
 //   - a URL without an exact version (it could mean different code tomorrow);
 //   - a file the host does not serve;
 //   - a bare package name inside a library (`import "left-pad"` has no address to fetch);
-//   - a library that decides while it runs what else to load (`import(someVariable)`).
+//   - a library that decides while it runs what else to load (`import(someVariable)`);
+//   - a library that fetches files of its own beside it while it runs (`new URL("x.wasm",
+//     import.meta.url)`): those are not imports, so no walk can find them ahead of time.
 import { integrityOf, isPinned, libraryLabel, lockEntryFor, matchesLock, moduleFileFor, type AppLock, type PackagedFile } from "@potyro/store";
 import type { EsbuildLike, EsbuildPlugin } from "./app-bundler.js";
 import type { ModuleSource } from "./package-modules.js";
@@ -46,6 +48,8 @@ export class LibraryFetchError extends Error {
 const FETCH_PLUGIN = "potyro-fetch";
 /** esbuild's helper for a `require`/`import()` it could not resolve at build time. */
 const UNRESOLVED = 'typeof require !== "undefined" ? require';
+/** A file located relative to the module itself, to be loaded at run time: a worker, wasm, a font. */
+const BESIDE_ITSELF = /\bimport\.meta\.(url|resolve)\b/;
 
 /** The browser's own fetch, which follows redirects and reports where it ended up. */
 export const browserGet: HttpGet = async (url) => {
@@ -95,6 +99,9 @@ function plugin(root: string, deps: FetchLibrariesDeps, lock: AppLock, files: Ma
           if (want && (await integrityOf(bytes)) !== want.integrity) {
             throw new LibraryFetchError(`${libraryLabel(url)} from ${new URL(url).host} is not the copy this app was made with, so it was not added.`);
           }
+        }
+        if (BESIDE_ITSELF.test(new TextDecoder().decode(bytes))) {
+          throw new LibraryFetchError(`${libraryLabel(url)} loads files of its own while it runs, so ${label} cannot be kept on this device for use offline.`);
         }
         const file = await moduleFileFor(bytes);
         lock[url] = await lockEntryFor(file, bytes, base);

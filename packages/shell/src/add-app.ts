@@ -16,7 +16,7 @@
 import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { inspectSource } from "./validate-app.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
-import { isLibraryStartError, type ModuleSource } from "./package-modules.js";
+import { isLibraryStartError, memoryModules, type ModuleSource } from "./package-modules.js";
 import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
@@ -158,6 +158,22 @@ const withoutLibraries = (m: ModuleSource): ModuleSource => ({
 });
 
 const firstLine = (e: unknown): string => (e instanceof Error ? e.message.split("\n")[0]! : String(e));
+/** The sentence `wrapForIsolate` wrote, without whatever the isolate put in front of it. */
+const startProblem = (e: unknown): string => firstLine(e).replace(/^.*?Error: /, "");
+
+/**
+ * Whether the app, with its libraries really here, starts in the sealed box. A library fetched only
+ * at install could not be tried when the card was drawn, so an app that will run sealed is tried
+ * again once it has them: the person hears it now, not from an app that does not open.
+ */
+async function sealedProblemOf(source: string, modules: ModuleSource): Promise<string | undefined> {
+  try {
+    await inspectSource(source, modules);
+    return undefined;
+  } catch (e) {
+    return isLibraryStartError(e) ? startProblem(e) : undefined;
+  }
+}
 
 export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): Promise<Inspected> {
   let definition: unknown;
@@ -172,7 +188,7 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
   } catch (e) {
     if (!isLibraryStartError(e)) throw new Error(`This app does not load: ${firstLine(e)}`);
     // The app is fine; one of its libraries is not, in the sealed box. Say so on the card.
-    sealedProblem = firstLine(e).replace(/^.*?Error: /, "");
+    sealedProblem = startProblem(e);
     try {
       ({ definition, issues } = await inspectSource(pkg.source, withoutLibraries(libs.modules), { standIns: true }));
     } catch (again) {
@@ -279,6 +295,8 @@ export interface Installed {
   updated: boolean;
   files: ShippedResult;
   seeded: number;
+  /** Set when it runs in the sealed box and one of its libraries, fetched just now, cannot start there. */
+  sealedProblem?: string;
 }
 
 export async function installPackage(pkg: AppPackage, inspected: Inspected, opts: InstallOptions): Promise<Installed> {
@@ -288,17 +306,22 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
   const update = !!existing && opts.mode === "replace";
   const trusted = opts.source !== "link" && opts.mine;
   const from = opts.source === "link" ? (opts.link ?? "a link") : opts.source === "file" ? "a file" : "pasted source";
+  // An update from a file or paste keeps the trust the app had: replacing your own app with a newer
+  // build of it must not drop it into the sealed box. From a link it never does — a link must not be
+  // able to put new code into an app that runs with full authority.
+  const runsAsMine = update && opts.source !== "link" ? existing!.trusted === true || trusted : trusted;
   // Before anything is saved: a library that cannot be fetched or does not match leaves nothing behind.
   const code = await prepareCode(pkg, opts);
+  const sealedProblem =
+    !runsAsMine && !inspected.sealedProblem && inspected.libraries.some((l) => !l.here)
+      ? await sealedProblemOf(pkg.source, memoryModules(code.lock, new Map(code.files.map((f) => [f.path, f.data]))))
+      : undefined;
   const app = await saveUserApp(
     {
       id: update ? existing!.id : existing ? freeAppId(inspected.name) : inspected.id,
       name: inspected.name,
       source: pkg.source,
-      // An update from a file or paste keeps the trust the app had: replacing your own app with a
-      // newer build of it must not drop it into the sealed box. From a link it never does — a link
-      // must not be able to put new code into an app that runs with full authority.
-      trusted: update && opts.source !== "link" ? existing!.trusted === true || trusted : trusted,
+      trusted: runsAsMine,
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
       origin: "imported",
@@ -319,5 +342,5 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
   // not a conversation is ignored rather than refusing the app.
   const chat = pkg.chat === undefined || update ? null : parseChatRecord(pkg.chat);
   if (chat) await importChat(app.id, chat, now);
-  return { app, updated: update, files, seeded };
+  return { app, updated: update, files, seeded, sealedProblem };
 }

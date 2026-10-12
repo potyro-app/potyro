@@ -65,8 +65,9 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
     setStep({ kind: "installing", name: step.inspected.name });
     try {
       const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode, link: step.link });
-      // Something to say before opening: changed files kept, or files the new version dropped.
-      if (done.updated && (done.files.kept.length || done.files.removed.length)) setStep({ kind: "updated", done });
+      // Something to say before opening: changed files kept, files the new version dropped, or a
+      // library that cannot start in the sealed box (known only once it was fetched).
+      if (done.sealedProblem || (done.updated && (done.files.kept.length || done.files.removed.length))) setStep({ kind: "updated", done });
       else navigateTo({ kind: "user", id: done.app.id });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -155,8 +156,13 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
         {step.kind === "updated" ? (
           <div className="k-add-app-updated" role="status">
             <p>
-              <strong>{step.done.app.name}</strong> is updated, with your data as it was.
+              <strong>{step.done.app.name}</strong> {step.done.updated ? "is updated, with your data as it was." : "is added."}
             </p>
+            {step.done.sealedProblem ? (
+              <p className="k-add-app-sealed" role="alert">
+                <span aria-hidden>⚠</span> {step.done.sealedProblem} In the sealed box it will not open until you let it run as yours.
+              </p>
+            ) : null}
             {step.done.files.kept.length ? <p>Kept your own version of {list(step.done.files.kept)}: you changed {step.done.files.kept.length === 1 ? "it" : "them"} after it came with the app.</p> : null}
             {step.done.files.removed.length ? <p>The new version no longer comes with {list(step.done.files.removed)}, so {step.done.files.removed.length === 1 ? "it is" : "they are"} gone.</p> : null}
           </div>
@@ -283,7 +289,7 @@ function Card({
         </p>
       ) : fetches && sealed ? (
         <p className="k-muted k-add-app-note">
-          Some libraries only work in an app that runs as yours. If one of these does, the app says so when it opens.
+          Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added.
         </p>
       ) : null}
 

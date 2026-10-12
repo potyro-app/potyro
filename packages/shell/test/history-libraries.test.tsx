@@ -59,6 +59,7 @@ describe("History of an app with libraries", () => {
     fireEvent.click(screen.getByRole("button", { name: "Restore v1" }));
 
     await waitFor(() => expect(restored).toHaveBeenCalled());
-    expect(getUserApp(app.id)!.lock).toEqual(OLD);
+    // The older library is the one the restored source runs; the newer stays beside it (`lockToRestore`).
+    expect(getUserApp(app.id)!.lock).toEqual({ ...NEW, ...OLD });
   });
 });

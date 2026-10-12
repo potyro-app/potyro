@@ -5,8 +5,9 @@
 // the plan is `progress.ts`, stored in `ctx.storage`; what you did each day is a `session` record;
 // the weekly review is a `weekLog` record.
 //
-// `build.mjs` inlines plan.json, plan.ts and progress.ts into `dist/piano.app.tsx` — the one file
-// the shell imports. Edit THIS file and the plan, then rebuild.
+// It imports `plan.ts`, `progress.ts` and `styles.ts` directly: `pnpm pack:app` packs them as the
+// package's `src/`, and the shell resolves `./plan.js` from there (#258). This file stays the one the
+// Studio, History and Ask edit; plan.json ships beside it as data.
 import { defineApp } from "potyro";
 import type { Ctx, Resolved, ViewProps } from "potyro";
 import { useCallback, useEffect, useRef, useState } from "react";
