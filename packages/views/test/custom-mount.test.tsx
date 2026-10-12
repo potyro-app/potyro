@@ -111,7 +111,7 @@ describe("a custom view declared with `mount`", () => {
       },
     });
     render(<View runtime={runtime} />);
-    await waitFor(() => expect(screen.getByText("This screen could not be displayed.")).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/This part of the app hit a problem.*boom/));
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
