@@ -7,13 +7,18 @@
 // few-shot app that uses a feature. A refusal is only worth anything after these have been used —
 // `runModifyLoop` enforces that; this module only makes it possible.
 //
-// #262 added what a developer has beyond the declarations: `search_corpus` / `read` open the
-// release's corpus — the example apps, the personal apps, the API docs and the schema types — so the
-// model can see how a real app puts the parts together, and `example` falls back to it.
+// #262 added what a developer has beyond the declarations: `check` takes the edits the model would
+// answer with (never a second copy of the app), applies them and also RUNS the result when the caller
+// can (`run`), so a computed that throws or a page that shows nothing comes back as words;
+// and `search_corpus` / `read` open the release's corpus — the example apps, the personal apps, the
+// API docs and the schema types — so the model can see how a real app puts the parts together.
 
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
 import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
 import { loadCorpus } from "../load-corpus.js";
+import { describeRun, type RunGate } from "../run-report.js";
+import { readEditsOrFile } from "../guarded-modify.js";
+import { describeEditFailures } from "../edits.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
@@ -74,6 +79,12 @@ export function lookupReference(reference: string, rawQuery: string): string {
 export interface DiscoveryDeps {
   /** Bundle + validate a candidate; the validator's issues, empty when it is a well-formed app. Throws when it does not compile. */
   check: (source: string) => Promise<string[]>;
+  /** The app as first shown: what `check`'s edits are applied to (#262 — the app is in the conversation once). */
+  source: string;
+  /** Run a candidate that validates on sample records, against the app as first shown
+   *  (`regressionGate`): what it broke, and what was already broken. Optional — without it `check`
+   *  stops at the validator, as it did before #262. */
+  run?: RunGate;
   /** The release's corpus. Defaults to the one shipped with this build, loaded on first use. */
   corpus?: () => Promise<Corpus>;
 }
@@ -99,16 +110,39 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
     {
       name: "check",
       description:
-        "Bundle and validate a complete candidate .app.ts source and return the validator's own issues, or that it validates. " +
-        "Use it to TRY an option you are unsure of instead of guessing. The edits you finally send are checked the same way automatically.",
-      parameters: { type: "object", properties: { source: { type: "string", description: "The complete app source to check" } }, required: ["source"] },
+        "Try a change before sending it: SEARCH/REPLACE edits against the app as first shown — the same blocks you would answer with. " +
+        "They are applied, bundled and validated" +
+        (deps.run ? ", then the result is RUN on sample records and compared with the app as it was," : ",") +
+        " and you get the validator's words or the run's — never the app back. Do NOT send the whole app: it is already here, once.",
+      parameters: {
+        type: "object",
+        properties: { edits: { type: "string", description: "One or more <<<<<<< SEARCH / ======= / >>>>>>> REPLACE blocks against the app as first shown" } },
+        required: ["edits"],
+      },
       run: async (args) => {
-        try {
-          const issues = await deps.check(String(args.source ?? ""));
-          return issues.length ? { ok: false, detail: issues.map((i) => `- ${i}`).join("\n") } : { ok: true, detail: "ok: it compiles and validates." };
-        } catch (e) {
-          return { ok: false, detail: `does not compile: ${e instanceof Error ? e.message : String(e)}` };
+        const edits = String(args.edits ?? args.source ?? "");
+        const read = readEditsOrFile(deps.source, edits);
+        if (read.kind === "whole-file") {
+          return {
+            ok: false,
+            detail:
+              "check takes SEARCH/REPLACE edits against the app as first shown, not the whole app — the app is already in this conversation. " +
+              "Send the blocks you would answer with.",
+          };
         }
+        if (read.kind === "unusable") return { ok: false, detail: "That was not a set of SEARCH/REPLACE edits. Send the blocks you would answer with, against the app as first shown." };
+        if (read.kind === "no-match") return { ok: false, detail: `The edits could not be applied to the app as first shown:\n${describeEditFailures(read.failures)}` };
+        const applied = `${read.applied} edit${read.applied === 1 ? "" : "s"} applied to the app as first shown`;
+        let issues: string[];
+        try {
+          issues = await deps.check(read.source);
+        } catch (e) {
+          return { ok: false, detail: `${applied}; the result does not compile: ${e instanceof Error ? e.message : String(e)}` };
+        }
+        if (issues.length) return { ok: false, detail: `${applied}; the result fails validation:\n${issues.map((i) => `- ${i}`).join("\n")}` };
+        if (!deps.run) return { ok: true, detail: `${applied}; it compiles and validates.` };
+        const { report, preexisting } = await deps.run(read.source);
+        return { ok: report.errors.length === 0, detail: `${applied}; it compiles and validates. ${describeRun(report, preexisting)}` };
       },
     },
     {

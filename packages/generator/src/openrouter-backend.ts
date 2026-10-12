@@ -87,7 +87,14 @@ export interface OpenRouterOptions {
   /** Defaults to `{ sort: "throughput" }` — the single biggest lever on how long a generation takes. */
   provider?: ProviderOptions;
   baseUrl?: string;
+  /** The whole request, headers included. */
   timeoutMs?: number;
+  /**
+   * How long the BODY may take after the headers arrived. `AbortSignal.timeout` covers the request, but
+   * three eval cases once sat on a streamed body that never ended for ten hours each (#262): a stall
+   * after the headers is not a timeout the fetch itself notices. Defaults to `timeoutMs`.
+   */
+  bodyTimeoutMs?: number;
   /** Attribution shown on OpenRouter's dashboards. */
   appTitle?: string;
   referer?: string;
@@ -121,6 +128,25 @@ function stripKeepAlive(text: string): string {
     .trim();
 }
 
+/**
+ * The body, or an error once `ms` pass without it finishing. The request is aborted on the way out so
+ * the stalled connection is released rather than left open for the process's lifetime.
+ */
+async function readBody(res: Response, ms: number, abort: () => void): Promise<string> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      abort();
+      reject(new Error(`OpenRouter: no more of the response arrived for ${Math.round(ms / 1000)}s after the headers — the body stalled`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([res.text(), stalled]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function errorMessage(body: unknown): string | null {
   const e = (body as ErrorBody)?.error;
   if (!e) return null;
@@ -137,6 +163,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
   const baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const doFetch = opts.fetch ?? ((url, init) => globalThis.fetch(url, init));
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const bodyTimeoutMs = opts.bodyTimeoutMs ?? timeoutMs;
 
   const create = async (req: ChatRequest) => {
     const headers: Record<string, string> = {
@@ -145,7 +172,11 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
       "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/potyro",
       "X-Title": opts.appTitle ?? "Potyro",
     };
-    const post = (reasoning: ReasoningOptions | undefined) => doFetch(`${baseUrl}/chat/completions`, {
+    const post = async (reasoning: ReasoningOptions | undefined): Promise<{ res: Response; text: string }> => {
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;
+      const whole = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+      try {
+        const res = await doFetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -159,20 +190,19 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
           ? { tools: [...(req.tools ?? []), ...(req.serverTools ?? [])], tool_choice: req.tool_choice ?? "auto" }
           : {}),
       }),
-      ...(typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-        ? { signal: AbortSignal.timeout(timeoutMs) }
-        : {}),
-    });
+      ...(controller ? { signal: controller.signal } : {}),
+        });
+        return { res, text: await readBody(res, bodyTimeoutMs, () => controller?.abort()) };
+      } finally {
+        clearTimeout(whole);
+      }
+    };
 
-    let res = await post(opts.reasoning ?? DEFAULT_REASONING);
-    let text = await res.text();
+    let { res, text } = await post(opts.reasoning ?? DEFAULT_REASONING);
     // Some models cannot think less than they do (Gemini 3.6 Flash: "Reasoning is mandatory for this
     // endpoint and cannot be disabled"). Turning it off is a speed preference, not a requirement:
     // ask again with the model's own default rather than failing the request.
-    if (res.status === 400 && /reasoning is mandatory/i.test(text)) {
-      res = await post(undefined);
-      text = await res.text();
-    }
+    if (res.status === 400 && /reasoning is mandatory/i.test(text)) ({ res, text } = await post(undefined));
     let body: unknown;
     try {
       body = JSON.parse(stripKeepAlive(text)) as unknown;

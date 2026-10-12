@@ -3,6 +3,8 @@ import { runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js"
 import type { AgentTool } from "../src/agent/tools.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 import { NOT_IN_APP } from "../src/prompt.js";
+import { regressionGate, type RunReport } from "../src/run-report.js";
+import { buildCorpus } from "../src/corpus.js";
 
 // The modify loop (#131): the Studio's "change this app" on the same footing as the fix loop —
 // tools to discover with, a check gate every candidate must pass, and a refusal that is only
@@ -112,13 +114,148 @@ describe("runModifyLoop", () => {
     expect(out.kind === "failed" && out.reason).toMatch(/2 step/);
   });
 
-  it("counts search_corpus as looking before a refusal (#262)", async () => {
-    const search: AgentTool = { ...lookup, name: "search_corpus" };
-    const { engine } = scripted([
-      { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "search_corpus", arguments: '{"query":"bluetooth"}' } }] },
-      { content: `${NOT_IN_APP} nothing in the apps or docs uses bluetooth.` },
-    ]);
-    const out = await runModifyLoop(base({ engine, tools: [search] }));
-    expect(out.kind).toBe("diagnosis");
+  describe("running the candidate (#262)", () => {
+    const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
+
+    it("sends a candidate that validates but throws when it runs back with the error", async () => {
+      const { engine, seen } = scripted([rename("boom"), rename("y")]);
+      const run = regressionGate(async (src: string) =>
+        src.includes("boom") ? { errors: ["action city.visit: ctx.travel is not a function"], warnings: [], ran: "1 action" } : { errors: [], warnings: [], ran: "1 action" }, SOURCE);
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind === "source" && out.source).toContain('id: "y"');
+      expect(seen[1]!.messages.at(-1)!.content).toContain("ctx.travel is not a function");
+      expect(seen[1]!.messages.at(-1)!.content).toMatch(/app as first shown/);
+    });
+
+    it("points a warning out once; the same candidate sent again is accepted as meant", async () => {
+      const { engine, seen } = scripted([rename("y"), rename("y")]);
+      const run = regressionGate(async (src: string) => ({ errors: [], warnings: src === SOURCE ? [] : ['page "overdue" showed nothing'], ran: "2 pages" }), SOURCE);
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind).toBe("source");
+      expect(seen).toHaveLength(2);
+      expect(seen[1]!.messages.at(-1)!.content).toContain('page "overdue" showed nothing');
+    });
+
+    it("does not hold a change back when the run itself cannot start", async () => {
+      const { engine } = scripted([rename("y"), rename("y")]);
+      const out = await runModifyLoop(base({ engine, run: regressionGate(async () => { throw new Error("no DOM"); }, SOURCE) }));
+      expect(out.kind).toBe("source");
+    });
+
+    it("accepts a change that leaves a failure the app already had as it was (#262 regression gate)", async () => {
+      const { engine, seen } = scripted([rename("y")]);
+      const failing = (): RunReport => ({ errors: ["computed city.population: no census for record 4f2a91c0"], warnings: [], ran: "1 page" });
+      const out = await runModifyLoop(base({ engine, run: regressionGate(async () => failing(), SOURCE) }));
+      expect(out.kind).toBe("source");
+      expect(seen).toHaveLength(1);
+    });
+
+    it("sends back only what the change broke, with what was already failing as context", async () => {
+      const { engine, seen } = scripted([rename("boom"), rename("y")]);
+      const run = regressionGate(
+        async (src: string) => ({
+          errors: ["computed city.population: no census", ...(src.includes("boom") ? ["action city.visit: ctx.travel is not a function"] : [])],
+          warnings: [],
+          ran: "1 action",
+        }),
+        SOURCE,
+      );
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind).toBe("source");
+      const sentBack = seen[1]!.messages.at(-1)!.content;
+      expect(sentBack).toContain("ctx.travel is not a function");
+      expect(sentBack).toMatch(/already failing before this change/i);
+      expect(sentBack.indexOf("ctx.travel")).toBeLessThan(sentBack.indexOf("no census"));
+    });
+
+    it("counts search_corpus as looking before a refusal", async () => {
+      const search: AgentTool = { ...lookup, name: "search_corpus" };
+      const { engine } = scripted([
+        { content: "", tool_calls: [{ id: "t1", type: "function", function: { name: "search_corpus", arguments: '{"query":"bluetooth"}' } }] },
+        { content: `${NOT_IN_APP} nothing in the apps or docs uses bluetooth.` },
+      ]);
+      const out = await runModifyLoop(base({ engine, tools: [search] }));
+      expect(out.kind).toBe("diagnosis");
+    });
+  });
+
+  describe("the first message is primed from the corpus (#262)", () => {
+    const corpus = async () =>
+      buildCorpus([
+        { path: "examples/places.app.ts", text: 'export default defineApp({ id: "places", pages: [{ id: "map", view: { type: "map", entity: "place", camera: { lat: 1, lng: 2 } } }] });' },
+        { path: "docs/04-app-module-api.md", text: "## Map camera\n\nA map view takes `camera` to open on a place." },
+      ]);
+
+    it("carries the relevant passages once, in the first user message, and the app exactly once", async () => {
+      const { engine, seen } = scripted([{ content: edit("Done.", '  id: "x",', '  id: "y",') }]);
+      await runModifyLoop(base({ engine, instruction: "open the map on the camera position", corpus }));
+      const first = seen[0]!.messages[1]!.content;
+      expect(first).toContain("examples/places.app.ts");
+      expect(first.indexOf("search_corpus")).toBeGreaterThan(0);
+      expect(first.split(SOURCE).length - 1).toBe(1);
+    });
+
+    it("adds nothing when the corpus has nothing to say", async () => {
+      const { engine, seen } = scripted([{ content: edit("Done.", '  id: "x",', '  id: "y",') }]);
+      await runModifyLoop(base({ engine, instruction: "rename the id", corpus }));
+      expect(seen[0]!.messages[1]!.content).not.toMatch(/^--- /m);
+    });
+  });
+
+  describe("stopping on repetition (#262)", () => {
+    const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
+
+    it("a reply that repeats the previous one ends the loop with the best candidate so far", async () => {
+      // The first candidate is held back only by a warning; the model repeats itself instead of
+      // changing anything or confirming — that candidate is what it meant.
+      const { engine, seen } = scripted([rename("y"), { content: "Let me write the edits now." }, { content: "Let me write the edits now." }]);
+      const run = regressionGate(async (src: string) => ({ errors: [], warnings: src === SOURCE ? [] : ['page "overdue" showed nothing'], ran: "1 page", pages: ["overdue"] }), SOURCE);
+      const out = await runModifyLoop(base({ engine, run }));
+      expect(out.kind).toBe("source");
+      expect(out.kind === "source" && out.source).toContain('id: "y"');
+      expect(seen).toHaveLength(3);
+    });
+
+    it("with no acceptable candidate, a repeated reply is a failure that says so", async () => {
+      const { engine } = scripted([{ content: "I would rather not." }, { content: "I would rather not." }]);
+      const out = await runModifyLoop(base({ engine }));
+      expect(out.kind).toBe("failed");
+      expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
+    });
+
+    it("a reply that is mostly one line said over and over stops the loop", async () => {
+      const line = "Let me write the edits now.";
+      const { engine, seen } = scripted([{ content: Array.from({ length: 8 }, () => line).join("\n") + "\n" + edit("", '  id: "x",', '  id: "y",') }, rename("z")]);
+      const out = await runModifyLoop(base({ engine }));
+      expect(out.kind).toBe("failed");
+      expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
+      expect(seen).toHaveLength(1);
+    });
+  });
+
+  describe("candidates are capped separately from tool reads (#262)", () => {
+    const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
+    const call = (q: string) => ({ content: "", tool_calls: [{ id: `t-${q}`, type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: q }) } }] });
+
+    it("stops after the candidate budget, naming it, however many steps remain", async () => {
+      const { engine, seen } = scripted([rename("bad1"), rename("bad2"), rename("bad3"), rename("ok")]);
+      const out = await runModifyLoop(base({ engine, maxCandidates: 2, check: async (src) => (src.includes("bad") ? ["pages: bad"] : []) }));
+      expect(out.kind).toBe("failed");
+      expect(out.kind === "failed" && out.reason).toMatch(/2 candidates/);
+      expect(seen).toHaveLength(2);
+    });
+
+    it("tool reads do not use up the candidate budget", async () => {
+      const { engine } = scripted([call("a"), call("b"), call("c"), rename("y")]);
+      const out = await runModifyLoop(base({ engine, maxCandidates: 1 }));
+      expect(out.kind).toBe("source");
+    });
+
+    it("the step budget still bounds the whole conversation", async () => {
+      const { engine } = scripted([call("a"), call("b"), call("c"), rename("y")]);
+      const out = await runModifyLoop(base({ engine, maxSteps: 3 }));
+      expect(out.kind).toBe("failed");
+      expect(out.kind === "failed" && out.reason).toMatch(/3 steps/);
+    });
   });
 });

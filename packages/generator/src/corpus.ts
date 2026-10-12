@@ -93,21 +93,25 @@ function count(haystack: string, needle: string): number {
   return n;
 }
 
-/**
- * The passages that best answer a query, with where they live. Every query term found counts more
- * than many hits of one term, so `ctx.files import` prefers a passage with both over one that says
- * `files` twenty times. Plain text, capped; a clear "nothing" when there is nothing.
- */
-export function searchCorpus(corpus: Corpus, query: string): string {
-  const words = terms(query);
-  if (!words.length) return "Ask with a few words: a feature (\"custom view canvas\"), a ctx member (\"ctx.files\"), a field type (\"relation many\").";
-  const docFreq = new Map<string, number>();
-  const all = corpus.files.flatMap(chunks);
-  const lowered = all.map((c) => c.lines.join("\n").toLowerCase());
-  for (const w of words) docFreq.set(w, lowered.filter((t) => t.includes(w)).length);
+interface Scored {
+  chunk: Chunk;
+  score: number;
+  /** Distinct query terms the passage has. */
+  matched: number;
+}
 
-  const scored = all
-    .map((c, i) => {
+/**
+ * Every passage of `files` that has any of `words`, best first. Every query term found counts more
+ * than many hits of one term, so `ctx.files import` prefers a passage with both over one that says
+ * `files` twenty times; `bonus` terms (the app's own shape) only tip the balance between equals.
+ */
+function rankChunks(files: readonly CorpusFile[], words: readonly string[], bonus: readonly string[] = []): Scored[] {
+  const all = files.flatMap(chunks);
+  const lowered = all.map((c) => c.lines.join("\n").toLowerCase());
+  const docFreq = new Map<string, number>();
+  for (const w of words) docFreq.set(w, lowered.filter((t) => t.includes(w)).length);
+  return all
+    .map((chunk, i) => {
       let score = 0;
       let matched = 0;
       for (const w of words) {
@@ -116,24 +120,47 @@ export function searchCorpus(corpus: Corpus, query: string): string {
         matched++;
         score += (1 + Math.log(n)) * Math.log(1 + all.length / (docFreq.get(w)! || 1));
       }
-      return { c, score: score * matched * matched };
+      const tip = bonus.filter((b) => lowered[i]!.includes(b)).length * BONUS;
+      return { chunk, score: score * matched * matched + (matched ? tip : 0), matched };
     })
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score);
+}
 
+const BONUS = 0.1;
+
+/** Keep one passage per region of a file: overlapping windows would otherwise repeat each other. */
+function distinct(scored: readonly Scored[], max: number, perFile = Infinity): Chunk[] {
   const picked: Chunk[] = [];
-  for (const { c } of scored) {
-    // One passage per region of a file: overlapping windows would otherwise repeat each other.
-    if (picked.some((p) => p.path === c.path && Math.abs(p.start - c.start) < CHUNK_LINES)) continue;
-    picked.push(c);
-    if (picked.length >= SEARCH_MAX_HITS) break;
+  for (const { chunk } of scored) {
+    if (picked.some((p) => p.path === chunk.path && Math.abs(p.start - chunk.start) < CHUNK_LINES)) continue;
+    if (picked.filter((p) => p.path === chunk.path).length >= perFile) continue;
+    picked.push(chunk);
+    if (picked.length >= max) break;
   }
+  return picked;
+}
+
+const passage = (c: Chunk, maxChars = Infinity): string => {
+  const end = c.start + c.lines.length - 1;
+  let body = c.lines.join("\n");
+  if (body.length > maxChars) body = `${body.slice(0, maxChars)}\n…`;
+  return `--- ${c.path}:${c.start}-${end}\n${body}\n`;
+};
+
+/**
+ * The passages that best answer a query, with where they live. Plain text, capped; a clear "nothing"
+ * when there is nothing.
+ */
+export function searchCorpus(corpus: Corpus, query: string): string {
+  const words = terms(query);
+  if (!words.length) return "Ask with a few words: a feature (\"custom view canvas\"), a ctx member (\"ctx.files\"), a field type (\"relation many\").";
+  const picked = distinct(rankChunks(corpus.files, words), SEARCH_MAX_HITS);
   if (!picked.length) return `Nothing in the examples, the docs or the schema types mentions ${words.map((w) => `"${w}"`).join(" or ")}.`;
 
   let out = "";
   for (const c of picked) {
-    const end = c.start + c.lines.length - 1;
-    const block = `--- ${c.path}:${c.start}-${end}\n${c.lines.join("\n")}\n`;
+    const block = passage(c);
     if (out.length + block.length > SEARCH_MAX_CHARS) {
       if (!out) out = block.slice(0, SEARCH_MAX_CHARS);
       break;
@@ -141,6 +168,51 @@ export function searchCorpus(corpus: Corpus, query: string): string {
     out += block;
   }
   return `${out}\n(read(path, line) shows more of a file.)`;
+}
+
+// ---- priming: retrieval done by the harness, before the first turn ----
+
+const PRIME_FILES = 2;
+const PRIME_CHUNK_CHARS = 1400;
+const PRIME_MAX_CHARS = 3000;
+/** A request's words that say nothing about what it is for. Short, on purpose: the ranking's IDF does the rest. */
+const STOPWORDS = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "when", "then", "also", "each", "every", "all", "its", "our", "your", "please", "can", "you", "want", "should", "make", "add", "new"]);
+
+const primeTerms = (instruction: string): string[] => terms(instruction).filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+
+/** The `type: "…"` values an app source uses — its shape, as words the corpus can be matched on. */
+const shapeTerms = (source: string): string[] => [...new Set([...source.matchAll(/\btype:\s*["']([a-z]+)["']/g)].map((m) => m[1]!))];
+
+const appIdOf = (source: string): string | undefined => /\bid:\s*["']([^"']+)["']/.exec(source)?.[1];
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * What the model should have read before its first turn (#262): the one or two corpus files that
+ * speak to the request, around where they do. A passage must share at least two of the request's
+ * words — one shared word is a coincidence, not a precedent. The app being edited is never offered
+ * back to itself, and the schema types are left out: the reference already carries them. Empty when
+ * the corpus has nothing to say, so the first message says nothing either.
+ */
+export function primeCorpus(corpus: Corpus, instruction: string, source: string): string {
+  const words = primeTerms(instruction);
+  if (words.length < 2) return "";
+  const self = appIdOf(source);
+  const selfRe = self ? new RegExp(`\\bid:\\s*["']${escapeRe(self)}["']`) : null;
+  const files = corpus.files.filter((f) => !f.path.startsWith("packages/") && !(selfRe && selfRe.test(f.text)));
+  const picked = distinct(
+    rankChunks(files, words, shapeTerms(source)).filter((s) => s.matched >= 2),
+    PRIME_FILES,
+    1,
+  );
+  if (!picked.length) return "";
+  let out = "";
+  for (const c of picked) {
+    const block = passage(c, PRIME_CHUNK_CHARS);
+    if (out.length + block.length > PRIME_MAX_CHARS) break;
+    out += block;
+  }
+  if (!out) return "";
+  return `From this release's example apps and docs, passages that may speak to this change (search_corpus finds more; read(path, line) shows a file):\n${out}`;
 }
 
 // ---- read ----
