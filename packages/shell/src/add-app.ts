@@ -2,17 +2,21 @@
 //
 // Three ways in, one way through:
 //
-//   gather  → an AppPackage (source + shipped files + a one-time seed)
+//   gather  → an AppPackage (source + its own modules + shipped files + a one-time seed)
 //   inspect → what it would install as, read in the sealed box: name, icon, what it keeps, what it
-//             asks for, whether it is valid. Nothing runs with authority to answer that.
-//   install → save it, put its shipped files in its folder, seed it the first time.
+//             asks for, the libraries it uses and whether they came with it, whether it is valid.
+//             Nothing runs with authority to answer that, and nothing is fetched.
+//   install → fetch what its libraries still need (the card said so), save it, put its code and
+//             shipped files in its folder, seed it the first time.
 //
 // Trust (owner, 2026-10-11): everything comes in sealed. A file from this device or pasted source may
 // be marked "I wrote this, run it as mine" on the card; a link may not, it can be promoted later.
 // The same app already installed: Replace is the default, through the ordinary update path, so
 // History keeps the old version and the data check runs on the next open.
-import { fileSpace, isZip, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { inspectSource } from "./validate-app.js";
+import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
+import { isLibraryStartError, type ModuleSource } from "./package-modules.js";
 import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
@@ -28,8 +32,9 @@ const bytesOf = async (f: Blob): Promise<Uint8Array> => new Uint8Array(await f.a
 
 /**
  * Files the person picked, as one package. A zip is a package. Otherwise one of them is the app's
- * source — the `*.app.ts(x)` if there is one, else the only script — and the rest ship with it, by
- * name; a `seed.json` among them is the seed.
+ * source — the `*.app.ts(x)` if there is one, else the only script. Other scripts beside it are its
+ * own modules (#258), which the source imports as `./plan.ts`; the rest ship with it, by name; a
+ * `seed.json` among them is the seed.
  */
 export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
   if (!files.length) throw new Error("No file was chosen");
@@ -49,7 +54,9 @@ export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
         : "None of these is an app: choose its source (a .ts or .tsx file) or a package zip.",
     );
   }
-  const rest = files.filter((f) => f !== source);
+  const modules: PackagedFile[] = [];
+  for (const f of files) if (f !== source && SOURCE_RE.test(f.name)) modules.push({ path: f.name, data: await bytesOf(f) });
+  const rest = files.filter((f) => f !== source && !SOURCE_RE.test(f.name));
   const seedFile = rest.find((f) => f.name === "seed.json");
   let seed: AppPackage["seed"];
   if (seedFile) {
@@ -61,7 +68,7 @@ export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
   }
   const shipped: PackagedFile[] = [];
   for (const f of rest) if (f !== seedFile) shipped.push({ path: f.name, data: await bytesOf(f), mime: f.type || undefined });
-  return { source: await source.text(), sourceName: source.name, files: shipped, seed, kind: "package" };
+  return { source: await source.text(), sourceName: source.name, files: shipped, modules, seed, kind: "package" };
 }
 
 /**
@@ -122,6 +129,15 @@ export interface Inspected {
   installed?: UserApp;
   files: Array<{ path: string; size: number }>;
   seedRows: number;
+  /** The libraries it imports by URL (#266), and whether they came with it or are fetched on Add. */
+  libraries: LibraryLine[];
+  /** Its own modules beside the source (#258), by path. */
+  modules: string[];
+  /**
+   * Set when one of its libraries does not start in the sealed box — it needs a full web page. The
+   * app then works only once it runs as yours. Known only once the library's bytes are here.
+   */
+  sealedProblem?: string;
 }
 
 const CAP_WORDS: Record<string, string> = {
@@ -135,14 +151,35 @@ const CAP_WORDS: Record<string, string> = {
   sync: "sharing",
 };
 
-export async function inspectPackage(pkg: AppPackage): Promise<Inspected> {
+/** The same modules with no libraries: each then stands in, so the rest of the app can be read. */
+const withoutLibraries = (m: ModuleSource): ModuleSource => ({
+  lock: Object.fromEntries(Object.entries(m.lock).filter(([k]) => !/^https?:\/\//.test(k))),
+  read: m.read,
+});
+
+const firstLine = (e: unknown): string => (e instanceof Error ? e.message.split("\n")[0]! : String(e));
+
+export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): Promise<Inspected> {
   let definition: unknown;
   let issues: string[];
+  let sealedProblem: string | undefined;
+  const libs = await inspectLibraries(pkg, deps);
+  // Read in the sealed box with the real libraries when they are all here; a library still to be
+  // fetched stands in as an inert value, enough for the app to say what it is.
+  const allHere = libs.lines.every((l) => l.here);
   try {
-    ({ definition, issues } = await inspectSource(pkg.source));
+    ({ definition, issues } = await inspectSource(pkg.source, libs.modules, { standIns: !allHere }));
   } catch (e) {
-    throw new Error(`This app does not load: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
+    if (!isLibraryStartError(e)) throw new Error(`This app does not load: ${firstLine(e)}`);
+    // The app is fine; one of its libraries is not, in the sealed box. Say so on the card.
+    sealedProblem = firstLine(e).replace(/^.*?Error: /, "");
+    try {
+      ({ definition, issues } = await inspectSource(pkg.source, withoutLibraries(libs.modules), { standIns: true }));
+    } catch (again) {
+      throw new Error(`This app does not load: ${firstLine(again)}`);
+    }
   }
+  issues = [...libs.issues, ...issues];
   const def = (definition ?? {}) as {
     id?: string;
     name?: string;
@@ -163,8 +200,11 @@ export async function inspectPackage(pkg: AppPackage): Promise<Inspected> {
     asks: [...new Set(asks)],
     issues,
     installed: getUserApp(def.id),
-    files: pkg.files.map((f) => ({ path: f.path, size: f.data.byteLength })),
+    files: pkg.files.filter((f) => !isReservedPath(f.path)).map((f) => ({ path: f.path, size: f.data.byteLength })),
     seedRows: Object.values(pkg.seed ?? {}).reduce((n, rows) => n + rows.length, 0),
+    libraries: libs.lines,
+    modules: pkg.modules.map((m) => m.path),
+    sealedProblem,
   };
 }
 
@@ -179,7 +219,8 @@ export interface ShippedResult {
 /**
  * Put a package's files in the app's folder as `shipped`. On an update, a shipped file is replaced
  * unless the person changed it since (it is then `app`, not `shipped`), and a shipped file the new
- * version dropped goes, unless the person changed it.
+ * version dropped goes, unless the person changed it. The app's code (`.modules/`, `.src/`) is
+ * never "changed by the person": it is always the new version's — and a library's old bytes stay.
  */
 export async function applyShippedFiles(store: Store, files: PackagedFile[], opts: { update: boolean }): Promise<ShippedResult> {
   const space = fileSpace(store);
@@ -188,7 +229,7 @@ export async function applyShippedFiles(store: Store, files: PackagedFile[], opt
   for (const f of files) {
     const existing = await space.find(f.path);
     incoming.add(existing?.path ?? f.path);
-    if (existing && existing.origin !== "shipped") {
+    if (existing && existing.origin !== "shipped" && !isReservedPath(existing.path)) {
       result.kept.push(existing.path);
       continue;
     }
@@ -197,7 +238,9 @@ export async function applyShippedFiles(store: Store, files: PackagedFile[], opt
   }
   if (opts.update) {
     for (const f of await space.list()) {
-      if (f.origin === "shipped" && !incoming.has(f.path)) {
+      // A library's bytes stay when a newer version stops using them: they are named by their digest,
+      // so they never clash, and History can go back to the version that ran them (#266).
+      if (f.origin === "shipped" && !incoming.has(f.path) && !f.path.startsWith(MODULES_DIR)) {
         await space.remove(f.path);
         result.removed.push(f.path);
       }
@@ -219,7 +262,7 @@ export async function applySeed(store: Store, seed: AppPackage["seed"], entities
   return n;
 }
 
-export interface InstallOptions {
+export interface InstallOptions extends PackageDeps {
   source: AddSource;
   /** "I wrote this, run it as mine". Ignored for a link: a link is never trusted on the way in. */
   mine: boolean;
@@ -245,6 +288,8 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
   const update = !!existing && opts.mode === "replace";
   const trusted = opts.source !== "link" && opts.mine;
   const from = opts.source === "link" ? (opts.link ?? "a link") : opts.source === "file" ? "a file" : "pasted source";
+  // Before anything is saved: a library that cannot be fetched or does not match leaves nothing behind.
+  const code = await prepareCode(pkg, opts);
   const app = await saveUserApp(
     {
       id: update ? existing!.id : existing ? freeAppId(inspected.name) : inspected.id,
@@ -255,14 +300,19 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       // must not be able to put new code into an app that runs with full authority.
       trusted: update && opts.source !== "link" ? existing!.trusted === true || trusted : trusted,
       link: opts.source === "link" ? opts.link : undefined,
+      lock: code.lock,
       origin: "imported",
-      note: update ? `Updated from ${from}` : `Added from ${from}`,
+      // A library upgrade may change no line of the source: the note says what it did change.
+      note: [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
     },
     now,
   );
   const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => openAppStore(a, o));
   const store = await open(app, { sync: await syncAllowedFor(app) });
-  const files = await applyShippedFiles(store, pkg.files, { update });
+  const shipped = await applyShippedFiles(store, code.files, { update });
+  // What a person reads afterwards is about THEIR files, not the app's code.
+  const theirs = (paths: string[]) => paths.filter((p) => !isReservedPath(p));
+  const files: ShippedResult = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };
   const seeded = update ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
   // How it was made, when its author chose to send that too (#261). Only on a first install: an
   // update must not overwrite the conversation the person has had with it since. Anything that is

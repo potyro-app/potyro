@@ -12,6 +12,7 @@ import * as reactReal from "react";
 import * as reactJsxReal from "react/jsx-runtime";
 import type { PotyroApp } from "potyro";
 import { bundleTrustedModule } from "./app-bundler.js";
+import type { ModuleSource } from "./package-modules.js";
 
 let stashed = false;
 function stashRealModules(): void {
@@ -23,9 +24,10 @@ function stashRealModules(): void {
   stashed = true;
 }
 
-export async function loadTrustedModule(source: string): Promise<PotyroApp> {
+/** `modules`: the app's libraries and own modules (#266, #258), when it has any. */
+export async function loadTrustedModule(source: string, modules?: ModuleSource): Promise<PotyroApp> {
   stashRealModules();
-  const esm = await bundleTrustedModule(source);
+  const esm = await bundleTrustedModule(source, modules);
   const url = URL.createObjectURL(new Blob([esm], { type: "text/javascript" }));
   try {
     const mod = (await import(/* @vite-ignore */ url)) as { default?: unknown };

@@ -11,6 +11,7 @@ import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
 import { loadTrustedModule } from "./trusted-loader.js";
+import type { ModuleSource } from "./package-modules.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
@@ -45,16 +46,17 @@ function askedIn(reply: string): string | null {
 }
 
 /** The shape a repair is judged against. A source that does not load has no shape to lose. */
-export async function shapeOrEmpty(src: string): Promise<AppShape> {
+export async function shapeOrEmpty(src: string, modules?: ModuleSource): Promise<AppShape> {
   try {
-    const app = await loadTrustedModule(src);
+    const app = await loadTrustedModule(src, modules);
     return { pages: app.pages, entities: app.entities };
   } catch {
     return { pages: [], entities: {} };
   }
 }
 
-export function studioEngine(engine: EngineConfig, progress: (text: string | null) => void): StudioEngine {
+/** `modules`: the libraries and own modules of the app being changed (#266, #258), when it has any. */
+export function studioEngine(engine: EngineConfig, progress: (text: string | null) => void, modules?: ModuleSource): StudioEngine {
   const label = engineLabel(engine);
   const isCli = engine.engine === "cli";
 
@@ -131,6 +133,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       // shape. Other engines keep the one-turn guard.
       if (!modifyLoopRefusal(engine)) {
         const result = await startModify({
+          modules,
           source,
           instruction,
           before,
@@ -153,7 +156,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
         guardedModify({
           attempt: (instr) => attempt(source, instr),
           shapeOf: async (src) => {
-            const app = await loadTrustedModule(src);
+            const app = await loadTrustedModule(src, modules);
             return { pages: app.pages, entities: app.entities };
           },
           before,
@@ -180,8 +183,8 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     ticking("Fixing it", async () => {
       const result = await guardedModify({
         attempt: (instr) => attempt(source, instr),
-        shapeOf: shapeOrEmpty,
-        before: await shapeOrEmpty(source),
+        shapeOf: (src) => shapeOrEmpty(src, modules),
+        before: await shapeOrEmpty(source, modules),
         instruction: buildRepairInstruction(issues),
         source,
       });

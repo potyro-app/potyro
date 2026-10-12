@@ -14,6 +14,7 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
+import { libraryLock, lockJson, parseLock, type AppLock } from "@potyro/store";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -47,6 +48,14 @@ export interface UserApp {
    * worked perfectly and made it look like a sync bug.
    */
   joined?: boolean;
+  /**
+   * What the app's code is made of beyond `source` (#266, #258): each library it imports by URL and
+   * each of its package's own modules, by the file in its space that holds it and that file's digest.
+   * The bundler runs nothing that does not match. It lives HERE, beside the source, rather than in
+   * the app's file space, because that space syncs: someone sharing the app must not be able to
+   * change code that runs on this device by changing a file.
+   */
+  lock?: AppLock;
 }
 
 function read(): UserApp[] {
@@ -92,7 +101,19 @@ export function getUserApp(id: string): UserApp | undefined {
  *  (Edit mode does) must await it — a reload mid-write loses the version. `origin` and `note` say
  *  where the new source came from; they are what the History panel shows next to each version. */
 export async function saveUserApp(
-  input: { id?: string; name: string; source: string; trusted?: boolean; sync?: boolean; joined?: boolean; link?: string; origin?: VersionOrigin; note?: string; rationale?: string },
+  input: {
+    id?: string;
+    name: string;
+    source: string;
+    trusted?: boolean;
+    sync?: boolean;
+    joined?: boolean;
+    link?: string;
+    lock?: AppLock;
+    origin?: VersionOrigin;
+    note?: string;
+    rationale?: string;
+  },
   now: string,
 ): Promise<UserApp> {
   const apps = read();
@@ -135,6 +156,8 @@ export async function saveUserApp(
     joined: input.joined ?? prev?.joined,
     // Carried for the same reason: a link the app came from is how it can be updated later.
     link: input.link ?? prev?.link,
+    // Carried too: an edit to the source must not cut the app off from the libraries it imports.
+    lock: input.lock ?? prev?.lock,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
@@ -147,10 +170,30 @@ export async function saveUserApp(
       note: input.note,
       rationale: input.rationale,
       baseline: prev?.source,
+      // Which bytes its libraries are: an upgrade is a version even when no line of source changed.
+      lock: lockJson(record.lock),
+      baselineLock: lockJson(prev?.lock),
     },
     now,
   );
   return record;
+}
+
+/**
+ * The lock to put back with a version from History: the libraries that version ran with, and the
+ * app's own modules as they are now — History keeps the entry source, not the package's other files
+ * (#258). A version from before the app had libraries put back none.
+ */
+export function lockToRestore(version: { lock?: string }, app: Pick<UserApp, "lock">): AppLock | undefined {
+  const own = Object.fromEntries(Object.entries(app.lock ?? {}).filter(([k]) => !/^https?:\/\//.test(k)));
+  let libraries: AppLock = {};
+  try {
+    libraries = version.lock ? parseLock(version.lock) : {};
+  } catch {
+    libraries = libraryLock(app.lock ?? {});
+  }
+  const lock = { ...libraries, ...own };
+  return Object.keys(lock).length ? lock : app.lock && Object.keys(app.lock).length ? {} : undefined;
 }
 
 export async function removeUserApp(id: string): Promise<void> {
@@ -211,7 +254,8 @@ export async function duplicateUserApp(id: string, now: string): Promise<UserApp
   if (!app) return null;
   const name = `${app.name} (copy)`;
   return saveUserApp(
-    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, origin: "created", note: `copied from “${app.name}”` },
+    // The lock is the code's, not the data's: the copy runs the same libraries (`duplicateApp` copies their files).
+    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, origin: "created", note: `copied from “${app.name}”` },
     now,
   );
 }

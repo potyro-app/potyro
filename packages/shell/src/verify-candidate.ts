@@ -35,6 +35,7 @@ import { MemoryStore, type Store } from "@potyro/store";
 import { replayCase, replayPassed, structuralLoss, viewSubstitutions, type AppShape, type Case, type ReplayTarget } from "@potyro/runtime";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { createAppBundler } from "./app-bundler.js";
+import type { ModuleSource } from "./package-modules.js";
 import { observeRender } from "./observe-render.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
@@ -100,6 +101,8 @@ export interface VerifyCandidateDeps {
    * in-memory store, exactly as before `appStore` existed.
    */
   storeForTests?: Store;
+  /** The app's libraries and own modules (#266, #258), when it has any. */
+  modules?: ModuleSource;
 }
 
 export async function verifyCandidate(deps: VerifyCandidateDeps): Promise<{ passed: boolean; detail: string }> {
@@ -140,7 +143,7 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
   let bundleCode: string;
   try {
     const bundle = await createAppBundler();
-    bundleCode = await bundle(deps.source);
+    bundleCode = await bundle(deps.source, deps.modules);
   } catch (e) {
     // A candidate that does not compile is a failed verdict, not an exception — the loop has to be
     // able to hand this back to the model as something to fix.

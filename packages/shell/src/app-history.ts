@@ -52,6 +52,12 @@ export interface AppVersion {
    * version it explains, it informs the reader without contaminating the next prompt.
    */
   rationale?: string;
+  /**
+   * `lock.json` as it was for this version: the libraries the source imported and the digests of
+   * their bytes (#266). A library upgrade changes no line of the source, so without it an upgrade
+   * would be no version at all. Absent for an app with no libraries.
+   */
+  lock?: string;
 }
 
 let handle: Promise<Store> | null = null;
@@ -73,7 +79,7 @@ export function resetHistoryStore(): void {
 }
 
 function toVersion(record: Record<string, unknown>): AppVersion | null {
-  const { id, appId, seq, source, createdAt, origin, note, rationale } = record as Partial<AppVersion>;
+  const { id, appId, seq, source, createdAt, origin, note, rationale, lock } = record as Partial<AppVersion>;
   if (typeof id !== "string" || typeof appId !== "string" || typeof seq !== "number" || typeof source !== "string") {
     return null;
   }
@@ -86,6 +92,7 @@ function toVersion(record: Record<string, unknown>): AppVersion | null {
     origin: origin ?? "edited",
     note,
     rationale,
+    ...(typeof lock === "string" && lock ? { lock } : {}),
   };
 }
 
@@ -109,30 +116,32 @@ export async function listVersions(appId: string): Promise<AppVersion[]> {
 
 /**
  * Append a version. Resolves to the stored record, or `undefined` when nothing was recorded — the
- * source is unchanged from the newest version (a re-save that only touched the name shouldn't add
+ * source and its `lock.json` are unchanged from the newest version (a re-save that only touched the name shouldn't add
  * noise), or history itself failed. A failure here is reported but never thrown: losing the audit
  * trail must not cost the user their edit.
  *
  * `baseline` is the source the app held BEFORE this change. When history is empty it is recorded
  * first, so apps that predate history still get a "before" to diff against on their next edit.
+ * `baselineLock` is its `lock.json` then.
  */
 export async function recordVersion(
   appId: string,
-  input: { source: string; origin: VersionOrigin; note?: string; rationale?: string; baseline?: string },
+  input: { source: string; origin: VersionOrigin; note?: string; rationale?: string; baseline?: string; lock?: string; baselineLock?: string },
   now: string,
 ): Promise<AppVersion | undefined> {
   try {
     const s = await store();
     const versions = await readAll(appId);
     const newest = versions[0];
-    if (newest?.source === input.source) return undefined;
+    if (newest && newest.source === input.source && (newest.lock ?? "") === (input.lock ?? "")) return undefined;
 
     let seq = (newest?.seq ?? 0) + 1;
-    if (!newest && input.baseline !== undefined && input.baseline !== input.source) {
+    if (!newest && input.baseline !== undefined && (input.baseline !== input.source || (input.baselineLock ?? "") !== (input.lock ?? ""))) {
       await s.insert(ENTITY, {
         appId,
         seq,
         source: input.baseline,
+        ...(input.baselineLock ? { lock: input.baselineLock } : {}),
         createdAt: now,
         origin: "created",
         note: "the source before history was kept",
@@ -148,6 +157,7 @@ export async function recordVersion(
       origin: input.origin,
       ...(input.note ? { note: input.note } : {}),
       ...(input.rationale ? { rationale: input.rationale } : {}),
+      ...(input.lock ? { lock: input.lock } : {}),
     });
 
     const stale = [...versions].slice(MAX_VERSIONS - 1);

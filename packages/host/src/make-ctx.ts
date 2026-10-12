@@ -5,7 +5,7 @@
 import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "potyro";
 import { checkFormFields } from "potyro";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
-import { fileInfo, fileSpace, mimeOf, type Store } from "@potyro/store";
+import { fileInfo, fileSpace, isReservedPath, mimeOf, type FileSpace, type FileTarget, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
@@ -52,6 +52,41 @@ function joinPath(folder: string | undefined, name: string): string {
 }
 
 /**
+ * The app's folder as the APP sees it: without `.modules/` and `.src/`, which hold its own code
+ * (#266, #258). Those are checked against a lock before they run; an app that could write them
+ * could not change what runs (the check refuses it), but it could break itself, and listing them
+ * would show a person's notes app a folder of minified libraries.
+ */
+function appFolder(space: FileSpace): FileSpace {
+  const refuse = (path: string): void => {
+    if (isReservedPath(path)) throw new Error(`"${path}" is kept for the app's own code`);
+  };
+  const find = async (target: FileTarget) => {
+    const f = await space.find(target);
+    return f && !isReservedPath(f.path) ? f : null;
+  };
+  const mustFind = async (target: FileTarget) => {
+    const f = await find(target);
+    if (!f) throw new Error(`No file ${typeof target === "string" ? `"${target}"` : `"${target.path ?? target.name ?? target.id}"`} in this app`);
+    return f;
+  };
+  return {
+    list: async (folder) => (await space.list(folder)).filter((f) => !isReservedPath(f.path)),
+    find,
+    read: async (target) => space.read({ id: (await mustFind(target)).id }),
+    write: async (path, data, opts) => {
+      refuse(path);
+      return space.write(path, data, opts);
+    },
+    rename: async (target, to) => {
+      refuse(to);
+      return space.rename({ id: (await mustFind(target)).id }, to);
+    },
+    remove: async (target) => space.remove({ id: (await mustFind(target)).id }),
+  };
+}
+
+/**
  * `ctx.files` (#252): the app's own folder, over its own Store.
  *
  * `import` and `export` use the platform's file dialogs directly, NOT the trust-mediated `caps`: the
@@ -59,7 +94,7 @@ function joinPath(folder: string | undefined, name: string): string {
  * this app's folder. So they work the same for an app in the sealed box.
  */
 export function filesFor(store: Store, caps: Capabilities): CtxFiles {
-  const space = fileSpace(store);
+  const space = appFolder(fileSpace(store));
   const toBlob = (path: string, data: string | Uint8Array | Blob, mime?: string): Blob =>
     data instanceof Blob ? data : new Blob([data as BlobPart], { type: mimeOf(path, mime) });
   const name = (f: string | FileRef) => (typeof f === "string" ? f : (f.path ?? f.name ?? f.id));

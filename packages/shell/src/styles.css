@@ -3556,6 +3556,8 @@ button.k-tl-card:focus-visible {
   color: var(--ink-soft);
   font-size: 0.92rem;
   line-height: 1.45;
+  /* A detail may list things, one per line (the libraries a Studio save fetches). */
+  white-space: pre-line;
 }
 .k-add.k-primary-action.k-dialog-destructive {
   background: var(--danger);
@@ -4096,6 +4098,20 @@ button.k-fold-head {
 }
 .k-add-app-updated p {
   margin: 0 0 var(--space-2);
+}
+/* Libraries (#266): one line each, what it is and where it comes from. */
+.k-add-app-libraries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-add-app-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.k-add-app-sealed {
+  margin: 0;
+  color: var(--danger);
 }
 /* tokens-only: end — add an app */
 /* tokens-only: start — files */
@@ -6486,6 +6502,18 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--ink-soft);
   font-size: 0.9rem;
 }
+/* It did not open: the tile holds still and the reason sits under it, in plain words. */
+.k-splash-failed .k-splash-tile {
+  animation: none;
+  filter: saturate(0.4);
+}
+.k-splash-why {
+  margin: 0 0 var(--space-2);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
 .k-splash-bar {
   position: relative;
   width: 7rem;
@@ -7768,6 +7796,14 @@ body:has(.k-tabbar) .k-toasts {
   border-left: 2px solid color-mix(in oklab, var(--accent) 45%, var(--line));
   padding: 0.1rem 0 0.1rem 0.7rem;
   margin: 0;
+}
+/* A library upgrade (#266): the change to lock.json, under the source's own diff. */
+.k-history-lock {
+  margin-top: var(--space-3);
+}
+.k-history-lock > p {
+  margin: 0 0 var(--space-2);
+  font-size: 0.86rem;
 }
 
 /* Changes that were correctly not made. Deliberately quieter than the version list: it is a footnote

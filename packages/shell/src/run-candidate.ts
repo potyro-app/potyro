@@ -20,6 +20,7 @@ import { FakeCapabilities } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { mergeRuns, paramsForPage, smokeReport, smokeRuntime, type RunReport } from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
+import type { ModuleSource } from "./package-modules.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
@@ -35,13 +36,15 @@ export interface RunCandidateDeps {
   compose?: (source: string, store: MemoryStore) => Promise<Composed>;
   /** How long a page may take to settle. Defaults to observe-render's SETTLE_MS. */
   settleMs?: number;
+  /** The app's libraries and own modules (#266, #258), when it has any. */
+  modules?: ModuleSource;
 }
 
-async function composeIsolated(source: string, store: MemoryStore): Promise<Composed> {
+async function composeIsolated(source: string, store: MemoryStore, modules?: ModuleSource): Promise<Composed> {
   const bundle = await createAppBundler();
   return compose({
     provenance: "untrusted",
-    bundleCode: await bundle(source),
+    bundleCode: await bundle(source, modules),
     store,
     caps: new FakeCapabilities(),
     // Sample records in a throwaway store: confirming is safe and lets the code behind a confirm run.
@@ -78,7 +81,7 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
   await store.open("run-candidate");
   let composed: Composed | undefined;
   try {
-    composed = await (deps.compose ?? composeIsolated)(source, store);
+    composed = deps.compose ? await deps.compose(source, store) : await composeIsolated(source, store, deps.modules);
     const runtime = composed.runtime;
     const def = runtime.definition as AppDefinition & { id: string };
     // Custom views are mounted below with the real views, effects and all; the smoke run's
