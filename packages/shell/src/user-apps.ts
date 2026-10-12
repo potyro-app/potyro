@@ -254,7 +254,8 @@ export async function duplicateUserApp(id: string, now: string): Promise<UserApp
   if (!app) return null;
   const name = `${app.name} (copy)`;
   return saveUserApp(
-    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, origin: "created", note: `copied from “${app.name}”` },
+    // The lock is the code's, not the data's: the copy runs the same libraries (`duplicateApp` copies their files).
+    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, origin: "created", note: `copied from “${app.name}”` },
     now,
   );
 }
