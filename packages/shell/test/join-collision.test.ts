@@ -18,7 +18,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const joinedNamespaces: string[] = [];
 let spaceOnDevice: Record<string, { group: string; root: string } | null> = {};
 
-vi.mock("@potyro/store", () => ({
+// The store's pure helpers stay real (user-apps.ts reads the lock with them, #266); only the parts
+// that reach a relay are faked.
+vi.mock("@potyro/store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@potyro/store")>()),
   createSpaceInvite: async () => ({ group: "g", root: "r", secret: "s" }),
   joinSpace: async (namespace: string) => {
     joinedNamespaces.push(namespace);
