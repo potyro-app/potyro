@@ -3556,6 +3556,8 @@ button.k-tl-card:focus-visible {
   color: var(--ink-soft);
   font-size: 0.92rem;
   line-height: 1.45;
+  /* A detail may list things, one per line (the libraries a Studio save fetches). */
+  white-space: pre-line;
 }
 .k-add.k-primary-action.k-dialog-destructive {
   background: var(--danger);
