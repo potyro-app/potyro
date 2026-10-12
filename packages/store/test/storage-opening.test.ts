@@ -9,7 +9,7 @@ import type { SqliteDriverAsync } from "../src/jazz-sqlite-driver.js";
 /** One database, as two callers see it: a separate driver object each, the same state underneath. */
 function sharedDatabase() {
   const db = { version: 0, ran: [] as string[] };
-  const tick = () => new Promise((r) => setTimeout(r, 1));
+  const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 1));
   const driver = (): SqliteDriverAsync => ({
     initialize: async () => tick(),
     run: async (sql) => {
