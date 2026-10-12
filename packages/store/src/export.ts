@@ -9,6 +9,7 @@
 
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import type { PotyroRecord } from "potyro";
+import type { AppDeclaration } from "./app-declaration.js";
 
 export type ExportMode = "snapshot" | "mergeable";
 
@@ -23,6 +24,8 @@ export interface ExportManifest {
   mode: ExportMode;
   exportedAt: string;
   entities: string[];
+  /** What the app declares, as data (#271), so a device adding the bundle can describe it unrun. */
+  app?: AppDeclaration;
 }
 
 export interface BundleInputs {

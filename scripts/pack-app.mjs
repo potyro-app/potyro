@@ -13,7 +13,9 @@
 // type-only import adds nothing — and an import that leaves the source's folder is refused. The format is `potyro-app/1` (packages/store/src/app-package.ts);
 // packages/store/test/app-package.test.ts runs this script and reads its zip back with the real
 // reader, so the two cannot drift apart.
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { createRequire } from "node:module";
 
@@ -85,6 +87,60 @@ async function modulesOf(entry) {
   return modules;
 }
 
+/**
+ * What the app declares — name, icon, entities, pages, permissions — as data for the manifest (#271),
+ * so the Add-an-app card can describe it without running it.
+ *
+ * Read HERE, by running the app's top level in Node: this is the author's own code on the author's
+ * machine, and Node is a full JavaScript environment, so a top level that needs `Intl` (which the
+ * sealed box lacks) reads fine. Libraries by URL are inert stand-ins — nothing is fetched. An app
+ * that cannot be read here is still packed, without a declaration: the card then reads it itself.
+ */
+async function declarationOf(entry) {
+  const schema = fileURLToPath(new URL("../packages/schema/src/index.ts", import.meta.url));
+  const declare = fileURLToPath(new URL("../packages/store/src/app-declaration.ts", import.meta.url));
+  const fromShell = createRequire(new URL("../packages/shell/package.json", import.meta.url));
+  const STAND_IN =
+    "var h = new Proxy(function () {}, { get: function (_t, k) { if (k === Symbol.toPrimitive) return function () { return ''; }; if (k === 'then' || k === '__esModule') return undefined; return h; }, apply: function () { return h; }, construct: function () { return h; } }); module.exports = h;";
+  const dir = mkdtempSync(join(tmpdir(), "pack-app-"));
+  try {
+    await build({
+      stdin: {
+        contents: `import app from ${JSON.stringify(entry)};\nimport { declareApp } from ${JSON.stringify(declare)};\nexport default declareApp(app);\n`,
+        resolveDir: dirname(entry),
+        loader: "ts",
+      },
+      bundle: true,
+      write: true,
+      outfile: join(dir, "declared.mjs"),
+      format: "esm",
+      platform: "node",
+      jsx: "automatic",
+      logLevel: "silent",
+      plugins: [
+        {
+          name: "pack-app-declare",
+          setup(b) {
+            b.onResolve({ filter: /^(potyro|karta)$/ }, () => ({ path: schema }));
+            b.onResolve({ filter: /^react(-dom)?(\/.*)?$/ }, (args) => ({ path: fromShell.resolve(args.path) }));
+            b.onResolve({ filter: /^https?:\/\// }, (args) => ({ path: args.path, namespace: "stand-in" }));
+            b.onLoad({ filter: /.*/, namespace: "stand-in" }, () => ({ contents: STAND_IN, loader: "js" }));
+          },
+        },
+      ],
+    });
+    const mod = await import(pathToFileURL(join(dir, "declared.mjs")).href);
+    if (!mod.default) throw new Error("it does not export an app (`export default defineApp({ … })`)");
+    return mod.default;
+  } catch (e) {
+    const why = e?.errors?.[0]?.text ?? e?.message ?? String(e);
+    console.warn(`pack:app: packed without a description of the app, so Add an app will read it from its code (${why.split("\n")[0]})`);
+    return undefined;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 const entryPath = at(sourcePath);
 let modules;
 try {
@@ -94,6 +150,8 @@ try {
   process.exit(1);
 }
 
+const declared = await declarationOf(entryPath);
+
 const entries = {
   "manifest.json": strToU8(
     JSON.stringify(
@@ -102,6 +160,7 @@ const entries = {
         source: sourceName,
         files: [...shipped].map(([path, data]) => ({ path, size: data.byteLength })),
         ...(modules.size ? { modules: [...modules].map(([path, data]) => ({ path, size: data.byteLength })) } : {}),
+        ...(declared ? { app: declared } : {}),
       },
       null,
       2,
