@@ -91,6 +91,43 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   since, and anything in `chat.json` that is not a conversation is ignored, never fatal.
 - **Install links**: `https://<shell>/#add=<url-encoded link>` opens the dialog with the link filled in.
 
+### Libraries and an app's own modules (#266, #258)
+
+- **An app's own modules** (#258, "option B"): the entry file (`app.tsx`) stays the one editable
+  source — History, diffs, the Studio editor, Ask's edits and sync are unchanged. What it imports
+  relatively (`./plan.js`) comes from the package's `src/`, which `pnpm pack:app` fills by following
+  the entry's imports (an import that leaves the source's folder is refused). At install the modules
+  are kept in the app's space under `.src/`. They are not versioned: restoring an older entry keeps
+  the modules the app has now.
+- **Libraries** (#266) are imported by URL, pinned to an exact version:
+  `import Chart from "https://esm.sh/chart.js@4.4.1?bundle"`. URL imports only — no bare npm names.
+  A package may carry `lock.json` (`url → { file: ".modules/<sha256>.js", integrity: "sha256-…",
+  size }`) and the bytes under `files/.modules/`; otherwise the card says what will be fetched
+  ("fetches chart.js 4.4.1, from esm.sh, when you add it") and the fetch happens host-side, once,
+  when the person presses Add — never to draw the card, never at run time (rule 6). The fetch follows
+  the library's **whole import graph** (absolute and relative paths, literal dynamic imports) and
+  locks every file, or refuses by the library's name: a URL without an exact version, a file the
+  host does not serve, a bare package name inside a library, an `import()` of a value decided at run
+  time, a file loaded beside itself (`import.meta.url`). Nothing half-locked is kept.
+- **The lock lives on the app's record** (`UserApp.lock`, beside its source), not in its synced file
+  space: someone sharing the app must not be able to change code that runs here by changing a file.
+  `.modules/` and `.src/` are hidden from `ctx.files` and cannot be written by the app.
+- **One bundler plugin, both trust levels** (`shell/src/package-modules.ts`): `bundleAppSource`
+  (isolate IIFE) and `bundleTrustedModule` (trusted ESM) read each file through the Store and check
+  its digest first. A mismatch refuses to bundle — "chart.js 4.4.1 is not the copy this app was
+  installed with" — and the app shows that on its splash instead of opening.
+- **Libraries in the sealed box** are just more code inside the isolate (no DOM, no `fetch`). One
+  that touches `window`/`document` while loading fails with its own name: "chart.js 4.4.1 needs a
+  full web page to work … this app can only run as yours". The card says so when the bytes came with
+  the package; when they were fetched at install, the dialog says it right after.
+- **History**: each version carries the libraries part of the lock as `lock.json` text; an upgrade is
+  a version with a `lock.json` diff, and Restore brings its libraries back (their old bytes stay on
+  the device, so offline), keeping the ones the app has now under them for its current modules.
+- **A Studio save** of a version that imports a library the app does not have yet says what it
+  fetches first, and fetches it with consent when the version is saved — for code a person writes by
+  hand. **Not yet** (owner decision): the Studio's model and the generator prompt are not taught to
+  use libraries; that waits on a paid measurement the owner approves.
+
 ## Authoring loop (offline)
 
 - **Trusted dev:** `pnpm dev` loads `examples/*.app.ts` directly via Vite; edit + hot-reload,
