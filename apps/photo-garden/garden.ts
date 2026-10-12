@@ -275,29 +275,44 @@ const HUES: Array<[number, string]> = [
   [360, "Ember"],
 ];
 
-/** The picture's mean colour, as a word: Rose, Moss, Tide… — or Ink, Pearl, Stone when it has little colour. */
-export function colorName(src: Source): string {
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  const n = src.w * src.h;
-  for (let i = 0; i < n; i++) {
-    r += src.data[i * 4]!;
-    g += src.data[i * 4 + 1]!;
-    b += src.data[i * 4 + 2]!;
-  }
-  r /= n * 255;
-  g /= n * 255;
-  b /= n * 255;
+/** Hue (0–360), saturation and lightness (0–1) of one colour. */
+function hsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const l = (max + min) / 2;
-  const sat = max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1));
-  if (sat < 0.12) return l < 0.3 ? "Ink" : l > 0.75 ? "Pearl" : "Stone";
   const d = max - min;
-  let hue = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  hue = (hue * 60 + 360) % 360;
-  return HUES.find(([upTo]) => hue < upTo)![1];
+  if (d === 0) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(h * 60 + 360) % 360, s, l];
+}
+
+/**
+ * The picture's main colour, as a word: Rose, Fern, Tide… Each pixel votes for its hue by how vivid
+ * it is, so a green photo with a pink flower is Fern, not the muddy yellow its average would be. A
+ * picture with little colour is Ink, Stone or Pearl, by how light it is.
+ */
+export function colorName(src: Source): string {
+  const votes = new Map<string, number>();
+  let vivid = 0;
+  let light = 0;
+  const n = src.w * src.h;
+  for (let i = 0; i < n; i++) {
+    const [h, s, l] = hsl(src.data[i * 4]!, src.data[i * 4 + 1]!, src.data[i * 4 + 2]!);
+    light += l;
+    if (s < 0.15 || l < 0.1 || l > 0.94) continue;
+    const name = HUES.find(([upTo]) => h < upTo)![1];
+    votes.set(name, (votes.get(name) ?? 0) + s);
+    vivid += s;
+  }
+  if (vivid < n * 0.08) {
+    const l = light / n;
+    return l < 0.3 ? "Ink" : l > 0.75 ? "Pearl" : "Stone";
+  }
+  return [...votes].sort((a, b) => b[1] - a[1])[0]![0];
 }
 
 const NOUN: Record<Style, string> = { flow: "Drift", points: "Bloom", mosaic: "Tessera" };

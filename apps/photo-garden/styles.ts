@@ -132,16 +132,14 @@ export const STYLES = `
 }
 
 /* ---- Gallery ---- */
-.pg-gallery-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin: var(--space-2) 0 var(--space-4); }
-.pg-gallery-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--text-hero); letter-spacing: -0.01em; }
+.pg-gallery-head { margin: 0 0 var(--space-4); }
 .pg-gallery-head p { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
-.pg-wall { columns: 2 160px; column-gap: var(--space-3); }
-@media (min-width: 900px) { .pg-wall { columns: 3 220px; column-gap: var(--space-4); } }
+.pg-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); align-items: start; }
+@media (min-width: 900px) { .pg-wall { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); } }
 .pg-piece {
-  break-inside: avoid;
   display: block;
   width: 100%;
-  margin: 0 0 var(--space-3);
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;

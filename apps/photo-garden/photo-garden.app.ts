@@ -370,15 +370,18 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     const c = pointerOn;
     if (!c || !hasPhoto) return;
     keep.disabled = true;
+    // What is on screen now is what is kept, even if the style changes while it saves.
+    const keptStyle = mode;
+    const picture = src;
     try {
       const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/png"));
       if (!blob) throw new Error("The picture could not be saved.");
       const taken = (await ctx.query("artwork")).map((r) => String(r.title));
-      const title = titleFor(src, mode, taken);
+      const title = titleFor(picture, keptStyle, taken);
       const now = ctx.now();
       const file = await ctx.files.write(snapshotPath(title, now), blob, { mime: "image/png" });
       const image: FileRef = { id: file.id, path: file.path, name: file.name, mime: file.mime };
-      await ctx.create("artwork", { title, style: mode, date: now, image });
+      await ctx.create("artwork", { title, style: keptStyle, date: now, image });
       stage.classList.remove("pg-kept");
       void stage.offsetWidth; // restart the flash
       stage.classList.add("pg-kept");
@@ -545,8 +548,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
     const head = h(
       "div",
       { class: "pg-gallery-head" },
-      h("h2", {}, "Gallery"),
-      h("p", {}, sorted.length ? `${sorted.length} kept` : ""),
+      h("p", {}, sorted.length ? `${sorted.length} kept, newest first. Tap one to see it large.` : ""),
     );
     if (!sorted.length) {
       const go = h("button", { class: "pg-btn pg-primary", type: "button" }, "Open the Studio");
