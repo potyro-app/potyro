@@ -1,0 +1,24 @@
+{
+  "checkin": [
+    { "date": "2026-09-21", "hours": 7.25, "mood": 4, "tags": ["exercise"], "note": "Swim before work" },
+    { "date": "2026-09-22", "hours": 6.5, "mood": 3, "tags": ["coffee"], "note": "" },
+    { "date": "2026-09-23", "hours": 5.5, "mood": 2, "tags": ["coffee", "late screen"], "note": "Finished the series. Regret." },
+    { "date": "2026-09-24", "hours": 6.75, "mood": 3, "tags": [], "note": "" },
+    { "date": "2026-09-25", "hours": 7.5, "mood": 4, "tags": ["exercise"], "note": "Long walk, early night" },
+    { "date": "2026-09-26", "hours": 5.75, "mood": 3, "tags": ["alcohol"], "note": "Dinner with Ana" },
+    { "date": "2026-09-27", "hours": 8.5, "mood": 5, "tags": ["nap"], "note": "Slept like a stone" },
+    { "date": "2026-09-28", "hours": 7, "mood": 4, "tags": [], "note": "" },
+    { "date": "2026-09-29", "hours": 5.25, "mood": 2, "tags": ["coffee", "stressed"], "note": "Deadline night" },
+    { "date": "2026-09-30", "hours": 5.5, "mood": 2, "tags": ["coffee", "stressed"], "note": "Still the deadline" },
+    { "date": "2026-10-01", "hours": 7.75, "mood": 4, "tags": ["exercise"], "note": "Run by the river" },
+    { "date": "2026-10-02", "hours": 6.25, "mood": 3, "tags": ["late screen"], "note": "" },
+    { "date": "2026-10-04", "hours": 8.25, "mood": 5, "tags": ["exercise"], "note": "Hike, then pancakes" },
+    { "date": "2026-10-05", "hours": 7.25, "mood": 4, "tags": ["coffee"], "note": "" },
+    { "date": "2026-10-06", "hours": 6, "mood": 3, "tags": ["stressed"], "note": "Too many meetings" },
+    { "date": "2026-10-07", "hours": 5.5, "mood": 3, "tags": ["alcohol", "late screen"], "note": "Birthday drinks" },
+    { "date": "2026-10-08", "hours": 7, "mood": 4, "tags": ["exercise"], "note": "Yoga at lunch" },
+    { "date": "2026-10-09", "hours": 7.75, "mood": 5, "tags": [], "note": "Quiet evening, read a book" },
+    { "date": "2026-10-10", "hours": 6.5, "mood": 3, "tags": ["coffee"], "note": "" },
+    { "date": "2026-10-11", "hours": 8, "mood": 4, "tags": ["nap", "exercise"], "note": "Bike ride with Leo" }
+  ]
+}
