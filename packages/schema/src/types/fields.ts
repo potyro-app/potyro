@@ -12,7 +12,6 @@ export type DefaultValue = unknown | ((ctx: Ctx) => unknown);
 
 /** Common options shared by every field variant. */
 export interface FieldCommon {
-  /** What the person reads; a map in a multi-language app: `{ en: "Quantity", pl: "Ilość" }`. */
   label?: Words;
   required?: boolean;
   hidden?: boolean;
@@ -40,7 +39,6 @@ export interface NumberField extends FieldCommon {
   min?: number;
   max?: number;
   step?: number;
-  /** After the number: "kg", "days" — words, so `{ en: "days", pl: "dni" }` in a translated app. */
   unit?: Words;
   integer?: boolean;
 }
@@ -70,9 +68,7 @@ export interface EnumField extends FieldCommon {
   /** Colour per option, for values that mean something — `{ overdue: "red", done: "green" }`.
    *  Options left out keep the colour derived from their name, which is stable everywhere. */
   colors?: Record<string, EnumColor>;
-  /** What each option reads as, keyed like `colors`: `{ todo: { en: "To do", pl: "Do zrobienia" } }`.
-   *  Records store the option, never the label, so translating an app changes no record. Options left
-   *  out read as themselves. */
+  /** What each option reads as: `{ todo: { en: "To do", pl: "Do zrobienia" } }`. Records keep the option. */
   labels?: Record<string, Words>;
   /** Overrides the control the option count would choose: up to five options are a row of
    *  buttons, more open a searchable picker. */
@@ -82,7 +78,7 @@ export interface EnumField extends FieldCommon {
 export interface TagsField extends FieldCommon {
   type: "tags";
   options?: string[];
-  /** What each option reads as, as for an enum. Tags typed by hand are records and stay as typed. */
+  /** As for an enum. */
   labels?: Record<string, Words>;
 }
 

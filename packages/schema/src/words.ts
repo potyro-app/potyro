@@ -9,7 +9,8 @@
 import { z } from "zod";
 import type { AppDefinition } from "./types/app.js";
 import type { Field } from "./types/fields.js";
-import type { Language, Localized, Words } from "./types/words.js";
+import type { Language, Words } from "./types/words.js";
+import type { Localized } from "./types/localized.js";
 import { fieldSchema, structureSchema } from "./validate.js";
 import { isWordsMap, isWordsSchema } from "./words-schema.js";
 

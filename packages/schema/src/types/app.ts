@@ -668,22 +668,16 @@ export interface SourceDef {
 
 export interface AppDefinition {
   id: string;
-  /** What the launcher and the person call it; a map in a multi-language app. */
   name: Words;
   /** One emoji or short glyph for the app's launcher tile (e.g. "🏋"). Without it the tile shows a
    *  monogram of the name in a colour derived from the app, which cannot collide by accident. */
   icon?: string;
   version: string;
-  /** The app's DATA version: bump it only when records change shape (never for words or languages). */
+  /** The DATA version: bump it only when records change shape, never for words. */
   schemaVersion: number;
-  /**
-   * The language this app's words are written in — always declared, even when every string is
-   * plain: `language: "pl"` for an app written in Polish. Every translation map contains it, and it
-   * is what a person sees when the app lacks their language.
-   */
+  /** The language its words are written in, always declared ("pl"); every map has it. */
   language?: Language;
-  /** Every language the app carries, its own included: `["en", "pl"]`. Defaults to `[language]`.
-   *  Add one only when asked, with the `translate` tool. */
+  /** Every language it carries, its own first: `["en", "pl"]`. Added only when asked (`translate`). */
   languages?: Language[];
   theme?: Theme;
   permissions?: PermissionManifest;

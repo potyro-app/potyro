@@ -1,16 +1,13 @@
 // plants.app.ts
 // Stresses: datetime logic, season-dependent computed interval (real branching), reminders
-// as functions returning Date|null, a quick action, calendar view.
+// as functions returning Date|null, a quick action, calendar view. And words built inside functions
+// (#302): "in 3 days" from `ctx.format.relative`, a plural from `ctx.t`, both right in any language
+// and in the sealed box — a hand-written "in 3d" was English only.
 import { defineApp } from "potyro";
 
 // plain helpers — full code, your own module in a real project
 const DAY = 86_400_000;
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * DAY);
-const relativeTime = (d: Date) => {
-  const days = Math.round((d.getTime() - Date.now()) / DAY);
-  if (days === 0) return "today";
-  return days > 0 ? `in ${days}d` : `${-days}d ago`;
-};
 const seasonOf = (d: Date): "spring" | "summer" | "autumn" | "winter" => {
   const m = d.getMonth(); // northern hemisphere
   if (m >= 2 && m <= 4) return "spring";
@@ -36,8 +33,9 @@ export default defineApp({
   id: "plants",
   name: "Plants",
   icon: "🌱",
-  version: "1.0.0",
+  version: "1.1.0",
   schemaVersion: 1,
+  language: "en",
   theme: { accent: "#7FCF8E" },
   permissions: { camera: true, notifications: true },
 
@@ -59,7 +57,13 @@ export default defineApp({
         seasonalCare: {
           type: "list",
           of: {
-            season: { type: "enum", options: ["spring", "summer", "autumn", "winter"], colors: { spring: "green", summer: "yellow", autumn: "orange", winter: "blue" } },
+            season: {
+              type: "enum",
+              options: ["spring", "summer", "autumn", "winter"],
+              colors: { spring: "green", summer: "yellow", autumn: "orange", winter: "blue" },
+              // What each option reads as; records keep "spring". In a translated app each is a map.
+              labels: { spring: "Spring", summer: "Summer", autumn: "Autumn", winter: "Winter" },
+            },
             intervalDays: { type: "number", min: 1, integer: true },
             note: { type: "text" },
           },
@@ -94,11 +98,17 @@ export default defineApp({
             view: {
               type: "aggregate",
               entity: "plant",
-              rows: (plants) => {
+              rows: (plants, ctx) => {
                 const week = Date.now() + 7 * DAY;
+                const thisWeek = plants.filter((p) => p.active && p.nextWatering.getTime() <= week).length;
+                // The value stays a number — the view formats it; the words around it come from ctx.t.
                 return [
                   { label: "Due now", value: plants.filter((p) => p.overdue).length, tone: plants.some((p) => p.overdue) ? "negative" : undefined },
-                  { label: "This week", value: plants.filter((p) => p.active && p.nextWatering.getTime() <= week).length },
+                  {
+                    label: "This week",
+                    value: thisWeek,
+                    detail: ctx.t({ en: "{n, plural, =0 {nothing to water} one {# plant to water} other {# plants to water}}" }, { n: thisWeek }),
+                  },
                   { label: "Plants", value: plants.filter((p) => p.active).length },
                 ];
               },
@@ -112,7 +122,7 @@ export default defineApp({
               entity: "plant",
               filter: (p) => p.overdue,
               sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
-              display: { primary: "name", secondary: (p) => `due ${relativeTime(p.nextWatering)}` },
+              display: { primary: "name", secondary: (p, ctx) => ctx.t({ en: "due {when}" }, { when: ctx.format.relative(p.nextWatering, { unit: "day" }) }) },
               rowActions: ["water"],
               onOpen: { page: "plant", param: { plantId: "id" } },
               emptyText: "Nothing to water. 🌱",
@@ -135,7 +145,7 @@ export default defineApp({
         sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
         display: {
           primary: (p) => p.name,
-          secondary: (p) => (p.overdue ? "overdue!" : `next: ${relativeTime(p.nextWatering)}`),
+          secondary: (p, ctx) => (p.overdue ? "overdue!" : ctx.t({ en: "next: {when}" }, { when: ctx.format.relative(p.nextWatering, { unit: "day" }) })),
           media: "photo",
           badges: ["needsDirectSun"],
         },
@@ -151,7 +161,7 @@ export default defineApp({
         entity: "plant",
         filter: (p) => p.overdue,
         sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
-        display: { primary: "name", secondary: (p) => `due ${relativeTime(p.nextWatering)}`, media: "photo" },
+        display: { primary: "name", secondary: (p, ctx) => ctx.t({ en: "due {when}" }, { when: ctx.format.relative(p.nextWatering, { unit: "day" }) }), media: "photo" },
         rowActions: ["water"],
         onOpen: { page: "plant", param: { plantId: "id" } },
         emptyText: "Nothing to water. 🌱",
@@ -182,8 +192,9 @@ export default defineApp({
       id: "water-due",
       entity: "plant",
       when: (p) => (p.active ? p.nextWatering : null),
-      title: (p) => `Water ${p.name}`,
-      body: (p) => `Last watered ${p.lastWatered ? relativeTime(p.lastWatered) : "never"}`,
+      // The plant's name is a record, so it is never translated: the app's words go around it.
+      title: (p, ctx) => ctx.t({ en: "Water {name}" }, { name: p.name }),
+      body: (p, ctx) => (p.lastWatered ? ctx.t({ en: "Last watered {when}" }, { when: ctx.format.relative(p.lastWatered, { unit: "day" }) }) : "Never watered yet"),
     },
   ],
 });

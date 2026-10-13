@@ -123,7 +123,7 @@ export interface UiProgress {
   done(): void;
 }
 
-/** Every `ctx.ui` call takes `Words` where it takes words: a map shows in `ctx.locale`. */
+/** Takes `Words` wherever it takes words. */
 export interface CtxUi {
   toast(msg: Words): void;
   /**
@@ -199,7 +199,7 @@ export interface CtxFiles {
   export(file: string | FileRef): Promise<void>;
 }
 
-/** The `Date`/number options `ctx.format.date` understands (an allow-list: the box sends no others). */
+/** The options `ctx.format.date` takes; no others. */
 export interface FormatDateOptions {
   dateStyle?: "full" | "long" | "medium" | "short";
   timeStyle?: "short" | "medium";
@@ -213,7 +213,7 @@ export interface FormatDateOptions {
 
 export interface FormatNumberOptions {
   style?: "decimal" | "percent" | "unit";
-  /** With `style: "unit"`: one of Intl's units ("kilogram", "kilometer-per-hour", "day"). */
+  /** With `style: "unit"`: "kilogram", "kilometer-per-hour", "day". */
   unit?: string;
   minimumFractionDigits?: number;
   maximumFractionDigits?: number;
@@ -221,21 +221,18 @@ export interface FormatNumberOptions {
 }
 
 /**
- * Formatting for the person (#302). Works the same in an app you wrote and in a shared one, where
- * the sealed box has no `Intl` and the host formats instead. Return a `Date` or a number where a
- * view will format it (a `datetime` field, a `money` column, `AggregateRow.value`); use these only
- * for text the app composes itself.
+ * Formats for the person, the same in the sealed box. Only for text the app composes: return a Date
+ * or a number where a view formats it (a `datetime` field, `AggregateRow.value`).
  */
 export interface CtxFormat {
-  /** The BCP 47 tag these format in ("pl-PL", "en-GB") — for a trusted custom view's own `Intl`. */
+  /** The tag these format in: "pl-PL". */
   locale: string;
   date(d: Date | string | number, opts?: FormatDateOptions): string;
   number(n: number, opts?: FormatNumberOptions): string;
-  /** Whole minor units, as a `money` field stores them: `money(4200, "EUR")` → "42,00 €". Default EUR. */
+  /** Whole minor units: `money(4200, "EUR")` → "42,00 €". */
   money(minor: number, currency?: string): string;
-  /** From `ctx.now()`: "in 3 days", "vor 2 Stunden". The unit is picked unless given. */
+  /** From `ctx.now()`: "in 3 days". */
   relative(d: Date | string | number, opts?: { unit?: "minute" | "hour" | "day" | "week" | "month" | "year"; numeric?: "auto" | "always" }): string;
-  /** "milk, eggs and bread" in the person's language. */
   list(items: string[], opts?: { type?: "conjunction" | "disjunction" }): string;
 }
 
@@ -309,21 +306,10 @@ export interface Ctx {
   scope: Readonly<Record<string, Resolved | undefined>>;
 
   // ---- the app's words and the person's formats (#302) ----
-  /**
-   * The language the app's words are being shown in: one of the app's `languages` (its `language`
-   * when the person's is not among them). Fixed per pass, like `now()`.
-   */
+  /** The language the app's words are shown in: one of its `languages`. Fixed per pass. */
   locale: Language;
-  /**
-   * The words for `ctx.locale`: `ctx.t({ en: "Due now", pl: "Do podlania" })`. With `vars` the
-   * chosen string is an ICU message, so plurals agree in every language:
-   *   ctx.t({ en: "{n, plural, one {# plant} other {# plants}}",
-   *           pl: "{n, plural, one {# roślina} few {# rośliny} many {# roślin} other {# rośliny}}" }, { n })
-   * A plain string passes through (formatted when `vars` are given). Records are never translated:
-   * `ctx.t({ en: "Water {name}", pl: "Podlej: {name}" }, { name: p.name })`.
-   */
+  /** Words for `ctx.locale`. With `vars`, an ICU message: `ctx.t({ en: "{n, plural, one {# plant} other {# plants}}", pl: "…" }, { n })`. */
   t(words: Words, vars?: Record<string, string | number | Date>): string;
-  /** Dates, numbers, money, "in 3 days" and lists, in the person's formats. See `CtxFormat`. */
   format: CtxFormat;
 
   // ---- app-scoped key/value storage ----
