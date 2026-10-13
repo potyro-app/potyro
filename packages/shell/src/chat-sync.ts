@@ -94,6 +94,49 @@ export async function syncChat(appId: string, deps?: ChatSyncDeps): Promise<bool
 }
 
 /**
+ * While the Studio has an app open: whenever your account's conversations change — another of your
+ * devices said something, or the map has only now arrived here — sync this app's, and call
+ * `onChange` when this device's copy changed. Returns the way to stop. A no-op for an app whose
+ * conversation does not follow you.
+ */
+export function followChat(appId: string, onChange: () => void): () => void {
+  let stopped = false;
+  let stop: () => void = () => {};
+  let running: Promise<void> | null = null;
+  let again = false;
+  const pull = (): void => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = syncChat(appId)
+      .then((changed) => {
+        if (changed && !stopped) onChange();
+      })
+      .finally(() => {
+        running = null;
+        if (again && !stopped) {
+          again = false;
+          pull();
+        }
+      });
+  };
+  void (async () => {
+    if (!(await follows(appId))) return;
+    const [{ watchAccountChats }, { accountNode }] = await Promise.all([import("@potyro/store"), import("./open-store.js")]);
+    const node = await accountNode();
+    if (!node || stopped) return;
+    const unwatch = await watchAccountChats(node, pull);
+    if (stopped) unwatch();
+    else stop = unwatch;
+  })().catch((e: unknown) => console.warn("[potyro] could not follow the studio conversation:", e));
+  return () => {
+    stopped = true;
+    stop();
+  };
+}
+
+/**
  * Every synced app's conversation, at boot, through the node boot already opened: what this device
  * said and had not sent yet — the page was closed straight after — goes now, and what your other
  * devices said is here before the Studio is opened. Background; never holds anything up.

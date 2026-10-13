@@ -30,7 +30,7 @@ import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineReady } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import { shellDialogs } from "./dialog.js";
-import { syncChat } from "./chat-sync.js";
+import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
@@ -176,6 +176,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const id = appRef.current;
     if (id && (await syncChat(id))) await refresh();
   }, [refresh]);
+  // ...and live while it is open: what you say on another device shows up here (#283).
+  useEffect(() => (appId ? followChat(appId, () => void refresh()) : undefined), [appId, refresh]);
 
   /** Add to the conversation. A message that could not be kept is said, never dropped quietly. */
   const say = async (message: NewMessage): Promise<void> => {

@@ -121,6 +121,40 @@ export async function publishChatMessages(node: unknown, appId: string, messages
   }
 }
 
+/**
+ * Call `onChange` whenever your account's conversations change — another of your devices said
+ * something — including the moment the map first arrives on this device. Returns the way to stop.
+ */
+export async function watchAccountChats(node: unknown, onChange: () => void): Promise<() => void> {
+  const stops: Array<() => void> = [];
+  let watching: string | null = null;
+  try {
+    const n = node as Nodeish;
+    const account = (await n.expectCurrentAccount("potyro chats")) as CoMapish & Partial<Subscribable>;
+    const attach = async (): Promise<void> => {
+      const id = account.get(CHATS);
+      if (typeof id !== "string" || id === watching) return;
+      const map = await n.load(id);
+      if (!map || map === "unavailable" || watching === id) return;
+      watching = id;
+      const sub = (map as CoMapish & Partial<Subscribable>).subscribe;
+      if (typeof sub === "function") stops.push(sub.call(map, () => onChange()));
+      onChange();
+    };
+    if (typeof account.subscribe === "function") stops.push(account.subscribe.call(account, () => void attach().catch(() => {})));
+    await attach();
+  } catch {
+    // Nothing to watch: the conversation still syncs whenever the Studio opens.
+  }
+  return () => {
+    for (const stop of stops.splice(0)) stop();
+  };
+}
+
+interface Subscribable {
+  subscribe(listener: (value: unknown) => void): () => void;
+}
+
 /** Forget messages — their app was deleted — on every device of yours. */
 export async function removeChatMessages(node: unknown, appId: string, ids: readonly string[]): Promise<boolean> {
   try {
