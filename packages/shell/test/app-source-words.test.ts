@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { applyEdit, inspect } from "../src/app-source.js";
+import { applyEdit, inspect, textSites } from "../src/app-source.js";
 import { editorLanguages } from "../src/app-source-words.js";
 
 const groceries = readFileSync(resolve(process.cwd(), "../../examples/groceries.app.ts"), "utf8");
@@ -39,6 +39,13 @@ describe("a translated app in the structural editor", () => {
     expect(await applyEdit(groceries, { kind: "field-label", entity: "item", field: "quantity", value: " ", language: "pl" })).toMatchObject({ ok: false });
     const plain = groceries.replace(`label: { en: "Note", pl: "Notatka" }`, `label: "Note"`);
     expect(await applyEdit(plain, { kind: "field-label", entity: "item", field: "note", value: "Notatka", language: "pl" })).toMatchObject({ ok: false, reason: "this label is not written as a translation map" });
+  });
+
+  it("edit mode offers each language of a displayed map, and still not a placeholder's", async () => {
+    const texts = (await textSites(groceries)).map((s) => s.text);
+    expect(texts).toContain("Lista jest pusta. Dodaj pierwszą rzecz poniżej.");
+    expect(texts).toContain("Nothing on the list. Add the first thing below.");
+    expect(texts).not.toContain("Milk"); // placeholder: { en: "Milk", … } reads like a record
   });
 
   it("orders the inputs: the app's own language first", () => {
