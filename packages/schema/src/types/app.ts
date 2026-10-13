@@ -6,6 +6,7 @@ import type { Ctx } from "./ctx.js";
 import type { PotyroRecord, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 import type { ViewProps } from "./runtime.js";
+import type { Language, Words } from "./words.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logic function signatures (docs/04). The record param is `Resolved` — the permissive
@@ -32,7 +33,7 @@ export type Binding<T = Value> = string | BindingFn<T>;
 /** A titled run of fields (#100). The form and the detail page both read it: the form shows the
  *  editable fields of each group under its title, the detail page every listed field or computed. */
 export interface FieldGroup {
-  title?: string;
+  title?: Words;
   /** Field keys, or computed keys (those show on the detail page only). */
   fields: string[];
   /** Start folded. The first group is never folded, whatever this says. */
@@ -46,14 +47,14 @@ export interface FieldGroup {
 export interface ActionDef {
   run: ActionFn;
   /** Button text; default: the key, humanised. */
-  label?: string;
+  label?: Words;
   /** What it does, for Ask. */
   description?: string;
   input?: Record<string, Field>;
 }
 
 export interface EntityDef {
-  label?: string;
+  label?: Words;
   /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
   icon?: string;
   displayField?: string;
@@ -94,7 +95,7 @@ export interface ListView {
   rowActions?: string[];
   onOpen?: OnOpen;
   /** Shown when the page has no rows. A function of ctx may say why: `(ctx) => \`No places in ${ctx.scope.trip?.city} yet\``. */
-  emptyText?: Dynamic<string>;
+  emptyText?: Dynamic<Words>;
   param?: string;
   filters?: FilterChip[];
   /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
@@ -113,7 +114,7 @@ export interface GalleryView {
   sort?: SortFn;
   display?: ListDisplay;
   onOpen?: OnOpen;
-  emptyText?: Dynamic<string>;
+  emptyText?: Dynamic<Words>;
   /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
@@ -135,10 +136,10 @@ export interface TableView {
 /** An action reference in a detail view: an action key, or an inline navigate button. */
 export type DetailAction =
   | string
-  | { label: string; navigate: { page: string; param?: Record<string, string> } };
+  | { label: Words; navigate: { page: string; param?: Record<string, string> } };
 
 export interface DetailSection {
-  title?: string;
+  title?: Words;
   fields: string[];
   /** The heading folds it, remembered per device (#108). */
   collapsible?: boolean;
@@ -178,13 +179,13 @@ export interface CalendarView {
  *  - otherwise `from` names an enum/tags field whose options become selectable chips (single, or
  *    multi when `multi` is set). */
 export interface FilterChip {
-  label: string;
+  label: Words;
   param: string;
   from?: string;
   multi?: boolean;
   type?: "boolean" | "geo" | "text" | "number";
   /** Greyed-out hint inside a `text`/`number` box ("Name or aisle"). */
-  placeholder?: string;
+  placeholder?: Words;
 }
 
 /**
@@ -284,7 +285,7 @@ export interface ChecklistView {
   rowActions?: string[];
   /** Where the row's chevron goes. Without it a row has no detail. */
   onOpen?: OnOpen;
-  emptyText?: Dynamic<string>;
+  emptyText?: Dynamic<Words>;
 }
 
 /** Records in columns by an enum field; dragging a card, or its Move to, patches that field (#107). */
@@ -349,9 +350,9 @@ export interface AggregateView {
   /** Fold the page's rows into what should be displayed. */
   rows: (rows: Resolved[], ctx: Ctx) => AggregateRow[] | Promise<AggregateRow[]>;
   /** Heading above the derived table. */
-  title?: Dynamic<string>;
+  title?: Dynamic<Words>;
   /** Shown when the fold returns nothing — "Nobody owes anybody." */
-  emptyText?: Dynamic<string>;
+  emptyText?: Dynamic<Words>;
 }
 
 /** Records on a rail by date, newest first, under sticky day, week or month headings (#110). */
@@ -367,15 +368,15 @@ export interface TimelineView {
   newest?: "first" | "last";
   filter?: FilterFn;
   onOpen?: OnOpen;
-  emptyText?: Dynamic<string>;
+  emptyText?: Dynamic<Words>;
 }
 
 /** A stats tile (#109): a summary figure, optionally compared with the same figure for an earlier period. */
 export interface StatItem extends SummaryValue {
   /** After the number: "kg", "min". A `field`'s own unit is used when this is left out. */
-  unit?: string;
+  unit?: Words;
   /** `value` is the earlier figure; the tile reads "▲ 1 more than {label}" (or "6% less" with `as: "percent"`). */
-  compare?: { value: (rows: Resolved[], ctx: Ctx) => unknown; label: string; as?: "difference" | "percent" };
+  compare?: { value: (rows: Resolved[], ctx: Ctx) => unknown; label: Words; as?: "difference" | "percent" };
 }
 
 /** Big numbers folded out of the page's rows (#109). */
@@ -399,9 +400,9 @@ export interface ChartView {
   entity: string;
   filter?: FilterFn;
   series: (rows: Resolved[], ctx: Ctx) => ChartPoint[] | Promise<ChartPoint[]>;
-  title?: Dynamic<string>;
-  subtitle?: Dynamic<string>;
-  emptyText?: Dynamic<string>;
+  title?: Dynamic<Words>;
+  subtitle?: Dynamic<Words>;
+  emptyText?: Dynamic<Words>;
 }
 
 export interface CustomView {
@@ -477,7 +478,7 @@ export type SummaryOp = "sum" | "count" | "avg" | "max";
  * figure is a plain aggregate; push per-record arithmetic into a `computed` field to keep it there.
  */
 export interface SummaryValue {
-  label: string;
+  label: Words;
   /** The field (or computed) to aggregate. Not used with `value`, not needed for `count`. */
   field?: string;
   op?: SummaryOp;
@@ -488,7 +489,7 @@ export interface SummaryValue {
 /** One block of a page `layout` (#105): any view, with an optional title above it. */
 export interface LayoutItem {
   view: View;
-  title?: string;
+  title?: Words;
   /** In a `grid`: columns out of three on a wide screen (two on a tablet, one on a phone). */
   span?: 1 | 2 | 3;
   /** In a `stack`: folds behind its title; the fold is remembered per device. */
@@ -522,7 +523,7 @@ export const LAYOUT_TYPES = ["stack", "grid", "split", "tabs"] as const;
  * `CtxViews` for the one that moves a map.
  */
 export interface PageAction {
-  label: string;
+  label: Words;
   /** One emoji or short glyph, shown before the label. */
   icon?: string;
   run: (ctx: Ctx) => void | Promise<void>;
@@ -531,7 +532,7 @@ export interface PageAction {
 export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
-  title: Dynamic<string>;
+  title: Dynamic<Words>;
   /** One emoji or short glyph for the page's tab (#111). Without it the tab shows the entity's icon. */
   icon?: string;
   hidden?: boolean;
@@ -619,7 +620,7 @@ export interface Theme {
  */
 export interface QuickAction {
   id: string;
-  label: string;
+  label: Words;
   icon?: string;
   entity: string;
   /** `instant` creates the record straight from field defaults + `prefill` with NO form — the point
@@ -646,7 +647,7 @@ export interface ScopeDef {
   /** The entity whose records are selectable. */
   entity: string;
   /** Chip label; defaults to the entity's label. */
-  label?: string;
+  label?: Words;
   /** When true the app asks for a selection before showing its pages, and keeps asking until one exists. */
   required?: boolean;
 }
@@ -667,12 +668,23 @@ export interface SourceDef {
 
 export interface AppDefinition {
   id: string;
-  name: string;
+  /** What the launcher and the person call it; a map in a multi-language app. */
+  name: Words;
   /** One emoji or short glyph for the app's launcher tile (e.g. "🏋"). Without it the tile shows a
    *  monogram of the name in a colour derived from the app, which cannot collide by accident. */
   icon?: string;
   version: string;
+  /** The app's DATA version: bump it only when records change shape (never for words or languages). */
   schemaVersion: number;
+  /**
+   * The language this app's words are written in — always declared, even when every string is
+   * plain: `language: "pl"` for an app written in Polish. Every translation map contains it, and it
+   * is what a person sees when the app lacks their language.
+   */
+  language?: Language;
+  /** Every language the app carries, its own included: `["en", "pl"]`. Defaults to `[language]`.
+   *  Add one only when asked, with the `translate` tool. */
+  languages?: Language[];
   theme?: Theme;
   permissions?: PermissionManifest;
   /** An app-wide selected record ("current trip") that every function can read as `ctx.scope`. */

@@ -1,11 +1,12 @@
-import { actionInfo, actionInputProblem, FieldValueError, resolveView } from "potyro";
+import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isWordsMap, localize, pickLanguage, resolveView, VIEW_WORDS, word } from "potyro";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
-import type { AppDefinition, Ctx, Id, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
+import type { AppDefinition, Ctx, Id, Language, Localized, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
 import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
+import { formatLocaleFor } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
 import type { Store } from "@potyro/store";
 import { asyncSort } from "./async-sort.js";
@@ -44,10 +45,24 @@ export interface RuntimeDeps {
   space?: Space | (() => Space | undefined);
   /** The initial app-wide selection (`ctx.scope`), by entity. Changed later through `setScope`. */
   scope?: Record<string, Resolved | undefined>;
+  /**
+   * The person's languages, in order (#302): their explicit choice alone, or the device's list
+   * (`navigator.languages`). The app is shown in the first one it carries (`pickLanguage`), and
+   * dates and numbers are formatted in the first one's region when it is that language. Changed
+   * later through `setLanguages`. Absent = English.
+   */
+  languages?: readonly string[];
+}
+
+/** Which of the app's languages it is shown in (docs/05 `Runtime.language`). */
+export interface RuntimeLanguage {
+  current: Language | undefined;
+  default: Language | undefined;
+  available: Language[];
 }
 
 /** A page ref may name a layout item (`today#1`, #105); `resolveView` knows the difference. */
-const viewOf = (def: AppDefinition, pageRef: string): View => resolveView(def, pageRef);
+const viewOf = (def: Localized<AppDefinition>, pageRef: string): Localized<View> => resolveView(def, pageRef) as Localized<View>;
 
 /** The ctx calls that write: each one is tracked until it lands, so leaving can wait for it. */
 const WRITES = new Set<PropertyKey>(["create", "patch", "delete", "increment", "transaction"]);
@@ -71,6 +86,11 @@ export class RuntimeCore {
   private readonly me?: Person;
   private readonly space?: Space | (() => Space | undefined);
   private scope: Record<string, Resolved | undefined>;
+  /** The person's languages, and what they make of this app (#302). */
+  private prefs: readonly string[];
+  private shownIn: Language | undefined;
+  private formatLocale: string;
+  private readonly languageListeners = new Set<() => void>();
 
   constructor(deps: RuntimeDeps) {
     this.app = deps.app;
@@ -83,6 +103,44 @@ export class RuntimeCore {
     this.me = deps.me;
     this.space = deps.space;
     this.scope = { ...(deps.scope ?? {}) };
+    this.prefs = deps.languages ?? [];
+    this.shownIn = pickLanguage(this.prefs, this.app.definition);
+    this.formatLocale = formatLocaleFor(this.prefs[0], this.shownIn);
+  }
+
+  /** Which language the app is shown in, its own, and every one it carries. */
+  get language(): RuntimeLanguage {
+    const def = this.app.definition;
+    return { current: this.shownIn, default: def.language, available: appLanguages(def) };
+  }
+
+  /**
+   * The person's languages changed (You → Language, or the device's). The definition is localized
+   * again, every live watcher re-runs — computed text that reads `ctx.locale` is worked out anew —
+   * and scheduled reminders are re-titled. Returns whether the app's language changed.
+   */
+  setLanguages(prefs: readonly string[]): boolean {
+    const shownIn = pickLanguage(prefs, this.app.definition);
+    const formatLocale = formatLocaleFor(prefs[0], shownIn);
+    this.prefs = [...prefs];
+    if (shownIn === this.shownIn && formatLocale === this.formatLocale) return false;
+    this.shownIn = shownIn;
+    this.formatLocale = formatLocale;
+    this.invalidate();
+    for (const cb of this.languageListeners) cb();
+    void this.reconcileReminders().catch((e: unknown) => console.warn("[potyro] reminders after a language change:", e));
+    return true;
+  }
+
+  /** Hear a language change (the shell re-renders the app's chrome). Returns the unsubscribe. */
+  onLanguageChange(cb: () => void): () => void {
+    this.languageListeners.add(cb);
+    return () => this.languageListeners.delete(cb);
+  }
+
+  /** A `Dynamic<Words>` option's value as a string; any other option's as it is. */
+  private shownOption(value: Value, isWords: boolean): Value {
+    return isWords && isWordsMap(value) ? word(value as Record<string, string>, this.shownIn, this.app.definition) : value;
   }
 
   /** The current app-wide selection, by entity. */
@@ -104,13 +162,23 @@ export class RuntimeCore {
   }
 
   /** A `Dynamic<T>` view option, resolved through the host (see `LoadedApp.callViewOption`). */
-  viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
-    return this.app.callViewOption(pageId, key, this.ctxFor(params));
+  async viewOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
+    const value = await this.app.callViewOption(pageId, key, this.ctxFor(params));
+    // A literal map, or a function that returned one (`Dynamic<Words>`), reads in the person's language.
+    return this.shownOption(value, this.viewOptionTakesWords(pageId, key));
+  }
+
+  private viewOptionTakesWords(pageId: string, key: string): boolean {
+    try {
+      return VIEW_WORDS[viewOf(this.definition, pageId).type]?.includes(key) ?? false;
+    } catch {
+      return false; // no such page: the host has already answered null
+    }
   }
 
   /** A `Dynamic<T>` page option (`title`), resolved through the host. */
-  pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
-    return this.app.callPageOption(pageId, key, this.ctxFor(params));
+  async pageOption(pageId: string, key: string, params?: Record<string, unknown>): Promise<Value> {
+    return this.shownOption(await this.app.callPageOption(pageId, key, this.ctxFor(params)), key === "title");
   }
 
   /**
@@ -165,8 +233,9 @@ export class RuntimeCore {
     return () => this.invalidators.delete(cb);
   }
 
-  get definition(): AppDefinition {
-    return this.app.definition;
+  /** The definition in the language the app is shown in: every `Words` slot is its string (#302). */
+  get definition(): Localized<AppDefinition> {
+    return localize(this.app.definition, this.shownIn);
   }
 
   /** Build a fresh ctx (deterministic time per pass) with optional view params. */
@@ -183,6 +252,8 @@ export class RuntimeCore {
       // Resolved per pass, never captured — see `RuntimeDeps.space`.
       space: typeof this.space === "function" ? this.space() : this.space,
       scope: this.scope,
+      language: this.shownIn,
+      formatLocale: this.formatLocale,
     };
     const ctx = this.host.makeCtx(this.app, base);
     // Every write through this ctx is tracked — the views', a custom view's, an action's. A Proxy

@@ -21,6 +21,7 @@
 import type { Field } from "./types/fields.js";
 import { humanizeKey } from "./humanize.js";
 import { formatMoney } from "./money.js";
+import { plainWords } from "./words-schema.js";
 
 export type ValueCheck = "read" | "write";
 
@@ -160,7 +161,7 @@ export function recordValueProblem(fields: Record<string, Field>, data: Record<s
   for (const [key, value] of Object.entries(data)) {
     const field = fields[key];
     if (!field) continue;
-    const problem = fieldValueProblem(field, value, mode, field.label ?? humanizeKey(key));
+    const problem = fieldValueProblem(field, value, mode, field.label === undefined ? humanizeKey(key) : plainWords(field.label));
     if (problem) return problem;
   }
   return null;

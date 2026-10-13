@@ -8,8 +8,12 @@
 // Why refuse at all, when the app's own code wrote it? Because in a shared app the other copies
 // would have to survive it too, and the next reader cannot tell a bug from a tampered change.
 
-import { FieldValueError, fieldValueProblem, humanizeKey, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "potyro";
+import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "potyro";
 import type { Store } from "@potyro/store";
+
+/** How a field is named in a message: its label — already in the person's language when the
+ *  definition is the localized one the ctx passes (#302). */
+const labelOf = (field: Field, key: string): string => (field.label === undefined ? humanizeKey(key) : plainWords(field.label));
 
 /**
  * The account ids a `member` value may name (KA-19). Absent = nobody to check against (a solo app,
@@ -37,7 +41,7 @@ export function assertValuesFit(definition: AppDefinition, entity: string, data:
   if (problem) throw new FieldValueError(problem);
   for (const [key, value] of Object.entries(data)) {
     const field = fields[key];
-    const member = field && memberProblem(field, value, people, field.label ?? humanizeKey(key));
+    const member = field && memberProblem(field, value, people, labelOf(field, key));
     if (member) throw new FieldValueError(member);
   }
 }
@@ -62,7 +66,7 @@ export function assertPatchFits(
     const field = fields[key];
     if (!field) continue;
     const unchanged = current != null && sameStored(current[key], value);
-    const label = field.label ?? humanizeKey(key);
+    const label = labelOf(field, key);
     // Unchanged: someone who has since LEFT may still be named — a ledger entry they paid for stays
     // saveable. Changed: only someone in the app now.
     const problem =
@@ -85,7 +89,7 @@ function sameStored(a: unknown, b: unknown): boolean {
 export function assertCountable(definition: AppDefinition, entity: string, field: string): void {
   const declared = definition.entities[entity]?.fields[field];
   if (declared && declared.type !== "number" && declared.type !== "duration") {
-    throw new FieldValueError(`${declared.label ?? humanizeKey(field)} is not a number, so it cannot be counted.`);
+    throw new FieldValueError(`${labelOf(declared, field)} is not a number, so it cannot be counted.`);
   }
 }
 

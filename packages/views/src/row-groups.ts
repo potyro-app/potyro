@@ -8,7 +8,8 @@
 
 import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { Field, Resolved } from "potyro";
+import type { Resolved } from "potyro";
+import { optionLabel, type ShownField as Field } from "./shown.js";
 import { displayFieldFor, formatValue } from "./format.js";
 
 export interface RowGroup {
@@ -43,12 +44,14 @@ function membershipsOf(runtime: PotyroRuntime, field: Field | undefined, value: 
     const list = Array.isArray(value) ? value.map(one) : [one(value)];
     return list.length ? list : [{ key: "", label: "" }];
   }
+  // An option's heading is its words (`labels`, #302); its key stays the value.
+  const words = field?.type === "enum" || field?.type === "tags" ? field : undefined;
   if (Array.isArray(value)) {
-    const list = value.filter((v) => v != null && v !== "").map((v) => ({ key: String(v), label: String(v) }));
+    const list = value.filter((v) => v != null && v !== "").map((v) => ({ key: String(v), label: optionLabel(words, String(v)) }));
     return list.length ? list : [{ key: "", label: "" }];
   }
   const text = value instanceof Date ? formatValue(value) : String(value);
-  return [{ key: text, label: text }];
+  return [{ key: text, label: optionLabel(words, text) }];
 }
 
 /**

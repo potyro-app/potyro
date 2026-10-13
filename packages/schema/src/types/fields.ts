@@ -5,19 +5,21 @@
 // a function block on the entity, which cleanly separates shape (data) from logic (code).
 
 import type { Ctx } from "./ctx.js";
+import type { Words } from "./words.js";
 
 /** `default` may be a literal value or a function of `ctx` (docs/03). */
 export type DefaultValue = unknown | ((ctx: Ctx) => unknown);
 
 /** Common options shared by every field variant. */
 export interface FieldCommon {
-  label?: string;
+  /** What the person reads; a map in a multi-language app: `{ en: "Quantity", pl: "Ilość" }`. */
+  label?: Words;
   required?: boolean;
   hidden?: boolean;
   /** One line under the control on the form: what to put here, or why it matters (#100). */
-  help?: string;
+  help?: Words;
   /** Example text in the empty control (text, url, number). */
-  placeholder?: string;
+  placeholder?: Words;
   /** `"half"` lets two short neighbours share a row on a wide form; they stack on a phone. */
   width?: "full" | "half";
   /** Literal default, or `(ctx) => value`. Not validated (may be a function). */
@@ -38,7 +40,8 @@ export interface NumberField extends FieldCommon {
   min?: number;
   max?: number;
   step?: number;
-  unit?: string;
+  /** After the number: "kg", "days" — words, so `{ en: "days", pl: "dni" }` in a translated app. */
+  unit?: Words;
   integer?: boolean;
 }
 
@@ -67,6 +70,10 @@ export interface EnumField extends FieldCommon {
   /** Colour per option, for values that mean something — `{ overdue: "red", done: "green" }`.
    *  Options left out keep the colour derived from their name, which is stable everywhere. */
   colors?: Record<string, EnumColor>;
+  /** What each option reads as, keyed like `colors`: `{ todo: { en: "To do", pl: "Do zrobienia" } }`.
+   *  Records store the option, never the label, so translating an app changes no record. Options left
+   *  out read as themselves. */
+  labels?: Record<string, Words>;
   /** Overrides the control the option count would choose: up to five options are a row of
    *  buttons, more open a searchable picker. */
   control?: "segmented" | "picker";
@@ -75,6 +82,8 @@ export interface EnumField extends FieldCommon {
 export interface TagsField extends FieldCommon {
   type: "tags";
   options?: string[];
+  /** What each option reads as, as for an enum. Tags typed by hand are records and stay as typed. */
+  labels?: Record<string, Words>;
 }
 
 export interface DateTimeField extends FieldCommon {

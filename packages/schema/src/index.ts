@@ -6,7 +6,26 @@ export { humanizeKey } from "./humanize.js";
 export { actionInfo, actionInputProblem, actionRun, type ActionInfo } from "./actions.js";
 export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";
 export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueError, type ValueCheck } from "./values.js";
-export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, PAGE_FIELDS } from "./validate.js";
+export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, VIEW_WORDS, PAGE_FIELDS } from "./validate.js";
+
+// ---- an app's words in the person's language (#302, docs/20) ----
+export type { Language, Words, WordsMap, Localized } from "./types/words.js";
+export { zWords, zWordsNonEmpty, zLanguage, LANGUAGE_TAG, isWordsMap, plainWords } from "./words-schema.js";
+export {
+  walkWords,
+  wordSlots,
+  wordsPathText,
+  appLanguages,
+  pickLanguage,
+  word,
+  localize,
+  localizeFields,
+  checkWords,
+  wordGaps,
+  type WordsPath,
+  type WordsVisitor,
+  type WordsGap,
+} from "./words.js";
 
 // ---- shared value types ----
 export type { Id, Value, PotyroRecord, Resolved, MediaRef, Geo, FileInfo, FileRef, FileOrigin } from "./types/core.js";
@@ -52,6 +71,9 @@ export type {
   UiProgress,
   CtxMedia,
   CtxFiles,
+  CtxFormat,
+  FormatDateOptions,
+  FormatNumberOptions,
   CameraCapability,
   NotificationCapability,
   GeoCapability,

@@ -8,6 +8,7 @@
 
 import type { FileInfo, FileRef, Geo, Id, MediaRef, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
+import type { Language, Words } from "./words.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -109,8 +110,8 @@ export interface CtxStorage {
 /** One choice in `ui.sheet` / `ui.menu`. A destructive item is shown last, in red. */
 export interface UiItem<T = string> {
   id: T;
-  label: string;
-  detail?: string;
+  label: Words;
+  detail?: Words;
   icon?: string;
   destructive?: boolean;
 }
@@ -122,25 +123,26 @@ export interface UiProgress {
   done(): void;
 }
 
+/** Every `ctx.ui` call takes `Words` where it takes words: a map shows in `ctx.locale`. */
 export interface CtxUi {
-  toast(msg: string): void;
+  toast(msg: Words): void;
   /**
    * `ok` names the button ("Delete"); `destructive` makes it red; `detail` is a quieter second line.
    *
    * `cancel` names the other button — worth naming whenever both answers are real choices ("Delete
    * them" / "Move them up") rather than an action and a way out of it.
    */
-  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean>;
-  prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
+  confirm(msg: Words, opts?: { detail?: Words; ok?: Words; cancel?: Words; destructive?: boolean }): Promise<boolean>;
+  prompt(msg: Words, opts?: { default?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
   /** A short list of choices: a bottom sheet on a phone, a small dialog on a wide screen. Null when dismissed. */
-  sheet<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  sheet<T = string>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
   /** The same, hanging under the button that ran the action on a wide screen (a sheet on a phone). */
-  menu<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  menu<T = string>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
   /** Several values at once, with the record form's controls. Relations come back as ids; null when cancelled. */
-  form<T = Record<string, unknown>>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }): Promise<T | null>;
+  form<T = Record<string, unknown>>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
   /** A progress bar for a long action. */
-  progress(label: string): UiProgress;
+  progress(label: Words): UiProgress;
 }
 
 /**
@@ -195,6 +197,46 @@ export interface CtxFiles {
   import(opts?: { folder?: string; accept?: string; multiple?: boolean }): Promise<FileInfo[]>;
   /** Save a copy outside the app. */
   export(file: string | FileRef): Promise<void>;
+}
+
+/** The `Date`/number options `ctx.format.date` understands (an allow-list: the box sends no others). */
+export interface FormatDateOptions {
+  dateStyle?: "full" | "long" | "medium" | "short";
+  timeStyle?: "short" | "medium";
+  weekday?: "long" | "short";
+  day?: "numeric" | "2-digit";
+  month?: "long" | "short" | "numeric";
+  year?: "numeric" | "2-digit";
+  hour?: "numeric" | "2-digit";
+  minute?: "2-digit";
+}
+
+export interface FormatNumberOptions {
+  style?: "decimal" | "percent" | "unit";
+  /** With `style: "unit"`: one of Intl's units ("kilogram", "kilometer-per-hour", "day"). */
+  unit?: string;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+  signDisplay?: "auto" | "always" | "exceptZero";
+}
+
+/**
+ * Formatting for the person (#302). Works the same in an app you wrote and in a shared one, where
+ * the sealed box has no `Intl` and the host formats instead. Return a `Date` or a number where a
+ * view will format it (a `datetime` field, a `money` column, `AggregateRow.value`); use these only
+ * for text the app composes itself.
+ */
+export interface CtxFormat {
+  /** The BCP 47 tag these format in ("pl-PL", "en-GB") — for a trusted custom view's own `Intl`. */
+  locale: string;
+  date(d: Date | string | number, opts?: FormatDateOptions): string;
+  number(n: number, opts?: FormatNumberOptions): string;
+  /** Whole minor units, as a `money` field stores them: `money(4200, "EUR")` → "42,00 €". Default EUR. */
+  money(minor: number, currency?: string): string;
+  /** From `ctx.now()`: "in 3 days", "vor 2 Stunden". The unit is picked unless given. */
+  relative(d: Date | string | number, opts?: { unit?: "minute" | "hour" | "day" | "week" | "month" | "year"; numeric?: "auto" | "always" }): string;
+  /** "milk, eggs and bread" in the person's language. */
+  list(items: string[], opts?: { type?: "conjunction" | "disjunction" }): string;
 }
 
 /** Media helpers (docs/04). */
@@ -265,6 +307,24 @@ export interface Ctx {
    * Per device — which trip *you* are looking at is not shared state.
    */
   scope: Readonly<Record<string, Resolved | undefined>>;
+
+  // ---- the app's words and the person's formats (#302) ----
+  /**
+   * The language the app's words are being shown in: one of the app's `languages` (its `language`
+   * when the person's is not among them). Fixed per pass, like `now()`.
+   */
+  locale: Language;
+  /**
+   * The words for `ctx.locale`: `ctx.t({ en: "Due now", pl: "Do podlania" })`. With `vars` the
+   * chosen string is an ICU message, so plurals agree in every language:
+   *   ctx.t({ en: "{n, plural, one {# plant} other {# plants}}",
+   *           pl: "{n, plural, one {# roślina} few {# rośliny} many {# roślin} other {# rośliny}}" }, { n })
+   * A plain string passes through (formatted when `vars` are given). Records are never translated:
+   * `ctx.t({ en: "Water {name}", pl: "Podlej: {name}" }, { name: p.name })`.
+   */
+  t(words: Words, vars?: Record<string, string | number | Date>): string;
+  /** Dates, numbers, money, "in 3 days" and lists, in the person's formats. See `CtxFormat`. */
+  format: CtxFormat;
 
   // ---- app-scoped key/value storage ----
   storage: CtxStorage;

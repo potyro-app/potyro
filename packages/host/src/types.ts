@@ -15,6 +15,8 @@ import type {
   Resolved,
   Value,
   Field,
+  Language,
+  Localized,
   UiItem,
   UiProgress,
 } from "potyro";
@@ -37,17 +39,23 @@ export type BindingRef =
   | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "date" | "title" | "color" | "text" | "detail" | "group" | "geo" }
   | { kind: "reminder"; id: string; path: "title" | "body" };
 
-/** What the shell provides to build `ctx.ui`. */
+/** A `UiItem` with its words already in the person's language — what the shell renders. */
+export type ShownUiItem<T> = Omit<UiItem<T>, "label" | "detail"> & { label: string; detail?: string };
+
+/**
+ * What the shell provides to build `ctx.ui`. Every string here is already in the language the app
+ * is shown in: `ctx` resolves an app's `Words` before the shell sees them (#302).
+ */
 export interface UiBridge {
   toast(msg: string): void;
-  confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
+  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean>;
   prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
   // #112. Optional so a headless bridge (validation, tests) need not render anything: `ctx` answers
   // a missing one as dismissed (`null`) and a missing progress as a bar nobody sees.
-  sheet?<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
-  menu?<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
-  form?(opts: { title: string; fields: Record<string, Field>; initial?: Record<string, unknown>; submit?: string }): Promise<Record<string, unknown> | null>;
+  sheet?<T>(opts: { title?: string; items: ShownUiItem<T>[] }): Promise<T | null>;
+  menu?<T>(opts: { title?: string; items: ShownUiItem<T>[] }): Promise<T | null>;
+  form?(opts: { title: string; fields: Record<string, Localized<Field>>; initial?: Record<string, unknown>; submit?: string }): Promise<Record<string, unknown> | null>;
   progress?(label: string): UiProgress;
 }
 
@@ -92,6 +100,13 @@ export interface MakeCtxBase {
   space?: Space;
   /** The app-wide selected record(s) by entity (`ctx.scope`, see `ScopeDef`). Absent = `{}`. */
   scope?: Record<string, Resolved | undefined>;
+  /**
+   * The language the app's words are shown in (#302): `pickLanguage(person's languages, app)`, from
+   * the runtime. Absent for an app that declares no language; `ctx.locale` is then the person's.
+   */
+  language?: Language;
+  /** The BCP 47 tag `ctx.format` formats in (`formatLocaleFor`). Absent = the words' language, or "en". */
+  formatLocale?: string;
 }
 
 /**

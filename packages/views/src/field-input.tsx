@@ -3,7 +3,8 @@
 // so the result can go straight into create()/patch(). Recurses for `list` fields.
 
 import { useEffect, useRef, useState } from "react";
-import type { Field, FileRef, Geo, MediaRef } from "potyro";
+import type { FileRef, Geo, MediaRef } from "potyro";
+import { optionLabel, type ShownField as Field } from "./shown.js";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { MAP_STYLE } from "./map.js";
 import { Switch } from "./switch.js";
@@ -116,7 +117,7 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
               onChange([...next]);
             }}
           >
-            {o}
+            {optionLabel(field, o)}
           </button>
         ))}
       </div>
