@@ -17,7 +17,7 @@ import {
   type LoopStep,
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine } from "@potyro/generator/backends";
-import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
+import { canInvestigate, isCloud, keyFor, openRouterOptions, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
 
@@ -174,7 +174,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   }
 
   return runAgentLoop({
-    engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
+    engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
     model: opts.engine.openrouterModel,
     tools,
     system: AGENT_SYSTEM_PROMPT,

@@ -12,7 +12,7 @@ import type { AppDefinition } from "potyro";
 import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@potyro/generator/agent";
 import type { ChatMessage } from "@potyro/generator/agent";
 import { createOpenRouterEngine } from "@potyro/generator/backends";
-import type { EngineConfig } from "./engines.js";
+import { openRouterOptions, type EngineConfig } from "./engines.js";
 
 export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 
@@ -45,7 +45,7 @@ export async function startAsk(opts: {
   if (refused) return { kind: "refused", text: refused };
   try {
     return await runAskLoop({
-      engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
+      engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
       model: opts.engine.openrouterModel,
       definition: opts.definition,
       request: opts.request,
