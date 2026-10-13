@@ -24,6 +24,7 @@ import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { sourceHttp } from "./ask-sources.js";
+import { keepCode } from "./app-modules.js";
 
 export type AddSource = "file" | "link" | "paste";
 
@@ -368,8 +369,12 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     now,
   );
   const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => openAppStore(a, o));
-  const store = await open(app, { sync: await syncAllowedFor(app) });
-  const shipped = await applyShippedFiles(store, code.files, { update });
+  const synced = await syncAllowedFor(app);
+  const store = await open(app, { sync: synced });
+  // An app whose data syncs keeps its code on this device, never in its space (#281): a library's
+  // bytes are megabytes, and every device fetches its own copy from where the lock says.
+  const shipped = await applyShippedFiles(store, synced ? code.files.filter((f) => !isReservedPath(f.path)) : code.files, { update });
+  if (synced) await keepCode(app.id, code.files.filter((f) => isReservedPath(f.path)));
   // What a person reads afterwards is about THEIR files, not the app's code.
   const theirs = (paths: string[]) => paths.filter((p) => !isReservedPath(p));
   const files: ShippedResult = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };

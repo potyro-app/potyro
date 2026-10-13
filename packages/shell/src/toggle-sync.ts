@@ -9,7 +9,7 @@
 // nothing opens any more. Nothing is deleted from the old store either — a migration that turns
 // out to be wrong must be reversible by flipping back.
 
-import { copyStoreData, type CopyStoreResult } from "@potyro/store";
+import { copyStoreData, isReservedPath, type CopyStoreResult } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { setUserAppSync } from "./user-apps.js";
 
@@ -36,7 +36,10 @@ export async function toggleAppSync(
   const from = await openStore(namespace, { sync: !sync });
   const to = await openStore(namespace, { sync });
 
-  const copied = await copyStoreData(from, to, { entities });
+  // The app's code (`.modules/`, `.src/`) stays where it is: in the local store, which is where this
+  // device keeps it whether or not the app syncs (#281). Copied into the space, a library's bytes —
+  // megabytes, for p5 — would ride to the relay and every member, who fetch their own copy anyway.
+  const copied = await copyStoreData(from, to, { entities, ...(sync ? { skipFile: isReservedPath } : {}) });
 
   const warnings: string[] = [];
   if (copied.skippedBlobs.length) {

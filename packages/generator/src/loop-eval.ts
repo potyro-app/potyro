@@ -87,10 +87,12 @@ export interface StepTrace {
   /** The candidate number the result passed on; null when nothing passed. */
   passedOn: number | null;
   repeats: number;
+  /** Fresh chains started after two candidates were turned back (#278). */
+  restarts?: number;
 }
 
 export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepTrace } {
-  const t: StepTrace = { candidates: 0, passedOn: null, repeats: 0 };
+  const t: StepTrace = { candidates: 0, passedOn: null, repeats: 0, restarts: 0 };
   return {
     onStep: (s) => {
       if (s.kind === "candidate") {
@@ -98,6 +100,7 @@ export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepT
         if (s.passed) t.passedOn = s.n ?? t.candidates;
       }
       if (s.kind === "unusable" && s.repeat) t.repeats += 1;
+      if (s.kind === "unusable" && s.restart) t.restarts = (t.restarts ?? 0) + 1;
     },
     read: () => ({ ...t }),
   };
@@ -128,6 +131,7 @@ export interface LoopSummary {
   costPerCase: number;
   tokensPerCase: number;
   repeatsSeen: number;
+  restarts: number;
   /** Results that passed, by the candidate they passed on. */
   passedOn: { "1": number; "2": number; "3": number; "4+": number };
 }
@@ -142,6 +146,7 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
   let repeatsSeen = 0;
   let asked = 0;
   let unpriced = 0;
+  let restarts = 0;
   for (const r of records) {
     if (r.ended === "failed" && r.cause) gaveUp[r.cause] += 1;
     if (r.ended === "question") asked += 1;
@@ -151,6 +156,7 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
     cost += r.cost;
     unpriced += r.unpriced ?? 0;
     repeatsSeen += r.repeats;
+    restarts += r.restarts ?? 0;
     if (r.passedOn !== null) passedOn[r.passedOn >= 4 ? "4+" : (String(r.passedOn) as "1" | "2" | "3")] += 1;
   }
   const n = records.length;
@@ -166,6 +172,7 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
     costPerCase: n ? cost / n : 0,
     tokensPerCase: n ? (promptTokens + completionTokens) / n : 0,
     repeatsSeen,
+    restarts,
     passedOn,
   };
 }

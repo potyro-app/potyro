@@ -114,6 +114,19 @@ them, but do not build it now.
 - **Data** export/import: `{ appId, appVersion, records, blobs, kv }` JSON (+ media). This is the
   user's backup and cross-device move path. The `Store` and `FileCap` provide the primitives;
   the shell provides the UI. Mirrors the JSON backup already built into the workout PWA.
+- **Your account** holds what is yours rather than an app's, in maps owned by a group whose only
+  member is your account (so only your devices can read them), each named on the account CoMap:
+  `potyroApps` — your apps and where their data is (`store/src/account-apps.ts`) — and
+  `potyroChats` — each app's Studio conversation (#283, `store/src/account-chats.ts`), one key per
+  message (`<appId>\0<messageId>` → JSON). The conversation never goes through the app's shared
+  space, whose members are the people you share the app with; sending it to them stays the opt-in on
+  export. The device's own `studio-chat` store remains the copy the Studio reads; `shell/src/chat-sync.ts`
+  brings it and the account's into step when the Studio opens an app, after each message, and at
+  boot for every synced app. Messages are only added, so the merge is a union by id: two devices that
+  each said something offline both keep everything, in the same order (`n`, then time, then id). A
+  deleted app's messages become empty values, so a device that has not heard cannot send them back.
+  Only apps whose data syncs on the device take part; drafts stay on their device. Tested by
+  `e2e/chat-follows-you-trusted.spec.ts` (owner, owner's second device, a collaborator).
 
 ## Consistency & undo
 
