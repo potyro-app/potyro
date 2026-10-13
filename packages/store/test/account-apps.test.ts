@@ -117,6 +117,38 @@ describe("the apps your account knows about", () => {
   });
 });
 
+describe("an app's code beyond its source (#281)", () => {
+  const LOCK = {
+    "https://esm.sh/fancy-sum@1.2.3?bundle": { file: `.modules/${"a".repeat(64)}.js`, integrity: "sha256-AAAA", size: 120 },
+    "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-BBBB", size: 24 },
+  };
+
+  it("travels with the app: the lock, and its own modules as text", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    await publishAppToAccount(handle.node, { ...APP, lock: LOCK, modules: { "src/plan.ts": "export const weeks = 12;\n" } });
+    const [app] = await readAccountApps(handle.node);
+    expect(app?.lock).toEqual(LOCK);
+    expect(app?.modules).toEqual({ "src/plan.ts": "export const weeks = 12;\n" });
+  });
+
+  it("an entry written before the lock travelled still reads as the app, with no code beyond its source", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    await publishAppToAccount(handle.node, APP);
+    const [app] = await readAccountApps(handle.node);
+    expect(app).toMatchObject({ id: "split", source: APP.source });
+    expect(app?.lock).toBeUndefined();
+    expect(app?.modules).toBeUndefined();
+  });
+
+  it("a broken lock is dropped, never the app", async () => {
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    await publishAppToAccount(handle.node, { ...APP, lock: { "not a url": LOCK["src/plan.ts"] } as never });
+    const [app] = await readAccountApps(handle.node);
+    expect(app?.id).toBe("split");
+    expect(app?.lock).toBeUndefined();
+  });
+});
+
 describe("an account from before the rename", () => {
   // Builds before #248 kept the list under `kartaApps` on the account; the rename changed the key and
   // moved nothing, so every account's list looked empty to the new build.

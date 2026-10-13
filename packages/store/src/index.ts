@@ -25,6 +25,7 @@ export {
   type AppLock,
   type LockEntry,
 } from "./app-lock.js";
+export { carryCode, readCarriedCode, carriedModuleFiles, sameCode, type CarriedCode } from "./carried-code.js";
 export { fileSpace, fileInfo, digest, FileSpaceError, normalisePath, mimeOf, type FileSpace, type FileTarget } from "./file-space.js";
 export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
 export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
