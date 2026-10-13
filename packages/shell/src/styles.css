@@ -622,6 +622,11 @@ button {
 .k-modal-scrim:has(> .k-dialog) {
   z-index: 100;
 }
+/* The trust dialog interrupts the same way, from wherever it was asked for: a tile's menu, the Add an
+   app card, the Studio's preview. */
+.k-modal-scrim.k-trust-scrim {
+  z-index: 100;
+}
 .k-dialog {
   width: min(420px, 92vw);
   display: flex;
@@ -6103,6 +6108,19 @@ body:has(.k-tabbar) .k-toasts {
 .k-preview-hide-word {
   display: none;
 }
+/* A sealed app in the preview: the way to let it run as yours, in the app's accent — not a warning. */
+.k-preview-promote {
+  color: var(--ink);
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+}
+.k-preview-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
 .k-preview-back:hover,
 .k-preview-back:focus-visible,
 .k-preview-code:hover,
@@ -6974,6 +6992,17 @@ body:has(.k-tabbar) .k-toasts {
   font-size: 0.95rem;
   line-height: 1.45;
   text-wrap: pretty;
+}
+.k-splash-advice {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+/* The way out first — "Let it run as yours" when that is what fixes it — then the way home. */
+.k-splash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 .k-splash-bar {
   position: relative;

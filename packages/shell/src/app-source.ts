@@ -205,6 +205,31 @@ export async function declaredSync(source: string): Promise<boolean | null> {
   return sync.type === "BooleanLiteral" ? Boolean(sync.value) : null;
 }
 
+/**
+ * The capabilities the app declares (`permissions: { camera: true }`), for the trust dialog when the
+ * app is not running — it failed to open sealed, or it is a tile on your apps. `[]` when it declares
+ * none; `null` when they are not written literally (a helper, a spread, a value decided at run time)
+ * or the module cannot be read, which the dialog says instead of "nothing".
+ */
+export async function declaredPermissions(source: string): Promise<string[] | null> {
+  const t = await load();
+  if (!t) return null;
+  const ast = parseModule(t, source);
+  if (!ast) return null;
+  const def = findDefinition(ast);
+  if (!def) return null;
+  const permissions = propValue(def, "permissions");
+  if (!permissions) return prop(def, "permissions") || hasOpaqueMembers(def) ? null : [];
+  if (permissions.type !== "ObjectExpression" || hasOpaqueMembers(permissions)) return null;
+  const out: string[] = [];
+  for (const p of asArray(permissions.properties)) {
+    const value = p.value as Node;
+    if (value.type !== "BooleanLiteral") return null;
+    if (value.value === true) out.push(keyOf(p) ?? "");
+  }
+  return out.filter(Boolean);
+}
+
 /** A named property of an object literal, if it is written literally (not spread, not computed). */
 function prop(obj: Node | null, name: string): Node | null {
   if (obj?.type !== "ObjectExpression") return null;
