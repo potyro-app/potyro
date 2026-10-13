@@ -326,7 +326,14 @@ function inDisplayPosition(node: Node, ancestors: readonly Node[]): boolean {
   if (!parent) return false;
   if (parent.type === "ObjectProperty") {
     const key = keyOf(parent);
-    return parent.value === child && parent.computed !== true && key !== undefined && DISPLAY_KEYS.has(key);
+    if (parent.value !== child || parent.computed === true || key === undefined) return false;
+    if (DISPLAY_KEYS.has(key)) return true;
+    // One language of a translation map (#302): `label: { en: "…", pl: "…" }`, `ctx.t({ en: "…" })`.
+    const map = ancestors[i - 1];
+    const holder = ancestors[i - 2];
+    if (!/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(key) || map?.type !== "ObjectExpression" || !holder) return false;
+    if (holder.type === "ObjectProperty") return holder.value === map && DISPLAY_KEYS.has(keyOf(holder) ?? "");
+    return holder.type === "CallExpression" && ((holder.callee as Node | undefined)?.property as Node | undefined)?.name === "t";
   }
   if (parent.type === "JSXAttribute") return renderedProp(parent, ancestors[i - 1]);
   if (parent.type === "JSXExpressionContainer") {
