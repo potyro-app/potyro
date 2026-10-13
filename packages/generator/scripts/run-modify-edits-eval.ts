@@ -16,12 +16,13 @@
 //                         in Node)
 //        --loop --backend scripted-loop|scripted-loop-tools   the loop with no model: proves the
 //                         loop half of the harness (give-up causes, calls, tokens, cost; loop-eval.ts)
-//
-// With --loop the summary also says how each case ended (docs/19 F9): give-ups by cause, repeats,
-// the candidate the result passed on, model calls, tokens and cost — and every headline rate with
-// its 95% interval. A `wrong-gate` case (#276) is reported apart: its gate refuses every candidate.
 //        --case-timeout S  a hard limit per case (default 900): the loop is told to stop and the case
 //                          is recorded as crashed with the reason — three cases once hung ten hours
+//
+// With --loop the summary also says how each case ended (docs/19 F9): give-ups by cause, repeats and
+// fresh starts, the candidate the result passed on, model calls, tokens and cost — and every
+// headline rate with its 95% interval. A `wrong-gate` case (#276) is reported apart: its gate
+// refuses every candidate.
 //
 // Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
 // read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
@@ -574,7 +575,7 @@ async function main(): Promise<void> {
     ...(ls
       ? [
           `  gave up, by cause:        repeated ${ls.gaveUp.repeated} · candidates ${ls.gaveUp.candidates} · steps ${ls.gaveUp.steps} · engine ${ls.gaveUp.engine}${ls.asked ? ` · asked the person ${ls.asked}` : ""}`,
-          `  repeats seen:             ${ls.repeatsSeen}`,
+          `  repeats seen:             ${ls.repeatsSeen}   fresh starts: ${ls.restarts}`,
           `  passed on candidate:      1st ${ls.passedOn["1"]} · 2nd ${ls.passedOn["2"]} · 3rd ${ls.passedOn["3"]} · 4th+ ${ls.passedOn["4+"]}`,
           `  model calls:              ${ls.calls} (${(ls.calls / Math.max(1, ls.cases)).toFixed(1)} a case)`,
           `  tokens:                   ${ls.promptTokens} in + ${ls.completionTokens} out (${Math.round(ls.tokensPerCase)} a case)`,
