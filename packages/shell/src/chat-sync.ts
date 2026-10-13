@@ -50,8 +50,8 @@ export interface ChatSyncDeps {
   publish: (node: unknown, appId: string, messages: readonly AccountChatMessage[], opts?: { waitMs?: number }) => Promise<boolean>;
 }
 
-/** How long to wait for the account's copy to arrive: a device just signed in reads before it has. */
-const WAIT_MS = 3_000;
+/** How long to wait for the account's copy of the conversations, once it is named there, to arrive. */
+const WAIT_MS = 10_000;
 
 async function liveDeps(): Promise<ChatSyncDeps> {
   const [{ readAccountChat, publishChatMessages }, { accountNode }] = await Promise.all([import("@potyro/store"), import("./open-store.js")]);

@@ -51,16 +51,18 @@ async function chats(node: Nodeish, create: boolean, waitMs: number): Promise<Co
   for (;;) {
     const account = await node.expectCurrentAccount("potyro chats");
     const id = account.get(CHATS);
-    if (typeof id === "string") {
-      const loaded = await node.load(id);
-      if (loaded && loaded !== "unavailable") return loaded;
-    }
-    if (Date.now() >= deadline) {
-      if (typeof id === "string" || !create) return null;
+    if (typeof id !== "string") {
+      // Not named on the account this device holds — which, once a device is you, is the account as
+      // it is: nothing was ever said. Made now, not after a wait: a page closed during one would
+      // leave what was just said unsent.
+      if (!create) return null;
       const map = node.createGroup().createMap();
       account.set(CHATS, map.id, "private");
       return map;
     }
+    const loaded = await node.load(id);
+    if (loaded && loaded !== "unavailable") return loaded;
+    if (Date.now() >= deadline) return null;
     await new Promise((r) => setTimeout(r, 250));
   }
 }
