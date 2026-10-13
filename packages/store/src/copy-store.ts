@@ -72,7 +72,15 @@ function collectMediaRefs(value: unknown, out: Map<string, MediaRef>): void {
 export async function copyStoreData(
   from: Store,
   to: Store,
-  opts: { entities: readonly string[] },
+  opts: {
+    entities: readonly string[];
+    /**
+     * Files of the app's folder to leave out, by path. An export leaves out the app's code
+     * (`.modules/`, `.src/`): the bundle carries that beside its data, checked against the lock
+     * (#282), and a data import must not put an older copy of it over the app's own.
+     */
+    skipFile?: (path: string) => boolean;
+  },
 ): Promise<CopyStoreResult> {
   const result: CopyStoreResult = { records: 0, kv: 0, blobs: 0, skippedBlobs: [], files: 0, skippedFiles: [] };
   const mediaRefs = new Map<string, MediaRef>();
@@ -114,6 +122,7 @@ export async function copyStoreData(
   }
 
   for (const entry of await from.listFiles()) {
+    if (opts.skipFile?.(entry.path)) continue;
     const blob = await from.getBlob({ key: entry.blob, mime: entry.mime });
     if (!blob) {
       result.skippedFiles.push({ path: entry.path, reason: "its bytes are not on this device" });

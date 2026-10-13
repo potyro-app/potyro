@@ -9,6 +9,7 @@ import {
   libraryHost,
   libraryLabel,
   lockEntryFor,
+  matchesLock,
   MODULES_DIR,
   SRC_DIR,
   srcKey,
@@ -72,11 +73,30 @@ const offline: HttpGet = async (url) => {
   throw new Error(`${url} is not in the package`);
 };
 
+/**
+ * Code the package carries that is not what its lock says, by name (#282). A file changed after it
+ * was locked — in a backup, a package passed around — is refused, never fetched again in its place
+ * and never run: the person hears which library or file it was, and nothing is added.
+ */
+export async function carriedCodeIssues(pkg: Pick<AppPackage, "lock" | "files" | "modules">): Promise<string[]> {
+  const carried = new Map<string, Uint8Array>();
+  for (const f of pkg.files) if (f.path.startsWith(MODULES_DIR)) carried.set(f.path, f.data);
+  for (const m of pkg.modules) carried.set(SRC_DIR + m.path, m.data);
+  const issues = new Set<string>();
+  for (const [key, entry] of Object.entries(pkg.lock ?? {})) {
+    const bytes = carried.get(entry.file);
+    if (!bytes || (await matchesLock(entry, bytes))) continue;
+    const what = key.startsWith("src/") ? `Its file ${key.slice("src/".length)}` : libraryLabel(key);
+    issues.add(`${what} is not the copy this app was saved with, so it was not added.`);
+  }
+  return [...issues];
+}
+
 /** The libraries a package uses, for the card, and the problems with any of them. */
 export async function inspectLibraries(pkg: AppPackage, deps: PackageDeps = {}): Promise<{ lines: LibraryLine[]; issues: string[]; modules: ModuleSource }> {
   const modules = await packageModules(pkg);
   const lines: LibraryLine[] = [];
-  const issues: string[] = [];
+  const issues: string[] = await carriedCodeIssues(pkg);
   const urls = libraryUrlsOf(pkg);
   const esbuild = urls.length ? (deps.esbuild ?? (await getEsbuild())) : undefined;
   for (const url of urls) {

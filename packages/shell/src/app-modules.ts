@@ -37,6 +37,22 @@ export async function snapshotModules(store: Store, lock: AppLock): Promise<Modu
   return memoryModules(lock, files);
 }
 
+/**
+ * The files an app's lock names, by their path in its space, for an export bundle to carry (#282): a
+ * restore then has its libraries and its own modules without fetching. A file not on this device is
+ * left out; adding the app from the bundle then fetches that library, with consent, as a package does.
+ */
+export async function appCode(store: Store, lock: AppLock | undefined): Promise<Array<{ path: string; data: Uint8Array }>> {
+  if (!hasEntries(lock)) return [];
+  const modules = await snapshotModules(store, lock);
+  const out: Array<{ path: string; data: Uint8Array }> = [];
+  for (const file of new Set(Object.values(lock).map((e) => e.file))) {
+    const data = await modules.read(file);
+    if (data) out.push({ path: file, data });
+  }
+  return out;
+}
+
 const cache = new Map<string, { lock: AppLock; modules: Promise<ModuleSource> }>();
 
 /**
