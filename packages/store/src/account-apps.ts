@@ -11,10 +11,14 @@
 // like any other CoValue — the relay cannot read it. A new device signs in, reads the map, and can
 // then ask for exactly the spaces it names.
 //
-// Deliberately small: what an app IS (its id, name, icon and source) and WHERE its data is (the
+// Deliberately small: what an app IS (its id, name, icon and source — with its lock and its own
+// modules when it has them, #281, but never a library's bytes) and WHERE its data is (the
 // group and root ids), plus enough about its size for a device to be asked which ones it wants
 // before it downloads a phone's worth of photos. Not the data itself — that is already in the
 // space, which is the whole point of naming it here.
+
+import type { AppLock } from "./app-lock.js";
+import { readCarriedCode } from "./carried-code.js";
 
 /** One app, as your account knows it. */
 export interface AccountApp {
@@ -31,6 +35,13 @@ export interface AccountApp {
   /** Whether this app is shared with other people, which is a different thing from being yours. */
   shared?: boolean;
   updatedAt: string;
+  /**
+   * Its code beyond `source` (#281): the lock, and its own modules as text — see `carried-code.ts`.
+   * Absent on an entry written before they travelled, or for an app that is one file. A new device
+   * fetches the libraries the lock names once, with consent, and keeps only bytes that match it.
+   */
+  lock?: AppLock;
+  modules?: Record<string, string>;
 }
 
 /** The key on the account CoMap pointing at the registry. */
@@ -82,6 +93,7 @@ function parse(id: string, raw: unknown): AccountApp | null {
       sizeBytes: typeof v.sizeBytes === "number" ? v.sizeBytes : undefined,
       shared: v.shared === true,
       updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : new Date(0).toISOString(),
+      ...readCarriedCode(v),
     };
   } catch {
     return null;

@@ -131,10 +131,11 @@ test.describe("guard: no English on extracted surfaces in the pseudo-language", 
     await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", /^⟦/);
     expect(await englishIn(home)).toEqual([]);
 
-    await home.getByRole("button", { name: /Groceries/ }).filter({ has: page.locator(".k-launch-avatar") }).first().waitFor();
-    await home.locator(".k-tile-menu-btn").first().click();
+    // A sealed app's menu: it has every item a trusted one has, plus "Let it run as yours".
+    await home.getByRole("button", { name: /Gym log/ }).and(home.locator(".k-tile-menu-btn")).click();
     const menu = page.locator(".k-tile-menu");
     await expect(menu).toBeVisible();
+    await expect(menu.locator('[data-action="promote"]')).toBeVisible();
     expect(await englishIn(menu)).toEqual([]);
     await page.keyboard.press("Escape");
 

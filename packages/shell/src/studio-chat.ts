@@ -88,7 +88,8 @@ function announce(): void {
   if (typeof globalThis.dispatchEvent === "function" && typeof Event === "function") globalThis.dispatchEvent(new Event(STUDIO_CHAT_CHANGED));
 }
 
-function toMessage(record: Record<string, unknown>): ChatMessage | null {
+/** A stored record — or one that arrived from your account (#283) — as a message, or null when it is not one. */
+export function readChatMessage(record: Record<string, unknown>): ChatMessage | null {
   const { id, chatId, n, at, kind, text, seq, name, detail } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
@@ -105,15 +106,23 @@ function toMessage(record: Record<string, unknown>): ChatMessage | null {
   };
 }
 
+/**
+ * A conversation's order: `n`, then time, then id. Ties happen only when two of your devices each said
+ * something while apart (#283) — every device then shows the same order, since all three travel.
+ */
+function inOrder(a: ChatMessage, b: ChatMessage): number {
+  return a.n - b.n || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
 async function readAll(): Promise<ChatMessage[]> {
   const rows = await (await store()).all(ENTITY);
-  return rows.map((r) => toMessage(r as Record<string, unknown>)).filter((m): m is ChatMessage => m !== null);
+  return rows.map((r) => readChatMessage(r as Record<string, unknown>)).filter((m): m is ChatMessage => m !== null);
 }
 
 /** A conversation, oldest first. Empty when there is none, or storage is unavailable. */
 export async function listMessages(chatId: string): Promise<ChatMessage[]> {
   try {
-    return (await readAll()).filter((m) => m.chatId === chatId).sort((a, b) => a.n - b.n);
+    return (await readAll()).filter((m) => m.chatId === chatId).sort(inOrder);
   } catch (e) {
     console.warn("[potyro] studio conversation unavailable:", e);
     return [];
@@ -142,9 +151,21 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     ...(message.detail !== undefined ? { detail: message.detail } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
-  const stored = toMessage(written as Record<string, unknown>);
+  const stored = readChatMessage(written as Record<string, unknown>);
   if (!stored) throw new Error("the conversation could not be saved");
   return stored;
+}
+
+/** Keep messages that arrived from another of your devices (#283), with their own ids. */
+export async function keepMessages(messages: readonly ChatMessage[]): Promise<void> {
+  const s = await store();
+  for (const m of messages) await s.insert(ENTITY, { ...m });
+}
+
+/** Drop messages forgotten on another of your devices (#283). */
+export async function dropMessages(ids: readonly string[]): Promise<void> {
+  const s = await store();
+  for (const id of ids) await s.delete(ENTITY, id);
 }
 
 /** A fresh conversation with no app behind it yet. Nothing is stored until something is said. */
@@ -193,8 +214,11 @@ export async function adoptDraft(draftId: string, appId: string): Promise<void> 
 export async function clearChat(chatId: string): Promise<void> {
   try {
     const s = await store();
-    for (const m of (await readAll()).filter((m) => m.chatId === chatId)) await s.delete(ENTITY, m.id);
+    const gone = (await readAll()).filter((m) => m.chatId === chatId);
+    for (const m of gone) await s.delete(ENTITY, m.id);
     if (isDraftId(chatId)) announce();
+    // And on your account, so another of your devices does not keep it (#283).
+    else if (gone.length) void import("./chat-sync.js").then((sync) => sync.forgetChat(chatId, gone.map((m) => m.id)));
   } catch (e) {
     console.warn("[potyro] could not clear the conversation:", e);
   }
