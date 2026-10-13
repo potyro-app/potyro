@@ -96,6 +96,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.115.0
         version: 0.115.0(zod@4.1.11)
+      '@babel/parser':
+        specifier: ^7.29.8
+        version: 7.29.8
       '@mlc-ai/web-llm':
         specifier: ^0.2.84
         version: 0.2.84
@@ -114,6 +117,9 @@ importers:
       esbuild:
         specifier: ^0.21.5
         version: 0.21.5
+      magic-string:
+        specifier: ^1.1.0
+        version: 1.1.0
       potyro:
         specifier: workspace:*
         version: link:../schema

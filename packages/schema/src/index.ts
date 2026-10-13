@@ -9,7 +9,8 @@ export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueErro
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, VIEW_WORDS, PAGE_FIELDS } from "./validate.js";
 
 // ---- an app's words in the person's language (#302, docs/20) ----
-export type { Language, Words, WordsMap, Localized } from "./types/words.js";
+export type { Language, Words, WordsMap } from "./types/words.js";
+export type { Localized } from "./types/localized.js";
 export { zWords, zWordsNonEmpty, zLanguage, LANGUAGE_TAG, isWordsMap, plainWords } from "./words-schema.js";
 export {
   walkWords,

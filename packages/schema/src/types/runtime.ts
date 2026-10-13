@@ -7,22 +7,16 @@ import type { ReactElement } from "react";
 import type { Ctx } from "./ctx.js";
 import type { Id, PotyroRecord, Resolved } from "./core.js";
 import type { AppDefinition } from "./app.js";
-import type { Language, Localized } from "./words.js";
+import type { Language } from "./words.js";
+import type { Localized } from "./localized.js";
 
 /** Stop receiving updates. */
 export type Unsubscribe = () => void;
 
 /** What views consume (docs/05 "Runtime API"). Views call this — never Store/Host/Caps. */
 export interface Runtime {
-  /**
-   * The app's definition in the language it is being shown in (#302): every `Words` slot is its
-   * string already, so a view reads `label` and never sees a translation map.
-   */
+  /** In the language it is shown in: every `Words` slot is its string. */
   definition: Localized<AppDefinition>;
-  /**
-   * Which of the app's languages it is shown in (`undefined` for an app that declares none), its
-   * own language, and every language it carries.
-   */
   language: { current: Language | undefined; default: Language | undefined; available: Language[] };
   /** Full host surface (trust-scoped). */
   ctx: Ctx;

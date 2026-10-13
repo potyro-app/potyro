@@ -160,7 +160,7 @@ function assembleSystemPrompt(reference: string): string {
 
 CONTRACT
 - The file default-exports \`defineApp({ ... })\` imported from "potyro".
-- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`entities\`, \`pages\`.
+- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`language\`, \`entities\`, \`pages\`.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
 - Field \`type\` is one of the \`Field\` union in the REFERENCE below. There is NO "object" type.
 - To REFERENCE another object type, use a \`relation\` field: \`{ type: "relation", to: "<entity>" }\` (add
@@ -190,6 +190,22 @@ CONTRACT
       write a control; give it \`colors\` (red orange yellow green teal blue purple pink grey) only
       when a value's colour MEANS something ("overdue" red), never for decoration.
   When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.
+
+LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
+- Write a new app in ONE language: the person's, the one their request is written in, and declare it
+  — \`language: "pl"\` with Polish words. Every app declares \`language\`, even when all its strings are plain.
+- Add a language only when the person asks for one ("also in German"), and then with the \`translate\`
+  tool, not by hand. Its words become maps — \`label: { en: "Quantity", pl: "Ilość" }\` — and
+  \`languages: ["en", "pl"]\` lists every language, the app's own first.
+- Every map has the app's own \`language\`. In an app with several languages, everything you add or
+  change carries all of them: a new field gets every label; a renamed one is renamed in each.
+  Inside functions: \`ctx.t({ en: "Due now", pl: "Do podlania" })\`, with \`vars\` for plurals
+  (\`{n, plural, one {# plant} other {# plants}}\`), and \`ctx.format.date/number/money/relative/list\`
+  for formats — but return a Date or a number where a view formats it.
+- Records are never translated. An enum's options are stored values and stay as they are; their words
+  go in \`labels: { todo: { en: "To do", pl: "Do zrobienia" } }\`.
+- Words and languages are not data: a translation moves \`version\` but never \`schemaVersion\`, and
+  needs no migration.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
   \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
@@ -223,7 +239,7 @@ When you MODIFY an app, records already exist. Adding, removing or renaming a fi
 required relation, leaves every existing record in the old shape — and a required field they do not
 have makes them vanish from the app. That reads to the user as "you deleted my data".
 
-So whenever you change \`entities\`:
+So whenever you change what \`entities\` STORE (fields, relations, keys — not labels or other words):
 
 1. Bump BOTH versions. \`version\` is semver and moves e.g. "1.0.0" -> "1.1.0"; \`schemaVersion\` is an
    integer and goes up by one. Migrations are keyed off \`version\`, so leaving it alone means nothing

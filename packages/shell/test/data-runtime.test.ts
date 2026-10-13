@@ -19,7 +19,7 @@ describe("declaredEntities", () => {
     const groceries = (await declaredEntities(read("groceries.app.ts")))!;
     expect(Object.keys(groceries)).toEqual(["aisle", "item"]);
     expect(Object.keys(groceries.item!.fields)).toEqual(["name", "aisle", "quantity", "bought", "position", "note"]);
-    expect(groceries.item!.fields.aisle).toEqual({ type: "relation", to: "aisle" });
+    expect(groceries.item!.fields.aisle).toEqual({ type: "relation", to: "aisle", label: { en: "Aisle", pl: "Dział" } });
     expect(groceries.item!.displayField).toBe("name");
     for (const file of ["recipes.app.tsx", "places.app.ts", "plants.app.ts", "split.app.ts", "workout.app.tsx"]) {
       const entities = (await declaredEntities(read(file)))!;

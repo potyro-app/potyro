@@ -27,6 +27,7 @@ export default defineApp({
   icon: "📍",
   version: "1.1.0",
   schemaVersion: 1,
+  language: "en",
   theme: { accent: "#5FB0E4" },
   permissions: { camera: true, geo: true },
 
