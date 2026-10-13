@@ -146,8 +146,8 @@ msgid "Backup"
 msgstr "Backup"
 
 #: ../shell/src/launcher.tsx
-msgid "Before you share “{name}” — two people using it at once can lose each other’s work:"
-msgstr "Before you share “{name}” — two people using it at once can lose each other’s work:"
+msgid "Before you share “{name}” — two people using it at once can lose each other's work:"
+msgstr "Before you share “{name}” — two people using it at once can lose each other's work:"
 
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"

@@ -146,7 +146,7 @@ msgid "Backup"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
-msgid "Before you share “{name}” — two people using it at once can lose each other’s work:"
+msgid "Before you share “{name}” — two people using it at once can lose each other's work:"
 msgstr ""
 
 #: ../shell/src/storage-report.tsx

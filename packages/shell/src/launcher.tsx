@@ -580,7 +580,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         const name = a.name;
         const list = `• ${hazards.join("\n• ")}`;
         const go = await shellDialogs.confirm(
-          t`Before you share “${name}” — two people using it at once can lose each other’s work:` +
+          t`Before you share “${name}” — two people using it at once can lose each other's work:` +
             `\n\n${list}\n\n` +
             t`Nothing is wrong with it on your own. Share anyway?`,
         );
