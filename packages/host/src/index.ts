@@ -19,6 +19,8 @@ export {
   translate,
   FORMAT_LIMITS,
   PURE_OPS,
+  PURE_OK,
+  PURE_ERROR,
   type WordsContext,
 } from "./format.js";
 export { createHost, type CreateHostOptions } from "./create-host.js";

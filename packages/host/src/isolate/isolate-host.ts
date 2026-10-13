@@ -5,7 +5,7 @@
 
 import type { AppDefinition, Ctx, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value, Words } from "potyro";
 import { localize } from "potyro";
-import { hostPure } from "../format.js";
+import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
@@ -383,8 +383,7 @@ class IsolateLoadedApp implements LoadedApp {
     // against the call's deadline like everything else inside `enter()`. Validation: format.ts.
     const pureFn = this.vm.newFunction("__hostPure", (argHandle) => {
       const ctx = this.ctxHost;
-      const json = ctx ? hostPure(this.vm.getString(argHandle), ctx) : JSON.stringify({ ok: false, error: "no call is running" });
-      return this.vm.newString(json);
+      return this.vm.newString(ctx ? hostPure(this.vm.getString(argHandle), ctx) : `${PURE_ERROR}no call is running`);
     });
     this.vm.setProp(this.vm.global, "__hostPure", pureFn);
     pureFn.dispose();

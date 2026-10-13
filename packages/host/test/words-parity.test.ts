@@ -10,7 +10,7 @@ import { newAsyncContext } from "quickjs-emscripten";
 import { defineApp, type AppInput, type Ctx } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
-import { createHost, FORMAT_LIMITS, hostPure, type LoadedApp, type MakeCtxBase, type UiBridge } from "../src/index.js";
+import { createHost, FORMAT_LIMITS, hostPure, PURE_OK, type LoadedApp, type MakeCtxBase, type UiBridge } from "../src/index.js";
 import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
 
 const NOW = new Date("2026-10-13T10:00:00Z");
@@ -165,7 +165,10 @@ describe("hostPure — what the box may ask (docs/20 §2.3)", () => {
     let c: Ctx | null = null;
     return async () => (c ??= (await run("direct", "en", "en-GB")).ctx);
   })();
-  const ask = async (req: unknown) => JSON.parse(hostPure(JSON.stringify(req), await ctx())) as { ok: boolean; value?: string; error?: string };
+  const ask = async (req: unknown): Promise<{ ok: boolean; value?: string; error?: string }> => {
+    const out = hostPure(JSON.stringify(req), await ctx());
+    return out.startsWith(PURE_OK) ? { ok: true, value: out.slice(1) } : { ok: false, error: out.slice(1) };
+  };
 
   it("answers only its six operations", async () => {
     expect(await ask({ op: "date", value: NOW.toISOString(), opts: { dateStyle: "short" } })).toEqual({ ok: true, value: "13/10/2026" });

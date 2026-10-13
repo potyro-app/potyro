@@ -11,7 +11,6 @@
 
 import type { Ctx, CtxFormat, FormatDateOptions, FormatNumberOptions, Language, Words } from "potyro";
 import { isWordsMap, minorDigits, word } from "potyro";
-import { deserialize, serialize } from "./isolate/marshal.js";
 
 type MessageFormatCtor = typeof import("intl-messageformat").IntlMessageFormat;
 let MessageFormat: MessageFormatCtor | null = null;
@@ -263,18 +262,30 @@ function checkVars(vars: unknown): Record<string, unknown> {
 /** What `__hostPure` may ask for. Anything else is refused before any formatter runs. */
 export const PURE_OPS = ["date", "number", "money", "relative", "list", "t"] as const;
 
+/** The answer's first character: what follows is the formatted text, or why there is none. Printable
+ *  on purpose — a NUL would end the string on its way into the box. */
+export const PURE_OK = "+";
+export const PURE_ERROR = "!";
+
+/** A date crosses as `{ __kdate: iso }` (the marshal's tag); anything else as it is. */
+const revive = (v: unknown): unknown =>
+  v != null && typeof v === "object" && typeof (v as { __kdate?: unknown }).__kdate === "string" ? new Date((v as { __kdate: string }).__kdate) : v;
+
 /**
- * Answer one `__hostPure` request from the box: JSON in, JSON out, `{ ok, value }` or `{ ok:false,
- * error }`. It touches no store, no capability and no person — only `Intl` and the ICU formatter
- * over the arguments it is handed — which is why it may be synchronous. The locale is the host's,
- * never the app's: the request carries none.
+ * Answer one `__hostPure` request from the box: plain JSON in (no reviver, it costs), and the text
+ * out after one marker character — `PURE_OK` and the formatted string, or `PURE_ERROR` and why — so
+ * the box parses nothing. It touches no store, no capability and no person — only `Intl` and the
+ * ICU formatter over the arguments it is handed — which is why it may be synchronous. The locale is
+ * the host's, never the app's: the request carries none.
  */
 export function hostPure(json: string, ctx: Pick<Ctx, "t" | "format">): string {
   const format = ctx.format;
   try {
     if (json.length > FORMAT_LIMITS.chars * 4) throw new FormatError("the request is too large");
-    const req = deserialize<Record<string, unknown>>(json);
+    const req = JSON.parse(json) as Record<string, unknown> | null;
     if (req == null || typeof req !== "object") throw new FormatError("not a request");
+    req.value = revive(req.value);
+    if (req.vars && typeof req.vars === "object") for (const [k, v] of Object.entries(req.vars)) (req.vars as Record<string, unknown>)[k] = revive(v);
     const op = req.op as string;
     let value: string;
     switch (op) {
@@ -305,8 +316,8 @@ export function hostPure(json: string, ctx: Pick<Ctx, "t" | "format">): string {
       default:
         throw new FormatError(`unknown request ${JSON.stringify(String(op)).slice(0, 40)}`);
     }
-    return serialize({ ok: true, value });
+    return PURE_OK + value;
   } catch (e) {
-    return serialize({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    return PURE_ERROR + (e instanceof Error ? e.message : String(e));
   }
 }
