@@ -13,6 +13,8 @@
 import { tileIdentity } from "./tile-identity.js";
 import { appKey, getEntry } from "./launcher-store.js";
 import { navigateTo } from "./router.js";
+import { PromoteButton } from "./trust-dialog.js";
+import type { UserApp } from "./user-apps.js";
 
 export interface SplashProps {
   /** The app's id, so its tile identity (and any override on this device) can be looked up. */
@@ -32,13 +34,18 @@ export interface SplashProps {
    * in the app's own colours, rather than a blank page or a line of text in the corner.
    */
   failed?: string;
+  /**
+   * The sealed app that failed, when running it as yours is what would fix it (promotion.ts): the
+   * screen then offers exactly that. Never for code that does not match its lock.
+   */
+  promote?: Pick<UserApp, "id" | "name" | "source">;
 }
 
 /** Read a declaration out of an app's source without running it — the trick `examples.ts` uses. */
 const declared = (source: string | undefined, key: string): string | undefined =>
   source ? (new RegExp(`^\\s*${key}:\\s*"([^"]+)"`, "m").exec(source)?.[1] ?? undefined) : undefined;
 
-export function Splash({ id, name, source, icon, verb = "Opening", failed }: SplashProps) {
+export function Splash({ id, name, source, icon, verb = "Opening", failed, promote }: SplashProps) {
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
   // colour someone picked (#83) — so the splash matches the tile that was tapped, not the app's
   // own idea of itself.
@@ -62,9 +69,13 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed }: Spl
           <>
             <p className="k-splash-verb">It could not open.</p>
             <p className="k-splash-why">{failed}</p>
-            <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
-              Back to my apps
-            </button>
+            {promote ? <p className="k-splash-why k-splash-advice">Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open.</p> : null}
+            <div className="k-splash-actions">
+              {promote ? <PromoteButton app={promote} primary /> : null}
+              <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
+                Back to my apps
+              </button>
+            </div>
           </>
         ) : (
           <>

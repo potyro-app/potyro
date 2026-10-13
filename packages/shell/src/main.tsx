@@ -9,7 +9,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
 import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, packBundle, unpackBundle, type Store } from "@potyro/store";
-import { appCode } from "./app-modules.js";
+import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
 import { guardedStore } from "./read-only-store.js";
@@ -91,7 +91,7 @@ async function exportApp(
     // that vouches for it (#282), so the bundle restores on a device with no network.
     await copyStoreData(store, snapshot.store, { entities: Object.keys(def.entities), skipFile: isReservedPath });
     const lock = appId ? getUserApp(appId)?.lock : undefined;
-    const code = await appCode(store, lock);
+    const code = await appCode((await modulesOf(appId)) ?? store, lock);
     const zip = packBundle({
       sqlite: snapshot.export(),
       manifest: {
@@ -463,15 +463,23 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let composed: Composed;
   let provenance: Provenance = "untrusted";
   let appSource: string | undefined;
-  // Its libraries and its own modules (#266, #258), read from its space and checked against its lock.
-  const [{ storeModules, rememberModules, forgetModules }, { ModuleError }] = await Promise.all([import("./app-modules.js"), import("./package-modules.js")]);
-  const modules = storeModules(store, saved.lock);
-  rememberModules(id, saved.lock, modules);
   const failed = async (e: unknown): Promise<null> => {
-    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} />);
+    // Sealed, and failing for want of a web page or a feature the box lacks: running it as yours is
+    // the way out, so the screen says so and offers it (owner, 2026-10-13). A library that does not
+    // match its lock is never one tap from full authority.
+    const { promotionFixes } = await import("./promotion.js");
+    const promote = !saved.trusted && promotionFixes(e) ? saved : undefined;
+    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} promote={promote} />);
     await rawStore.close();
     return null;
   };
+  // Its libraries and its own modules (#266, #258), this device's copy, checked against its lock. One
+  // that arrived without them (by link, from the account, #281) fetches them now, with consent.
+  const [{ rememberModules, forgetModules }, { ModuleError }, { codeForOpen }] = await Promise.all([import("./app-modules.js"), import("./package-modules.js"), import("./open-libraries.js")]);
+  const code = await codeForOpen(saved, store, Boolean(syncAllowed && saved.sync));
+  if ("message" in code) return failed(new Error(code.message));
+  const modules = code.modules;
+  rememberModules(id, modules?.lock, modules);
 
   if (saved.trusted) {
     try {
@@ -705,6 +713,8 @@ async function offerAccountApps(): Promise<void> {
     // ids already written down — so the list is current whether or not those apps were opened, and
     // a device that dies tonight has left behind everything it could.
     await publishAppListToAccount(node);
+    // And each one's Studio conversation, both ways (#283). In the background.
+    void import("./chat-sync.js").then((chats) => chats.syncAllChats(node));
     // Give the relay a moment: this device may have signed in seconds ago, and the account's
     // own copy of the list travels the same way any other CoValue does.
     const mine = await readAccountApps(node, { waitMs: 8_000 });

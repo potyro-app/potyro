@@ -15,7 +15,7 @@
 // degrade that way, because LocalStore has no CRDT: rather than silently drop the guarantee the
 // user switched on, it fails loudly and the caller decides.
 
-import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type Store } from "@potyro/store";
+import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -373,7 +373,9 @@ export async function rememberAppOnAccount(app: { id: string; name: string; icon
   if (!handle) return false;
   try {
     const { publishAppToAccount } = await import("@potyro/store");
+    const code = await accountCode(app.id, handle.store);
     return await publishAppToAccount(handle.node, {
+      ...code,
       id: app.id,
       name: app.name,
       icon: app.icon,
@@ -386,6 +388,17 @@ export async function rememberAppOnAccount(app: { id: string; name: string; icon
   } catch {
     return false;
   }
+}
+
+/**
+ * The app's code beyond its source, for its entry on your account (#281): its lock and its own
+ * modules, so another of your devices can open it — fetching the libraries there, once, with consent.
+ * Never the library bytes. Nothing when the app is one file, or is not on this device.
+ */
+async function accountCode(appId: string, store?: Store): Promise<CarriedCode> {
+  const [{ getUserApp }, { codeToCarry }] = await Promise.all([import("./user-apps.js"), import("./app-modules.js")]);
+  const app = getUserApp(appId);
+  return app ? codeToCarry(app, store) : {};
 }
 
 /** Forget an app you deleted, so a new device is not offered it back. */
@@ -424,6 +437,28 @@ export async function openAccountNodeForDevice(): Promise<unknown | null> {
   }
 }
 
+let accountNodeOpening: { who: string; node: Promise<unknown | null> } | null = null;
+
+/**
+ * This device's node on your account, opened once per page and kept: what reads and writes the data
+ * that is yours rather than an app's — your Studio conversations (#283). Null where this device has
+ * no account to reach; asked again next time, since an identity can appear later in the session. A
+ * different identity (this device was linked to another account) gets a node of its own.
+ */
+export async function accountNode(): Promise<unknown | null> {
+  const { peekIdentity } = await import("@potyro/identity");
+  const who = peekIdentity()?.id;
+  if (!who) return null;
+  if (accountNodeOpening?.who !== who) {
+    const node = openAccountNodeForDevice().then((n) => {
+      if (!n && accountNodeOpening?.node === node) accountNodeOpening = null;
+      return n;
+    });
+    accountNodeOpening = { who, node };
+  }
+  return accountNodeOpening.node;
+}
+
 /**
  * Publish EVERY synced app this device has to your account, without opening any of them.
  *
@@ -450,6 +485,7 @@ export async function publishAppListToAccount(node: unknown): Promise<number> {
       if (!group || !root) continue;
       const entry = getEntry(appKey("user", app.id));
       const ok = await publishAppToAccount(node, {
+        ...(await accountCode(app.id)),
         id: app.id,
         name: entry.displayName ?? app.name,
         icon: entry.icon ?? entry.identity?.icon,
