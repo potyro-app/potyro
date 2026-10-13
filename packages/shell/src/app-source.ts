@@ -22,15 +22,36 @@
 // that change to the agent instead. Guessing here would corrupt someone's app.
 
 import type MagicStringType from "magic-string";
+import {
+  asArray,
+  findDefinition,
+  hasOpaqueMembers,
+  keyOf,
+  literalLanguages,
+  literalString,
+  literalWords,
+  load,
+  parseModule,
+  prop,
+  propValue,
+  type JsonLiteral,
+  type Node,
+  type Tools,
+} from "./source-ast.js";
+import { setWordsEntry, wordsMapOf } from "./app-source-words.js";
+
+export { resetSourceTools, type JsonLiteral } from "./source-ast.js";
+export { declaredEntities, declaredLanguages, type DeclaredEntity } from "./source-declared.js";
 
 /** A property this module knows how to edit. */
 export type Edit =
-  | { kind: "field-label"; entity: string; field: string; value: string }
+  /** `language`: write that entry of a translated label (#302); without it, the label is replaced. */
+  | { kind: "field-label"; entity: string; field: string; value: string; language?: string }
   | { kind: "field-hidden"; entity: string; field: string; value: boolean }
   | { kind: "field-order"; entity: string; order: readonly string[] }
   /** The new field lists of the entity's groups, one per existing group, in order (#100). */
   | { kind: "field-groups"; entity: string; groups: readonly (readonly string[])[] }
-  | { kind: "page-title"; page: string; value: string }
+  | { kind: "page-title"; page: string; value: string; language?: string }
   /** The pages in their new order — every page id there is now, once (edit mode's tab moves). */
   | { kind: "page-order"; order: readonly string[] }
   /** Replace the text `from` at each of `sites` (edit mode's in-place rename). Every site must still
@@ -60,6 +81,8 @@ export interface FieldShape {
   label?: string;
   /** A `label` is written, but not as a plain string — renaming it would overwrite that code. */
   labelOpaque?: boolean;
+  /** The label per language, when it is a literal translation map (#302): one input each. */
+  labels?: Record<string, string>;
   hidden: boolean;
 }
 
@@ -85,6 +108,8 @@ export interface PageShape {
   title?: string;
   /** A `title` is written, but not as a plain string — renaming it would overwrite that code. */
   titleOpaque?: boolean;
+  /** The title per language, when it is a literal translation map (#302). */
+  titles?: Record<string, string>;
   /** The entity this page's view reads, when it names one. */
   entity?: string;
   /** Declared `hidden`. Hidden pages are reached by tapping a row, not from the tab bar. */
@@ -111,82 +136,6 @@ export interface AppShape {
   blocked?: string;
 }
 
-// ---------------------------------------------------------------------------------------------
-// Lazy toolchain. Both are only needed once someone actually opens the editor, and together they
-// are ~85 kB gzipped — the same lazy treatment MapLibre gets.
-
-interface Node {
-  type: string;
-  start: number;
-  end: number;
-  [k: string]: unknown;
-}
-interface Tools {
-  parse: (code: string, opts: object) => Node;
-  MagicString: new (s: string) => MagicStringType;
-}
-let tools: Promise<Tools | null> | null = null;
-
-/** Test seam: drop the cached toolchain so the next call re-imports. */
-export function resetSourceTools(): void {
-  tools = null;
-}
-
-async function load(): Promise<Tools | null> {
-  tools ??= (async () => {
-    try {
-      const [babel, magic] = await Promise.all([import("@babel/parser"), import("magic-string")]);
-      return {
-        parse: babel.parse as unknown as Tools["parse"],
-        MagicString: (magic.default ?? magic) as unknown as Tools["MagicString"],
-      };
-    } catch (e) {
-      console.warn("[potyro] structural editing unavailable:", e);
-      tools = null; // a transient chunk failure shouldn't disable it for the session
-      return null;
-    }
-  })();
-  return tools;
-}
-
-function parseModule(t: Tools, source: string): Node | null {
-  try {
-    // TSX, because a custom view is a React component in the same file.
-    return t.parse(source, { sourceType: "module", plugins: ["typescript", "jsx"], errorRecovery: false });
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------
-// Locating things
-
-const asArray = (v: unknown): Node[] => (Array.isArray(v) ? (v as Node[]) : []);
-const keyOf = (prop: Node): string | undefined => {
-  const key = prop.key as { name?: string; value?: unknown } | undefined;
-  if (typeof key?.name === "string") return key.name;
-  return typeof key?.value === "string" ? key.value : undefined;
-};
-
-/** The object literal handed to `defineApp(...)`, or null if the call isn't shaped that way. */
-function findDefinition(ast: Node): Node | null {
-  let found: Node | null = null;
-  const walk = (n: unknown): void => {
-    if (found || !n || typeof n !== "object") return;
-    const node = n as Node;
-    if (node.type === "CallExpression" && (node.callee as Node | undefined)?.name === "defineApp") {
-      const arg = asArray(node.arguments)[0];
-      found = arg?.type === "ObjectExpression" ? arg : null;
-      if (found) return;
-    }
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) value.forEach(walk);
-      else if (value && typeof value === "object" && (value as Node).type) walk(value);
-    }
-  };
-  walk(ast);
-  return found;
-}
 
 /**
  * Does the app DECLARE that it syncs (`permissions: { sync: true }`)? (KA-23)
@@ -210,41 +159,6 @@ export async function declaredSync(source: string): Promise<boolean | null> {
   return sync.type === "BooleanLiteral" ? Boolean(sync.value) : null;
 }
 
-/** A named property of an object literal, if it is written literally (not spread, not computed). */
-function prop(obj: Node | null, name: string): Node | null {
-  if (obj?.type !== "ObjectExpression") return null;
-  for (const p of asArray(obj.properties)) {
-    if (p.type === "ObjectProperty" && p.computed !== true && keyOf(p) === name) return p;
-  }
-  return null;
-}
-const propValue = (obj: Node | null, name: string): Node | null => (prop(obj, name)?.value as Node | undefined) ?? null;
-
-/** True when an object literal has anything we can't address by key. */
-const hasOpaqueMembers = (obj: Node): boolean =>
-  asArray(obj.properties).some((p) => p.type !== "ObjectProperty" || p.computed === true);
-
-function literalString(node: Node | null): string | undefined {
-  return node?.type === "StringLiteral" && typeof node.value === "string" ? node.value : undefined;
-}
-
-/** Words written literally (#302): a string, or a translation map whose every entry is a string. */
-function literalWords(node: Node | null): string | Record<string, string> | undefined {
-  const s = literalString(node);
-  if (s !== undefined || node?.type !== "ObjectExpression") return s;
-  const map = literalOf(node);
-  if (!map || typeof map !== "object" || Array.isArray(map)) return undefined;
-  const entries = Object.entries(map);
-  return entries.length && entries.every(([, v]) => typeof v === "string") ? (map as Record<string, string>) : undefined;
-}
-
-/** The app's `language`/`languages`, when written literally. */
-function literalLanguages(def: Node | null): { language?: string; languages?: string[] } {
-  const language = literalString(propValue(def, "language"));
-  const languages = literalOf(propValue(def, "languages"));
-  const list = Array.isArray(languages) && languages.every((l) => typeof l === "string") ? (languages as string[]) : undefined;
-  return { ...(language ? { language } : {}), ...(list ? { languages: list } : {}) };
-}
 
 /** The entity's `groups` when every group is `{ title?, fields: ["a", "b"] }` written out; `undefined`
  *  when there are none; `"opaque"` when there are groups this cannot read (a helper call, a spread). */
@@ -313,11 +227,13 @@ export async function inspect(source: string): Promise<AppShape> {
         const labelNode = value.type === "ObjectExpression" ? propValue(value, "label") : null;
         const label = literalString(labelNode);
         const hiddenNode = value.type === "ObjectExpression" ? propValue(value, "hidden") : null;
+        const labels = wordsMapOf(labelNode);
         fields.push({
           key,
           hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true,
           ...(label ? { label } : {}),
-          ...(labelNode && label === undefined ? { labelOpaque: true } : {}),
+          ...(labels ? { labels } : {}),
+          ...(labelNode && label === undefined && !labels ? { labelOpaque: true } : {}),
         });
       }
       const groups = literalGroups(propValue(ep.value as Node, "groups"));
@@ -346,7 +262,8 @@ export async function inspect(source: string): Promise<AppShape> {
         id,
         hidden: hiddenNode?.type === "BooleanLiteral" && hiddenNode.value === true,
         ...(literalString(titleNode) !== undefined ? { title: literalString(titleNode)! } : {}),
-        ...(titleNode && literalString(titleNode) === undefined ? { titleOpaque: true } : {}),
+        ...(wordsMapOf(titleNode) ? { titles: wordsMapOf(titleNode)! } : {}),
+        ...(titleNode && literalString(titleNode) === undefined && !wordsMapOf(titleNode) ? { titleOpaque: true } : {}),
         ...(literalString(propValue(view, "entity")) !== undefined ? { entity: literalString(propValue(view, "entity"))! } : {}),
         ...(literalString(propValue(view, "type")) !== undefined ? { viewType: literalString(propValue(view, "type"))! } : {}),
       });
@@ -367,115 +284,6 @@ export async function inspect(source: string): Promise<AppShape> {
     ...(icon ? { icon } : {}),
     ...(accent ? { accent } : {}),
   };
-}
-
-/** One entity's declared data shape: the literal parts of each field, and nothing that would run. */
-export interface DeclaredEntity {
-  /** A string, or a translation map (#302). */
-  label?: string | Record<string, string>;
-  displayField?: string;
-  editableBy?: string;
-  /** Field key → the field's literal properties (`type`, `options`, `to`, `currency`…). A property
-   *  written as anything but a literal — `default: () => …` — is left out, never evaluated. */
-  fields: Record<string, Record<string, JsonLiteral>>;
-  /** Fields declared as something this can't read (a helper call, a shared const). */
-  opaque: string[];
-}
-
-export type JsonLiteral = string | number | boolean | null | JsonLiteral[] | { [k: string]: JsonLiteral };
-
-/**
- * The entities an app declares, read from its source WITHOUT running it.
- *
- * The data panel needs each field's type to show and edit a stored value, and the app that declared
- * it may be someone else's: evaluating the module to find out would run untrusted code with the
- * shell's authority. The fields are plain data (docs/03), so the literal parts are all there is to
- * know — anything computed is skipped rather than guessed.
- */
-/** The app's own language and the ones it carries, read without running it (#302). */
-export async function declaredLanguages(source: string): Promise<{ language?: string; languages?: string[] }> {
-  const t = await load();
-  const ast = t ? parseModule(t, source) : null;
-  return ast ? literalLanguages(findDefinition(ast)) : {};
-}
-
-export async function declaredEntities(source: string): Promise<Record<string, DeclaredEntity> | null> {
-  const t = await load();
-  if (!t) return null;
-  const ast = parseModule(t, source);
-  if (!ast) return null;
-  const def = findDefinition(ast);
-  const entitiesNode = propValue(def, "entities");
-  if (entitiesNode?.type !== "ObjectExpression") return null;
-
-  const out: Record<string, DeclaredEntity> = {};
-  for (const ep of asArray(entitiesNode.properties)) {
-    if (ep.type !== "ObjectProperty" || ep.computed === true) continue;
-    const name = keyOf(ep);
-    if (!name) continue;
-    const entityNode = ep.value as Node;
-    const fields: DeclaredEntity["fields"] = {};
-    const opaque: string[] = [];
-    const fieldsNode = propValue(entityNode, "fields");
-    for (const fp of fieldsNode?.type === "ObjectExpression" ? asArray(fieldsNode.properties) : []) {
-      const key = fp.type === "ObjectProperty" && fp.computed !== true ? keyOf(fp) : undefined;
-      if (!key) continue;
-      const value = literalOf(fp.value as Node);
-      if (value && typeof value === "object" && !Array.isArray(value) && typeof value.type === "string") fields[key] = value;
-      else opaque.push(key);
-    }
-    const label = literalWords(propValue(entityNode, "label"));
-    const displayField = literalString(propValue(entityNode, "displayField"));
-    const editableBy = literalString(propValue(entityNode, "editableBy"));
-    out[name] = {
-      fields,
-      opaque,
-      ...(label ? { label } : {}),
-      ...(displayField ? { displayField } : {}),
-      ...(editableBy ? { editableBy } : {}),
-    };
-  }
-  return out;
-}
-
-/** A node's value when it is written as a literal; `undefined` for anything that would need running.
- *  Object members that aren't literal are dropped, so `{ type: "text", default: () => "" }` reads as
- *  `{ type: "text" }`. */
-function literalOf(node: Node | null | undefined): JsonLiteral | undefined {
-  if (!node) return undefined;
-  switch (node.type) {
-    case "StringLiteral":
-    case "NumericLiteral":
-    case "BooleanLiteral":
-      return node.value as JsonLiteral;
-    case "NullLiteral":
-      return null;
-    case "TemplateLiteral":
-      return asArray(node.expressions).length === 0 ? asArray(node.quasis).map((q) => (q.value as { cooked: string }).cooked).join("") : undefined;
-    case "UnaryExpression": {
-      const arg = literalOf(node.argument as Node);
-      return node.operator === "-" && typeof arg === "number" ? -arg : undefined;
-    }
-    case "TSAsExpression":
-    case "TSSatisfiesExpression":
-      return literalOf(node.expression as Node);
-    case "ArrayExpression": {
-      const items = asArray(node.elements).map((el) => literalOf(el));
-      return items.every((v) => v !== undefined) ? (items as JsonLiteral[]) : undefined;
-    }
-    case "ObjectExpression": {
-      const obj: Record<string, JsonLiteral> = {};
-      for (const p of asArray(node.properties)) {
-        if (p.type !== "ObjectProperty" || p.computed === true) continue;
-        const key = keyOf(p);
-        const value = literalOf(p.value as Node);
-        if (key && value !== undefined) obj[key] = value;
-      }
-      return obj;
-    }
-    default:
-      return undefined;
-  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -821,6 +629,10 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: "this app's pages aren't a plain array" };
     for (const el of asArray(pagesNode.elements)) {
       if (el?.type !== "ObjectExpression" || literalString(propValue(el, "id")) !== edit.page) continue;
+      if (edit.language) {
+        if (!setWordsEntry(ms, propValue(el, "title"), edit.language, edit.value)) return { ok: false, reason: "this page's title is not written as a translation map" };
+        return finish(t, ms, `renamed the "${edit.page}" page to "${edit.value}" in ${edit.language}`);
+      }
       setProperty(ms, el, "title", literal(edit.value));
       return finish(t, ms, `renamed the "${edit.page}" page to "${edit.value}"`);
     }
@@ -897,6 +709,12 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
 
   if (edit.kind === "field-label") {
     const trimmed = edit.value.trim();
+    if (edit.language) {
+      // One language of a translated label (#302): an empty one is a gap, not "the default".
+      if (!trimmed) return { ok: false, reason: "a translated label needs words in every language it has" };
+      if (!setWordsEntry(ms, propValue(fieldValue, "label"), edit.language, trimmed)) return { ok: false, reason: "this label is not written as a translation map" };
+      return finish(t, ms, `labelled ${edit.entity}.${edit.field} "${trimmed}" in ${edit.language}`);
+    }
     // An empty label means "go back to the default", which is the ABSENCE of the property — not an
     // empty string, which would render a blank label.
     if (!trimmed) {
