@@ -25,6 +25,7 @@ export {
   type AppLock,
   type LockEntry,
 } from "./app-lock.js";
+export { carryCode, readCarriedCode, carriedModuleFiles, sameCode, type CarriedCode } from "./carried-code.js";
 export { fileSpace, fileInfo, digest, FileSpaceError, normalisePath, mimeOf, type FileSpace, type FileTarget } from "./file-space.js";
 export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage } from "./types.js";
 export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
@@ -32,6 +33,7 @@ export { ROOM_THREAD, recordThread } from "./types.js";
 export { MemoryStore } from "./memory-store.js";
 export { LocalStore, QuotaError, type StorageLike } from "./local-store.js";
 export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccountName, removeAppFromAccount, type AccountApp } from "./account-apps.js";
+export { readAccountChat, publishChatMessages, removeChatMessages, watchAccountChats, type AccountChat, type AccountChatMessage } from "./account-chats.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
 export { openWorkerSqliteHandle, workersAvailable } from "./sqlite-worker-client.js";

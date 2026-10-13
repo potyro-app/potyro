@@ -316,6 +316,10 @@ msgstr ""
 msgid "Leave it blank to use this site’s own relay."
 msgstr ""
 
+#: ../shell/src/launcher.tsx
+msgid "Let it run as yours"
+msgstr ""
+
 #. The panel for light/dark appearance and accent colour
 #: ../shell/src/launcher.tsx
 msgid "Look"

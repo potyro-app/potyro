@@ -93,6 +93,22 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   and an update from a link drops a trusted app back into the sealed box, so a link cannot put new
   code into an app that runs with full authority. An update from a file or paste keeps the trust the
   app had.
+- **Promotion is always reachable after install** (owner, 2026-10-13). The rule above is about the
+  way IN; once an app is here, there is always a way to let it run as yours, whatever state it is
+  in — one dialog (`trust-dialog.tsx`), one warning, reachable by mouse, touch and keyboard, and it
+  only ever acts when the person confirms it. It is offered from: the 🛡 badge of an open sealed
+  app; a sealed custom screen's "Run it as mine…"; the screen that says the app **could not open**,
+  when the cause is the sealed box (a library that needs a full web page, or a feature it lacks such
+  as `Intl` — `promotion.ts`); the Add-an-app card right after install, when the test load found it
+  only works as yours ("It only works when it runs as yours … Otherwise it stays sealed"); the
+  app's tile menu on your apps ("Let it run as yours") — there even when the app crashes at boot;
+  and the Studio, which previews a sealed app **sealed** (opening it there is not saying it is
+  yours) with "Let it run as yours" on its bar. Confirmed, the app reopens as trusted.
+  A link is still never trusted on the way in. **A failure promoting does not fix never offers it**:
+  code that does not compile, the app's own mistake, and above all a library or module that does
+  not match its lock — tampered code must never be one tap from full authority. Such an app can
+  still be promoted deliberately from its tile, and its trusted load refuses the mismatched bytes
+  all the same.
 - **The same app already installed**: *Replace, keep its data* is preselected — the ordinary update
   path, so History keeps the old version and the data check runs on the next open. Shipped files are
   replaced unless the person changed them (they are then `app`, not `shipped`) and kept; shipped files
@@ -157,6 +173,33 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   not what its lock says is a problem on the card, by name — "fancy-sum 1.2.3 is not the copy this
   app was saved with" — and the app is not added; it is never fetched again in its place. A data
   Import leaves the app's own code alone. Tested by `e2e/export-libraries-trusted.spec.ts`.
+- **Shared by link or from the account, the lock travels with the source** (#281). The published
+  app in the shared space (`app-sync.ts`, kv `__appSource`) and the app's entry on your account
+  (`account-apps.ts`) each gain two additive fields (`store/src/carried-code.ts`): `lock` — the
+  whole lock, libraries by URL and modules by `src/<path>` — and `modules` — the app's own modules,
+  `src/<path> → text`. Older clients ignore both; a record without them reads as an app with no code
+  beyond its source, and a malformed lock is dropped, never the app. **Library bytes do not
+  travel**: the receiver, the first time the app opens there, is asked in the card's words ("It
+  fetches fancy-sum 1.2.3, 2 KB, from esm.sh, once.") and fetches each library once, host-side,
+  through the same walk as Add an app, every file checked against the lock that came with the app.
+  An address no longer serving the locked bytes is refused by the library's name on the app's splash,
+  and nothing is kept. "Not now" fetches nothing and the app says what it is waiting for; opening it
+  again asks again. An app from a client that sent no lock has its libraries fetched fresh, with the
+  same consent, and locked on that device (as a package without `lock.json` is). A collaborator's
+  update that changes only a library is offered as an update, and taking it fetches the new bytes
+  on the next open. **The app's own modules travel with the source**, not through a fetch: they
+  have no upstream to fetch from, they are part of the app's code exactly as its source is (an edit
+  may change both, and carried in the same record a new source never arrives ahead of the module it
+  imports), and they are a few KB. They are checked against the lock on arrival and refused by name
+  ("Its file plan.ts is not the copy this app was saved with") like every other byte of code.
+- **An app's code lives in its local store** (`user:<id>` with sync off), whether or not its data
+  syncs (`shell/src/app-modules.ts`): turning sync on leaves `.modules/` and `.src/` where they are
+  rather than copying megabytes into the space, an install or Studio save into a synced app keeps
+  them there too, and that is where a guest or another of your devices keeps what it fetched. Opening
+  a synced app reads this device's copy first, then the space (code that reached it before #281).
+  Tested by `e2e/share-libraries-trusted.spec.ts` (two and three browsers, esm.sh served from
+  fixtures: opens after consent and then offline, a changed upstream file refused by name, a record
+  without a lock still opens).
 - **A Studio save** of a version that imports a library the app does not have yet says what it
   fetches first, and fetches it with consent when the version is saved — for code a person writes by
   hand. **Not yet** (owner decision): the Studio's model and the generator prompt are not taught to
