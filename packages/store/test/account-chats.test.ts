@@ -6,7 +6,7 @@
 // the collaborator, who must not read it.
 import { beforeAll, describe, expect, it } from "vitest";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import { createJazzStore, initSqlite, publishChatMessages, readAccountChat, removeChatMessages, type JazzKeyStore } from "../src/index.js";
+import { createJazzStore, initSqlite, publishChatMessages, readAccountChat, removeChatMessages, watchAccountChats, type JazzKeyStore } from "../src/index.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {
@@ -69,6 +69,20 @@ describe("a Studio conversation on your account", () => {
     // And it is not brought back by a device that had not heard yet.
     await publishChatMessages(handle.node, "notes", [ASK]);
     expect((await readAccountChat(handle.node, "notes")).messages).toEqual([QUESTION]);
+  });
+
+  it("says when the conversations change, from the first message on", async () => {
+    const handle = await createJazzStore("notes", { db: await memoryDb(), crypto, keys: memoryKeys() });
+    let changes = 0;
+    const stop = await watchAccountChats(handle.node, () => changes++);
+    await publishChatMessages(handle.node, "notes", [ASK]);
+    await new Promise((r) => setTimeout(r, 50));
+    const afterFirst = changes;
+    expect(afterFirst).toBeGreaterThan(0);
+    await publishChatMessages(handle.node, "notes", [QUESTION]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(changes).toBeGreaterThan(afterFirst);
+    stop();
   });
 
   it("is not readable by anyone else, even one who has the map's id", async () => {
