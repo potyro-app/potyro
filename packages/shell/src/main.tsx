@@ -464,7 +464,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   let provenance: Provenance = "untrusted";
   let appSource: string | undefined;
   const failed = async (e: unknown): Promise<null> => {
-    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} />);
+    // Sealed, and failing for want of a web page or a feature the box lacks: running it as yours is
+    // the way out, so the screen says so and offers it (owner, 2026-10-13). A library that does not
+    // match its lock is never one tap from full authority.
+    const { promotionFixes } = await import("./promotion.js");
+    const promote = !saved.trusted && promotionFixes(e) ? saved : undefined;
+    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} promote={promote} />);
     await rawStore.close();
     return null;
   };

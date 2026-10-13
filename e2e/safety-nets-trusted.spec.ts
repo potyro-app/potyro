@@ -125,6 +125,12 @@ test("a package whose top level throws in the sealed box shows its whole card fr
   await expect(dialog).not.toContainText("does not load");
 
   await dialog.getByRole("button", { name: "Add app" }).click();
+  // Added sealed, it would not open there: the card says so plainly and offers the way out (owner,
+  // 2026-10-13) before anything opens.
+  const after = dialog.getByRole("alert");
+  await expect(after).toContainText("It only works when it runs as yours.", { timeout: 30_000 });
+  await expect(after.getByRole("button", { name: "Let it run as yours" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Open Diary" }).click();
   await expect(dialog).toBeHidden({ timeout: 30_000 });
   await expect(page).toHaveURL(/user=diary/);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; trusted?: boolean }>);

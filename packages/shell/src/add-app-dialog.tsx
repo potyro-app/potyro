@@ -13,13 +13,37 @@ import { gatherFromFiles, gatherFromLink, gatherFromPaste, inspectPackage, insta
 import { describeLibrary, formatSize } from "./package-libraries.js";
 import { describeMissing } from "./missing-features.js";
 import { navigateTo } from "./router.js";
+import { PromoteButton } from "./trust-dialog.js";
 
 type Step =
   | { kind: "choose"; tab: AddSource | null }
   | { kind: "reading" }
   | { kind: "card"; pkg: AppPackage; inspected: Inspected; source: AddSource; link?: string }
   | { kind: "installing"; name: string }
-  | { kind: "updated"; done: Installed };
+  | { kind: "updated"; done: Installed; sealed: SealedAfter };
+
+/**
+ * What stands between a sealed app that was just added and working: one of its libraries, or a
+ * feature the box lacks. Then the card offers to let it run as yours (owner, 2026-10-13) — after
+ * install, for a link too: a link is never trusted on the way IN.
+ */
+interface SealedAfter {
+  /** Why it will not open sealed, when it will not. */
+  problem?: string;
+  /** What it reaches for that the box lacks. */
+  missing: string[];
+  /** It will not open at all sealed, rather than miss a part. */
+  failsToOpen: boolean;
+}
+
+function sealedAfter(done: Installed, inspected: Inspected): SealedAfter {
+  if (done.app.trusted) return { missing: [], failsToOpen: false };
+  // What the check after the fetch found outranks what the card found before it.
+  const rechecked = done.sealedProblem !== undefined || done.missing !== undefined;
+  const problem = done.sealedProblem ?? (rechecked ? undefined : inspected.sealedProblem);
+  const missing = done.missing ?? (rechecked ? [] : inspected.missing);
+  return { problem, missing, failsToOpen: !!problem || (!rechecked && inspected.failsToOpenSealed && missing.length > 0) };
+}
 
 
 const list = (words: string[]): string =>
@@ -70,7 +94,8 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
       const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode, link: step.link });
       // Something to say before opening: changed files kept, files the new version dropped, or a
       // library that cannot start in the sealed box (known only once it was fetched).
-      if (done.sealedProblem || done.missing?.length || (done.updated && (done.files.kept.length || done.files.removed.length))) setStep({ kind: "updated", done });
+      const sealed = sealedAfter(done, step.inspected);
+      if (sealed.problem || sealed.missing.length || (done.updated && (done.files.kept.length || done.files.removed.length))) setStep({ kind: "updated", done, sealed });
       else navigateTo({ kind: "user", id: done.app.id });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -161,15 +186,7 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
             <p>
               <strong>{step.done.app.name}</strong> {step.done.updated ? "is updated, with your data as it was." : "is added."}
             </p>
-            {step.done.sealedProblem ? (
-              <p className="k-add-app-sealed" role="alert">
-                <span aria-hidden>⚠</span> {step.done.sealedProblem} In the sealed box it will not open until you let it run as yours.
-              </p>
-            ) : step.done.missing?.length ? (
-              <p className="k-add-app-sealed" role="alert">
-                <span aria-hidden>⚠</span> {describeMissing(step.done.missing)} In the sealed box, the parts of it that use {step.done.missing.length === 1 ? "it" : "them"} will not work until you let it run as yours.
-              </p>
-            ) : null}
+            {step.sealed.problem || step.sealed.missing.length ? <RunsAsYours done={step.done} sealed={step.sealed} /> : null}
             {step.done.files.kept.length ? <p>Kept your own version of {list(step.done.files.kept)}: you changed {step.done.files.kept.length === 1 ? "it" : "them"} after it came with the app.</p> : null}
             {step.done.files.removed.length ? <p>The new version no longer comes with {list(step.done.files.removed)}, so {step.done.files.removed.length === 1 ? "it is" : "they are"} gone.</p> : null}
           </div>
@@ -183,7 +200,12 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
 
         <div className="k-form-actions">
           {step.kind === "updated" ? (
-            <button type="button" className="k-add k-primary-action" onClick={() => navigateTo({ kind: "user", id: step.done.app.id })}>
+            <button
+              type="button"
+              // When it only works as yours, that is the button that stands out; this one opens it sealed.
+              className={step.sealed.problem || step.sealed.missing.length ? "k-add" : "k-add k-primary-action"}
+              onClick={() => navigateTo({ kind: "user", id: step.done.app.id })}
+            >
               Open {step.done.app.name}
             </button>
           ) : (
@@ -298,7 +320,7 @@ function Card({
       {app.sealedProblem ? (
         <p className="k-add-app-sealed" role="note">
           <span aria-hidden>⚠</span> {app.sealedProblem}
-          {sealed ? " In the sealed box it will not open until you let it run as yours." : null}
+          {sealed ? (source === "link" ? " In the sealed box it will not open. Once it is added you can let it run as yours — only do that if you know who made it." : " In the sealed box it will not open: tick “I wrote this” below to run it as yours.") : null}
         </p>
       ) : sealed && app.missing.length ? (
         <div className="k-add-app-sealed k-add-app-missing" role="note">
@@ -307,7 +329,7 @@ function Card({
             {app.failsToOpenSealed ? "In the sealed box it will not open." : `In the sealed box, the parts of it that use ${app.missing.length === 1 ? "it" : "them"} will not work.`}
           </p>
           {source === "link" ? (
-            <p className="k-muted">Once it is added and you trust it, you can let it run as yours from its badge.</p>
+            <p className="k-muted">Once it is added you can let it run as yours. Only do that if you know who made it.</p>
           ) : (
             <button type="button" className="k-add" onClick={() => setMine(true)}>
               Run it as my own app
@@ -357,7 +379,7 @@ function Card({
 
       {source === "link" ? (
         <p className="k-add-app-trust">
-          <span aria-hidden>🛡</span> It runs in the sealed box: it can only reach what you allow, when it asks. Once you trust it, you can let it run as yours from its badge.
+          <span aria-hidden>🛡</span> It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps.
         </p>
       ) : app.installed?.trusted && mode === "replace" ? (
         <p className="k-add-app-trust">
@@ -373,5 +395,25 @@ function Card({
         </label>
       )}
     </section>
+  );
+}
+
+/** After it was added: why it only works as yours, the button that does that, and what happens otherwise. */
+function RunsAsYours({ done, sealed }: { done: Installed; sealed: SealedAfter }) {
+  const parts = sealed.missing.length === 1 ? "it" : "them";
+  return (
+    <div className="k-add-app-sealed k-add-app-runs-as-yours" role="alert">
+      {sealed.failsToOpen ? (
+        <p>
+          <span aria-hidden>⚠</span> <strong>It only works when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and it will not open.
+        </p>
+      ) : (
+        <p>
+          <span aria-hidden>⚠</span> <strong>Parts of it only work when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use {parts} will not work.
+        </p>
+      )}
+      <p className="k-muted">{sealed.problem ?? describeMissing(sealed.missing)}</p>
+      <PromoteButton app={done.app} primary />
+    </div>
   );
 }
