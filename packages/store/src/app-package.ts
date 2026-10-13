@@ -12,9 +12,11 @@
 //
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
 // seed — and an export bundle (`potyro-bundle/1`, which carries `app.ts` beside its data) is read as
-// one too, so a backup can be installed on a device that never had the app.
+// one too, so a backup can be installed on a device that never had the app. A bundle carries the
+// app's code the same way (#282) — `lock.json`, `files/.modules/`, `src/` — and nothing else of
+// `files/`: its data is in its `data.sqlite`, restored by Import.
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import { libraryLock, LockError, parseLock, type AppLock } from "./app-lock.js";
+import { libraryLock, LockError, MODULES_DIR, parseLock, type AppLock } from "./app-lock.js";
 import { parseDeclaration, type AppDeclaration } from "./app-declaration.js";
 import { isBundleFormat } from "./export.js";
 
@@ -140,13 +142,14 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   const isBundle = isBundleFormat(manifest.format);
   const declared = parseDeclaration(manifest.app);
   const under = (folder: string): PackagedFile[] =>
-    isBundle
-      ? []
-      : names
-          .filter((n) => n.startsWith(prefix + folder))
-          .map((n) => ({ path: n.slice(prefix.length + folder.length), data: entries[n]! }))
-          .filter((f) => f.path !== "");
-  const rawLock = isBundle ? undefined : at(LOCK);
+    names
+      .filter((n) => n.startsWith(prefix + folder))
+      .map((n) => ({ path: n.slice(prefix.length + folder.length), data: entries[n]! }))
+      .filter((f) => f.path !== "");
+  // A bundle's files are its data, in data.sqlite; what it carries beside them is the app's code
+  // (#282): its libraries' bytes and its own modules, as a package carries them, and their lock.
+  const files = isBundle ? under(FILES).filter((f) => f.path.startsWith(MODULES_DIR)) : under(FILES);
+  const rawLock = at(LOCK);
   let lock: AppLock | undefined;
   try {
     lock = rawLock ? parseLock(strFromU8(rawLock)) : undefined;
@@ -156,7 +159,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   return {
     source: strFromU8(at(sourceName)!),
     sourceName,
-    files: under(FILES),
+    files,
     modules: under(SRC),
     lock,
     seed: isBundle ? undefined : parseSeed(at(SEED), SEED),
