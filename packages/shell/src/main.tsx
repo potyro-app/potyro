@@ -689,6 +689,8 @@ async function offerAccountApps(): Promise<void> {
     // ids already written down — so the list is current whether or not those apps were opened, and
     // a device that dies tonight has left behind everything it could.
     await publishAppListToAccount(node);
+    // And each one's Studio conversation, both ways (#283). In the background.
+    void import("./chat-sync.js").then((chats) => chats.syncAllChats(node));
     // Give the relay a moment: this device may have signed in seconds ago, and the account's
     // own copy of the list travels the same way any other CoValue does.
     const mine = await readAccountApps(node, { waitMs: 8_000 });
