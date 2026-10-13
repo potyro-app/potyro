@@ -44,14 +44,20 @@ async function listing(draft: TranslationDraft, language: string): Promise<{ ok:
   const literal = slots.filter((s) => s.kind === "literal");
   const code = slots.filter((s) => s.kind === "code");
   const strings = functionStrings(sw);
+  const others = languages.filter((l) => l !== own && l !== language);
+  const blank = (shows: unknown): string =>
+    others.length ? `(no words yet in any language; shows ${show(shows)} — give { ${[...others, language].map((l) => `${l}: "…"`).join(", ")} })` : `(no words yet; shows ${show(shows)})`;
   const lines = [
     `Translating into ${language}. The app is written in ${own ?? "(no \`language\` declared — pass \`from\` with the language it is written in)"}` +
       (languages.length > 1 ? ` and carries ${languages.join(", ")}.` : "."),
     `Answer with ONE call: translate({ language: "${language}", ${own ? "" : 'from: "<its language>", '}words: { "<path>": "<the words in ${language}>", … } }) — every path below that should read differently in ${language}.`,
     "Leave out a path whose words are the same in every language (a brand, an emoji, a unit like kg). Records are never translated, and option values stay as they are: only their labels change.",
+    ...(others.length
+      ? [`The app already carries ${others.join(", ")}: a slot with no words yet needs them too, so give it an object, { ${[...others, language].map((l) => `${l}: "…"`).join(", ")} }. A plain string keeps its words in ${others.join(", ")}.`]
+      : []),
     "",
     `Words you give are spliced in for you (${literal.length}):`,
-    ...literal.slice(0, MAX_LIST).map((s) => (s.suggested !== undefined ? `- ${s.path} (no words yet; shows ${show(s.suggested)})` : `- ${s.path}: ${show(s.value)}`)),
+    ...literal.slice(0, MAX_LIST).map((s) => (s.suggested !== undefined ? `- ${s.path} ${blank(s.suggested)}` : `- ${s.path}: ${show(s.value)}`)),
     ...(literal.length > MAX_LIST ? [`… and ${literal.length - MAX_LIST} more; translate these first, then list again.`] : []),
   ];
   if (code.length) lines.push("", "Behind code — a const or a helper; change these yourself with SEARCH/REPLACE:", ...code.map((s) => `- ${s.path}`));
@@ -78,14 +84,18 @@ export function buildTranslateTool(deps: TranslateToolDeps): AgentTool {
       properties: {
         language: { type: "string", description: 'A language tag: "de", "pl", "pt-BR"' },
         from: { type: "string", description: "The language the app is written in — only when it declares no `language`" },
-        words: { type: "object", description: "Path → the words in the new language, for the paths the listing gave", additionalProperties: { type: "string" } },
+        words: {
+          type: "object",
+          description: "Path → the words in the new language, for the paths the listing gave; or, for a slot with no words yet in an app with other languages, an object of every language it needs",
+          additionalProperties: { anyOf: [{ type: "string" }, { type: "object", additionalProperties: { type: "string" } }] },
+        },
       },
       required: ["language"],
     },
     run: async (args) => {
       const language = String(args.language ?? "").trim();
       if (!language) return { ok: false, detail: 'Say which language: translate({ language: "de" }).' };
-      const words = args.words && typeof args.words === "object" && !Array.isArray(args.words) ? (args.words as Record<string, string>) : null;
+      const words = args.words && typeof args.words === "object" && !Array.isArray(args.words) ? (args.words as Record<string, string | Record<string, string>>) : null;
       if (!words) return listing(deps.draft, language);
 
       const from = typeof args.from === "string" && args.from.trim() ? args.from.trim() : undefined;

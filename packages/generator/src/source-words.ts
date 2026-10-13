@@ -155,7 +155,8 @@ export function sourceSlots(sw: SourceWords): WordSlot[] {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) return;
     for (const [key, f] of Object.entries(fields as Record<string, Record<string, unknown>>)) {
       if (!f || typeof f !== "object") continue;
-      add(`${at}.${key}.label`, humanizeKey(key));
+      // A hidden field never shows its label (a stored position, an order): nothing to translate.
+      if (f.hidden !== true) add(`${at}.${key}.label`, humanizeKey(key));
       if ((f.type === "enum" || f.type === "tags") && Array.isArray(f.options)) {
         for (const o of f.options) if (typeof o === "string") add(`${at}.${key}.labels.${o}`, o);
       }
@@ -284,7 +285,7 @@ function lineAround(source: string, at: number): string {
  * `{ <own>: "…", <language>: "…" }`, adding a missing `label` or option `labels`; `language` joins
  * `languages`. `from` is the app's own language, needed only when the source declares none.
  */
-export async function spliceLanguage(source: string, language: Language, words: Record<string, string>, from?: Language): Promise<SpliceResult> {
+export async function spliceLanguage(source: string, language: Language, words: Record<string, string | Record<string, string>>, from?: Language): Promise<SpliceResult> {
   if (!LANGUAGE_TAG.test(language)) return { source, written: [], refused: [{ path: "(language)", why: `"${language}" is not a language tag like "de" or "pt-BR"` }] };
   const sw = await readSourceWords(source);
   if (!sw) return { source, written: [], refused: [{ path: "(app)", why: "the source has no defineApp({...}) object to write into" }] };
@@ -294,14 +295,23 @@ export async function spliceLanguage(source: string, language: Language, words: 
   if (!own) return { source, written: [], refused: [{ path: "(language)", why: "the app declares no `language`, so say which one it is written in with `from`" }] };
   if (own === language) return { source, written: [], refused: [{ path: "(language)", why: `${language} is the app's own language already` }] };
   const slots = new Map(sourceSlots(sw).map((s) => [s.path, s]));
+  // The languages the app already carries besides its own: every map written here must have them
+  // too, or the translation itself opens a gap in them (#302 eval: groceries en+pl → de).
+  const others = sourceLanguages(sw).languages.filter((l) => l !== own && l !== language);
+  /** `{ lang: "…" }` entries, own language first, then the others, then the new one. */
+  const entries = (pairs: Array<[string, string]>): string => `{ ${pairs.map(([l, t]) => `${quoteKey(l)}: ${t}`).join(", ")} }`;
   const written: SpliceResult["written"] = [];
   const refused: SpliceResult["refused"] = [];
   const touched: number[] = [];
   /** New `labels` objects, per field, gathered so one field gets one property. */
   const newLabels = new Map<string, string[]>();
 
-  for (const [path, text] of Object.entries(words)) {
+  for (const [path, given] of Object.entries(words)) {
     const slot = slots.get(path);
+    // A string is the new language's words; an object may also carry the others (`{ pl, de }`).
+    const byLang: Record<string, string> =
+      typeof given === "string" ? { [language]: given } : given && typeof given === "object" ? Object.fromEntries(Object.entries(given).filter(([, v]) => typeof v === "string" && v.trim())) : {};
+    const text = byLang[language];
     if (typeof text !== "string" || !text.trim()) {
       refused.push({ path, why: "no words given" });
       continue;
@@ -319,7 +329,14 @@ export async function spliceLanguage(source: string, language: Language, words: 
       // A slot with no words yet: a field's label, or an option's.
       const option = /\.labels\.([^.]+)$/.exec(path);
       const ownText = slot.suggested;
-      const map = `{ ${quoteKey(own)}: ${lit(ownText)}, ${quoteKey(language)}: ${lit(text)} }`;
+      // No words yet in ANY language: the app's other languages need theirs too, or they show the
+      // English key — so they are asked for rather than guessed.
+      const missing = others.filter((l) => !byLang[l]);
+      if (missing.length) {
+        refused.push({ path, why: `it has no words yet in ${missing.join(", ")} either — give { ${[...missing, language].map((l) => `${l}: "…"`).join(", ")} }` });
+        continue;
+      }
+      const map = entries([[own, lit(ownText)], ...others.map((l): [string, string] => [l, lit(byLang[l]!)]), [language, lit(text)]]);
       if (option) {
         const fieldPath = path.slice(0, option.index);
         const labelsNode = sw.nodes.get(`${fieldPath}.labels`);
@@ -353,7 +370,8 @@ export async function spliceLanguage(source: string, language: Language, words: 
     }
     if (node.type === "StringLiteral" || node.type === "TemplateLiteral") {
       const raw = source.slice(node.start, node.end);
-      const map = `{ ${quoteKey(own)}: ${raw}, ${quoteKey(language)}: ${lit(text)} }`;
+      // A plain string read the same in every language: the others keep it, unless words are given.
+      const map = entries([[own, raw], ...others.map((l): [string, string] => [l, byLang[l] ? lit(byLang[l]!) : raw]), [language, lit(text)]]);
       ms.overwrite(node.start, node.end, map, { contentOnly: true });
       touched.push(node.start);
       written.push({ path, line: lineAround(source, node.start).replace(raw, map) });
@@ -361,10 +379,14 @@ export async function spliceLanguage(source: string, language: Language, words: 
     }
     if (node.type === "ObjectExpression") {
       const props = asArray(node.properties);
-      const existing = props.find((p) => keyOf(p) === language);
-      if (existing) ms.overwrite((existing.value as Node).start, (existing.value as Node).end, lit(text), { contentOnly: true });
-      else if (props.length) ms.appendLeft(props[props.length - 1]!.end, `, ${quoteKey(language)}: ${lit(text)}`);
-      else ms.appendLeft(node.start + 1, ` ${quoteKey(language)}: ${lit(text)} `);
+      // The new language, and any other one the answer gives (filling a gap in a carried language).
+      for (const [l, t] of Object.entries(byLang)) {
+        if (l === own || (l !== language && !others.includes(l))) continue;
+        const existing = props.find((p) => keyOf(p) === l);
+        if (existing) ms.overwrite((existing.value as Node).start, (existing.value as Node).end, lit(t), { contentOnly: true });
+        else if (props.length) ms.appendLeft(props[props.length - 1]!.end, `, ${quoteKey(l)}: ${lit(t)}`);
+        else ms.appendLeft(node.start + 1, ` ${quoteKey(l)}: ${lit(t)} `);
+      }
       touched.push(node.start);
       written.push({ path, line: `${path}: … ${quoteKey(language)}: ${lit(text)}` });
       continue;
@@ -414,6 +436,36 @@ export interface WordsReport {
   existing: string[];
   /** Plain strings the candidate adds to an app with more than one language: "the same everywhere", or forgotten? */
   plain: string[];
+  /**
+   * Maps whose OWN-language words the candidate changed while another language stayed as it was —
+   * most often a rename done in one language only. A warning: pointed out once, and accepted when
+   * the same change is sent again (the person may have asked to change one language).
+   */
+  stale: string[];
+}
+
+/** Every map's words by path, with the app's own language. */
+async function mapsOf(source: string): Promise<{ own?: Language; languages: Language[]; maps: Map<string, Record<string, string>> } | null> {
+  const sw = await readSourceWords(source);
+  if (!sw) return null;
+  const { language, languages } = sourceLanguages(sw);
+  const maps = new Map<string, Record<string, string>>();
+  for (const { path, value } of wordSlots(sw.data)) if (typeof value !== "string") maps.set(wordsPathText(path), value as Record<string, string>);
+  return { own: language, languages, maps };
+}
+
+/** The maps whose own language changed and some other language did not. */
+async function staleOf(before: string, after: string): Promise<string[]> {
+  const [a, b] = await Promise.all([mapsOf(before), mapsOf(after)]);
+  if (!a || !b?.own || b.languages.length < 2) return [];
+  const out: string[] = [];
+  for (const [path, now] of b.maps) {
+    const was = a.maps.get(path);
+    if (!was || was[b.own] === undefined || was[b.own] === now[b.own]) continue;
+    const behind = b.languages.filter((l) => l !== b.own && was[l] !== undefined && was[l] === now[l]);
+    if (behind.length) out.push(`${path}: ${b.own} is now ${JSON.stringify(now[b.own])}, but ${behind.map((l) => `${l} still says ${JSON.stringify(now[l])}`).join(", ")}`);
+  }
+  return out;
 }
 
 async function gapsOf(source: string): Promise<{ gaps: string[]; plain: string[]; multi: boolean } | null> {
@@ -439,21 +491,31 @@ async function gapsOf(source: string): Promise<{ gaps: string[]; plain: string[]
 /** What a candidate does to the app's translations, against the app as first shown. */
 export async function wordsReport(before: string, after: string): Promise<WordsReport> {
   const [a, b] = await Promise.all([gapsOf(before), gapsOf(after)]);
-  if (!b || !b.multi) return { added: [], existing: [], plain: [] };
+  if (!b || !b.multi) return { added: [], existing: [], plain: [], stale: [] };
   const had = new Set(a?.gaps ?? []);
   const hadPlain = new Set(a?.plain ?? []);
   return {
     added: b.gaps.filter((g) => !had.has(g)),
     existing: b.gaps.filter((g) => had.has(g)),
     plain: b.plain.filter((p) => !hadPlain.has(p)),
+    stale: await staleOf(before, after),
   };
 }
 
-/** The report as the lines `check` adds; `fails` when the candidate added a gap. */
-export function describeWordsReport(r: WordsReport): { fails: boolean; text: string } {
+/**
+ * The report as the lines `check` adds; `fails` when the candidate added a gap, `warns` when it
+ * changed a map's own words and left another language behind.
+ */
+export function describeWordsReport(r: WordsReport): { fails: boolean; warns: boolean; text: string } {
   const lines: string[] = [];
+  if (r.stale.length) {
+    lines.push(
+      `These changed in the app's own language only — the other languages still say the old thing:\n${r.stale.map((s) => `- ${s}`).join("\n")}\n` +
+        "Change them too, so every language says the new thing. If the person asked to change only one language, send the same edits again unchanged.",
+    );
+  }
   if (r.added.length) lines.push(`Translations this change leaves incomplete (give every language):\n${r.added.map((g) => `- ${g}`).join("\n")}`);
   if (r.existing.length) lines.push(`Already incomplete before this change (fine to leave): ${r.existing.length} — ${r.existing.slice(0, 5).join("; ")}${r.existing.length > 5 ? "; …" : ""}`);
   if (r.plain.length) lines.push(`New plain strings read the same in every language — right for "OK" or a name, otherwise give a map: ${r.plain.slice(0, 8).join("; ")}`);
-  return { fails: r.added.length > 0, text: lines.join("\n") };
+  return { fails: r.added.length > 0, warns: r.stale.length > 0, text: lines.join("\n") };
 }

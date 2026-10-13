@@ -11,7 +11,16 @@
 //   one-lang    "Make the Polish say 'Ilość' instead": only pl of that slot changed
 //   polish-ask  a request in Polish on an en-default app: new words in BOTH en and pl; default stays en
 //
-// A translation must also show no data change: `schemaVersion` does not move.
+// A translation, a rename and a one-language edit must show no data change: `schemaVersion` does not
+// move. Adding a field IS a data change — docs/06: the migration is keyed off `version`, and the
+// prompt bumps `schemaVersion` with it — so add-field and polish-ask may bump it.
+//
+// Words that are the same in every language on purpose are not held against a translation (docs/20
+// §10): units in a `unit` slot ("kg", "kcal", "$/kg"), and any word of three letters or fewer with no
+// space ("g", "ml", "min"). Placeholders are examples ("Shakshuka", a dish's own name), so they are
+// left out of the "really translated" count, though they still need the language. That count is a
+// cheap proxy for "it actually translated": under 10% of the PHRASES may read the same, and under 25%
+// of all the words — single words are often the same on purpose ("Name", "Winter" in German).
 
 import { humanizeKey, localize, wordGaps, wordSlots, wordsPathText, type AppDefinition, type Field, type Words } from "potyro";
 import { readSourceWords, sourceLanguages, sourceSlots, tMapGaps } from "./source-words.js";
@@ -82,6 +91,12 @@ function asRead(def: AppDefinition): unknown {
   };
 }
 
+/** A word that reads the same in every language on purpose: a unit, or a token of three letters or fewer. */
+export function sameEverywhere(path: string, text: string): boolean {
+  const t = text.trim();
+  return (/\.unit$/.test(path) && /^\S{1,8}$/.test(t)) || /^\S{1,3}$/.test(t);
+}
+
 const text = (w: Words | undefined, lang: string): string | undefined => (w === undefined ? undefined : typeof w === "string" ? w : w[lang]);
 
 /** Score one case: `before` and `after` are sources; `load` bundles and validates one. */
@@ -102,7 +117,9 @@ export async function scoreTranslate(c: TranslateCase, before: string, after: st
     check("compiles and validates", false, e instanceof Error ? e.message.slice(0, 300) : String(e));
     return { id: c.id, passed: false, checks };
   }
-  check("schemaVersion did not move", a.schemaVersion === b.schemaVersion, `${a.schemaVersion} → ${b.schemaVersion}`);
+  if (c.kind === "translate" || c.kind === "rename" || c.kind === "one-lang") {
+    check("schemaVersion did not move", a.schemaVersion === b.schemaVersion, `${a.schemaVersion} → ${b.schemaVersion}`);
+  }
   check("its own language did not change", (a.language ?? "en") === (b.language ?? a.language ?? "en"), `${a.language} → ${b.language}`);
 
   const sw = await readSourceWords(after);
@@ -117,7 +134,9 @@ export async function scoreTranslate(c: TranslateCase, before: string, after: st
       check(`${lang} is one of its languages`, langs.includes(lang), langs.join(", "));
       // Asked for a whole language, a plain string is a word not translated — unless it holds no words
       // (an emoji, "2 × 1 l", a unit).
-      const untranslated = [...after_].filter(([, w]) => (typeof w === "string" ? /\p{L}{2,}/u.test(w) && !w.startsWith("__potyro") : !(lang in w))).map(([p]) => p);
+      const untranslated = [...after_]
+        .filter(([p, w]) => (typeof w === "string" ? /\p{L}{2,}/u.test(w) && !w.startsWith("__potyro") && !sameEverywhere(p, w) : !(lang in w)))
+        .map(([p]) => p);
       // A field or option that leans on its key reads in English whatever the language: "Bought by".
       for (const s of sw ? sourceSlots(sw) : []) if (s.suggested !== undefined && /\p{L}{2,}/u.test(s.suggested)) untranslated.push(`${s.path} (no words; shows ${JSON.stringify(s.suggested)})`);
       check(`every words slot has ${lang}`, untranslated.length === 0, untranslated.slice(0, 5).join(", "));
@@ -126,16 +145,31 @@ export async function scoreTranslate(c: TranslateCase, before: string, after: st
       const strip = (d: AppDefinition): string => plainJson(asRead(localize(d, own) as AppDefinition));
       check(`in ${own} it reads exactly as before`, strip(a) === strip(b));
       check("its shape is unchanged", shapeOf(a) === shapeOf(b));
+      // A phrase that reads the same in both is untranslated; a single word often is a cognate
+      // ("Name", "Winter", "Wiki" in German). So: under 10% of the phrases, under 25% of everything.
       let same = 0;
       let total = 0;
-      for (const [, w] of after_) {
-        if (typeof w === "string") continue;
+      let samePhrases = 0;
+      let phrases = 0;
+      const equal: string[] = [];
+      for (const [p, w] of after_) {
+        if (typeof w === "string" || /\.placeholder$/.test(p)) continue;
         const there = w[lang];
-        if (there === undefined) continue;
+        if (there === undefined || (w[own] !== undefined && sameEverywhere(p, w[own]!))) continue;
+        const phrase = /\s/.test((w[own] ?? "").trim());
         total += 1;
-        if (there === w[own]) same += 1;
+        if (phrase) phrases += 1;
+        if (there === w[own]) {
+          same += 1;
+          if (phrase) samePhrases += 1;
+          equal.push(JSON.stringify(there));
+        }
       }
-      check(`it really translated (under 10% of ${lang} equal ${own})`, total > 0 && same / total < 0.1, `${same} of ${total}`);
+      check(
+        `it really translated (under 10% of phrases and 25% of all ${lang} words equal ${own})`,
+        total > 0 && (phrases === 0 || samePhrases / phrases < 0.1) && same / total < 0.25,
+        `${samePhrases} of ${phrases} phrases, ${same} of ${total} in all${equal.length ? `: ${equal.slice(0, 8).join(", ")}` : ""}`,
+      );
       break;
     }
     case "rename":

@@ -112,6 +112,6 @@ describe("completeness — what check adds (docs/20 §5.1)", () => {
   });
 
   it("a one-language app has nothing to report", async () => {
-    expect(await wordsReport(SOURCE, SOURCE.replace('"Item"', '"Thing"'))).toEqual({ added: [], existing: [], plain: [] });
+    expect(await wordsReport(SOURCE, SOURCE.replace('"Item"', '"Thing"'))).toEqual({ added: [], existing: [], plain: [], stale: [] });
   });
 });
