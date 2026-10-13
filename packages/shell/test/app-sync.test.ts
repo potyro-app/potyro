@@ -90,6 +90,51 @@ describe("detecting an update", () => {
   });
 });
 
+describe("the app's code beyond its source travels with it (#281)", () => {
+  const LOCK = {
+    "https://esm.sh/fancy-sum@1.2.3?bundle": { file: `.modules/${"a".repeat(64)}.js`, integrity: "sha256-AAAA", size: 120 },
+    "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-BBBB", size: 24 },
+  };
+  const UPGRADED = { ...LOCK, "https://esm.sh/fancy-sum@1.2.3?bundle": { ...LOCK["https://esm.sh/fancy-sum@1.2.3?bundle"], integrity: "sha256-CCCC" } };
+
+  it("publishes the lock and the app's own modules beside the source", async () => {
+    const s = await store();
+    await publishAppSource(s, { ...OLD, lock: LOCK, modules: { "src/plan.ts": "export const weeks = 12;\n" } });
+    const read = await readPublishedApp(s);
+    expect(read?.lock).toEqual(LOCK);
+    expect(read?.modules).toEqual({ "src/plan.ts": "export const weeks = 12;\n" });
+  });
+
+  it("reads a copy published before the lock travelled as an app with no code beyond its source", async () => {
+    const s = await store();
+    await s.kvSet("__appSource", JSON.stringify(OLD));
+    const read = await readPublishedApp(s);
+    expect(read?.source).toBe("v1");
+    expect(read?.lock).toBeUndefined();
+  });
+
+  it("drops a broken lock and keeps the app", async () => {
+    const s = await store();
+    await s.kvSet("__appSource", JSON.stringify({ ...OLD, lock: { nope: 1 } }));
+    expect((await readPublishedApp(s))?.source).toBe("v1");
+    expect((await readPublishedApp(s))?.lock).toBeUndefined();
+  });
+
+  it("offers an update that changed only a library", async () => {
+    const s = await store();
+    await publishAppSource(s, { ...NEW, source: "v1", lock: UPGRADED });
+    expect((await pendingAppUpdate(s, { ...OLD, lock: LOCK }))?.lock).toEqual(UPGRADED);
+  });
+
+  it("does not nag about a copy whose publisher did not send a lock", async () => {
+    // An older client publishes no lock. That is not a change to the libraries, and treating it as
+    // one would offer the same "update" on every open.
+    const s = await store();
+    await publishAppSource(s, { ...OLD, updatedAt: NEW.updatedAt });
+    expect(await pendingAppUpdate(s, { ...OLD, lock: LOCK })).toBeNull();
+  });
+});
+
 describe("the schema gate", () => {
   const at = (v: number, ts: string) => ({ source: `schemaVersion: ${v}`, name: "Todo", updatedAt: ts });
 
