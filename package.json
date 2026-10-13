@@ -13,6 +13,8 @@
     "typecheck": "pnpm -r typecheck && pnpm typecheck:spikes",
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
+    "lint:i18n": "node scripts/check-i18n.mjs",
+    "i18n:extract": "pnpm --filter @potyro/i18n exec lingui extract",
     "ci:local": "node scripts/ci-local.mjs",
     "ship": "node scripts/ship.mjs",
     "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @potyro/shell dev\"",

@@ -102,6 +102,13 @@ pnpm --filter @potyro/generator gen:reference
 # Studio's model searches is generated from them, and test/corpus.test.ts fails while it is stale (#262)
 pnpm --filter @potyro/generator gen:corpus
 
+# Potyro's own words are in catalogs (#297): user-facing text in shell/views goes through
+# t`…` / <Trans> (Lingui macros), then the catalogs are regenerated — packages/i18n's
+# test/catalog.test.ts fails while they are stale. lint:i18n errors on raw text in extracted files
+# (CLEAN in scripts/check-i18n.mjs) and warns elsewhere; dev offers a pseudo-language under You.
+pnpm i18n:extract
+pnpm lint:i18n
+
 # does changing an app that holds records keep the records? (docs/12 §8)
 pnpm --filter @potyro/generator eval:modify:fixture   # no model, no money — sample review sheet
 pnpm --filter @potyro/generator eval:modify -- --only todo-groups --max-calls 5 --max-cost 6

@@ -1,0 +1,659 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 20:18+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: result.failed.length
+#: ../shell/src/backup-switch.tsx
+msgid "{0, plural, one {# app could not be moved: {which}.} other {# apps could not be moved: {which}.}}"
+msgstr "{0, plural, one {# app could not be moved: {which}.} other {# apps could not be moved: {which}.}}"
+
+#. placeholder {0}: a.due
+#: ../shell/src/launcher-store.ts
+msgid "{0, plural, one {# due} other {# due}}"
+msgstr "{0, plural, one {# due} other {# due}}"
+
+#. placeholder {0}: a.chat
+#: ../shell/src/launcher-store.ts
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr "{0, plural, one {# message} other {# messages}}"
+
+#. placeholder {0}: result.records
+#: ../shell/src/backup-switch.tsx
+msgid "{0, plural, one {# record} other {# records}}"
+msgstr "{0, plural, one {# record} other {# records}}"
+
+#. placeholder {0}: result.moved
+#: ../shell/src/backup-switch.tsx
+msgid "{0, plural, one {Moved # app} other {Moved # apps}}"
+msgstr "{0, plural, one {Moved # app} other {Moved # apps}}"
+
+#. placeholder {0}: result.rows
+#: ../shell/src/storage-report.tsx
+msgid "{0, plural, one {Read # back} other {Read # back}}"
+msgstr "{0, plural, one {Read # back} other {Read # back}}"
+
+#: ../shell/src/backup-switch.tsx
+msgid "{apps} ({records})."
+msgstr "{apps} ({records})."
+
+#: ../shell/src/launcher.tsx
+msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
+msgstr "{count, plural, one {Shared with # person} other {Shared with # people}}"
+
+#. A language in the picker whose translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "{name} (draft)"
+msgstr "{name} (draft)"
+
+#: ../shell/src/launcher.tsx
+msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
+msgstr "{records, plural, one {Moved # record.} other {Moved # records.}}"
+
+#: ../shell/src/backup-switch.tsx
+msgid "{waiting, plural, one {# app lives only on this device. If it is lost, so is the app.} other {# apps live only on this device. If it is lost, so are they.}}"
+msgstr "{waiting, plural, one {# app lives only on this device. If it is lost, so is the app.} other {# apps live only on this device. If it is lost, so are they.}}"
+
+#: ../shell/src/backup-switch.tsx
+msgid "{waiting, plural, one {# app still lives only on this device and will be copied there now.} other {# apps still live only on this device and will be copied there now.}}"
+msgstr "{waiting, plural, one {# app still lives only on this device and will be copied there now.} other {# apps still live only on this device and will be copied there now.}}"
+
+#: ../shell/src/storage-report.tsx
+msgid "a database in a worker (the fast one)"
+msgstr "a database in a worker (the fast one)"
+
+#: ../shell/src/storage-report.tsx
+msgid "a database on the main thread"
+msgstr "a database on the main thread"
+
+#: ../shell/src/language-picker.tsx
+msgid "A draft translation was written by a model and may read oddly in places. It is being improved."
+msgstr "A draft translation was written by a model and may read oddly in places. It is being improved."
+
+#: ../shell/src/backup-switch.tsx
+msgid "A new device signed in with your words can bring them all back."
+msgstr "A new device signed in with your words can bring them all back."
+
+#: ../shell/src/identity-panel.tsx
+msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
+msgstr "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
+
+#: ../shell/src/storage-report.tsx
+msgid "a synced database in a worker (the fast one)"
+msgstr "a synced database in a worker (the fast one)"
+
+#: ../shell/src/identity-panel.tsx
+msgid "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://."
+msgstr "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://."
+
+#. Launcher sort: by name; use your alphabet's first and last letter
+#: ../shell/src/launcher-order.ts
+msgid "A–Z"
+msgstr "A–Z"
+
+#. placeholder {0}: app.name
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Actions for {0}"
+msgstr "Actions for {0}"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Add a device"
+msgstr "Add a device"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Add an app"
+msgstr "Add an app"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Add an app someone sent you"
+msgstr "Add an app someone sent you"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Advanced — sync relay, identity id"
+msgstr "Advanced — sync relay, identity id"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Anything you make later goes too. The relay only ever sees encrypted data."
+msgstr "Anything you make later goes too. The relay only ever sees encrypted data."
+
+#: ../shell/src/launcher.tsx
+msgid "App launcher"
+msgstr "App launcher"
+
+#: ../shell/src/launcher.tsx
+msgid "Apps"
+msgstr "Apps"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Back up my apps"
+msgstr "Back up my apps"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Backup"
+msgstr "Backup"
+
+#: ../shell/src/launcher.tsx
+msgid "Before you share “{name}” — two people using it at once can lose each other’s work:"
+msgstr "Before you share “{name}” — two people using it at once can lose each other’s work:"
+
+#: ../shell/src/storage-report.tsx
+msgid "browser local storage (slow, and small)"
+msgstr "browser local storage (slow, and small)"
+
+#: ../shell/src/launcher.tsx
+msgid "Bundled examples"
+msgstr "Bundled examples"
+
+#: ../shell/src/launcher-order.ts
+msgid "By name"
+msgstr "By name"
+
+#: ../shell/src/storage-report.tsx
+msgid "Change one thing"
+msgstr "Change one thing"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Change relay"
+msgstr "Change relay"
+
+#: ../shell/src/storage-report.tsx
+msgid "Check storage speed"
+msgstr "Check storage speed"
+
+#: ../shell/src/launcher.tsx
+msgid "choose an app"
+msgstr "choose an app"
+
+#: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher.tsx
+msgid "Close"
+msgstr "Close"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Close launcher"
+msgstr "Close launcher"
+
+#. placeholder {0}: d.title
+#: ../shell/src/draft-strip.tsx
+msgid "Continue “{0}”"
+msgstr "Continue “{0}”"
+
+#: ../shell/src/launcher.tsx
+msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
+msgstr "Copied to “{copyName}”. It starts empty — the app, not the data."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Copy"
+msgstr "Copy"
+
+#: ../shell/src/launcher.tsx
+msgid "Could not add it back: {reason}"
+msgstr "Could not add it back: {reason}"
+
+#: ../shell/src/launcher.tsx
+msgid "Could not change sync: {reason}"
+msgstr "Could not change sync: {reason}"
+
+#: ../shell/src/storage-report.tsx
+msgid "Could not measure: {failed}"
+msgstr "Could not measure: {failed}"
+
+#: ../shell/src/launcher.tsx
+msgid "Create “{typed}”"
+msgstr "Create “{typed}”"
+
+#. Tile menu: this app's records, on the Data page
+#: ../shell/src/launcher.tsx
+msgid "Data"
+msgstr "Data"
+
+#: ../shell/src/draft-strip.tsx
+#: ../shell/src/draft-strip.tsx
+#: ../shell/src/launcher.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#. placeholder {0}: d.title
+#: ../shell/src/draft-strip.tsx
+msgid "Delete “{0}”"
+msgstr "Delete “{0}”"
+
+#: ../shell/src/draft-strip.tsx
+msgid "Delete “{title}”?"
+msgstr "Delete “{title}”?"
+
+#: ../shell/src/launcher.tsx
+msgid "Describe a new app"
+msgstr "Describe a new app"
+
+#: ../shell/src/launcher.tsx
+msgid "Describe an app"
+msgstr "Describe an app"
+
+#: ../shell/src/launcher.tsx
+msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
+msgstr "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
+
+#. Tag beside a language in the picker: its translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "draft"
+msgstr "draft"
+
+#: ../shell/src/launcher.tsx
+msgid "Duplicate"
+msgstr "Duplicate"
+
+#: ../shell/src/launcher.tsx
+msgid "Edit tile"
+msgstr "Edit tile"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
+msgstr "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
+
+#: ../shell/src/launcher.tsx
+msgid "Everything else"
+msgstr "Everything else"
+
+#: ../shell/src/launcher.tsx
+msgid "Examples to try"
+msgstr "Examples to try"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Find an app"
+msgstr "Find an app"
+
+#: ../shell/src/launcher.tsx
+msgid "History"
+msgstr "History"
+
+#. Storage report: how much this site stores on the device
+#: ../shell/src/storage-report.tsx
+msgid "Holding"
+msgstr "Holding"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Home"
+msgstr "Home"
+
+#. placeholder {0}: me.id
+#: ../shell/src/identity-panel.tsx
+msgid "Identity <0>{0}</0>"
+msgstr "Identity <0>{0}</0>"
+
+#: ../shell/src/storage-report.tsx
+msgid "IndexedDB, rewritten whole on every save (slow)"
+msgstr "IndexedDB, rewritten whole on every save (slow)"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
+msgstr "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
+
+#. Section heading: which language Potyro is shown in
+#: ../shell/src/identity-panel.tsx
+msgid "Language"
+msgstr "Language"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Leave it blank to use this site’s own relay."
+msgstr "Leave it blank to use this site’s own relay."
+
+#. The panel for light/dark appearance and accent colour
+#: ../shell/src/launcher.tsx
+msgid "Look"
+msgstr "Look"
+
+#: ../shell/src/launcher.tsx
+msgid "Look — appearance and colour"
+msgstr "Look — appearance and colour"
+
+#: ../shell/src/launcher.tsx
+msgid "Make the app you need"
+msgstr "Make the app you need"
+
+#. Launcher sort: your own order
+#: ../shell/src/launcher-order.ts
+msgid "Manual"
+msgstr "Manual"
+
+#: ../shell/src/language-picker.tsx
+msgid "Match this device"
+msgstr "Match this device"
+
+#: ../shell/src/storage-report.tsx
+msgid "Measuring…"
+msgstr "Measuring…"
+
+#. placeholder {0}: progress.name
+#. placeholder {1}: progress.done
+#. placeholder {2}: progress.total
+#: ../shell/src/backup-switch.tsx
+msgid "Moving {0} — {1} of {2}"
+msgstr "Moving {0} — {1} of {2}"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Moving…"
+msgstr "Moving…"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "New app"
+msgstr "New app"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "No app called “{typed}”."
+msgstr "No app called “{typed}”."
+
+#: ../shell/src/launcher.tsx
+msgid "No apps yet — press New app to make one."
+msgstr "No apps yet — press New app to make one."
+
+#: ../shell/src/identity-panel.tsx
+msgid "No name yet"
+msgstr "No name yet"
+
+#: ../shell/src/identity-panel.tsx
+msgid "No relay: synced apps stay on this device."
+msgstr "No relay: synced apps stay on this device."
+
+#: ../shell/src/launcher.tsx
+msgid "Not now"
+msgstr "Not now"
+
+#: ../shell/src/storage-report.tsx
+msgid "not opened yet"
+msgstr "not opened yet"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Nothing is kept anywhere but this device."
+msgstr "Nothing is kept anywhere but this device."
+
+#: ../shell/src/launcher.tsx
+msgid "Nothing is wrong with it on your own. Share anyway?"
+msgstr "Nothing is wrong with it on your own. Share anyway?"
+
+#. Tile menu: open this app
+#: ../shell/src/launcher.tsx
+msgid "Open"
+msgstr "Open"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Paste the words from your other device."
+msgstr "Paste the words from your other device."
+
+#: ../shell/src/identity-panel.tsx
+msgid "People you share an app with see you as “Me”."
+msgstr "People you share an app with see you as “Me”."
+
+#: ../shell/src/launcher.tsx
+msgid "Pin"
+msgstr "Pin"
+
+#: ../shell/src/launcher.tsx
+msgid "Pinned"
+msgstr "Pinned"
+
+#. Launcher sort: by how often and how lately you open an app
+#: ../shell/src/launcher-order.ts
+msgid "Recent"
+msgstr "Recent"
+
+#: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher.tsx
+msgid "Rename"
+msgstr "Rename"
+
+#: ../shell/src/launcher.tsx
+msgid "Rename app"
+msgstr "Rename app"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Runs in a sandbox"
+msgstr "Runs in a sandbox"
+
+#: ../shell/src/storage-report.tsx
+msgid "Save one thing"
+msgstr "Save one thing"
+
+#: ../shell/src/launcher.tsx
+msgid "Send this link. Whoever opens it joins your app and its data."
+msgstr "Send this link. Whoever opens it joins your app and its data."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Set a name"
+msgstr "Set a name"
+
+#: ../shell/src/launcher.tsx
+msgid "Share"
+msgstr "Share"
+
+#: ../shell/src/launcher.tsx
+msgid "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
+msgstr "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
+
+#. Mark on a launcher tile: the app's data is shared with other people
+#: ../shell/src/launcher.tsx
+msgid "shared"
+msgstr "shared"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Show them now?"
+msgstr "Show them now?"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Shown to the people you share an app with."
+msgstr "Shown to the people you share an app with."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Shows 24 words to type on the other device. They are the only copy — keep them safe."
+msgstr "Shows 24 words to type on the other device. They are the only copy — keep them safe."
+
+#: ../shell/src/language-picker.tsx
+msgid "Shows text that missed the catalogs (dev only)"
+msgstr "Shows text that missed the catalogs (dev only)"
+
+#: ../shell/src/launcher.tsx
+msgid "Sort apps"
+msgstr "Sort apps"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Stop backing up"
+msgstr "Stop backing up"
+
+#: ../shell/src/backup-switch.tsx
+msgid "Stop putting new apps on the relay?"
+msgstr "Stop putting new apps on the relay?"
+
+#. Storage report: which kind of storage this device ended up on
+#: ../shell/src/storage-report.tsx
+msgid "Storage"
+msgstr "Storage"
+
+#: ../shell/src/storage-report.tsx
+msgid "Storage speed"
+msgstr "Storage speed"
+
+#: ../shell/src/launcher.tsx
+msgid "switch app"
+msgstr "switch app"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "Switch app"
+msgstr "Switch app"
+
+#: ../shell/src/launcher.tsx
+msgid "Sync is off."
+msgstr "Sync is off."
+
+#: ../shell/src/launcher.tsx
+msgid "Sync is on."
+msgstr "Sync is on."
+
+#. Mark on a launcher tile: the app syncs to your other devices
+#: ../shell/src/launcher.tsx
+msgid "synced"
+msgstr "synced"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Synced apps meet through this site’s relay. It only ever sees encrypted data — it cannot read your records."
+msgstr "Synced apps meet through this site’s relay. It only ever sees encrypted data — it cannot read your records."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records."
+msgstr "Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records."
+
+#: ../shell/src/launcher.tsx
+msgid "Synced to your other devices"
+msgstr "Synced to your other devices"
+
+#: ../shell/src/identity-panel.tsx
+msgid "That is not a websocket URL. It needs to start with wss:// or ws://."
+msgstr "That is not a websocket URL. It needs to start with wss:// or ws://."
+
+#: ../shell/src/language-picker.tsx
+msgid "That language could not be loaded. Connect once and try again."
+msgstr "That language could not be loaded. Connect once and try again."
+
+#: ../shell/src/backup-switch.tsx
+msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
+msgstr "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
+
+#: ../shell/src/draft-strip.tsx
+msgid "The conversation goes. Nothing was made from it yet."
+msgstr "The conversation goes. Nothing was made from it yet."
+
+#: ../shell/src/backup-switch.tsx
+msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
+msgstr "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
+
+#: ../shell/src/launcher.tsx
+msgid "This app"
+msgstr "This app"
+
+#: ../shell/src/identity-panel.tsx
+msgid "This device"
+msgstr "This device"
+
+#: ../shell/src/identity-panel.tsx
+msgid "This is my second device"
+msgstr "This is my second device"
+
+#: ../shell/src/identity-panel.tsx
+msgid "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
+msgstr "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
+
+#: ../shell/src/launcher.tsx
+msgid "Turn off sync for “{name}”? Its data will be copied back to local-only storage."
+msgstr "Turn off sync for “{name}”? Its data will be copied back to local-only storage."
+
+#: ../shell/src/launcher.tsx
+msgid "Turn on sync for “{name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off."
+msgstr "Turn on sync for “{name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off."
+
+#: ../shell/src/launcher.tsx
+msgid "Turn sync off"
+msgstr "Turn sync off"
+
+#: ../shell/src/launcher.tsx
+msgid "Turn sync on"
+msgstr "Turn sync on"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Type the words from your first device to bring its apps here."
+msgstr "Type the words from your first device to bring its apps here."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe."
+msgstr "Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe."
+
+#. Launcher: Studio conversations that have not made an app yet
+#: ../shell/src/draft-strip.tsx
+msgid "Unfinished"
+msgstr "Unfinished"
+
+#: ../shell/src/launcher.tsx
+msgid "Unpin"
+msgstr "Unpin"
+
+#: ../shell/src/identity-panel.tsx
+msgid "What should people you share with see you as?"
+msgstr "What should people you share with see you as?"
+
+#: ../shell/src/identity-panel.tsx
+msgid "What should the people you share with see you as?"
+msgstr "What should the people you share with see you as?"
+
+#: ../shell/src/launcher-order.ts
+msgid "What you open often and lately, first"
+msgstr "What you open often and lately, first"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Which relay should this device use?"
+msgstr "Which relay should this device use?"
+
+#. Heading of the panel about the person using Potyro and their devices
+#: ../shell/src/identity-panel.tsx
+msgid "You"
+msgstr "You"
+
+#: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+msgid "You and your devices"
+msgstr "You and your devices"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Your apps and data live here. Add another device to use them there too."
+msgstr "Your apps and data live here. Add another device to use them there too."
+
+#: ../shell/src/backup-switch.tsx
+msgid "Your apps are on the relay. Anything you make later goes too."
+msgstr "Your apps are on the relay. Anything you make later goes too."
+
+#: ../shell/src/backup-switch.tsx
+msgid "Your apps on this account"
+msgstr "Your apps on this account"
+
+#: ../shell/src/launcher.tsx
+msgid "Your data"
+msgstr "Your data"
+
+#: ../shell/src/launcher.tsx
+msgid "Your data — every app’s records"
+msgstr "Your data — every app’s records"
+
+#: ../shell/src/identity-panel.tsx
+msgid "Your data now lives in more than one place."
+msgstr "Your data now lives in more than one place."
+
+#: ../shell/src/identity-panel.tsx
+msgid "Your devices"
+msgstr "Your devices"
+
+#: ../shell/src/launcher-order.ts
+msgid "Your order: drag tiles, or Alt+arrows"
+msgstr "Your order: drag tiles, or Alt+arrows"

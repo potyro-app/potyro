@@ -8,6 +8,7 @@ export { getLaunchUrl, onUrlOpen, launchUrlFrom, listenForUrls, type CapacitorAp
 export { maybeCreateNativeVault, vaultOver, type NativeSecretVault } from "./secure-vault.js";
 export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHttp } from "./native-http.js";
 export { listenForShares, textOfShare, type SharedText } from "./share-target.js";
+export { systemLanguages } from "./system-locale.js";
 
 export {
   CapacitorCapabilities,

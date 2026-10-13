@@ -7,13 +7,16 @@
 // caller passes `now`, which is how the launcher keeps the order still while you are looking at it
 // (it passes the time it mounted, not the time of each render).
 
+import { msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
 import type { InstalledApp, LauncherEntry } from "./launcher-store.js";
 
 export type SortMode = "recent" | "az" | "manual";
-export const SORT_MODES: readonly { id: SortMode; label: string; title: string }[] = [
-  { id: "recent", label: "Recent", title: "What you open often and lately, first" },
-  { id: "az", label: "A–Z", title: "By name" },
-  { id: "manual", label: "Manual", title: "Your order: drag tiles, or Alt+arrows" },
+/** Descriptors, not strings: a module constant is read once, and the words must follow a language switch. */
+export const SORT_MODES: readonly { id: SortMode; label: MessageDescriptor; title: MessageDescriptor }[] = [
+  { id: "recent", label: msg({ message: "Recent", comment: "Launcher sort: by how often and how lately you open an app" }), title: msg`What you open often and lately, first` },
+  { id: "az", label: msg({ message: "A–Z", comment: "Launcher sort: by name; use your alphabet's first and last letter" }), title: msg`By name` },
+  { id: "manual", label: msg({ message: "Manual", comment: "Launcher sort: your own order" }), title: msg`Your order: drag tiles, or Alt+arrows` },
 ];
 
 const HOUR = 3_600_000;

@@ -7,6 +7,9 @@
 // (?user=<id>) — boot() routes on that.
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useLocale } from "@potyro/i18n";
 import { shellDialogs } from "./dialog.js";
 import { renameUserApp, type UserApp } from "./user-apps.js";
 import { duplicateApp } from "./app-modules.js";
@@ -72,6 +75,7 @@ interface LauncherProps {
  * at all: when every tile said TRUSTED the word carried no information.
  */
 function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity: ReturnType<typeof tileIdentity>; attention?: number }) {
+  const { t } = useLingui();
   return (
     <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden={app.trusted || undefined}>
       {identity.glyph}
@@ -83,7 +87,7 @@ function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity:
         </span>
       ) : null}
       {!app.trusted ? (
-        <span className="k-launch-shield" role="img" aria-label="Runs in a sandbox" title="Runs in a sandbox">
+        <span className="k-launch-shield" role="img" aria-label={t`Runs in a sandbox`} title={t`Runs in a sandbox`}>
           🛡
         </span>
       ) : null}
@@ -92,13 +96,15 @@ function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity:
 }
 
 function SyncMark({ app, compact }: { app: InstalledApp; compact?: boolean }) {
+  const { t } = useLingui();
   if (!app.sync) return null;
   const others = app.people.length > 1 ? app.people : [];
-  const label = others.length ? `Shared with ${others.length} people` : "Synced to your other devices";
+  const count = others.length;
+  const label = count ? plural(count, { one: "Shared with # person", other: "Shared with # people" }) : t`Synced to your other devices`;
   return (
     <span className="k-launch-mark" data-shared={others.length ? "true" : undefined} title={label} aria-label={label}>
       <span aria-hidden>⟳</span>
-      {compact ? null : <span aria-hidden>{others.length ? "shared" : "synced"}</span>}
+      {compact ? null : <span aria-hidden>{others.length ? t({ message: "shared", comment: "Mark on a launcher tile: the app's data is shared with other people" }) : t({ message: "synced", comment: "Mark on a launcher tile: the app syncs to your other devices" })}</span>}
       {others.length ? (
         <span className="k-launch-faces" aria-hidden>
           {others.slice(0, 3).map((p) => (
@@ -115,6 +121,7 @@ function SyncMark({ app, compact }: { app: InstalledApp; compact?: boolean }) {
 }
 
 function Tile({ app, active, onOpen, now }: { app: InstalledApp; active: boolean; onOpen: () => void; now: number }) {
+  useLocale(); // the attention words below are read in the active language
   const identity = tileIdentity(app);
   const attention = attentionOf(app.entry, now);
   return (
@@ -173,6 +180,7 @@ function TileMenu({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useLingui();
   const setOpen = (next: boolean | ((v: boolean) => boolean)): void => onOpenChange(typeof next === "function" ? next(open) : next);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -216,7 +224,7 @@ function TileMenu({
         ref={buttonRef}
         type="button"
         className="k-tile-menu-btn"
-        aria-label={`Actions for ${app.name}`}
+        aria-label={t`Actions for ${app.name}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -226,23 +234,23 @@ function TileMenu({
       {open ? (
         <>
           <div className="k-tile-menu-scrim" onClick={() => close(false)} />
-          <div ref={menuRef} className="k-tile-menu" role="menu" aria-label={`Actions for ${app.name}`} onKeyDown={onMenuKey}>
+          <div ref={menuRef} className="k-tile-menu" role="menu" aria-label={t`Actions for ${app.name}`} onKeyDown={onMenuKey}>
             {/* The menu already says whose it is (aria-label); the title is for the eye. */}
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
             {attentionOf(app.entry, Date.now()).total ? (
               <div className="k-tile-menu-note">{describeAttention(attentionOf(app.entry, Date.now()))}</div>
             ) : null}
-            {item("open", "Open", onOpen)}
-            {item("pin", app.entry.pinned ? "Unpin" : "Pin", onPin)}
-            {item("edit-tile", "Edit tile", user.onEditTile)}
-            {item("history", "History", user.onHistory)}
-            {item("data", "Data", user.onData)}
-            {item("sync", app.sync ? "Turn sync off" : "Turn sync on", user.onSync, { disabled: busy })}
-            {item("share", "Share", user.onShare)}
-            {item("rename", "Rename", user.onRename)}
-            {item("duplicate", "Duplicate", user.onDuplicate)}
+            {item("open", t({ message: "Open", comment: "Tile menu: open this app" }), onOpen)}
+            {item("pin", app.entry.pinned ? t`Unpin` : t`Pin`, onPin)}
+            {item("edit-tile", t`Edit tile`, user.onEditTile)}
+            {item("history", t`History`, user.onHistory)}
+            {item("data", t({ message: "Data", comment: "Tile menu: this app's records, on the Data page" }), user.onData)}
+            {item("sync", app.sync ? t`Turn sync off` : t`Turn sync on`, user.onSync, { disabled: busy })}
+            {item("share", t`Share`, user.onShare)}
+            {item("rename", t`Rename`, user.onRename)}
+            {item("duplicate", t`Duplicate`, user.onDuplicate)}
             <div className="k-tile-menu-sep" role="separator" />
-            {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
+            {item("delete", t`Delete`, user.onDelete, { className: "k-danger" })}
           </div>
         </>
       ) : null}
@@ -255,26 +263,29 @@ const WELCOME_KEY = "potyro:welcome:dismissed";
 /** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
 /** Light or dark, and the colour the shell wears. A device thing, so it lives with the device. */
 function DataButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
   return (
-    <button type="button" className="k-add k-data-btn" aria-label="Your data — every app’s records" title="Your data" onClick={onClick}>
+    <button type="button" className="k-add k-data-btn" aria-label={t`Your data — every app’s records`} title={t`Your data`} onClick={onClick}>
       <DatabaseIcon size="1.15em" />
     </button>
   );
 }
 
 function LookButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
   return (
-    <button type="button" className="k-add k-look-btn" aria-label="Look — appearance and colour" title="Look" onClick={onClick}>
+    <button type="button" className="k-add k-look-btn" aria-label={t`Look — appearance and colour`} title={t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" })} onClick={onClick}>
       <span aria-hidden>◐</span>
     </button>
   );
 }
 
 function YouButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
   const me = peekIdentity();
   const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
   return (
-    <button type="button" className="k-launch-you" aria-label="You and your devices" onClick={onClick} style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
+    <button type="button" className="k-launch-you" aria-label={t`You and your devices`} onClick={onClick} style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
       {me && named ? personInitials(me.name, me.id) : <span aria-hidden>⌾</span>}
     </button>
   );
@@ -308,6 +319,7 @@ function takeAddLink(): string | null {
 }
 
 export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, onClose }: LauncherProps) {
+  const { t } = useLingui();
   // One live list from the launcher store (#81). A delete, rename or sync flip here, a save in the
   // Studio, an edit in another tab — every one of them writes a registry, and every write reaches
   // this render. Nothing is read once and kept (#78).
@@ -355,7 +367,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // name on the tile and the app's own name; on a desktop, typing with nothing focused starts it,
   // Enter opens the first match, Escape clears. Nothing found offers to create what was typed.
   const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
+  const typed = query.trim();
+  const q = typed.toLowerCase();
   const matches = (a: InstalledApp): boolean => !q || a.name.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q);
   const pinned = ordered.pinned.filter(matches);
   const rest = ordered.rest.filter(matches);
@@ -468,7 +481,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     try {
       await addExample(id, { trusted: true, now: new Date().toISOString() });
     } catch (e) {
-      await shellDialogs.confirm(`Could not add it back: ${e instanceof Error ? e.message : String(e)}`);
+      const reason = e instanceof Error ? e.message : String(e);
+      await shellDialogs.confirm(t`Could not add it back: ${reason}`);
     } finally {
       setBusy(null);
     }
@@ -500,10 +514,11 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     // An app someone else wrote is asked about first (KA-23): sync is what lets its code write into
     // data that leaves this device.
     if (on && !(await askToSync(a))) return;
+    const name = a.name;
     const ok = await shellDialogs.confirm(
       on
-        ? `Turn on sync for "${a.name}"? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off.`
-        : `Turn off sync for "${a.name}"? Its data will be copied back to local-only storage.`,
+        ? t`Turn on sync for “${name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off.`
+        : t`Turn off sync for “${name}”? Its data will be copied back to local-only storage.`,
     );
     if (!ok) return;
     setBusy(a.id);
@@ -512,17 +527,19 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       const shape = await inspect(a.source);
       const entities = shape.entities.map((e) => e.key);
       const { copied, warnings } = await toggleAppSync(a.id, entities, on, new Date().toISOString());
-      const moved = `Moved ${copied.records} record(s)`;
+      const records = copied.records;
+      const moved = plural(records, { one: "Moved # record.", other: "Moved # records." });
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
-      // path exists to avoid.
-      await shellDialogs.confirm(warnings.length ? `${moved}. ${warnings.join(" ")}` : `${moved}. Sync is ${on ? "on" : "off"}.`);
+      // path exists to avoid. (The warnings are the store's own words; #299 takes them.)
+      await shellDialogs.confirm(warnings.length ? `${moved} ${warnings.join(" ")}` : `${moved} ${on ? t`Sync is on.` : t`Sync is off.`}`);
       // Only after the outcome is reported. The first time anything syncs is the first time the
       // recovery words are TRUE — before that they restore nothing, because the data has never left
       // this device — but stacking the question on top of the result reads as one confusing dialog.
       if (on) await offerBackupOnFirstSync(() => setIdentity(true));
       reopenIfOpen(a);
     } catch (e) {
-      await shellDialogs.confirm(`Could not change sync: ${e instanceof Error ? e.message : String(e)}`);
+      const reason = e instanceof Error ? e.message : String(e);
+      await shellDialogs.confirm(t`Could not change sync: ${reason}`);
     } finally {
       setBusy(null);
     }
@@ -541,8 +558,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       const turnedOn = !a.sync;
       if (!a.sync) {
         if (!(await askToSync(a))) return;
+        const name = a.name;
         const ok = await shellDialogs.confirm(
-          `Share "${a.name}"? This turns on sync and copies its data into the synced store. You can turn it off again later.`,
+          t`Share “${name}”? This turns on sync and copies its data into the synced store. You can turn it off again later.`,
         );
         if (!ok) return;
         setBusy(a.id);
@@ -559,10 +577,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       setBusy(null);
       const hazards = describeHazards(risk);
       if (hazards.length) {
+        const name = a.name;
+        const list = `• ${hazards.join("\n• ")}`;
         const go = await shellDialogs.confirm(
-          `Before you share "${a.name}" — two people using it at once can lose each other's work:\n\n` +
-            `• ${hazards.join("\n• ")}\n\n` +
-            `Nothing is wrong with it on your own. Share anyway?`,
+          t`Before you share “${name}” — two people using it at once can lose each other’s work:` +
+            `\n\n${list}\n\n` +
+            t`Nothing is wrong with it on your own. Share anyway?`,
         );
         if (!go) return;
       }
@@ -572,7 +592,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       // republished it.
       await askNameIfUnnamed();
       const link = await createShareLink(a.id);
-      await shellDialogs.share("Send this link. Whoever opens it joins your app and its data.", link);
+      await shellDialogs.share(t`Send this link. Whoever opens it joins your app and its data.`, link);
       // After the link, not before it: the user came here to share, and interrupting that with a
       // question about recovery words buries the thing they actually asked for.
       await offerBackupOnFirstSync(() => setIdentity(true));
@@ -587,7 +607,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   };
 
   const rename = async (a: UserApp): Promise<void> => {
-    const name = await shellDialogs.prompt("Rename app", { default: a.name });
+    const name = await shellDialogs.prompt(t`Rename app`, { default: a.name });
     if (name && name.trim()) {
       renameUserApp(a.id, name, new Date().toISOString());
     }
@@ -604,7 +624,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     const copy = await duplicateApp(a.id, new Date().toISOString());
     // Said out loud, with the name: the copy lands wherever this launcher's sort puts it, which on
     // a long list is not necessarily anywhere you are looking.
-    if (copy) await shellDialogs.confirm(`Copied to “${copy.name}”. It starts empty — the app, not the data.`);
+    const copyName = copy?.name;
+    if (copy) await shellDialogs.confirm(t`Copied to “${copyName}”. It starts empty — the app, not the data.`);
   };
 
   const isSelected = (a: InstalledApp): boolean => selected?.kind === a.kind && selected.id === a.id;
@@ -636,25 +657,27 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   );
 
   const body = (
-    <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label="App launcher" onClick={(e) => e.stopPropagation()}>
+    <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label={t`App launcher`} onClick={(e) => e.stopPropagation()}>
       <header className="k-launcher-head">
         <div className="k-brand">
           <span className="k-logo" aria-hidden>◆</span>
           <strong>Potyro</strong>
-          <span className="k-muted">{variant === "home" ? "· choose an app" : "· switch app"}</span>
+          <span className="k-muted">· {variant === "home" ? t`choose an app` : t`switch app`}</span>
         </div>
         <div className="k-launcher-head-actions">
           {/* One persistent create action (#90): a button here on a wide screen, a floating button
               in thumb reach on a phone (below) — never a tile among the apps. */}
           {variant === "home" ? (
             <button type="button" className="k-add k-primary-action k-launch-newbtn" onClick={() => onNewApp()}>
-              ＋ New app
+              ＋ <Trans>New app</Trans>
             </button>
           ) : null}
           {variant === "home" ? (
-            <button type="button" className="k-add k-launch-addbtn" aria-label="Add an app" title="Add an app someone sent you" onClick={() => setAdding({})}>
+            <button type="button" className="k-add k-launch-addbtn" aria-label={t`Add an app`} title={t`Add an app someone sent you`} onClick={() => setAdding({})}>
               <span aria-hidden>⤓</span>
-              <span className="k-launch-addbtn-word">Add an app</span>
+              <span className="k-launch-addbtn-word">
+                <Trans>Add an app</Trans>
+              </span>
             </button>
           ) : null}
           {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
@@ -662,8 +685,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           <YouButton onClick={() => setIdentity(true)} />
           {onClose ? (
             <>
-              <button type="button" className="k-add" onClick={goHome}>⌂ Home</button>
-              <button type="button" className="k-add" aria-label="Close launcher" onClick={onClose}>Close ✕</button>
+              <button type="button" className="k-add" onClick={goHome}>
+                ⌂ <Trans>Home</Trans>
+              </button>
+              <button type="button" className="k-add" aria-label={t`Close launcher`} onClick={onClose}>
+                <Trans>Close</Trans> ✕
+              </button>
             </>
           ) : null}
         </div>
@@ -674,17 +701,21 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
-          <h2 id="k-welcome-h">Make the app you need</h2>
+          <h2 id="k-welcome-h">
+            <Trans>Make the app you need</Trans>
+          </h2>
           <p>
-            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one
-            of the examples below and change it.
+            <Trans>
+              Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open
+              one of the examples below and change it.
+            </Trans>
           </p>
           <div className="k-welcome-actions">
             <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
-              Describe an app
+              <Trans>Describe an app</Trans>
             </button>
             <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
-              Not now
+              <Trans>Not now</Trans>
             </button>
           </div>
         </section>
@@ -695,8 +726,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           ref={searchRef}
           className="k-input"
           type="search"
-          placeholder="Find an app"
-          aria-label="Find an app"
+          placeholder={t`Find an app`}
+          aria-label={t`Find an app`}
           value={query}
           autoFocus={!coarse}
           onChange={(e) => setQuery(e.target.value)}
@@ -705,9 +736,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       </div>
       {q && !firstMatch ? (
         <p className="k-muted k-launch-empty k-launch-nomatch">
-          No app called “{query.trim()}”.{" "}
-          <button type="button" className="k-add" onClick={() => onNewApp(query.trim())}>
-            Create “{query.trim()}”
+          <Trans>No app called “{typed}”.</Trans>{" "}
+          <button type="button" className="k-add" onClick={() => onNewApp(typed)}>
+            <Trans>Create “{typed}”</Trans>
           </button>
         </p>
       ) : null}
@@ -717,7 +748,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
 
       {pinned.length ? (
         <section className="k-launch-section" aria-labelledby="k-launch-pinned">
-          <h3 className="k-launch-title" id="k-launch-pinned">Pinned</h3>
+          <h3 className="k-launch-title" id="k-launch-pinned">
+            <Trans>Pinned</Trans>
+          </h3>
           <div className="k-launch-grid" data-reorderable="true">
             {pinned.map((a) => (
               <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...pinnedReorder.item(a.key)} {...inertUnless(a.key)}>
@@ -733,12 +766,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       <section className="k-launch-section" aria-labelledby="k-launch-all">
         <div className="k-launch-section-head">
           <h3 className="k-launch-title" id="k-launch-all">
-            {pinned.length ? "Everything else" : variant === "home" && neverOpened && !welcomeDismissed ? "Examples to try" : "Apps"}
+            {pinned.length ? t`Everything else` : variant === "home" && neverOpened && !welcomeDismissed ? t`Examples to try` : t`Apps`}
           </h3>
-          <div className="k-launch-sort" role="group" aria-label="Sort apps">
+          <div className="k-launch-sort" role="group" aria-label={t`Sort apps`}>
             {SORT_MODES.map((m) => (
-              <button key={m.id} type="button" className="k-launch-sort-btn" aria-pressed={sortMode === m.id} title={m.title} onClick={() => setSortMode(m.id)}>
-                {m.label}
+              <button key={m.id} type="button" className="k-launch-sort-btn" aria-pressed={sortMode === m.id} title={t(m.title)} onClick={() => setSortMode(m.id)}>
+                {t(m.label)}
               </button>
             ))}
           </div>
@@ -754,7 +787,11 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           ))}
         </div>
         <p className="k-visually-hidden" aria-live="polite">{restReorder.announcement}</p>
-        {!installed.length ? <p className="k-muted k-launch-empty">No apps yet — press New app to make one.</p> : null}
+        {!installed.length ? (
+          <p className="k-muted k-launch-empty">
+            <Trans>No apps yet — press New app to make one.</Trans>
+          </p>
+        ) : null}
       </section>
 
       {/* A bundled example you deleted is gone for good, which is right — until you want it back.
@@ -763,7 +800,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         <section className="k-launch-section" aria-labelledby="k-launch-gone">
           <div className="k-launch-section-head">
             <h3 className="k-launch-title" id="k-launch-gone">
-              Bundled examples
+              <Trans>Bundled examples</Trans>
             </h3>
           </div>
           <div className="k-launch-gone">
@@ -779,17 +816,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         // On a phone the header's Add button is a lone icon, and this is the button people reach for:
         // so it asks which they mean — make one, or bring in one someone sent (#253).
         <ActionMenu
-          label="New app"
-          title="New app"
+          label={t`New app`}
+          title={t`New app`}
           buttonClassName="k-launch-fab"
           trigger={
             <>
-              <span aria-hidden>＋</span> New app
+              <span aria-hidden>＋</span> <Trans>New app</Trans>
             </>
           }
           entries={[
-            { key: "describe", label: "Describe a new app", icon: "✦", onSelect: () => onNewApp() },
-            { key: "add", label: "Add an app someone sent you", icon: "⤓", onSelect: () => setAdding({}) },
+            { key: "describe", label: t`Describe a new app`, icon: "✦", onSelect: () => onNewApp() },
+            { key: "add", label: t`Add an app someone sent you`, icon: "⤓", onSelect: () => setAdding({}) },
           ]}
         />
       ) : null}
@@ -821,7 +858,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
             data-active={current}
             aria-current={current ? "true" : undefined}
             disabled={current}
-            title={current ? "This app" : undefined}
+            title={current ? t`This app` : undefined}
             style={{ "--tile-accent": identity.accent } as CSSProperties}
             onClick={() => onOpen(a)}
           >
@@ -847,7 +884,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           className="k-launcher k-launcher-overlay k-switcher"
           role="dialog"
           aria-modal="true"
-          aria-label="Switch app"
+          aria-label={t`Switch app`}
           tabIndex={-1}
           style={dragY ? { transform: `translateY(${dragY}px)`, transition: "none" } : undefined}
           onClick={(e) => e.stopPropagation()}
@@ -858,8 +895,10 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           <div className="k-switcher-grip" {...swipeHandlers}>
             <span className="k-switcher-handle" aria-hidden />
             <header className="k-switcher-head">
-              <strong>Switch app</strong>
-              <button type="button" className="k-add k-switcher-close" aria-label="Close launcher" onClick={onClose}>
+              <strong>
+                <Trans>Switch app</Trans>
+              </strong>
+              <button type="button" className="k-add k-switcher-close" aria-label={t`Close launcher`} onClick={onClose}>
                 ✕
               </button>
             </header>
@@ -868,19 +907,23 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
           <div className="k-switcher-list">
             {rows.map(row)}
-            {rows.length === 0 ? <p className="k-muted k-switcher-empty">No app called “{query.trim()}”.</p> : null}
+            {rows.length === 0 ? (
+              <p className="k-muted k-switcher-empty">
+                <Trans>No app called “{typed}”.</Trans>
+              </p>
+            ) : null}
             <div className="k-switcher-sep" role="separator" />
-            {extra("Home", "⌂", goHome)}
-            {extra("New app", "+", () => onNewApp())}
-            {extra("You and your devices", "⌾", () => setIdentity(true))}
+            {extra(t`Home`, "⌂", goHome)}
+            {extra(t`New app`, "+", () => onNewApp())}
+            {extra(t`You and your devices`, "⌾", () => setIdentity(true))}
           </div>
           <div className="k-switcher-search">
             <input
               ref={searchRef}
               className="k-input"
               type="search"
-              placeholder="Find an app"
-              aria-label="Find an app"
+              placeholder={t`Find an app`}
+              aria-label={t`Find an app`}
               value={query}
               autoFocus={!coarse}
               onChange={(e) => setQuery(e.target.value)}

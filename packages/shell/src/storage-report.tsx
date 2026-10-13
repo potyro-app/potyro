@@ -9,6 +9,12 @@
 // a scratch app, and reports plain numbers anyone can read aloud.
 
 import { useState } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
+
+const ms = (n: number): string => fmt.number(n, { style: "unit", unit: "millisecond", unitDisplay: "short" });
 
 interface Measured {
   mode: string;
@@ -54,17 +60,18 @@ async function measure(): Promise<Measured> {
   };
 }
 
-/** What each mode means, in words rather than identifiers. */
-const MODE_TEXT: Record<string, string> = {
-  worker: "a database in a worker (the fast one)",
-  "crdt-worker": "a synced database in a worker (the fast one)",
-  opfs: "a database on the main thread",
-  "indexeddb-snapshot": "IndexedDB, rewritten whole on every save (slow)",
-  "local-storage": "browser local storage (slow, and small)",
-  unknown: "not opened yet",
+/** What each mode means, in words rather than identifiers. Descriptors: read when shown, in the language then. */
+const MODE_TEXT: Record<string, MessageDescriptor> = {
+  worker: msg`a database in a worker (the fast one)`,
+  "crdt-worker": msg`a synced database in a worker (the fast one)`,
+  opfs: msg`a database on the main thread`,
+  "indexeddb-snapshot": msg`IndexedDB, rewritten whole on every save (slow)`,
+  "local-storage": msg`browser local storage (slow, and small)`,
+  unknown: msg`not opened yet`,
 };
 
 export function StorageReport() {
+  const { t } = useLingui();
   const [result, setResult] = useState<Measured | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -84,21 +91,33 @@ export function StorageReport() {
   return (
     <div className="k-storage-report">
       <button type="button" className="k-add" disabled={busy} onClick={() => void run()}>
-        {busy ? "Measuring…" : "Check storage speed"}
+        {busy ? t`Measuring…` : t`Check storage speed`}
       </button>
-      {failed ? <p className="k-muted">Could not measure: {failed}</p> : null}
+      {failed ? (
+        <p className="k-muted">
+          <Trans>Could not measure: {failed}</Trans>
+        </p>
+      ) : null}
       {result ? (
-        <dl className="k-storage-figures" aria-label="Storage speed">
-          <dt>Storage</dt>
-          <dd>{MODE_TEXT[result.mode] ?? result.mode}</dd>
-          <dt>Holding</dt>
-          <dd>{result.storedMB} MB</dd>
-          <dt>Save one thing</dt>
-          <dd>{result.writeMs} ms</dd>
-          <dt>Change one thing</dt>
-          <dd>{result.tickMs} ms</dd>
-          <dt>Read {result.rows} back</dt>
-          <dd>{result.readMs} ms</dd>
+        <dl className="k-storage-figures" aria-label={t`Storage speed`}>
+          <dt>
+            <Trans comment="Storage report: which kind of storage this device ended up on">Storage</Trans>
+          </dt>
+          <dd>{MODE_TEXT[result.mode] ? t(MODE_TEXT[result.mode]!) : result.mode}</dd>
+          <dt>
+            <Trans comment="Storage report: how much this site stores on the device">Holding</Trans>
+          </dt>
+          <dd>{fmt.number(Number(result.storedMB), { style: "unit", unit: "megabyte", maximumFractionDigits: 1 })}</dd>
+          <dt>
+            <Trans>Save one thing</Trans>
+          </dt>
+          <dd>{ms(result.writeMs)}</dd>
+          <dt>
+            <Trans>Change one thing</Trans>
+          </dt>
+          <dd>{ms(result.tickMs)}</dd>
+          <dt>{plural(result.rows, { one: "Read # back", other: "Read # back" })}</dt>
+          <dd>{ms(result.readMs)}</dd>
         </dl>
       ) : null}
     </div>
