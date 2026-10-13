@@ -27,12 +27,16 @@ interface Toast {
 
 /** Install a published version as this device's copy, and open it. */
 async function takeUpdate(id: string, update: PublishedApp): Promise<void> {
-  const { saveUserApp } = await import("./user-apps.js");
+  const [{ saveUserApp }, { receiveCode }] = await Promise.all([import("./user-apps.js"), import("./app-modules.js")]);
+  // Its own modules came with it, checked against its lock before anything is saved; its libraries
+  // are fetched when it opens, with consent (#281).
+  await receiveCode(id, update);
   await saveUserApp(
     {
       id,
       name: update.name,
       source: update.source,
+      ...(update.lock ? { lock: update.lock } : {}),
       origin: "imported",
       // What they asked for, when they published it. The bare "updated by a collaborator" is the
       // fallback for a copy published before notes travelled, not the normal case.
@@ -81,7 +85,10 @@ export async function openVersionGate(opts: {
   // disagree about.
   const { listVersions } = await import("./app-history.js");
   const latest = (await listVersions(id))[0];
+  const { codeToCarry } = await import("./app-modules.js");
   const mine: PublishedApp = {
+    // Its code beyond the source travels with it (#281): the lock, and its own modules as text.
+    ...(await codeToCarry(saved, rawStore)),
     source: saved.source,
     name: saved.name,
     updatedAt: saved.updatedAt,

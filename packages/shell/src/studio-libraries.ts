@@ -18,7 +18,7 @@ import type { UserApp } from "./user-apps.js";
 const isUrl = (key: string): boolean => /^https?:\/\//.test(key);
 
 /** Every library the version's code imports: its source's, and its own modules'. */
-async function rootsOf(source: string, have: ModuleSource | undefined): Promise<string[]> {
+export async function rootsOf(source: string, have: ModuleSource | undefined): Promise<string[]> {
   const texts = [source];
   for (const [key, entry] of Object.entries(have?.lock ?? {})) {
     if (!key.startsWith(srcKey("")) || !/\.[cm]?[jt]sx?$/.test(key)) continue;
@@ -94,13 +94,11 @@ export async function writeLibraryFiles(store: Store, files: PackagedFile[]): Pr
   for (const f of files) await space.write(f.path, new Blob([f.data as BlobPart], { type: "text/javascript" }), { origin: "shipped", mime: "text/javascript" });
 }
 
-/** `writeLibraryFiles` into a saved app's own folder, opened for the purpose and closed again. */
+/**
+ * Keep fetched library bytes for a saved app, on this device: in its local store, which for an app
+ * whose data syncs is not its space — the bytes never ride to the relay (#281).
+ */
 export async function keepLibraryFiles(app: UserApp, files: PackagedFile[]): Promise<void> {
-  const { openAppStore, syncAllowedFor } = await import("./app-store.js");
-  const store = await openAppStore(app, { sync: await syncAllowedFor(app) });
-  try {
-    await writeLibraryFiles(store, files);
-  } finally {
-    await store.close();
-  }
+  const { keepCode } = await import("./app-modules.js");
+  await keepCode(app.id, files.map((f) => ({ ...f, mime: "text/javascript" })));
 }
