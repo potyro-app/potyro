@@ -76,7 +76,14 @@ function fingerprint(source: string): string {
 
 /** The app's declared name, read from the source the cheap way — these are our own files. */
 function declaredName(source: string, fallback: string): string {
-  return /^\s*name:\s*"([^"]+)"/m.exec(source)?.[1] ?? fallback;
+  const plain = /^\s*name:\s*"([^"]+)"/m.exec(source)?.[1];
+  if (plain) return plain;
+  // A translated name (#302): `name: { en: "Groceries", pl: "Zakupy" }` — saved in the app's own language.
+  const map = /^\s*name:\s*\{([^}]*)\}/m.exec(source)?.[1];
+  const own = /^\s*language:\s*"([^"]+)"/m.exec(source)?.[1];
+  if (!map) return fallback;
+  const entries = [...map.matchAll(/["']?([A-Za-z-]+)["']?\s*:\s*"([^"]+)"/g)].map((m) => [m[1]!, m[2]!] as const);
+  return entries.find(([l]) => l === own)?.[1] ?? entries[0]?.[1] ?? fallback;
 }
 
 /** Its declared version, same reasoning. */
