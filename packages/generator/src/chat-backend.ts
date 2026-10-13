@@ -51,6 +51,11 @@ export interface ChatRequest {
   tool_choice?: "auto" | "none";
   /** Tools the provider runs itself (OpenRouter's `openrouter:web_search`). Engines that have none ignore them. */
   serverTools?: Array<Record<string, unknown>>;
+  /**
+   * Think at least this hard for this one request (#280's escalation): an engine that reasons raises
+   * its level and its token budget for it, never lowers them. Engines that cannot reason ignore it.
+   */
+  reasoning?: "off" | "low" | "medium" | "high";
 }
 /** What one call cost, as the provider reports it. */
 export interface Usage {

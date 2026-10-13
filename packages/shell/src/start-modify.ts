@@ -17,7 +17,7 @@ import {
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, loadCorpus, regressionGate } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
-import { canInvestigate, isCloud, keyFor, type EngineConfig } from "./engines.js";
+import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
 import { withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
@@ -58,8 +58,10 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   // by what IT breaks — never by what was already failing (#262).
   const run = regressionGate((source) => runCandidate(source, { modules }), opts.source);
   return runModifyLoop({
-    engine: createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, model: opts.engine.openrouterModel }),
+    // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
+    engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
     model: opts.engine.openrouterModel,
+    escalate: thinkingFor(opts.engine).escalate,
     tools: buildDiscoveryTools({ check, run, source: opts.source }),
     // The passages from this release's examples and docs that speak to the request go in the first
     // message, so the model starts from how a real app does it (#262).

@@ -98,6 +98,12 @@ export interface ModifyLoopDeps {
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: ChatMessage[];
+  /**
+   * Think hard (`reasoning: "high"`) for the one turn after the loop got stuck — a rolled-back
+   * repeat or a fresh start (#280, docs/19 F6). The extra cost lands only on changes that were going
+   * badly. Off unless the caller turns it on; the Studio's setting defaults it on.
+   */
+  escalate?: boolean;
 }
 
 // Raised from 8 with #262: reading the corpus and fixing what a run reports both take steps, and a
@@ -181,6 +187,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** Every candidate the gate turned back, with why: sent again — in this chain or a later one — it is a repeat. */
   const refused = new Map<string, TurnedBack>();
   const turnedBack: TurnedBack[] = [];
+  /** The next model call thinks hard: the loop just rolled a repeat back or started afresh. */
+  let stuck = false;
 
   const gaveUp = (cause: GiveUp, why: string): ModifyLoopOutcome => {
     if (held) {
@@ -206,6 +214,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     deps.onStep?.({ kind: "unusable", detail: `${why} — taken out, and asked for something different`, repeat: true });
     if (rollbackTo >= 0) messages.splice(rollbackTo);
     messages.push({ role: "user", content: rollbackNote(back) });
+    stuck = true;
     previousReplyAt = -1;
     toolStreak = null;
     return null;
@@ -214,12 +223,15 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   for (let step = 0; step < maxSteps; step += 1) {
     if (deps.signal?.aborted) return { kind: "stopped" };
     deps.onStep?.({ kind: "thinking" });
+    const escalated = Boolean(deps.escalate && stuck);
+    stuck = false;
     const res = await deps.engine.chat.completions.create({
       ...(deps.model ? { model: deps.model } : {}),
       messages,
       tools: toolSpecs(deps.tools),
       tool_choice: "auto",
       temperature: 0.1,
+      ...(escalated ? { reasoning: "high" as const } : {}),
     });
     const choice = res.choices[0]?.message;
     const calls = choice?.tool_calls ?? [];
@@ -366,6 +378,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         { role: "user", content: `${opening}\n\n${freshStartNote(turnedBack)}` },
       ];
       refusedInChain = 0;
+      stuck = true;
       previousReply = null;
       previousReplyAt = -1;
       previousAnswer = "";
