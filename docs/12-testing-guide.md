@@ -281,7 +281,7 @@ skipped here — they are GitHub's runner's pixels — and want regenerating the
 
 | Do | Expect |
 |---|---|
-| Any app → header **Export** | Downloads `<app>.potyro.zip` — unzip it: `data.sqlite` (opens in any SQLite tool!), `manifest.json`, `app.ts`, `data.json`, `csv/<entity>.csv` |
+| Any app → header **Export** | Downloads `<app>.potyro.zip` — unzip it: `data.sqlite` (opens in any SQLite tool!), `manifest.json`, `app.ts`, `data.json`, `csv/<entity>.csv`; an app with libraries or modules also has `lock.json`, `files/.modules/` and `src/` |
 | Add or change some data, then header **Import** → pick the earlier `.potyro.zip` | The app reloads with the **bundle's** data (your later change is replaced) — the round-trip |
 
 Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a real, standalone DB.

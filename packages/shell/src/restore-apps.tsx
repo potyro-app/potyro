@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { rememberAppSpace, type AccountApp } from "@potyro/store";
 import { saveUserApp, getUserApp } from "./user-apps.js";
+import { receiveCode } from "./app-modules.js";
 
 export interface RestoreAppsProps {
   apps: readonly AccountApp[];
@@ -106,11 +107,15 @@ export async function installFromAccount(app: AccountApp, now: string): Promise<
   // empty space and the data on the relay would be stranded — exactly what a share link avoids by
   // carrying the ids.
   rememberAppSpace(`user:${app.id}`, { group: app.group, root: app.root });
+  // Its own modules, checked against the lock that came with them (#281). Its libraries are fetched
+  // when it first opens here, with consent; their bytes never come through the account.
+  if (app.modules) await receiveCode(app.id, app);
   await saveUserApp(
     {
       id: app.id,
       name: app.name,
       source: app.source,
+      ...(app.lock ? { lock: app.lock } : {}),
       trusted: true,
       origin: "created",
       note: here ? "from your account, replacing this device's copy" : "from your account",

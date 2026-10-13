@@ -214,6 +214,15 @@ export function setUserAppTrusted(id: string, trusted: boolean, now: string): vo
   write(read().map((a) => (a.id === id ? { ...a, trusted, updatedAt: now } : a)));
 }
 
+/**
+ * Record the lock an app's libraries were fetched under on THIS device (#281) — an app that arrived
+ * without one, or whose libraries this device locked afresh. Not a new version of the app: it keeps
+ * its `updatedAt`, so this copy does not start looking newer than the one it was shared from.
+ */
+export function setUserAppLock(id: string, lock: AppLock | undefined): void {
+  write(read().map((a) => (a.id === id ? { ...a, lock } : a)));
+}
+
 /** Turn the CRDT store on or off for an app.
  *
  *  NOTE: SqliteStore and JazzStore keep their data in separate files, so this does not move

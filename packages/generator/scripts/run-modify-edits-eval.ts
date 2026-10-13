@@ -10,12 +10,21 @@
 // whether the model can express a change AS EDITS at all: the format, the retries, the rewrite rate.
 //
 // Flags: --backend openrouter|claude-cli|scripted|scripted-edits|scripted-repair  --model <id>
-//        --reasoning <effort>  --only id1,id2  --concurrency N  --out <dir>  --repair
+//        --reasoning off|low|medium|high (the Studio's levels, #280; or any OpenRouter effort)
+//        --escalate   with --loop: think hard for the one turn after the loop got stuck (#280)
+//        --only id1,id2  --concurrency N  --out <dir>  --repair  --runs N
 //        --loop  --run   (`--run`, with `--loop`: candidates are also RUN on sample records, as the
 //                         Studio does since #262 — here the logic run only; pages are not mounted
 //                         in Node)
+//        --loop --backend scripted-loop|scripted-loop-tools   the loop with no model: proves the
+//                         loop half of the harness (give-up causes, calls, tokens, cost; loop-eval.ts)
 //        --case-timeout S  a hard limit per case (default 900): the loop is told to stop and the case
 //                          is recorded as crashed with the reason — three cases once hung ten hours
+//
+// With --loop the summary also says how each case ended (docs/19 F9): give-ups by cause, repeats and
+// fresh starts, the candidate the result passed on, model calls, tokens and cost — and every
+// headline rate with its 95% interval. A `wrong-gate` case (#276) is reported apart: its gate
+// refuses every candidate.
 //
 // Every case runs through the SAME guard the Studio uses (`guardedModify`): the model's reply is
 // read as edits or a whole file, and the guard may make up to three attempts (a no-match retry, a
@@ -31,7 +40,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
-import { createOpenRouterBackend, createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
+import { createOpenRouterBackend, createOpenRouterEngine, REASONING_LEVELS, thinkingOptions, type ReasoningEffort, type ReasoningLevel, type ReasoningOptions } from "../src/openrouter-backend.js";
 import { guardedModify, type GuardedModifyResult } from "../src/guarded-modify.js";
 import { runModifyLoop } from "../src/agent/modify-loop.js";
 import { buildDiscoveryTools } from "../src/agent/discovery-tools.js";
@@ -42,6 +51,8 @@ import { buildRepairInstruction } from "../src/prompt.js";
 import { loadApp, scoreSource } from "../src/score.js";
 import { smokeApp, smokeReport } from "../src/smoke.js";
 import { regressionGate, type RunReport } from "../src/run-report.js";
+import { meteredEngine, newMeter, rate, refusingCheck, SCRIPTED_LOOP_KINDS, scriptedLoopEngine, stepTracer, summarizeLoop, type LoopRecord, type ScriptedLoopKind } from "../src/loop-eval.js";
+import type { ChatEngine } from "../src/chat-backend.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@potyro/runtime";
 
@@ -80,6 +91,10 @@ interface Outcome {
   crashed?: string;
   /** Why the loop gave up, when via = failed: the thing to read before anything else in a failed case. */
   reason?: string;
+  /** The case's class (conversation / platform / wrong-gate), when it has one. */
+  class?: ModifyCase["class"];
+  /** `--loop` only: how the loop ended, why it gave up, what it cost, and on which candidate it passed. */
+  loop?: LoopRecord;
 }
 
 function arg(name: string, fallback?: string): string | undefined {
@@ -178,6 +193,13 @@ function scriptedDeclineBackend(): ModelBackend {
   };
 }
 
+/** `--reasoning`: one of the Studio's levels (with its token budget), or a raw OpenRouter effort. */
+function thinkingFrom(flag: string | undefined): { reasoning?: ReasoningOptions; maxTokens?: number } {
+  if (!flag) return {};
+  if ((REASONING_LEVELS as readonly string[]).includes(flag)) return thinkingOptions(flag as ReasoningLevel);
+  return { reasoning: { effort: flag as ReasoningEffort, exclude: true } };
+}
+
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
   if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
   if (kind === "scripted-repair") return scriptedRepairBackend();
@@ -186,7 +208,7 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
   if (kind === "openrouter") {
     return createOpenRouterBackend({
       ...(model ? { model } : {}),
-      ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
+      ...thinkingFrom(reasoning),
     });
   }
   throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits, scripted-repair or scripted-decline)`);
@@ -209,38 +231,41 @@ async function shapeOf(source: string, resolveDir: string): Promise<AppShape & D
  * `example`, every candidate must compile, validate and keep the shape, and a refusal without a
  * lookup is sent back once. Mapped onto the guard's result type so the scoring below is shared.
  */
+/** How the loop gets its model: OpenRouter, or a scripted engine that proves the harness (loop-eval.ts). */
+interface LoopSetup {
+  model: string | undefined;
+  run: boolean;
+  engine: () => ChatEngine;
+  /** Think hard for the turn after the loop got stuck (#280). */
+  escalate: boolean;
+}
+
 async function loopModify(
-  model: string | undefined,
+  loop: LoopSetup,
   c: ModifyCase,
   source: string,
   before: AppShape,
   resolveDir: string,
   keep: (text: string) => string,
-  runCandidates: boolean,
   outDir: string,
   signal: AbortSignal,
+  record: (r: LoopRecord) => void,
 ): Promise<GuardedModifyResult> {
+  const { model, run: runCandidates } = loop;
   const run = regressionGate(async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never)), source);
-  const check = async (src: string): Promise<string[]> => {
+  const honest = async (src: string): Promise<string[]> => {
     const r = await scoreSource(src, resolveDir);
     if (!r.compiles) throw new Error(r.errors.join("; "));
     return r.validates ? [] : r.errors;
   };
-  const engine = createOpenRouterEngine({ ...(model ? { model } : {}) });
+  // A wrong-gate case (#276): the check refuses every candidate, the `check` tool's included.
+  const check = c.gateRefuses ? refusingCheck(honest, c.gateRefuses) : honest;
+  const meter = newMeter();
+  const tracer = stepTracer();
   const out = await runModifyLoop({
-    engine: {
-      chat: {
-        completions: {
-          create: async (req) => {
-            const res = await engine.chat.completions.create(req);
-            const m = res.choices[0]?.message;
-            if (m && !m.tool_calls?.length) keep(m.content);
-            return res;
-          },
-        },
-      },
-    },
+    engine: meteredEngine(loop.engine(), meter, keep),
     model,
+    escalate: loop.escalate,
     tools: buildDiscoveryTools({ check, source, ...(runCandidates ? { run } : {}) }),
     corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
@@ -253,10 +278,21 @@ async function loopModify(
     signal,
     // Step trace, for diagnosing a case that gave up while still calling tools (no reply is kept then).
     onStep: (s) => {
+      tracer.onStep(s);
       const line =
         s.kind === "tool" ? `tool ${s.name} ${s.ok ? "ok" : "FAIL"}: ${s.detail}` : s.kind === "candidate" ? `candidate ${s.passed ? "PASSED" : "REJECTED"}: ${s.detail}` : s.kind === "unusable" ? `unusable: ${s.detail}` : "thinking";
       appendFileSync(join(outDir, `${c.id}.steps.log`), `--- ${new Date().toISOString()} ${line}\n`);
     },
+  });
+  record({
+    ...tracer.read(),
+    ended: out.kind,
+    cause: out.kind === "failed" ? out.cause : null,
+    calls: meter.calls,
+    promptTokens: meter.promptTokens,
+    completionTokens: meter.completionTokens,
+    cost: meter.cost,
+    unpriced: meter.unpriced,
   });
   const trace = { attempts: 1, noMatchRetry: false, lossRetry: false };
   if (out.kind === "source") {
@@ -303,10 +339,11 @@ async function runCase(
   examplesDir: string,
   outDir: string,
   withRepair: boolean,
-  loop: { model: string | undefined; run: boolean } | null,
+  loop: LoopSetup | null,
   signal: AbortSignal,
 ): Promise<Outcome> {
   const started = Date.now();
+  let loopRecord: LoopRecord | undefined;
   // Curated examples live in examples/; an eval-only fixture (a real app that was rewritten in
   // use) lives beside this harness, so the product's fixtures stay the product's.
   const fixturesDir = resolve(process.cwd(), "fixtures");
@@ -338,7 +375,7 @@ async function runCase(
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
     const result = loop
-      ? await loopModify(loop.model, c, source, before, sourceDir, keep, loop.run, outDir, signal)
+      ? await loopModify(loop, c, source, before, sourceDir, keep, outDir, signal, (r) => (loopRecord = r))
       : await guardedModify({
           attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
           shapeOf: (src) => shapeOf(src, sourceDir),
@@ -346,7 +383,14 @@ async function runCase(
           instruction: c.instruction,
           source,
         });
-    const common = { id: c.id, app: c.app, noMatchRetry: result.trace.noMatchRetry, rewroteFirst: result.trace.lossRetry };
+    const common = {
+      id: c.id,
+      app: c.app,
+      noMatchRetry: result.trace.noMatchRetry,
+      rewroteFirst: result.trace.lossRetry,
+      ...(c.class ? { class: c.class } : {}),
+      ...(loopRecord ? { loop: loopRecord } : {}),
+    };
     // Feasibility (#135). A refusal of a case with a doable part is the ladder's failure; a reply
     // that did the doable part is also asked whether it NAMED the parts it could not do.
     const notDone = result.kind === "source" ? (result.notDone ?? []) : [];
@@ -357,7 +401,9 @@ async function runCase(
     }
     if (result.kind === "failed") {
       appendFileSync(join(outDir, `${c.id}.steps.log`), `--- gave up: ${result.reason}\n`);
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started, reason: result.reason };
+      // A give-up on a case with a structural check did not land: it stays in the denominator. (It
+      // used to leave it, so a loop that gave up more often scored a better landed rate.)
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: c.landed ? false : null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started, reason: result.reason };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
@@ -432,11 +478,31 @@ async function main(): Promise<void> {
 
   mkdirSync(outDir, { recursive: true });
   const backendKind = arg("backend", "openrouter") ?? "openrouter";
-  if (loopRequested && backendKind !== "openrouter") throw new Error("--loop needs --backend openrouter (a chat engine with tools)");
-  const backend = await makeBackend(backendKind, arg("model"), arg("reasoning"));
-  const loop = loopRequested ? { model: arg("model"), run: process.argv.includes("--run") } : null;
+  const scriptedLoop = (SCRIPTED_LOOP_KINDS as readonly string[]).includes(backendKind);
+  if (loopRequested && backendKind !== "openrouter" && !scriptedLoop) {
+    throw new Error(`--loop needs a chat engine with tools: --backend openrouter, or ${SCRIPTED_LOOP_KINDS.join(" / ")} to prove the harness`);
+  }
+  if (scriptedLoop && !loopRequested) throw new Error(`--backend ${backendKind} drives the loop: add --loop`);
+  const reasoning = arg("reasoning");
+  const model = arg("model");
+  const backend: ModelBackend = scriptedLoop
+    ? { name: `scripted:${backendKind}`, generate: async () => { throw new Error("scripted loop engine only drives the loop"); } }
+    : await makeBackend(backendKind, model, reasoning);
+  const loop: LoopSetup | null = loopRequested
+    ? {
+        model,
+        run: process.argv.includes("--run"),
+        // One engine per case: a scripted one counts its own calls. The reasoning effort reaches the
+        // loop too — it used to reach only the one-turn backend, so a `--loop --reasoning high` run
+        // measured reasoning off.
+        engine: scriptedLoop
+          ? () => scriptedLoopEngine(backendKind as ScriptedLoopKind)
+          : () => createOpenRouterEngine({ ...(model ? { model } : {}), ...thinkingFrom(reasoning) }),
+        escalate: process.argv.includes("--escalate"),
+      }
+    : null;
   const caseTimeoutMs = Number(arg("case-timeout", "900")) * 1000;
-  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}${loop.escalate ? ", thinking hard when stuck" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
@@ -457,9 +523,15 @@ async function main(): Promise<void> {
     return o;
   });
 
-  const n = outcomes.length;
-  const count = (f: (o: Outcome) => boolean) => outcomes.filter(f).length;
+  // A wrong-gate case cannot land or validate in loop mode by construction (its gate refuses every
+  // candidate), so it is left out of the headline rates and reported on its own: how it ended.
+  const deadEnds = loop ? outcomes.filter((o) => o.class === "wrong-gate") : [];
+  const scored = outcomes.filter((o) => !deadEnds.includes(o));
+  const n = scored.length;
+  const count = (f: (o: Outcome) => boolean, of: readonly Outcome[] = scored) => of.filter(f).length;
   const pct = (k: number) => (n ? `${Math.round((k / n) * 100)}%` : "—");
+  const loopRecords = outcomes.flatMap((o) => (o.loop ? [o.loop] : []));
+  const classes = ["conversation", "platform", "wrong-gate"] as const;
   const summary = {
     backend: backend.name,
     n,
@@ -480,24 +552,52 @@ async function main(): Promise<void> {
     namedNotDone: count((o) => o.namedNotDone === true),
     partial: count((o) => o.namedNotDone !== null),
     crashed: count((o) => Boolean(o.crashed)),
+    // docs/19 F9: per class, how the loop ended and what it cost. Every case, wrong-gate included.
+    byClass: Object.fromEntries(
+      classes.map((k) => {
+        const of = outcomes.filter((o) => o.class === k);
+        return [k, { n: of.length, validates: count((o) => o.validates, of), landed: count((o) => o.landed === true, of), namedNotDone: count((o) => o.namedNotDone === true, of) }];
+      }),
+    ),
+    ...(loop ? { loop: summarizeLoop(loopRecords), deadEnds: deadEnds.map((o) => ({ id: o.id, ended: o.loop?.ended ?? "crashed", cause: o.loop?.cause ?? null, calls: o.loop?.calls ?? 0, cost: o.loop?.cost ?? 0 })) } : {}),
   };
+  const ls = summary.loop;
+  const money = (x: number) => `$${x.toFixed(4)}`;
   const lines = [
     "",
     "=".repeat(60),
-    `MODIFY — ${backend.name} (n=${n}${runs > 1 ? ` = ${selected.length} cases × ${runs} runs` : ""})`,
+    `MODIFY — ${backend.name} (n=${n}${runs > 1 ? `, ${runs} runs a case` : ""}${deadEnds.length ? `; ${deadEnds.length} wrong-gate runs reported apart` : ""})`,
     `  replied with edits:       ${summary.viaEdits}/${n} (${pct(summary.viaEdits)})   ← the contract`,
     `  sent the whole file:      ${summary.viaWholeFile}/${n} (${pct(summary.viaWholeFile)})   ← accepted, but retyped`,
     summary.noMatchRetry ? `  SEARCH missed, retried:   ${summary.noMatchRetry}/${n}` : "",
     summary.failed ? `  nothing usable:           ${summary.failed}/${n}` : "",
     `  dropped entities/pages:   ${summary.rewroteFirst}/${n} (${pct(summary.rewroteFirst)})   ← a reply lost structure; the loss retry fired`,
     `  still rewrote after retry: ${summary.rewroteFinal}/${n} (${pct(summary.rewroteFinal)})   ← what reaches the editor`,
-    `  change landed:            ${summary.landed}/${summary.landable} (${summary.landable ? Math.round((summary.landed / summary.landable) * 100) : 0}%)   ← of cases with a structural check`,
-    `  result validates:         ${summary.validates}/${n} (${pct(summary.validates)})`,
-    repairRequested ? `  validates after repair:   ${summary.validatesAfterRepair}/${n} (${pct(summary.validatesAfterRepair)})` : "",
+    `  change landed:            ${rate(summary.landed, summary.landable)}   ← of cases with a structural check`,
+    `  result validates:         ${rate(summary.validates, n)}`,
+    repairRequested ? `  validates after repair:   ${rate(summary.validatesAfterRepair, n)}` : "",
     summary.declined ? `  declined (NOT-IN-APP):    ${summary.declined}/${n}   ← judged not the app's to change; excluded from landed` : "",
-    `  refused when feasible:    ${summary.refusedWhenFeasible}/${summary.feasible}   ← a refusal of a case with a doable part: the ladder's failure`,
+    `  refused when feasible:    ${rate(summary.refusedWhenFeasible, summary.feasible)}   ← a refusal of a case with a doable part: the ladder's failure`,
     summary.partial ? `  named what it could not do: ${summary.namedNotDone}/${summary.partial}   ← of cases with a part the host cannot do` : "",
     summary.crashed ? `  crashed:                  ${summary.crashed}/${n}` : "",
+    ...classes.flatMap((k) => {
+      const b = summary.byClass[k]!;
+      if (!b.n || k === "wrong-gate") return [];
+      return [`  class ${k.padEnd(13)} landed ${b.landed}/${b.n}, validates ${b.validates}/${b.n}${k === "platform" ? `, named what Potyro lacks ${b.namedNotDone}/${b.n}` : ""}`];
+    }),
+    ...(ls
+      ? [
+          `  gave up, by cause:        repeated ${ls.gaveUp.repeated} · candidates ${ls.gaveUp.candidates} · steps ${ls.gaveUp.steps} · engine ${ls.gaveUp.engine}${ls.asked ? ` · asked the person ${ls.asked}` : ""}`,
+          `  repeats seen:             ${ls.repeatsSeen}   fresh starts: ${ls.restarts}`,
+          `  passed on candidate:      1st ${ls.passedOn["1"]} · 2nd ${ls.passedOn["2"]} · 3rd ${ls.passedOn["3"]} · 4th+ ${ls.passedOn["4+"]}`,
+          `  model calls:              ${ls.calls} (${(ls.calls / Math.max(1, ls.cases)).toFixed(1)} a case)`,
+          `  tokens:                   ${ls.promptTokens} in + ${ls.completionTokens} out (${Math.round(ls.tokensPerCase)} a case)`,
+          `  cost:                     ${money(ls.cost)} (${money(ls.costPerCase)} a case)${ls.unpriced ? `   ← ${ls.unpriced} calls carried no cost: a floor` : ""}`,
+        ]
+      : []),
+    ...(deadEnds.length
+      ? [`  wrong gate (#276), how it ended: ${deadEnds.map((o) => `${o.id} ${o.loop ? (o.loop.cause ?? o.loop.ended) : "crashed"} after ${o.loop?.calls ?? 0} calls`).join("; ")}`]
+      : []),
     "=".repeat(60),
   ].filter((l) => l !== "");
   console.log(lines.join("\n"));
