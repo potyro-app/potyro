@@ -37,17 +37,17 @@ afterEach(() => {
 });
 
 describe("the setting", () => {
-  it("is off by default, with escalation on", () => {
-    expect(thinkingFor(openrouter)).toEqual({ level: "off", escalate: true });
+  it("is off by default, and so is the escalation (measured: no gain for 12% more, #293)", () => {
+    expect(thinkingFor(openrouter)).toEqual({ level: "off", escalate: false });
   });
 
   it("is kept per engine", () => {
     const cfg = withThinking(openrouter, { level: "high" });
-    expect(thinkingFor(cfg)).toEqual({ level: "high", escalate: true });
-    expect(thinkingFor({ ...cfg, engine: "anthropic" })).toEqual({ level: "off", escalate: true });
+    expect(thinkingFor(cfg)).toEqual({ level: "high", escalate: false });
+    expect(thinkingFor({ ...cfg, engine: "anthropic" })).toEqual({ level: "off", escalate: false });
     // A config saved by an older build has no `thinking` at all.
     const { thinking: _gone, ...old } = cfg;
-    expect(thinkingFor(old as typeof cfg)).toEqual({ level: "off", escalate: true });
+    expect(thinkingFor(old as typeof cfg)).toEqual({ level: "off", escalate: false });
   });
 
   it("only engines that can think are offered it", () => {
@@ -69,9 +69,9 @@ describe("it reaches every Studio call", () => {
   it("modify: the loop's engine, and the escalation toggle", async () => {
     await startModify({ source: "S", instruction: "x", before: { entities: {}, pages: [] }, engine: high });
     expectHigh(engineOpts[0]);
-    expect(loopDeps[0]).toMatchObject({ escalate: true });
-    await startModify({ source: "S", instruction: "x", before: { entities: {}, pages: [] }, engine: withThinking(high, { escalate: false }) });
-    expect(loopDeps[1]).toMatchObject({ escalate: false });
+    expect(loopDeps[0]).toMatchObject({ escalate: false });
+    await startModify({ source: "S", instruction: "x", before: { entities: {}, pages: [] }, engine: withThinking(high, { escalate: true }) });
+    expect(loopDeps[1]).toMatchObject({ escalate: true });
   });
 
   it("Ask", async () => {
@@ -98,16 +98,16 @@ describe("Model settings", () => {
     for (const name of [/^off/i, /^low/i, /^medium/i, /^high/i]) expect(within(group).getByRole("radio", { name })).toBeTruthy();
     expect(group.textContent).toMatch(/cost/i);
     fireEvent.click(within(group).getByRole("radio", { name: /^high/i }));
-    expect(thinkingFor(onChange.mock.calls.at(-1)![0])).toEqual({ level: "high", escalate: true });
+    expect(thinkingFor(onChange.mock.calls.at(-1)![0])).toEqual({ level: "high", escalate: false });
   });
 
-  it("has the escalation as its own switch, on by default", () => {
+  it("has the escalation as its own switch, off by default", () => {
     const onChange = vi.fn();
     render(<EngineSettings config={openrouter} onChange={onChange} onClose={() => {}} hasWebGPU={false} hasBuiltIn={false} />);
     const box = screen.getByRole("checkbox", { name: /stuck/i }) as HTMLInputElement;
-    expect(box.checked).toBe(true);
+    expect(box.checked).toBe(false);
     fireEvent.click(box);
-    expect(thinkingFor(onChange.mock.calls.at(-1)![0])).toEqual({ level: "off", escalate: false });
+    expect(thinkingFor(onChange.mock.calls.at(-1)![0])).toEqual({ level: "off", escalate: true });
   });
 
   it("is not shown for an engine that cannot think", () => {

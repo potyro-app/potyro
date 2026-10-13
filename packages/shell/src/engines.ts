@@ -11,14 +11,15 @@ export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter";
 
 /**
  * How hard the model thinks (#280), per engine: a level, and whether the modify loop thinks hard for
- * the one turn after it got stuck (docs/19 F6). Off by default until a measurement says otherwise;
- * the escalation is on, since it costs more only on changes that were going badly.
+ * the one turn after it got stuck (docs/19 F6). Both are off by default: measured on the 66-run modify
+ * eval (#293), high was within the noise for twice the cost, and the escalation showed no gain for 12%
+ * more. A person who wants either turns it on.
  */
 export interface ThinkingSetting {
   level: ReasoningLevel;
   escalate: boolean;
 }
-export const DEFAULT_THINKING: ThinkingSetting = { level: "off", escalate: true };
+export const DEFAULT_THINKING: ThinkingSetting = { level: "off", escalate: false };
 
 /** Everything the Studio needs to reach a model. Keys are held in memory only — never persisted. */
 export interface EngineConfig {
