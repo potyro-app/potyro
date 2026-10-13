@@ -18,6 +18,7 @@
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { describeEditFailures } from "../edits.js";
 import { readEditsOrFile } from "../guarded-modify.js";
+import { appLanguage, changeLanguageInstruction, type Language } from "../language.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 
 export type LoopOutcome =
@@ -97,6 +98,10 @@ export interface LoopDeps {
   task: string;
   /** The app as the person has it. Shown to the model in the opening turn; edits are applied to it. */
   source: string;
+  /** The person's language (#301): the explanation and any question come back in it. English when absent. */
+  language?: Language;
+  /** The language of the app's own words when the app declares one (#302); read off the source otherwise. */
+  appLanguage?: Language | null;
   /** Compile + replay the candidate. The loop cannot succeed without this passing. */
   verify: (candidate: string) => Promise<{ passed: boolean; detail: string }>;
   /**
@@ -143,6 +148,15 @@ const DEFAULT_MAX_STEPS = 8;
 const ASK = "ASK:";
 const NOT_IN_APP = "NOT-IN-APP:";
 
+/**
+ * The opening turn: the person's words, then the language line when there is one (#301), then the
+ * app. The app stays LAST: `sourceShownIn` (shell start-fix.ts) reads it back from the end of this turn.
+ */
+function openingTask(deps: LoopDeps): string {
+  const language = changeLanguageInstruction({ person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) });
+  return `${deps.task}${language ? `\n\n${language}` : ""}\n\nThe app as it is:\n\`\`\`ts\n${deps.source}\n\`\`\``;
+}
+
 export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   // WHY THIS COMES FIRST: verifying a candidate against a check that was already green proves
   // nothing. If the user's recorded case already passes against the app as it is — no candidate,
@@ -172,7 +186,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     ? [...deps.resumeFrom]
     : [
         { role: "system", content: deps.system },
-        { role: "user", content: `${deps.task}\n\nThe app as it is:\n\`\`\`ts\n${deps.source}\n\`\`\`` },
+        { role: "user", content: openingTask(deps) },
       ];
   let lastAttempt: string | undefined;
   // Counted so `exhausted.reason` can say WHAT went wrong, not just that it did — a watcher on

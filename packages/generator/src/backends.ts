@@ -32,6 +32,21 @@ export {
   type PromptSession,
 } from "./gemini-nano-backend.js";
 export { HybridBackend } from "./hybrid-backend.js";
+// The person's language (#301): which language a turn replies in, and which an app is written in.
+export {
+  LANGUAGES,
+  LANGUAGE_NAMES,
+  isLanguage,
+  matchLanguage,
+  bestLanguage,
+  appLanguage,
+  classifyText,
+  userFacingStrings,
+  createLanguageInstruction,
+  changeLanguageInstruction,
+  type Language,
+  type TurnLanguage,
+} from "./language.js";
 export { PROMPTS } from "./prompts.js";
 
 // The concurrency gate, for the shell — the two-peer checks are a product feature: they are what

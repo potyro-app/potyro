@@ -15,7 +15,7 @@ import {
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
 } from "@potyro/generator/agent";
-import { createOpenRouterEngine, loadCorpus, regressionGate } from "@potyro/generator/backends";
+import { createOpenRouterEngine, loadCorpus, regressionGate, type Language } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
@@ -35,6 +35,8 @@ export interface StartModifyOpts {
   resumeFrom?: ModifyLoopDeps["resumeFrom"];
   /** The app's libraries and own modules (#266, #258): a candidate is checked with them. */
   modules?: ModuleSource;
+  /** The person's language (#301): the model's reply and questions come back in it. English when absent. */
+  language?: Language;
 }
 
 /** Whether this engine can drive the modify loop at all (a chat engine with a key); else why not. */
@@ -69,6 +71,7 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: opts.instruction,
     source: opts.source,
+    ...(opts.language ? { language: opts.language } : {}),
     check,
     run,
     shapeOf: (source) => loadDefinition(source, modules),

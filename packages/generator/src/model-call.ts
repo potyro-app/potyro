@@ -32,7 +32,7 @@
 import type { GenPrompt, ModelBackend } from "./backend.js";
 import { readModifyReply } from "./guarded-modify.js";
 import { describeEditFailures } from "./edits.js";
-import { extractSource } from "./prompt.js";
+import { extractSource, type ModifyContext } from "./prompt.js";
 
 export type CallKind = "generate" | "modify" | "repair";
 
@@ -61,7 +61,7 @@ export interface ModelCall extends CallUsage {
 
 export type MeteredRequest =
   | { kind: "generate"; prompt: GenPrompt }
-  | { kind: "modify"; source: string; instruction: string; prompt: GenPrompt }
+  | { kind: "modify"; source: string; instruction: string; prompt: GenPrompt; ctx?: ModifyContext }
   | { kind: "repair"; source: string; errors: string[]; prompt: GenPrompt };
 
 export interface MeteredResult {

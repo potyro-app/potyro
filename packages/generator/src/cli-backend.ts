@@ -12,7 +12,7 @@ import { join } from "node:path";
 import type { Readable, Writable } from "node:stream";
 import { resolveCli } from "./cli-available.js";
 import type { GenPrompt } from "./backend.js";
-import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource, type ModifyContext } from "./prompt.js";
 import { UNKNOWN_USAGE, type CallUsage, type MeteredBackend, type MeteredRequest, type MeteredResult } from "./model-call.js";
 
 const DEFAULT_TIMEOUT_MS = 300_000;
@@ -210,7 +210,7 @@ export class ClaudeCliBackend implements MeteredBackend {
       req.source,
       "```",
       "",
-      req.kind === "repair" ? buildRepairMessage(req.errors) : buildModifyMessage(req.instruction),
+      req.kind === "repair" ? buildRepairMessage(req.errors) : buildModifyMessage(req.instruction, req.ctx),
     ].join("\n");
   }
 
@@ -236,7 +236,7 @@ export class ClaudeCliBackend implements MeteredBackend {
   }
 
   // Raw, per the `modify` contract: the reply is read by `guardedModify`, which applies its edits.
-  async modify(source: string, instruction: string, prompt: GenPrompt): Promise<string> {
-    return (await this.meteredCall({ kind: "modify", source, instruction, prompt })).text;
+  async modify(source: string, instruction: string, prompt: GenPrompt, ctx?: ModifyContext): Promise<string> {
+    return (await this.meteredCall({ kind: "modify", source, instruction, prompt, ...(ctx ? { ctx } : {}) })).text;
   }
 }
