@@ -148,12 +148,13 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   let previousReply: string | null = null;
   /** The last candidate that passed every gate but a warning: what the model meant, if it then stops making sense. */
   let held: Accepted | null = null;
+  let heldOn = 0;
   /** Candidates whose warnings were already pointed out: sent again unchanged, they are accepted. */
   const warned = new Set<string>();
 
   const gaveUp = (cause: GiveUp, why: string): ModifyLoopOutcome => {
     if (held) {
-      deps.onStep?.({ kind: "candidate", passed: true, detail: `${why} — keeping the candidate that passed every check but a warning` });
+      deps.onStep?.({ kind: "candidate", passed: true, n: heldOn, detail: `${why} — keeping the candidate that passed every check but a warning` });
       return held;
     }
     return { kind: "failed", reason: why, cause };
@@ -196,7 +197,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const repeated = repeatsItself(text, previousReply);
     previousReply = text;
     if (repeated) {
-      deps.onStep?.({ kind: "unusable", detail: repeated });
+      deps.onStep?.({ kind: "unusable", detail: repeated, repeat: true });
       return gaveUp("repeated", `the model repeated itself (${repeated}; ${budgetLine()})`);
     }
 
@@ -276,6 +277,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       else if (report.warnings.length && !warned.has(candidate)) {
         warned.add(candidate);
         held = accepted;
+        heldOn = candidates;
         problem =
           `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
           "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
@@ -284,7 +286,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const passed = gated
       ? `compiles, validates, keeps the app's shape, and runs without breaking anything (${gated.report.ran || "nothing to run"})`
       : "compiles, validates, keeps the app's shape";
-    deps.onStep?.({ kind: "candidate", passed: problem === null, detail: problem ?? passed });
+    deps.onStep?.({ kind: "candidate", passed: problem === null, n: candidates, detail: problem ?? passed });
     if (problem === null) return accepted;
     failedCandidates += 1;
     if (candidates >= maxCandidates) return gaveUp("candidates", `${candidates} candidate${candidates === 1 ? "" : "s"} failed the check — the candidate budget is spent`);
