@@ -132,8 +132,10 @@ export interface LoadedApp {
 
 export interface Host {
   load(source: AppSource): Promise<LoadedApp>;               // AppSource = module ref | bundle text | url
-  // builds the ctx handed to app fns, applying trust mediation to caps:
-  makeCtx(app: LoadedApp, base: { store: Store; caps: Capabilities; ui: UiBridge; nav: NavBridge; params?: Record<string, unknown> }): Ctx;
+  // builds the ctx handed to app fns, applying trust mediation to caps. `language` is the one the
+  // app's words are shown in (from the runtime, #302) and `formatLocale` the tag ctx.format uses:
+  makeCtx(app: LoadedApp, base: { store: Store; caps: Capabilities; ui: UiBridge; nav: NavBridge; params?: Record<string, unknown>;
+                                  language?: Language; formatLocale?: string }): Ctx;
   promote(appId: string): Promise<void>;                     // untrusted → trusted (user action)
 }
 ```
@@ -144,6 +146,25 @@ Runner behavior:
 - **untrusted** → module bundle runs in a QuickJS-WASM isolate; `call*` marshal
   record+params in and a serialized value out under memory/time limits; `ctx.caps` are the
   mediated wrappers for granted permissions only.
+
+**Words and formats (#302).** `ctx.locale`, `ctx.t` and `ctx.format` are built from one module,
+`packages/host/src/format.ts` — `Intl` with cached formatters, and `intl-messageformat` for ICU
+messages, which interprets a message rather than compiling it to code and is loaded lazily, before
+`load` returns. The isolate has no `Intl`: each call's payload carries the language, so `ctx.locale`
+and `ctx.t(words)` are answered inside the box, and `ctx.t(words, vars)` and `ctx.format.*` reach the
+host through a second VM function beside `__hostSync`:
+
+```ts
+__hostPure(requestJson: string): string   // synchronous; "+" and the text, or "!" and why
+```
+
+It is authority-free — `Intl` and the ICU formatter over the arguments given, no store, cap or
+person — which is why it may be synchronous inside a `filter`. The host checks the operation
+(`date|number|money|relative|list|t`), keeps only the allow-listed options, caps sizes (1,000 list
+items, 10,000 characters), and formats in its own locale; host time counts against the call's
+deadline. `mediate.ts` is unchanged: formatting is not a capability. `ctx.ui` takes `Words`
+everywhere it takes words, and `ctx` resolves them before the `UiBridge` sees them, so the shell only
+ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`).
 
 Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
 surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app
@@ -198,7 +219,8 @@ no smaller part to fail. The Add-an-app card's test load is what catches that, b
 
 ```ts
 export interface Runtime {
-  definition: AppDefinition;
+  definition: Localized<AppDefinition>;                  // in the person's language: every Words slot a string (#302)
+  language: { current?: Language; default?: Language; available: Language[] };
   ctx: Ctx;                                              // full host surface (trust-scoped)
   useQuery(entity: string, spec?: { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number }):
     { rows: Resolved[]; loading: boolean };
@@ -208,6 +230,9 @@ export interface Runtime {
   patch(entity: string, id: Id, data: Partial<Record>): Promise<void>;
   remove(entity: string, id: Id): Promise<void>;
   reconcileReminders(): Promise<void>;
+  // #302: the person's languages changed — localize again, re-run every watcher, re-title reminders.
+  setLanguages(prefs: readonly string[]): boolean;
+  onLanguageChange(cb: () => void): () => void;
   // #271: this app's contained failures (above), and a way for a view to report its own.
   onFailure(cb: (f: AppFailure) => void): () => void;
   reportFailure(what: string, error: unknown): void;
@@ -216,6 +241,14 @@ export interface Runtime {
 
 Views call this; never Store/Capabilities/Host directly. Computed values on `Resolved` are
 produced by the runtime via `host.callComputed` and memoized per query pass.
+
+**Language (#302, docs/20 §3).** `createRuntime` takes the person's languages (`RuntimeDeps.languages`:
+their explicit choice alone, or the device's list) and picks the app's (`pickLanguage`). The
+definition views read is `localize(app.definition, language)` — the raw one stays on `LoadedApp` —
+so views only ever see strings; a `Dynamic<Words>` option (`emptyText`, a page `title`) that returns a
+map is resolved the same way. Every ctx it builds carries `language` and `formatLocale`. An app that
+declares no language is shown as written. The only view-side addition is option `labels`: an enum or
+tags value reads as `labels[option] ?? option` on boards, pills, buttons, chips and headings.
 
 ## View contract (packages/views)
 
