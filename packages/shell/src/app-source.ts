@@ -99,6 +99,11 @@ export interface AppShape {
   /** The app's declared identity, when written literally: what a launcher tile shows without
    *  running the app (#82). */
   name?: string;
+  /** The name per language, when it is written as a translation map (#302). */
+  names?: Record<string, string>;
+  /** The app's own language and every one it carries, when written literally (#302). */
+  language?: string;
+  languages?: string[];
   icon?: string;
   /** `theme.accent`. */
   accent?: string;
@@ -223,6 +228,24 @@ function literalString(node: Node | null): string | undefined {
   return node?.type === "StringLiteral" && typeof node.value === "string" ? node.value : undefined;
 }
 
+/** Words written literally (#302): a string, or a translation map whose every entry is a string. */
+function literalWords(node: Node | null): string | Record<string, string> | undefined {
+  const s = literalString(node);
+  if (s !== undefined || node?.type !== "ObjectExpression") return s;
+  const map = literalOf(node);
+  if (!map || typeof map !== "object" || Array.isArray(map)) return undefined;
+  const entries = Object.entries(map);
+  return entries.length && entries.every(([, v]) => typeof v === "string") ? (map as Record<string, string>) : undefined;
+}
+
+/** The app's `language`/`languages`, when written literally. */
+function literalLanguages(def: Node | null): { language?: string; languages?: string[] } {
+  const language = literalString(propValue(def, "language"));
+  const languages = literalOf(propValue(def, "languages"));
+  const list = Array.isArray(languages) && languages.every((l) => typeof l === "string") ? (languages as string[]) : undefined;
+  return { ...(language ? { language } : {}), ...(list ? { languages: list } : {}) };
+}
+
 /** The entity's `groups` when every group is `{ title?, fields: ["a", "b"] }` written out; `undefined`
  *  when there are none; `"opaque"` when there are groups this cannot read (a helper call, a spread). */
 function literalGroups(node: Node | null): GroupShape[] | undefined | "opaque" {
@@ -330,15 +353,26 @@ export async function inspect(source: string): Promise<AppShape> {
     }
   }
 
-  const name = literalString(propValue(def, "name"));
+  const words = literalWords(propValue(def, "name"));
   const icon = literalString(propValue(def, "icon"));
   const accent = literalString(propValue(propValue(def, "theme"), "accent"));
-  return { entities, pages, ...(name ? { name } : {}), ...(icon ? { icon } : {}), ...(accent ? { accent } : {}) };
+  const langs = literalLanguages(def);
+  const name = typeof words === "string" ? words : words && langs.language ? words[langs.language] : undefined;
+  return {
+    entities,
+    pages,
+    ...(name ? { name } : {}),
+    ...(words && typeof words === "object" ? { names: words } : {}),
+    ...langs,
+    ...(icon ? { icon } : {}),
+    ...(accent ? { accent } : {}),
+  };
 }
 
 /** One entity's declared data shape: the literal parts of each field, and nothing that would run. */
 export interface DeclaredEntity {
-  label?: string;
+  /** A string, or a translation map (#302). */
+  label?: string | Record<string, string>;
   displayField?: string;
   editableBy?: string;
   /** Field key → the field's literal properties (`type`, `options`, `to`, `currency`…). A property
@@ -358,6 +392,13 @@ export type JsonLiteral = string | number | boolean | null | JsonLiteral[] | { [
  * shell's authority. The fields are plain data (docs/03), so the literal parts are all there is to
  * know — anything computed is skipped rather than guessed.
  */
+/** The app's own language and the ones it carries, read without running it (#302). */
+export async function declaredLanguages(source: string): Promise<{ language?: string; languages?: string[] }> {
+  const t = await load();
+  const ast = t ? parseModule(t, source) : null;
+  return ast ? literalLanguages(findDefinition(ast)) : {};
+}
+
 export async function declaredEntities(source: string): Promise<Record<string, DeclaredEntity> | null> {
   const t = await load();
   if (!t) return null;
@@ -383,7 +424,7 @@ export async function declaredEntities(source: string): Promise<Record<string, D
       if (value && typeof value === "object" && !Array.isArray(value) && typeof value.type === "string") fields[key] = value;
       else opaque.push(key);
     }
-    const label = literalString(propValue(entityNode, "label"));
+    const label = literalWords(propValue(entityNode, "label"));
     const displayField = literalString(propValue(entityNode, "displayField"));
     const editableBy = literalString(propValue(entityNode, "editableBy"));
     out[name] = {

@@ -8,7 +8,9 @@
 // what runs, with what, on which records. One button does all of it, and says how much.
 
 import { useMemo, useState } from "react";
-import { humanizeKey, type AppDefinition } from "potyro";
+import { humanizeKey, type AppDefinition as SourceDefinition, type Localized } from "potyro";
+/** The definition as the person reads it — `runtime.definition`, localized (#302). */
+type AppDefinition = Localized<SourceDefinition>;
 import { editApproval, type Review, type ReviewAction, type ReviewEdit, type ReviewRow, type ReviewTarget } from "./ask-apply.js";
 import { defaultApproval, valuesToSave } from "./ask-verdicts.js";
 import { titleOf, type LinkNames } from "./ask-review-parts.js";

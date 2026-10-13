@@ -71,7 +71,8 @@ async function pagesToRender(def: AppDefinition, runtime: PotyroRuntime): Promis
   }
   const pages: PageToRender[] = [];
   let sealed = 0;
-  for (const page of def.pages ?? []) {
+  // The pages as they render: the runtime's, in the person's language (#302).
+  for (const page of runtime.definition.pages ?? []) {
     const type = (page.view as { type?: string } | undefined)?.type;
     if (type === "custom" && !runtime.core.app.customView(page.id)) {
       sealed++;

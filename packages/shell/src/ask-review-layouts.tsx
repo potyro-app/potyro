@@ -3,7 +3,9 @@
 // many at once. Both show the same things and take the same decisions.
 
 import { useState } from "react";
-import type { AppDefinition } from "potyro";
+import type { AppDefinition as SourceDefinition, Localized } from "potyro";
+/** The definition as the person reads it — `runtime.definition`, localized (#302). */
+type AppDefinition = Localized<SourceDefinition>;
 import type { ReviewRow } from "./ask-apply.js";
 import { Decision, fieldLabel, shownFields, Sources, showValue, titleOf, TrustBadge, ValueCell, type LinkNames } from "./ask-review-parts.js";
 
