@@ -21,7 +21,9 @@ import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { storeModules } from "./app-modules.js";
-import type { ModuleSource } from "./package-modules.js";
+import { withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
+import { promotionFixes } from "./promotion.js";
+import { TrustDialog } from "./trust-dialog.js";
 import { getUserApp } from "./user-apps.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { PickerHost } from "./picker.js";
@@ -45,6 +47,12 @@ export interface Preview {
   provenance: Provenance;
   /** Bumped per build, so a rebuilt app remounts rather than keeping the last one's state. */
   build: number;
+  /**
+   * The saved app runs SEALED (someone else's, not promoted): the preview runs it in the isolate too,
+   * and offers to let it run as yours. When its libraries cannot start in the box, they stand in, so
+   * the app can still be seen and checked — the note says so.
+   */
+  sealed?: { librariesStoodIn: boolean };
 }
 
 let builds = 0;
@@ -82,6 +90,29 @@ export async function buildPreview(
     };
     // Its libraries and own modules (#266, #258), from the store the preview just opened.
     const modules = pending ?? (storeNamespace ? storeModules(store, getUserApp(storeNamespace)?.lock) : undefined);
+    // A saved app that runs sealed is previewed sealed: it is someone else's code until the person
+    // lets it run as theirs (CLAUDE.md rule 3), and opening it in the Studio is not saying so.
+    if (storeNamespace && getUserApp(storeNamespace)?.trusted === false) {
+      const bundle = await createAppBundler();
+      const sealed = async (mods: ModuleSource | undefined): Promise<Composed> =>
+        compose({ provenance: "untrusted", bundleCode: await bundle(source, mods), ...base, loadIsolated: await createSandboxLoader(store) });
+      let composed: Composed;
+      let librariesStoodIn = false;
+      try {
+        composed = await sealed(modules);
+      } catch (e) {
+        // A library that needs a full web page: the app is still seen, and checked, with it standing in.
+        const stoodIn = withLibrariesStoodIn(modules);
+        if (!promotionFixes(e) || stoodIn === modules) throw e;
+        composed = await sealed(stoodIn);
+        librariesStoodIn = true;
+      }
+      builds += 1;
+      return {
+        preview: { composed, toaster, picker, questions, dialogs, provenance: "untrusted", build: builds, sealed: { librariesStoodIn } },
+        issues: validateDefinition(composed.runtime.definition),
+      };
+    }
     // TRUSTED: this is the person's own app (CLAUDE.md rule 3). It also has to run directly for the
     // preview to be truthful — custom views never render in the isolate.
     let composed: Composed;
@@ -113,6 +144,8 @@ export interface PreviewScreenProps {
   unsaved?: boolean;
   onBack: () => void;
   onSource: () => void;
+  /** A sealed app's preview: let it run as yours. Only after the same dialog as everywhere else. */
+  onPromote?: () => void;
   /** Point mode (#284): the app is pointed at instead of used, until a part is picked or it is cancelled. */
   pointing: boolean;
   onPoint: () => void;
@@ -121,11 +154,14 @@ export interface PreviewScreenProps {
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, pointing, onPoint, onPointCancel, onPicked }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked }: PreviewScreenProps) {
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
   const [screen, setScreen] = useState<HTMLDivElement | null>(null);
   useEffect(() => setScreen(screenRef.current), []);
+  const [asking, setAsking] = useState(false);
+  const def = preview.composed.runtime.definition;
+  const promote = preview.sealed && onPromote ? onPromote : undefined;
   return (
     <section className="k-preview" aria-label="App preview" data-pointing={pointing || undefined}>
       {pointing ? (
@@ -153,6 +189,11 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
             <strong>{title}</strong>
             {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
           </p>
+          {promote ? (
+            <button type="button" className="k-preview-code k-preview-promote" title="It runs in the sealed box" onClick={() => setAsking(true)}>
+              Let it run as yours
+            </button>
+          ) : null}
           <button type="button" className="k-preview-point" title="Tap a part of the app to talk about it" onClick={onPoint}>
             <PointGlyph />
             <span className="k-preview-point-word">Point</span>
@@ -162,6 +203,22 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
           </button>
         </header>
       )}
+      {preview.sealed?.librariesStoodIn ? (
+        <p className="k-preview-note" role="note">
+          It runs in the sealed box, and its libraries need a full web page, so here they stand in and draw nothing. Let it run as yours to see them work.
+        </p>
+      ) : null}
+      {asking && promote ? (
+        <TrustDialog
+          name={def.name}
+          permissions={Object.entries(def.permissions ?? {}).filter(([, v]) => v).map(([k]) => k)}
+          onCancel={() => setAsking(false)}
+          onPromote={() => {
+            setAsking(false);
+            promote();
+          }}
+        />
+      ) : null}
       {/* The screen does not scroll; the app scrolls INSIDE it. Anything fixed in the app is placed
           against the screen, so a tab bar or a floating button stays put while the app scrolls —
           were the screen itself the scroller, they would scroll away with the content. */}
@@ -177,10 +234,11 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
                 toaster={preview.toaster}
                 picker={preview.picker}
                 questions={preview.questions}
+                onPromote={promote}
               />
             </div>
             <Dialogs host={preview.dialogs} />
-            {pointing ? <PointMode screen={screen} def={preview.composed.runtime.definition} onPick={onPicked} onCancel={onPointCancel} /> : null}
+            {pointing ? <PointMode screen={screen} def={def} onPick={onPicked} onCancel={onPointCancel} /> : null}
           </PortalRootContext.Provider>
         ) : null}
       </div>

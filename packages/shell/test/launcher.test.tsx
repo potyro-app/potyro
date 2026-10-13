@@ -71,6 +71,26 @@ describe("Launcher", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  // Owner, 2026-10-13: a sealed app can ALWAYS be let run as yours — from its tile too, because an
+  // app that cannot open sealed never shows its own badge.
+  it("offers a sealed app, and only a sealed one, to run as yours — through the one trust dialog", () => {
+    seed({ ...app("garden", "Garden"), trusted: false }, app("groceries", "Groceries"));
+    render(<Launcher {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Groceries/ }));
+    expect(screen.queryByRole("menuitem", { name: "Let it run as yours" })).toBeNull();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Garden/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Let it run as yours" }));
+    const dialog = screen.getByRole("dialog", { name: "Promote to trusted?" });
+    expect(dialog.textContent).toContain("Only promote an app you wrote or fully trust.");
+    expect(document.activeElement?.textContent).toBe("Cancel");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Promote to trusted?" })).toBeNull();
+    // Nothing changed by looking.
+    expect(JSON.parse(localStorage.getItem("potyro:user-apps")!).find((a: UserApp) => a.id === "garden").trusted).toBe(false);
+  });
+
   // #94: a menu is a keyboard thing. Focus moves into it on open, arrows walk it (wrapping), and
   // Escape puts focus back on the button — without the first of these, Escape did nothing, because
   // the button holding focus was outside the element listening for it.

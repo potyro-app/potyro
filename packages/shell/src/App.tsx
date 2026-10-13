@@ -26,6 +26,7 @@ import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
 import { ChatPanel, ChatPeek, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
 import { ROOM_THREAD } from "@potyro/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
+import { TrustDialog } from "./trust-dialog.js";
 import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { describePoint, type Pointed, type PointRef } from "./point-target.js";
@@ -146,9 +147,14 @@ interface AppProps {
   generator?: boolean;
   /** Set while this copy may not write to the shared data (KA-22, #63). */
   lock?: AppLock;
+  /**
+   * The Studio's preview of a sealed app (no `appId` of its own): promoting it is the Studio's to do,
+   * and this is how the trust dialog in here does it.
+   */
+  onPromote?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
   const def = runtime.definition;
   const appLabel = name?.trim() || def.name;
   const locked = useAppLock(lock);
@@ -190,14 +196,19 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // with, so a save (or a restore) made in there is invisible until a reload — closing the Studio
   // showed the old version of the app you had just changed.
   const sourceAtStudioOpen = useRef<string | undefined>(undefined);
+  // And its trust: an app let run as yours from the Studio's preview must not go on running sealed here.
+  const trustAtStudioOpen = useRef<boolean | undefined>(undefined);
+  const genOpenRef = useRef(false);
+  genOpenRef.current = genOpen;
   const openStudio = (): void => {
     sourceAtStudioOpen.current = appId ? getUserApp(appId)?.source : undefined;
+    trustAtStudioOpen.current = appId ? getUserApp(appId)?.trusted : undefined;
     setGenOpen(true);
   };
   const closeStudio = (): void => {
     setGenOpen(false);
-    const now = appId ? getUserApp(appId)?.source : undefined;
-    if (now !== undefined && now !== sourceAtStudioOpen.current) location.reload();
+    const now = appId ? getUserApp(appId) : undefined;
+    if (now && (now.source !== sourceAtStudioOpen.current || now.trusted !== trustAtStudioOpen.current)) location.reload();
   };
   const [launcherOpen, setLauncherOpen] = useState(false);
   // Ctrl/⌘K opens the switcher with its field focused (#85): "switch to X" is a name in your head.
@@ -738,7 +749,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     .filter(([, v]) => v)
     .map(([k]) => k);
   const setTrust = (trusted: boolean): void => {
-    if (!appId) return;
+    if (!appId) {
+      // A preview: the Studio promotes the app it is showing, when it is a sealed one.
+      setTrustPrompt(false);
+      if (trusted) onPromote?.();
+      return;
+    }
     setUserAppTrusted(appId, trusted, new Date().toISOString());
     location.reload();
   };
@@ -839,7 +855,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
   useEffect(() => {
-    const open = (): void => setTrustPrompt(true);
+    // Not while the Studio is open over this app: its preview has its own dialog, and one tap must
+    // not open two.
+    const open = (): void => {
+      if (!genOpenRef.current) setTrustPrompt(true);
+    };
     globalThis.addEventListener(TRUST_REQUEST, open);
     return () => globalThis.removeEventListener(TRUST_REQUEST, open);
   }, []);
@@ -1064,38 +1084,14 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       ) : null}
 
       {trustPrompt ? (
-        <div className="k-modal-scrim" onClick={() => setTrustPrompt(false)}>
-          <div className="k-modal k-trustdialog" onClick={(e) => e.stopPropagation()}>
-            {provenance === "trusted" ? (
-              <>
-                <h3>Trusted app</h3>
-                <p className="k-muted">
-                  <strong>{def.name}</strong> runs directly on this device (not sandboxed). Revoke to run it in the
-                  isolate again.
-                </p>
-                <div className="k-form-actions">
-                  <button type="button" className="k-add" onClick={() => setTrustPrompt(false)}>Close</button>
-                  <button type="button" className="k-add" onClick={() => setTrust(false)}>Revoke trust</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>Promote to trusted?</h3>
-                <p className="k-muted">
-                  Trusted apps run <strong>directly</strong> with full access — no sandbox. Only promote an app you
-                  wrote or fully trust. <strong>{def.name}</strong> declares:
-                </p>
-                <ul className="k-trust-caps">
-                  {grantedCaps.length ? grantedCaps.map((c) => <li key={c}>{c}</li>) : <li className="k-muted">no special capabilities</li>}
-                </ul>
-                <div className="k-form-actions">
-                  <button type="button" className="k-add" onClick={() => setTrustPrompt(false)}>Cancel</button>
-                  <button type="button" className="k-add k-primary-action" onClick={() => setTrust(true)}>Promote to trusted</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <TrustDialog
+          name={def.name}
+          permissions={grantedCaps}
+          trusted={provenance === "trusted"}
+          onCancel={() => setTrustPrompt(false)}
+          onPromote={() => setTrust(true)}
+          onRevoke={() => setTrust(false)}
+        />
       ) : null}
 
       {editMode && editSource ? (
