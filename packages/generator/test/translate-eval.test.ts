@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AppDefinition } from "potyro";
 import { loadApp } from "../src/score.js";
-import { scoreTranslate } from "../src/translate-eval.js";
+import { sameEverywhere, scoreTranslate } from "../src/translate-eval.js";
 import { translateCases } from "../src/translate-cases.js";
 
 const examples = resolve(process.cwd(), "../../examples");
@@ -29,6 +29,24 @@ describe("eval:translate scorer", async () => {
       expect(bad.passed, c.case.id).toBe(false);
     }, 30_000);
   }
+
+  it("adding a field may bump schemaVersion with its migration (docs/06), and still passes", async () => {
+    const c = cases.find((x) => x.case.id === "add-due-date")!;
+    const bumped = (await c.good())
+      .replace('version: "2.1.0",', 'version: "2.2.0",')
+      .replace("schemaVersion: 2,", "schemaVersion: 3,")
+      .replace("  migrations: [", '  migrations: [\n    { from: "2.1.0", to: "2.2.0", steps: [{ op: "addField", entity: "item", field: "due" }] },');
+    const score = await scoreTranslate(c.case, c.case.app, bumped, load);
+    expect(score.checks.filter((x) => !x.ok)).toEqual([]);
+  }, 30_000);
+
+  it("units and cognates are not held against a translation; an untranslated phrase is", () => {
+    expect(sameEverywhere("entities.ingredient.fields.caloriesPer100.unit", "kcal")).toBe(true);
+    expect(sameEverywhere("entities.ingredient.fields.pricePerKg.unit", "$/kg")).toBe(true);
+    expect(sameEverywhere("entities.recipe.fields.ingredients.of.unit.labels.ml", "ml")).toBe(true);
+    expect(sameEverywhere("entities.item.label", "Item")).toBe(false);
+    expect(sameEverywhere("entities.item.fields.note.unit", "per person")).toBe(false);
+  });
 
   it("an answer that bumps schemaVersion for a translation fails", async () => {
     const c = cases.find((x) => x.case.id === "translate-groceries-de")!;

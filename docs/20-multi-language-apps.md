@@ -686,6 +686,23 @@ Where the build differs from the design above, and why:
   Spliced, they become `label: { en: "Bought by", pl: "…" }` and `labels: { … }`.
 - **An app that declares no language** gets `ctx.locale` in the person's language, so its functions
   can still format for them; its strings are shown as written.
+- **What the first paid `eval:translate` run found** (DeepSeek V4 Flash, 10 cases, $0.15; 5 passed):
+  - *A third language broke `translate`.* Splicing `de` into groceries (already `en`+`pl`) wrote
+    `{ en, de }` where a plain string or a missing label had been, so every new map lacked `pl`, the
+    completeness check failed the candidate, and the loop gave up. Now a plain string keeps its
+    words in every language the app already carries (it read the same in all of them), a slot with
+    no words yet takes an object `{ pl: "…", de: "…" }` and is refused as a bare string, and hidden
+    fields' labels are not asked for.
+  - *A rename in one language went uncaught.* The completeness check only saw missing languages,
+    not stale ones. It now also reports a map whose own-language words changed while another
+    language stayed the same, as a warning: said once, and accepted if the same edits are sent
+    again (the person may have asked to change one language).
+  - *The scorer was wrong twice.* Adding a field is a data change (docs/06), so `add-field` and
+    `polish-ask` may bump `schemaVersion`; only translate, rename and one-language edits must not.
+    And "it really translated" now ignores units in a `unit` slot and tokens of three letters or
+    fewer, leaves placeholders (examples, often proper names) out of the count, and allows
+    cognates: under 10% of the phrases and under 25% of all words may equal the English ("Name",
+    "Status", "Winter" are German too). Unit-like slots may stay plain.
 - **The system prompt's budget** went from 75k to 80k characters, with the note the test asks for,
   after the new comments were cut to one line and `Localized` was kept out of the reference.
 

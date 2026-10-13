@@ -419,6 +419,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
  */
 async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>): Promise<{ problem: string | null; warning: boolean; gated: GatedRun | null }> {
   let problem: string | null = null;
+  /** A map renamed in the app's own language only (#302): said once the rest of the gate has passed. */
+  let staleWords: string | null = null;
   try {
     const issues = await deps.check(candidate);
     if (issues.length) problem = `The result failed validation:\n${issues.map((i) => `- ${i}`).join("\n")}`;
@@ -428,8 +430,9 @@ async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>
   if (!problem) {
     // Every language the app carries, kept in step (#302): a gap the candidate ADDS sends it back; a
     // gap that was there is said, never held against it.
-    const words = describeWordsReport(await wordsReport(deps.source, candidate).catch(() => ({ added: [], existing: [], plain: [] })));
+    const words = describeWordsReport(await wordsReport(deps.source, candidate).catch(() => ({ added: [], existing: [], plain: [], stale: [] })));
     if (words.fails) problem = `It compiles and validates, but it leaves a translation incomplete.\n${words.text}`;
+    else if (words.warns) staleWords = words.text;
   }
   if (!problem) {
     let shape: AppShape | null = null;
@@ -454,6 +457,14 @@ async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>
         `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
         "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
     }
+  }
+  // Last, so a candidate held on it has passed everything else; its own key, so a run warning on the
+  // same candidate is still said. Sent again unchanged, it is meant: one language on purpose.
+  const wordsKey = `\u0000words\u0000${candidate}`;
+  if (!problem && staleWords && !warned.has(wordsKey)) {
+    warned.add(wordsKey);
+    warning = true;
+    problem = `It compiles and validates, but look at this.\n${staleWords}`;
   }
   return { problem, warning, gated };
 }
