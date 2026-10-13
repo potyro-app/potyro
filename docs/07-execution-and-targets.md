@@ -149,6 +149,14 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
 - **History**: each version carries the libraries part of the lock as `lock.json` text; an upgrade is
   a version with a `lock.json` diff, and Restore brings its libraries back (their old bytes stay on
   the device, so offline), keeping the ones the app has now under them for its current modules.
+- **Export bundles carry the code** (#282): Export writes the app's lock as `lock.json` — its
+  libraries and, unlike a package's, its own modules too (`src/<path> → { file: ".src/<path>", … }`)
+  — with the bytes under `files/.modules/` and `src/`, as a package carries them; `data.sqlite` holds
+  only the app's data. Adding the app from the bundle goes through the package install and fetches
+  nothing, so a backup restores with no network. A file the bundle (or any package) carries that is
+  not what its lock says is a problem on the card, by name — "fancy-sum 1.2.3 is not the copy this
+  app was saved with" — and the app is not added; it is never fetched again in its place. A data
+  Import leaves the app's own code alone. Tested by `e2e/export-libraries-trusted.spec.ts`.
 - **A Studio save** of a version that imports a library the app does not have yet says what it
   fetches first, and fetches it with consent when the version is saved — for code a person writes by
   hand. **Not yet** (owner decision): the Studio's model and the generator prompt are not taught to
