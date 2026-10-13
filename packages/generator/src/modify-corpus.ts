@@ -44,6 +44,23 @@ export interface ModifyCase {
    * with `landed` and no `notDone` is fully feasible, and refusing it scores the same way.
    */
   notDone?: string[];
+  /**
+   * A case class the loop's next changes are measured on (docs/19 F9); absent for the original 17.
+   *   `conversation`  the request depends on what was said about EARLIER versions (`earlier`, #279)
+   *   `platform`      the heart of the request is something Potyro itself lacks (#263): the right
+   *                   answer does the doable part and names the rest
+   *   `wrong-gate`    the app's own check refuses every candidate for a reason outside the change,
+   *                   as #276's did (`gateRefuses`): it measures what the loop does at a dead end
+   */
+  class?: "conversation" | "platform" | "wrong-gate";
+  /**
+   * What the person and the Studio said about EARLIER versions of the app, oldest first. Nothing
+   * hands it to the model today — the loop sees only what was said since the last version — so
+   * these cases measure what is lost without it, and #279 will be measured on the same cases.
+   */
+  earlier?: Array<{ who: "person" | "studio"; text: string }>;
+  /** The error the app's check throws for every candidate, the original included (`wrong-gate`, loop mode only). */
+  gateRefuses?: string;
 }
 
 const hasField = (entity: string, field: string) => (d: DefinitionShape): boolean =>
@@ -54,6 +71,15 @@ const hasField = (entity: string, field: string) => (d: DefinitionShape): boolea
 // and the case scored "did not land" for a change that landed. Structure that can be read must
 // never be assumed.
 const addedPage = (after: DefinitionShape, before: DefinitionShape): boolean => after.pages.length > before.pages.length;
+
+type FieldShape = { type?: string; max?: unknown; options?: unknown };
+const fieldsOf = (d: DefinitionShape, entity: string): Array<[string, FieldShape]> => Object.entries(d.entities[entity]?.fields ?? {}) as Array<[string, FieldShape]>;
+
+/** The entity gained a field whose name matches `name` (and, when given, whose type is `type`). */
+const gainedField = (entity: string, name: RegExp, type?: string) => (d: DefinitionShape, before: DefinitionShape): boolean =>
+  fieldsOf(d, entity).some(([k, f]) => name.test(k) && !(k in (before.entities[entity]?.fields ?? {})) && (!type || f.type === type));
+
+const filtersOn = (d: DefinitionShape, page: string): number => d.pages.find((p) => p.id === page)?.view.filters?.length ?? 0;
 
 const hasPageOfType = (type: string) => (d: DefinitionShape): boolean => d.pages.some((p) => p.view.type === type);
 
@@ -220,5 +246,90 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
       return Boolean(a) && (String(a!.sort) !== String(b?.sort) || (a!.filters?.length ?? 0) > (b?.filters?.length ?? 0));
     },
     expects: "the All places list changes its sort or gains a chip",
+  },
+
+  // --- docs/19 F9: the classes the loop's next changes are measured on --------------------------
+  // conversation (#279): each depends on something said about an EARLIER version — a change the
+  // person turned down, an answer they gave, a feature they had removed. Without it, a model does
+  // the reasonable thing and gets it wrong.
+  {
+    id: "plants-no-more-pages",
+    app: "plants",
+    class: "conversation",
+    earlier: [
+      { who: "person", text: "Add a page with the plants that need direct sun." },
+      { who: "studio", text: "Done: a new page, Sunny plants, lists the plants that need direct sun." },
+      { who: "person", text: "No, I don't want more pages, the menu is long enough already. Undo that. Put things like that on the Plants list as a filter instead." },
+      { who: "studio", text: "Undone: the Sunny plants page is gone and the app is as it was." },
+    ],
+    instruction: "Let me see only the plants that need direct sun.",
+    landed: (d, before) => d.pages.length === before.pages.length && filtersOn(d, "list") > filtersOn(before, "list"),
+    expects: "no page added, and the Plants list gains a filter",
+  },
+  {
+    id: "workout-rating-out-of-10",
+    app: "workout",
+    class: "conversation",
+    earlier: [
+      { who: "person", text: "Add a rating to each session." },
+      { who: "studio", text: "Should the rating be stars out of 5, or a score out of 10?" },
+      { who: "person", text: "Out of 10, I score everything out of 10. Actually leave it for now, I'll ask again later." },
+      { who: "studio", text: "Okay, I didn't change anything." },
+    ],
+    instruction: "Ok, now add the rating to each session.",
+    landed: (d) => fieldsOf(d, "session").some(([k, f]) => /rat|score/i.test(k) && f.type === "number" && f.max === 10),
+    expects: "session gains a number rating with max 10",
+  },
+  {
+    id: "recipes-put-spice-back",
+    app: "recipes",
+    class: "conversation",
+    earlier: [
+      { who: "person", text: "Add how spicy each recipe is: mild, medium or hot, in colours." },
+      { who: "studio", text: "Done: recipes have a Spiciness choice (mild, medium, hot), shown as a coloured badge." },
+      { who: "person", text: "Take the spiciness away again, I don't use it." },
+      { who: "studio", text: "Done: the Spiciness choice is gone." },
+    ],
+    instruction: "I changed my mind, put the spiciness thing back like it was.",
+    landed: (d) =>
+      fieldsOf(d, "recipe").some(
+        ([, f]) => f.type === "enum" && Array.isArray(f.options) && ["mild", "medium", "hot"].every((o) => (f.options as unknown[]).some((x) => String(x).toLowerCase() === o)),
+      ),
+    expects: "recipe gains an enum with mild, medium and hot",
+  },
+
+  // platform (#263): what the person mostly wants needs a device feature Potyro does not offer (no
+  // barcode reader, no Bluetooth). The right answer keeps what the app can do and says plainly what
+  // Potyro itself would need — never a refusal of the whole request.
+  {
+    id: "plants-scan-barcode",
+    app: "plants",
+    class: "platform",
+    instruction: "When I buy a new plant, let me scan the barcode on its pot to fill in its name, and keep the barcode number with the plant.",
+    landed: gainedField("plant", /barcode|code|ean|upc|sku/i),
+    expects: "plant gains a barcode-like field",
+    notDone: ["scan|barcode|camera"],
+  },
+  {
+    id: "workout-heart-rate-strap",
+    app: "workout",
+    class: "platform",
+    instruction: "Connect to my Bluetooth heart rate strap during a session and save my average heart rate with the session.",
+    landed: gainedField("session", /heart|hr|bpm|pulse/i, "number"),
+    expects: "session gains a heart-rate number field",
+    notDone: ["bluetooth|strap|connect|sensor"],
+  },
+
+  // wrong-gate (#276): the right change, and a check that refuses it whatever the model sends,
+  // because the error comes from outside the change. Nothing can land; what is measured is how the
+  // loop ends (repeat, ask, explain) and what the dead end cost.
+  {
+    id: "places-phone-wrong-gate",
+    app: "places",
+    class: "wrong-gate",
+    instruction: "Add a phone number to each place so I can call to book a table.",
+    landed: gainedField("place", /phone|tel/i),
+    expects: "place gains a phone-like field (the gate refuses it anyway)",
+    gateRefuses: "maplibre-gl 4.7.1 needs a full web page to work",
   },
 ];
