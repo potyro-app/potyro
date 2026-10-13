@@ -21,7 +21,7 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { getUserApp, lockToRestore, renameUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { getUserApp, lockToRestore, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
@@ -507,6 +507,13 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   const canOpen = preview !== null && (hasApp || held !== null);
   const showPreview = previewOpen && preview !== null;
+  /** The previewed app runs sealed and the person said, in the trust dialog, to let it run as theirs. */
+  const promotePreview = (): void => {
+    const app = appRef.current ? getUserApp(appRef.current) : undefined;
+    if (!app) return;
+    setUserAppTrusted(app.id, true, new Date().toISOString());
+    void buildPreview(app.source, app.id).then(({ preview: built }) => built && setPreview(built));
+  };
 
   return (
     <div className="k-studio" role="dialog" aria-label="App studio" data-preview={showPreview || undefined}>
@@ -592,6 +599,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           unsaved={held !== null}
           onBack={() => setPreviewOpen(false)}
           onSource={() => setTools("source")}
+          onPromote={promotePreview}
         />
       ) : null}
 
