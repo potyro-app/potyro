@@ -14,6 +14,8 @@ vi.mock("../src/open-store.js", () => ({
     await store.open(namespace);
     return store;
   },
+  // No account in these tests: a forgotten conversation stays forgotten on this device only (#283).
+  accountNode: async () => null,
 }));
 
 const chat = await import("../src/studio-chat.js");
@@ -46,6 +48,19 @@ describe("the record", () => {
       [5, "refusal", "That needs the platform."],
     ]);
     expect(all[3]).toMatchObject({ seq: 1, name: "Reader" });
+  });
+
+  it("two devices' messages said while apart read in the same order everywhere (#283)", async () => {
+    // Both devices said a second thing offline, so both are `n: 2`. Time decides, and then the id —
+    // all of which travel, so every device that has both shows them alike.
+    await chat.appendMessage("notes", { kind: "ask", text: "first" }, at(1));
+    await chat.keepMessages([
+      { id: "z-phone", chatId: "notes", n: 2, at: at(3), kind: "ask", text: "on the phone, later" },
+      { id: "a-laptop", chatId: "notes", n: 2, at: at(2), kind: "ask", text: "on the laptop, earlier" },
+    ]);
+    expect((await chat.listMessages("notes")).map((m) => m.text)).toEqual(["first", "on the laptop, earlier", "on the phone, later"]);
+    // And what is said next comes after both.
+    expect((await chat.appendMessage("notes", { kind: "ask", text: "next" }, at(4))).n).toBe(3);
   });
 
   it("keeps one chat apart from another", async () => {

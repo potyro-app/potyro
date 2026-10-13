@@ -33,6 +33,7 @@ export { ROOM_THREAD, recordThread } from "./types.js";
 export { MemoryStore } from "./memory-store.js";
 export { LocalStore, QuotaError, type StorageLike } from "./local-store.js";
 export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccountName, removeAppFromAccount, type AccountApp } from "./account-apps.js";
+export { readAccountChat, publishChatMessages, removeChatMessages, watchAccountChats, type AccountChat, type AccountChatMessage } from "./account-chats.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, type JazzStoreDeps } from "./jazz-store.js";
 export { openWorkerSqliteHandle, workersAvailable } from "./sqlite-worker-client.js";

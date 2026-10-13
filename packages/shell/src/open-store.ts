@@ -437,6 +437,28 @@ export async function openAccountNodeForDevice(): Promise<unknown | null> {
   }
 }
 
+let accountNodeOpening: { who: string; node: Promise<unknown | null> } | null = null;
+
+/**
+ * This device's node on your account, opened once per page and kept: what reads and writes the data
+ * that is yours rather than an app's — your Studio conversations (#283). Null where this device has
+ * no account to reach; asked again next time, since an identity can appear later in the session. A
+ * different identity (this device was linked to another account) gets a node of its own.
+ */
+export async function accountNode(): Promise<unknown | null> {
+  const { peekIdentity } = await import("@potyro/identity");
+  const who = peekIdentity()?.id;
+  if (!who) return null;
+  if (accountNodeOpening?.who !== who) {
+    const node = openAccountNodeForDevice().then((n) => {
+      if (!n && accountNodeOpening?.node === node) accountNodeOpening = null;
+      return n;
+    });
+    accountNodeOpening = { who, node };
+  }
+  return accountNodeOpening.node;
+}
+
 /**
  * Publish EVERY synced app this device has to your account, without opening any of them.
  *

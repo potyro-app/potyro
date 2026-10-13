@@ -30,6 +30,7 @@ import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineReady } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import { shellDialogs } from "./dialog.js";
+import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
@@ -170,6 +171,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setItems(threadItems(messages, versions));
   }, []);
 
+  /** The conversation from your other devices, and this one's sent to them (#283). Never in the way. */
+  const follow = useCallback(async (): Promise<void> => {
+    const id = appRef.current;
+    if (id && (await syncChat(id))) await refresh();
+  }, [refresh]);
+  // ...and live while it is open: what you say on another device shows up here (#283).
+  useEffect(() => (appId ? followChat(appId, () => void refresh()) : undefined), [appId, refresh]);
+
   /** Add to the conversation. A message that could not be kept is said, never dropped quietly. */
   const say = async (message: NewMessage): Promise<void> => {
     try {
@@ -178,11 +187,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       setProblem(`This conversation could not be saved: ${e instanceof Error ? e.message : String(e)}`);
     }
     await refresh();
+    void follow();
   };
 
   // Arriving: the conversation, and the app built so that Open has something to open.
   useEffect(() => {
-    void refresh();
+    void refresh().then(follow);
     if (opened) {
       void buildPreview(opened.source, opened.id).then(({ preview: built }) => {
         setPreview(built);
