@@ -7,6 +7,7 @@
 // can be done about it.
 
 import { tileIdentity } from "./tile-identity.js";
+import { PointGlyph } from "./point-mode.js";
 import type { ChatItem } from "./studio-chat.js";
 
 /** A version that was made and not saved — see `Held` in studio.tsx. */
@@ -85,6 +86,13 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
         if (item.type === "ask") {
           return (
             <li key={item.id} className="k-thread-turn k-thread-mine">
+              {item.point ? (
+                // What it was about, on the message itself: "this" in what was said means that part.
+                <span className="k-point-chip k-thread-point" title={`About ${item.point.words}`}>
+                  <PointGlyph />
+                  <span className="k-point-chip-label">{item.point.label}</span>
+                </span>
+              ) : null}
               <p className="k-thread-ask">{item.text}</p>
             </li>
           );

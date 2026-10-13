@@ -440,6 +440,16 @@ export interface ModifyContext {
     /** From `PAGE_FIELDS` - what the PAGE can declare, as opposed to its view. */
     pageFields?: readonly string[];
   };
+  /**
+   * The part of the app the person pointed at while asking (#284): what it is, in words, and where it
+   * is in the source already shown — a few lines of it, never the app a second time.
+   */
+  pointedAt?: {
+    words: string;
+    /** 1-based, inclusive: the lines of the app above that hold it. */
+    lines?: readonly [number, number];
+    excerpt?: string;
+  };
   /** Edits already attempted on this app, newest first. */
   priorAttempts?: readonly string[];
   /** Requests already answered as host-side, so the same verdict is not re-derived. */
@@ -491,6 +501,15 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
     `"${instruction}"`,
     "",
   ];
+
+  if (ctx?.pointedAt) {
+    const p = ctx.pointedAt;
+    lines.push(`They pointed at ${p.words} while asking — "this", "here" and "it" mean that part.`);
+    if (p.lines && p.excerpt) {
+      lines.push(`In the app above it is lines ${p.lines[0]}–${p.lines[1]} (repeated here only to show where; edit the app above):`, "```ts", p.excerpt, "```");
+    }
+    lines.push("");
+  }
 
   if (ctx?.target) {
     const t = ctx.target;

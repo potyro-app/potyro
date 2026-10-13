@@ -31,6 +31,8 @@ import { validateDefinition } from "./validate-app.js";
 import { DialogHost, Dialogs } from "./dialog.js";
 import { Toaster } from "./toaster.js";
 import { App } from "./App.js";
+import { PointGlyph, PointMode } from "./point-mode.js";
+import type { Pointed } from "./point-target.js";
 
 export interface Preview {
   composed: Composed;
@@ -111,30 +113,55 @@ export interface PreviewScreenProps {
   unsaved?: boolean;
   onBack: () => void;
   onSource: () => void;
+  /** Point mode (#284): the app is pointed at instead of used, until a part is picked or it is cancelled. */
+  pointing: boolean;
+  onPoint: () => void;
+  onPointCancel: () => void;
+  onPicked: (pointed: Pointed) => void;
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, pointing, onPoint, onPointCancel, onPicked }: PreviewScreenProps) {
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
   const [screen, setScreen] = useState<HTMLDivElement | null>(null);
   useEffect(() => setScreen(screenRef.current), []);
   return (
-    <section className="k-preview" aria-label="App preview">
-      <header className="k-preview-bar">
-        <button type="button" className="k-preview-back" aria-label="Back to the chat" onClick={onBack}>
-          {/* Beside the conversation the chat is already there, so this closes the app instead. */}
-          <span aria-hidden>←</span> <span className="k-preview-back-word">Chat</span>
-          <span className="k-preview-hide-word">Close</span>
-        </button>
-        <p className="k-preview-title">
-          <strong>{title}</strong>
-          {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
-        </p>
-        <button type="button" className="k-preview-code" onClick={onSource}>
-          Code
-        </button>
-      </header>
+    <section className="k-preview" aria-label="App preview" data-pointing={pointing || undefined}>
+      {pointing ? (
+        // The bar says what the mode is and how to leave it — never the app's own controls.
+        <header className="k-preview-bar k-point-bar" role="status">
+          <span className="k-point-bar-mark" aria-hidden>
+            <PointGlyph />
+          </span>
+          <p className="k-point-bar-text">
+            <strong>Point at the app</strong>
+            <span>Tap the part you mean</span>
+          </p>
+          <button type="button" className="k-point-cancel" onClick={onPointCancel}>
+            Cancel
+          </button>
+        </header>
+      ) : (
+        <header className="k-preview-bar">
+          <button type="button" className="k-preview-back" aria-label="Back to the chat" onClick={onBack}>
+            {/* Beside the conversation the chat is already there, so this closes the app instead. */}
+            <span aria-hidden>←</span> <span className="k-preview-back-word">Chat</span>
+            <span className="k-preview-hide-word">Close</span>
+          </button>
+          <p className="k-preview-title">
+            <strong>{title}</strong>
+            {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
+          </p>
+          <button type="button" className="k-preview-point" title="Tap a part of the app to talk about it" onClick={onPoint}>
+            <PointGlyph />
+            <span className="k-preview-point-word">Point</span>
+          </button>
+          <button type="button" className="k-preview-code" onClick={onSource}>
+            Code
+          </button>
+        </header>
+      )}
       {/* The screen does not scroll; the app scrolls INSIDE it. Anything fixed in the app is placed
           against the screen, so a tab bar or a floating button stays put while the app scrolls —
           were the screen itself the scroller, they would scroll away with the content. */}
@@ -153,6 +180,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
               />
             </div>
             <Dialogs host={preview.dialogs} />
+            {pointing ? <PointMode screen={screen} def={preview.composed.runtime.definition} onPick={onPicked} onCancel={onPointCancel} /> : null}
           </PortalRootContext.Provider>
         ) : null}
       </div>

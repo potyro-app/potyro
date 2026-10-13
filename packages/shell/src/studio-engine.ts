@@ -7,7 +7,7 @@
 
 import type { AppShape } from "@potyro/runtime";
 import type { GiveUp } from "@potyro/generator/agent";
-import { SYSTEM_PROMPT, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn } from "@potyro/generator/backends";
+import { SYSTEM_PROMPT, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
@@ -56,7 +56,8 @@ const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ k
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
-  modify(source: string, before: AppShape, instruction: string): Promise<Outcome>;
+  /** `context`: where the change was aimed — the part of the app the person pointed at (#284). */
+  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome>;
   /** Repair from the validator's own words, through the same gate as a modify. */
   repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
 }
@@ -115,11 +116,12 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
    * "an explanation instead of a change", so it is taken out here, before the guard sees it, and
    * comes back to the conversation as the question it is.
    */
-  const attempt = async (source: string, instruction: string): Promise<string> => {
+  const attempt = async (source: string, instruction: string, ctx?: ModifyContext): Promise<string> => {
     const reply = await modifyTurn({
       engine,
       source,
       instruction,
+      ctx,
       onProgress: (text, secs) => {
         if (secs === undefined) progress(text);
         else if (isCli) progress(`Changing it via ${label}… ${secs}s`);
@@ -156,7 +158,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     }
   };
 
-  const modify = async (source: string, before: AppShape, instruction: string): Promise<Outcome> => {
+  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome> => {
     try {
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
@@ -166,6 +168,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
           modules,
           source,
           instruction,
+          context,
           before,
           engine,
           onStep: (step) => {
@@ -184,7 +187,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       }
       const result = await ticking("Changing it", () =>
         guardedModify({
-          attempt: (instr) => attempt(source, instr),
+          attempt: (instr) => attempt(source, instr, context),
           shapeOf: async (src) => {
             const app = await loadTrustedModule(src, modules);
             return { pages: app.pages, entities: app.entities };

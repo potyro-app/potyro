@@ -6171,6 +6171,415 @@ body:has(.k-tabbar) .k-toasts {
   }
 }
 
+/* tokens-only: start — point at the app */
+/* Point at the app (#284, point-mode.tsx). A mode, and it looks like one: the preview's bar turns the
+   accent and says so, the app's screen is ringed and veiled, and what a tap would point at stands
+   lit in it with its name on the outline. Nothing in the veil is the app working — a tap on it
+   points, it never presses. */
+.k-preview-point {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.k-preview-point:hover,
+.k-preview-point:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+  transform: translateY(-1px);
+  outline: none;
+}
+.k-preview-point:active {
+  transform: translateY(0);
+}
+.k-point-glyph {
+  flex: none;
+  display: block;
+}
+
+.k-point-bar {
+  gap: var(--space-3);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-bottom-color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+  animation: k-point-bar-in var(--dur) var(--ease);
+}
+@keyframes k-point-bar-in {
+  from {
+    opacity: 0.4;
+  }
+}
+.k-point-bar-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--on-accent) 14%, transparent);
+  animation: k-point-pulse 1.8s var(--ease) infinite;
+}
+@keyframes k-point-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--on-accent) 30%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+.k-point-bar-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.k-point-bar-text strong {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+.k-point-bar-text span {
+  font-size: 0.82rem;
+  color: color-mix(in oklab, var(--on-accent) 78%, transparent);
+}
+.k-point-cancel {
+  flex: none;
+  padding: 0.45rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--on-accent) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--on-accent) 8%, transparent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-point-cancel:hover,
+.k-point-cancel:focus-visible {
+  background: color-mix(in oklab, var(--on-accent) 18%, transparent);
+  outline: none;
+}
+.k-point-cancel:active {
+  transform: scale(0.97);
+}
+
+/* The layer over the app: it takes every tap. Veiled until something is under the pointer, then the
+   veil gathers around the outline (its shadow) and the part shows through, lit. */
+.k-point-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  background: color-mix(in oklab, var(--scrim-soft) 40%, transparent);
+  animation: k-point-veil-in var(--dur-slow) var(--ease);
+}
+.k-point-layer:not([data-state="idle"]) {
+  background: transparent;
+}
+@keyframes k-point-veil-in {
+  from {
+    opacity: 0;
+  }
+}
+/* The frame: an inner ring in the accent, over everything — the screen is not the app right now. */
+.k-point-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 3px solid var(--accent);
+  pointer-events: none;
+}
+.k-point-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--scrim-soft) 70%, transparent);
+  pointer-events: none;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    width var(--dur-fast) var(--ease),
+    height var(--dur-fast) var(--ease);
+}
+.k-point-layer[data-state="chosen"] .k-point-ring {
+  border-style: solid;
+  border-width: 3px;
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--accent) 30%, transparent),
+    0 0 0 100vmax var(--scrim-soft);
+}
+/* The name sits on the outline's top edge, like a legend on a fieldset: it reads as the outline's.
+   At the right end, because what it outlines usually starts at the left with a title of its own. */
+.k-point-tag {
+  position: absolute;
+  top: 0;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  max-width: min(18rem, 80%);
+  padding: 0.2rem 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: var(--shadow);
+}
+.k-point-tag[data-place="inside"] {
+  top: var(--space-2);
+  transform: none;
+}
+.k-point-tag[data-place="above"],
+.k-point-tag[data-place="below"] {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: -3px;
+  max-width: min(18rem, 70vw);
+  transform: none;
+}
+.k-point-tag[data-place="below"] {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+/* Chosen: what it is, what it is inside, and the one thing to do next. */
+.k-point-tray {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
+  z-index: 2;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  cursor: default;
+  touch-action: manipulation;
+  animation: k-point-tray-in var(--dur-slow) var(--ease);
+}
+.k-point-tray[data-top] {
+  top: var(--space-3);
+  bottom: auto;
+}
+@keyframes k-point-tray-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.k-point-tray-head {
+  margin: 0 0 var(--space-2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-point-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-point-level {
+  max-width: 100%;
+  padding: 0.4rem 0.8rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-point-level:hover,
+.k-point-level:focus-visible {
+  border-color: var(--accent);
+  color: var(--ink);
+  outline: none;
+}
+.k-point-level[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-point-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.k-point-again {
+  padding: 0.5rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.k-point-again:hover,
+.k-point-again:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+.k-point-ask {
+  padding: 0.6rem 1.15rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.k-point-ask:hover,
+.k-point-ask:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px var(--accent-tint), var(--shadow);
+  outline: none;
+}
+.k-point-ask:active {
+  transform: translateY(0);
+}
+
+/* What a message is about: a chip on the box while it is being written, and on the message after. */
+.k-composer-box[data-pointed] {
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+}
+.k-composer-point {
+  flex: 1 0 100%;
+  display: flex;
+  min-width: 0;
+}
+.k-point-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.3rem 0.25rem 0.6rem;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+  animation: k-turn-in var(--dur-slow) var(--ease);
+}
+.k-point-chip > .k-point-glyph {
+  color: color-mix(in oklab, var(--accent) 60%, var(--ink));
+}
+.k-point-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.k-point-chip-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-point-chip-x:hover,
+.k-point-chip-x:focus-visible {
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
+  color: var(--ink);
+  outline: none;
+}
+.k-thread-point {
+  margin-bottom: var(--space-1);
+  padding-right: 0.7rem;
+  font-size: 0.8rem;
+}
+.k-composer-point-btn {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-composer-point-btn:hover,
+.k-composer-point-btn:focus-visible {
+  color: var(--ink);
+  background: var(--accent-tint);
+  outline: none;
+}
+@media (max-width: 420px) {
+  .k-preview-point-word {
+    display: none;
+  }
+  .k-preview-point {
+    padding: 0.45rem 0.6rem;
+  }
+}
+/* tokens-only: end — point at the app */
+
 /* Wide: the conversation and the app side by side. The app gets the room; the conversation keeps a
    reading measure. */
 @media (min-width: 1100px) {

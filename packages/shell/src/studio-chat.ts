@@ -57,9 +57,17 @@ export interface ChatMessage {
   name?: string;
   /** For a `failure`: what went wrong in a developer's words, kept folded away under the plain one. */
   detail?: string;
+  /** For an `ask`: the part of the app the person pointed at while asking (#284). */
+  point?: MessagePoint;
 }
 
-export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail">>;
+/** A part of the app pointed at, as a message keeps it: the chip's label and the words the model read. */
+export interface MessagePoint {
+  label: string;
+  words: string;
+}
+
+export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point">>;
 
 export interface DraftChat {
   id: string;
@@ -89,7 +97,7 @@ function announce(): void {
 }
 
 function toMessage(record: Record<string, unknown>): ChatMessage | null {
-  const { id, chatId, n, at, kind, text, seq, name, detail } = record as Partial<ChatMessage>;
+  const { id, chatId, n, at, kind, text, seq, name, detail, point } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
   return {
@@ -102,8 +110,12 @@ function toMessage(record: Record<string, unknown>): ChatMessage | null {
     ...(typeof seq === "number" ? { seq } : {}),
     ...(typeof name === "string" ? { name } : {}),
     ...(typeof detail === "string" ? { detail } : {}),
+    ...(isPoint(point) ? { point: { label: point.label, words: point.words } } : {}),
   };
 }
+
+const isPoint = (p: unknown): p is MessagePoint =>
+  !!p && typeof p === "object" && typeof (p as MessagePoint).label === "string" && typeof (p as MessagePoint).words === "string";
 
 async function readAll(): Promise<ChatMessage[]> {
   const rows = await (await store()).all(ENTITY);
@@ -140,6 +152,7 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     ...(message.seq !== undefined ? { seq: message.seq } : {}),
     ...(message.name !== undefined ? { name: message.name } : {}),
     ...(message.detail !== undefined ? { detail: message.detail } : {}),
+    ...(message.point !== undefined ? { point: message.point } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
   const stored = toMessage(written as Record<string, unknown>);
@@ -204,7 +217,7 @@ export async function clearChat(chatId: string): Promise<void> {
 
 /** One thing on screen in the Studio's conversation. */
 export type ChatItem =
-  | { type: "ask"; id: string; text: string }
+  | { type: "ask"; id: string; text: string; point?: MessagePoint }
   | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure"; detail?: string }
   | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean }
   | { type: "event"; id: string; text: string; seq?: number };
@@ -212,7 +225,7 @@ export type ChatItem =
 type Timed = { at: string; order: number; items: ChatItem[] };
 
 function fromMessage(m: ChatMessage): ChatItem {
-  if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text };
+  if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text, ...(m.point ? { point: m.point } : {}) };
   if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false };
   if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq };
   return { type: "agent", id: m.id, text: m.text, tone: m.kind, ...(m.detail ? { detail: m.detail } : {}) };
@@ -262,7 +275,7 @@ export function threadItems(messages: readonly ChatMessage[], versions: readonly
  * What the agent is told: everything said since the app last changed, in order, its own questions
  * included — so an answer reaches it beside the question it answers. A single request goes as typed.
  */
-export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "text">>): string {
+export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "text" | "point">>): string {
   let start = 0;
   messages.forEach((m, i) => {
     if (m.kind === "version") start = i + 1;
@@ -271,7 +284,9 @@ export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "t
   let answering = false;
   for (const m of messages.slice(start)) {
     if (m.kind === "ask") {
-      lines.push(answering ? `The answer: ${m.text}` : lines.length ? `\n${m.text}` : m.text);
+      // Pointed at: what "this" meant goes with the words, so it is read the way it was said (#284).
+      const said = m.point ? `About ${m.point.words}: ${m.text}` : m.text;
+      lines.push(answering ? `The answer: ${said}` : lines.length ? `\n${said}` : said);
       answering = false;
     } else if (m.kind === "question") {
       lines.push(`\nYou asked: ${m.text}`);
