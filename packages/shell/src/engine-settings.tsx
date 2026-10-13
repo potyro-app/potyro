@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
 import { ENGINES, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
+import { ThinkingSettings } from "./thinking-settings.js";
 
 interface EngineSettingsProps {
   config: EngineConfig;
@@ -120,6 +121,9 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                         </p>
                       </div>
                     ) : null}
+
+                    {/* How hard it thinks (#280): only where a client sends it. */}
+                    {active && e.canThink ? <ThinkingSettings config={config} onChange={onChange} /> : null}
 
                     {active && e.id === "edge" ? (
                       <select
