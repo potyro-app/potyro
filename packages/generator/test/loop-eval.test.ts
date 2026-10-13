@@ -67,12 +67,18 @@ describe("the scripted loop engines prove the harness", () => {
     expect(tracer.read()).toMatchObject({ candidates: 1, passedOn: 1, repeats: 0 });
   });
 
-  it("a #276-like gate refuses every candidate; the scripted model resends the same edit and the loop gives up on the repeat", async () => {
+  it("a #276-like gate refuses every candidate; the scripted model resends the same edit and the loop gives up on the second repeat", async () => {
     const tracer = stepTracer();
     const check = refusingCheck(async () => [], "maplibre-gl 4.7.1 needs a full web page to work");
     const out = await runModifyLoop(base({ check, onStep: tracer.onStep }));
     expect(out).toMatchObject({ kind: "failed", cause: "repeated" });
-    expect(tracer.read()).toMatchObject({ candidates: 1, passedOn: null, repeats: 1 });
+    expect(tracer.read()).toMatchObject({ candidates: 1, passedOn: null, repeats: 2 });
+  });
+
+  it("counts a fresh start", () => {
+    const tracer = stepTracer();
+    tracer.onStep({ kind: "unusable", detail: "starting again", restart: true });
+    expect(tracer.read().restarts).toBe(1);
   });
 
   it("scripted-loop-tools: looks things up until the steps run out", async () => {
@@ -116,6 +122,7 @@ describe("summarizeLoop", () => {
     expect(s.cost).toBeCloseTo(0.07, 10);
     expect(s.costPerCase).toBeCloseTo(0.07 / 6, 10);
     expect(s.repeatsSeen).toBe(1);
+    expect(s.restarts).toBe(0);
     expect(s.passedOn).toEqual({ "1": 1, "2": 0, "3": 1, "4+": 0 });
   });
 
