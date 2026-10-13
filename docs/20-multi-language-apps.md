@@ -1,8 +1,8 @@
 # 20 · Multi-language apps — an app carries translations of its own words
 
-**Status: proposal for #302 (part of the i18n epic #297).** Nothing here is built. The owner
-approves the shape first; then one PR changes `packages/schema/src/types`, the Zod schema, the host,
-the runtime, docs/04 and docs/05, and regenerates the reference and the corpus.
+**Status: built in #302 (part of the i18n epic #297).** The owner approved this design on
+2026-10-13 with every recommendation of §8 as written. §10 lists where the build differs from the
+text below, and why; everything else is as written.
 
 #298 (the shell's own catalogs, You → Language, the six locales) is being built in parallel. This
 doc covers only **the app's words**: the labels, titles and messages an app author wrote. Potyro's
@@ -654,3 +654,38 @@ reminders: [{ id: "water-due", entity: "plant", when: (p) => (p.active ? p.nextW
 
 `p.name` is a record, so it is never translated. "Podlej: Monstera" is the app's words around the
 person's data.
+
+## 10. As built
+
+Where the build differs from the design above, and why:
+
+- **The enum `labels` example is plants', not groceries'.** Groceries has had no enum since 2.0.0 —
+  its aisles became records you rename — and adding a field to it would have been a data change. So
+  groceries is the `en`+`pl` app with every word a map, and `plants` shows `labels` on its `season`
+  enum (plain English labels in a one-language app). Groceries moved to 2.1.0 and plants to 1.1.0 so
+  unchanged seeded copies pick them up; no `schemaVersion` moved.
+- **There is no app info sheet**, so the quiet line of §3.3 is an entry in the app's `⋯` menu:
+  "Translate into Polski", described as "This app is in English.", where the app can be edited here
+  (it opens the Studio with that request), and the line itself, inactive, where it cannot.
+- **The ICU formatter is `intl-messageformat`** (FormatJS), because it interprets a message instead of
+  compiling it to code — the host formats words a stranger's app sends it. `ctx.t` is synchronous, so
+  "loaded the first time an app calls `t` with `vars`" could not be done: it is a lazy chunk awaited by
+  `host.load`, before any of the app's functions can run. #298 had not landed, so there was nothing
+  to reuse; Lingui compiles at build time and cannot format a message that arrives at run time.
+- **`__hostPure` answers with a marked string** (`+text` or `!why`) rather than JSON, and takes plain
+  JSON with no reviver: measured on a desktop (i7-9850H, Node 22, 10,000 calls) that took
+  `ctx.format.date` in the box from ~64 µs to **~41 µs a call** — above §2.4's ~25 µs estimate, which
+  timed the JSON round trip alone. `ctx.t` without `vars` stays in the box at ~2.5 µs; the trusted
+  `ctx.format.date` is ~2.5 µs against ~1 µs for bare `Intl`. **Not measured on a phone.**
+- **Views changed in their types**: `Runtime.definition` is `Localized<AppDefinition>` (every `Words`
+  slot typed as its string), and views take the localized types. Their only behaviour change is the
+  new option `labels`, read as `labels[option] ?? option` on boards, pills, buttons, badges, group
+  headings, table cells, filter chips and the quick-action menu.
+- **`translate` also offers the slots a translation needs that have no words yet**: a field or entity
+  leaning on its key ("Bought by" cannot be humanised into Polish, §7.1) and an option with no label.
+  Spliced, they become `label: { en: "Bought by", pl: "…" }` and `labels: { … }`.
+- **An app that declares no language** gets `ctx.locale` in the person's language, so its functions
+  can still format for them; its strings are shown as written.
+- **The system prompt's budget** went from 75k to 80k characters, with the note the test asks for,
+  after the new comments were cut to one line and `Localized` was kept out of the reference.
+

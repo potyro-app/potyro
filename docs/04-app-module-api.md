@@ -11,7 +11,7 @@ typed `record` and `ctx`, (b) normalizes defaults, and (c) in dev runs a Zod che
 **declarative** parts only. It does not and must not constrain function bodies.
 
 ```ts
-export default defineApp({ id, name, icon, version, schemaVersion, theme, permissions, entities, pages, reminders, migrations });
+export default defineApp({ id, name, icon, version, schemaVersion, language, languages, theme, permissions, entities, pages, reminders, migrations });
 ```
 
 `name`, `icon` (one emoji) and `theme.accent` are the app's identity: the launcher tile shows them
@@ -69,6 +69,18 @@ interface Ctx {
   // Synchronous and fixed per evaluation pass, so a filter can read it. Per device, not shared.
   scope: Readonly<Record<string, Resolved | undefined>>;
 
+  // ---- the app's words and the person's formats (#302, docs/20) ----
+  // `locale` is the language the app's words are shown in — one of its `languages` — fixed per pass.
+  // `t` picks a map's words for it; with `vars` the words are an ICU message (plurals agree).
+  // `format` formats for the person, and works the same in the sealed box (see below).
+  locale: Language;
+  t(words: Words, vars?: Record<string, string | number | Date>): string;
+  format: { locale: string;                            // the tag they format in: "pl-PL"
+            date(d, opts?): string; number(n, opts?): string;
+            money(minor: number, currency?: string): string;   // whole minor units, as a money field stores them
+            relative(d, opts?: { unit?; numeric? }): string;   // from ctx.now(): "in 3 days"
+            list(items: string[], opts?: { type? }): string };
+
   // ---- who is using this app (KA-18) ----
   // `me` is always present — a solo app gets this device's identity. `space` is absent for a solo
   // app; in a shared one it carries the members and this device's role (`invite()` is admin-only
@@ -109,16 +121,16 @@ interface Ctx {
     export(f): Promise<void>;                             // save a copy outside the app
   };
 
-  // ---- UI affordances provided by the shell ----
-  ui: { toast(msg: string): void;
-        confirm(msg: string, opts?: { detail?: string; ok?: string; destructive?: boolean }): Promise<boolean>;
-        prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
+  // ---- UI affordances provided by the shell (every word may be `Words`: a map shows in ctx.locale) ----
+  ui: { toast(msg: Words): void;
+        confirm(msg: Words, opts?: { detail?: Words; ok?: Words; cancel?: Words; destructive?: boolean }): Promise<boolean>;
+        prompt(msg: Words, opts?: { default?: string }): Promise<string | null>;
         pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
-        sheet<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
-        menu<T>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
-        form<T>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }): Promise<T | null>;
-        progress(label: string): { update(fraction: number, detail?: string): void; done(): void }; };
-  // UiItem<T> = { id: T; label: string; detail?: string; icon?: string; destructive?: boolean }
+        sheet<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
+        menu<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
+        form<T>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
+        progress(label: Words): { update(fraction: number, detail?: string): void; done(): void }; };
+  // UiItem<T> = { id: T; label: Words; detail?: Words; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
   navigate(pageId: string, params?: Record<string, string>): void;
@@ -155,6 +167,37 @@ what a trusted one does, with no permission prompt — none of them reach outsid
 These are new optional members: no existing app changes, so `schemaVersion` (the app's own data
 version) is not bumped.
 
+### An app's words in several languages (#302, docs/20)
+
+Every declarative slot a person reads takes **`Words`**: a string, the same in every language, or a
+map, `{ en: "Quantity", pl: "Ilość" }`. That is entity and field labels, help, placeholders and
+units, page, group, section and layout titles, empty texts, chart and aggregate titles, button,
+action, summary, stat, chip and quick-action labels, the scope's label and the app's `name`. An
+`enum` or `tags` field gains **`labels`**, keyed by option: the option is what records store and
+never changes by language; only its words do. The list exists once, in the Zod schema (`zWords` at
+each slot), and one walker derived from it does the checking and the resolving.
+
+- **`language: "en"`** says which language the app is written in, and **`languages: ["en", "pl"]`**
+  every language it carries, its own first. Every map must contain `language`; a key that is not in
+  `languages` is an error (it is almost always a typo). A map missing one of the *other* languages is
+  not: that string falls back to the app's own language, so a newer copy with more languages still
+  loads on an older one.
+- **Resolution** is the person's explicit choice, else the device's languages in order; for each, the
+  exact tag, then the same base language; else the app's own. It happens once, in the runtime
+  (`localize`), so views read plain strings. `Runtime.definition` is the localized definition.
+- **Inside functions**, `ctx.t({ en: "Due now", pl: "Do podlania" })`; with `vars`, ICU plurals:
+  `ctx.t({ en: "{n, plural, one {# plant} other {# plants}}", pl: "…" }, { n })`. Records are never
+  translated: `ctx.t({ en: "Water {name}", pl: "Podlej: {name}" }, { name: p.name })`.
+- **Formats** — `ctx.format.date/number/money/relative/list` — are for text the app composes. Return a
+  `Date` or a number where a view formats it (a `datetime` field, a `money` column,
+  `AggregateRow.value`). `ctx.format.locale` is the person's locale when it speaks the words'
+  language ("en-GB" for an English app: 13/10/2026), else the words' language.
+- **Old apps** (no `language`) are shown exactly as written, and `ctx.locale` is the person's language.
+
+These are optional, additive members, and no record changes: a translation moves `version`, never
+`schemaVersion`, and needs no migration. Adding a language is the Studio's `translate` tool (docs/20
+§5.1); the structural editor (below) edits a translated label one language at a time.
+
 ### How `ctx` differs by trust
 
 `ctx` is constructed by the **host** (docs/07). Its data/time/storage/ui/nav members are always
@@ -173,6 +216,14 @@ person chooses every file; that choice is the consent, so they work the same in 
 isolate carries bytes across its JSON bridge as base64.
 
 This is the entire safety model. The language is full JS; `caps` is where power is governed.
+
+`ctx.locale`, `ctx.t` and `ctx.format` are not caps either. In the sealed box, which has no `Intl`,
+`ctx.locale` and `ctx.t(words)` without `vars` are answered inside the box; `ctx.t(words, vars)` and
+`ctx.format.*` go to the host through one synchronous, authority-free call, `__hostPure`: it formats
+the arguments it is handed — no store, no cap, no person — with an allow-listed set of options, size
+limits, and the host's locale, never the app's. The same code formats for a trusted app, so a date
+reads identically at both provenances (a parity test holds it). About 40 µs a call in the box on a
+desktop, ~2.5 µs directly.
 
 ## `ViewProps` (what a custom view receives)
 
