@@ -13,11 +13,14 @@ export {
   OpenRouterBackend,
   createOpenRouterBackend,
   createOpenRouterEngine,
+  thinkingOptions,
+  REASONING_LEVELS,
   OPENROUTER_MODELS,
   type OpenRouterModel,
   type OpenRouterOptions,
   type ProviderOptions,
   type ReasoningEffort,
+  type ReasoningLevel,
   type ReasoningOptions,
 } from "./openrouter-backend.js";
 export {

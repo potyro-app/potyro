@@ -65,8 +65,10 @@ export async function createShareLink(appId: string, role: "writer" | "reader" =
 
   // Publish before minting the link: the guest fetches the source from the space, so a link handed
   // out before anything was published would open an app with no code.
-  const { publishAppSource } = await import("./app-sync.js");
-  await publishAppSource(handle.store, { source: app.source, name: app.name, updatedAt: app.updatedAt });
+  // With its code beyond the source (#281): the lock and the app's own modules, so the guest's copy
+  // can open — its libraries fetched there, once, with consent, and checked against this lock.
+  const [{ publishAppSource }, { codeToCarry }] = await Promise.all([import("./app-sync.js"), import("./app-modules.js")]);
+  await publishAppSource(handle.store, { ...(await codeToCarry(app, handle.store)), source: app.source, name: app.name, updatedAt: app.updatedAt });
 
   const secret = createSpaceInvite(handle, role);
   const payload: InvitePayload = {
@@ -160,8 +162,14 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
     );
   }
 
+  // Its own modules, checked against the lock that came with them (#281). Its libraries are fetched
+  // when it first opens, with consent — never their bytes through the space.
+  const { receiveCode } = await import("./app-modules.js");
+  await receiveCode(appId, published ?? {});
+
   const saved = await saveUserApp(
     {
+      ...(published?.lock ? { lock: published.lock } : {}),
       // ALWAYS the shared app's id, never a slug of its name.
       //
       // The space was joined under `user:${payload.appId}`, and every later open goes through the

@@ -10,7 +10,9 @@
 // whether the model can express a change AS EDITS at all: the format, the retries, the rewrite rate.
 //
 // Flags: --backend openrouter|claude-cli|scripted|scripted-edits|scripted-repair  --model <id>
-//        --reasoning <effort>  --only id1,id2  --concurrency N  --out <dir>  --repair  --runs N
+//        --reasoning off|low|medium|high (the Studio's levels, #280; or any OpenRouter effort)
+//        --escalate   with --loop: think hard for the one turn after the loop got stuck (#280)
+//        --only id1,id2  --concurrency N  --out <dir>  --repair  --runs N
 //        --loop  --run   (`--run`, with `--loop`: candidates are also RUN on sample records, as the
 //                         Studio does since #262 — here the logic run only; pages are not mounted
 //                         in Node)
@@ -38,7 +40,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
-import { createOpenRouterBackend, createOpenRouterEngine, type ReasoningEffort } from "../src/openrouter-backend.js";
+import { createOpenRouterBackend, createOpenRouterEngine, REASONING_LEVELS, thinkingOptions, type ReasoningEffort, type ReasoningLevel, type ReasoningOptions } from "../src/openrouter-backend.js";
 import { guardedModify, type GuardedModifyResult } from "../src/guarded-modify.js";
 import { runModifyLoop } from "../src/agent/modify-loop.js";
 import { buildDiscoveryTools } from "../src/agent/discovery-tools.js";
@@ -191,6 +193,13 @@ function scriptedDeclineBackend(): ModelBackend {
   };
 }
 
+/** `--reasoning`: one of the Studio's levels (with its token budget), or a raw OpenRouter effort. */
+function thinkingFrom(flag: string | undefined): { reasoning?: ReasoningOptions; maxTokens?: number } {
+  if (!flag) return {};
+  if ((REASONING_LEVELS as readonly string[]).includes(flag)) return thinkingOptions(flag as ReasoningLevel);
+  return { reasoning: { effort: flag as ReasoningEffort, exclude: true } };
+}
+
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
   if (kind === "scripted" || kind === "scripted-edits") return scriptedBackend(kind);
   if (kind === "scripted-repair") return scriptedRepairBackend();
@@ -199,7 +208,7 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
   if (kind === "openrouter") {
     return createOpenRouterBackend({
       ...(model ? { model } : {}),
-      ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
+      ...thinkingFrom(reasoning),
     });
   }
   throw new Error(`unknown --backend "${kind}" (expected openrouter, claude-cli, scripted, scripted-edits, scripted-repair or scripted-decline)`);
@@ -227,6 +236,8 @@ interface LoopSetup {
   model: string | undefined;
   run: boolean;
   engine: () => ChatEngine;
+  /** Think hard for the turn after the loop got stuck (#280). */
+  escalate: boolean;
 }
 
 async function loopModify(
@@ -254,6 +265,7 @@ async function loopModify(
   const out = await runModifyLoop({
     engine: meteredEngine(loop.engine(), meter, keep),
     model,
+    escalate: loop.escalate,
     tools: buildDiscoveryTools({ check, source, ...(runCandidates ? { run } : {}) }),
     corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
@@ -471,7 +483,7 @@ async function main(): Promise<void> {
     throw new Error(`--loop needs a chat engine with tools: --backend openrouter, or ${SCRIPTED_LOOP_KINDS.join(" / ")} to prove the harness`);
   }
   if (scriptedLoop && !loopRequested) throw new Error(`--backend ${backendKind} drives the loop: add --loop`);
-  const reasoning = arg("reasoning") as ReasoningEffort | undefined;
+  const reasoning = arg("reasoning");
   const model = arg("model");
   const backend: ModelBackend = scriptedLoop
     ? { name: `scripted:${backendKind}`, generate: async () => { throw new Error("scripted loop engine only drives the loop"); } }
@@ -485,11 +497,12 @@ async function main(): Promise<void> {
         // measured reasoning off.
         engine: scriptedLoop
           ? () => scriptedLoopEngine(backendKind as ScriptedLoopKind)
-          : () => createOpenRouterEngine({ ...(model ? { model } : {}), ...(reasoning ? { reasoning: { effort: reasoning, exclude: true } } : {}) }),
+          : () => createOpenRouterEngine({ ...(model ? { model } : {}), ...thinkingFrom(reasoning) }),
+        escalate: process.argv.includes("--escalate"),
       }
     : null;
   const caseTimeoutMs = Number(arg("case-timeout", "900")) * 1000;
-  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}${loop.escalate ? ", thinking hard when stuck" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {

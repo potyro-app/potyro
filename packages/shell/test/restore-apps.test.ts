@@ -14,6 +14,12 @@ import type { AccountApp } from "@potyro/store";
 vi.mock("../src/app-history.js", () => ({ recordVersion: async () => {}, clearHistory: async () => {} }));
 vi.mock("../src/app-diagnoses.js", () => ({ clearDiagnoses: async () => {} }));
 vi.mock("../src/app-cases.js", () => ({ clearCases: async () => {} }));
+const received = vi.hoisted(() => [] as Array<{ appId: string; code: unknown }>);
+vi.mock("../src/app-modules.js", () => ({
+  receiveCode: async (appId: string, code: { lock?: unknown; modules?: unknown }) => {
+    if (code.lock) received.push({ appId, code: { lock: code.lock, modules: code.modules } });
+  },
+}));
 
 const NOW = "2026-09-18T12:00:00.000Z";
 
@@ -27,7 +33,10 @@ const APP: AccountApp = {
   updatedAt: NOW,
 };
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  received.length = 0;
+});
 afterEach(() => localStorage.clear());
 
 describe("loading an app from your account", () => {
@@ -75,5 +84,18 @@ describe("loading an app from your account", () => {
     expect(getUserApp("split")?.source).toBe("// mine\n");
     expect(localStorage.getItem("potyro:jazz:group:user:split")).toBe("co_zMINE");
     expect(listUserApps()).toHaveLength(1);
+  });
+
+  it("brings its code beyond the source: the lock on the app, its own modules into this device's copy (#281)", async () => {
+    const lock = { "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-AAAA", size: 3 } };
+    await installFromAccount({ ...APP, lock, modules: { "src/plan.ts": "x;\n" } }, NOW);
+    expect(getUserApp("split")?.lock).toEqual(lock);
+    expect(received).toEqual([{ appId: "split", code: { lock, modules: { "src/plan.ts": "x;\n" } } }]);
+  });
+
+  it("an entry from before the lock travelled installs as it always did", async () => {
+    await installFromAccount(APP, NOW);
+    expect(getUserApp("split")?.lock).toBeUndefined();
+    expect(received).toEqual([]);
   });
 });

@@ -622,6 +622,11 @@ button {
 .k-modal-scrim:has(> .k-dialog) {
   z-index: 100;
 }
+/* The trust dialog interrupts the same way, from wherever it was asked for: a tile's menu, the Add an
+   app card, the Studio's preview. */
+.k-modal-scrim.k-trust-scrim {
+  z-index: 100;
+}
 .k-dialog {
   width: min(420px, 92vw);
   display: flex;
@@ -6103,6 +6108,19 @@ body:has(.k-tabbar) .k-toasts {
 .k-preview-hide-word {
   display: none;
 }
+/* A sealed app in the preview: the way to let it run as yours, in the app's accent — not a warning. */
+.k-preview-promote {
+  color: var(--ink);
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+}
+.k-preview-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
 .k-preview-back:hover,
 .k-preview-back:focus-visible,
 .k-preview-code:hover,
@@ -6565,6 +6583,17 @@ body:has(.k-tabbar) .k-toasts {
   font-size: 0.95rem;
   line-height: 1.45;
   text-wrap: pretty;
+}
+.k-splash-advice {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+/* The way out first — "Let it run as yours" when that is what fixes it — then the way home. */
+.k-splash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 .k-splash-bar {
   position: relative;
@@ -8696,6 +8725,76 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-engine-fields .k-input {
   margin-top: 0;
+}
+/* How hard it thinks (#280): four levels side by side where there is room, two by two on a phone. */
+.k-thinking {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.k-thinking-levels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.k-thinking-title,
+.k-thinking-cost {
+  grid-column: 1 / -1;
+}
+.k-thinking-title {
+  margin-bottom: 0.1rem;
+}
+.k-thinking-cost {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.k-thinking-level {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: start;
+  gap: 0.15rem 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.k-thinking-level:hover {
+  border-color: color-mix(in oklab, var(--line) 50%, currentColor);
+}
+.k-thinking-level[data-active="true"] {
+  border-color: currentColor;
+  background: color-mix(in oklab, var(--paper) 85%, currentColor);
+}
+.k-thinking-level:focus-within {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+.k-thinking-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.k-thinking-hint {
+  grid-column: 1 / -1;
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+.k-thinking-stuck {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  cursor: pointer;
+}
+.k-thinking-stuck .k-thinking-hint {
+  margin-top: 0.1rem;
+}
+@media (max-width: 34rem) {
+  .k-thinking-levels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* --- History tab ---------------------------------------------------------------------------- */

@@ -19,7 +19,7 @@
 // prompt, and the new version is written through `saveUserApp` so it lands in History and can be
 // rolled back like any other edit.
 
-import type { Store } from "@potyro/store";
+import { readCarriedCode, sameCode, type AppLock, type Store } from "@potyro/store";
 
 const KEY = "__appSource";
 
@@ -44,6 +44,13 @@ export interface PublishedApp {
    */
   note?: string;
   rationale?: string;
+  /**
+   * The app's code beyond `source` (#281): its lock, and its own modules as text — `carried-code.ts`
+   * in the store says why those travel and library bytes do not. Absent from a copy published before
+   * they travelled; such a copy reads as an app with no code beyond its source.
+   */
+  lock?: AppLock;
+  modules?: Record<string, string>;
 }
 
 /**
@@ -77,7 +84,12 @@ export async function readPublishedApp(store: Store): Promise<PublishedApp | nul
     const raw = await store.kvGet(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PublishedApp;
-    return typeof parsed?.source === "string" && typeof parsed?.updatedAt === "string" ? parsed : null;
+    if (typeof parsed?.source !== "string" || typeof parsed?.updatedAt !== "string") return null;
+    // Read leniently: a broken lock is dropped, never the app it came with.
+    const app: PublishedApp = { ...parsed };
+    delete app.lock;
+    delete app.modules;
+    return { ...app, ...readCarriedCode(parsed as unknown as Record<string, unknown>) };
   } catch {
     // A corrupt entry must not stop the app from opening.
     return null;
@@ -97,5 +109,8 @@ export async function pendingAppUpdate(store: Store, local: PublishedApp): Promi
   const published = await readPublishedApp(store);
   if (!published) return null;
   if (published.updatedAt <= local.updatedAt) return null;
-  return published.source === local.source ? null : published;
+  if (published.source !== local.source) return published;
+  // The same source with different libraries is an update too (a library upgrade changes no line of
+  // the source). A copy published without a lock says nothing about its libraries: not an update.
+  return published.lock && !sameCode(published.lock, local.lock) ? published : null;
 }

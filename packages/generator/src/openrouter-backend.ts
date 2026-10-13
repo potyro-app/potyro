@@ -63,6 +63,41 @@ const DEFAULT_REASONING: ReasoningOptions = { effort: "none" };
 const DEFAULT_PROVIDER: ProviderOptions = { sort: "throughput" };
 
 export type ReasoningEffort = "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
+
+/**
+ * How hard the model thinks, as the person chooses it (#280): four levels, not OpenRouter's seven
+ * efforts. Default `off` until a measurement says otherwise (docs/19 F6).
+ */
+export type ReasoningLevel = "off" | "low" | "medium" | "high";
+export const REASONING_LEVELS: readonly ReasoningLevel[] = ["off", "low", "medium", "high"];
+
+/**
+ * Each level's effort and `max_tokens`. Reasoning is drawn from the same budget as the answer (an
+ * effort is roughly a share of `max_tokens` — about 80% at high), so a level that thinks more gets
+ * more room and the answer is not left empty. DeepSeek V4 and the other shortlisted models accept
+ * 64k output tokens.
+ */
+const LEVEL_BUDGET: Record<ReasoningLevel, { effort: ReasoningEffort; maxTokens: number }> = {
+  off: { effort: "none", maxTokens: 32_000 },
+  low: { effort: "low", maxTokens: 36_000 },
+  medium: { effort: "medium", maxTokens: 48_000 },
+  high: { effort: "high", maxTokens: 64_000 },
+};
+
+/** The engine/backend options for a level: spread them into `createOpenRouterEngine` or `createOpenRouterBackend`. */
+export function thinkingOptions(level: ReasoningLevel): { reasoning: ReasoningOptions; maxTokens: number } {
+  const b = LEVEL_BUDGET[level];
+  // The thinking is kept out of the response: it is not shown, and it would only lengthen the body.
+  return { reasoning: level === "off" ? { effort: "none" } : { effort: b.effort, exclude: true }, maxTokens: b.maxTokens };
+}
+
+/** The level an effort stands for, so a per-request level is never lower than the engine's own. */
+function levelOf(effort: ReasoningEffort | undefined): ReasoningLevel {
+  if (effort === "low" || effort === "minimal") return "low";
+  if (effort === "medium") return "medium";
+  if (effort === "high" || effort === "xhigh" || effort === "max") return "high";
+  return "off";
+}
 export interface ReasoningOptions {
   effort?: ReasoningEffort;
   /** Keep the thinking out of the response body. */
@@ -165,6 +200,21 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const bodyTimeoutMs = opts.bodyTimeoutMs ?? timeoutMs;
 
+  const base = opts.reasoning ?? DEFAULT_REASONING;
+  // A request may ask to think harder than the engine's level (the loop's escalation, docs/19 F6) —
+  // never less — and then gets that level's budget too.
+  const raised = (req: ChatRequest): ReasoningLevel | null =>
+    req.reasoning && REASONING_LEVELS.indexOf(req.reasoning) > REASONING_LEVELS.indexOf(levelOf(base.effort)) ? req.reasoning : null;
+  const reasoningFor = (req: ChatRequest): ReasoningOptions => {
+    const r = raised(req);
+    return r ? thinkingOptions(r).reasoning : base;
+  };
+  const maxTokensFor = (req: ChatRequest): number => {
+    const r = raised(req);
+    const own = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
+    return r ? Math.max(own, thinkingOptions(r).maxTokens) : own;
+  };
+
   const create = async (req: ChatRequest) => {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${apiKey}`,
@@ -183,7 +233,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
         model: req.model ?? opts.model ?? DEFAULT_MODEL,
         messages: req.messages,
         ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
-        max_tokens: req.max_tokens ?? opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+        max_tokens: req.max_tokens ?? maxTokensFor(req),
         ...(reasoning ? { reasoning } : {}),
         provider: opts.provider ?? DEFAULT_PROVIDER,
         ...(req.tools || req.serverTools
@@ -198,7 +248,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
       }
     };
 
-    let { res, text } = await post(opts.reasoning ?? DEFAULT_REASONING);
+    let { res, text } = await post(reasoningFor(req));
     // Some models cannot think less than they do (Gemini 3.6 Flash: "Reasoning is mandatory for this
     // endpoint and cannot be disabled"). Turning it off is a speed preference, not a requirement:
     // ask again with the model's own default rather than failing the request.
