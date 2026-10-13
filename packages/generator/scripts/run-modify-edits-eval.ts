@@ -20,6 +20,15 @@
 // With --loop the summary also says how each case ended (docs/19 F9): give-ups by cause, repeats,
 // the candidate the result passed on, model calls, tokens and cost — and every headline rate with
 // its 95% interval. A `wrong-gate` case (#276) is reported apart: its gate refuses every candidate.
+//        --language pl|pt-BR  (#301) the person's language: every case's request is the hand-checked
+//                          translation (translated-cases.ts), the turn carries the language line, and
+//                          the report adds two checks — are the result's NEW labels in the app's
+//                          language, and is the reply (explanation, Not done, refusal, question) in
+//                          the person's? `en` is today's run, unchanged.
+//        --app-language <tag>  the app's language as if it declared one (#302): new labels are then
+//                          expected in it. Without it the corpus apps read as English, so a Polish
+//                          request on them is expected to keep English labels and reply in Polish.
+//        --backend scripted-loop-language --loop   proves the language columns with no model
 //        --case-timeout S  a hard limit per case (default 900): the loop is told to stop and the case
 //                          is recorded as crashed with the reason — three cases once hung ten hours
 //
@@ -52,6 +61,9 @@ import { meteredEngine, newMeter, rate, refusingCheck, SCRIPTED_LOOP_KINDS, scri
 import type { ChatEngine } from "../src/chat-backend.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@potyro/runtime";
+import { LANGUAGE_NAMES, appLanguage, isLanguage, matchLanguage, type Language, type TurnLanguage } from "../src/language.js";
+import { isEvalLanguage, localizeModifyCase, EVAL_LANGUAGES } from "../src/translated-cases.js";
+import { checkLabels, newLabels, replyLanguage, summarizeLanguage, type LabelCheck } from "../src/language-eval.js";
 
 interface Outcome {
   id: string;
@@ -92,6 +104,8 @@ interface Outcome {
   class?: ModifyCase["class"];
   /** `--loop` only: how the loop ended, why it gave up, what it cost, and on which candidate it passed. */
   loop?: LoopRecord;
+  /** `--language` only (#301): were the new labels in the app's language, and the reply in the person's? */
+  language?: { labels: LabelCheck | null; reply: { expected: Language; read: Language | null; passed: boolean | null } };
 }
 
 function arg(name: string, fallback?: string): string | undefined {
@@ -228,6 +242,9 @@ interface LoopSetup {
   engine: () => ChatEngine;
 }
 
+/** What the turns are told about language (#301); null on an English run, which then is today's run. */
+type RunLanguage = { person: Language; app: Language | null } | null;
+
 async function loopModify(
   loop: LoopSetup,
   c: ModifyCase,
@@ -238,6 +255,7 @@ async function loopModify(
   outDir: string,
   signal: AbortSignal,
   record: (r: LoopRecord) => void,
+  language: RunLanguage,
 ): Promise<GuardedModifyResult> {
   const { model, run: runCandidates } = loop;
   const run = regressionGate(async (src: string): Promise<RunReport> => smokeReport(await smokeApp((await loadApp(src, resolveDir)) as never)), source);
@@ -258,6 +276,7 @@ async function loopModify(
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: c.instruction,
     source,
+    ...(language ? { language: language.person, ...(language.app ? { appLanguage: language.app } : {}) } : {}),
     check,
     ...(runCandidates ? { run } : {}),
     shapeOf: (src) => shapeOf(src, resolveDir),
@@ -328,6 +347,7 @@ async function runCase(
   withRepair: boolean,
   loop: LoopSetup | null,
   signal: AbortSignal,
+  language: RunLanguage,
 ): Promise<Outcome> {
   const started = Date.now();
   let loopRecord: LoopRecord | undefined;
@@ -361,10 +381,13 @@ async function runCase(
     if (c.landed && c.landed(before, before)) {
       throw new Error(`corpus bug: "${c.id}" says landed on the ORIGINAL app - its predicate (${c.expects}) is vacuous`);
     }
+    // The turn's language: the person's, and the app's as declared (--app-language) or read off it.
+    const turn: TurnLanguage | undefined = language ? { person: language.person, app: language.app ?? appLanguage(source) } : undefined;
+    const ctx = turn ? { language: turn } : undefined;
     const result = loop
-      ? await loopModify(loop, c, source, before, sourceDir, keep, outDir, signal, (r) => (loopRecord = r))
+      ? await loopModify(loop, c, source, before, sourceDir, keep, outDir, signal, (r) => (loopRecord = r), language)
       : await guardedModify({
-          attempt: async (instr) => keep(await backend.modify!(source, instr, p)),
+          attempt: async (instr) => keep(await backend.modify!(source, instr, p, ctx)),
           shapeOf: (src) => shapeOf(src, sourceDir),
           before,
           instruction: c.instruction,
@@ -383,14 +406,30 @@ async function runCase(
     const notDone = result.kind === "source" ? (result.notDone ?? []) : [];
     const namedNotDone = c.notDone ? c.notDone.every((re) => notDone.some((line) => new RegExp(re, "i").test(line))) : null;
     const feasibility = { notDone, namedNotDone, refusedWhenFeasible: result.kind === "diagnosis" && Boolean(c.landed) };
+    // #301: what the model said to the person, and the app's new words, each in the language asked for.
+    const said =
+      result.kind === "source"
+        ? [result.rationale ?? "", ...(result.notDone ?? [])].join("\n")
+        : result.kind === "diagnosis"
+          ? result.text
+          : result.reason.startsWith("asked: ")
+            ? result.reason.slice("asked: ".length)
+            : "";
+    const languageCheck = (after: string | null): Pick<Outcome, "language"> => {
+      if (!turn) return {};
+      const person = turn.person ?? "en";
+      const read = said.trim() ? replyLanguage(said) : null;
+      const labels = after === null ? null : checkLabels(newLabels(after, source), turn.app ?? person);
+      return { language: { labels, reply: { expected: person, read, passed: read === null ? null : read === person } } };
+    };
     if (result.kind === "diagnosis") {
-      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ...feasibility, ms: Date.now() - started };
+      return { ...common, via: "declined", applied: 0, rewroteFinal: false, loss: null, landed: null, validates: false, declined: true, repair: null, ...feasibility, ...languageCheck(null), ms: Date.now() - started };
     }
     if (result.kind === "failed") {
       appendFileSync(join(outDir, `${c.id}.steps.log`), `--- gave up: ${result.reason}\n`);
       // A give-up on a case with a structural check did not land: it stays in the denominator. (It
       // used to leave it, so a loop that gave up more often scored a better landed rate.)
-      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: c.landed ? false : null, validates: false, declined: false, repair: null, ...feasibility, ms: Date.now() - started, reason: result.reason };
+      return { ...common, via: "failed", applied: 0, rewroteFinal: false, loss: null, landed: c.landed ? false : null, validates: false, declined: false, repair: null, ...feasibility, ...languageCheck(null), ms: Date.now() - started, reason: result.reason };
     }
     writeFileSync(join(outDir, `${c.id}.final.app.ts`), result.source);
     // Scored ONCE per case. It used to run twice — once for `validates`, again for the repair
@@ -409,7 +448,7 @@ async function runCase(
     let repair: Outcome["repair"] = null;
     if (withRepair && !validates) {
       const repaired = await guardedModify({
-        attempt: async (instr) => keep(await backend.modify!(result.source, instr, p)),
+        attempt: async (instr) => keep(await backend.modify!(result.source, instr, p, ctx)),
         shapeOf: (src) => shapeOf(src, examplesDir),
         before,
         instruction: buildRepairInstruction(score.errors),
@@ -437,6 +476,7 @@ async function runCase(
       declined: false,
       repair,
       ...feasibility,
+      ...languageCheck(result.source),
       ms: Date.now() - started,
     };
   } catch (e) {
@@ -460,7 +500,17 @@ async function main(): Promise<void> {
   const loopRequested = process.argv.includes("--loop");
   const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `modify-${Date.now()}`))!);
   const examplesDir = resolve(process.cwd(), "..", "..", "examples");
-  const selected = only ? MODIFY_CASES.filter((c) => only.includes(c.id)) : [...MODIFY_CASES];
+  // #301: the person's language. English (or no flag) is today's run, byte for byte.
+  const languageArg = arg("language");
+  const person = languageArg ? matchLanguage(languageArg) : null;
+  if (languageArg && !person) throw new Error(`--language ${languageArg}: not a language Potyro speaks`);
+  if (person && person !== "en" && !isEvalLanguage(person)) throw new Error(`--language ${person}: the corpus has hand-checked requests only in ${EVAL_LANGUAGES.join(", ")}`);
+  const appLanguageArg = arg("app-language");
+  const declaredApp = appLanguageArg ? matchLanguage(appLanguageArg) : null;
+  if (appLanguageArg && !isLanguage(declaredApp)) throw new Error(`--app-language ${appLanguageArg}: not a language Potyro speaks`);
+  const language: RunLanguage = person ? { person, app: declaredApp } : null;
+  const corpus = person && isEvalLanguage(person) ? MODIFY_CASES.map((c) => localizeModifyCase(c, person)) : [...MODIFY_CASES];
+  const selected = only ? corpus.filter((c) => only.includes(c.id)) : corpus;
   const cases = selected.flatMap((c) => Array.from({ length: runs }, (_, i) => (runs > 1 ? { ...c, id: `${c.id}#${i + 1}` } : c)));
 
   mkdirSync(outDir, { recursive: true });
@@ -492,7 +542,7 @@ async function main(): Promise<void> {
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
-    const o = await withTimeLimit(c, caseTimeoutMs, (signal) => runCase(backend, c, examplesDir, outDir, repairRequested, loop, signal));
+    const o = await withTimeLimit(c, caseTimeoutMs, (signal) => runCase(backend, c, examplesDir, outDir, repairRequested, loop, signal, language));
     // mark: ✓ landed   ✗ still rewrote after retry   ∅ declined (NOT-IN-APP)
     //       ~ ran but landed nothing to check   ! failed, or crashed before it could run
     const mark = o.crashed ? "!" : o.via === "failed" ? "!" : o.rewroteFinal ? "✗" : o.via === "declined" ? "∅" : o.landed ? "✓" : "~";
@@ -505,7 +555,11 @@ async function main(): Promise<void> {
           o.refusedWhenFeasible ? " — REFUSED A FEASIBLE CHANGE" : "",
           o.namedNotDone === false ? " — did not name what it could not do" : o.namedNotDone === true ? ` — named what it could not do (${o.notDone.length})` : "",
         ].join("");
-    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s) via ${how}${o.landed === false ? " — did not land" : ""}${note}`);
+    const lang = o.language
+      ? ` · labels ${o.language.labels?.passed === null || !o.language.labels ? "—" : o.language.labels.passed ? "ok" : `NOT ${LANGUAGE_NAMES[o.language.labels.expected]}: ${o.language.labels.offenders.join(", ")}`}` +
+        ` · reply ${o.language.reply.passed === null ? "—" : o.language.reply.passed ? "ok" : `in ${o.language.reply.read}`}`
+      : "";
+    console.log(`${mark} [${++done}/${cases.length}] ${o.id} (${Math.round(o.ms / 1000)}s) via ${how}${o.landed === false ? " — did not land" : ""}${note}${lang}`);
     return o;
   });
 
@@ -545,6 +599,7 @@ async function main(): Promise<void> {
         return [k, { n: of.length, validates: count((o) => o.validates, of), landed: count((o) => o.landed === true, of), namedNotDone: count((o) => o.namedNotDone === true, of) }];
       }),
     ),
+    ...(language ? { language: { person: language.person, app: language.app, ...summarizeLanguage(scored.map((o) => o.language ?? {})) } } : {}),
     ...(loop ? { loop: summarizeLoop(loopRecords), deadEnds: deadEnds.map((o) => ({ id: o.id, ended: o.loop?.ended ?? "crashed", cause: o.loop?.cause ?? null, calls: o.loop?.calls ?? 0, cost: o.loop?.cost ?? 0 })) } : {}),
   };
   const ls = summary.loop;
@@ -552,7 +607,7 @@ async function main(): Promise<void> {
   const lines = [
     "",
     "=".repeat(60),
-    `MODIFY — ${backend.name} (n=${n}${runs > 1 ? `, ${runs} runs a case` : ""}${deadEnds.length ? `; ${deadEnds.length} wrong-gate runs reported apart` : ""})`,
+    `MODIFY — ${backend.name}${language ? ` in ${LANGUAGE_NAMES[language.person]}${language.app ? `, app declared ${LANGUAGE_NAMES[language.app]}` : ""}` : ""} (n=${n}${runs > 1 ? `, ${runs} runs a case` : ""}${deadEnds.length ? `; ${deadEnds.length} wrong-gate runs reported apart` : ""})`,
     `  replied with edits:       ${summary.viaEdits}/${n} (${pct(summary.viaEdits)})   ← the contract`,
     `  sent the whole file:      ${summary.viaWholeFile}/${n} (${pct(summary.viaWholeFile)})   ← accepted, but retyped`,
     summary.noMatchRetry ? `  SEARCH missed, retried:   ${summary.noMatchRetry}/${n}` : "",
@@ -579,6 +634,13 @@ async function main(): Promise<void> {
           `  model calls:              ${ls.calls} (${(ls.calls / Math.max(1, ls.cases)).toFixed(1)} a case)`,
           `  tokens:                   ${ls.promptTokens} in + ${ls.completionTokens} out (${Math.round(ls.tokensPerCase)} a case)`,
           `  cost:                     ${money(ls.cost)} (${money(ls.costPerCase)} a case)${ls.unpriced ? `   ← ${ls.unpriced} calls carried no cost: a floor` : ""}`,
+        ]
+      : []),
+    ...(summary.language
+      ? [
+          `  new labels in the app's language: ${rate(summary.language.labelsPassed, summary.language.labelsChecked)} of cases that added a label it could read` +
+            ` (${summary.language.labels.inExpected} labels in it, ${summary.language.labels.inOther} in another, ${summary.language.labels.unknown} too short to tell)`,
+          `  reply in ${LANGUAGE_NAMES[summary.language.person]}:${" ".repeat(Math.max(1, 14 - LANGUAGE_NAMES[summary.language.person].length))}${rate(summary.language.repliesPassed, summary.language.repliesChecked)} of cases with a reply it could read`,
         ]
       : []),
     ...(deadEnds.length
