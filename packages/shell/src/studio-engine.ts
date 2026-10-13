@@ -7,13 +7,14 @@
 
 import type { AppShape } from "@potyro/runtime";
 import type { GiveUp } from "@potyro/generator/agent";
-import { SYSTEM_PROMPT, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn } from "@potyro/generator/backends";
+import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import type { ModuleSource } from "./package-modules.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
+import { currentLocale } from "./locale.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
@@ -85,8 +86,17 @@ export async function shapeOrEmpty(src: string, modules?: ModuleSource): Promise
   }
 }
 
-/** `modules`: the libraries and own modules of the app being changed (#266, #258), when it has any. */
-export function studioEngine(engine: EngineConfig, progress: (text: string | null) => void, modules?: ModuleSource): StudioEngine {
+/**
+ * `modules`: the libraries and own modules of the app being changed (#266, #258), when it has any.
+ * `language`: the person's (#301) — the model replies in it and writes a new app's words in it; a
+ * change keeps the app's own language for its words. Read once, when the engine is made.
+ */
+export function studioEngine(
+  engine: EngineConfig,
+  progress: (text: string | null) => void,
+  modules?: ModuleSource,
+  language: Language = currentLocale(),
+): StudioEngine {
   const label = engineLabel(engine);
   const isCli = engine.engine === "cli";
 
@@ -120,6 +130,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       engine,
       source,
       instruction,
+      ctx: languageOf(source),
       onProgress: (text, secs) => {
         if (secs === undefined) progress(text);
         else if (isCli) progress(`Changing it via ${label}… ${secs}s`);
@@ -129,6 +140,9 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     if (question) throw new Asked(question);
     return reply;
   };
+
+  /** Which language to answer in, and which the app's words are in (read off the source until #302 declares it). */
+  const languageOf = (source: string): ModifyContext => ({ language: { person: language, app: appLanguage(source) } });
 
   const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string =>
     notDone?.length ? `${applied} Not done yet: ${notDone.join("; ")}` : applied;
@@ -140,10 +154,10 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
           // `system` travels separately so the dev endpoint passes it as the system prompt, replacing
           // Claude Code's own — the same setup the eval harness measures.
           return extractSource(
-            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief }), onProgress: (secs) => progress(`Making it via ${label}… ${secs}s`) }),
+            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief, language }), onProgress: (secs) => progress(`Making it via ${label}… ${secs}s`) }),
           );
         }
-        return (await backendFor(engine, progress)).generate({ id: "studio", description: brief });
+        return (await backendFor(engine, progress)).generate({ id: "studio", description: brief, language });
       });
       const question = questionIn(reply);
       if (question) return { kind: "question", text: question };
@@ -168,6 +182,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
           instruction,
           before,
           engine,
+          language,
           onStep: (step) => {
             if (step.kind === "thinking") progress(`Thinking via ${label}…`);
             else if (step.kind === "tool") progress(`${step.name}: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
