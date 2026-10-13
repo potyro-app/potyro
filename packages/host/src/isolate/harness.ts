@@ -32,10 +32,14 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     });
   }
   function bridgeSync(obj){ __hostSync(__serialize(obj)); }
+  // Plain JSON out and a marked string back (see hostPure): no replacer, no reviver — they cost.
+  function pureArg(v){ return v instanceof Date ? { __kdate: v.toISOString() } : v; }
   function pure(req){
-    var out = __deserialize(__hostPure(__serialize(req)));
-    if (!out.ok) throw new Error(out.error);
-    return out.value;
+    req.value = pureArg(req.value);
+    if (req.vars && typeof req.vars === "object") { var ks = Object.keys(req.vars), vs = {}; for (var i = 0; i < ks.length; i++) vs[ks[i]] = pureArg(req.vars[ks[i]]); req.vars = vs; }
+    var out = __hostPure(JSON.stringify(req));
+    if (out.charAt(0) === "+") return out.slice(1);
+    throw new Error(out.slice(1));
   }
   // Words cross as they are — a string, or a map the host resolves in ctx.locale (#302).
   function words(w){ return (w !== null && typeof w === "object") ? w : String(w); }
