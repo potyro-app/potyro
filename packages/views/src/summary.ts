@@ -10,7 +10,8 @@
 // Kept separate from the component so the arithmetic is testable without rendering, and so a
 // `value` function throwing can be contained here rather than taking the page down with it.
 
-import type { Ctx, Resolved, SummaryValue } from "potyro";
+import type { Ctx, Resolved } from "potyro";
+import type { ShownSummaryValue as SummaryValue } from "./shown.js";
 
 /** Invoke a figure's `value` function through the host, whichever runner the app is in. */
 export type CallSummaryValue = (rows: readonly Resolved[]) => Promise<unknown>;
