@@ -9,7 +9,11 @@
 // still on the page. Without one (a keyboard shortcut, a timer) the menu is a centred panel.
 
 import { useSyncExternalStore } from "react";
-import type { Field, UiItem, UiProgress } from "potyro";
+import type { Field as SourceField, Localized, UiProgress } from "potyro";
+import type { ShownUiItem as UiItem } from "@potyro/host";
+
+/** What reaches the shell: the app's words already in the person's language (#302). */
+type Field = Localized<SourceField>;
 import type { PotyroRuntime } from "@potyro/runtime";
 import { ChoicePanel, ValuesForm } from "@potyro/views";
 

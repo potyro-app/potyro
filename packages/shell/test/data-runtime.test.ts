@@ -95,4 +95,18 @@ describe("dataDefinition", () => {
     await runtime.remove("item", item.id);
     expect(await store.all("item")).toHaveLength(0);
   });
+
+  it("keeps a translated app's fields, in the person's language (#302)", async () => {
+    const source = `import { defineApp } from "potyro";
+export default defineApp({ id: "t", name: { en: "Tasks", pl: "Zadania" }, language: "en", languages: ["en", "pl"], version: "1.0.0", schemaVersion: 1, pages: [],
+  entities: { task: { label: { en: "Task", pl: "Zadanie" }, fields: {
+    title: { type: "text", label: { en: "Title", pl: "Tytuł" } },
+    status: { type: "enum", options: ["todo", "done"], labels: { todo: { en: "To do", pl: "Do zrobienia" }, done: "Done" } } } } } });`;
+    const declared = (await declaredEntities(source))!;
+    const { app, rejected } = dataDefinition("t", declared, { language: "en", languages: ["en", "pl"], shownIn: "pl" });
+    expect(rejected).toEqual({});
+    expect(app.entities.task!.label).toBe("Zadanie");
+    expect(app.entities.task!.fields.title!.label).toBe("Tytuł");
+    expect(app.entities.task!.fields.status).toMatchObject({ options: ["todo", "done"], labels: { todo: "Do zrobienia", done: "Done" } });
+  });
 });

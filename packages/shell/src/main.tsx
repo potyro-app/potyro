@@ -525,6 +525,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // page dying used to do this for free.
   const stops: Array<() => void> = gate ? [gate.stop] : [];
   stops.push(startReminderSync(composed!.runtime, store));
+  // The person's language changed (You → Language, or the device's): the app reads differently now —
+  // its words, its formats, its reminders' titles (#302). The App re-renders on the invalidation.
+  {
+    const { languagePrefs, onLanguagePrefsChange } = await import("./locale.js");
+    stops.push(onLanguagePrefsChange(() => void composed!.runtime.setLanguages(languagePrefs())));
+  }
   // The launcher badge's reminders (#86): due times, so one that falls due while the app is closed counts.
   stops.push(watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due })));
   await restoreScope(composed!.runtime, id);
