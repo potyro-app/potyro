@@ -82,8 +82,11 @@ export type LoopOutcome =
 export type LoopStep =
   | { kind: "thinking" }
   | { kind: "tool"; name: string; ok: boolean; detail: string }
-  | { kind: "candidate"; passed: boolean; detail: string }
-  | { kind: "unusable"; detail: string };
+  /** `n`: which candidate this is, counted from 1 (the modify loop sets it; the eval reads it). */
+  | { kind: "candidate"; passed: boolean; detail: string; n?: number }
+  /** `repeat`: the model repeated itself (a reply, or the same tool call). `restart`: the modify loop
+   *  started a fresh chain from the app and the request (#278). */
+  | { kind: "unusable"; detail: string; repeat?: boolean; restart?: boolean };
 
 export interface LoopDeps {
   engine: ChatEngine;

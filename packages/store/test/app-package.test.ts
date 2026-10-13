@@ -123,6 +123,52 @@ describe("modules and libraries (#258, #266)", () => {
   });
 });
 
+describe("an export bundle carries the app's code (#282)", () => {
+  const lib = strToU8("export const x = 1;");
+  const libFile = ".modules/" + "c".repeat(64) + ".js";
+  const plan = strToU8("export const weeks = 12;");
+  const lock = {
+    "https://esm.sh/x@1.0.0?bundle": { file: libFile, integrity: "sha256-abc=", size: lib.byteLength },
+    "src/plan.ts": { file: ".src/plan.ts", integrity: "sha256-def=", size: plan.byteLength },
+  };
+  const bundle = (extra: Record<string, unknown> = {}) =>
+    packBundle({
+      sqlite: new Uint8Array([1, 2, 3]),
+      manifest: { format: "potyro-bundle/1", appId: "piano", appVersion: "1", schemaVersion: 1, provenance: "trusted", grantedCaps: [], mode: "snapshot", exportedAt: "2026-10-13", entities: [] },
+      appSource: SOURCE,
+      ...extra,
+    });
+
+  it("reads back the whole lock, the library bytes and the app's own modules, as a package carries them", () => {
+    const pkg = readAppPackage(
+      bundle({
+        lock,
+        code: [
+          { path: libFile, data: lib },
+          { path: ".src/plan.ts", data: plan },
+        ],
+      }),
+    );
+    expect(pkg.kind).toBe("bundle");
+    expect(pkg.lock).toEqual(lock);
+    expect(pkg.files).toEqual([{ path: libFile, data: lib }]);
+    expect(pkg.modules).toEqual([{ path: "plan.ts", data: plan }]);
+    // A bundle has no seed: its records are its data, restored by Import.
+    expect(pkg.seed).toBeUndefined();
+  });
+
+  it("carries only the app's code: a file of its data handed in as code is not packed", () => {
+    const pkg = readAppPackage(bundle({ lock, code: [{ path: "notes/plan.json", data: plan }] }));
+    expect(pkg.files).toEqual([]);
+    expect(pkg.modules).toEqual([]);
+  });
+
+  it("a bundle of an app with no libraries or modules has no lock", () => {
+    expect(readAppPackage(bundle()).lock).toBeUndefined();
+    expect(readAppPackage(bundle({ lock: {}, code: [] })).lock).toBeUndefined();
+  });
+});
+
 describe("pnpm pack:app", () => {
   const script = new URL("../../../scripts/pack-app.mjs", import.meta.url).pathname;
 

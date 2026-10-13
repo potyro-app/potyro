@@ -91,6 +91,15 @@ describe("the lock", () => {
     expect(() => parseLock(JSON.stringify({ "ftp://x": entry }))).toThrow(/https/);
   });
 
+  it("reads the app's own modules from a lock too, each only at its own place in .src/ (#282)", () => {
+    const own = { file: ".src/lib/plan.ts", integrity: "sha256-abc=", size: 3 };
+    expect(parseLock(JSON.stringify({ "src/lib/plan.ts": own }))).toEqual({ "src/lib/plan.ts": own });
+    expect(() => parseLock(JSON.stringify({ "src/plan.ts": { ...own, file: ".src/other.ts" } }))).toThrow(/\.src\/plan\.ts/);
+    expect(() => parseLock(JSON.stringify({ "src/plan.ts": { ...own, file: "plan.json" } }))).toThrow(/\.src\/plan\.ts/);
+    expect(() => parseLock(JSON.stringify({ "src/../plan.json": { ...own, file: ".src/../plan.json" } }))).toThrow(LockError);
+    expect(() => parseLock(JSON.stringify({ "src/": { ...own, file: ".src/" } }))).toThrow(LockError);
+  });
+
   it("keeps the app's code folders out of reach of the app", () => {
     expect(isReservedPath(".modules/abc.js")).toBe(true);
     expect(isReservedPath(".src/plan.ts")).toBe(true);
