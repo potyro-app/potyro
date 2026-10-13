@@ -33,6 +33,7 @@ import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 import { DraftStrip } from "./draft-strip.js";
+import { PromoteDialog } from "./trust-dialog.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -151,6 +152,9 @@ interface UserActions {
   onDelete: () => void;
   /** Its records, on the Data page. */
   onData: () => void;
+  /** Sealed apps only: let it run as yours (owner, 2026-10-13) — reachable even when the app cannot
+   *  open sealed at all, which is when the app's own badge never appears. */
+  onPromote: () => void;
 }
 
 function TileMenu({
@@ -241,6 +245,7 @@ function TileMenu({
             {item("share", "Share", user.onShare)}
             {item("rename", "Rename", user.onRename)}
             {item("duplicate", "Duplicate", user.onDuplicate)}
+            {!app.trusted ? item("promote", "Let it run as yours", user.onPromote) : null}
             <div className="k-tile-menu-sep" role="separator" />
             {item("delete", "Delete", user.onDelete, { className: "k-danger" })}
           </div>
@@ -388,6 +393,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
+  const [promoting, setPromoting] = useState<UserApp | null>(null);
   // The tile editor (#83): this device's name, icon and colour for an app.
   const [editing, setEditing] = useState<InstalledApp | null>(null);
   // You and your other devices — reachable from every launcher, nagged from none.
@@ -631,6 +637,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
         onData: () => navigateTo({ kind: "data", id: a.id }),
+        onPromote: () => setPromoting(a.user),
       }}
     />
   );
@@ -805,6 +812,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         />
       ) : null}
       {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
+      {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
     </div>
   );
 
@@ -889,6 +897,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           </div>
           {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}
           {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
+          {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
         </div>
       </div>
     );

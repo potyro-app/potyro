@@ -203,36 +203,38 @@ describe("runModifyLoop", () => {
     });
   });
 
-  describe("stopping on repetition (#262)", () => {
+  describe("stopping on repetition (#262, rolled back first since #278)", () => {
     const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
 
-    it("a reply that repeats the previous one ends the loop with the best candidate so far", async () => {
+    it("a model that keeps repeating ends the loop with the best candidate so far", async () => {
       // The first candidate is held back only by a warning; the model repeats itself instead of
-      // changing anything or confirming — that candidate is what it meant.
-      const { engine, seen } = scripted([rename("y"), { content: "Let me write the edits now." }, { content: "Let me write the edits now." }]);
+      // changing anything or confirming — once is rolled back, twice ends it, and that candidate is
+      // what it meant.
+      const { engine, seen } = scripted([rename("y"), { content: "Let me write the edits now." }, { content: "Let me write the edits now." }, { content: "Let me write the edits now." }]);
       const run = regressionGate(async (src: string) => ({ errors: [], warnings: src === SOURCE ? [] : ['page "overdue" showed nothing'], ran: "1 page", pages: ["overdue"] }), SOURCE);
       const out = await runModifyLoop(base({ engine, run }));
       expect(out.kind).toBe("source");
       expect(out.kind === "source" && out.source).toContain('id: "y"');
-      expect(seen).toHaveLength(3);
+      expect(seen).toHaveLength(4);
     });
 
-    it("with no acceptable candidate, a repeated reply is a failure that says so", async () => {
-      const { engine } = scripted([{ content: "I would rather not." }, { content: "I would rather not." }]);
+    it("with no acceptable candidate, repeating again after the rollback is a failure that says so", async () => {
+      const { engine } = scripted([{ content: "I would rather not." }, { content: "I would rather not." }, { content: "I would rather not." }]);
       const out = await runModifyLoop(base({ engine }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
       expect(out.kind === "failed" && out.cause).toBe("repeated");
     });
 
-    it("a reply that is mostly one line said over and over stops the loop", async () => {
+    it("a reply that is mostly one line said over and over is taken out; twice stops the loop", async () => {
       const line = "Let me write the edits now.";
-      const { engine, seen } = scripted([{ content: Array.from({ length: 8 }, () => line).join("\n") + "\n" + edit("", '  id: "x",', '  id: "y",') }, rename("z")]);
+      const looping = { content: Array.from({ length: 8 }, () => line).join("\n") + "\n" + edit("", '  id: "x",', '  id: "y",') };
+      const { engine, seen } = scripted([looping, looping, rename("z")]);
       const out = await runModifyLoop(base({ engine }));
       expect(out.kind).toBe("failed");
       expect(out.kind === "failed" && out.reason).toMatch(/repeat/i);
       expect(out.kind === "failed" && out.cause).toBe("repeated");
-      expect(seen).toHaveLength(1);
+      expect(seen).toHaveLength(2);
     });
   });
 

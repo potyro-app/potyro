@@ -19,10 +19,16 @@
 //     starts from how a real app does it instead of searching for it; `check` takes edits, never a
 //     second copy of the app;
 //   - a model that repeats itself has stopped reasoning. A reply that repeats the previous one, or
-//     is mostly one line said over and over, ends the loop with the best candidate so far (one that
-//     passed every gate but a warning) rather than burning the remaining steps on the same words;
+//     is mostly one line said over and over, the same tool call three times in a row, or a candidate
+//     already turned back, is a repeat. The first is ROLLED BACK (#278, docs/19 F1): the repeated
+//     turns come out of the conversation and one note says what was tried, why it was turned back,
+//     and the ways out (another approach, ASK:, NOT-IN-APP:). The second ends the loop with the best
+//     candidate so far (one that passed every gate but a warning), if there is one;
 //   - candidates and tool reads are counted apart. Reading the corpus is cheap and useful; a fourth
-//     candidate that fails the gate is neither, so candidates have a budget of their own.
+//     candidate that fails the gate is neither, so candidates have a budget of their own;
+//   - a chain with two candidates turned back is not extended (docs/19 F2): it starts again from the
+//     app and the request, with one line per attempt that was turned back. The steps and candidates
+//     already spent stay spent — the budgets cover the whole loop, not each chain.
 //
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
@@ -39,6 +45,7 @@ import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
+import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
 
 export type ModifyLoopOutcome =
   | {
@@ -99,6 +106,12 @@ export interface ModifyLoopDeps {
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: ChatMessage[];
+  /**
+   * Think hard (`reasoning: "high"`) for the one turn after the loop got stuck — a rolled-back
+   * repeat or a fresh start (#280, docs/19 F6). The extra cost lands only on changes that were going
+   * badly. Off unless the caller turns it on; the Studio's setting defaults it on.
+   */
+  escalate?: boolean;
 }
 
 // Raised from 8 with #262: reading the corpus and fixing what a run reports both take steps, and a
@@ -140,26 +153,51 @@ async function firstMessage(deps: ModifyLoopDeps): Promise<string> {
   return parts.join("\n\n");
 }
 
+/** The same tool call with the same arguments this many times in a row is the model going round. */
+const TOOL_REPEAT = 3;
+/** Candidates turned back in one chain before it is started again from the app and the request. */
+const RESTART_AFTER = 2;
+
 export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOutcome> {
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxCandidates = deps.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
-  const messages: ChatMessage[] = deps.resumeFrom
+  // The first message of a chain: the app, the request, the corpus passages. A fresh chain (F2)
+  // starts from it again, with what was turned back added at the end.
+  const opening = deps.resumeFrom ? (deps.resumeFrom.find((m) => m.role === "user")?.content ?? null) : await firstMessage(deps);
+  let messages: ChatMessage[] = deps.resumeFrom
     ? [...deps.resumeFrom]
     : [
         { role: "system", content: deps.system },
-        { role: "user", content: await firstMessage(deps) },
+        { role: "user", content: opening ?? "" },
       ];
   let looked = false;
   let nudged = false;
   let candidates = 0;
   let failedCandidates = 0;
   let unusableReplies = 0;
+  let repeats = 0;
+  /** Candidates turned back in this chain; at RESTART_AFTER the chain starts again. */
+  let refusedInChain = 0;
   let previousReply: string | null = null;
+  /** Where the previous reply sits in `messages`, so a word-for-word repeat is rolled back with its answer. */
+  let previousReplyAt = -1;
+  /** What answered the previous reply, in a line: the reason a repeat of it will not work either. */
+  let previousAnswer = "";
+  /** Consecutive turns that made the same tool calls with the same arguments. */
+  // Typed by assertion: it is also reset inside `repeat`, which flow analysis does not follow.
+  let toolStreak = null as { sig: string; count: number; at: number; tried: string; answer: string } | null;
   /** The last candidate that passed every gate but a warning: what the model meant, if it then stops making sense. */
   let held: Accepted | null = null;
   let heldOn = 0;
   /** Candidates whose warnings were already pointed out: sent again unchanged, they are accepted. */
   const warned = new Set<string>();
+  /** The replies that carried them: sent again, that is a confirmation, not a repeat. */
+  const warnedReplies = new Set<string>();
+  /** Every candidate the gate turned back, with why: sent again — in this chain or a later one — it is a repeat. */
+  const refused = new Map<string, TurnedBack>();
+  const turnedBack: TurnedBack[] = [];
+  /** The next model call thinks hard: the loop just rolled a repeat back or started afresh. */
+  let stuck = false;
 
   const gaveUp = (cause: GiveUp, why: string): ModifyLoopOutcome => {
     if (held) {
@@ -171,21 +209,58 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   const budgetLine = (): string =>
     `${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed the check, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not a change`;
 
+  /**
+   * The model repeated itself (#278, F1). The first time, the repeated turns come out of the
+   * conversation (`rollbackTo`: from there on) and one note goes in their place; the second time,
+   * the loop gives up.
+   */
+  const repeat = (why: string, back: TurnedBack, rollbackTo: number): ModifyLoopOutcome | null => {
+    repeats += 1;
+    if (repeats >= 2) {
+      deps.onStep?.({ kind: "unusable", detail: why, repeat: true });
+      return gaveUp("repeated", `the model repeated itself twice (${why}; ${budgetLine()})`);
+    }
+    deps.onStep?.({ kind: "unusable", detail: `${why} — taken out, and asked for something different`, repeat: true });
+    if (rollbackTo >= 0) messages.splice(rollbackTo);
+    messages.push({ role: "user", content: rollbackNote(back) });
+    stuck = true;
+    previousReplyAt = -1;
+    toolStreak = null;
+    return null;
+  };
+
   for (let step = 0; step < maxSteps; step += 1) {
     if (deps.signal?.aborted) return { kind: "stopped" };
     deps.onStep?.({ kind: "thinking" });
+    const escalated = Boolean(deps.escalate && stuck);
+    stuck = false;
     const res = await deps.engine.chat.completions.create({
       ...(deps.model ? { model: deps.model } : {}),
       messages,
       tools: toolSpecs(deps.tools),
       tool_choice: "auto",
       temperature: 0.1,
+      ...(escalated ? { reasoning: "high" as const } : {}),
     });
     const choice = res.choices[0]?.message;
     const calls = choice?.tool_calls ?? [];
     const text = choice?.content ?? "";
 
     if (calls.length) {
+      const sig = toolTurnSignature(calls);
+      if (toolStreak?.sig === sig) toolStreak.count += 1;
+      else toolStreak = { sig, count: 1, at: messages.length, tried: describeToolTurn(calls), answer: "" };
+      if (toolStreak.count >= TOOL_REPEAT) {
+        const s = toolStreak;
+        const end = repeat(
+          `the same tool call ${TOOL_REPEAT} times in a row (${s.tried})`,
+          { tried: `${s.tried}, ${TOOL_REPEAT} times in a row`, reason: `the same answer each time: ${s.answer || "(nothing)"}` },
+          s.at,
+        );
+        if (end) return end;
+        continue;
+      }
+      const streak = toolStreak;
       messages.push({ role: "assistant", content: text, tool_calls: calls });
       for (const c of calls) {
         let args: Record<string, unknown> = {};
@@ -196,20 +271,17 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         }
         const result = await runTool(deps.tools, { id: c.id, name: c.function.name, args });
         if (DISCOVERY.has(result.name)) looked = true;
+        if (streak.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
         deps.onStep?.({ kind: "tool", name: result.name, ok: result.ok, detail: result.detail });
         messages.push({ role: "tool", tool_call_id: c.id, content: result.detail });
         if (deps.signal?.aborted) return { kind: "stopped" };
       }
       continue;
     }
+    toolStreak = null;
 
-    const repeated = repeatsItself(text, previousReply);
-    previousReply = text;
-    if (repeated) {
-      deps.onStep?.({ kind: "unusable", detail: repeated, repeat: true });
-      return gaveUp("repeated", `the model repeated itself (${repeated}; ${budgetLine()})`);
-    }
-
+    // The markers first: a question ends the turn, and a refusal said again after it was sent to the
+    // tools is the model's answer — neither is a repeat to roll back.
     const head = text.trimStart();
     if (head.startsWith(ASK)) {
       messages.push({ role: "assistant", content: text });
@@ -235,6 +307,22 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       return { kind: "diagnosis", text: verdict };
     }
 
+    // Resending a candidate whose warning was pointed out is how the model says "that is meant".
+    const repeated = warnedReplies.has(text.trim()) ? null : repeatsItself(text, previousReply);
+    if (repeated) {
+      const same = previousReply !== null && text.trim() === previousReply.trim();
+      const end = repeat(
+        repeated,
+        { tried: oneLine(text) || "the same edits", reason: same ? previousAnswer || "nothing usable" : "the reply said the same line over and over, with nothing else" },
+        same ? previousReplyAt : -1,
+      );
+      previousReply = text;
+      if (end) return end;
+      continue;
+    }
+    previousReply = text;
+    previousReplyAt = messages.length;
+
     const read = readEditsOrFile(deps.source, text);
     if (read.kind === "unusable" || read.kind === "no-match") {
       unusableReplies += 1;
@@ -247,12 +335,23 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
             ? `Your edits could not be applied:\n${describeEditFailures(read.failures)}\nSend the edits again, copying every SEARCH block from the app as first shown exactly as it appears.`
             : `That was not a change to the app. Reply with SEARCH/REPLACE edits in one \`\`\`ts block, or "${ASK} <question>", or "${NOT_IN_APP} <what is wrong outside the app>".`,
       });
+      previousAnswer = read.kind === "no-match" ? oneLine(`the edits could not be applied: ${describeEditFailures(read.failures)}`, 240) : "it was not a change to the app";
+      continue;
+    }
+
+    const candidate = read.source;
+    const tried = oneLine(read.rationale ?? "") || (read.kind === "edits" ? `a change of ${read.applied} edit${read.applied === 1 ? "" : "s"}` : "the whole file, rewritten");
+    // The same change as one already turned back — in this chain or before a fresh start — is a
+    // repeat, whatever words came with it.
+    const seenBefore = warned.has(candidate) ? undefined : refused.get(candidate);
+    if (seenBefore) {
+      const end = repeat("the candidate is one that was already turned back", seenBefore, -1);
+      if (end) return end;
       continue;
     }
 
     // The gate: it must compile and validate, and it must not have dropped entities or pages.
     candidates += 1;
-    const candidate = read.source;
     const accepted: Accepted = {
       kind: "source",
       source: candidate,
@@ -261,36 +360,11 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       ...(read.rationale ? { rationale: read.rationale } : {}),
       ...(read.notDone?.length ? { notDone: read.notDone } : {}),
     };
-    let problem: string | null = null;
-    try {
-      const issues = await deps.check(candidate);
-      if (issues.length) problem = `The result failed validation:\n${issues.map((i) => `- ${i}`).join("\n")}`;
-    } catch (e) {
-      problem = `The result does not compile: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    if (!problem) {
-      let shape: AppShape | null = null;
-      try {
-        shape = await deps.shapeOf(candidate);
-      } catch {
-        shape = null; // cannot be judged for loss; validation already passed
-      }
-      const loss = shape ? structuralLoss(deps.before, shape) : null;
-      if (loss) problem = retryInstruction("", loss).trim();
-    }
-    let gated: GatedRun | null = null;
-    if (!problem && deps.run) {
-      gated = await deps.run(candidate);
-      const { report, preexisting } = gated;
-      if (report.errors.length) problem = `It compiles and validates, but your change breaks it when it runs. ${describeRun(report, preexisting)}`;
-      else if (report.warnings.length && !warned.has(candidate)) {
-        warned.add(candidate);
-        held = accepted;
-        heldOn = candidates;
-        problem =
-          `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
-          "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
-      }
+    const { problem, warning, gated } = await gate(deps, candidate, warned);
+    if (warning) {
+      held = accepted;
+      heldOn = candidates;
+      warnedReplies.add(text.trim());
     }
     const passed = gated
       ? `compiles, validates, keeps the app's shape, and runs without breaking anything (${gated.report.ran || "nothing to run"})`
@@ -298,7 +372,28 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     deps.onStep?.({ kind: "candidate", passed: problem === null, n: candidates, detail: problem ?? passed });
     if (problem === null) return accepted;
     failedCandidates += 1;
+    if (!warning) {
+      const back = { tried, reason: oneLine(problem, 240) };
+      refused.set(candidate, back);
+      turnedBack.push(back);
+      refusedInChain += 1;
+    }
     if (candidates >= maxCandidates) return gaveUp("candidates", `${candidates} candidate${candidates === 1 ? "" : "s"} failed the check — the candidate budget is spent`);
+    if (refusedInChain >= RESTART_AFTER && opening !== null) {
+      // F2: a chain with two candidates turned back is not extended. It starts again from the app
+      // and the request, with one line per attempt; the steps and candidates already spent stay spent.
+      messages = [
+        { role: "system", content: deps.system },
+        { role: "user", content: `${opening}\n\n${freshStartNote(turnedBack)}` },
+      ];
+      refusedInChain = 0;
+      stuck = true;
+      previousReply = null;
+      previousReplyAt = -1;
+      previousAnswer = "";
+      deps.onStep?.({ kind: "unusable", detail: "starting again from the app and the request, with a note of what was turned back", restart: true });
+      continue;
+    }
     messages.push({ role: "assistant", content: text });
     messages.push({
       role: "user",
@@ -307,8 +402,48 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         "Send the complete set of edits you want against the app as first shown. If you are unsure whether an option exists, `lookup` it; " +
         "if you are unsure whether a candidate validates, `check` your edits before sending.",
     });
+    previousAnswer = oneLine(problem, 240);
   }
 
   if (deps.signal?.aborted) return { kind: "stopped" };
   return gaveUp("steps", `gave up after ${maxSteps} step${maxSteps === 1 ? "" : "s"} (${budgetLine()})`);
+}
+
+/**
+ * Compile + validate, the shape, and — when the caller can run it — a regression run (#262). A
+ * warning is a problem once per candidate: pointed out, and the same candidate sent again passes.
+ */
+async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>): Promise<{ problem: string | null; warning: boolean; gated: GatedRun | null }> {
+  let problem: string | null = null;
+  try {
+    const issues = await deps.check(candidate);
+    if (issues.length) problem = `The result failed validation:\n${issues.map((i) => `- ${i}`).join("\n")}`;
+  } catch (e) {
+    problem = `The result does not compile: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (!problem) {
+    let shape: AppShape | null = null;
+    try {
+      shape = await deps.shapeOf(candidate);
+    } catch {
+      shape = null; // cannot be judged for loss; validation already passed
+    }
+    const loss = shape ? structuralLoss(deps.before, shape) : null;
+    if (loss) problem = retryInstruction("", loss).trim();
+  }
+  let gated: GatedRun | null = null;
+  let warning = false;
+  if (!problem && deps.run) {
+    gated = await deps.run(candidate);
+    const { report, preexisting } = gated;
+    if (report.errors.length) problem = `It compiles and validates, but your change breaks it when it runs. ${describeRun(report, preexisting)}`;
+    else if (report.warnings.length && !warned.has(candidate)) {
+      warned.add(candidate);
+      warning = true;
+      problem =
+        `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
+        "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
+    }
+  }
+  return { problem, warning, gated };
 }
