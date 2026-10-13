@@ -19,8 +19,16 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const rules = [
   {
     pkg: "packages/views/src",
-    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/],
-    note: "views may only depend on the runtime API + schema types",
+    forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/shell/],
+    note: "views may only depend on the runtime API + schema types (+ @potyro/i18n for its own words)",
+  },
+  {
+    // Potyro's catalogs and locale logic are shared by shell and views (#298), and later by the
+    // host for `ctx.locale` (#302), so they sit below all of them and depend on none.
+    pkg: "packages/i18n/src",
+    // Real imports only: the package's own docs show `from "@potyro/i18n"` in comments.
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "i18n depends on no Potyro package; shell, views and (later) host depend on it",
   },
   {
     pkg: "examples",

@@ -1,0 +1,37 @@
+{
+  "name": "@potyro/i18n",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Potyro's own words in the person's language (#297/#298): locale matching, the Lingui instance, catalogs, Intl format helpers, the pseudo-language. Shared by shell and views; depends on no Potyro package.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./locale": "./src/locale.ts",
+    "./format": "./src/format.ts",
+    "./build.mjs": "./build.mjs"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lingui/core": "^5.9.5",
+    "@lingui/react": "^5.9.5"
+  },
+  "devDependencies": {
+    "@lingui/babel-plugin-lingui-macro": "^5.9.5",
+    "@lingui/cli": "^5.9.5",
+    "@lingui/conf": "^5.9.5",
+    "@lingui/format-po": "^5.9.5",
+    "@lingui/vite-plugin": "^5.9.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^18.3.12",
+    "@vitejs/plugin-react": "^4.3.4",
+    "happy-dom": "^20.11.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.11"
+  }
+}

@@ -8150,6 +8150,120 @@ body:has(.k-tabbar) .k-toasts {
 .k-identity-words {
   margin-top: 0.55rem;
 }
+
+/* tokens-only: start — language picker */
+/* You → Language (#298). The same paper cards as the device paths above, small enough that the six
+   languages sit two or three to a row; "Match this device" spans the row on top, because it is the
+   default and the way back. Each language is named in itself in the display face — a name, not a
+   label — with its name in the current language underneath. "draft" is a dashed tag: a draft is
+   unfinished, not wrong, so nothing about it looks like an error. */
+.k-lang-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+  gap: 0.45rem;
+}
+.k-lang-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 3.4rem;
+  padding: 0.55rem 1.9rem 0.55rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.k-lang-option[data-auto],
+.k-lang-option[data-dev] {
+  grid-column: 1 / -1;
+  background: var(--surface-sunken);
+}
+/* The pseudo-language is a developer's tool, and looks like one: last, and drawn in pencil. */
+.k-lang-option[data-dev] {
+  border-style: dashed;
+  min-height: 0;
+}
+.k-lang-option:hover {
+  border-color: var(--accent-line);
+}
+.k-lang-option:active {
+  transform: scale(0.985);
+}
+.k-lang-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-lang-option[data-on] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* The chosen one carries a filled mark in the corner, so the choice reads without colour too. */
+.k-lang-option::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: -0.35rem;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+}
+.k-lang-option[data-on]::after {
+  border-color: var(--ink);
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--accent-tint);
+}
+.k-lang-name {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.k-lang-detail {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+.k-lang-draft {
+  display: inline-block;
+  margin-left: 0.15rem;
+  padding: 0 0.4rem;
+  border: 1px dashed var(--ink-soft);
+  font-family: var(--font-ui);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  vertical-align: 0.15em;
+}
+.k-lang-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-lang-option {
+    transition: none;
+  }
+  .k-lang-option:active {
+    transform: none;
+  }
+}
+/* tokens-only: end — language picker */
 .k-identity-advanced {
   border-top: 1px solid var(--line);
   padding-top: 0.8rem;

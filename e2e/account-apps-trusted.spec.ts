@@ -224,7 +224,7 @@ test("an app that was never synced is backed up by one switch, and a linked devi
   await a.goto("/");
   await a.getByRole("button", { name: "You and your devices" }).click();
   const backup = a.locator(".k-backup");
-  await expect(backup).toContainText(/live only on this device/);
+  await expect(backup).toContainText(/lives? only on this device/);
 
   // ---- The switch ----
   await backup.getByRole("button", { name: "Back up my apps" }).click();
