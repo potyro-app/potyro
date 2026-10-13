@@ -6,7 +6,7 @@
 // the app had, except from a link; a shipped file the person changed is kept.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { build } from "esbuild";
-import { MemoryStore, fileSpace, packAppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { MemoryStore, fileSpace, packAppPackage, packBundle, readAppPackage, type AppLock, type PackagedFile, type Store } from "@potyro/store";
 import type { EsbuildLike } from "../src/app-bundler.js";
 import type { HttpGet } from "../src/library-fetch.js";
 
@@ -267,6 +267,72 @@ describe("an app's own modules and its libraries (#258, #266)", () => {
     await installPackage(packaged, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: none });
     expect(none).not.toHaveBeenCalled();
     expect(getUserApp("piano")!.lock).toEqual(lock);
+  });
+
+  describe("an export bundle (#282)", () => {
+    const PLAN = "export const weeks = 12;";
+    type Code = Array<{ path: string; data: Uint8Array }>;
+    const bundleOf = (lock: AppLock, code: Code): Uint8Array =>
+      packBundle({
+        sqlite: new Uint8Array([1]),
+        manifest: { format: "potyro-bundle/1", appId: "piano", appVersion: "1", schemaVersion: 1, provenance: "untrusted", grantedCaps: [], mode: "snapshot", exportedAt: "2026-10-13", entities: ["session"] },
+        appSource: LIB_SOURCE,
+        lock,
+        code,
+      });
+    /** Install the app from its files (fetching once), then export it the way Export does. */
+    async function exported(): Promise<{ zip: Uint8Array; lock: AppLock; code: Code; tamper: (path: string, text: string) => Uint8Array }> {
+      const get = net(SITE);
+      const pkg = await gatherFromFiles([file("piano.app.tsx", LIB_SOURCE), file("plan.ts", PLAN)]);
+      const done = await installPackage(pkg, await inspectPackage(pkg, { esbuild, get }), { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get });
+      const lock = getUserApp(done.app.id)!.lock!;
+      const { appCode } = await import("../src/app-modules.js");
+      const code = await appCode(byApp.get("piano")!, lock);
+      localStorage.clear();
+      byApp.clear();
+      // The same bundle with the bytes of one of its files swapped.
+      const tamper = (path: string, text: string): Uint8Array => {
+        expect(code.some((f) => f.path === path)).toBe(true);
+        return bundleOf(lock, code.map((f) => (f.path === path ? { ...f, data: new TextEncoder().encode(text) } : f)));
+      };
+      return { zip: bundleOf(lock, code), lock, code, tamper };
+    }
+
+    it("carries every file the lock names, so the app is added with no network and the same lock", async () => {
+      const { zip, lock, code } = await exported();
+      // Every file the lock names, and nothing else of the app's.
+      expect(code.map((f) => f.path).sort()).toEqual([...new Set(Object.values(lock).map((e) => e.file))].sort());
+      const none = net({});
+      const pkg = readAppPackage(zip);
+      const inspected = await inspectPackage(pkg, { esbuild, get: none });
+      expect(inspected.issues).toEqual([]);
+      expect(inspected.libraries[0]).toMatchObject({ label: "fancy-chart 4.4.1", here: true });
+      expect(inspected.modules).toEqual(["plan.ts"]);
+      await installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get: none });
+      expect(none).not.toHaveBeenCalled();
+      expect(getUserApp("piano")!.lock).toEqual(lock);
+      const space = fileSpace(byApp.get("piano")!);
+      expect(await (await space.read(lock[INNER]!.file))!.text()).toBe(SITE[INNER]);
+      expect(await (await space.read(".src/plan.ts"))!.text()).toBe(PLAN);
+    });
+
+    it("a library file in it that is not what the lock says is refused by the library's name, and nothing is fetched", async () => {
+      const { lock, tamper } = await exported();
+      const bad = readAppPackage(tamper(lock[INNER]!.file, 'export const chart = () => "tampered";\n'));
+      const get = net(SITE);
+      const inspected = await inspectPackage(bad, { esbuild, get });
+      expect(inspected.issues.join("\n")).toMatch(/fancy-chart 4\.4\.1 .*not the copy/);
+      await expect(installPackage(bad, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor, esbuild, get })).rejects.toThrow(/fancy-chart 4\.4\.1/);
+      expect(get).not.toHaveBeenCalled();
+      expect(getUserApp("piano")).toBeUndefined();
+    });
+
+    it("one of the app's own modules that is not what the lock says is refused by its name", async () => {
+      const { tamper } = await exported();
+      const bad = readAppPackage(tamper(".src/plan.ts", "export const weeks = 13;"));
+      const inspected = await inspectPackage(bad, { esbuild, get: net({}) });
+      expect(inspected.issues.join("\n")).toMatch(/plan\.ts .*not the copy/);
+    });
   });
 
   it("a library fetched at install that cannot start in the sealed box is said right away, not by an app that does not open", async () => {

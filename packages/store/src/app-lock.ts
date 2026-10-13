@@ -276,11 +276,15 @@ export function relativeImportsOf(source: string): string[] {
 // ---- lock.json -----------------------------------------------------------------------------------
 
 const MODULE_FILE = /^\.modules\/[0-9a-f]{64}\.js$/;
+/** `src/<path>` with no empty, `.` or `..` segment: it names a file inside `src/` and nothing else. */
+const isSrcKey = (key: string): boolean =>
+  key.startsWith("src/") && !key.includes("\\") && key.slice(4).split("/").every((seg) => seg !== "" && seg !== "." && seg !== "..");
 
 /**
- * Read a package's `lock.json`. Only libraries are listed there — a package's own modules are right
- * beside it in `src/` — and every entry must point into `.modules/`, so a lock can never name one of
- * the app's data files as code.
+ * Read a `lock.json`. A package lists its libraries there — its own modules are right beside it in
+ * `src/` — and an export bundle (#282) lists its own modules too, by `src/<path>`, so a restore can
+ * tell they are the ones the app was saved with. A library's entry must point into `.modules/`, and a
+ * module's to its own place in `.src/`, so a lock can never name one of the app's data files as code.
  */
 export function parseLock(text: string): AppLock {
   let raw: unknown;
@@ -292,10 +296,14 @@ export function parseLock(text: string): AppLock {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new LockError("lock.json must map each library's URL to its file");
   const lock: AppLock = {};
   for (const [url, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!/^https:\/\//.test(url)) throw new LockError(`lock.json: "${url}" is not an https URL`);
+    const own = url.startsWith("src/");
+    if (own && !isSrcKey(url)) throw new LockError(`lock.json: "${url}" is not a file in the app's src/ folder`);
+    if (!own && !/^https:\/\//.test(url)) throw new LockError(`lock.json: "${url}" is not an https URL`);
     const e = v as Partial<LockEntry> | null;
     if (!e || typeof e !== "object") throw new LockError(`lock.json: "${url}" has no entry`);
-    if (typeof e.file !== "string" || !MODULE_FILE.test(e.file)) throw new LockError(`lock.json: "${url}" must point to a file in .modules/`);
+    if (own && e.file !== `.${url}`) throw new LockError(`lock.json: "${url}" must point to .${url}`);
+    if (!own && (typeof e.file !== "string" || !MODULE_FILE.test(e.file))) throw new LockError(`lock.json: "${url}" must point to a file in .modules/`);
+    if (typeof e.file !== "string") throw new LockError(`lock.json: "${url}" has no file`);
     if (typeof e.integrity !== "string" || !/^sha256-[A-Za-z0-9+/]+=*$/.test(e.integrity)) throw new LockError(`lock.json: "${url}" needs a sha256 integrity`);
     if (typeof e.size !== "number" || !Number.isInteger(e.size) || e.size < 0) throw new LockError(`lock.json: "${url}" needs a size`);
     if (e.base !== undefined && (typeof e.base !== "string" || !/^https:\/\//.test(e.base))) throw new LockError(`lock.json: "${url}" has a base that is not an https URL`);

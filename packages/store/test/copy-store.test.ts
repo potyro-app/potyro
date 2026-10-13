@@ -5,7 +5,7 @@
 // re-generated ids (severing relations), re-keyed blobs (losing every photo), and dropped kv.
 
 import { describe, expect, it } from "vitest";
-import { MemoryStore, copyStoreData } from "../src/index.js";
+import { MemoryStore, copyStoreData, fileSpace, isReservedPath } from "../src/index.js";
 
 async function store(): Promise<MemoryStore> {
   const s = new MemoryStore();
@@ -94,5 +94,19 @@ describe("copyStoreData", () => {
     await copyStoreData(from, to, { entities: ["task"] });
 
     expect(await from.all("task")).toHaveLength(1);
+  });
+
+  it("can leave the app's code out, copying only its data (#282)", async () => {
+    const from = await store();
+    const to = await store();
+    const space = fileSpace(from);
+    await space.write("plan.json", new Blob(["{}"]));
+    await space.write(".src/plan.ts", new Blob(["export {};"]), { origin: "shipped" });
+    await space.write(".modules/" + "a".repeat(64) + ".js", new Blob(["export {};"]), { origin: "shipped" });
+
+    const copied = await copyStoreData(from, to, { entities: [], skipFile: isReservedPath });
+
+    expect(copied.files).toBe(1);
+    expect((await to.listFiles()).map((f) => f.path)).toEqual(["plan.json"]);
   });
 });
