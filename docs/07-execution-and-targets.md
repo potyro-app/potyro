@@ -93,6 +93,22 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   and an update from a link drops a trusted app back into the sealed box, so a link cannot put new
   code into an app that runs with full authority. An update from a file or paste keeps the trust the
   app had.
+- **Promotion is always reachable after install** (owner, 2026-10-13). The rule above is about the
+  way IN; once an app is here, there is always a way to let it run as yours, whatever state it is
+  in — one dialog (`trust-dialog.tsx`), one warning, reachable by mouse, touch and keyboard, and it
+  only ever acts when the person confirms it. It is offered from: the 🛡 badge of an open sealed
+  app; a sealed custom screen's "Run it as mine…"; the screen that says the app **could not open**,
+  when the cause is the sealed box (a library that needs a full web page, or a feature it lacks such
+  as `Intl` — `promotion.ts`); the Add-an-app card right after install, when the test load found it
+  only works as yours ("It only works when it runs as yours … Otherwise it stays sealed"); the
+  app's tile menu on your apps ("Let it run as yours") — there even when the app crashes at boot;
+  and the Studio, which previews a sealed app **sealed** (opening it there is not saying it is
+  yours) with "Let it run as yours" on its bar. Confirmed, the app reopens as trusted.
+  A link is still never trusted on the way in. **A failure promoting does not fix never offers it**:
+  code that does not compile, the app's own mistake, and above all a library or module that does
+  not match its lock — tampered code must never be one tap from full authority. Such an app can
+  still be promoted deliberately from its tile, and its trusted load refuses the mismatched bytes
+  all the same.
 - **The same app already installed**: *Replace, keep its data* is preselected — the ordinary update
   path, so History keeps the old version and the data check runs on the next open. Shipped files are
   replaced unless the person changed them (they are then `app`, not `shipped`) and kept; shipped files
