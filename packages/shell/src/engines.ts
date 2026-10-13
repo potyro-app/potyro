@@ -5,9 +5,20 @@
 // meant pressing "Cloud" first, which replaced the app you were trying to edit. One engine, chosen
 // deliberately in one place, is what removes that whole class of surprise.
 
-import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
+import { OPENROUTER_MODELS, WEBLLM_MODELS, thinkingOptions, type ReasoningLevel } from "@potyro/generator/backends";
 
 export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter";
+
+/**
+ * How hard the model thinks (#280), per engine: a level, and whether the modify loop thinks hard for
+ * the one turn after it got stuck (docs/19 F6). Off by default until a measurement says otherwise;
+ * the escalation is on, since it costs more only on changes that were going badly.
+ */
+export interface ThinkingSetting {
+  level: ReasoningLevel;
+  escalate: boolean;
+}
+export const DEFAULT_THINKING: ThinkingSetting = { level: "off", escalate: true };
 
 /** Everything the Studio needs to reach a model. Keys are held in memory only — never persisted. */
 export interface EngineConfig {
@@ -16,6 +27,8 @@ export interface EngineConfig {
   openrouterKey: string;
   openrouterModel: string;
   edgeModel: string;
+  /** How hard each engine's model thinks; an engine with no entry uses DEFAULT_THINKING. */
+  thinking?: Partial<Record<Engine, ThinkingSetting>>;
 }
 
 export interface EngineChoice {
@@ -33,6 +46,8 @@ export interface EngineChoice {
    * NOT about whether the engine can write or edit an app — every engine here does that today.
    */
   canInvestigate: boolean;
+  /** Can the person choose how hard this engine's model thinks? Only where a client sends it (#280). */
+  canThink?: boolean;
 }
 
 export const ENGINES: readonly EngineChoice[] = [
@@ -83,6 +98,8 @@ export const ENGINES: readonly EngineChoice[] = [
     // over OpenRouter's OpenAI-compatible API, which carries `tools`/`tool_calls` end to end — the
     // only engine here that actually satisfies both halves of the requirement.
     canInvestigate: true,
+    // `thinkingOptions` turns a level into OpenRouter's reasoning effort and a token budget.
+    canThink: true,
   },
 ];
 
@@ -93,6 +110,24 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   openrouterModel: OPENROUTER_MODELS[0]!.id,
   edgeModel: WEBLLM_MODELS[1]!.id,
 };
+
+/** How hard the current engine's model thinks. */
+export function thinkingFor(cfg: EngineConfig): ThinkingSetting {
+  return { ...DEFAULT_THINKING, ...cfg.thinking?.[cfg.engine] };
+}
+
+/** The config with the current engine's thinking changed — a new object, the old one untouched. */
+export function withThinking(cfg: EngineConfig, patch: Partial<ThinkingSetting>): EngineConfig {
+  return { ...cfg, thinking: { ...cfg.thinking, [cfg.engine]: { ...thinkingFor(cfg), ...patch } } };
+}
+
+/** Everything an OpenRouter client needs from the config: the key, the model, and how hard it thinks. */
+export function openRouterOptions(cfg: EngineConfig): { apiKey: string; model: string } & ReturnType<typeof thinkingOptions> {
+  return { apiKey: cfg.openrouterKey, model: cfg.openrouterModel, ...thinkingOptions(thinkingFor({ ...cfg, engine: "openrouter" }).level) };
+}
+
+/** How a level reads on the engine's name. */
+const THINKS: Record<ReasoningLevel, string> = { off: "", low: "thinks a little", medium: "thinks more", high: "thinks hard" };
 
 export function isCloud(engine: Engine): boolean {
   return engine === "anthropic" || engine === "openrouter";
@@ -123,7 +158,8 @@ export function engineLabel(cfg: EngineConfig): string {
   const base = ENGINES.find((e) => e.id === cfg.engine)?.label ?? cfg.engine;
   if (cfg.engine === "openrouter") {
     const m = OPENROUTER_MODELS.find((x) => x.id === cfg.openrouterModel);
-    return `${base} · ${m?.label ?? cfg.openrouterModel}`;
+    const thinks = THINKS[thinkingFor(cfg).level];
+    return `${base} · ${m?.label ?? cfg.openrouterModel}${thinks ? ` · ${thinks}` : ""}`;
   }
   if (cfg.engine === "edge") {
     const m = WEBLLM_MODELS.find((x) => x.id === cfg.edgeModel);
