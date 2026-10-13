@@ -30,9 +30,9 @@ test("the level chosen in Model settings reaches create and modify, with the bud
   await modal.getByRole("radio", { name: /OpenRouter/ }).check();
   await modal.getByLabel("OpenRouter API key").fill("sk-or-stub");
   const levels = modal.getByRole("radiogroup", { name: "How hard it thinks" });
-  // Off until the person says otherwise, and the escalation on.
+  // Off until the person says otherwise, and so is the escalation (#293's measurement).
   await expect(levels.getByRole("radio", { name: /^Off/ })).toBeChecked();
-  await expect(modal.getByRole("checkbox", { name: /Think hard when stuck/ })).toBeChecked();
+  await expect(modal.getByRole("checkbox", { name: /Think hard when stuck/ })).not.toBeChecked();
   await levels.getByRole("radio", { name: /^High/ }).check();
   await expect(modal.getByText(/thinks hard/).first()).toBeVisible();
   await modal.getByRole("button", { name: "Close model settings" }).click();
