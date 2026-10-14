@@ -32,6 +32,10 @@ function everySlot(): AppInput {
           when: { type: "datetime" },
         },
         groups: [{ title: en("More", "Więcej"), fields: ["name"] }],
+        computed: {
+          total: { label: en("Total", "Razem"), value: (r) => Number(r.qty ?? 0) },
+          bare: (r) => String(r.name ?? ""),
+        },
         actions: {
           buy: { label: en("Buy", "Kup"), input: { note: { type: "text", label: en("Note", "Notatka") } }, run: () => {} },
         },
@@ -97,6 +101,7 @@ describe("Words slots (docs/20 §1.2)", () => {
       "entities.item.fields.tags.labels.cold",
       "entities.item.fields.parts.of.part.label",
       "entities.item.groups.0.title",
+      "entities.item.computed.total.label",
       "entities.item.actions.buy.label",
       "entities.item.actions.buy.input.note.label",
       "pages.0.title",
@@ -139,6 +144,9 @@ describe("Words slots (docs/20 §1.2)", () => {
     const pl = localize(app, "pl");
     expect(pl.__potyroApp).toBe(true);
     expect(typeof (pl.entities.item!.actions!.buy as { run: unknown }).run).toBe("function");
+    expect(pl.entities.item!.computed!.total).toMatchObject({ label: "Razem" });
+    expect(typeof (pl.entities.item!.computed!.total as { value: unknown }).value).toBe("function");
+    expect(typeof pl.entities.item!.computed!.bare).toBe("function");
     expect(pl.entities.item!.fields.kind).toMatchObject({ options: ["produce", "dairy"] }); // values are data
     expect(pl.language).toBe("en");
     expect(pl.entities.trip!.fields).toBe(app.entities.trip!.fields); // untouched parts keep their identity
@@ -149,6 +157,7 @@ describe("Words slots (docs/20 §1.2)", () => {
     const pl = localize(json, "pl");
     expect(pl.pages[0].actions[0]).toEqual({ label: "Wyczyść", run: "__potyro_fn__" });
     expect(pl.entities.item.actions.buy.label).toBe("Kup");
+    expect(pl.entities.item.computed.total).toEqual({ label: "Razem", value: "__potyro_fn__" });
     expect(pl.pages[3].view.series).toBe("__potyro_fn__");
   });
 
@@ -228,5 +237,26 @@ describe("resolution (docs/20 §3.1)", () => {
     expect(word({ pl: "Produkt", "pt-BR": "Produto" }, "de", app)).toBe("Produkt");
     expect(word({ fr: "Article" }, "pl", app)).toBe("Article");
     expect(word(undefined, "pl", app)).toBe("");
+  });
+});
+
+describe("a computed value's label (#310)", () => {
+  const app = (computed: Record<string, unknown>): AppInput => ({
+    id: "c", name: "C", version: "1.0.0", schemaVersion: 1, language: "en", languages: ["en", "pl"],
+    entities: { a: { fields: { x: { type: "number" } }, computed: computed as never } },
+    pages: [{ id: "p", title: "P", view: { type: "list", entity: "a" } }],
+  });
+
+  test("a map without the app's own language is an error that names the slot", () => {
+    expect(() => defineApp(app({ k: { label: { pl: "Razem" }, value: () => 1 } }))).toThrow(/entities\.a\.computed\.k\.label has no "en"/);
+  });
+
+  test("a missing other language is a gap the completeness report sees", () => {
+    expect(wordGaps(defineApp(app({ k: { label: { en: "Total" }, value: () => 1 } })))).toEqual([{ path: "entities.a.computed.k.label", missing: ["pl"] }]);
+  });
+
+  test("the object form needs a value function, and takes nothing else", () => {
+    expect(() => defineApp(app({ k: { label: "Total" } }))).toThrow(/computed/);
+    expect(() => defineApp(app({ k: { label: "Total", value: () => 1, colour: "red" } }))).toThrow(/colour/);
   });
 });
