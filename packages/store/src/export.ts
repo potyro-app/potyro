@@ -31,6 +31,11 @@ export interface ExportManifest {
   entities: string[];
   /** What the app declares, as data (#271), so a device adding the bundle can describe it unrun. */
   app?: AppDeclaration;
+  /**
+   * A shared app's files whose bytes were not on the exporting device (#255): fetched on demand,
+   * never by an export, so they are named here rather than packed. The rest of the folder is inside.
+   */
+  missingFiles?: Array<{ path: string; size: number }>;
 }
 
 /**

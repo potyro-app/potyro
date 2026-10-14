@@ -27,6 +27,8 @@ export interface PeerPair {
   settle(ms?: number): Promise<void>;
   /** Release both nodes. */
   close(): Promise<void>;
+  /** Through a relay only: cut A off from it, as a device that went offline (#255). */
+  disconnectA?(): void;
 }
 
 /**
@@ -72,5 +74,49 @@ export async function createPeerPair(appId = "pair"): Promise<PeerPair> {
       await a.close?.();
       await b.close?.();
     },
+  };
+}
+
+/**
+ * Two members of a space who reach each other through a RELAY, as real devices do (#255).
+ *
+ * `createPeerPair` connects the two directly, each as the other's server, so each pushes everything
+ * it has to the other — including the bytes of every file. A relay forwards a CoValue only to a
+ * client that asked for it, which is what makes a shared app's files arrive on demand. Anything
+ * claiming "not fetched until read" has to be tested through one.
+ */
+export async function createRelayedPair(appId = "relayed"): Promise<PeerPair> {
+  const [{ LocalNode, cojsonInternals }, { WasmCrypto }] = await Promise.all([import("cojson"), import("cojson/crypto/WasmCrypto")]);
+  const crypto = await WasmCrypto.create();
+  const relay = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Relay" }, crypto });
+  const one = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Peer A" }, crypto });
+  const two = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Peer B" }, crypto });
+  const attach = (client: typeof one, name: string): void => {
+    const [relayForClient, clientForRelay] = cojsonInternals.connectedPeers("relay", name, { peer1role: "server", peer2role: "client" });
+    client.node.syncManager.addPeer(relayForClient);
+    relay.node.syncManager.addPeer(clientForRelay);
+  };
+  attach(one, "a");
+  attach(two, "b");
+
+  const group = one.node.createGroup();
+  group.addMember(await two.node.expectCurrentAccount("b"), "writer");
+  const a = new JazzStore({ node: one.node as never, group: group as never });
+  await a.open(appId);
+
+  const settle = (ms = 300): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  await settle();
+  const groupForTwo = await two.node.load(group.id);
+  const b = new JazzStore({ node: two.node as never, group: groupForTwo as never, rootId: a.rootId });
+  await b.open(appId);
+  return {
+    a,
+    b,
+    settle,
+    close: async () => {
+      await a.close?.();
+      await b.close?.();
+    },
+    disconnectA: () => one.node.syncManager.removePeer("relay" as never),
   };
 }
