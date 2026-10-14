@@ -120,6 +120,15 @@ export const CLEAN = new Set([
   "packages/shell/src/data-icon.tsx",
   "packages/shell/src/read-only-store.ts",
   "packages/shell/src/scope.ts",
+  // #299, You and settings: model settings, reasoning level, Look, Ask's switch.
+  "packages/shell/src/engine-settings.tsx",
+  "packages/shell/src/engines.ts",
+  "packages/shell/src/engine-store.ts",
+  "packages/shell/src/thinking-settings.tsx",
+  "packages/shell/src/look-panel.tsx",
+  "packages/shell/src/look.ts",
+  "packages/shell/src/ask-setting.ts",
+  "packages/shell/src/shell-caps.ts",
 ]);
 
 const ATTRS = new Set([
