@@ -6,7 +6,7 @@ import type { Locator, Page } from "@playwright/test";
 //
 // Not a `.spec.ts`, so Playwright does not collect it as a test file.
 
-export type TileAction = "open" | "pin" | "edit-tile" | "history" | "sync" | "share" | "rename" | "duplicate" | "delete" | "data";
+export type TileAction = "open" | "pin" | "edit-tile" | "history" | "sync" | "share" | "rename" | "duplicate" | "delete" | "data" | "files";
 
 /** Open the tile's menu and choose an action. `root` is the page, or the launcher overlay within it. */
 export async function tileAction(root: Page | Locator, appName: string, action: TileAction): Promise<void> {

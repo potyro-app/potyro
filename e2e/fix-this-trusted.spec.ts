@@ -241,7 +241,7 @@ test("a reported problem is investigated, verified and applied", async ({ page }
   const source = await tools.getByRole("textbox", { name: "App source" }).inputValue();
   expect(source).toContain('id: "map"'); // the page the action was missing now exists
   expect(source).toContain(`id: "${APP_ID}"`); // the app was fixed, not replaced
-  await tools.getByRole("button", { name: "Close code and history" }).click();
+  await tools.getByRole("button", { name: "Close code, files and history" }).click();
   await studio2.getByRole("button", { name: "Close studio" }).click();
 
   // History shows a version whose note names the CASE — the person's own recorded expectation, not
