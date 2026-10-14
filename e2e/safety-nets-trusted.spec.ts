@@ -175,14 +175,14 @@ test("a computed value and a custom view that throw fail alone: the app opens, i
   await expect(page.locator("h1").first()).toHaveText("Parts", { timeout: 30_000 });
   const nav = (title: string) => page.locator(".k-sidenav .k-tab", { hasText: title }).click();
 
-  await page.getByRole("button", { name: "New Note" }).click();
+  await page.getByRole("button", { name: "Add: Note" }).click();
   await page.getByLabel("Text").fill("Buy milk");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toContainText("Buy milk");
 
   // The broken computed: the record is there, and the value's part says what went wrong.
   await nav("Items");
-  await page.getByRole("button", { name: "New Item" }).click();
+  await page.getByRole("button", { name: "Add: Item" }).click();
   await page.getByLabel("Title").fill("First item");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toContainText("First item");

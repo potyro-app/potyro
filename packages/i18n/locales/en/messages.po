@@ -28,6 +28,10 @@ msgstr "…thinking"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 
+#: ../shell/src/main.tsx
+msgid "“{invited}” was shared with you."
+msgstr "“{invited}” was shared with you."
+
 #: ../shell/src/app-source.ts
 msgid "\"{key}\" can only be in one group"
 msgstr "\"{key}\" can only be in one group"
@@ -50,6 +54,10 @@ msgstr "“{name}” field"
 msgid "“{name}” has been updated to a newer version."
 msgstr "“{name}” has been updated to a newer version."
 
+#: ../shell/src/main.tsx
+msgid "\"{name}\" is synced; a data import would overwrite what others share."
+msgstr "\"{name}\" is synced; a data import would overwrite what others share."
+
 #: ../shell/src/open-libraries.ts
 msgid "“{name}” needs {what} on this device."
 msgstr "“{name}” needs {what} on this device."
@@ -57,6 +65,10 @@ msgstr "“{name}” needs {what} on this device."
 #: ../shell/src/sync-consent.ts
 msgid "“{name}” never asked to sync."
 msgstr "“{name}” never asked to sync."
+
+#: ../shell/src/main.tsx
+msgid "“{name}” runs on this device only: it has not been allowed to sync."
+msgstr "“{name}” runs on this device only: it has not been allowed to sync."
 
 #: ../shell/src/version-gate.ts
 msgid "“{name}” was just updated to a newer version."
@@ -131,6 +143,11 @@ msgstr "{0, plural, one {# media file could not be moved: {reason}.} other {# me
 #: ../shell/src/launcher-store.ts
 msgid "{0, plural, one {# message} other {# messages}}"
 msgstr "{0, plural, one {# message} other {# messages}}"
+
+#. placeholder {0}: activity.length
+#: ../shell/src/App.tsx
+msgid "{0, plural, one {# new} other {# new}}"
+msgstr "{0, plural, one {# new} other {# new}}"
 
 #. placeholder {0}: held.issues.length
 #: ../shell/src/studio.tsx
@@ -321,6 +338,10 @@ msgstr "{engine} sees how this app is organised, what you type, and the area on 
 #: ../shell/src/ask-panel.tsx
 msgid "{engine} sees how this app is organised, what you type. Nothing already in the app is sent. You choose what gets added."
 msgstr "{engine} sees how this app is organised, what you type. Nothing already in the app is sent. You choose what gets added."
+
+#: ../shell/src/App.tsx
+msgid "{engineName} can’t investigate this step by step — pick a cloud engine, like OpenRouter, in the Studio’s Model settings to use Fix this."
+msgstr "{engineName} can’t investigate this step by step — pick a cloud engine, like OpenRouter, in the Studio’s Model settings to use Fix this."
 
 #. Ask review: entity is the app's own name for a kind of record
 #: ../shell/src/ask-apply.ts
@@ -588,6 +609,25 @@ msgstr "{records, plural, one {Moved # record.} other {Moved # records.}}"
 #: ../shell/src/inline-edit.tsx
 msgid "{repeats, plural, one {This text is written # time in the app — all of them change.} other {This text is written # times in the app — all of them change.}}"
 msgstr "{repeats, plural, one {This text is written # time in the app — all of them change.} other {This text is written # times in the app — all of them change.}}"
+
+#: ../shell/src/App.tsx
+msgid "{roomUnread, plural, one {Chat — # unread} other {Chat — # unread}}"
+msgstr "{roomUnread, plural, one {Chat — # unread} other {Chat — # unread}}"
+
+#. The scope picker: which one the app shows, e.g. which trip
+#: ../shell/src/App.tsx
+msgid "{scopeLabel}: {scopedName} — change"
+msgstr "{scopeLabel}: {scopedName} — change"
+
+#. The scope picker, nothing chosen yet
+#: ../shell/src/App.tsx
+msgid "{scopeLabel}: none chosen — change"
+msgstr "{scopeLabel}: none chosen — change"
+
+#. The scope picker; scopeLabel is the app's word, e.g. Trip (docs/20 Q3: it goes first)
+#: ../shell/src/App.tsx
+msgid "{scopeLabel}: which one the app is showing"
+msgstr "{scopeLabel}: which one the app is showing"
 
 #. Data table: records matching the search, of all records
 #: ../shell/src/data-table.tsx
@@ -874,6 +914,10 @@ msgstr "Add a file"
 msgid "Add a file instead"
 msgstr "Add a file instead"
 
+#: ../shell/src/App.tsx
+msgid "Add a note"
+msgstr "Add a note"
+
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Add a source"
@@ -956,9 +1000,15 @@ msgstr "add video"
 msgid "Add video"
 msgstr "Add video"
 
+#: ../shell/src/App.tsx
+msgid "add with AI"
+msgstr "add with AI"
+
+#. A quick action that makes a new record; noun is the app's word for it
 #. Add a row to a list field; noun is the field's word for one
 #. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
 #. Make a new record; noun is the app's word for it
+#: ../shell/src/App.tsx
 #: ../views/src/list-input.tsx
 #: ../views/src/pick-list.tsx
 #: ../views/src/record-form.tsx
@@ -1008,6 +1058,10 @@ msgstr "All done."
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Allow"
+
+#: ../shell/src/App.tsx
+msgid "allow direct"
+msgstr "allow direct"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Allow this address?"
@@ -1107,8 +1161,10 @@ msgid "Area on your map · {lat}, {lng} · <1 km"
 msgstr "Area on your map · {lat}, {lng} · <1 km"
 
 #. Button: send the request to Ask
+#. The feature that adds records with AI
 #. The name of the feature that adds records with AI
 #. Tile editor: the AI feature called Ask
+#: ../shell/src/App.tsx
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/tile-editor.tsx
@@ -1247,6 +1303,10 @@ msgstr "board"
 msgid "Books I've read, with a rating and a note"
 msgstr "Books I've read, with a rating and a note"
 
+#: ../shell/src/main.tsx
+msgid "Boot error: {why}"
+msgstr "Boot error: {why}"
+
 #. Point chip: a text box or other input inside an app's screen, lower case
 #: ../shell/src/point-target.ts
 msgid "box"
@@ -1312,6 +1372,7 @@ msgstr "Can view"
 
 #. Dialog button: decline
 #: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/App.tsx
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/dialog.tsx
 #: ../shell/src/inline-edit.tsx
@@ -1389,6 +1450,10 @@ msgstr "Change relay"
 msgid "Change text"
 msgstr "Change text"
 
+#: ../shell/src/App.tsx
+msgid "change this app"
+msgstr "change this app"
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Change this app"
 msgstr "Change this app"
@@ -1408,6 +1473,8 @@ msgstr "Changed."
 
 #. A diff between two versions of the app
 #. Ask review: changes to records you already have
+#. What other people changed in a shared app
+#: ../shell/src/App.tsx
 #: ../shell/src/ask-review.tsx
 #: ../shell/src/history.tsx
 msgid "Changes"
@@ -1438,6 +1505,10 @@ msgstr "Chart"
 
 #. Heading of an app's shared chat
 #. Preview bar: back to the Studio conversation
+#. The button that opens a shared app's chat
+#. The button that opens a shared app's chat
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/studio-preview.tsx
 msgid "Chat"
@@ -1505,6 +1576,7 @@ msgstr "Choose one on the left."
 msgid "Choose which model writes and edits your app"
 msgstr "Choose which model writes and edits your app"
 
+#: ../shell/src/App.tsx
 #: ../views/src/enum-input.tsx
 #: ../views/src/relation-input.tsx
 msgid "Choose…"
@@ -1701,6 +1773,14 @@ msgstr "Could not get your location"
 msgid "Could not get your location."
 msgstr "Could not get your location."
 
+#: ../shell/src/main.tsx
+msgid "Could not import that data: {why}"
+msgstr "Could not import that data: {why}"
+
+#: ../shell/src/main.tsx
+msgid "Could not join: {why}"
+msgstr "Could not join: {why}"
+
 #: ../shell/src/studio-engine.ts
 msgid "Could not make it: {reason}"
 msgstr "Could not make it: {reason}"
@@ -1728,6 +1808,7 @@ msgstr "Could not reproduce this"
 msgid "Could not save that"
 msgstr "Could not save that"
 
+#: ../shell/src/main.tsx
 #: ../shell/src/version-gate.ts
 msgid "Could not update your data: {why}"
 msgstr "Could not update your data: {why}"
@@ -1747,6 +1828,14 @@ msgstr "Couldn't copy — select the link and copy it yourself."
 #: ../shell/src/data-page.tsx
 msgid "Couldn’t open {name}’s data: {failed}"
 msgstr "Couldn’t open {name}’s data: {failed}"
+
+#: ../shell/src/main.tsx
+msgid "Couldn't run \"{name}\" trusted; opening safely."
+msgstr "Couldn't run \"{name}\" trusted; opening safely."
+
+#: ../shell/src/main.tsx
+msgid "Couldn't run \"{name}\" trusted; opening safely. {why}"
+msgstr "Couldn't run \"{name}\" trusted; opening safely. {why}"
 
 #: ../views/src/record-form.tsx
 msgid "Couldn't save: {saveError}"
@@ -1785,7 +1874,9 @@ msgid "Dark"
 msgstr "Dark"
 
 #. Data page title: every app's records
+#. The page with every app's records
 #. Tile menu: this app's records, on the Data page
+#: ../shell/src/App.tsx
 #: ../shell/src/data-page.tsx
 #: ../shell/src/launcher.tsx
 msgid "Data"
@@ -2034,6 +2125,7 @@ msgstr "Edit"
 msgid "Edit {record}"
 msgstr "Edit {record}"
 
+#: ../shell/src/App.tsx
 #: ../shell/src/chrome.tsx
 msgid "Edit mode"
 msgstr "Edit mode"
@@ -2070,6 +2162,10 @@ msgstr "Enter coordinates"
 msgid "events"
 msgstr "events"
 
+#: ../shell/src/App.tsx
+msgid "every record"
+msgstr "every record"
+
 #: ../shell/src/history.tsx
 msgid "Every version of <0>{appName}</0> — review a change, or roll back to it."
 msgstr "Every version of <0>{appName}</0> — review a change, or roll back to it."
@@ -2094,6 +2190,14 @@ msgstr "example app"
 #: ../shell/src/launcher.tsx
 msgid "Examples to try"
 msgstr "Examples to try"
+
+#: ../shell/src/App.tsx
+msgid "Export"
+msgstr "Export"
+
+#: ../shell/src/main.tsx
+msgid "Exported {file}"
+msgstr "Exported {file}"
 
 #: ../shell/src/thinking-settings.tsx
 msgid "Fastest and cheapest. Enough for most changes."
@@ -2199,6 +2303,7 @@ msgstr "Fitting it to {name}’s fields (try {attempt})…"
 msgid "Fix found"
 msgstr "Fix found"
 
+#: ../shell/src/App.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Fix this"
 msgstr "Fix this"
@@ -2260,6 +2365,10 @@ msgstr "from your account"
 #: ../shell/src/version-notes.ts
 msgid "from your account, replacing this device's copy"
 msgstr "from your account, replacing this device's copy"
+
+#: ../shell/src/App.tsx
+msgid "Full screen"
+msgstr "Full screen"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -2354,6 +2463,7 @@ msgstr "Hide from the form"
 msgid "High"
 msgstr "High"
 
+#: ../shell/src/App.tsx
 #: ../shell/src/history.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio-tools.tsx
@@ -2370,6 +2480,8 @@ msgstr "History of {appName}"
 msgid "Holding"
 msgstr "Holding"
 
+#. The page that shows an app's kinds of record as tiles
+#: ../shell/src/App.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Home"
@@ -2447,10 +2559,18 @@ msgstr "Identity <0>{0}</0>"
 msgid "If the API needs one"
 msgstr "If the API needs one"
 
+#: ../shell/src/App.tsx
+msgid "Import"
+msgstr "Import"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "imported"
 msgstr "imported"
+
+#: ../shell/src/main.tsx
+msgid "Imported data into {name}."
+msgstr "Imported data into {name}."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
@@ -2575,6 +2695,14 @@ msgstr "It runs in the sealed box: it can only reach what you allow, when it ask
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 msgstr "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 
+#: ../shell/src/main.tsx
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
+msgstr "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
+
+#: ../shell/src/main.tsx
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header."
+msgstr "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header."
+
 #: ../shell/src/add-app.ts
 msgid "Its description says it is “{said}”, and its code says “{code}”, so it was not added."
 msgstr "Its description says it is “{said}”, and its code says “{code}”, so it was not added."
@@ -2592,6 +2720,14 @@ msgstr "its records could not be listed: {message}"
 #: ../shell/src/ask-verdicts.ts
 msgid "Its sources say otherwise."
 msgstr "Its sources say otherwise."
+
+#: ../shell/src/main.tsx
+msgid "Join and trust"
+msgstr "Join and trust"
+
+#: ../shell/src/main.tsx
+msgid "Join, keep sandboxed"
+msgstr "Join, keep sandboxed"
 
 #: ../shell/src/splash.tsx
 msgid "Joining…"
@@ -3062,6 +3198,10 @@ msgstr "no"
 msgid "No"
 msgstr "No"
 
+#: ../shell/src/main.tsx
+msgid "No app \"{appId}\" installed to import into."
+msgstr "No app \"{appId}\" installed to import into."
+
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "No app called “{typed}”."
@@ -3158,6 +3298,10 @@ msgstr "None of these is an app: choose its source (a .ts or .tsx file) or a pac
 #: ../shell/src/ask-sources-panel.tsx
 msgid "none yet"
 msgstr "none yet"
+
+#: ../shell/src/main.tsx
+msgid "Not a valid Potyro export bundle."
+msgstr "Not a valid Potyro export bundle."
 
 #: ../shell/src/engine-settings.tsx
 msgid "not available in this browser"
@@ -3322,6 +3466,10 @@ msgstr "Nothing was done"
 msgid "Nothing was made from it yet, so there is no app to keep."
 msgstr "Nothing was made from it yet, so there is no app to keep."
 
+#: ../shell/src/App.tsx
+msgid "Nothing was recorded — navigate the app or run an action before stopping."
+msgstr "Nothing was recorded — navigate the app or run an action before stopping."
+
 #: ../shell/src/studio-tools.tsx
 msgid "Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it."
 msgstr "Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it."
@@ -3330,6 +3478,11 @@ msgstr "Nothing yet. Once the app is made, every version shows up here — what 
 #: ../shell/src/capability-words.ts
 msgid "notifications"
 msgstr "notifications"
+
+#. The tiles of an app's kinds of record
+#: ../shell/src/App.tsx
+msgid "Objects"
+msgstr "Objects"
 
 #. Reasoning level: the model does not think first
 #: ../shell/src/thinking-settings.tsx
@@ -3538,6 +3691,7 @@ msgstr "Paste your key"
 msgid "Pasted"
 msgstr "Pasted"
 
+#: ../shell/src/App.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
 msgid "People"
@@ -3841,6 +3995,11 @@ msgstr "restored"
 msgid "Restoring…"
 msgstr "Restoring…"
 
+#. Trust menu hint: look at how a trusted app runs
+#: ../shell/src/App.tsx
+msgid "review"
+msgstr "review"
+
 #: ../shell/src/trust-dialog.tsx
 msgid "Revoke trust"
 msgstr "Revoke trust"
@@ -3889,10 +4048,23 @@ msgstr "Run it as my own app"
 msgid "running now"
 msgstr "running now"
 
+#: ../shell/src/App.tsx
+msgid "Runs directly"
+msgstr "Runs directly"
+
+#: ../shell/src/App.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Runs in a sandbox"
 msgstr "Runs in a sandbox"
+
+#: ../shell/src/App.tsx
+msgid "Runs in a sandbox: review"
+msgstr "Runs in a sandbox: review"
+
+#: ../shell/src/App.tsx
+msgid "Runs in a sandbox. Tap to let it run as yours."
+msgstr "Runs in a sandbox. Tap to let it run as yours."
 
 #. Calendar column head: Saturday, as short as your language writes it
 #: ../views/src/date-input.tsx
@@ -3903,6 +4075,11 @@ msgstr "Sa"
 #: ../views/src/stats.tsx
 msgid "same as {label}"
 msgstr "same as {label}"
+
+#. A small mark in the header of an app that runs sealed
+#: ../shell/src/App.tsx
+msgid "sandbox"
+msgstr "sandbox"
 
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
@@ -3925,6 +4102,10 @@ msgstr "Save changes"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Save key"
 msgstr "Save key"
+
+#: ../shell/src/App.tsx
+msgid "Save note"
+msgstr "Save note"
 
 #: ../shell/src/storage-report.tsx
 msgid "Save one thing"
@@ -4138,6 +4319,10 @@ msgstr "something"
 msgid "Something went wrong opening {pageLabel}."
 msgstr "Something went wrong opening {pageLabel}."
 
+#: ../shell/src/App.tsx
+msgid "Something's wrong"
+msgstr "Something's wrong"
+
 #: ../shell/src/launcher.tsx
 msgid "Sort apps"
 msgstr "Sort apps"
@@ -4199,6 +4384,10 @@ msgstr "Stop pointing at {0}"
 #: ../shell/src/backup-switch.tsx
 msgid "Stop putting new apps on the relay?"
 msgstr "Stop putting new apps on the relay?"
+
+#: ../shell/src/App.tsx
+msgid "Stop recording"
+msgstr "Stop recording"
 
 #. Ask: the person stopped the request
 #. Fix agent outcome: the person stopped it
@@ -4366,6 +4555,10 @@ msgstr "Text"
 msgid "Th"
 msgstr "Th"
 
+#: ../shell/src/App.tsx
+msgid "That change didn't validate, so nothing was saved: {issue}"
+msgstr "That change didn't validate, so nothing was saved: {issue}"
+
 #: ../shell/src/app-source.ts
 msgid "that change would have produced source that doesn't parse"
 msgstr "that change would have produced source that doesn't parse"
@@ -4385,6 +4578,10 @@ msgstr "That language could not be loaded. Connect once and try again."
 #: ../shell/src/chat-panel.tsx
 msgid "That message could not be sent."
 msgstr "That message could not be sent."
+
+#: ../shell/src/App.tsx
+msgid "the \"{shownTitle}\" page"
+msgstr "the \"{shownTitle}\" page"
 
 #: ../shell/src/app-source.ts
 msgid "the app changed since this text was read — try again"
@@ -4475,6 +4672,10 @@ msgstr "the new order must contain exactly the pages that are there now"
 #: ../shell/src/app-source.ts
 msgid "the new text is empty"
 msgstr "the new text is empty"
+
+#: ../shell/src/App.tsx
+msgid "the object grid (home)"
+msgstr "the object grid (home)"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "The old version stays in History. Files you changed are kept."
@@ -4631,6 +4832,10 @@ msgstr "This app is in {language}."
 #: ../shell/src/open-store.ts
 msgid "This app is not shared."
 msgstr "This app is not shared."
+
+#: ../shell/src/App.tsx
+msgid "This app isn't saved on this device, so it can't be changed here."
+msgstr "This app isn't saved on this device, so it can't be changed here."
 
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
@@ -4813,6 +5018,10 @@ msgstr "Tomorrow"
 msgid "Translate into {into}"
 msgstr "Translate into {into}"
 
+#: ../shell/src/App.tsx
+msgid "Translate this app into {intoName} ({intoTag})."
+msgstr "Translate this app into {intoName} ({intoTag})."
+
 #: ../shell/src/trust-dialog.tsx
 msgid "Trusted app"
 msgstr "Trusted app"
@@ -4928,6 +5137,7 @@ msgstr "Update your copy? Your version is kept in History, so you can go back."
 msgid "updated by a collaborator"
 msgstr "updated by a collaborator"
 
+#: ../shell/src/main.tsx
 #: ../shell/src/version-gate.ts
 msgid "Updated your data from {was} to {to}."
 msgstr "Updated your data from {was} to {to}."
@@ -5013,6 +5223,11 @@ msgstr "What can they do?"
 #: ../shell/src/activity-panel.tsx
 msgid "What changed"
 msgstr "What changed"
+
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
+msgid "What did you expect?"
+msgstr "What did you expect?"
 
 #: ../shell/src/case-report.tsx
 #: ../shell/src/case-report.tsx

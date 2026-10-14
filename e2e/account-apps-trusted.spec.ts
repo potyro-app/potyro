@@ -57,7 +57,7 @@ test("a device signed in with the words is offered the apps on the account, with
   await a.locator(".k-dialog").getByRole("button", { name: "Cancel" }).click();
   await expect(a.locator(".k-sync-status")).toContainText("Synced", { timeout: 60_000 });
 
-  await a.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await a.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await a.getByLabel(/title/i).fill("Buy stamps");
   await a.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(a.locator(".k-detail-title")).toHaveText("Buy stamps", { timeout: 30_000 });
@@ -215,7 +215,7 @@ test("an app that was never synced is backed up by one switch, and a linked devi
   await a.goto("/?user=notes");
   await expect(a.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
 
-  await a.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await a.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await a.getByLabel(/title/i).fill("Ship the thing");
   await a.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(a.locator(".k-detail-title")).toHaveText("Ship the thing", { timeout: 30_000 });

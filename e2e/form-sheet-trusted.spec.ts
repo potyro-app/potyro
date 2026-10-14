@@ -54,7 +54,7 @@ test.describe("phone", () => {
     // drops the floating quick action there rather than showing two buttons for one act. The list is
     // where adding is still a button, and a form opened from it is the same sheet either way.
     await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
-    await page.getByRole("button", { name: "New Place" }).click();
+    await page.getByRole("button", { name: "Add: Place" }).click();
     const dialog = page.getByRole("dialog", { name: "Add: Place" });
     await expect(dialog).toBeVisible();
     // The sheet slides up when it opens; measure where it lands, not where it is passing through.
@@ -76,7 +76,7 @@ test.describe("phone", () => {
   test("a swipe down on the header closes an untouched form", async ({ page }) => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await expect(dialog).toBeVisible();
     await settled(dialog);
@@ -100,7 +100,7 @@ test.describe("desktop", () => {
     await seedTall(page);
     await page.goto("/?user=tall");
     await expect(page.locator("h1").first()).toHaveText("Tall", { timeout: 30_000 });
-    await page.getByRole("button", { name: "New Thing" }).click();
+    await page.getByRole("button", { name: "Add: Thing" }).click();
     const dialog = page.getByRole("dialog", { name: "Add: Thing" });
     await expect(dialog).toBeVisible();
     const sheet = (await dialog.boundingBox())!;
@@ -117,7 +117,7 @@ test.describe("desktop", () => {
   test("focus goes to the first field, stays inside, and returns to the opener; axe passes", async ({ page }) => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-    const opener = page.getByRole("button", { name: "New Plant" });
+    const opener = page.getByRole("button", { name: "Add: Plant" });
     await opener.focus();
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Add: Plant" });
@@ -144,7 +144,7 @@ test.describe("desktop", () => {
   test("closing a form with edits asks first; the scrim, Escape and Cancel alike", async ({ page }) => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await dialog.getByRole("textbox", { name: "Name" }).fill("Basil");
     await page.keyboard.press("Escape");

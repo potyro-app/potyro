@@ -98,7 +98,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function add(page: Page, entity: string, name: string): Promise<void> {
-  await page.getByRole("button", { name: `New ${entity}` }).click();
+  await page.getByRole("button", { name: `Add: ${entity}` }).click();
   await page.getByLabel("Name").fill(name);
   await page.getByRole("button", { name: "Create" }).click();
 }

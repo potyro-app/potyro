@@ -97,7 +97,7 @@ test("one app, two languages: an English owner and a Polish guest in the sealed 
   await a.goto("/?user=langs");
   await expect(a.locator("h1").first()).toHaveText("Spots", { timeout: 30_000 });
   await expect(a.getByText("No spots yet.")).toBeVisible();
-  await add(a, { newButton: /New Spot|Add Spot/i, nameLabel: "Name", name: "Miradouro", kind: "Café" });
+  await add(a, { newButton: /Add: Spot|Add Spot/i, nameLabel: "Name", name: "Miradouro", kind: "Café" });
   await expect(row(a, "Miradouro")).toContainText(EN_MONTH);
   await expect(row(a, "Miradouro").locator(".k-badge")).toHaveText("Café");
   await expect(a.getByText("1 spot", { exact: true })).toBeVisible();
@@ -131,7 +131,7 @@ test("one app, two languages: an English owner and a Polish guest in the sealed 
   await expect(b.getByText("1 miejsce", { exact: true })).toBeVisible(); // an ICU plural, in Polish
 
   // ---- the guest adds one, in Polish; the owner reads it in English ----
-  await add(b, { newButton: /New Miejsce|Add Miejsce|New Spot/i, nameLabel: "Nazwa", name: "Łazienki", kind: "Park miejski" });
+  await add(b, { newButton: /Add: Miejsce|Add Miejsce|Add: Spot/i, nameLabel: "Nazwa", name: "Łazienki", kind: "Park miejski" });
   await expect(b.getByText("2 miejsca", { exact: true })).toBeVisible();
   await expect(row(a, "Łazienki")).toBeVisible({ timeout: 60_000 });
   await expect(row(a, "Łazienki").locator(".k-badge")).toHaveText("Park"); // stored "park", read in English
