@@ -75,6 +75,26 @@ test("a recipe's computed values are headed in Polish, not by their keys (#310)"
   await expect(detail.getByText("Estimated Cost")).toHaveCount(0);
 });
 
+test("a recipe's diet badge reads in Polish, not as its stored value", async ({ page }) => {
+  await open(page, "recipes", "Przepisy");
+  await tab(page, "Roślinne").click();
+  const badges = page.locator(".k-list-row .k-badge");
+  await expect(badges.first()).toBeVisible({ timeout: 30_000 });
+  // `diet` is a computed returning "vegan" / "vegetarian"; its `labels` say them in Polish.
+  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański)$/);
+});
+
+test("an exercise's rolling best reads as kg × reps, not as an object", async ({ page }) => {
+  await open(page, "workout", "Dziennik PPL");
+  await tab(page, "Program").click();
+  await page.locator(".k-list-row", { hasText: "Squat" }).first().getByText("Squat", { exact: true }).click();
+  const detail = page.locator("article.k-detail");
+  await expect(detail).toBeVisible();
+  // The seed's best squat set is 110 kg × 5; a computed returning an object read "…" before.
+  await expect(detail.locator("dd", { hasText: "110 kg × 5" })).toBeVisible({ timeout: 30_000 });
+  await expect(detail.locator("dd", { hasText: /^…$/ })).toHaveCount(0);
+});
+
 test("split reads in Polish", async ({ page }) => {
   await open(page, "split", "Podział");
   await expect(page.getByText("Salda", { exact: true }).first()).toBeVisible();
