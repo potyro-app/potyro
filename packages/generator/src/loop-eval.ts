@@ -191,11 +191,35 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
  * Usage is reported from the text's length (4 characters a token) at DeepSeek V4 Flash's list price,
  * so the token and cost columns have something to add up; they are not a model's numbers.
  */
-export type ScriptedLoopKind = "scripted-loop" | "scripted-loop-tools";
+export type ScriptedLoopKind = "scripted-loop" | "scripted-loop-tools" | "scripted-loop-language";
 
-export const SCRIPTED_LOOP_KINDS: readonly ScriptedLoopKind[] = ["scripted-loop", "scripted-loop-tools"];
+/**
+ * `scripted-loop-language` (#301): one `lookup`, then an edit that renames the app, with the new
+ * name and the explanation in the languages the FIRST MESSAGE asked for — read from its language
+ * line, so a run where the line never reached the model writes English and the language columns say
+ * so. With `--language pl` every case must report its new label and its reply in Polish.
+ */
+export const SCRIPTED_LOOP_KINDS: readonly ScriptedLoopKind[] = ["scripted-loop", "scripted-loop-tools", "scripted-loop-language"];
 
 const SCRIPTED_EDIT = "Marking the app.\n```ts\n<<<<<<< SEARCH\nexport default defineApp({\n=======\n// edited by the eval\nexport default defineApp({\n>>>>>>> REPLACE\n```\n";
+
+/** What the language engine writes, by the language's English name as the instruction says it. */
+const SCRIPTED_WORDS: Readonly<Record<string, { name: string; reply: string }>> = {
+  English: { name: "My notes from home", reply: "Renaming the app so that it is my own." },
+  Polish: { name: "Moje notatki z domu", reply: "Zmieniam nazwę aplikacji, żeby było widać, że jest moja." },
+  "Brazilian Portuguese": { name: "Minhas anotações de casa", reply: "Mudo o nome do app pra mostrar que ele é meu." },
+};
+
+/** The rename the language engine sends: against the app's top-level `name:` line, as the first message showed it. */
+function scriptedLanguageEdit(first: string): string {
+  const person = /reply to the person in ([A-Z][a-z]+(?: [A-Z][a-z]+)?):/.exec(first)?.[1] ?? "English";
+  const app = /The app's own words are in ([A-Z][a-z]+(?: [A-Z][a-z]+)?):/.exec(first)?.[1] ?? person;
+  const line = /^ {2}name: "[^"\n]*",$/m.exec(first)?.[0];
+  if (!line) return SCRIPTED_EDIT;
+  const reply = (SCRIPTED_WORDS[person] ?? SCRIPTED_WORDS.English!).reply;
+  const name = (SCRIPTED_WORDS[app] ?? SCRIPTED_WORDS.English!).name;
+  return `${reply}\n\`\`\`ts\n<<<<<<< SEARCH\n${line}\n=======\n  name: "${name}",\n>>>>>>> REPLACE\n\`\`\`\n`;
+}
 
 export function scriptedLoopEngine(kind: ScriptedLoopKind): ChatEngine {
   let n = 0;
@@ -205,9 +229,11 @@ export function scriptedLoopEngine(kind: ScriptedLoopKind): ChatEngine {
         create: async (req) => {
           n += 1;
           const lookup = kind === "scripted-loop-tools" || n === 1;
+          const first = req.messages.find((m) => m.role === "user")?.content ?? "";
+          const edit = kind === "scripted-loop-language" ? scriptedLanguageEdit(first) : SCRIPTED_EDIT;
           const message = lookup
-            ? { content: "", tool_calls: [{ id: `t${n}`, type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: kind === "scripted-loop" ? "defineApp" : `step ${n}` }) } }] }
-            : { content: SCRIPTED_EDIT };
+            ? { content: "", tool_calls: [{ id: `t${n}`, type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: kind === "scripted-loop-tools" ? `step ${n}` : "defineApp" }) } }] }
+            : { content: edit };
           const promptTokens = Math.ceil(req.messages.reduce((k, m) => k + m.content.length, 0) / 4);
           const completionTokens = Math.ceil((message.content.length || 40) / 4);
           return { choices: [{ message }], usage: { promptTokens, completionTokens, cost: (promptTokens * 0.14 + completionTokens * 0.28) / 1e6 } };

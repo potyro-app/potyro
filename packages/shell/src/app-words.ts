@@ -1,6 +1,8 @@
 // An app's own words as the shell shows them around it (#302, docs/20 §3.2–3.3): its name on a tile,
 // in the switcher and the Studio, and the quiet line that says which language it is in.
 
+import { t } from "@lingui/core/macro";
+import { i18n } from "@potyro/i18n";
 import { appLanguages, pickLanguage, word, type AppDefinition, type Language, type Words } from "potyro";
 
 type Named = { name: Words; language?: Language; languages?: Language[] };
@@ -40,21 +42,26 @@ export interface LanguageNote {
   line: string;
   /** The language to offer a translation into, named in itself ("Polski"), when it is not there. */
   into: { tag: Language; name: string };
+  /** "Translate into Polski" — in the shell's language. */
+  offer: string;
 }
 
 /**
  * The line an app's menu says when it lacks the person's language (docs/20 §3.3), or `null` when it
  * has it, or declares no language at all. No banner: the app opens in its own language as it is.
  */
-export function languageNote(def: Pick<AppDefinition, "language" | "languages">, prefs: readonly string[], shellLanguage: Language = "en"): LanguageNote | null {
+export function languageNote(def: Pick<AppDefinition, "language" | "languages">, prefs: readonly string[], shellLanguage: Language = i18n.locale): LanguageNote | null {
   if (!def.language) return null;
   const wanted = prefs[0];
   if (!wanted) return null;
   const carried = appLanguages(def);
   if (carried.some((l) => baseOf(l) === baseOf(wanted))) return null;
+  const language = languageName(def.language, shellLanguage);
+  const into = languageName(baseOf(wanted));
   return {
-    line: `This app is in ${languageName(def.language, shellLanguage)}.`,
-    into: { tag: baseOf(wanted), name: languageName(baseOf(wanted)) },
+    line: t`This app is in ${language}.`,
+    into: { tag: baseOf(wanted), name: into },
+    offer: t`Translate into ${into}`,
   };
 }
 

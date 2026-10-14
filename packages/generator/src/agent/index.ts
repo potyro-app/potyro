@@ -45,3 +45,6 @@ export { runAskLoop, checkProposal, checkProposedRows, describeStructure, askSys
 export type { ChatMessage, Citation } from "../chat-backend.js";
 export { verifyRow, Retrieved, normText, type Evidence, type Trust, type TrustStatus } from "./evidence.js";
 export { verifyClaims } from "./verify-claims.js";
+// The person's language (#301): language.ts imports nothing, so it adds no edge to the graph above.
+export { LANGUAGES, LANGUAGE_NAMES, isLanguage, matchLanguage, bestLanguage, appLanguage, type Language, type TurnLanguage } from "../language.js";
+export { askLanguageInstruction } from "./ask.js";
