@@ -21,8 +21,14 @@
 // a name, text a model reads (#297 keeps model-facing text English). "Potyro" is allowed everywhere;
 // it is a name.
 //
-// What this cannot see: a string a function returns or throws that ends up on screen. Those were
-// moved by reading (#299); the pseudo-language e2e (e2e/i18n-trusted.spec.ts) is the net for them.
+// A callback in one of those slots is followed into what it returns (#300: `label: (r) => \`＋ New
+// ${…}\`` in App.tsx slipped through before): an arrow's expression body, or every `return` in its
+// block, but not the returns of functions nested inside it. So is a method under one of those keys
+// (`label() { return … }`), and a `.map(cb)` / `.flatMap(cb)` rendered as JSX children.
+//
+// What this cannot see: a string some other function returns or throws that ends up on screen — a
+// helper called from a slot is not followed. Those were moved by reading (#299); the
+// pseudo-language e2e (e2e/i18n-trusted.spec.ts) is the net for them.
 //
 // TypeScript's own parser (already a dependency), like the other checks in scripts/: no ESLint in
 // this repo to hang a rule on, and a parser rather than a regex because JSX text cannot be found
@@ -54,6 +60,8 @@ const CALLEES = new Set(["toast", "confirm", "prompt", "alert", "share"]);
 const TRANSLATED = new Set(["t", "tr", "msg", "defineMessage", "plural", "select", "selectOrdinal"]);
 const TRANS_ELEMENTS = new Set(["Trans", "Plural", "Select", "SelectOrdinal"]);
 const PROPER_NOUNS = /\bPotyro\b/g;
+/** Array methods whose callback's return value is what a JSX child renders. */
+const LIST_RENDERERS = new Set(["map", "flatMap"]);
 
 /** Two letters in a row, in any script, once the allowed names are taken out. */
 const hasWords = (text) => /\p{L}{2,}/u.test(text.replace(PROPER_NOUNS, ""));
@@ -94,6 +102,11 @@ function rendered(expr) {
   }
   if (ts.isParenthesizedExpression(expr) || ts.isAsExpression(expr) || ts.isNonNullExpression(expr)) return rendered(expr.expression);
   if (ts.isConditionalExpression(expr)) return [...rendered(expr.whenTrue), ...rendered(expr.whenFalse)];
+  // A callback in a rendered slot — `label: (r) => `＋ New ${r}``, `title={() => "Close"}` — renders
+  // what it returns. So does `.map(cb)` over a list in JSX: each item is what the callback returns.
+  if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) return returned(expr);
+  if (ts.isCallExpression(expr) && ts.isPropertyAccessExpression(expr.expression) && LIST_RENDERERS.has(expr.expression.name.text))
+    return rendered(expr.arguments[0]);
   if (ts.isBinaryExpression(expr)) {
     const op = expr.operatorToken.kind;
     if (op === ts.SyntaxKind.PlusToken || op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken)
@@ -101,6 +114,23 @@ function rendered(expr) {
     if (op === ts.SyntaxKind.AmpersandAmpersandToken) return rendered(expr.right);
   }
   return [];
+}
+
+/**
+ * What a function returns: its expression body, or each `return` in its block — not the returns
+ * of functions nested inside it, which return to someone else.
+ */
+function returned(fn) {
+  if (!fn.body) return [];
+  if (!ts.isBlock(fn.body)) return rendered(fn.body);
+  const out = [];
+  const walkReturns = (node) => {
+    if (ts.isFunctionLike(node)) return;
+    if (ts.isReturnStatement(node)) out.push(...rendered(node.expression));
+    ts.forEachChild(node, walkReturns);
+  };
+  ts.forEachChild(fn.body, walkReturns);
+  return out;
 }
 
 function insideTrans(node) {
@@ -144,11 +174,29 @@ function check(file) {
       // Inside a dialog call the options were handled above.
       const call = node.parent?.parent;
       if (!(call && ts.isCallExpression(call) && CALLEES.has(nameOf(call.expression)))) reportAll(node.initializer, `${node.name.getText()}:`);
+    } else if ((ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) && PROPS.has(node.name.getText().replace(/["']/g, ""))) {
+      // `label() { return "…"; }` and `get title() { … }`: the same slot, written as a method.
+      for (const s of returned(node)) if (hasWords(s.text)) report(s.node, `${node.name.getText()}()`, s.text);
     }
     ts.forEachChild(node, visit);
   };
   visit(sf);
   return findings;
+}
+
+// Self-test first: the planted fixture's `// expect` lines, and only those, must be reported. A
+// check that silently stopped seeing a kind of string would otherwise pass forever.
+{
+  const fixture = join(root, "scripts/fixtures/i18n-planted.tsx");
+  const lines = readFileSync(fixture, "utf8").split("\n");
+  const want = lines.flatMap((l, i) => (/\/\/ expect\s*$/.test(l) ? [i + 1] : []));
+  const got = [...new Set(check(fixture).map((f) => f.line))];
+  const missed = want.filter((l) => !got.includes(l));
+  const extra = got.filter((l) => !want.includes(l));
+  if (missed.length || extra.length) {
+    console.error(`[i18n] self-test failed on scripts/fixtures/i18n-planted.tsx — missed lines ${missed.join(", ") || "none"}, wrongly reported ${extra.join(", ") || "none"}`);
+    process.exit(1);
+  }
 }
 
 let errors = 0;
