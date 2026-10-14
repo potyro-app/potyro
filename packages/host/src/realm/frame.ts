@@ -39,7 +39,7 @@ export const FRAME_SOURCE = `(function () {
       worker = new Worker(url);
       worker.postMessage({ t: "port", port: app }, [app]);
     } catch (err) {
-      app.postMessage({ t: "ready", error: "could not start the worker: " + (err && err.message ? err.message : String(err)) });
+      app.postMessage({ t: "ready", start: true, error: "could not start the worker: " + (err && err.message ? err.message : String(err)) });
     }
     URL.revokeObjectURL(url);
     // The host is about to remove this frame: end the worker now rather than whenever the engine gets

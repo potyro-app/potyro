@@ -5,4 +5,4 @@ export { createUiBridge, createNavBridge } from "./ui-bridge.js";
 export { Toaster, type Toast } from "./toaster.js";
 export { seedIfEmpty } from "./seed.js";
 export { createSandboxLoader, createSharedAppLoader, type LoadIsolated, type SandboxOptions } from "./isolate-bridge.js";
-export { sandboxRunner, realmAvailable, SANDBOX_FLAG, type SandboxRunner } from "./sandbox-runner.js";
+export { sandboxRunner, realmAvailable, markRealmUnavailable, SANDBOX_FLAG, type SandboxRunner } from "./sandbox-runner.js";

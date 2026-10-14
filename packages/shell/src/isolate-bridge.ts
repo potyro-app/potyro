@@ -9,7 +9,7 @@
 import type { CreateHostOptions } from "@potyro/host";
 import type { QuickJSAsyncContextLike } from "@potyro/host/isolate";
 import type { Store } from "@potyro/store";
-import { sandboxRunner } from "./sandbox-runner.js";
+import { markRealmUnavailable, sandboxRunner } from "./sandbox-runner.js";
 
 export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
@@ -46,6 +46,18 @@ export async function createSandboxLoader(store: Store, opts?: SandboxOptions): 
 /** The loader a shared app runs with: the browser realm, or QuickJS behind the flag. */
 export async function createSharedAppLoader(store: Store, opts?: SandboxOptions): Promise<LoadIsolated> {
   if (sandboxRunner() === "quickjs") return createSandboxLoader(store, opts);
-  const { createRealmSandboxLoader } = await import("./realm-bridge.js");
-  return createRealmSandboxLoader(opts);
+  const { createRealmSandboxLoader, RealmStartError } = await import("./realm-bridge.js");
+  const realm = createRealmSandboxLoader(opts);
+  return async (args) => {
+    try {
+      return await realm(args);
+    } catch (e) {
+      // The box itself would not start here (a WebView without Workers in sandboxed frames, say): the
+      // app is not at fault, so it runs sealed in QuickJS instead, and so does every shared app after it.
+      if (!(e instanceof RealmStartError)) throw e;
+      markRealmUnavailable();
+      console.warn(`[potyro] this browser could not start the sealed box (${e.message}); shared apps run in QuickJS instead`);
+      return (await createSandboxLoader(store, opts))(args);
+    }
+  };
 }

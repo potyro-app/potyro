@@ -9,6 +9,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type UiBridge } from "../src/index.js";
+import { createRealmLoader, RealmStartError } from "../src/realm/index.js";
 import { liveThreads, realm, type RunnerOptions } from "./runners.js";
 
 afterAll(async () => {
@@ -52,6 +53,25 @@ describe("the realm has a browser's built-ins (what QuickJS lacked, #262)", () =
     expect(await loaded.callComputed("n", "later", row, ctx)).toBe("waited");
     loaded.dispose();
   });
+});
+
+describe("telling the box failing from the app failing", () => {
+  it("a realm that never comes up is a RealmStartError (the shell then falls back to QuickJS)", async () => {
+    const silent = new MessageChannel(); // nobody on the other end: what a frame that cannot make a Worker looks like
+    const load = createRealmLoader({ spawn: async () => ({ port: silent.port1, kill: () => silent.port1.close() }), workerSource: "", loadTimeoutMs: 300 });
+    await expect(load({ code: app(""), provenance: "untrusted" })).rejects.toBeInstanceOf(RealmStartError);
+  });
+
+  it("an app whose top level throws or never returns is the app's failure, not the box's", async () => {
+    const load = await realm.loader(new MemoryStore(), { loadTimeoutMs: 1500 });
+    const thrown = await load({ code: `throw new Error("not today");`, provenance: "untrusted" }).catch((e: unknown) => e);
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).not.toBeInstanceOf(RealmStartError);
+    expect(String(thrown)).toMatch(/not today/);
+    const spun = await load({ code: `for(;;){}`, provenance: "untrusted" }).catch((e: unknown) => e);
+    expect(spun).not.toBeInstanceOf(RealmStartError);
+    expect(String(spun)).toMatch(/did not load within 1500 ms/);
+  }, 10000);
 });
 
 describe("the watchdog", () => {

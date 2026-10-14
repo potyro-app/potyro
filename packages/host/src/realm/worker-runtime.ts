@@ -36,6 +36,7 @@ function boot(port: MessagePort): void {
   // Beat from the start: a bundle whose top level never returns is caught by the load deadline, and
   // anything that spins later by the heartbeat.
   setInterval(() => port.postMessage({ t: "hb", at: Date.now() }), HEARTBEAT_MS);
+  port.postMessage({ t: "up" });
   const tx = portTransport(port);
   let app: DirectLoadedApp | null = null;
 

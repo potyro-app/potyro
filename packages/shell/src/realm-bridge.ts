@@ -4,6 +4,7 @@
 // nothing that never runs a shared app (the Node tests among them) has to resolve the virtual module.
 
 import { createRealmLoader, frameSpawner } from "@potyro/host/realm";
+export { RealmStartError } from "@potyro/host/realm";
 import workerSource from "virtual:potyro-realm-worker";
 import type { LoadIsolated, SandboxOptions } from "./isolate-bridge.js";
 

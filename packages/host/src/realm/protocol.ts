@@ -101,7 +101,10 @@ export type HostToRealm =
 
 // ---- realm → host ----
 export type RealmToHost =
-  | { t: "ready"; definition?: string; error?: string }
+  /** The worker runtime is running and holds the port: the realm itself works on this browser. */
+  | { t: "up" }
+  /** `error` with `start: true` is the realm failing to start (the frame could not make a Worker), not the app. */
+  | { t: "ready"; definition?: string; error?: string; start?: boolean }
   | { t: "result"; id: number; ok: boolean; value?: unknown; error?: string }
   | { t: "op"; id: number; ctxId: number; op: string; args: unknown[] }
   | { t: "hb"; at: number };
