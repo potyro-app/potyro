@@ -274,7 +274,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     const NEW = { __new: true as const };
     const rows = await runtime.ctx.query(scopeDef.entity);
     const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>([...rows, NEW], {
-      label: (r) => ("__new" in r ? `＋ New ${scopeEntity?.label ?? scopeDef.entity}` : scopeName(r)),
+      label: (r) => ("__new" in r ? `＋ ${addLabel(scopeEntity?.label ?? scopeDef.entity)}` : scopeName(r)),
     });
     if (!picked || Array.isArray(picked)) return;
     if ("__new" in picked) {
