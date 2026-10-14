@@ -45,6 +45,7 @@ export {
   type LocaleInfo,
 } from "./locale.js";
 export { formatDate, formatDateRange, formatList, formatNumber, formatRelativeDays, formatRelativeTime, type DateInput } from "./format.js";
+export { catalogMessages, findMessages, messageText, messagesShown, type CatalogMessage } from "./wording.js";
 
 /** In the pseudo-language, what went through these helpers is accented too — so a raw `toLocaleString()` is not. */
 const marked = (s: string): string => (i18n.locale === PSEUDO_LOCALE ? accent(s) : s);
