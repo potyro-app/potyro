@@ -25,6 +25,7 @@
     "@potyro/i18n": "workspace:*",
     "@potyro/identity": "workspace:*",
     "@potyro/native": "workspace:*",
+    "@potyro/platform-requests": "workspace:*",
     "@potyro/runtime": "workspace:*",
     "@potyro/store": "workspace:*",
     "@potyro/views": "workspace:*",
