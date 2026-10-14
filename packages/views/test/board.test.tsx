@@ -56,11 +56,11 @@ describe("the board", () => {
     await screen.findByText("Write tests");
     const titles = [...document.querySelectorAll(".k-board-col-title")].map((e) => e.textContent);
     // A row with no status gets a leading column of its own rather than vanishing.
-    expect(titles).toEqual(["No status", "todo", "doing", "done"]);
+    expect(titles).toEqual(["Status: none", "todo", "doing", "done"]);
     expect(within(column("todo")).getByText("Write tests")).toBeTruthy();
     expect(within(column("todo")).getByText("Plan")).toBeTruthy();
     expect(column("todo").querySelector(".k-board-count")?.textContent).toBe("2");
-    expect(within(column("No status")).getByText("Loose end")).toBeTruthy();
+    expect(within(column("Status: none")).getByText("Loose end")).toBeTruthy();
   });
 
   it("Move to… in a card's menu patches the field, and the card changes column", async () => {
@@ -92,7 +92,7 @@ describe("the board", () => {
     render(<BoardView runtime={runtime} pageId="board" params={{}} setParam={() => {}} navigate={() => {}} />);
     await screen.findByText("Write tests");
     const titles = [...document.querySelectorAll(".k-board-col-title")].map((e) => e.textContent);
-    expect(titles).toEqual(["No status", "doing", "todo"]);
+    expect(titles).toEqual(["Status: none", "doing", "todo"]);
     fireEvent.click(screen.getByRole("button", { name: "Ship it: more" }));
     expect(screen.queryByRole("menuitem", { name: /Move to/ })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Open" })).toBeTruthy();

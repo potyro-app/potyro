@@ -38,7 +38,7 @@ test.describe("desktop", () => {
     await expect(add).toHaveCount(0);
 
     // It can be taken off again.
-    await form.getByRole("button", { name: "Remove photo" }).click();
+    await form.getByRole("button", { name: "Remove: Photo" }).click();
     await expect(form.locator(".k-media-tile")).toHaveCount(0);
     await expect(add).toBeVisible();
 

@@ -11,6 +11,8 @@
 // `ctx.params` are the page's, shared by every item, so one chip row can drive two views and the
 // split's selection is just a param.
 
+import { fmt } from "@potyro/i18n";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { Localized, PageLayout, View } from "potyro";
 import type { ShownLayoutItem as LayoutItem } from "./shown.js";
@@ -56,6 +58,8 @@ function readFold(key: string): boolean | null {
 }
 
 export function LayoutHost(props: LayoutHostProps) {
+  const { t } = useLingui();
+  const num = (k: number): string => fmt.number(k);
   const { runtime, pageId, params, navigate, layout, registry } = props;
   const ref = useRef<HTMLDivElement>(null);
   const wide = useWide(ref);
@@ -93,7 +97,9 @@ export function LayoutHost(props: LayoutHostProps) {
           ? titled(
               right,
               1,
-              selected ? item(right, 1) : <p className="k-layout-empty">Choose one on the left.</p>,
+              selected ? item(right, 1) : <p className="k-layout-empty">
+                <Trans>Choose one on the left.</Trans>
+              </p>,
             )
           : null}
       </div>
@@ -104,10 +110,10 @@ export function LayoutHost(props: LayoutHostProps) {
     const current = layout.items[Math.min(tab, layout.items.length - 1)]!;
     return (
       <div ref={ref} className="k-layout k-layout-tabs">
-        <div className="k-segments" role="tablist" aria-label="Sections">
+        <div className="k-segments" role="tablist" aria-label={t({ message: "Sections", comment: "The tabs of a page made of several parts" })}>
           {layout.items.map((it, i) => (
             <button key={i} type="button" role="tab" aria-selected={i === tab} className="k-segment" onClick={() => setTab(i)}>
-              {it.title ?? `Tab ${i + 1}`}
+              {it.title ?? t({ message: `Tab ${num(i + 1)}`, comment: "An untitled tab, by its number" })}
             </button>
           ))}
         </div>
@@ -123,7 +129,7 @@ export function LayoutHost(props: LayoutHostProps) {
       <div ref={ref} className="k-layout k-layout-stack">
         {layout.items.map((it, i) =>
           it.collapsible ? (
-            <Fold key={i} appId={runtime.definition.id} pageId={pageId} index={i} title={it.title ?? `Section ${i + 1}`}>
+            <Fold key={i} appId={runtime.definition.id} pageId={pageId} index={i} title={it.title ?? t({ message: `Section ${num(i + 1)}`, comment: "An untitled section, by its number" })}>
               {item(it, i)}
             </Fold>
           ) : (

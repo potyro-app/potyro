@@ -3,12 +3,15 @@
 // only — bindings resolve through `runtime.resolveBinding` (never called directly), so a function
 // binding works identically for trusted apps and untrusted ones running in the QuickJS-WASM isolate.
 
+import { fmt } from "@potyro/i18n";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+/** Sunday first, as the grid is: each day's short name in the active language (1 January 2023 was a Sunday). */
+const weekdays = (): string[] => Array.from({ length: 7 }, (_, i) => fmt.date(new Date(2023, 0, 1 + i), { weekday: "short" }));
 const GRID_CELLS = 42; // 6 weeks × 7 days — a stable grid height regardless of month length
 
 export interface CalendarCell {
@@ -80,6 +83,7 @@ function useCalendarEvents(runtime: PotyroRuntime, pageId: string, rows: Resolve
 }
 
 export function CalendarView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const events = useCalendarEvents(runtime, pageId, rows);
@@ -88,26 +92,26 @@ export function CalendarView(props: BuiltinViewProps) {
   const today = runtime.ctx.now();
   const month = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const grid = useMemo(() => buildMonthGrid(month), [month.getFullYear(), month.getMonth()]);
-  const monthLabel = month.toLocaleString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = fmt.date(month, { month: "long", year: "numeric" });
 
-  if (loading) return <p className="k-loading">Loading…</p>;
+  if (loading) return <p className="k-loading">{t`Loading…`}</p>;
 
   const anyThisMonth = events.some((e) => grid.some((c) => sameDay(c.date, e.date)));
 
   return (
-    <section className="k-calendar" aria-label={`Calendar — ${monthLabel}`}>
+    <section className="k-calendar" aria-label={t`Calendar — ${monthLabel}`}>
       <header className="k-cal-header">
-        <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n - 1)} aria-label="Previous month">
+        <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n - 1)} aria-label={t`Previous month`}>
           ‹
         </button>
         <h2 className="k-cal-title">{monthLabel}</h2>
-        <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n + 1)} aria-label="Next month">
+        <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n + 1)} aria-label={t`Next month`}>
           ›
         </button>
       </header>
 
       <div className="k-cal-weekdays">
-        {WEEKDAYS.map((w) => (
+        {weekdays().map((w) => (
           <span key={w} className="k-cal-weekday">
             {w}
           </span>
@@ -125,7 +129,7 @@ export function CalendarView(props: BuiltinViewProps) {
               data-in-month={cell.inMonth}
               data-today={sameDay(cell.date, today)}
             >
-              <span className="k-cal-daynum">{cell.date.getDate()}</span>
+              <span className="k-cal-daynum">{fmt.number(cell.date.getDate())}</span>
               {dayEvents.map((e) => (
                 <span key={e.id} className="k-cal-event" title={e.title}>
                   {e.color ? <span className="k-cal-dot" style={{ background: e.color }} aria-hidden /> : null}
@@ -137,7 +141,7 @@ export function CalendarView(props: BuiltinViewProps) {
         })}
       </div>
 
-      {anyThisMonth ? null : <p className="k-empty k-cal-empty">Nothing scheduled this month.</p>}
+      {anyThisMonth ? null : <p className="k-empty k-cal-empty">{t`Nothing scheduled this month.`}</p>}
     </section>
   );
 }

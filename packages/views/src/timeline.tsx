@@ -9,6 +9,9 @@
 // the groups near the screen are rendered and have their display bindings resolved (the part that
 // crosses the isolate bridge per row).
 
+import { fmt } from "@potyro/i18n";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnumField, Resolved, DateTimeField } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
@@ -17,7 +20,7 @@ import { getView } from "./format.js";
 import { mapOnOpen } from "./builtins.js";
 import { enumSwatch } from "./enum.js";
 import { useDynamicText } from "./dynamic.js";
-import { daysFromToday, relativeDay, startOfDay, toDate } from "./dates.js";
+import { daysFromToday, startOfDay, toDate } from "./dates.js";
 
 interface TimelineDef {
   entity: string;
@@ -38,19 +41,20 @@ export interface TimelineGroup<T> {
 export const PAGE_ROWS = 40;
 
 const DAY = 86_400_000;
-const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" });
-const SHORT = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-const MONTH = new Intl.DateTimeFormat(undefined, { month: "long" });
-const MONTH_YEAR = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
-const TIME = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+// In the active language, read at call time so a switch reformats (#299).
+const WEEKDAY: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short" };
+const SHORT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+const MONTH: Intl.DateTimeFormatOptions = { month: "long" };
+const MONTH_YEAR: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
-const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+/** The first letter up, in any script ("today" → "Today", "dzisiaj" → "Dzisiaj"). */
+const capital = (s: string): string => s.replace(/^\p{Ll}/u, (c) => c.toUpperCase());
 /** Monday at midnight of `d`'s week. */
 const weekOf = (d: Date): Date => new Date(startOfDay(d).getTime() - ((d.getDay() + 6) % 7) * DAY);
 
 function range(from: Date, to: Date): string {
-  const f = SHORT as Intl.DateTimeFormat & { formatRange?: (a: Date, b: Date) => string };
-  return f.formatRange ? f.formatRange(from, to) : `${SHORT.format(from)} – ${SHORT.format(to)}`;
+  return fmt.dateRange(from, to, SHORT);
 }
 
 /** Sort by date and fold into headed groups: "Today", "This week", "25 – 31 Aug", "August". */
@@ -61,19 +65,20 @@ export function groupTimeline<T>(entries: { row: T; date: Date }[], groupBy: "da
     const d = e.date;
     let key: number;
     let heading: string;
-    const year = d.getFullYear() === now.getFullYear() ? "" : ` ${d.getFullYear()}`;
+    const year = d.getFullYear() === now.getFullYear() ? "" : ` ${d.getFullYear()}`; // i18n-ignore — a year number, not words
     if (groupBy === "week") {
       const start = weekOf(d);
       key = start.getTime();
       const back = Math.round((weekOf(now).getTime() - key) / (7 * DAY));
-      heading = back === 0 ? "This week" : back === 1 ? "Last week" : back === -1 ? "Next week" : `${range(start, new Date(key + 6 * DAY))}${year}`;
+      heading = back === 0 ? t`This week` : back === 1 ? t`Last week` : back === -1 ? t`Next week` : `${range(start, new Date(key + 6 * DAY))}${year}`;
     } else if (groupBy === "month") {
       key = d.getFullYear() * 12 + d.getMonth();
-      heading = key === now.getFullYear() * 12 + now.getMonth() ? "This month" : year ? MONTH_YEAR.format(d) : MONTH.format(d);
+      heading = key === now.getFullYear() * 12 + now.getMonth() ? t`This month` : fmt.date(d, year ? MONTH_YEAR : MONTH);
     } else {
       key = startOfDay(d).getTime();
-      const rel = relativeDay(d, now);
-      heading = rel === "today" || rel === "yesterday" || rel === "tomorrow" ? capital(rel) : `${WEEKDAY.format(d)}${year}`;
+      // Today, yesterday and tomorrow by their words in the active language; any other day by its date.
+      const n = daysFromToday(d, now);
+      heading = n >= -1 && n <= 1 ? capital(fmt.days(n)) : `${fmt.date(d, WEEKDAY)}${year}`;
     }
     const last = groups[groups.length - 1];
     if (last && last.key === key) last.entries.push(e);
@@ -84,20 +89,21 @@ export function groupTimeline<T>(entries: { row: T; date: Date }[], groupBy: "da
 
 /** What a card says about its date, beside the heading that already names the day, week or month. */
 export function whenText(d: Date, groupBy: "day" | "week" | "month", withTime: boolean, now = new Date()): string {
-  const time = withTime ? TIME.format(d) : "";
+  const time = withTime ? fmt.date(d, TIME) : "";
   if (groupBy === "day") return time;
   const n = daysFromToday(d, now);
-  const day = n === 0 ? "Today" : n === -1 ? "Yesterday" : WEEKDAY.format(d);
+  const day = n === 0 || n === -1 ? capital(fmt.days(n)) : fmt.date(d, WEEKDAY);
   return time ? `${day} ${time}` : day;
 }
 
 export function TimelineView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const view = getView(runtime, pageId) as unknown as TimelineDef;
   const entityDef = runtime.definition.entities[view.entity];
   const groupBy = view.groupBy ?? "day";
-  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
   const colorField = view.color ? (entityDef?.fields[view.color] as EnumField | undefined) : undefined;
   const dateField = typeof view.date === "string" ? (entityDef?.fields[view.date] as DateTimeField | undefined) : undefined;
   const withTime = dateField?.precision === "minute";
@@ -156,7 +162,7 @@ export function TimelineView(props: BuiltinViewProps) {
       ? (row: Resolved) => onEdit(view.entity, String(row.id))
       : undefined;
 
-  if (loading || dated === null) return <p className="k-loading">Loading…</p>;
+  if (loading || dated === null) return <p className="k-loading">{t`Loading…`}</p>;
   if (!dated.length) return <p className="k-empty" data-k-wording>{emptyText}</p>;
 
   return (

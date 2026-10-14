@@ -4,6 +4,7 @@
 // filling in a form that will not save: on a row someone else added, Edit and Delete are drawn
 // inactive, and a tap says who can change it.
 
+import { t } from "@lingui/core/macro";
 import type { PotyroRuntime } from "@potyro/runtime";
 
 /** Why this device may not change `record`, in words for a person — or `null` when it may. */
@@ -15,5 +16,5 @@ export function editLockFor(runtime: PotyroRuntime, entity: string, record: Reco
   const creator = typeof record.createdBy === "string" ? record.createdBy : (record.createdBy as { id?: string } | undefined)?.id;
   if (!creator || creator === me.id) return null;
   const name = space.members.find((m) => m.id === creator)?.name;
-  return name ? `Only ${name}, who added this, can change it.` : "Only the person who added this can change it.";
+  return name ? t`Only ${name}, who added this, can change it.` : t`Only the person who added this can change it.`;
 }

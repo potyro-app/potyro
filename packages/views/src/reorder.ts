@@ -10,6 +10,8 @@
 // Two callers, two shapes: a tile is dragged from anywhere on itself, a row card only by its
 // handle. `handle` says which, and `ignore` keeps a menu button from starting a drag.
 
+import { fmt } from "@potyro/i18n";
+import { t } from "@lingui/core/macro";
 import {
   useEffect,
   useRef,
@@ -112,6 +114,16 @@ export interface ReorderOptions {
   keyboard?: "alt" | "plain";
 }
 
+/** What a screen reader hears after a move, in the person's language. */
+function movedNextTo(what: string, where: string): string {
+  return t`Moved ${what} to ${where}.`;
+}
+function movedTo(what: string, position: number, of: number): string {
+  const at = fmt.number(position);
+  const count = fmt.number(of);
+  return t`Moved ${what} to position ${at} of ${count}.`;
+}
+
 export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ignore, keyboard = "alt" }: ReorderOptions): ReorderProps {
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -140,13 +152,13 @@ export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ig
     if (d.over && d.over !== d.key) {
       if (onDrop) {
         onDrop(d.key, d.over);
-        setAnnouncement(`Moved ${names(d.key)} to ${names(d.over)}.`);
+        setAnnouncement(movedNextTo(names(d.key), names(d.over)));
         return;
       }
       const to = keys.indexOf(d.over);
       const next = moveKey(keys.map((key) => ({ key })), d.key, to);
       onReorder(next);
-      setAnnouncement(`Moved ${names(d.key)} to position ${to + 1} of ${keys.length}.`);
+      setAnnouncement(movedTo(names(d.key), to + 1, keys.length));
     }
   };
 
@@ -168,11 +180,11 @@ export function useReorder({ keys, names, onReorder, onDrop, enabled, handle, ig
     // moves by finger — including across a group boundary.
     if (onDrop) {
       onDrop(key, keys[to]!);
-      setAnnouncement(`Moved ${names(key)} to ${names(keys[to]!)}.`);
+      setAnnouncement(movedNextTo(names(key), names(keys[to]!)));
       return;
     }
     onReorder(moveKey(keys.map((k) => ({ key: k })), key, to));
-    setAnnouncement(`Moved ${names(key)} to position ${to + 1} of ${keys.length}.`);
+    setAnnouncement(movedTo(names(key), to + 1, keys.length));
   };
 
   const item: ReorderProps["item"] = (key) => ({

@@ -3,6 +3,7 @@
 // the button — rendered as a popover on a wide screen and as a bottom sheet on a phone, where a
 // popover under a thumb is unreachable. Items are plain data so every caller gets the same manners.
 
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
@@ -165,6 +166,7 @@ export interface ChoicePanelProps {
  * it when the panel opened.
  */
 export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: ChoicePanelProps) {
+  const { t } = useLingui();
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [place, setPlace] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
@@ -224,7 +226,7 @@ export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: Choic
         ref={ref}
         className="k-menu k-choice"
         role="menu"
-        aria-label={title ?? "Choose"}
+        aria-label={title ?? t({ message: "Choose", comment: "A list of choices with no title of its own" })}
         style={anchor ? (place ? { top: place.top, bottom: place.bottom, left: place.left, right: "auto" } : { visibility: "hidden" }) : undefined}
         onKeyDown={onKey}
       >

@@ -8,6 +8,7 @@
 // When the search finds nothing, the list offers to create the record with what was typed, in a
 // second sheet over the form, and selects it — a relation to an empty table is never a dead end.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { RelationField } from "potyro";
@@ -27,14 +28,16 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
   const { rows, loading } = runtime.useQuery(field.to);
   const disp = displayFieldFor(runtime, field.to);
   const entityLabel = runtime.definition.entities[field.to]?.label ?? field.to;
-  const noun = entityLabel.toLowerCase();
+  const { t } = useLingui();
+  // The app's word as it declares it: shown after "Add:" and before ": none yet" (docs/20 Q3), never inside a sentence.
+  const noun = entityLabel;
   const title = label ?? entityLabel;
   const [open, setOpen] = useState(false);
   // What the search held when "New …" was chosen, so the new record starts with that name.
   const [creating, setCreating] = useState<{ name: string } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  if (loading) return <span className="k-muted">Loading…</span>;
+  if (loading) return <span className="k-muted">{t`Loading…`}</span>;
 
   const nameOf = (id: string): string => {
     const r = rows.find((row) => row.id === id);
@@ -99,24 +102,27 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
   if (field.many) {
     return (
       <div className="k-relation-input k-relation-many">
-        {chosen.map((id) => (
-          <span key={id} className="k-selchip">
-            {nameOf(id)}
-            <button type="button" className="k-selchip-x" aria-label={`Remove ${nameOf(id)}`} onClick={() => toggle(id)}>
-              ✕
-            </button>
-          </span>
-        ))}
+        {chosen.map((id) => {
+          const chip = nameOf(id);
+          return (
+            <span key={id} className="k-selchip">
+              {chip}
+              <button type="button" className="k-selchip-x" aria-label={t`Remove ${chip}`} onClick={() => toggle(id)}>
+                ✕
+              </button>
+            </span>
+          );
+        })}
         <button
           ref={triggerRef}
           type="button"
           className="k-add k-relation-add"
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-label={`${title}: add`}
+          aria-label={t({ message: `${title}: add`, comment: "A field that links several records: the field's name, then what the button does" })}
           onClick={() => setOpen(true)}
         >
-          ＋ Add
+          ＋ <Trans comment="Link another record">Add</Trans>
         </button>
         {list}
         {inlineForm}
@@ -133,10 +139,10 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
         className="k-enum-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`${title}: ${current ? nameOf(current) : "choose"}`}
+        aria-label={current ? `${title}: ${nameOf(current)}` : t({ message: `${title}: choose`, comment: "A field that links a record, nothing chosen yet" })}
         onClick={() => setOpen(true)}
       >
-        {current ? <span>{nameOf(current)}</span> : <span className="k-enum-empty">{rows.length ? "Choose…" : `No ${noun} yet — add one`}</span>}
+        {current ? <span>{nameOf(current)}</span> : <span className="k-enum-empty">{rows.length ? t`Choose…` : t({ message: `${noun}: none yet — add one`, comment: "A field that links a record, when there are none to pick; noun is the app's word for them" })}</span>}
         <span className="k-enum-caret" aria-hidden>
           ▾
         </span>
