@@ -34,6 +34,8 @@ import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
+import { PointGlyph } from "./point-mode.js";
+import { pointContext, type Pointed } from "./point-target.js";
 import { ThreadView } from "./studio-thread-view.js";
 import { duplicateApp, modulesOf } from "./app-modules.js";
 import { describeLibrary } from "./package-libraries.js";
@@ -118,9 +120,11 @@ export interface StudioProps {
   initialAppId?: string;
   /** An unfinished conversation to pick up (the launcher's drafts). */
   initialDraftId?: string;
+  /** A part of the app already pointed at — edit mode's "More changes…" on a label (#284). */
+  initialPoint?: Pointed;
 }
 
-export function Studio({ onClose, initialDescription, initialAppId, initialDraftId }: StudioProps) {
+export function Studio({ onClose, initialDescription, initialAppId, initialDraftId, initialPoint }: StudioProps) {
   const opened = initialAppId ? getUserApp(initialAppId) : undefined;
   // The conversation's id is the app's once there is one, a draft's until then. A ref as well as
   // state: a turn runs across awaits, and the draft becomes an app in the middle of one.
@@ -147,6 +151,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [description, setDescription] = useState(initialDescription ?? "");
+  // Point mode (#284): pointing is the preview taking taps instead of the app; `point` is the part
+  // the next message is about, shown on the box until it is sent or taken off.
+  const [pointing, setPointing] = useState(false);
+  const [point, setPoint] = useState<Pointed | null>(initialPoint ?? null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [tools, setTools] = useState<ToolsTab | null>(null);
   const [draftSource, setDraftSource] = useState(opened?.source ?? STARTER);
@@ -332,17 +341,23 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const send = async (text = description): Promise<void> => {
     const asked = text.trim();
     if (!asked || busy || !ready) return;
+    const about = point;
     setDescription("");
+    setPoint(null);
+    setPointing(false);
     setProblem(null);
     setWorking("");
     try {
-      await say({ kind: "ask", text: asked });
+      await say({ kind: "ask", text: asked, ...(about ? { point: { label: about.label, words: about.words } } : {}) });
       // Everything said since the app last changed, so an answer reaches the model beside its question.
       const brief = briefSince(await listMessages(chatRef.current)) || asked;
       setHeld(null);
       const current = sourceRef.current;
       const modules = await modulesOf(appRef.current ?? undefined);
-      const outcome = current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief) : await (await engine()).create(brief);
+      // What was pointed at goes beside the request: in words, and as the lines of the app that hold it.
+      const context = about && current !== null ? await pointContext(current, about) : undefined;
+      const outcome =
+        current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief, context) : await (await engine()).create(brief);
       await answer(outcome, brief);
     } finally {
       setWorking(null);
@@ -525,6 +540,19 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     void buildPreview(app.source, app.id).then(({ preview: built }) => built && setPreview(built));
   };
 
+  /** Point mode from the box: open the app, already pointing. */
+  const startPointing = (): void => {
+    setPreviewOpen(true);
+    setPointing(true);
+  };
+  /** A part was picked: it goes on the box, and on a phone the chat comes back to say what about it. */
+  const picked = (p: Pointed): void => {
+    setPoint(p);
+    setPointing(false);
+    if (!wide) setPreviewOpen(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   return (
     <div className="k-studio" role="dialog" aria-label="App studio" data-preview={showPreview || undefined}>
       <div className="k-studio-chat">
@@ -564,12 +592,24 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          <div className="k-composer-box">
+          <div className="k-composer-box" data-pointed={point ? true : undefined}>
+            {point ? (
+              <div className="k-composer-point">
+                <span className="k-point-chip" title={`About ${point.words}`}>
+                  <PointGlyph />
+                  <span className="k-point-chip-label">{point.label}</span>
+                  <button type="button" className="k-point-chip-x" aria-label={`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
+                    ✕
+                  </button>
+                </span>
+              </div>
+            ) : null}
             <textarea
+              ref={inputRef}
               id="k-studio-desc"
               className="k-composer-input"
               aria-label="Describe the app"
-              placeholder={hasApp ? "Ask for a change…" : "Describe the app you want…"}
+              placeholder={point ? "What should be different about it?" : hasApp ? "Ask for a change…" : "Describe the app you want…"}
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -597,6 +637,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               ⚙ {label}
             </button>
             {!ready ? <span className="k-composer-warn">needs an API key</span> : null}
+            {canOpen && hasApp ? (
+              <button type="button" className="k-composer-point-btn" aria-pressed={pointing} title="Tap a part of the app to talk about it" onClick={startPointing}>
+                <PointGlyph /> Point at the app
+              </button>
+            ) : null}
           </div>
         </footer>
       </div>
@@ -607,8 +652,15 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           title={appName}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
-          onBack={() => setPreviewOpen(false)}
+          onBack={() => {
+            setPointing(false);
+            setPreviewOpen(false);
+          }}
           onSource={() => setTools("source")}
+          pointing={pointing}
+          onPoint={() => setPointing(true)}
+          onPointCancel={() => setPointing(false)}
+          onPicked={picked}
           onPromote={promotePreview}
         />
       ) : null}

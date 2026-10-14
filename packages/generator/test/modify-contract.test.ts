@@ -26,6 +26,17 @@ describe("buildModifyMessage", () => {
     expect(msg).toMatch(/belongs to the host/i);
   });
 
+  test("says what the person pointed at, and where it is in the app shown (#284)", () => {
+    const msg = buildModifyMessage("move this to the top", {
+      pointedAt: { words: 'the "Nights" list on the "Patterns" page', lines: [12, 15], excerpt: '{ title: "Nights", view: { type: "list" } }' },
+    });
+    expect(msg).toContain('They pointed at the "Nights" list on the "Patterns" page');
+    expect(msg).toContain("lines 12–15");
+    expect(msg).toContain('{ title: "Nights", view: { type: "list" } }');
+    // Words alone when there is no source position to show.
+    expect(buildModifyMessage("x", { pointedAt: { words: 'the "Today" page' } })).not.toMatch(/In the app above it is lines/);
+  });
+
   test("names what was already tried, so a repeated complaint escalates", () => {
     const msg = buildModifyMessage("still no pins", {
       priorAttempts: ['Regarding the "Map" page: no pins until I filter', 'Regarding the "Map" page: still no pins'],

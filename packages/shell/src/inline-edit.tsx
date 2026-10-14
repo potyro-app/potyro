@@ -15,6 +15,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { humanizeKey } from "@potyro/views";
 import { applyEdit, fieldStep, inspect, textSites, type AppShape, type Edit, type TextSite } from "./app-source.js";
 import { appRoots, collectTargets, sameThing, type InlineTarget } from "./inline-targets.js";
+import { pointFromInline, type PointRef } from "./point-target.js";
 
 export interface InlineEditProps {
   /** The app's source as last saved. Sites are re-read from it after every change. */
@@ -25,7 +26,8 @@ export interface InlineEditProps {
   save: (next: string, note: string) => Promise<string | null>;
   /** After a change the page can't show without re-running the app (a move, hiding a field). */
   rerun: () => void;
-  askStudio: (prefill: string) => void;
+  /** `point`: the part the person was changing, so the Studio's next message is about it (#284). */
+  askStudio: (prefill: string, point?: PointRef) => void;
   done: () => void;
 }
 
@@ -194,7 +196,10 @@ export function InlineEdit({ source, where, save, rerun, askStudio, done }: Inli
           close={() => setOpen(null)}
           ask={(text) => {
             setOpen(null);
-            askStudio(`On ${where}, about "${text}": `);
+            // What the label belongs to goes as a point — the Studio says it on its box, the model
+            // reads it with the lines that declare it. Without one, the words carry it as before.
+            const point = pointFromInline(open.target);
+            askStudio(point ? "" : `On ${where}, about "${text}": `, point ?? undefined);
           }}
         />
       ) : null}

@@ -15,7 +15,7 @@ import {
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
 } from "@potyro/generator/agent";
-import { createOpenRouterEngine, loadCorpus, regressionGate, type Language } from "@potyro/generator/backends";
+import { createOpenRouterEngine, loadCorpus, regressionGate, type Language, type ModifyContext } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
@@ -27,6 +27,8 @@ export interface StartModifyOpts {
   source: string;
   /** The change, in their words. */
   instruction: string;
+  /** Where it was aimed: the part of the app they pointed at (#284). */
+  context?: ModifyContext;
   /** The app's shape before the change — what a candidate must not lose. */
   before: AppShape;
   engine: EngineConfig;
@@ -70,6 +72,7 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: opts.instruction,
+    context: opts.context,
     source: opts.source,
     ...(opts.language ? { language: opts.language } : {}),
     check,

@@ -203,6 +203,19 @@ describe("runModifyLoop", () => {
     });
   });
 
+  describe("the part the person pointed at (#284)", () => {
+    it("is said beside the instruction in the first message, and the app is still there once", async () => {
+      const { engine, seen } = scripted([{ content: edit("Done.", '  id: "x",', '  id: "y",') }]);
+      await runModifyLoop(
+        base({ engine, instruction: "sort this by date", context: { pointedAt: { words: 'the "Nights" list on the "Patterns" page', lines: [2, 2], excerpt: '  id: "x",' } } }),
+      );
+      const first = seen[0]!.messages[1]!.content;
+      expect(first).toContain('They pointed at the "Nights" list on the "Patterns" page');
+      expect(first).toContain("lines 2–2");
+      expect(first.split(SOURCE).length - 1).toBe(1);
+    });
+  });
+
   describe("stopping on repetition (#262, rolled back first since #278)", () => {
     const rename = (to: string) => ({ content: edit(`Rename to ${to}.`, '  id: "x",', `  id: "${to}",`) });
 

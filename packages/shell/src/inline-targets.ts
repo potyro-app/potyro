@@ -22,8 +22,9 @@ export type InlineTarget =
   | { kind: "field"; node: Text; text: string; entity: EntityShape; field: FieldShape }
   | { kind: "page"; node: Text; text: string; page: PageShape };
 
-/** What the shell draws itself, not the app: its menus, tools, chat, and the edit UI. */
-const NOT_THE_APP = [
+/** What the shell draws itself, not the app: its menus, tools, chat, and the edit UI. Point mode
+ *  (#284) leaves these out too — they are not the app's, so there is nothing of the app to point at. */
+export const SHELL_PARTS = [
   "[data-k-noedit]",
   '[role="menu"]',
   ".k-tools",
@@ -33,6 +34,11 @@ const NOT_THE_APP = [
   ".k-brand",
   ".k-sidebar-heading",
   ".k-modal:not(.k-sheet)",
+].join(",");
+
+/** …and, for edit mode, the controls and code whose text is not words on the screen. */
+const NOT_THE_APP = [
+  SHELL_PARTS,
   "input",
   "textarea",
   "select",
