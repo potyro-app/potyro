@@ -53,6 +53,15 @@ export interface ActionDef {
   input?: Record<string, Field>;
 }
 
+/** A computed value that says what it is called (#310). A page that shows it — a detail section, a
+ *  table column — heads it with `label`; a bare function is headed by its key, humanised, in every
+ *  language. */
+export interface ComputedDef {
+  value: Computed;
+  /** What the value is called where a page shows it; default: the key, humanised. */
+  label?: Words;
+}
+
 export interface EntityDef {
   label?: Words;
   /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
@@ -62,7 +71,8 @@ export interface EntityDef {
   /** How the form and the detail page arrange the fields. Fields left out of every group follow the
    *  last group, untitled, in declaration order. */
   groups?: FieldGroup[];
-  computed?: Record<string, Computed>;
+  /** Values worked out from the record. A function, or `{ value, label }` when a page shows it. */
+  computed?: Record<string, Computed | ComputedDef>;
   actions?: Record<string, ActionFn | ActionDef>;
   /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
    *  else's edit does not take. Default `"anyone"`; means nothing in an app nobody else uses. */

@@ -175,13 +175,22 @@ const actionDefSchema = z
   })
   .strict();
 
+// A computed that says what it is called (#310). `value` takes the sandbox's placeholder for the same
+// reason an action's `run` does.
+const computedDefSchema = z
+  .object({
+    value: z.union([zFn, z.literal("__potyro_fn__")]),
+    label: zWords.optional(),
+  })
+  .strict();
+
 const entitySchema = z.object({
   label: zWords.optional(),
   icon: z.string().optional(),
   displayField: z.string().optional(),
   fields: z.record(fieldSchema),
   groups: z.array(fieldGroupSchema).optional(),
-  computed: z.record(zFn).optional(),
+  computed: z.record(z.union([zFn, computedDefSchema])).optional(),
   actions: z.record(z.union([zFn, actionDefSchema])).optional(),
   editableBy: z.enum(["anyone", "creator"]).optional(),
 });
