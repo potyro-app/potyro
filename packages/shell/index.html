@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- The shell embeds no frame that fetches: a shared app's realm is a srcdoc frame, and this keeps it
+         from navigating itself anywhere (#272, docs/22 §3.2). In a <meta> so the Capacitor WebView, which
+         serves no headers, has it too; the same policy is a header in vite.config.ts and deploy/. -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f8f5ee" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1d1a16" media="(prefers-color-scheme: dark)" />

@@ -160,6 +160,10 @@ importers:
       quickjs-emscripten:
         specifier: ^0.31.0
         version: 0.31.0
+    devDependencies:
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
 
   packages/i18n:
     dependencies:

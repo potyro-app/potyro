@@ -247,9 +247,14 @@ throws in the sealed box (#271/#272).
   is the small `@messageformat`/`intl-messageformat`-class parser, loaded lazily the first time an
   app calls `t` with `vars`. If #298 ships one, reuse it. **If #272 moves shared apps to a real
   browser realm, `__hostPure` becomes unnecessary** (the worker has `Intl`), but `ctx.format`
-  stays: it is still the one place the *person's* locale is known.
+  stays: it is still the one place the *person's* locale is known. *(2026-10-14: it did — shared
+  apps' logic runs in the realm, which bundles `format.ts`; `__hostPure` serves only the QuickJS
+  fallback until that is removed, docs/22 §8.)*
 
 ### 2.4 What it costs
+
+*Historical since #272 (2026-10-14): a shared app's formatting no longer crosses at all — it is 5–30×
+faster in the realm (docs/22 §6). These are the QuickJS fallback's numbers.*
 
 Measured on this machine (Node 22, quickjs-emscripten 0.31, 10,000 calls, cached formatter):
 

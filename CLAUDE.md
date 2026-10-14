@@ -10,9 +10,11 @@ It declares data **shape** (entities/fields/view layout) as plain data, and all 
 (computed, filters, actions, reminders, custom views) as ordinary functions that receive
 **`ctx`** — the host API surface (data, time, capabilities, storage, ui, navigation). A
 **runtime core** loads the module, resolves records via a **Store**, runs the app's functions,
-and renders views. The module runs **directly** when it's the user's own app, or inside a
-**QuickJS-WASM isolate** with mediated `ctx.caps` when it's an untrusted/shared app. Two build
-targets (PWA, Capacitor) share one codebase.
+and renders views. The module runs **directly** when it's the user's own app; when it's an
+untrusted/shared app its logic runs in a **browser realm** — a Worker inside an opaque-origin
+sandboxed iframe with a strict CSP — reaching host power only through the same mediated `ctx`, over a
+MessagePort (#272, docs/22; QuickJS-WASM stays behind a flag as the fallback). Two build targets
+(PWA, Capacitor) share one codebase.
 
 ## Hard rules (they are the project's reason to exist)
 
@@ -20,9 +22,12 @@ targets (PWA, Capacitor) share one codebase.
    mini-language for filters/formulas, stop — it's a function receiving `ctx`.
 2. **`ctx` is the only way app code reaches host power.** Never let app functions import host
    internals directly; they get `ctx`. Growing the system means growing `ctx` (docs/04).
-3. **Provenance decides execution, not the app.** Trusted (user's own) → direct; untrusted
-   (imported/shared) → QuickJS-WASM isolate with denied-by-default caps + permission prompt.
-   Never run untrusted app code with ambient authority.
+3. **Provenance decides execution, not the app.** Trusted (user's own) → direct. Untrusted
+   (imported/shared) → a browser realm: an opaque-origin sandboxed iframe with a strict CSP, logic
+   in its Worker, host power only through the mediated `ctx` over MessagePorts, denied-by-default
+   caps, a permission prompt and a watchdog. Never run untrusted app code with ambient authority,
+   and never in the shell's own realm. (The QuickJS-WASM isolate is the fallback behind a flag until
+   the owner removes it; the shell must be served with `frame-src 'none'`, docs/07.)
 4. **Structure is declarative and validated; logic is typed, not validated.** `packages/schema`
    validates the *data* parts (entities/fields/view layout) with Zod. Functions are typed by
    TS; do not try to "validate" arbitrary code — sandbox it instead.
@@ -38,8 +43,8 @@ targets (PWA, Capacitor) share one codebase.
 ```
 packages/
   schema/         WP1 — defineApp() typed builder; Zod validation of the declarative parts
-  host/           WP2 — module loader, transpile/bundle, QuickJS-WASM isolate runner,
-                        ctx construction + capability mediation, provenance/trust
+  host/           WP2 — module loader, the untrusted runners (browser realm: realm/; QuickJS-WASM
+                        fallback: isolate/), ctx construction + capability mediation, provenance/trust
   store/          WP3 — Store interface + SqliteStore + MemoryStore + migrations
   capabilities/   WP4 — Capabilities interface + web impls (camera/notif/geo/fs/network)
   runtime/        WP5 — record model, relation resolution, computed runner, action runner,
@@ -83,7 +88,9 @@ pnpm -r build
 pnpm -r test
 pnpm --filter host test
 pnpm dev            # the shell; the examples are seeded into My Apps on first run (trusted, direct)
-pnpm dev:sandbox    # same, but the examples are seeded UNTRUSTED to exercise the isolate + prompts
+pnpm dev:sandbox    # same, but the examples are seeded UNTRUSTED to exercise the realm + prompts
+pnpm dev:sandbox:quickjs   # the same, with shared apps in the QuickJS fallback (or, on one device,
+                           # localStorage["potyro:sandbox"] = "quickjs"; a build: VITE_POTYRO_SANDBOX=quickjs)
 pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playwright.config.ts)
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
@@ -132,10 +139,11 @@ work — fix the caller.
 the **custom cook-along view** and tick steps, see **computed** calories/macros (real
 functions), add a recipe, filter by "ingredients I have" (a **JS predicate**), all offline and
 persisted. No native features required yet. Separately, `pnpm dev:sandbox` loads the same app
-in the QuickJS-WASM isolate and it still works with mediated caps.
+sealed — its logic in the browser realm — and it still works with mediated caps.
 
 ## When in doubt
 
 Prefer giving app code more power through a cleaner `ctx`, not less power through restriction.
-The safety story is the isolate + provenance, never a crippled language. Ask: "is host power
-reaching app code through `ctx`, and is untrusted code in the isolate?" If yes, you're aligned.
+The safety story is the sealed realm + provenance, never a crippled language. Ask: "is host power
+reaching app code through `ctx`, and is untrusted code in the realm (never the shell's own)?" If
+yes, you're aligned.
