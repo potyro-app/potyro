@@ -13,6 +13,7 @@
 
 import type { ChatEngine, ChatRequest, ChatResponse } from "./chat-backend.js";
 import type { GiveUp, ModifyLoopOutcome } from "./agent/modify-loop.js";
+import type { CreateLoopOutcome } from "./agent/create-loop.js";
 import type { LoopStep } from "./agent/loop.js";
 
 /** The Wilson score interval for k successes out of n, at 95% by default. Null when n is 0. */
@@ -91,6 +92,9 @@ export interface StepTrace {
   restarts?: number;
   /** Calls to `read_conversation`: older requests the model chose to read (#279). */
   conversationReads?: number;
+  /** The create loop (#262 phase 3): first drafts that sent an app, and the draft the result came from. */
+  drafts?: number;
+  passedOnDraft?: number | null;
 }
 
 export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepTrace } {
@@ -100,6 +104,10 @@ export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepT
       if (s.kind === "candidate") {
         if (typeof s.n === "number") t.candidates = Math.max(t.candidates, s.n);
         if (s.passed) t.passedOn = s.n ?? t.candidates;
+        if (typeof s.draft === "number") {
+          t.drafts = Math.max(t.drafts ?? 0, s.draft);
+          if (s.passed) t.passedOnDraft = s.draft;
+        }
       }
       if (s.kind === "unusable" && s.repeat) t.repeats += 1;
       if (s.kind === "unusable" && s.restart) t.restarts = (t.restarts ?? 0) + 1;
@@ -111,7 +119,7 @@ export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepT
 
 /** One case, as the loop ended it. */
 export interface LoopRecord extends StepTrace {
-  ended: ModifyLoopOutcome["kind"];
+  ended: ModifyLoopOutcome["kind"] | CreateLoopOutcome["kind"];
   /** The loop ended with a request to the Potyro team (#263): alone, beside a change, or after a give-up. */
   platformRequest?: boolean;
   cause: GiveUp | null;
@@ -144,6 +152,9 @@ export interface LoopSummary {
   readTheConversation: number;
   /** Results that passed, by the candidate they passed on. */
   passedOn: { "1": number; "2": number; "3": number; "4+": number };
+  /** The create loop (#262 phase 3): cases that made a second first draft, and results by the draft they came from. */
+  secondDrafts: number;
+  passedOnDraft: Record<string, number>;
 }
 
 export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
@@ -160,7 +171,11 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
   let conversationReads = 0;
   let readTheConversation = 0;
   let platformRequests = 0;
+  let secondDrafts = 0;
+  const passedOnDraft: Record<string, number> = {};
   for (const r of records) {
+    if ((r.drafts ?? 0) >= 2) secondDrafts += 1;
+    if (typeof r.passedOnDraft === "number") passedOnDraft[String(r.passedOnDraft)] = (passedOnDraft[String(r.passedOnDraft)] ?? 0) + 1;
     if (r.platformRequest) platformRequests += 1;
     conversationReads += r.conversationReads ?? 0;
     if (r.conversationReads) readTheConversation += 1;
@@ -193,6 +208,62 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
     readTheConversation,
     platformRequests,
     passedOn,
+    secondDrafts,
+    passedOnDraft,
+  };
+}
+
+// ---- the create loop's scripted engines (#262 phase 3) ----
+
+/**
+ * Engines with no model behind them for `eval:cli --loop`, so the create half of the harness is
+ * proven without a key. Usage is counted as `scriptedLoopEngine` counts it.
+ *
+ * `scripted-create-loop`: one `lookup`, then an app that validates and runs. Every case must pass on
+ * its first candidate, from the first draft, in two calls.
+ *
+ * `scripted-create-loop-second`: the first draft is an app whose page lists an entity it does not
+ * declare (it fails validation); the second, independent draft is the good app. Every case must pass
+ * on candidate 2, from draft 2 — and the second draft's request must not carry the first.
+ *
+ * `scripted-create-loop-repair`: both drafts fail validation; the repair sends the good app. Every
+ * case must pass on candidate 3.
+ */
+export type ScriptedCreateKind = "scripted-create-loop" | "scripted-create-loop-second" | "scripted-create-loop-repair";
+export const SCRIPTED_CREATE_KINDS: readonly ScriptedCreateKind[] = ["scripted-create-loop", "scripted-create-loop-second", "scripted-create-loop-repair"];
+
+const scriptedApp = (entity: string): string =>
+  "```ts\n" +
+  `import { defineApp } from "potyro";
+export default defineApp({
+  id: "scripted", name: "My notes", version: "1.0.0", schemaVersion: 1,
+  entities: { note: { label: "Note", displayField: "title", fields: { title: { type: "text", label: "Title", required: true }, done: { type: "boolean", label: "Done", default: false } } } },
+  pages: [{ id: "all", title: "All my notes", view: { type: "list", entity: "${entity}", display: { primary: "title" } } }],
+});` +
+  "\n```";
+
+export function scriptedCreateEngine(kind: ScriptedCreateKind): ChatEngine {
+  let n = 0;
+  return {
+    chat: {
+      completions: {
+        create: async (req) => {
+          n += 1;
+          const fresh = req.messages.length === 2;
+          const message =
+            kind === "scripted-create-loop"
+              ? n === 1
+                ? { content: "", tool_calls: [{ id: "t1", type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: "ListView" }) } }] }
+                : { content: scriptedApp("note") }
+              : kind === "scripted-create-loop-second"
+                ? { content: scriptedApp(n === 1 ? "notes" : "note") }
+                : { content: scriptedApp(fresh ? (n === 1 ? "notes" : "memo") : "note") };
+          const promptTokens = Math.ceil(req.messages.reduce((k, m) => k + m.content.length, 0) / 4);
+          const completionTokens = Math.ceil((message.content.length || 40) / 4);
+          return { choices: [{ message }], usage: { promptTokens, completionTokens, cost: (promptTokens * 0.14 + completionTokens * 0.28) / 1e6 } };
+        },
+      },
+    },
   };
 }
 
