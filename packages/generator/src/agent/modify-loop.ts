@@ -271,7 +271,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     return `\n\n${platformOffer(signal)}`;
   };
   const request = (seed: string): Promise<PlatformRequest> =>
-    writePlatformRequest({ engine: deps.engine, ...(deps.model ? { model: deps.model } : {}), messages, seed, ...(deps.language ? { language: deps.language } : {}) });
+    writePlatformRequest({ engine: deps.engine, ...(deps.model ? { model: deps.model } : {}), messages, tools: toolSpecs(tools), seed, ...(deps.language ? { language: deps.language } : {}) });
   /** An accepted change, with the request when its prose said NEEDS-PLATFORM (#263). */
   const finish = async (accepted: Accepted, said: string): Promise<Accepted> => {
     const seed = platformLineIn(said);
@@ -285,7 +285,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     }
     // A give-up after a failure named something Potyro lacks: one last tools-off call asks whether
     // that is what stood in the way, and writes the request if it is (docs/19 F7).
-    const platformRequest = platformSeen && !deps.signal?.aborted ? await askAfterGiveUp({ engine: deps.engine, model: deps.model, messages, signal: platformSeen, language: deps.language }) : null;
+    const platformRequest = platformSeen && !deps.signal?.aborted ? await askAfterGiveUp({ engine: deps.engine, model: deps.model, messages, tools: toolSpecs(tools), signal: platformSeen, language: deps.language }) : null;
     return { kind: "failed", reason: why, cause, ...(platformRequest ? { platformRequest } : {}) };
   };
   const budgetLine = (): string =>

@@ -90,6 +90,8 @@ describe("a NEEDS-PLATFORM answer (#263)", () => {
     });
     const last = seen.at(-1)!;
     expect(last.tool_choice).toBe("none");
+    // Declared, switched off: the engine sends tool_choice only beside tools.
+    expect(last.tools?.map((t) => t.function.name)).toContain("lookup");
     expect(last.messages.at(-1)!.content).toContain("Polish");
     expect(last.messages.at(-1)!.content).toContain("reading barcodes with the camera");
   });

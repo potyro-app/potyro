@@ -6,7 +6,8 @@
 // goes through the same contract, so changing engine changes the model and nothing else.
 
 import type { AppShape } from "@potyro/runtime";
-import type { ConversationEntry, GiveUp } from "@potyro/generator/agent";
+import { t } from "@lingui/core/macro";
+import type { ConversationEntry, GiveUp, PlatformRequest } from "@potyro/generator/agent";
 import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
@@ -18,14 +19,17 @@ import { currentLocale } from "./locale.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
-  | { kind: "source"; source: string; summary: string; notDone?: string[] }
+  /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
+  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
   | { kind: "loss"; source: string; summary: string; loss: string }
   | { kind: "question"; text: string }
   /** Not the app's to change — an answer, not a failure. */
   | { kind: "refusal"; text: string }
+  /** Nothing could be done: it needs something Potyro itself lacks. The request is in the person's words (#263). */
+  | { kind: "platform"; text: string; request: PlatformRequest }
   /** `text` is for the person; `detail`, when there is one, is what a developer needs to see why. */
-  | { kind: "failed"; text: string; detail?: string };
+  | { kind: "failed"; text: string; detail?: string; platformRequest?: PlatformRequest };
 
 /**
  * A change that could not be made, as the person reads it (#266 follow-up).
@@ -198,10 +202,19 @@ export function studioEngine(
         });
         if (result.kind === "diagnosis") return notTheApps(result.text);
         if (result.kind === "question") return { kind: "question", text: result.text };
-        if (result.kind === "failed") return notChanged(result);
+        if (result.kind === "platform") {
+          return { kind: "platform", text: t`I didn't change the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
+        }
+        if (result.kind === "failed") return { ...notChanged(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
         if (result.kind === "stopped") return notChanged(result);
         const applied = result.via === "edits" ? `Applied ${plural(result.applied, "edit")}.` : "The model sent the whole file back instead of edits.";
-        return { kind: "source", source: result.source, summary: describeNotDone(applied, result.notDone), notDone: result.notDone };
+        return {
+          kind: "source",
+          source: result.source,
+          summary: describeNotDone(applied, result.notDone),
+          notDone: result.notDone,
+          ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
+        };
       }
       const result = await ticking("Changing it", () =>
         guardedModify({
