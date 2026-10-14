@@ -112,6 +112,14 @@ export const CLEAN = new Set([
   "packages/shell/src/isolate-bridge.ts",
   "packages/shell/src/check-concurrency.ts",
   "packages/shell/src/capability-words.ts",
+  // #299, the Data page: apps, tables, filters.
+  "packages/shell/src/data-page.tsx",
+  "packages/shell/src/data-table.tsx",
+  "packages/shell/src/filter-chrome.tsx",
+  "packages/shell/src/data-runtime.ts",
+  "packages/shell/src/data-icon.tsx",
+  "packages/shell/src/read-only-store.ts",
+  "packages/shell/src/scope.ts",
 ]);
 
 const ATTRS = new Set([
