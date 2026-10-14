@@ -11515,3 +11515,169 @@ body:has(.k-tabbar) .k-toasts {
   flex: 1 1 8rem;
   overflow-wrap: break-word;
 }
+
+/* tokens-only: start — share links (docs/24) */
+/* A demo link, opened: one calm strip above the app. It says where the app came from and offers two
+   things to do with it; the app below is the point, so the strip never competes with it. */
+.k-demo {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+.k-demo-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: calc(var(--space-2) + var(--k-safe-top)) calc(var(--space) + var(--k-safe-right)) var(--space-2) calc(var(--space) + var(--k-safe-left));
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+}
+.k-demo-made {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.1rem;
+}
+.k-demo-made:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.k-demo-made:focus-visible {
+  outline: 2px solid var(--accent-potyro);
+  outline-offset: 2px;
+}
+.k-demo-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--accent-potyro);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+}
+.k-demo-note {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-soft);
+}
+.k-demo-note strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+.k-demo-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.k-demo-actions button {
+  font: inherit;
+  font-weight: 650;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.k-demo-keep {
+  border: 1px solid color-mix(in oklab, var(--accent-potyro) 70%, var(--ink));
+  background: var(--accent-potyro);
+  color: var(--on-accent);
+}
+.k-demo-keep:hover {
+  background: color-mix(in oklab, var(--accent-potyro) 86%, var(--ink));
+}
+.k-demo-remix {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.k-demo-remix:hover {
+  background: var(--surface-raised);
+  border-color: var(--ink-faint);
+}
+.k-demo-actions button:active {
+  transform: translateY(1px);
+}
+.k-demo-actions button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .k-demo-bar {
+    font-size: 0.8rem;
+    gap: var(--space-2);
+  }
+  .k-demo-note {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .k-demo-actions button {
+    min-height: 2.25rem;
+    padding: 0.3rem 0.8rem;
+  }
+}
+
+/* The share sheet: two ways, the first the one most people want. */
+.k-share-sheet {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+.k-share-sheet-head h2 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.k-share-way {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.k-share-way h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.k-share-way > p {
+  margin: 0;
+}
+.k-share-way-try {
+  background: var(--accent-tint);
+  border-color: var(--accent-line);
+}
+.k-share-way-together {
+  background: var(--surface-sunken);
+}
+.k-share-way > button {
+  align-self: flex-start;
+}
+.k-share-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+}
+.k-share-note {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+/* tokens-only: end — share links */
