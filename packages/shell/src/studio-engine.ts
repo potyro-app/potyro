@@ -6,7 +6,7 @@
 // goes through the same contract, so changing engine changes the model and nothing else.
 
 import type { AppShape } from "@potyro/runtime";
-import type { GiveUp } from "@potyro/generator/agent";
+import type { ConversationEntry, GiveUp } from "@potyro/generator/agent";
 import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
@@ -57,8 +57,11 @@ const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ k
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
-  /** `context`: where the change was aimed — the part of the app the person pointed at (#284). */
-  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome>;
+  /**
+   * `context`: where the change was aimed — the part of the app the person pointed at (#284).
+   * `earlier`: what was said before this request (#279) — the loop's recap and `read_conversation`.
+   */
+  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome>;
   /** Repair from the validator's own words, through the same gate as a modify. */
   repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
 }
@@ -171,7 +174,7 @@ export function studioEngine(
     }
   };
 
-  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome> => {
+  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome> => {
     try {
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
@@ -185,6 +188,7 @@ export function studioEngine(
           before,
           engine,
           language,
+          ...(earlier?.length ? { conversation: earlier } : {}),
           onStep: (step) => {
             if (step.kind === "thinking") progress(`Thinking via ${label}…`);
             else if (step.kind === "tool") progress(`${step.name}: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
