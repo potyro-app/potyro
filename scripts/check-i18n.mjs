@@ -129,6 +129,20 @@ export const CLEAN = new Set([
   "packages/shell/src/look.ts",
   "packages/shell/src/ask-setting.ts",
   "packages/shell/src/shell-caps.ts",
+  // #299, Ask: the request, sources and keys, the review, what was added.
+  "packages/shell/src/ask-panel.tsx",
+  "packages/shell/src/ask-sources-panel.tsx",
+  "packages/shell/src/ask-review.tsx",
+  "packages/shell/src/ask-review-parts.tsx",
+  "packages/shell/src/ask-review-layouts.tsx",
+  "packages/shell/src/ask-review-edits.tsx",
+  "packages/shell/src/ask-material.tsx",
+  "packages/shell/src/ask-sources.ts",
+  "packages/shell/src/ask-apply.ts",
+  "packages/shell/src/ask-spend.ts",
+  "packages/shell/src/ask-verdicts.ts",
+  "packages/shell/src/ask-geocode.ts",
+  "packages/shell/src/start-ask.ts",
 ]);
 
 const ATTRS = new Set([

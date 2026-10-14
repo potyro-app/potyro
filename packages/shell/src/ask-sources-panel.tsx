@@ -6,6 +6,9 @@
 // Where a key is kept is said in plain words next to the field that takes it: this device's secure
 // store, or — where there is none — only until the page closes.
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import { myKeyId, removeMySource, saveMySource, type KeyPlace, type KeyStore, type PersonSource, type ResolvedSource, type SourceAuth } from "./ask-sources.js";
 
@@ -15,9 +18,9 @@ export interface SourcesState {
   place: KeyPlace;
 }
 
-const KEEP: Record<KeyPlace, string> = {
-  vault: "Keys stay on this device, in its secure store. Apps never see them.",
-  session: "This browser has no secure store, so keys are kept only until you close this page.",
+const KEEP: Record<KeyPlace, MessageDescriptor> = {
+  vault: msg`Keys stay on this device, in its secure store. Apps never see them.`,
+  session: msg`This browser has no secure store, so keys are kept only until you close this page.`,
 };
 
 const hostOf = (s: ResolvedSource): string => {
@@ -30,7 +33,9 @@ const hostOf = (s: ResolvedSource): string => {
 };
 
 function KeyField({ source, keys, onSaved }: { source: ResolvedSource; keys: KeyStore; onSaved: () => void }) {
+  const { t } = useLingui();
   const [key, setKey] = useState("");
+  const sourceName = source.ask.label;
   return (
     <form
       className="k-ask-key"
@@ -39,9 +44,9 @@ function KeyField({ source, keys, onSaved }: { source: ResolvedSource; keys: Key
         if (key.trim()) void keys.set(source.keyId, key.trim()).then(onSaved);
       }}
     >
-      <input className="k-input" type="password" autoComplete="off" aria-label={`Key for ${source.ask.label}`} placeholder="Paste your key" value={key} onChange={(e) => setKey(e.target.value)} />
+      <input className="k-input" type="password" autoComplete="off" aria-label={t`Key for ${sourceName}`} placeholder={t`Paste your key`} value={key} onChange={(e) => setKey(e.target.value)} />
       <button type="submit" className="k-add" disabled={!key.trim()}>
-        Save key
+        <Trans>Save key</Trans>
       </button>
     </form>
   );
@@ -50,6 +55,7 @@ function KeyField({ source, keys, onSaved }: { source: ResolvedSource; keys: Key
 type AuthChoice = "bearer" | "header" | "query";
 
 function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
+  const { t } = useLingui();
   const [label, setLabel] = useState("");
   const [endpoint, setEndpoint] = useState("");
   const [docs, setDocs] = useState("");
@@ -70,11 +76,11 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
   const save = async (): Promise<void> => {
     const ep = endpoint.trim() ? https(endpoint) : null;
     const dc = docs.trim() ? https(docs) : null;
-    if (!label.trim()) return setProblem("Give it a name.");
-    if (endpoint.trim() && !ep) return setProblem("The endpoint must be an https:// address.");
-    if (docs.trim() && !dc) return setProblem("The docs link must be an https:// address.");
-    if (!ep && !dc) return setProblem("Add the API's address, or a link to its documentation.");
-    if (key.trim() && (how === "header" || how === "query") && !param.trim()) return setProblem(how === "header" ? "Name the header the key goes in." : "Name the query parameter the key goes in.");
+    if (!label.trim()) return setProblem(t`Give it a name.`);
+    if (endpoint.trim() && !ep) return setProblem(t`The endpoint must be an https:// address.`);
+    if (docs.trim() && !dc) return setProblem(t`The docs link must be an https:// address.`);
+    if (!ep && !dc) return setProblem(t`Add the API's address, or a link to its documentation.`);
+    if (key.trim() && (how === "header" || how === "query") && !param.trim()) return setProblem(how === "header" ? t`Name the header the key goes in.` : t`Name the query parameter the key goes in.`);
     const auth: SourceAuth | undefined = !key.trim()
       ? undefined
       : how === "bearer"
@@ -98,34 +104,47 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
   };
 
   return (
-    <div className="k-ask-add-source" role="group" aria-label="Add a source">
+    <div className="k-ask-add-source" role="group" aria-label={t`Add a source`}>
       <label className="k-ask-field">
-        <span className="k-field-label">Name</span>
-        <input className="k-input" value={label} placeholder="e.g. Places search" onChange={(e) => setLabel(e.target.value)} />
+        <span className="k-field-label">
+          <Trans comment="A data source's name">Name</Trans>
+        </span>
+        <input className="k-input" value={label} placeholder={t`e.g. Places search`} onChange={(e) => setLabel(e.target.value)} />
       </label>
       <label className="k-ask-field">
-        <span className="k-field-label">API address</span>
+        <span className="k-field-label">
+          <Trans>API address</Trans>
+        </span>
+        {/* i18n-ignore — an example address */}
         <input className="k-input" value={endpoint} inputMode="url" placeholder="https://api.example.com/v1/" onChange={(e) => setEndpoint(e.target.value)} />
       </label>
       <label className="k-ask-field">
-        <span className="k-field-label">Docs link</span>
+        <span className="k-field-label">
+          <Trans>Docs link</Trans>
+        </span>
+        {/* i18n-ignore — an example address */}
         <input className="k-input" value={docs} inputMode="url" placeholder="https://docs.example.com" onChange={(e) => setDocs(e.target.value)} />
       </label>
       <label className="k-ask-field">
-        <span className="k-field-label">Key</span>
-        <input className="k-input" type="password" autoComplete="off" value={key} placeholder="If the API needs one" onChange={(e) => setKey(e.target.value)} />
+        <span className="k-field-label">
+          <Trans comment="An API key">Key</Trans>
+        </span>
+        <input className="k-input" type="password" autoComplete="off" value={key} placeholder={t`If the API needs one`} onChange={(e) => setKey(e.target.value)} />
       </label>
       {key.trim() ? (
         <div className="k-ask-field">
-          <span className="k-field-label">The key goes in</span>
+          <span className="k-field-label">
+            <Trans>The key goes in</Trans>
+          </span>
           <span className="k-ask-auth">
-            <select className="k-input" aria-label="Where the key goes" value={how} onChange={(e) => setHow(e.target.value as AuthChoice)}>
+            <select className="k-input" aria-label={t`Where the key goes`} value={how} onChange={(e) => setHow(e.target.value as AuthChoice)}>
+              {/* i18n-ignore — the HTTP header itself */}
               <option value="bearer">Authorization: Bearer</option>
-              <option value="header">A header named…</option>
-              <option value="query">A query parameter named…</option>
+              <option value="header">{t`A header named…`}</option>
+              <option value="query">{t`A query parameter named…`}</option>
             </select>
             {how === "header" || how === "query" ? (
-              <input className="k-input" aria-label={how === "header" ? "Header name" : "Parameter name"} value={param} placeholder={how === "header" ? "X-Api-Key" : "key"} onChange={(e) => setParam(e.target.value)} />
+              <input className="k-input" aria-label={how === "header" ? t`Header name` : t`Parameter name`} value={param} placeholder={/* i18n-ignore — example names, code */ how === "header" ? "X-Api-Key" : "key"} onChange={(e) => setParam(e.target.value)} />
             ) : null}
           </span>
         </div>
@@ -137,10 +156,10 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
       ) : null}
       <div className="k-ask-actions">
         <button type="button" className="k-add" onClick={onDone}>
-          Cancel
+          <Trans>Cancel</Trans>
         </button>
         <button type="button" className="k-add k-primary-action" onClick={() => void save()}>
-          Add source
+          <Trans>Add source</Trans>
         </button>
       </div>
     </div>
@@ -148,6 +167,7 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
 }
 
 export function SourcesSection({ state, keys, onChange }: { state: SourcesState; keys: KeyStore; onChange: () => void }) {
+  const { t } = useLingui();
   const [adding, setAdding] = useState(false);
   // Opens itself when a source is waiting for a key, then stays as the person leaves it: saving the
   // last key must not fold the section away from under them.
@@ -168,7 +188,8 @@ export function SourcesSection({ state, keys, onChange }: { state: SourcesState;
   return (
     <details className="k-ask-sources" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
-        Sources <span className="k-ask-group-count">{count ? `${count} ready` : "none yet"}</span>
+        <Trans comment="Ask: the outside data an app can read">Sources</Trans>{" "}
+        <span className="k-ask-group-count">{count ? plural(count, { one: "# ready", other: "# ready" }) : t`none yet`}</span>
       </summary>
       {all.length ? (
         <ul className="k-ask-source-list">
@@ -179,14 +200,14 @@ export function SourcesSection({ state, keys, onChange }: { state: SourcesState;
                 <div className="k-ask-source-head">
                   <span className="k-ask-source-name">{s.ask.label}</span>
                   <span className="k-ask-source-host">{hostOf(s)}</span>
-                  <span className="k-ask-source-from">{s.pin === "endpoint" ? "from this app" : "yours"}</span>
+                  <span className="k-ask-source-from">{s.pin === "endpoint" ? t`from this app` : t({ message: "yours", comment: "A data source the person added themselves" })}</span>
                 </div>
                 {s.ask.description ? <p className="k-ask-source-desc">{s.ask.description}</p> : null}
                 {waiting ? (
                   <KeyField source={s} keys={keys} onSaved={onChange} />
                 ) : s.auth || s.pin === "origins" ? (
                   <button type="button" className="k-ask-off" onClick={() => void forget(s)}>
-                    {s.pin === "origins" ? "Remove this source" : "Forget the key"}
+                    {s.pin === "origins" ? t`Remove this source` : t`Forget the key`}
                   </button>
                 ) : null}
               </li>
@@ -198,10 +219,10 @@ export function SourcesSection({ state, keys, onChange }: { state: SourcesState;
         <AddSource keys={keys} onDone={() => (setAdding(false), onChange())} />
       ) : (
         <button type="button" className="k-add k-ask-add-btn" onClick={() => setAdding(true)}>
-          ＋ Add a source
+          ＋ <Trans>Add a source</Trans>
         </button>
       )}
-      <p className="k-ask-privacy">{KEEP[state.place]}</p>
+      <p className="k-ask-privacy">{t(KEEP[state.place])}</p>
     </details>
   );
 }
