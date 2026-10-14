@@ -1888,6 +1888,8 @@ msgstr "skopiowana z „{name}”"
 msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
 msgstr "Skopiowano do „{copyName}”. Zaczyna pusta — sama aplikacja, bez danych."
 
+#. Share dialog: copy an app's words (and link)
+#: ../shell/src/dialog.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "Copy"
 msgstr "Kopiuj"
@@ -1985,6 +1987,11 @@ msgstr "Nie udało się wczytać: {failed}"
 #: ../shell/src/dialog.tsx
 msgid "Couldn't copy — select the link and copy it yourself."
 msgstr "Nie udało się skopiować — zaznacz link i skopiuj go samodzielnie."
+
+#. Share dialog: copying an app's words failed
+#: ../shell/src/dialog.tsx
+msgid "Couldn't copy — select the text and copy it yourself."
+msgstr "Nie udało się skopiować — zaznacz tekst i skopiuj go sam."
 
 #: ../shell/src/data-page.tsx
 msgid "Couldn’t open {name}’s data: {failed}"
@@ -4608,6 +4615,8 @@ msgid "Set a name"
 msgstr "Ustaw imię"
 
 #. Button: share the app (turns sync on)
+#. Share dialog title when an app gives none
+#: ../shell/src/dialog.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/sync-consent.ts
 msgid "Share"
@@ -5776,6 +5785,8 @@ msgstr "Jak mają cię widzieć osoby, z którymi udostępniasz?"
 msgid "What to add"
 msgstr "Co dodać"
 
+#. Share dialog: the words an app hands over, read-only
+#: ../shell/src/dialog.tsx
 #: ../shell/src/platform-request-card.tsx
 msgid "What will be sent"
 msgstr "Co zostanie wysłane"

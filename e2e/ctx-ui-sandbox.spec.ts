@@ -26,6 +26,24 @@ test("an untrusted app asks with a form, a menu and a progress bar", async ({ pa
   await expect(page.locator(".k-toast").last()).toHaveText("Stopped");
 });
 
+test("an untrusted app hands words and a link to the share dialog, and hears whether they left", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await installQuestions(page, false);
+  await page.getByRole("button", { name: "Share it" }).click();
+  const dialog = page.getByRole("dialog", { name: "Send this note" });
+  const sent = dialog.getByRole("textbox", { name: "What will be sent" });
+  await expect(sent).toHaveValue("First\n🟩🟨⬛\nhttps://example.org/note");
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".k-toast").last()).toHaveText("Not sent");
+
+  await page.getByRole("button", { name: "Share it" }).click();
+  await dialog.getByRole("button", { name: "Copy", exact: true }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("First\n🟩🟨⬛\nhttps://example.org/note");
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".k-toast").last()).toHaveText("Sent");
+});
+
 test("Workout's Log set works untrusted", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 9, 12, 0, 0));
   await page.goto("/?app=workout");
