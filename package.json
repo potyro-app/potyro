@@ -19,6 +19,7 @@
     "ship": "node scripts/ship.mjs",
     "dev": "concurrently -n relay,shell -c magenta,cyan \"pnpm relay\" \"pnpm --filter @potyro/shell dev\"",
     "dev:sandbox": "pnpm --filter @potyro/shell dev:sandbox",
+    "dev:sandbox:quickjs": "pnpm --filter @potyro/shell dev:sandbox:quickjs",
     "e2e": "playwright test",
     "e2e:launcher": "playwright test e2e/launcher",
     "e2e:baselines": "POTYRO_BASELINES=1 playwright test e2e/launcher/baselines-trusted.spec.ts --update-snapshots",
