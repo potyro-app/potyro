@@ -22,11 +22,11 @@ const seasonOf = (d: Date): "spring" | "summer" | "autumn" | "winter" => {
 // arbitrary logic: seasonal override falls back to the base interval
 type Plant = {
   lastWatered?: Date; wateringIntervalDays: number; active: boolean; name: string;
-  seasonalCare: { season: string; intervalDays: number }[];
+  seasonalCare?: { season: string; intervalDays: number }[];
 };
 const effectiveIntervalDays = (p: Plant) => {
   const s = seasonOf(new Date());
-  const override = p.seasonalCare.find((r) => r.season === s);
+  const override = (p.seasonalCare ?? []).find((r) => r.season === s);
   return override?.intervalDays ?? p.wateringIntervalDays;
 };
 // Never watered counts as long overdue: a new plant is due the moment it exists.
@@ -36,7 +36,7 @@ export default defineApp({
   id: "plants",
   name: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },
   icon: "🌱",
-  version: "1.2.0",
+  version: "1.2.1",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
