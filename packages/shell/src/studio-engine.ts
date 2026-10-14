@@ -8,7 +8,7 @@
 import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
-import type { GiveUp } from "@potyro/generator/agent";
+import type { ConversationEntry, GiveUp, PlatformRequest } from "@potyro/generator/agent";
 import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
@@ -20,14 +20,17 @@ import { currentLocale } from "./locale.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
-  | { kind: "source"; source: string; summary: string; notDone?: string[] }
+  /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
+  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
   | { kind: "loss"; source: string; summary: string; loss: string }
   | { kind: "question"; text: string }
   /** Not the app's to change — an answer, not a failure. */
   | { kind: "refusal"; text: string }
+  /** Nothing could be done: it needs something Potyro itself lacks. The request is in the person's words (#263). */
+  | { kind: "platform"; text: string; request: PlatformRequest }
   /** `text` is for the person; `detail`, when there is one, is what a developer needs to see why. */
-  | { kind: "failed"; text: string; detail?: string };
+  | { kind: "failed"; text: string; detail?: string; platformRequest?: PlatformRequest };
 
 /**
  * A change that could not be made, as the person reads it (#266 follow-up).
@@ -63,8 +66,11 @@ const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ k
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
-  /** `context`: where the change was aimed — the part of the app the person pointed at (#284). */
-  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome>;
+  /**
+   * `context`: where the change was aimed — the part of the app the person pointed at (#284).
+   * `earlier`: what was said before this request (#279) — the loop's recap and `read_conversation`.
+   */
+  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome>;
   /** Repair from the validator's own words, through the same gate as a modify. */
   repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
 }
@@ -192,7 +198,7 @@ export function studioEngine(
     }
   };
 
-  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome> => {
+  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome> => {
     try {
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
@@ -206,6 +212,7 @@ export function studioEngine(
           before,
           engine,
           language,
+          ...(earlier?.length ? { conversation: earlier } : {}),
           onStep: (step) => {
             if (step.kind === "thinking") return progress(t`Thinking via ${label}…`);
             // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
@@ -217,10 +224,19 @@ export function studioEngine(
         });
         if (result.kind === "diagnosis") return notTheApps(result.text);
         if (result.kind === "question") return { kind: "question", text: result.text };
-        if (result.kind === "failed") return notChanged(result);
+        if (result.kind === "platform") {
+          return { kind: "platform", text: t`I didn't change the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
+        }
+        if (result.kind === "failed") return { ...notChanged(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
         if (result.kind === "stopped") return notChanged(result);
         const applied = result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits.`;
-        return { kind: "source", source: result.source, summary: describeNotDone(applied, result.notDone), notDone: result.notDone };
+        return {
+          kind: "source",
+          source: result.source,
+          summary: describeNotDone(applied, result.notDone),
+          notDone: result.notDone,
+          ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
+        };
       }
       const result = await ticking((elapsed) => t`Changing it via ${label}… ${elapsed}`, () =>
         guardedModify({

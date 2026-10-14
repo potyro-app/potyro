@@ -266,6 +266,8 @@ importers:
         specifier: ^8.4.2
         version: 8.4.2
 
+  packages/platform-requests: {}
+
   packages/runtime:
     dependencies:
       '@potyro/capabilities':
@@ -330,6 +332,9 @@ importers:
       '@potyro/native':
         specifier: workspace:*
         version: link:../native
+      '@potyro/platform-requests':
+        specifier: workspace:*
+        version: link:../platform-requests
       '@potyro/runtime':
         specifier: workspace:*
         version: link:../runtime

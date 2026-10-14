@@ -22,9 +22,10 @@ test("every language chunk is precached, and switching language works offline", 
   await context.setOffline(true);
   await page.locator(".k-launch-you").first().click();
   expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  await page.locator(".k-identity").getByRole("radio", { name: /^Deutsch/ }).click();
+  const picker = page.locator(".k-identity").getByRole("combobox", { name: "Language" });
+  await picker.selectOption("de");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
-  await expect(page.locator(".k-identity").getByRole("radio", { name: /^Deutsch/ })).toHaveAttribute("aria-checked", "true");
+  await expect(picker).toHaveValue("de");
   await expect(page.locator(".k-lang-note[role=status]")).toHaveCount(0);
   await context.setOffline(false);
 });

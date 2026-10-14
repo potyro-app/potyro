@@ -23,7 +23,8 @@
 import { t } from "@lingui/core/macro";
 import type { Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
-import { isEvent } from "./studio-thread.js";
+import { isEvent, SYSTEM_NOTES } from "./studio-thread.js";
+import type { ConversationEntry } from "@potyro/generator/agent";
 import type { AppVersion } from "./app-history.js";
 
 const NAMESPACE = "studio-chat";
@@ -60,6 +61,24 @@ export interface ChatMessage {
   detail?: string;
   /** For an `ask`: the part of the app the person pointed at while asking (#284). */
   point?: MessagePoint;
+  /** For the agent's answer: a request to the Potyro team it wrote, offered to the person (#263). */
+  platform?: PlatformAsk;
+  /** For an `event`: what came of sending that request — the hook #288's "this now exists" looks for. */
+  request?: SentRequest;
+}
+
+/** A request to the Potyro team, as the agent wrote it in the person's words (#263). */
+export interface PlatformAsk {
+  id: string;
+  title: string;
+  body: string;
+}
+
+/** A request the person chose to send: filed (`url` is the issue), or kept to send later. */
+export interface SentRequest {
+  id: string;
+  state: "sent" | "saved";
+  url?: string;
 }
 
 /** A part of the app pointed at, as a message keeps it: the chip's label and the words the model read. */
@@ -68,7 +87,7 @@ export interface MessagePoint {
   words: string;
 }
 
-export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point">>;
+export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point" | "platform" | "request">>;
 
 export interface DraftChat {
   id: string;
@@ -99,7 +118,7 @@ function announce(): void {
 
 /** A stored record — or one that arrived from your account (#283) — as a message, or null when it is not one. */
 export function readChatMessage(record: Record<string, unknown>): ChatMessage | null {
-  const { id, chatId, n, at, kind, text, seq, name, detail, point } = record as Partial<ChatMessage>;
+  const { id, chatId, n, at, kind, text, seq, name, detail, point, platform, request } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
   return {
@@ -113,8 +132,15 @@ export function readChatMessage(record: Record<string, unknown>): ChatMessage | 
     ...(typeof name === "string" ? { name } : {}),
     ...(typeof detail === "string" ? { detail } : {}),
     ...(isPoint(point) ? { point: { label: point.label, words: point.words } } : {}),
+    ...(isPlatform(platform) ? { platform: { id: platform.id, title: platform.title, body: platform.body } } : {}),
+    ...(isSent(request) ? { request: { id: request.id, state: request.state, ...(typeof request.url === "string" ? { url: request.url } : {}) } } : {}),
   };
 }
+
+const isPlatform = (p: unknown): p is PlatformAsk =>
+  !!p && typeof p === "object" && ["id", "title", "body"].every((k) => typeof (p as Record<string, unknown>)[k] === "string");
+const isSent = (r: unknown): r is SentRequest =>
+  !!r && typeof r === "object" && typeof (r as SentRequest).id === "string" && ((r as SentRequest).state === "sent" || (r as SentRequest).state === "saved");
 
 const isPoint = (p: unknown): p is MessagePoint =>
   !!p && typeof p === "object" && typeof (p as MessagePoint).label === "string" && typeof (p as MessagePoint).words === "string";
@@ -163,6 +189,8 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     ...(message.name !== undefined ? { name: message.name } : {}),
     ...(message.detail !== undefined ? { detail: message.detail } : {}),
     ...(message.point !== undefined ? { point: message.point } : {}),
+    ...(message.platform !== undefined ? { platform: message.platform } : {}),
+    ...(message.request !== undefined ? { request: message.request } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
   const stored = readChatMessage(written as Record<string, unknown>);
@@ -243,17 +271,18 @@ export async function clearChat(chatId: string): Promise<void> {
 /** One thing on screen in the Studio's conversation. */
 export type ChatItem =
   | { type: "ask"; id: string; text: string; point?: MessagePoint }
-  | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure"; detail?: string }
-  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean }
-  | { type: "event"; id: string; text: string; seq?: number };
+  | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure"; detail?: string; platform?: PlatformAsk }
+  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean; platform?: PlatformAsk }
+  | { type: "event"; id: string; text: string; seq?: number; request?: SentRequest };
 
 type Timed = { at: string; order: number; items: ChatItem[] };
 
 function fromMessage(m: ChatMessage): ChatItem {
   if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text, ...(m.point ? { point: m.point } : {}) };
-  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false };
-  if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq };
-  return { type: "agent", id: m.id, text: m.text, tone: m.kind, ...(m.detail ? { detail: m.detail } : {}) };
+  const platform = m.platform ? { platform: m.platform } : {};
+  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false, ...platform };
+  if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq, ...(m.request ? { request: m.request } : {}) };
+  return { type: "agent", id: m.id, text: m.text, tone: m.kind, ...(m.detail ? { detail: m.detail } : {}), ...platform };
 }
 
 function fromVersion(v: AppVersion): ChatItem[] {
@@ -319,6 +348,31 @@ export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "t
     }
   }
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * What was said BEFORE the current request, oldest first, for the modify loop's recap (#279): the
+ * conversation as it reads (`threadItems`) — so a rollback or a change made outside the Studio is
+ * there where it happened — up to the first message `briefSince` hands over as the request itself.
+ * Only the words the person saw: never a failure's developer detail, never the app, never records.
+ * Lines the shell writes for itself ("example app") are not something anybody said, and are left out.
+ *
+ * `versions` newest-first, as `listVersions` returns them.
+ */
+export function earlierConversation(messages: readonly ChatMessage[], versions: readonly AppVersion[]): ConversationEntry[] {
+  let start = 0;
+  messages.forEach((m, i) => {
+    if (m.kind === "version") start = i + 1;
+  });
+  const current = new Set(messages.slice(start).map((m) => m.id));
+  const items = threadItems(messages, versions);
+  const cut = items.findIndex((i) => current.has(i.id));
+  return (cut < 0 ? items : items.slice(0, cut)).flatMap((i): ConversationEntry[] => {
+    if (i.type === "ask") return [{ kind: "ask", text: i.text, ...(i.point ? { about: i.point.words } : {}) }];
+    if (i.type === "agent") return [{ kind: i.tone, text: i.text }];
+    if (i.type === "version") return [{ kind: "version", text: i.text }];
+    return SYSTEM_NOTES.some((re) => re.test(i.text)) ? [] : [{ kind: "event", text: i.text }];
+  });
 }
 
 // ---- How an app was made, carried with it -----------------------------------------------------

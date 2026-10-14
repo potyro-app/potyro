@@ -11,7 +11,9 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
 import { shownNote } from "./version-notes.js";
 import { PointGlyph } from "./point-mode.js";
-import type { ChatItem } from "./studio-chat.js";
+import type { ChatItem, PlatformAsk, SentRequest } from "./studio-chat.js";
+import type { PlatformRequestPayload } from "@potyro/platform-requests";
+import { PlatformRequestCard } from "./platform-request-card.js";
 
 /** A version that was made and not saved — see `Held` in studio.tsx. */
 export interface HeldCard {
@@ -36,6 +38,11 @@ export interface ThreadViewProps {
   onSuggest: (text: string) => void;
   /** Nothing has been said yet in a conversation that is about an app that already exists. */
   existing: boolean;
+  /** Requests to the Potyro team (#263): what one would send, and sending it. Without it, none are offered. */
+  requests?: {
+    review: (ask: PlatformAsk) => Promise<PlatformRequestPayload>;
+    send: (ask: PlatformAsk, payload: PlatformRequestPayload) => Promise<void>;
+  };
 }
 
 /** Things people make, worded the way people ask — not features. Sent as the person's own words, so in their language. */
@@ -55,8 +62,13 @@ function Mark({ app, name }: { app: { id: string } | null; name: string }) {
   );
 }
 
-export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing }: ThreadViewProps) {
+export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing, requests }: ThreadViewProps) {
   const { t } = useLingui();
+  // What came of each request sent from here — the latest word on it wins (saved, then sent).
+  const sent = new Map<string, SentRequest>();
+  for (const item of items) if (item.type === "event" && item.request) sent.set(item.request.id, item.request);
+  const askCard = (ask: PlatformAsk | undefined) =>
+    ask && requests ? <PlatformRequestCard ask={ask} sent={sent.get(ask.id)} review={() => requests.review(ask)} onSend={(payload) => requests.send(ask, payload)} /> : null;
   if (!items.length && !working && !held) {
     return existing ? (
       <div className="k-studio-empty">
@@ -137,6 +149,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
                   <p>{item.detail}</p>
                 </details>
               ) : null}
+              {askCard(item.platform)}
             </li>
           );
         }
@@ -163,6 +176,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
                 </button>
               ) : null}
             </article>
+            {askCard(item.platform)}
           </li>
         );
       })}

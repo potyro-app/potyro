@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { applyEdits } from "../src/edits.js";
 import { MODIFY_CASES, type DefinitionShape } from "../src/modify-corpus.js";
+import { DEFAULT_RECAP_ROUNDS, recapCoverage, requestsBack } from "../src/agent/conversation.js";
 import { loadApp, scoreSource } from "../src/score.js";
 
 // The corpus's new case classes (docs/19 F9), proven against the real apps before any model sees
@@ -32,6 +33,8 @@ const RIGHT: Record<string, Array<[string, string]>> = {
   "recipes-put-spice-back": [
     ['        photo: { type: "media", accept: "image" },\n        tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },', '        photo: { type: "media", accept: "image" },\n        spiciness: { type: "enum", options: ["mild", "medium", "hot"], colors: { mild: "green", medium: "yellow", hot: "red" } },\n        tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },'],
   ],
+  "plants-water-in-ml": [['        wiki: { type: "url" },', '        wiki: { type: "url" },\n        waterAmount: { type: "number", unit: "ml", min: 0, label: "Water each time" },']],
+  "places-visited-starts-off": [['        visited: { type: "boolean", default: true },', '        visited: { type: "boolean", default: false },']],
   "plants-scan-barcode": [['        wiki: { type: "url" },', '        wiki: { type: "url" },\n        barcode: { type: "text" },']],
   "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
   "places-phone-wrong-gate": [['        notes: { type: "text", multiline: true },', '        notes: { type: "text", multiline: true },\n        phone: { type: "text" },']],
@@ -50,6 +53,20 @@ describe("the modify corpus", () => {
     expect(MODIFY_CASES.filter((c) => c.class).map((c) => c.class)).toEqual(
       expect.arrayContaining(["conversation", "platform", "wrong-gate"]),
     );
+  });
+
+  // #279: how far back the request a conversation case turns on is decides which recap sizes can
+  // see it. The cases spread over 1, 2, 5 and 7 requests back, so a recap of 1, 3 or 6 and the
+  // tool each see a different share — that spread is what the paid ablation chooses N on.
+  it("says, for every conversation case, which earlier request it turns on", () => {
+    const backs = MODIFY_CASES.filter((c) => c.class === "conversation").map((c) => {
+      expect(c.decidedBy, c.id).toBeTruthy();
+      const back = requestsBack(c.earlier!, c.decidedBy!);
+      expect(back, `${c.id}: "${c.decidedBy}" is in none of its earlier requests`).not.toBeNull();
+      return back!;
+    });
+    const seen = (n: number) => backs.filter((b) => recapCoverage(99, b, n)).length;
+    expect([seen(1), seen(3), seen(DEFAULT_RECAP_ROUNDS), seen(99)]).toEqual([2, 3, 4, 5]);
   });
 
   for (const c of MODIFY_CASES.filter((x) => x.class)) {

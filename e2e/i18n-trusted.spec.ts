@@ -30,6 +30,8 @@ const NOT_OURS = [
   "code",
   ".k-passphrase",
   "[translate=no]",
+  // What a platform request would send of the app's structure: the app's names, as data.
+  ".k-ask-card-structure pre",
   // The person's own words in the Studio, and the app's name on its cards and bar.
   ".k-thread-mine",
   ".k-card-name",
@@ -59,6 +61,7 @@ async function englishIn(scope: Locator, appWords: readonly string[] = []): Prom
         ...seeded,
         ...extra,
         ...[...document.querySelectorAll(`.k-launch-name, [translate=no], ${marked}`)].map((n) => n.textContent?.trim() ?? ""),
+        ...[...document.querySelectorAll("option[data-autonym]")].map((o) => o.getAttribute("data-autonym") ?? ""),
       ]
         .filter(Boolean)
         .sort((a, b) => b.length - a.length);
@@ -74,6 +77,12 @@ async function englishIn(scope: Locator, appWords: readonly string[] = []): Prom
         const el = n.parentElement;
         if (!el || el.closest(notOurs) || !el.checkVisibility()) continue;
         if (english(n.textContent ?? "")) leaks.push(`text: ${n.textContent!.trim()}`);
+      }
+      // A closed select draws only its chosen option, and no option is "visible" to the walk above —
+      // so every option of a visible select is read, as the open list would show them.
+      for (const select of root.querySelectorAll("select")) {
+        if (!select.checkVisibility() || select.closest(notOurs)) continue;
+        for (const o of select.options) if (english(o.text)) leaks.push(`option: ${o.text}`);
       }
       for (const el of [root, ...root.querySelectorAll("*")]) {
         if (!(el as HTMLElement).checkVisibility?.() || el.closest(notOurs)) continue;
@@ -112,11 +121,12 @@ test.describe("device language", () => {
 
     const panel = await openYou(page);
     // Following the device is the choice made, and it says which language that is.
-    const auto = panel.getByRole("radio", { name: /Match this device/ });
-    await expect(auto).toHaveAttribute("aria-checked", "true");
-    await expect(auto).toContainText("Polski");
-    await expect(panel.getByRole("radio", { name: /^Polski \(draft\)/ })).toBeVisible();
-    await expect(panel.getByRole("radio", { name: /^English/ })).not.toContainText("draft");
+    const picker = panel.getByRole("combobox", { name: "Language" });
+    await expect(picker).toHaveValue("auto");
+    await expect(picker.locator("option:checked")).toHaveText("Match this device (Polski)");
+    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski (draft)");
+    await expect(picker.locator('option[value="de"]')).toHaveText("Deutsch — niemiecki (draft)");
+    await expect(picker.locator('option[value="en"]')).toHaveText("English — angielski");
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBeNull();
   });
 });
@@ -130,16 +140,24 @@ test.describe("switching", () => {
 
     const panel = await openYou(page);
     await expect(panel.getByRole("heading", { name: "Language" })).toBeVisible();
-    await panel.getByRole("radio", { name: /Ƥšéûðö/ }).click();
+    // Its label is the heading, so its name changes language with everything else; hold it by id.
+    await expect(panel.getByRole("combobox", { name: "Language" })).toBeVisible();
+    const picker = panel.locator("#k-lang-select");
+    await expect(picker).toHaveValue("auto");
+    await expect(picker.locator('option[value="en"]')).toHaveText("English");
+    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski — Polish (draft)");
+    await picker.selectOption(PSEUDO);
 
     await expect(panel.getByRole("heading", { level: 2 })).toHaveText(/^⟦Ýöû ·+⟧$/);
-    await expect(panel.getByRole("radio", { name: /Ƥšéûðö/ })).toHaveAttribute("aria-checked", "true");
+    await expect(picker).toHaveValue(PSEUDO);
+    // The options re-render in the new language too: the name in the current language is accented.
+    await expect(picker.locator('option[value="pl"]')).toHaveText(/Polski — Þöļîšĥ \(ðŕåƒţ\)/);
     await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", /^⟦Ƒîñð åñ åþþ ·+⟧$/);
     expect(await page.evaluate(() => (window as unknown as { __stillHere?: boolean }).__stillHere)).toBe(true);
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBe(PSEUDO);
 
     // And back, without leaving.
-    await panel.getByRole("radio", { name: /^English/ }).click();
+    await picker.selectOption("en");
     await expect(panel.getByRole("heading", { level: 2 })).toHaveText("You");
     await page.reload();
     await expect(page.locator(".k-launcher-home").getByRole("searchbox")).toHaveAttribute("placeholder", "Find an app");
@@ -307,8 +325,50 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
     await page.goto("/?user=plants");
     const splash = page.locator(".k-splash");
-    await splash.waitFor({ timeout: 30_000 });
+    // Slowed down twenty times, a cold dev server takes a while to draw even the splash.
+    await splash.waitFor({ timeout: 90_000 });
     expect(await englishIn(splash, ["Plants"])).toEqual([]);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
   });
+});
+
+// ---- #311's card: "Potyro can't do this yet", and what it would send ------------------------------
+
+test("guard: the platform-request card and its review, in the pseudo-language", async ({ page }) => {
+  test.slow();
+  await page.addInitScript((tag) => {
+    localStorage.setItem("potyro:locale", tag);
+    // OpenRouter with a stub key, the engine that drives the modify loop; its endpoint is scripted.
+    sessionStorage.setItem("potyro:engine-config", JSON.stringify({ engine: "openrouter", openrouterKey: "sk-or-stub" }));
+  }, PSEUDO);
+  await seed(page, [{ id: "notes", name: "Notes", source: NOTES("Notes"), trusted: true, updatedAt: new Date().toISOString() }]);
+  const reply = (message: Record<string, unknown>) => ({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }] }) });
+  let calls = 0;
+  await page.route("**/openrouter.ai/**", async (route) => {
+    const body = route.request().postDataJSON() as { tool_choice?: string };
+    calls++;
+    if (body.tool_choice === "none") return route.fulfill(reply({ content: "TITLE: Scan barcodes\nI wanted to scan a barcode so the title fills itself in." }));
+    if (calls === 1) return route.fulfill(reply({ content: "", tool_calls: [{ id: "l1", type: "function", function: { name: "lookup", arguments: JSON.stringify({ query: "barcodeScanner" }) } }] }));
+    return route.fulfill(reply({ content: "NEEDS-PLATFORM: reading barcodes with the camera" }));
+  });
+
+  await openApp(page, "notes", "Notes");
+  const tool = page.locator("[data-tool=studio]:visible");
+  await tool.first().click();
+  const studio = page.locator(".k-studio");
+  await studio.locator(".k-composer textarea").fill("let me scan a barcode to add a note");
+  await studio.locator(".k-composer-send").click();
+  const card = studio.locator(".k-ask-card");
+  await expect(card).toBeVisible({ timeout: 90_000 });
+  // The request is the person's own words, written for them: not Potyro's.
+  const request = ["Scan barcodes", "I wanted to scan a barcode so the title fills itself in."];
+  expect(await englishIn(card, request)).toEqual([]);
+
+  await card.locator(".k-card-open").click();
+  const review = card.locator(".k-ask-card-review");
+  await expect(review).toBeVisible();
+  await review.locator("summary").click();
+  // The structure is the app's own (its entity, fields and pages), and code.
+  await expect(review.locator("pre")).toBeVisible();
+  expect(await englishIn(card, request)).toEqual([]);
 });
