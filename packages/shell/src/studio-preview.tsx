@@ -33,6 +33,8 @@ import { validateDefinition } from "./validate-app.js";
 import { DialogHost, Dialogs } from "./dialog.js";
 import { Toaster } from "./toaster.js";
 import { App } from "./App.js";
+import { PointGlyph, PointMode } from "./point-mode.js";
+import type { Pointed } from "./point-target.js";
 
 export interface Preview {
   composed: Composed;
@@ -144,10 +146,15 @@ export interface PreviewScreenProps {
   onSource: () => void;
   /** A sealed app's preview: let it run as yours. Only after the same dialog as everywhere else. */
   onPromote?: () => void;
+  /** Point mode (#284): the app is pointed at instead of used, until a part is picked or it is cancelled. */
+  pointing: boolean;
+  onPoint: () => void;
+  onPointCancel: () => void;
+  onPicked: (pointed: Pointed) => void;
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked }: PreviewScreenProps) {
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
   const [screen, setScreen] = useState<HTMLDivElement | null>(null);
@@ -156,26 +163,46 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
   const def = preview.composed.runtime.definition;
   const promote = preview.sealed && onPromote ? onPromote : undefined;
   return (
-    <section className="k-preview" aria-label="App preview">
-      <header className="k-preview-bar">
-        <button type="button" className="k-preview-back" aria-label="Back to the chat" onClick={onBack}>
-          {/* Beside the conversation the chat is already there, so this closes the app instead. */}
-          <span aria-hidden>←</span> <span className="k-preview-back-word">Chat</span>
-          <span className="k-preview-hide-word">Close</span>
-        </button>
-        <p className="k-preview-title">
-          <strong>{title}</strong>
-          {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
-        </p>
-        {promote ? (
-          <button type="button" className="k-preview-code k-preview-promote" title="It runs in the sealed box" onClick={() => setAsking(true)}>
-            Let it run as yours
+    <section className="k-preview" aria-label="App preview" data-pointing={pointing || undefined}>
+      {pointing ? (
+        // The bar says what the mode is and how to leave it — never the app's own controls.
+        <header className="k-preview-bar k-point-bar" role="status">
+          <span className="k-point-bar-mark" aria-hidden>
+            <PointGlyph />
+          </span>
+          <p className="k-point-bar-text">
+            <strong>Point at the app</strong>
+            <span>Tap the part you mean</span>
+          </p>
+          <button type="button" className="k-point-cancel" onClick={onPointCancel}>
+            Cancel
           </button>
-        ) : null}
-        <button type="button" className="k-preview-code" onClick={onSource}>
-          Code
-        </button>
-      </header>
+        </header>
+      ) : (
+        <header className="k-preview-bar">
+          <button type="button" className="k-preview-back" aria-label="Back to the chat" onClick={onBack}>
+            {/* Beside the conversation the chat is already there, so this closes the app instead. */}
+            <span aria-hidden>←</span> <span className="k-preview-back-word">Chat</span>
+            <span className="k-preview-hide-word">Close</span>
+          </button>
+          <p className="k-preview-title">
+            <strong>{title}</strong>
+            {unsaved ? <span className="k-preview-unsaved">not saved</span> : version ? <span className="k-preview-seq">v{version}</span> : null}
+          </p>
+          {promote ? (
+            <button type="button" className="k-preview-code k-preview-promote" title="It runs in the sealed box" onClick={() => setAsking(true)}>
+              Let it run as yours
+            </button>
+          ) : null}
+          <button type="button" className="k-preview-point" title="Tap a part of the app to talk about it" onClick={onPoint}>
+            <PointGlyph />
+            <span className="k-preview-point-word">Point</span>
+          </button>
+          <button type="button" className="k-preview-code" onClick={onSource}>
+            Code
+          </button>
+        </header>
+      )}
       {preview.sealed?.librariesStoodIn ? (
         <p className="k-preview-note" role="note">
           It runs in the sealed box, and its libraries need a full web page, so here they stand in and draw nothing. Let it run as yours to see them work.
@@ -211,6 +238,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
               />
             </div>
             <Dialogs host={preview.dialogs} />
+            {pointing ? <PointMode screen={screen} def={def} onPick={onPicked} onCancel={onPointCancel} /> : null}
           </PortalRootContext.Provider>
         ) : null}
       </div>
