@@ -14,5 +14,5 @@ test("Workout's Progress runs untrusted: tiles, comparisons and the chart", asyn
   await expect(page.locator(".k-stat", { hasText: "Volume this week" }).locator(".k-stat-value")).toHaveText("2,185 kg", { timeout: 30_000 });
   await expect(page.locator(".k-stat", { hasText: "Sessions this week" }).locator(".k-stat-compare")).toHaveText("▼ 1 less than last week");
   await expect(page.locator(".k-chart-bar")).toHaveCount(8);
-  await expect(page.locator(".k-chart table tbody tr").last()).toHaveText(/7 Sep\s*1 session$/);
+  await expect(page.locator(".k-chart table tbody tr").last()).toHaveText(/Sep 7\s*1 session$/);
 });

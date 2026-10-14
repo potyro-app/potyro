@@ -23,9 +23,10 @@ test("closing the Studio after a save shows the app as it now is", async ({ page
   const tools = await openSource(page, studio);
   const source = tools.getByRole("textbox", { name: "App source" });
   const before = await source.inputValue();
-  // Groceries is in English and Polish (#302): its name is a map, renamed in English here.
-  expect(before).toContain('name: { en: "Groceries", pl: "Zakupy" }');
-  await source.fill(before.replace('name: { en: "Groceries", pl: "Zakupy" }', 'name: { en: "Shopping", pl: "Zakupy" }'));
+  // Groceries is in six languages (#302, #303): its name is a map, renamed in English here.
+  const name = 'name: { en: "Groceries", "pt-BR": "Compras", de: "Einkäufe", es: "Compras", pl: "Zakupy", it: "Spesa" }';
+  expect(before).toContain(name);
+  await source.fill(before.replace(name, name.replace('en: "Groceries"', 'en: "Shopping"')));
   await tools.getByRole("button", { name: "Save changes" }).click();
   await expect(studio.locator(".k-studio-preview h1").first()).toHaveText("Shopping", { timeout: 60_000 });
   // Never renamed by hand, so it is called what its source now says.

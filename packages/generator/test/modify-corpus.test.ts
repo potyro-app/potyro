@@ -22,22 +22,42 @@ function appFile(app: string): string {
 const shape = async (src: string, dir: string) => (await loadApp(src, dir)) as unknown as DefinitionShape;
 
 /** A right change for each new case: [search, replace] against the app as it is. */
+// The examples are in six languages (#303), so a right change gives its new words in all six: one
+// in English only is a gap the check sends back.
+const PLANTS_TITLE = '      title: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },';
+const RECIPE_PHOTO = '        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },';
+const PLACE_NOTES = '        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },';
 const RIGHT: Record<string, Array<[string, string]>> = {
   "plants-no-more-pages": [
     [
-      '      title: "Plants",\n      view: {\n        type: "list",\n        entity: "plant",',
-      '      title: "Plants",\n      view: {\n        type: "list",\n        entity: "plant",\n        filters: [{ label: "Direct sun", param: "sun", type: "boolean" }],\n        filter: (p, ctx) => !ctx.params.sun || p.needsDirectSun,',
+      `${PLANTS_TITLE}\n      view: {\n        type: "list",\n        entity: "plant",`,
+      `${PLANTS_TITLE}\n      view: {\n        type: "list",\n        entity: "plant",\n        filters: [{ label: { en: "Direct sun", "pt-BR": "Sol direto", de: "Direkte Sonne", es: "Sol directo", pl: "Pełne słońce", it: "Sole diretto" }, param: "sun", type: "boolean" }],\n        filter: (p, ctx) => !ctx.params.sun || p.needsDirectSun,`,
     ],
   ],
   "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
   "recipes-put-spice-back": [
-    ['        photo: { type: "media", accept: "image" },\n        tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },', '        photo: { type: "media", accept: "image" },\n        spiciness: { type: "enum", options: ["mild", "medium", "hot"], colors: { mild: "green", medium: "yellow", hot: "red" } },\n        tags: { type: "tags", options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"] },'],
+    [
+      RECIPE_PHOTO,
+      `${RECIPE_PHOTO}\n        spiciness: { type: "enum", options: ["mild", "medium", "hot"], colors: { mild: "green", medium: "yellow", hot: "red" }, label: { en: "Spiciness", "pt-BR": "Picância", de: "Schärfe", es: "Picante", pl: "Ostrość", it: "Piccantezza" }, labels: { mild: { en: "mild", "pt-BR": "suave", de: "mild", es: "suave", pl: "łagodne", it: "delicato" }, medium: { en: "medium", "pt-BR": "média", de: "mittel", es: "medio", pl: "średnie", it: "medio" }, hot: { en: "hot", "pt-BR": "forte", de: "scharf", es: "fuerte", pl: "ostre", it: "forte" } } },`,
+    ],
   ],
-  "plants-water-in-ml": [['        wiki: { type: "url" },', '        wiki: { type: "url" },\n        waterAmount: { type: "number", unit: "ml", min: 0, label: "Water each time" },']],
-  "places-visited-starts-off": [['        visited: { type: "boolean", default: true },', '        visited: { type: "boolean", default: false },']],
-  "plants-scan-barcode": [['        wiki: { type: "url" },', '        wiki: { type: "url" },\n        barcode: { type: "text" },']],
+  "plants-scan-barcode": [
+    [
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language',
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        barcode: { type: "text", label: { en: "Barcode", "pt-BR": "Código de barras", de: "Strichcode", es: "Código de barras", pl: "Kod kreskowy", it: "Codice a barre" } },',
+    ],
+  ],
+  "plants-water-in-ml": [
+    [
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language',
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        waterAmount: { type: "number", unit: "ml", min: 0, label: { en: "Water each time", "pt-BR": "Água por rega", de: "Wasser pro Gießen", es: "Agua por riego", pl: "Woda na podlanie", it: "Acqua a ogni annaffiatura" } },',
+    ],
+  ],
+  "places-visited-starts-off": [['        visited: {\n          type: "boolean",\n          default: true,', '        visited: {\n          type: "boolean",\n          default: false,']],
   "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
-  "places-phone-wrong-gate": [['        notes: { type: "text", multiline: true },', '        notes: { type: "text", multiline: true },\n        phone: { type: "text" },']],
+  "places-phone-wrong-gate": [
+    [PLACE_NOTES, `${PLACE_NOTES}\n        phone: { type: "text", label: { en: "Phone", "pt-BR": "Telefone", de: "Telefon", es: "Teléfono", pl: "Telefon", it: "Telefono" } },`],
+  ],
 };
 
 describe("the modify corpus", () => {
@@ -85,6 +105,6 @@ describe("the modify corpus", () => {
       expect(score.errors).toEqual([]);
       expect(score.validates).toBe(true);
       expect(c.landed!(await shape(after, dir), before)).toBe(true);
-    }, 30_000);
+    }, 60_000); // bundles a whole six-language example twice: slow under a parallel run
   }
 });

@@ -5,6 +5,11 @@
 // The chart screen draws on a <canvas> with a library that needs a real web page, so this app runs
 // as your own (trusted) app only. The numbers and the sentence on top are worked out in insights.ts,
 // in plain functions the tests run without a browser.
+//
+// In six languages (#303); every language but English is a model's draft (#297). The charts say
+// their words through `ctx.t` and write dates and numbers through `ctx.format`. A check-in's note is
+// a record. A tag is stored as its option ("late screen"), so a chart chip, a scatter group and
+// the dataset behind it all key on that, and only what is shown is translated.
 import { defineApp } from "potyro";
 import type { Ctx, Field, Resolved, ViewProps } from "potyro";
 import { Chart, registerables } from "https://esm.sh/chart.js@4.5.1?bundle";
@@ -17,18 +22,21 @@ import {
   lastDays,
   LONG,
   monthDay,
+  moodWord,
   MOOD_FACES,
-  MOOD_WORDS,
+  nightDate,
   one,
   scatterGroups,
   shortDay,
   stats,
+  tagName,
   TAGS,
   toNights,
   trend,
   type CheckinRow,
   type Insight,
   type Night,
+  type Say,
 } from "./insights.js";
 import { STYLES } from "./styles.js";
 
@@ -119,7 +127,7 @@ const wholeTicks = (axis: { min: number; max: number; ticks: Array<{ value: numb
 };
 
 /** A dashed rule at LONG hours on the sleep axis: the line the sentence on top talks about. */
-const goalLine = (pal: () => Palette): Plugin<"line"> => ({
+const goalLine = (pal: () => Palette, say: Say): Plugin<"line"> => ({
   id: "ms-goal",
   afterDatasetsDraw(chart) {
     const y = chart.scales.yS;
@@ -138,7 +146,7 @@ const goalLine = (pal: () => Palette): Plugin<"line"> => ({
     g.stroke();
     g.setLineDash([]);
     // The label sits on a small pill of the card's colour, so a line passing under it cannot hide it.
-    const label = `${LONG}h goal`;
+    const label = say.t({ en: "{h}h goal", "pt-BR": "meta: {h} h", de: "Ziel: {h} Std.", es: "objetivo: {h} h", pl: "cel: {h} godz.", it: "obiettivo: {h} h" }, { h: LONG });
     g.font = `600 11px ${p.font}`;
     const w = g.measureText(label).width + 10;
     g.fillStyle = p.surface;
@@ -174,7 +182,10 @@ function tooltipStyle(p: Palette) {
   };
 }
 
-function lineConfig(w: { days: string[] }, series: ReturnType<typeof dailySeries>, notes: Map<string, Night>, pal: () => Palette): ChartConfiguration<"line"> {
+/** "7h" on an axis: the same unit as `hoursText`, for a whole number. */
+const axisHours = (v: unknown, say: Say): string => hoursText(Number(v), say);
+
+function lineConfig(w: { days: string[] }, series: ReturnType<typeof dailySeries>, notes: Map<string, Night>, pal: () => Palette, say: Say): ChartConfiguration<"line"> {
   const p = pal();
   return {
     type: "line",
@@ -232,7 +243,7 @@ function lineConfig(w: { days: string[] }, series: ReturnType<typeof dailySeries
         x: {
           grid: { display: false },
           border: { color: p.line },
-          ticks: { color: p.faint, font: { family: p.font, size: 11 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 14, callback: (_v, i) => shortDay(w.days[i] ?? "") },
+          ticks: { color: p.faint, font: { family: p.font, size: 11 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 14, callback: (_v, i) => (w.days[i] ? shortDay(w.days[i]!, say) : "") },
         },
         yS: {
           position: "left",
@@ -240,7 +251,7 @@ function lineConfig(w: { days: string[] }, series: ReturnType<typeof dailySeries
           max: 10,
           grid: { color: p.line, drawTicks: false },
           border: { display: false },
-          ticks: { color: css(p.sleep), font: { family: p.font, size: 11, weight: 600 }, stepSize: 1, padding: 6, callback: (v) => `${v}h` },
+          ticks: { color: css(p.sleep), font: { family: p.font, size: 11, weight: 600 }, stepSize: 1, padding: 6, callback: (v) => axisHours(v, say) },
         },
         yM: {
           position: "right",
@@ -258,26 +269,33 @@ function lineConfig(w: { days: string[] }, series: ReturnType<typeof dailySeries
           ...tooltipStyle(p),
           callbacks: {
             title: (items: TooltipItem<"line">[]) => {
-              const d = w.days[items[0]?.dataIndex ?? 0] ?? "";
-              return `${shortDay(d).split(" ")[0]} ${monthDay(d)}`;
+              const d = w.days[items[0]?.dataIndex ?? 0];
+              return d ? nightDate(d, say) : "";
             },
             label: (it: TooltipItem<"line">) => {
               const v = it.parsed.y;
               if (v == null) return "";
-              return it.dataset.label === "Sleep" ? `Slept ${hoursText(v)}` : `Mood ${v} · ${MOOD_WORDS[v] ?? ""} ${MOOD_FACES[v] ?? ""}`;
+              // The dataset's own axis says which line it is; its label is only a name.
+              if (it.dataset.yAxisID === "yS") {
+                return say.t({ en: "Slept {h}", "pt-BR": "Dormiu {h}", de: "Geschlafen: {h}", es: "Dormiste {h}", pl: "Sen: {h}", it: "Sonno: {h}" }, { h: hoursText(v, say) });
+              }
+              return say.t(
+                { en: "Mood {v} · {word} {face}", "pt-BR": "Humor {v} · {word} {face}", de: "Stimmung {v} · {word} {face}", es: "Ánimo {v} · {word} {face}", pl: "Nastrój {v} · {word} {face}", it: "Umore {v} · {word} {face}" },
+                { v, word: moodWord(v, say), face: MOOD_FACES[v] ?? "" },
+              );
             },
             footer: (items: TooltipItem<"line">[]) => notes.get(w.days[items[0]?.dataIndex ?? 0] ?? "")?.note || "",
           },
         },
       },
     },
-    plugins: [goalLine(pal)],
+    plugins: [goalLine(pal, say)],
   };
 }
 
 type Pt = ScatterDataPoint & { day?: string; note?: string };
 
-function scatterConfig(nights: Night[], pal: () => Palette): ChartConfiguration<"scatter", Pt[]> {
+function scatterConfig(nights: Night[], pal: () => Palette, say: Say): ChartConfiguration<"scatter", Pt[]> {
   const p = pal();
   const groups = scatterGroups(nights);
   const line = trend(nights);
@@ -291,7 +309,8 @@ function scatterConfig(nights: Night[], pal: () => Palette): ChartConfiguration<
         ...groups.map((g) => {
           const color = g.tag ? p.tag(g.tag) : p.faint;
           return {
-            label: g.tag || "nothing tagged",
+            // The tag as stored ("" for none): the chips and the hidden set key on it.
+            label: g.tag,
             data: g.points as Pt[],
             backgroundColor: color.replace(/[\d.]+\)$/, "0.72)"),
             borderColor: p.surface,
@@ -327,16 +346,26 @@ function scatterConfig(nights: Night[], pal: () => Palette): ChartConfiguration<
         x: {
           min: lo,
           max: hi,
-          title: { display: true, text: "hours slept", color: css(p.sleep), font: { family: p.font, size: 11, weight: 600 } },
+          title: {
+            display: true,
+            text: say.t({ en: "hours slept", "pt-BR": "horas dormidas", de: "Stunden Schlaf", es: "horas de sueño", pl: "godziny snu", it: "ore di sonno" }),
+            color: css(p.sleep),
+            font: { family: p.font, size: 11, weight: 600 },
+          },
           grid: { color: p.line, drawTicks: false },
           border: { display: false },
           afterBuildTicks: wholeTicks,
-          ticks: { color: p.faint, font: { family: p.font, size: 11 }, padding: 6, callback: (v) => `${v}h` },
+          ticks: { color: p.faint, font: { family: p.font, size: 11 }, padding: 6, callback: (v) => axisHours(v, say) },
         },
         y: {
           min: 0.5,
           max: 5.5,
-          title: { display: true, text: "mood", color: css(p.mood), font: { family: p.font, size: 11, weight: 600 } },
+          title: {
+            display: true,
+            text: say.t({ en: "mood", "pt-BR": "humor", de: "Stimmung", es: "ánimo", pl: "nastrój", it: "umore" }),
+            color: css(p.mood),
+            font: { family: p.font, size: 11, weight: 600 },
+          },
           grid: { color: p.line, drawTicks: false },
           border: { display: false },
           afterBuildTicks: wholeTicks,
@@ -351,12 +380,22 @@ function scatterConfig(nights: Night[], pal: () => Palette): ChartConfiguration<
           callbacks: {
             title: (items) => {
               const d = (items[0]?.raw as Pt | undefined)?.day;
-              return d ? `${shortDay(d).split(" ")[0]} ${monthDay(d)}` : "";
+              return d ? nightDate(d, say) : "";
             },
             label: (it) => {
               const pt = it.raw as Pt;
               const mood = Math.round(Number(pt.y));
-              return `${hoursText(Number(pt.x))} · mood ${mood} ${MOOD_FACES[mood] ?? ""}`;
+              return say.t(
+                {
+                  en: "{h} · mood {m} {face}",
+                  "pt-BR": "{h} · humor {m} {face}",
+                  de: "{h} · Stimmung {m} {face}",
+                  es: "{h} · ánimo {m} {face}",
+                  pl: "{h} · nastrój {m} {face}",
+                  it: "{h} · umore {m} {face}",
+                },
+                { h: hoursText(Number(pt.x), say), m: mood, face: MOOD_FACES[mood] ?? "" },
+              );
             },
             footer: (items) => (items[0]?.raw as Pt | undefined)?.note || "",
           },
@@ -372,16 +411,22 @@ function rowsToCheckins(rows: Resolved[]): CheckinRow[] {
   return rows.map((r) => ({ id: String(r.id), date: r.date as string | Date, hours: r.hours as number, mood: r.mood as number, note: r.note as string, tags: r.tags as string[] }));
 }
 
-async function logNight(ctx: Ctx): Promise<void> {
+/** The check-in form, with the entity's own fields — already in the person's language. */
+async function logNight(ctx: Ctx, fields: Record<string, Field>): Promise<void> {
   const answer = await ctx.ui.form<{ date: string; hours: number; mood: number; tags?: string[]; note?: string }>({
-    title: "How did you sleep?",
-    fields: FIELDS,
+    title: ctx.t({ en: "How did you sleep?", "pt-BR": "Como você dormiu?", de: "Wie hast du geschlafen?", es: "¿Qué tal has dormido?", pl: "Jak ci się spało?", it: "Come hai dormito?" }),
+    fields,
     initial: { date: dayKey(ctx.today()), hours: 7, mood: 3 },
-    submit: "Save",
+    submit: ctx.t({ en: "Save", "pt-BR": "Salvar", de: "Speichern", es: "Guardar", pl: "Zapisz", it: "Salva" }),
   });
   if (!answer) return;
   await ctx.create("checkin", answer);
-  ctx.ui.toast(`Logged ${hoursText(answer.hours)} · ${MOOD_FACES[answer.mood] ?? ""}`);
+  ctx.ui.toast(
+    ctx.t(
+      { en: "Logged {h} · {face}", "pt-BR": "Registrado: {h} · {face}", de: "Eingetragen: {h} · {face}", es: "Anotado: {h} · {face}", pl: "Zapisano: {h} · {face}", it: "Segnato: {h} · {face}" },
+      { h: hoursText(answer.hours, ctx), face: MOOD_FACES[answer.mood] ?? "" },
+    ),
+  );
 }
 
 function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
@@ -405,34 +450,129 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
   const insight = h("h2", { class: "ms-insight", "aria-live": "polite" });
   const also = h("p", { class: "ms-also" });
   const statsEl = h("dl", { class: "ms-stats" });
-  const log = h("button", { class: "ms-log", type: "button" }, "🌙  Log last night");
-  log.addEventListener("click", () => void logNight(ctx));
+  const log = h(
+    "button",
+    { class: "ms-log", type: "button" },
+    ctx.t({
+      en: "🌙  Log last night",
+      "pt-BR": "🌙  Registrar a última noite",
+      de: "🌙  Letzte Nacht eintragen",
+      es: "🌙  Anotar anoche",
+      pl: "🌙  Zapisz ostatnią noc",
+      it: "🌙  Segna la notte scorsa",
+    }),
+  );
+  log.addEventListener("click", () => void logNight(ctx, props.runtime.definition.entities.checkin!.fields as Record<string, Field>));
   root.append(h("header", { class: "ms-hero" }, h("div", { class: "ms-moon", "aria-hidden": "true" }), kicker, insight, also, statsEl, log));
 
   // Night by night
-  const lineCanvas = h("canvas", { role: "img", "aria-label": "Hours slept and mood for each day, up to the last 30" });
+  const sleepWord = ctx.t({ en: "Sleep", "pt-BR": "Sono", de: "Schlaf", es: "Sueño", pl: "Sen", it: "Sonno" });
+  const moodWordTitle = ctx.t({ en: "Mood", "pt-BR": "Humor", de: "Stimmung", es: "Ánimo", pl: "Nastrój", it: "Umore" });
+  const lineCanvas = h("canvas", {
+    role: "img",
+    "aria-label": ctx.t({
+      en: "Hours slept and mood for each day, up to the last 30",
+      "pt-BR": "Horas dormidas e humor de cada dia, até os últimos 30",
+      de: "Schlafstunden und Stimmung pro Tag, bis zu den letzten 30",
+      es: "Horas de sueño y ánimo de cada día, hasta los últimos 30",
+      pl: "Godziny snu i nastrój z każdego dnia, do 30 ostatnich",
+      it: "Ore di sonno e umore di ogni giorno, fino agli ultimi 30",
+    }),
+  });
   const lineCard = h(
     "section",
     { class: "ms-card ms-line", "aria-labelledby": "ms-line-title" },
     h(
       "div",
       { class: "ms-card-head" },
-      h("div", {}, h("h3", { id: "ms-line-title" }, "Night by night"), h("p", { class: "ms-sub" }, "Sleep on the left, mood on the right")),
-      h("ul", { class: "ms-legend" }, h("li", {}, h("i", { class: "sleep" }), "Sleep"), h("li", {}, h("i", { class: "mood" }), "Mood")),
+      h(
+        "div",
+        {},
+        h("h3", { id: "ms-line-title" }, ctx.t({ en: "Night by night", "pt-BR": "Noite a noite", de: "Nacht für Nacht", es: "Noche a noche", pl: "Noc po nocy", it: "Notte per notte" })),
+        h(
+          "p",
+          { class: "ms-sub" },
+          ctx.t({
+            en: "Sleep on the left, mood on the right",
+            "pt-BR": "Sono à esquerda, humor à direita",
+            de: "Links Schlaf, rechts Stimmung",
+            es: "Sueño a la izquierda, ánimo a la derecha",
+            pl: "Sen po lewej, nastrój po prawej",
+            it: "Sonno a sinistra, umore a destra",
+          }),
+        ),
+      ),
+      h("ul", { class: "ms-legend" }, h("li", {}, h("i", { class: "sleep" }), sleepWord), h("li", {}, h("i", { class: "mood" }), moodWordTitle)),
     ),
     h("div", { class: "ms-plot" }, lineCanvas),
   );
 
   // Sleep vs mood
-  const scatterCanvas = h("canvas", { role: "img", "aria-label": "Each night as a dot: hours slept across, mood up, coloured by what the day had" });
-  const chips = h("div", { class: "ms-chips", role: "group", "aria-label": "Show nights by tag" });
+  const scatterCanvas = h("canvas", {
+    role: "img",
+    "aria-label": ctx.t({
+      en: "Each night as a dot: hours slept across, mood up, coloured by what the day had",
+      "pt-BR": "Cada noite é um ponto: horas dormidas na horizontal, humor na vertical, com a cor do que o dia teve",
+      de: "Jede Nacht ein Punkt: Schlafstunden nach rechts, Stimmung nach oben, gefärbt nach dem, was der Tag hatte",
+      es: "Cada noche es un punto: horas de sueño en horizontal, ánimo en vertical, con el color de lo que tuvo el día",
+      pl: "Każda noc to kropka: godziny snu w poziomie, nastrój w pionie, kolor według tego, co przyniósł dzień",
+      it: "Ogni notte è un punto: ore di sonno in orizzontale, umore in verticale, colorato secondo cosa ha avuto la giornata",
+    }),
+  });
+  const chips = h("div", {
+    class: "ms-chips",
+    role: "group",
+    "aria-label": ctx.t({ en: "Show nights by tag", "pt-BR": "Mostrar noites por etiqueta", de: "Nächte nach Schlagwort zeigen", es: "Mostrar noches por etiqueta", pl: "Pokaż noce według tagu", it: "Mostra le notti per tag" }),
+  });
   const scatterCard = h(
     "section",
     { class: "ms-card ms-scatter", "aria-labelledby": "ms-scatter-title" },
-    h("div", { class: "ms-card-head" }, h("div", {}, h("h3", { id: "ms-scatter-title" }, "Does a long night lift the day?"), h("p", { class: "ms-sub" }, "Every dot is a night, coloured by what the day had"))),
+    h(
+      "div",
+      { class: "ms-card-head" },
+      h(
+        "div",
+        {},
+        h(
+          "h3",
+          { id: "ms-scatter-title" },
+          ctx.t({
+            en: "Does a long night lift the day?",
+            "pt-BR": "Uma noite longa melhora o dia?",
+            de: "Hebt eine lange Nacht den Tag?",
+            es: "¿Una noche larga mejora el día?",
+            pl: "Czy długa noc poprawia dzień?",
+            it: "Una notte lunga migliora la giornata?",
+          }),
+        ),
+        h(
+          "p",
+          { class: "ms-sub" },
+          ctx.t({
+            en: "Every dot is a night, coloured by what the day had",
+            "pt-BR": "Cada ponto é uma noite, com a cor do que o dia teve",
+            de: "Jeder Punkt ist eine Nacht, gefärbt nach dem, was der Tag hatte",
+            es: "Cada punto es una noche, con el color de lo que tuvo el día",
+            pl: "Każda kropka to noc, w kolorze tego, co przyniósł dzień",
+            it: "Ogni punto è una notte, colorato secondo cosa ha avuto la giornata",
+          }),
+        ),
+      ),
+    ),
     chips,
     h("div", { class: "ms-plot" }, scatterCanvas),
-    h("p", { class: "ms-foot" }, "The dashed line is the trend: the steeper it climbs, the more sleep shows in your mood."),
+    h(
+      "p",
+      { class: "ms-foot" },
+      ctx.t({
+        en: "The dashed line is the trend: the steeper it climbs, the more sleep shows in your mood.",
+        "pt-BR": "A linha tracejada é a tendência: quanto mais ela sobe, mais o sono aparece no seu humor.",
+        de: "Die gestrichelte Linie ist der Trend: Je steiler sie steigt, desto mehr zeigt sich der Schlaf in deiner Stimmung.",
+        es: "La línea discontinua es la tendencia: cuanto más sube, más se nota el sueño en tu ánimo.",
+        pl: "Linia przerywana to trend: im bardziej stromo rośnie, tym bardziej sen widać w twoim nastroju.",
+        it: "La linea tratteggiata è la tendenza: più sale ripida, più il sonno si vede nel tuo umore.",
+      }),
+    ),
   );
   root.append(lineCard, scatterCard);
 
@@ -442,19 +582,41 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
   const hidden = new Set<string>();
 
   const renderText = (w: { nights: Night[]; days: string[] }) => {
-    const said = insights(w.nights);
+    const said = insights(w.nights, ctx);
     insight.replaceChildren(...sentence(said[0]!));
     also.hidden = !said[1];
     also.replaceChildren(...(said[1] ? sentence(said[1]) : []));
     const last = w.days[w.days.length - 1];
     const first = w.days[0];
-    kicker.textContent = last && first ? `${w.nights.length} check-in${w.nights.length === 1 ? "" : "s"} · ${first === last ? monthDay(last) : `${monthDay(first)} – ${monthDay(last)}`}` : "Your nights";
+    const range = last && first ? (first === last ? monthDay(last, ctx) : `${monthDay(first, ctx)} – ${monthDay(last, ctx)}`) : "";
+    kicker.textContent =
+      last && first
+        ? ctx.t(
+            {
+              en: "{n, plural, one {# check-in} other {# check-ins}} · {range}",
+              "pt-BR": "{n, plural, one {# registro} other {# registros}} · {range}",
+              de: "{n, plural, one {# Eintrag} other {# Einträge}} · {range}",
+              es: "{n, plural, one {# registro} other {# registros}} · {range}",
+              pl: "{n, plural, one {# wpis} few {# wpisy} many {# wpisów} other {# wpisu}} · {range}",
+              it: "{n, plural, one {# registrazione} other {# registrazioni}} · {range}",
+            },
+            { n: w.nights.length, range },
+          )
+        : ctx.t({ en: "Your nights", "pt-BR": "Suas noites", de: "Deine Nächte", es: "Tus noches", pl: "Twoje noce", it: "Le tue notti" });
     const s = stats(w.nights);
     const stat = (label: string, value: string, unit = "") => h("div", {}, h("dt", {}, label), h("dd", {}, value, ...(unit ? [h("small", {}, unit)] : [])));
     statsEl.replaceChildren(
-      stat("Average sleep", s.avgHours == null ? "–" : one(s.avgHours), "h"),
-      stat("Average mood", s.avgMood == null ? "–" : one(s.avgMood), s.avgMood == null ? "" : (MOOD_FACES[Math.round(s.avgMood)] ?? "")),
-      stat(`Nights ≥ ${LONG}h`, s.longShare == null ? "–" : String(Math.round(s.longShare * 100)), "%"),
+      stat(ctx.t({ en: "Average sleep", "pt-BR": "Sono médio", de: "Ø Schlaf", es: "Sueño medio", pl: "Średni sen", it: "Sonno medio" }), s.avgHours == null ? "–" : one(s.avgHours, ctx), "h"),
+      stat(
+        ctx.t({ en: "Average mood", "pt-BR": "Humor médio", de: "Ø Stimmung", es: "Ánimo medio", pl: "Średni nastrój", it: "Umore medio" }),
+        s.avgMood == null ? "–" : one(s.avgMood, ctx),
+        s.avgMood == null ? "" : (MOOD_FACES[Math.round(s.avgMood)] ?? ""),
+      ),
+      stat(
+        ctx.t({ en: "Nights ≥ {h}h", "pt-BR": "Noites ≥ {h} h", de: "Nächte ≥ {h} Std.", es: "Noches ≥ {h} h", pl: "Noce ≥ {h} godz.", it: "Notti ≥ {h} h" }, { h: LONG }),
+        s.longShare == null ? "–" : String(Math.round(s.longShare * 100)),
+        "%",
+      ),
     );
   };
 
@@ -462,9 +624,10 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
     const groups = scatterChart ? scatterChart.data.datasets.filter((d) => d.label !== "trend") : [];
     chips.replaceChildren(
       ...groups.map((d) => {
+        // The tag as stored is the key; the chip shows it in the person's words.
         const label = d.label ?? "";
-        const b = h("button", { class: "ms-chip", type: "button", "aria-pressed": String(!hidden.has(label)) }, label);
-        b.style.setProperty("--chip", label === "nothing tagged" ? pal.faint : pal.tag(label));
+        const b = h("button", { class: "ms-chip", type: "button", "aria-pressed": String(!hidden.has(label)) }, tagName(label, ctx));
+        b.style.setProperty("--chip", label === "" ? pal.faint : pal.tag(label));
         b.addEventListener("click", () => {
           if (hidden.has(label)) hidden.delete(label);
           else hidden.add(label);
@@ -489,8 +652,8 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
     const byDay = new Map(w.nights.map((n) => [n.day, n]));
     lineChart?.destroy();
     scatterChart?.destroy();
-    lineChart = new Chart(lineCanvas, lineConfig(w, dailySeries(w), byDay, current));
-    scatterChart = new Chart(scatterCanvas, scatterConfig(w.nights, current));
+    lineChart = new Chart(lineCanvas, lineConfig(w, dailySeries(w), byDay, current, ctx));
+    scatterChart = new Chart(scatterCanvas, scatterConfig(w.nights, current, ctx));
     applyHidden();
     scatterChart.update("none");
     renderChips();
@@ -529,33 +692,101 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
 
 // ---- the app ----
 
-const FIELDS: Record<"date" | "hours" | "mood" | "tags" | "note", Field> = {
-  date: { type: "datetime", label: "Date", required: true, help: "The morning you are checking in" },
-  hours: { type: "number", label: "Hours slept", required: true, min: 0, max: 14, step: 0.25, unit: "h", width: "half" },
-  mood: { type: "number", label: "Mood", required: true, integer: true, min: 1, max: 5, step: 1, help: "1 rough · 3 okay · 5 great", width: "half" },
-  tags: { type: "tags", label: "The day had", options: [...TAGS] },
-  note: { type: "text", label: "A short note", placeholder: "Late dinner, woke at four…" },
-};
-
 export default defineApp({
   id: "mood-sleep",
-  name: "Sleep & Mood",
+  name: { en: "Sleep & Mood", "pt-BR": "Sono e humor", de: "Schlaf & Stimmung", es: "Sueño y ánimo", pl: "Sen i nastrój", it: "Sonno e umore" },
   icon: "🌙",
-  version: "1.0.0",
+  version: "1.1.0",
   schemaVersion: 1,
+  language: "en",
+  languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#7c6cf0" },
   nav: "tabs",
-  quickActions: [{ id: "log", label: "Log last night", icon: "🌙", entity: "checkin", mode: "form" }],
+  quickActions: [
+    {
+      id: "log",
+      label: { en: "Log last night", "pt-BR": "Registrar a última noite", de: "Letzte Nacht eintragen", es: "Anotar anoche", pl: "Zapisz ostatnią noc", it: "Segna la notte scorsa" },
+      icon: "🌙",
+      entity: "checkin",
+      mode: "form",
+    },
+  ],
   entities: {
     checkin: {
-      label: "Check-in",
+      label: { en: "Check-in", "pt-BR": "Registro", de: "Eintrag", es: "Registro", pl: "Wpis", it: "Registrazione" },
       displayField: "date",
+      // The Patterns screen's "Log last night" asks with these same fields, as the runtime shows them.
       fields: {
-        date: { ...FIELDS.date, default: (ctx: Ctx) => dayKey(ctx.today()) },
-        hours: { ...FIELDS.hours, default: 7 },
-        mood: { ...FIELDS.mood, default: 3 },
-        tags: FIELDS.tags,
-        note: FIELDS.note,
+        date: {
+          type: "datetime",
+          required: true,
+          default: (ctx: Ctx) => dayKey(ctx.today()),
+          label: { en: "Date", "pt-BR": "Data", de: "Datum", es: "Fecha", pl: "Data", it: "Data" },
+          help: {
+            en: "The morning you are checking in",
+            "pt-BR": "A manhã em que você faz o registro",
+            de: "Der Morgen, an dem du einträgst",
+            es: "La mañana en que haces el registro",
+            pl: "Poranek, którego dotyczy wpis",
+            it: "La mattina in cui registri",
+          },
+        },
+        hours: {
+          type: "number",
+          required: true,
+          min: 0,
+          max: 14,
+          step: 0.25,
+          unit: "h",
+          width: "half",
+          default: 7,
+          label: { en: "Hours slept", "pt-BR": "Horas dormidas", de: "Stunden geschlafen", es: "Horas dormidas", pl: "Godziny snu", it: "Ore dormite" },
+        },
+        mood: {
+          type: "number",
+          required: true,
+          integer: true,
+          min: 1,
+          max: 5,
+          step: 1,
+          width: "half",
+          default: 3,
+          label: { en: "Mood", "pt-BR": "Humor", de: "Stimmung", es: "Ánimo", pl: "Nastrój", it: "Umore" },
+          help: {
+            en: "1 rough · 3 okay · 5 great",
+            "pt-BR": "1 péssimo · 3 ok · 5 ótimo",
+            de: "1 mies · 3 okay · 5 super",
+            es: "1 fatal · 3 normal · 5 genial",
+            pl: "1 fatalnie · 3 w porządku · 5 świetnie",
+            it: "1 malissimo · 3 così così · 5 benissimo",
+          },
+        },
+        tags: {
+          type: "tags",
+          options: [...TAGS],
+          label: { en: "The day had", "pt-BR": "O dia teve", de: "Der Tag hatte", es: "El día tuvo", pl: "W ciągu dnia", it: "La giornata ha avuto" },
+          // Records keep "late screen"; these are what each option reads as.
+          labels: {
+            exercise: { en: "exercise", "pt-BR": "exercício", de: "Sport", es: "ejercicio", pl: "ćwiczenia", it: "sport" },
+            coffee: { en: "coffee", "pt-BR": "café", de: "Kaffee", es: "café", pl: "kawa", it: "caffè" },
+            alcohol: { en: "alcohol", "pt-BR": "álcool", de: "Alkohol", es: "alcohol", pl: "alkohol", it: "alcol" },
+            "late screen": { en: "late screen", "pt-BR": "tela até tarde", de: "spät am Bildschirm", es: "pantalla hasta tarde", pl: "ekran do późna", it: "schermi fino a tardi" },
+            nap: { en: "nap", "pt-BR": "cochilo", de: "Mittagsschlaf", es: "siesta", pl: "drzemka", it: "pisolino" },
+            stressed: { en: "stressed", "pt-BR": "estresse", de: "gestresst", es: "estrés", pl: "stres", it: "stress" },
+          },
+        },
+        note: {
+          type: "text",
+          label: { en: "A short note", "pt-BR": "Uma nota curta", de: "Eine kurze Notiz", es: "Una nota breve", pl: "Krótka notatka", it: "Una breve nota" },
+          placeholder: {
+            en: "Late dinner, woke at four…",
+            "pt-BR": "Jantei tarde, acordei às quatro…",
+            de: "Spät gegessen, um vier aufgewacht…",
+            es: "Cena tarde, me desperté a las cuatro…",
+            pl: "Późna kolacja, pobudka o czwartej…",
+            it: "Cena tardi, sveglia alle quattro…",
+          },
+        },
       },
       computed: {
         face: (r) => MOOD_FACES[Number(r.mood)] ?? "",
@@ -563,27 +794,48 @@ export default defineApp({
     },
   },
   pages: [
-    { id: "patterns", title: "Patterns", icon: "🌙", view: { type: "custom", entity: "checkin", mount: mountPatterns } },
+    {
+      id: "patterns",
+      title: { en: "Patterns", "pt-BR": "Padrões", de: "Muster", es: "Patrones", pl: "Wzorce", it: "Andamento" },
+      icon: "🌙",
+      view: { type: "custom", entity: "checkin", mount: mountPatterns },
+    },
     {
       id: "nights",
-      title: "Nights",
+      title: { en: "Nights", "pt-BR": "Noites", de: "Nächte", es: "Noches", pl: "Noce", it: "Notti" },
       icon: "🛏",
       view: {
         type: "list",
         entity: "checkin",
         sort: (a, b) => (dayKey(b.date as string) < dayKey(a.date as string) ? -1 : 1),
         display: {
-          primary: (r) => {
-            const d = dayKey(r.date as string);
-            return `${shortDay(d).split(" ")[0]} ${monthDay(d)}`;
+          primary: (r, ctx) => nightDate(dayKey(r.date as string), ctx),
+          secondary: (r, ctx) => {
+            const slept = ctx.t(
+              { en: "{h} slept", "pt-BR": "{h} de sono", de: "{h} geschlafen", es: "{h} de sueño", pl: "{h} snu", it: "{h} di sonno" },
+              { h: hoursText(Number(r.hours), ctx) },
+            );
+            const mood = `${MOOD_FACES[Number(r.mood)] ?? ""} ${moodWord(Number(r.mood), ctx)}`;
+            return [slept, mood, r.note].filter(Boolean).join(" · ");
           },
-          secondary: (r) => [`${hoursText(Number(r.hours))} slept`, `${MOOD_FACES[Number(r.mood)] ?? ""} ${MOOD_WORDS[Number(r.mood)] ?? ""}`, r.note].filter(Boolean).join(" · "),
           badges: ["tags"],
         },
-        emptyText: "No nights logged yet. Tap “Log last night”.",
+        emptyText: {
+          en: "No nights logged yet. Tap “Log last night”.",
+          "pt-BR": "Nenhuma noite registrada ainda. Toque em “Registrar a última noite”.",
+          de: "Noch keine Nächte eingetragen. Tippe auf „Letzte Nacht eintragen“.",
+          es: "Aún no has anotado ninguna noche. Toca «Anotar anoche».",
+          pl: "Brak zapisanych nocy. Stuknij „Zapisz ostatnią noc”.",
+          it: "Ancora nessuna notte segnata. Tocca “Segna la notte scorsa”.",
+        },
         onOpen: { page: "night", param: { checkinId: "id" } },
       },
     },
-    { id: "night", title: "Night", hidden: true, view: { type: "detail", entity: "checkin", param: "checkinId" } },
+    {
+      id: "night",
+      title: { en: "Night", "pt-BR": "Noite", de: "Nacht", es: "Noche", pl: "Noc", it: "Notte" },
+      hidden: true,
+      view: { type: "detail", entity: "checkin", param: "checkinId" },
+    },
   ],
 });

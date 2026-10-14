@@ -158,7 +158,7 @@ export function sourceSlots(sw: SourceWords): WordSlot[] {
       // A hidden field never shows its label (a stored position, an order): nothing to translate.
       if (f.hidden !== true) add(`${at}.${key}.label`, humanizeKey(key));
       if ((f.type === "enum" || f.type === "tags") && Array.isArray(f.options)) {
-        for (const o of f.options) if (typeof o === "string") add(`${at}.${key}.labels.${o}`, o);
+        for (const o of f.options) if (typeof o === "string" && o !== CODE && o !== FN) add(`${at}.${key}.labels.${o}`, o);
       }
       if (f.type === "list") fieldsAt(f.of, `${at}.${key}.of`);
     }

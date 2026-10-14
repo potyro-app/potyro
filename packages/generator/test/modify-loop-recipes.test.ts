@@ -17,19 +17,24 @@ import type { AppShape } from "@potyro/runtime";
 const dir = fileURLToPath(new URL("../../../examples/", import.meta.url));
 const shipped = readFileSync(`${dir}recipes.app.tsx`, "utf8");
 
+// The example is in six languages (#303), so the new field's label is too: a label in English only
+// is a gap the check sends back.
+const OVERVIEW = '{ title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" }';
 const ADD_RATING = [
   "A 1–5 rating is a whole number, which the number field covers; it goes in the Overview group.",
   "```ts",
   "<<<<<<< SEARCH",
-  '        servings: { type: "number", default: 2, min: 1, integer: true, help: "The per-serving figures divide by this" },',
+  "        ingredients: {",
+  '          type: "list",',
   "=======",
-  '        servings: { type: "number", default: 2, min: 1, integer: true, help: "The per-serving figures divide by this" },',
-  '        rating: { type: "number", min: 1, max: 5, integer: true, label: "Rating" },',
+  '        rating: { type: "number", min: 1, max: 5, integer: true, label: { en: "Rating", "pt-BR": "Nota", de: "Bewertung", es: "Valoración", pl: "Ocena", it: "Voto" } },',
+  "        ingredients: {",
+  '          type: "list",',
   ">>>>>>> REPLACE",
   "<<<<<<< SEARCH",
-  '        { title: "Overview", fields: ["name", "status", "photo", "tags"] },',
+  `        ${OVERVIEW}, fields: ["name", "status", "photo", "tags"] },`,
   "=======",
-  '        { title: "Overview", fields: ["name", "status", "photo", "tags", "rating"] },',
+  `        ${OVERVIEW}, fields: ["name", "status", "photo", "tags", "rating"] },`,
   ">>>>>>> REPLACE",
   "```",
 ].join("\n");
