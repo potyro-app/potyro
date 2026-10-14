@@ -13,6 +13,7 @@
     "potyro": "workspace:*"
   },
   "devDependencies": {
-    "chart.js": "4.5.1"
+    "chart.js": "4.5.1",
+    "intl-messageformat": "^10.7.18"
   }
 }

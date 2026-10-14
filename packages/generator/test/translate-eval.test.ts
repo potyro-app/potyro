@@ -33,9 +33,9 @@ describe("eval:translate scorer", async () => {
   it("adding a field may bump schemaVersion with its migration (docs/06), and still passes", async () => {
     const c = cases.find((x) => x.case.id === "add-due-date")!;
     const bumped = (await c.good())
-      .replace('version: "2.1.0",', 'version: "2.2.0",')
+      .replace('version: "2.2.0",', 'version: "2.3.0",')
       .replace("schemaVersion: 2,", "schemaVersion: 3,")
-      .replace("  migrations: [", '  migrations: [\n    { from: "2.1.0", to: "2.2.0", steps: [{ op: "addField", entity: "item", field: "due" }] },');
+      .replace("  migrations: [", '  migrations: [\n    { from: "2.2.0", to: "2.3.0", steps: [{ op: "addField", entity: "item", field: "due" }] },');
     const score = await scoreTranslate(c.case, c.case.app, bumped, load);
     expect(score.checks.filter((x) => !x.ok)).toEqual([]);
   }, 30_000);
@@ -49,7 +49,7 @@ describe("eval:translate scorer", async () => {
   });
 
   it("an answer that bumps schemaVersion for a translation fails", async () => {
-    const c = cases.find((x) => x.case.id === "translate-groceries-de")!;
+    const c = cases.find((x) => x.case.id === "translate-groceries-fr")!;
     const bumped = (await c.good()).replace("schemaVersion: 2,", "schemaVersion: 3,");
     const score = await scoreTranslate(c.case, c.case.app, bumped, load);
     expect(score.checks.find((x) => x.name === "schemaVersion did not move")?.ok).toBe(false);

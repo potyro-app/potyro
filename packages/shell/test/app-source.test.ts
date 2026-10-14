@@ -73,7 +73,7 @@ describe("inspect", () => {
 
   it("reports each page's entity, which is what the panel offers field controls for", async () => {
     const shape = await inspect(PLACES);
-    expect(shape.pages.find((p) => p.id === "map")).toMatchObject({ title: "Map", entity: "place" });
+    expect(shape.pages.find((p) => p.id === "map")).toMatchObject({ titles: expect.objectContaining({ en: "Map", pl: "Mapa" }), entity: "place" });
   });
 
   it("reports a field's declared label and hidden flag", async () => {
@@ -103,10 +103,11 @@ describe("inspect", () => {
 
 describe("field label", () => {
   it("inserts a label where the app declared none", async () => {
-    // The common case: real apps lean on the field key, so renaming is an INSERT, not a replace.
-    const next = await apply(PLACES, { kind: "field-label", entity: "place", field: "name", value: "Place name" });
+    // The common case: generated apps lean on the field key, so renaming is an INSERT, not a replace.
+    // (The examples label every field, in six languages since #303.)
+    const next = await apply(GENERATED, { kind: "field-label", entity: "place", field: "name", value: "Place name" });
     expect(next).toContain('name: { label: "Place name", type: "text", required: true }');
-    expect(untouchedLines(PLACES, next)).toBe(true);
+    expect(untouchedLines(GENERATED, next)).toBe(true);
   });
 
   it("replaces a label that is already there", async () => {
@@ -119,7 +120,7 @@ describe("field label", () => {
 
   it("clears the label rather than writing an empty one", async () => {
     // An empty string would render a blank label; the default is the ABSENCE of the property.
-    const set = await apply(PLACES, { kind: "field-label", entity: "place", field: "name", value: "Temp" });
+    const set = await apply(GENERATED, { kind: "field-label", entity: "place", field: "name", value: "Temp" });
     const cleared = await apply(set, { kind: "field-label", entity: "place", field: "name", value: "  " });
     expect(cleared).not.toContain('label: ""');
     expect(cleared).toContain('name: { type: "text", required: true }');
@@ -250,7 +251,8 @@ describe("refusing rather than guessing", () => {
 describe("everything else is byte-identical", () => {
   it("preserves comments, imports and functions across an edit", async () => {
     // recipes.app.ts is the hard case: imports, helper modules, a custom view, comments throughout.
-    const next = await apply(RECIPES, { kind: "field-label", entity: "recipe", field: "servings", value: "Serves" });
+    // Its labels are maps in six languages (#303): the English entry is the one rewritten.
+    const next = await apply(RECIPES, { kind: "field-label", entity: "recipe", field: "servings", value: "Serves", language: "en" });
 
     const comments = (s: string): number => (s.match(/\/\//g) ?? []).length;
     expect(comments(next)).toBe(comments(RECIPES));
@@ -259,7 +261,7 @@ describe("everything else is byte-identical", () => {
     // The only differing line is the one that was edited.
     const differing = RECIPES.split("\n").filter((l, i) => next.split("\n")[i] !== l);
     expect(differing).toHaveLength(1);
-    expect(differing[0]).toContain("servings");
+    expect(differing[0]).toContain('en: "Servings"');
   });
 });
 
@@ -318,7 +320,9 @@ export default defineApp({
 
   it("reads the groups and the computed keys of the real Recipes app", async () => {
     const recipe = (await inspect(RECIPES)).entities.find((e) => e.key === "recipe")!;
-    expect(recipe.groups?.map((g) => g.title)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    // Titles in six languages (#303): read as maps, one entry per language.
+    expect(recipe.groups?.map((g) => g.titles?.en)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    expect(recipe.groups?.[0]?.titles?.pl).toBe("Przegląd");
     expect(recipe.groups?.[3]?.fields).toContain("caloriesPerServing");
     expect(recipe.computed).toContain("caloriesPerServing");
     expect(recipe.blocked).toBeUndefined();
