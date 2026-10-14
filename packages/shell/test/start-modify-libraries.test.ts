@@ -163,9 +163,11 @@ describe("changing an app whose library needs a full web page", () => {
     const mods = await space({ [P5]: p5 }, { "garden.ts": readFileSync(resolve(dir, "garden.ts"), "utf8"), "styles.ts": readFileSync(resolve(dir, "styles.ts"), "utf8") });
     await expect(buildAndValidate(source, mods)).rejects.toThrow(/p5 1\.11\.11 needs a full web page/);
 
-    const line = '    { id: "gallery", title: "Gallery", icon: "🖼", view: { type: "custom", entity: "artwork", mount: mountGallery } },';
+    // The app is in six languages (#303), so the rename is too: one language alone would be stale.
+    const line = '      title: { en: "Gallery", "pt-BR": "Galeria", de: "Galerie", es: "Galería", pl: "Galeria", it: "Galleria" },';
+    const renamed = '      title: { en: "My garden", "pt-BR": "Meu jardim", de: "Mein Garten", es: "Mi jardín", pl: "Mój ogród", it: "Il mio giardino" },';
     expect(source).toContain(line);
-    const reply = ["Renaming the gallery.", "```ts", "<<<<<<< SEARCH", line, "=======", line.replace('title: "Gallery"', 'title: "My garden"'), ">>>>>>> REPLACE", "```"].join("\n");
+    const reply = ["Renaming the gallery.", "```ts", "<<<<<<< SEARCH", line, "=======", renamed, ">>>>>>> REPLACE", "```"].join("\n");
     mocks.chatCreate.mockResolvedValue({ choices: [{ message: { content: reply } }] });
     const { loadDefinition } = await import("../src/validate-app.js");
     const { withLibrariesStoodIn } = await import("../src/package-modules.js");
@@ -174,7 +176,7 @@ describe("changing an app whose library needs a full web page", () => {
     const out = await startModify({ source, instruction: "call the gallery My garden", before, engine, modules: mods, onStep: (s) => steps.push(s as never) });
 
     expect(out.kind === "failed" ? out.reason : out.kind).toBe("source");
-    expect(out.kind === "source" && out.source).toContain('title: "My garden"');
+    expect(out.kind === "source" && out.source).toContain('title: { en: "My garden"');
     expect(mocks.chatCreate).toHaveBeenCalledTimes(1);
     expect(steps.find((s) => s.kind === "candidate")?.detail).toMatch(/p5 1\.11\.11 was not run here/);
   }, 60_000);

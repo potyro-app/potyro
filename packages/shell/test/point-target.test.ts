@@ -178,7 +178,8 @@ describe("pointing at a translated label", () => {
     expect(describePoint(ref, localize(raw, "pl") as AppDefinition).words).toBe('the "Ilość" field of Produkt, as shown in the checklist on the "Zakupy" page');
     expect(describePoint(ref, raw).words).toBe('the "Quantity" field of Item, as shown in the checklist on the "Shopping" page');
     const slice = (await pointSlice(source, ref))!;
-    expect(slice.excerpt).toContain('label: { en: "Quantity", pl: "Ilość" }');
-    expect(slice.excerpt).toContain('help: { en: "How much, in your own words", pl: "Ile — własnymi słowami" }');
+    expect(slice.excerpt).toContain('label: { en: "Quantity", "pt-BR": "Quantidade", de: "Menge", es: "Cantidad", pl: "Ilość", it: "Quantità" }');
+    expect(slice.excerpt).toContain('en: "How much, in your own words",');
+    expect(slice.excerpt).toContain('pl: "Ile — własnymi słowami",');
   });
 });

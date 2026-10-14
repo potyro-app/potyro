@@ -45,6 +45,16 @@ describe("the slots in a source", () => {
     expect(at("pages.1.title")).toBeUndefined(); // a function: its words are in its body
   });
 
+  it("asks for no label for an option that is code (`options: [...TAGS]`), only for the options it can read", async () => {
+    const source = `import { defineApp } from "potyro";
+const TAGS = ["nap", "coffee"];
+export default defineApp({ id: "s", version: "1.0.0", schemaVersion: 1, language: "en",
+  entities: { c: { fields: { tags: { type: "tags", options: [...TAGS, "late"] } } } }, pages: [] });`;
+    const paths = sourceSlots((await readSourceWords(source))!).map((s) => s.path);
+    expect(paths).toContain("entities.c.fields.tags.labels.late");
+    expect(paths.filter((p) => p.includes("__potyro"))).toEqual([]);
+  });
+
   it("finds the strings inside functions that are not in ctx.t yet", async () => {
     const sw = (await readSourceWords(SOURCE))!;
     expect(functionStrings(sw).map((s) => s.text)).toEqual(["Keep ${r.name} cold"]);

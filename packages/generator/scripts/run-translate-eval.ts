@@ -2,7 +2,7 @@
 //
 //   pnpm --filter @potyro/generator eval:translate:fixture      # no model, no money: the scorer on hand-written answers
 //   OPENROUTER_API_KEY=… pnpm --filter @potyro/generator eval:translate -- --model deepseek/deepseek-v4-flash-0731 --max-calls 60 --max-cost 2
-//   OPENROUTER_API_KEY=… pnpm --filter @potyro/generator eval:translate -- --only translate-groceries-de,rename-quantity --max-calls 20 --max-cost 1
+//   OPENROUTER_API_KEY=… pnpm --filter @potyro/generator eval:translate -- --only translate-groceries-fr,rename-quantity --max-calls 20 --max-cost 1
 //
 // The paid run spends real money: every case is the Studio's modify loop (`runModifyLoop`, with
 // `translate` and the completeness check) against OpenRouter. It refuses to start without both

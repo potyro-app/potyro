@@ -240,11 +240,14 @@ const SCRIPTED_WORDS: Readonly<Record<string, { name: string; reply: string }>> 
   "Brazilian Portuguese": { name: "Minhas anotações de casa", reply: "Mudo o nome do app pra mostrar que ele é meu." },
 };
 
-/** The rename the language engine sends: against the app's top-level `name:` line, as the first message showed it. */
+/**
+ * The rename the language engine sends: against the app's top-level `name:` line, as the first
+ * message showed it — a plain name, or a one-line map of them (an example app in six languages, #303).
+ */
 function scriptedLanguageEdit(first: string): string {
   const person = /reply to the person in ([A-Z][a-z]+(?: [A-Z][a-z]+)?):/.exec(first)?.[1] ?? "English";
   const app = /The app's own words are in ([A-Z][a-z]+(?: [A-Z][a-z]+)?):/.exec(first)?.[1] ?? person;
-  const line = /^ {2}name: "[^"\n]*",$/m.exec(first)?.[0];
+  const line = /^ {2}name: (?:"[^"\n]*"|\{[^\n]*\}),$/m.exec(first)?.[0];
   if (!line) return SCRIPTED_EDIT;
   const reply = (SCRIPTED_WORDS[person] ?? SCRIPTED_WORDS.English!).reply;
   const name = (SCRIPTED_WORDS[app] ?? SCRIPTED_WORDS.English!).name;
