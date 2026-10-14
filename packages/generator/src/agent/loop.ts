@@ -83,8 +83,9 @@ export type LoopOutcome =
 export type LoopStep =
   | { kind: "thinking" }
   | { kind: "tool"; name: string; ok: boolean; detail: string }
-  /** `n`: which candidate this is, counted from 1 (the modify loop sets it; the eval reads it). */
-  | { kind: "candidate"; passed: boolean; detail: string; n?: number }
+  /** `n`: which candidate this is, counted from 1 (the modify loop sets it; the eval reads it).
+   *  `draft`: which independent first draft's chain it came from (the create loop, #262 phase 3). */
+  | { kind: "candidate"; passed: boolean; detail: string; n?: number; draft?: number }
   /** `repeat`: the model repeated itself (a reply, or the same tool call). `restart`: the modify loop
    *  started a fresh chain from the app and the request (#278). */
   | { kind: "unusable"; detail: string; repeat?: boolean; restart?: boolean };

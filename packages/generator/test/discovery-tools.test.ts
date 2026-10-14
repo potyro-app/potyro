@@ -11,6 +11,17 @@ import { runTool } from "../src/agent/tools.js";
 // up, not something it assumed.
 
 describe("lookupReference", () => {
+  // The paid create eval (#262 phase 3): lookup("Reminder") said "It does not exist" while
+  // AppDefinition declares `reminders?: Reminder[]` — a doc comment's match ran on past its own end and
+  // swallowed the declarations after it. Every declared type must be found by its own name.
+  it("finds EVERY declared type by its name — none is swallowed by a doc comment before it", () => {
+    const names = [...SCHEMA_REFERENCE.matchAll(/^export (?:interface|type) (\w+)/gm)].map((m) => m[1]!);
+    expect(names).toContain("Reminder");
+    const missing = names.filter((n) => !lookupReference(SCHEMA_REFERENCE, n).includes(`${n}`) || lookupReference(SCHEMA_REFERENCE, n).startsWith("Nothing in the potyro module"));
+    expect(missing).toEqual([]);
+    expect(lookupReference(SCHEMA_REFERENCE, "ReminderWhen")).toContain("export type ReminderWhen");
+  });
+
   it("returns a type by name, with its doc comment", () => {
     const out = lookupReference(SCHEMA_REFERENCE, "MapCamera");
     expect(out).toContain("export type MapCamera");
