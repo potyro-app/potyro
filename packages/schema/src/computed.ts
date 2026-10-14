@@ -11,13 +11,21 @@ export interface ComputedInfo {
   /** Its own label, as words (a localized definition's is already the person's language); absent
    *  for a bare function or an object without one — the caller humanises the key. */
   label?: string;
+  /** What each value it returns reads as, keyed by the value (`labels`); absent when it has none. */
+  labels?: Record<string, string>;
+  /** The ICU message an object value reads as (`format`); absent when it has none. */
+  format?: string;
 }
 
 export function computedInfo(entity: EntityDef | undefined, key: string): ComputedInfo | undefined {
   const c = entity?.computed?.[key] as Computed | ComputedDef | string | undefined;
   if (c === undefined || c === null) return undefined;
   if (typeof c === "function" || typeof c === "string") return { value: c };
-  return c.label === undefined ? { value: c.value } : { value: c.value, label: plainWords(c.label) };
+  const info: ComputedInfo = { value: c.value };
+  if (c.label !== undefined) info.label = plainWords(c.label);
+  if (c.labels !== undefined) info.labels = Object.fromEntries(Object.entries(c.labels).map(([k, w]) => [k, plainWords(w)]));
+  if (c.format !== undefined) info.format = plainWords(c.format);
+  return info;
 }
 
 /** The callable, or undefined when there is none here (unknown key, or only the sandbox's placeholder). */

@@ -15,7 +15,8 @@ const APP = `({
   id: "dishes", name: "Dishes", version: "1.0.0", schemaVersion: 1, language: "en", languages: ["en", "pl"],
   entities: { dish: { fields: { kcal: { type: "number" }, servings: { type: "number" } }, computed: {
     perServing: { label: { en: "Calories per serving", pl: "Kalorie na porcję" }, value: function(r){ return r.kcal / r.servings; } },
-    doubled: function(r){ return r.perServing * 2; }
+    doubled: function(r){ return r.perServing * 2; },
+    size: { labels: { big: { en: "big", pl: "duża" } }, format: { en: "{value} kcal", pl: "{value} kcal" }, value: function(r){ return r.kcal > 500 ? "big" : "small"; } }
   } } },
   pages: [{ id: "all", title: "All", view: { type: "list", entity: "dish" } }]
 })`;
@@ -44,6 +45,9 @@ describe("a computed with a label", () => {
       expect(row).toMatchObject({ perServing: 300, doubled: 600 });
       expect(await loaded.callComputed("dish", "perServing", row!, ctx)).toBe(300);
       expect(localize(loaded.definition, "pl").entities.dish!.computed!.perServing).toMatchObject({ label: "Kalorie na porcję" });
+      // A value's words are data too, and cross out of the box as data.
+      expect(localize(loaded.definition, "pl").entities.dish!.computed!.size).toMatchObject({ labels: { big: "duża" }, format: "{value} kcal" });
+      expect(row).toMatchObject({ size: "big" });
       loaded.dispose();
     });
   }
