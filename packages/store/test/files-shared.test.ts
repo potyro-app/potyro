@@ -3,7 +3,7 @@
 // Through a relay, as real devices are connected: two peers wired directly push everything to each
 // other and would make "on demand" impossible to see (peer-harness.ts says why).
 import { afterEach, describe, expect, it } from "vitest";
-import { copyStoreData, createRelayedPair, fileSpace, MemoryStore, type PeerPair } from "../src/index.js";
+import { copyStoreData, createRelayedPair, fileSpace, MemoryStore, SPACE_BUDGET, SpaceFullError, type PeerPair } from "../src/index.js";
 
 const text = (s: string): Blob => new Blob([s], { type: "text/plain" });
 
@@ -110,6 +110,42 @@ describe("a shared app's files, on demand", () => {
     expect(await (await fileSpace(to).read("read.md"))!.text()).toBe("read here");
     await pair.settle(300);
     expect(await fileSpace(pair.b).here({ id: notYet.id })).toBe(false);
+  });
+
+  it("counts every byte the space puts on the relay — a replaced or deleted file frees none of it", async () => {
+    pair = await createRelayedPair("usage");
+    const space = fileSpace(pair.a);
+    await space.write("a.bin", new Blob([new Uint8Array(1000)]));
+    await space.write("a.bin", new Blob([new Uint8Array(400)]));
+    await space.write("b.bin", new Blob([new Uint8Array(100)]));
+    await space.remove("b.bin");
+    expect(await pair.a.spaceUsage!()).toEqual({ used: 1500, budget: SPACE_BUDGET });
+    // The other member counts the same, from the space.
+    const seen = await eventually(pair, async () => ((await pair!.b.spaceUsage!()).used === 1500 ? true : null));
+    expect(seen).toBe(true);
+  });
+
+  it("refuses a write past the space's budget in plain words, and writes nothing", async () => {
+    pair = await createRelayedPair("budget", { spaceBudget: 2000 });
+    const space = fileSpace(pair.a);
+    await space.write("a.bin", new Blob([new Uint8Array(1500)]));
+    const refused = await space.write("b.bin", new Blob([new Uint8Array(600)])).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(SpaceFullError);
+    expect(refused).toMatchObject({ code: "space-full", used: 1500, budget: 2000, needed: 600 });
+    expect((await space.list()).map((f) => f.path)).toEqual(["a.bin"]);
+    expect((await pair.a.spaceUsage!()).used).toBe(1500);
+  });
+
+  it("bringing an earlier copy back costs the space nothing: its bytes are already there", async () => {
+    pair = await createRelayedPair("restore-free", { spaceBudget: 2500 });
+    const space = fileSpace(pair.a);
+    await space.write("a.bin", new Blob([new Uint8Array(1000).fill(1)]));
+    await space.write("a.bin", new Blob([new Uint8Array(1000).fill(2)]));
+    const [first] = await space.earlier("a.bin");
+    await space.restoreEarlier("a.bin", first!);
+    expect((await pair.a.spaceUsage!()).used).toBe(2000);
+    expect((await (await space.read("a.bin"))!.arrayBuffer()).byteLength).toBe(1000);
+    expect(new Uint8Array(await (await space.read("a.bin"))!.arrayBuffer())[0]).toBe(1);
   });
 
   it("a shared space never holds the app's code", async () => {

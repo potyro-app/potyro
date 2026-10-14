@@ -10,7 +10,7 @@
 // The files are held here, in memory, from the moment they arrive until the person has chosen: a
 // `File` cannot survive a reload, and does not need to — a drop or a share happens in front of them.
 import type { FileInfo } from "potyro";
-import { AppPackageError, isZip, readAppPackage, type Store } from "@potyro/store";
+import { AppPackageError, isZip, readAppPackage, SpaceFullError, type Store } from "@potyro/store";
 import { matchesAccept } from "@potyro/views";
 import { bringIn } from "./app-folder.js";
 import { declaredEntities } from "./source-declared.js";
@@ -71,8 +71,21 @@ const arrived = new Map<string, { ids: string[]; at: number }>();
 
 /** Put the files in the app's folder as the person's, and remember them so its Files tab can point them out. */
 export async function landFiles(store: Store, appId: string, files: readonly File[], now: () => number = Date.now): Promise<FileInfo[]> {
-  const landed = await bringIn(store, files);
-  arrived.set(appId, { ids: landed.map((f) => f.id), at: now() });
+  // One at a time: when a shared space fills up part way (#255), what fitted stays, and the error
+  // carries the rest (`rest`) for the question that follows.
+  const landed: FileInfo[] = [];
+  try {
+    for (const [i, file] of files.entries()) {
+      try {
+        landed.push(...(await bringIn(store, [file])));
+      } catch (e) {
+        if (e instanceof SpaceFullError) throw Object.assign(e, { rest: files.slice(i) });
+        throw e;
+      }
+    }
+  } finally {
+    if (landed.length) arrived.set(appId, { ids: landed.map((f) => f.id), at: now() });
+  }
   return landed;
 }
 

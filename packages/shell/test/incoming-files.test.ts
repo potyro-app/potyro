@@ -3,7 +3,7 @@
 // Files that arrive from outside — dropped on Potyro, shared to it, opened with it (#254): which are
 // an app to add, which are files for an app, which app suits them, and where they land.
 import { describe, expect, it } from "vitest";
-import { MemoryStore, fileSpace, packAppPackage } from "@potyro/store";
+import { MemoryStore, SpaceFullError, fileSpace, packAppPackage } from "@potyro/store";
 import { arrivedIn, fitsFor, isAppArrival, landFiles, offerFiles, onOffer, takeOffer } from "../src/incoming-files.js";
 
 const file = (name: string, body: string | Uint8Array, type = ""): File => new File([body as BlobPart], name, { type });
@@ -52,6 +52,23 @@ describe("landing them", () => {
     expect(arrivedIn("notes", () => 5_000)).toEqual(landed.map((f) => f.id));
     expect(arrivedIn("notes", () => 60_000)).toEqual([]);
     expect(arrivedIn("groceries", () => 5_000)).toEqual([]);
+  });
+});
+
+describe("landing them in a full shared space (#255)", () => {
+  it("lands what fits and hands back the rest, with why", async () => {
+    const store = new MemoryStore();
+    await store.open("shelf");
+    let used = 0;
+    const shared = Object.assign(Object.create(store) as MemoryStore, {
+      spaceUsage: async () => ({ used, budget: 10 }),
+      putBlob: async (b: Blob) => ((used += b.size), store.putBlob(b)),
+    });
+    const files = [file("a.txt", "123456"), file("b.txt", "123456"), file("c.txt", "1")];
+    const err = await landFiles(shared, "shelf", files).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SpaceFullError);
+    expect((err as SpaceFullError & { rest: File[] }).rest.map((f) => f.name)).toEqual(["b.txt", "c.txt"]);
+    expect((await fileSpace(store).list()).map((f) => f.path)).toEqual(["a.txt"]);
   });
 });
 

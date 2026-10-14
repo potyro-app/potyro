@@ -242,6 +242,20 @@ export function canSync(): boolean {
 /** Why sync cannot start here, in the person's language (read at call time, so it follows a switch). */
 export const cannotSyncMessage = (): string => t`Sync needs IndexedDB, which this browser has disabled or blocked.`;
 
+/**
+ * A shared space's budget on the relay, when this device was told another (#255): `SPACE_BUDGET`
+ * otherwise. For a relay with more room than the default, and for tests that fill a space.
+ */
+function spaceBudgetOverride(): number | undefined {
+  try {
+    const raw = globalThis.localStorage?.getItem("potyro:space-budget");
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function openStore(namespace: string, opts?: OpenStoreOpts): Promise<Store> {
   if (opts?.sync) {
     // Deliberately NOT wrapped in a fallback. Falling back to a non-CRDT store would look like it
@@ -270,6 +284,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       // Your display name, so peers see a person rather than a truncated account id. Passed on
       // EVERY open, because renaming yourself must reach people you already share with.
       profileName: identity.peekIdentity()?.name,
+      spaceBudget: spaceBudgetOverride(),
     });
     lastSyncHandle = handle;
     modes.set(namespace, "crdt-worker");

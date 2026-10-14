@@ -277,6 +277,14 @@ msgstr "{appName} files"
 msgid "{appName} will no longer come with it. Copies already installed keep theirs until they update."
 msgstr "{appName} will no longer come with it. Copies already installed keep theirs until they update."
 
+#: ../shell/src/device-files.tsx
+msgid "{appName}’s shared space is full"
+msgstr "{appName}’s shared space is full"
+
+#: ../shell/src/files-panel.tsx
+msgid "{appName}’s shared space is full: {used} of {budget} is used."
+msgstr "{appName}’s shared space is full: {used} of {budget} is used."
+
 #: ../shell/src/ask-review.tsx
 msgid "{approvedN} of {totalN} approved"
 msgstr "{approvedN} of {totalN} approved"
@@ -721,6 +729,10 @@ msgstr "{title}: choose"
 #: ../views/src/board.tsx
 msgid "{title}: more"
 msgstr "{title}: more"
+
+#: ../shell/src/device-files.tsx
+msgid "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
+msgstr "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
 
 #: ../shell/src/backup-switch.tsx
 msgid "{waiting, plural, one {# app lives only on this device. If it is lost, so is the app.} other {# apps live only on this device. If it is lost, so are they.}}"
@@ -3011,6 +3023,11 @@ msgstr "Keep it anyway? It has problems, so parts of it may not work."
 msgid "Keep it anyway? This version {loss}."
 msgstr "Keep it anyway? This version {loss}."
 
+#. A shared app's space is full: keep the file outside it, on this device
+#: ../shell/src/device-files.tsx
+msgid "Keep it on this device only"
+msgstr "Keep it on this device only"
+
 #: ../views/src/checklist.tsx
 msgid "Keep them"
 msgstr "Keep them"
@@ -3023,6 +3040,10 @@ msgstr "Keep your apps on the relay, so a new device signed in with your words c
 #: ../shell/src/add-app-dialog.tsx
 msgid "Keeps"
 msgstr "Keeps"
+
+#: ../shell/src/device-files.tsx
+msgid "Kept here because {appName}’s shared space was full. The app and the people you share it with do not see these."
+msgstr "Kept here because {appName}’s shared space was full. The app and the people you share it with do not see these."
 
 #: ../shell/src/data-table.tsx
 msgid "Kept in storage; this app no longer shows it"
@@ -3862,6 +3883,11 @@ msgstr "Only http and https links can be fetched"
 msgid "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
 msgstr "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
 
+#. Files tab of a shared app: files kept outside its shared space
+#: ../shell/src/device-files.tsx
+msgid "Only on this device"
+msgstr "Only on this device"
+
 #: ../shell/src/ask-material.tsx
 msgid "Only the first {maxChars} characters will be used ({hereChars} here)."
 msgstr "Only the first {maxChars} characters will be used ({hereChars} here)."
@@ -4600,6 +4626,11 @@ msgstr "Shared — edits here reach everyone in it"
 #: ../shell/src/studio-thread-view.tsx
 msgid "Shared costs with my flatmates"
 msgstr "Shared costs with my flatmates"
+
+#. Files tab of a shared app: how much of its relay budget is used
+#: ../shell/src/files-panel.tsx
+msgid "Shared space: {used} of {budget} used"
+msgstr "Shared space: {used} of {budget} used"
 
 #: ../shell/src/share-page.tsx
 msgid "Shared with Potyro"

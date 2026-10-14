@@ -29,7 +29,7 @@ import { ulid } from "./ulid.js";
 /** A file named by its path, or by the `FileRef` a `file` field holds. */
 export type FileTarget = string | FileRef;
 
-export type FileSpaceErrorCode = "invalid-path" | "no-file" | "taken";
+export type FileSpaceErrorCode = "invalid-path" | "no-file" | "taken" | "space-full";
 
 export class FileSpaceError extends Error {
   constructor(
@@ -38,6 +38,22 @@ export class FileSpaceError extends Error {
   ) {
     super(message);
     this.name = "FileSpaceError";
+  }
+}
+
+/**
+ * A write a shared space has no room for (#255): what it holds on the relay, its budget, and what
+ * the write needed. Nothing was written.
+ */
+export class SpaceFullError extends FileSpaceError {
+  constructor(
+    readonly used: number,
+    readonly budget: number,
+    readonly needed: number,
+  ) {
+    const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    super("space-full", `This app's shared space is full: ${mb(used)} of ${mb(budget)} is used, and this file needs ${mb(needed)}.`);
+    this.name = "SpaceFullError";
   }
 }
 
@@ -230,6 +246,10 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
       const hash = await digest(bytes);
       const at = await allAt(path);
       const existing = at.reduce<StoredFile | null>((w, f) => (w ? newest(w, f) : f), null);
+      // A shared space has a budget on the relay (#255). Checked before a byte is written; replacing a
+      // file does not make room, since the relay keeps what it replaced.
+      const usage = await store.spaceUsage?.();
+      if (usage && usage.used + bytes.byteLength > usage.budget) throw new SpaceFullError(usage.used, usage.budget, bytes.byteLength);
       const ref = await store.putBlob(new Blob([bytes], { type: mime }));
       const stamp = now();
       // What this write replaces — the file as it was, and any entry a member made here apart — is
@@ -300,18 +320,16 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
 
     async restoreEarlier(target, copy) {
       const f = await mustFind(target);
-      const bytes = await store.getBlob({ key: copy.blob, mime: copy.mime });
-      if (!bytes) throw new FileSpaceError("no-file", `That earlier copy of "${f.path}" is not on this device yet`);
-      const restored = await space.write(f.path, bytes, { mime: copy.mime, origin: f.origin });
-      // The copy is the file again, so it is no longer an earlier one.
-      const now = await store.getFile(restored.id);
-      if (now?.earlier) {
-        const rest = now.earlier.filter((c) => c.hash !== copy.hash || c.blob !== copy.blob);
-        const { earlier: _drop, ...bare } = now;
-        await store.setFile(rest.length ? { ...bare, earlier: rest } : bare);
-        if (copy.blob !== now.blob) await store.deleteBlob(copy.blob);
-      }
-      return restored;
+      // The copy's bytes are already in the space (and on the relay): point the file back at them
+      // rather than write them again, which would cost a shared space the same bytes twice (#255).
+      const stamp = now();
+      const others = (f.earlier ?? []).filter((c) => !(c.blob === copy.blob && c.hash === copy.hash));
+      const { keep, drop } = prune([asEarlier(f, stamp), ...others], stamp);
+      const entry: StoredFile = { ...f, blob: copy.blob, hash: copy.hash, size: copy.size, mime: copy.mime, updated: stamp, ...(keep.length ? { earlier: keep } : {}) };
+      if (!keep.length) delete entry.earlier;
+      await store.setFile(entry);
+      for (const c of drop) if (c.blob !== copy.blob) await store.deleteBlob(c.blob);
+      return fileInfo(entry);
     },
   };
   return space;

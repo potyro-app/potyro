@@ -74,6 +74,7 @@ test("a shared app's file is listed for the other member, arrives when opened, a
 
   // ---- B: joins ----
   const ctxB = await browser.newContext();
+  await ctxB.addInitScript(() => localStorage.setItem("potyro:space-budget", "200"));
   const b = await device(ctxB);
   await b.goto(link);
   await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
@@ -122,6 +123,23 @@ test("a shared app's file is listed for the other member, arrives when opened, a
   await b.reload();
   await row(b, "reading-list.md").getByRole("button", { name: "Open reading-list.md" }).click();
   await expect(b.getByRole("dialog", { name: "reading-list.md" }).getByLabel("Contents of reading-list.md")).toContainText("Solaris", { timeout: 60_000 });
+  await b.getByRole("dialog", { name: "reading-list.md" }).getByRole("button", { name: "Close reading-list.md" }).click();
+
+  // ---- The space's budget on the relay: shown, and a file past it is offered a place on B only ----
+  // B was given a 200-byte budget (an override for this test); the space holds 17 + 16 + 27 bytes.
+  await expect(filesOf(b).first().locator(".k-files-space")).toContainText("Shared space: 60 B of 200 B used");
+  const big = b.waitForEvent("filechooser");
+  await filesOf(b).first().getByRole("button", { name: /Add files/ }).first().click();
+  await (await big).setFiles([file("too-big.txt", "x".repeat(500))]);
+  const full = b.locator(".k-dialog", { hasText: "shared space is full" });
+  await expect(full).toContainText("would not make room");
+  await full.getByRole("button", { name: "Keep it on this device only" }).click();
+  const deviceOnly = b.locator(".k-files-device");
+  await expect(deviceOnly).toContainText("Only on this device");
+  await expect(deviceOnly.locator(".k-files-row").filter({ hasText: "too-big.txt" })).toBeVisible();
+  // Not in the shared folder, and the space used no more.
+  await expect(filesOf(b).first().locator(".k-files-row")).toHaveCount(2);
+  await expect(filesOf(b).first().locator(".k-files-space")).toContainText("60 B of 200 B");
 
   await ctxA.close();
   await ctxB.close();

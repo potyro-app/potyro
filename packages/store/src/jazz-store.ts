@@ -126,7 +126,15 @@ export interface JazzStoreDeps {
    * for a store with no storage attached, e.g. in tests.
    */
   whenDurable?: () => Promise<void>;
+  /** How many bytes this space may hold on the relay (#255). `SPACE_BUDGET` when absent. */
+  spaceBudget?: number;
 }
+
+/**
+ * How much one shared space may put on the relay: 200 MB (#255). The relay keeps every byte ever
+ * written (cojson history), so this counts everything written, not what is listed now. docs/16.
+ */
+export const SPACE_BUDGET = 200 * 1024 * 1024;
 
 const ROOT_ENTITIES = "entities";
 const ROOT_KV = "kv";
@@ -137,6 +145,12 @@ const ROOT_BLOBS = "blobs";
  * exactly "on demand" (#255).
  */
 const ROOT_FILES = "files";
+/**
+ * Every blob this space ever wrote, by key, with its size (#255): what it holds on the relay. Keys
+ * are never removed — the relay never frees them — and each is written once, so members writing at
+ * once merge without counting anything twice.
+ */
+const ROOT_USAGE = "usage";
 
 /** Base64 helpers, kept for blobs written before KA-20 moved bytes into their own CoValue. */
 function base64Of(bytes: Uint8Array): string {
@@ -217,6 +231,7 @@ export class JazzStore implements Store {
   private readonly node: NodeLike;
   private readonly group: RawGroupLike;
   private readonly initialRootId?: string;
+  private readonly budget: number;
   private whenDurable?: () => Promise<void>;
   private root!: RawMapLike;
   private appId: string | null = null;
@@ -315,6 +330,7 @@ export class JazzStore implements Store {
     this.group = deps.group;
     this.initialRootId = deps.rootId;
     this.whenDurable = deps.whenDurable;
+    this.budget = deps.spaceBudget ?? SPACE_BUDGET;
   }
 
   /** Replace the durability hook. The IndexedDB backend needs writes to await its snapshot too,
@@ -1136,6 +1152,7 @@ export class JazzStore implements Store {
     const bytes = new Uint8Array(await b.arrayBuffer()) as Uint8Array<ArrayBuffer>;
     const index = await this.child(this.root, ROOT_BLOBS);
 
+    (await this.child(this.root, ROOT_USAGE)).set(key, bytes.byteLength);
     const stream = this.group.createBinaryStream?.<RawBinaryLike>();
     if (!stream) {
       // A group without binary streams (a test double). Keep the old shape rather than lose the file.
@@ -1196,6 +1213,25 @@ export class JazzStore implements Store {
     if (!core || core.isAvailable()) return false;
     await new Promise<void>((resolve) => core.loadFromStorage(() => resolve()));
     return finished();
+  }
+
+  /**
+   * What this space holds on the relay (#255): every blob it ever wrote. Files written before this
+   * was counted are added from their entries, so an older space does not read as empty.
+   */
+  async spaceUsage(): Promise<{ used: number; budget: number }> {
+    const usage = await this.childIfPresent(this.root, ROOT_USAGE);
+    const counted = new Map<string, number>();
+    for (const key of usage?.keys() ?? []) {
+      const n = usage!.get(key);
+      if (typeof n === "number") counted.set(key, n);
+    }
+    for (const f of await this.listFiles()) {
+      for (const c of [f, ...(f.earlier ?? [])]) if (!counted.has(c.blob)) counted.set(c.blob, c.size);
+    }
+    let used = 0;
+    for (const n of counted.values()) used += n;
+    return { used, budget: this.budget };
   }
 
   /** Fires when a blob's bytes arrive, so a placeholder can become the photo without a reload. */
