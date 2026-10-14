@@ -58,6 +58,9 @@ Shortcut for the whole loop: `pnpm --filter @potyro/native android` (build web �
 | Places → **+ New Place → Use my location** | Native **GPS** fills lat/lng (grant the permission prompt) |
 | Add a photo field / capture | Native **camera** returns the image |
 | Export an app | Writes the `.potyro.zip` into **Documents** via the native filesystem |
+| From Files, **share** a `.md` (or several files) to Potyro | "Add this file to…" lists your apps; picking one opens its **Files** tab with the file in it (#254) |
+| On a `.md` in Files, **Open with → Potyro** | The same question (ACTION_VIEW, read through the WebView from its `content://` address) |
+| Share a `.potyro-app.zip` to Potyro | **Add an app** opens on the app's card |
 
 The first schedule/GPS/camera call triggers the Android **permission prompt** — grant it. Exact alarms
 use `USE_EXACT_ALARM` (Android 14+, no prompt) with `SCHEDULE_EXACT_ALARM` as the Android 12/13
@@ -66,6 +69,11 @@ fallback. They, the two **location** permissions and **CAMERA** are injected by
 permissions and leaves the rest to the app, and without the location ones the geolocation plugin does
 not ask the person — it refuses with "Missing the following permissions in AndroidManifest.xml", which
 the geo field swallows, so "Use my location" silently does nothing. Found on a Pixel, 2026-09-16.
+
+The same script puts Potyro in the share sheet and the "Open with" list: `SEND`/`SEND_MULTIPLE` for any
+type (`@capgo/capacitor-share-target` copies each file into the app's cache) and `VIEW` on `content://`
+and `file://` (`@capacitor/app` reports it as an opened URL). A manifest patched by an older build, with
+the text-only filter, is upgraded in place. Not yet checked on a device (#254).
 
 ## Build tools: pinned to what Android Studio here can open
 

@@ -7,7 +7,7 @@ import type { Capabilities } from "@potyro/capabilities";
 export { getLaunchUrl, onUrlOpen, launchUrlFrom, listenForUrls, type CapacitorAppPlugin } from "./deep-links.js";
 export { maybeCreateNativeVault, vaultOver, type NativeSecretVault } from "./secure-vault.js";
 export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHttp } from "./native-http.js";
-export { listenForShares, textOfShare, type SharedText } from "./share-target.js";
+export { listenForShares, textOfShare, filesOfShare, readSharedFile, isOpenedFile, nameFromUri, type SharedText, type SharedFileRef } from "./share-target.js";
 export { systemLanguages } from "./system-locale.js";
 
 export {

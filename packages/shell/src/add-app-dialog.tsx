@@ -52,9 +52,13 @@ function sealedAfter(done: Installed, inspected: Inspected): SealedAfter {
 /** "a, b and c" in the active language. */
 const list = (words: readonly string[]): string => fmt.list(words);
 
-export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; initialLink?: string }) {
+/**
+ * `initialFiles`: files that arrived from outside — dropped on Potyro, or opened or shared with it
+ * (#254) — read straight away, as if they had been chosen here.
+ */
+export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: () => void; initialLink?: string; initialFiles?: File[] }) {
   const { t } = useLingui();
-  const [step, setStep] = useState<Step>({ kind: "choose", tab: initialLink ? "link" : null });
+  const [step, setStep] = useState<Step>(initialFiles?.length ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
   const [link, setLink] = useState(initialLink ?? "");
   const [paste, setPaste] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +87,15 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
       setStep({ kind: "choose", tab: source === "file" ? null : source });
     }
   };
+
+  // Files that arrived from outside are read once: a second read (strict mode) would only repeat it.
+  const readInitial = useRef(false);
+  useEffect(() => {
+    if (!initialFiles?.length || readInitial.current) return;
+    readInitial.current = true;
+    void read("file", () => gatherFromFiles(initialFiles));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fromDevice = async (): Promise<void> => {
     const files = await pickFilesFromInput({ multiple: true });
