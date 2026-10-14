@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkReferences, checkWords, isPotyroApp, wordGaps, wordSlots } from "potyro";
+import { checkReferences, checkWords, computedInfo, computedRun, isPotyroApp, wordGaps, wordSlots, type AppDefinition } from "potyro";
 import recipes from "../recipes.app.js";
 import plants from "../plants.app.js";
 import places from "../places.app.js";
@@ -26,8 +26,29 @@ describe("example apps are valid Potyro apps (living fixtures)", () => {
   }
 });
 
+/** Every computed a page heads with its name (#310): in a group, a detail section, a table column. */
+function headedComputeds(app: AppDefinition): Array<{ entity: string; key: string }> {
+  const out: Array<{ entity: string; key: string }> = [];
+  const add = (entity: string, keys: readonly string[] | undefined): void => {
+    for (const key of keys ?? []) if (app.entities[entity]?.computed?.[key] !== undefined) out.push({ entity, key });
+  };
+  for (const [entity, def] of Object.entries(app.entities)) for (const g of def.groups ?? []) add(entity, g.fields);
+  const views = app.pages.flatMap((p) => [p.view, ...(p.layout?.items ?? []).map((i) => i.view)]) as unknown as Array<Record<string, unknown>>;
+  for (const v of views) {
+    const entity = String(v.entity ?? "");
+    if (v.type === "detail") for (const s of (v.sections as Array<{ fields: string[] }> | undefined) ?? []) add(entity, s.fields);
+    if (v.type === "table") add(entity, (v.display as { columns?: string[] } | undefined)?.columns);
+  }
+  return out;
+}
+
 describe("every example speaks the six languages (#303)", () => {
   for (const [name, app] of Object.entries(apps)) {
+    it(`${name}'s computed values that a page shows under a heading say what they are called (#310)`, () => {
+      const unlabelled = headedComputeds(app).filter(({ entity, key }) => computedInfo(app.entities[entity], key)?.label === undefined);
+      expect(unlabelled).toEqual([]);
+    });
+
     it(`${name} is written in English and carries all six, with no map missing one`, () => {
       expect(app.language).toBe("en");
       expect(app.languages).toEqual(SIX);
@@ -63,6 +84,6 @@ describe("workout fixture exercises nested lists + async computed", () => {
 
   it("has an async computed that reads history", () => {
     expect(workout.entities.exercise.computed).toHaveProperty("lastBest");
-    expect(typeof workout.entities.exercise.computed?.lastBest).toBe("function");
+    expect(typeof computedRun(workout.entities.exercise, "lastBest")).toBe("function");
   });
 });

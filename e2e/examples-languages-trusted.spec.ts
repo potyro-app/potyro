@@ -59,6 +59,22 @@ test("recipes reads in Polish, its custom cook-along view too", async ({ page })
   await expect(page.getByRole("button", { name: "Zakończ" })).toBeVisible();
 });
 
+test("a recipe's computed values are headed in Polish, not by their keys (#310)", async ({ page }) => {
+  await open(page, "recipes", "Przepisy");
+  await page.locator(".k-list-row", { hasText: "Fluffy Pancakes" }).first().getByText("Fluffy Pancakes").click();
+  const detail = page.locator("article.k-detail");
+  await expect(detail).toBeVisible();
+  // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
+  await expect(detail.getByText("Wartości odżywcze i koszt", { exact: true })).toBeVisible();
+  await expect(detail.locator("dt", { hasText: "Kalorie na porcję" })).toBeVisible();
+  await expect(detail.locator("dt", { hasText: "Białko na porcję" })).toBeVisible();
+  await expect(detail.locator("dt", { hasText: "Szacowany koszt" })).toBeVisible();
+  await expect(detail.locator("dt", { hasText: "Brakujące składniki" })).toBeVisible();
+  // What every language read before: the key, humanised.
+  await expect(detail.getByText("Calories Per Serving")).toHaveCount(0);
+  await expect(detail.getByText("Estimated Cost")).toHaveCount(0);
+});
+
 test("split reads in Polish", async ({ page }) => {
   await open(page, "split", "Podział");
   await expect(page.getByText("Salda", { exact: true }).first()).toBeVisible();
