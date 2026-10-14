@@ -47,14 +47,24 @@ msgstr "{0, plural, one {Read # back} other {Read # back}}"
 msgid "{apps} ({records})."
 msgstr "{apps} ({records})."
 
+#. A language in the picker: its own name, then its name in the current language
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} — {language}"
+msgstr "{autonym} — {language}"
+
+#. A language in the picker: its own name, its name in the current language, and that its translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} — {language} (draft)"
+msgstr "{autonym} — {language} (draft)"
+
+#. A language in the picker, named in itself, whose translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} (draft)"
+msgstr "{autonym} (draft)"
+
 #: ../shell/src/launcher.tsx
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Shared with # person} other {Shared with # people}}"
-
-#. A language in the picker whose translation is an unreviewed model draft
-#: ../shell/src/language-picker.tsx
-msgid "{name} (draft)"
-msgstr "{name} (draft)"
 
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
@@ -248,11 +258,6 @@ msgstr "Describe an app"
 msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
 msgstr "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
 
-#. Tag beside a language in the picker: its translation is an unreviewed model draft
-#: ../shell/src/language-picker.tsx
-msgid "draft"
-msgstr "draft"
-
 #: ../shell/src/launcher.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
@@ -338,9 +343,10 @@ msgstr "Make the app you need"
 msgid "Manual"
 msgstr "Manual"
 
+#. First choice in the language picker: follow the device; the language it is set to, in its own name
 #: ../shell/src/language-picker.tsx
-msgid "Match this device"
-msgstr "Match this device"
+msgid "Match this device ({deviceName})"
+msgstr "Match this device ({deviceName})"
 
 #: ../shell/src/storage-report.tsx
 msgid "Measuring…"

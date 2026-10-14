@@ -18,7 +18,7 @@ import { useState } from "react";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { StorageReport } from "./storage-report.js";
-import { LanguagePicker } from "./language-picker.js";
+import { LANGUAGE_SELECT_ID, LanguagePicker } from "./language-picker.js";
 import { BackupSwitch } from "./backup-switch.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
@@ -215,8 +215,11 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
         {/* Early, before anything that has to be read carefully: someone who cannot read the rest
             of this panel needs to find this first. */}
         <section aria-labelledby="k-lang-h">
+          {/* The heading is the select's visible label: tapping it opens the picker. */}
           <h3 id="k-lang-h">
-            <Trans comment="Section heading: which language Potyro is shown in">Language</Trans>
+            <label htmlFor={LANGUAGE_SELECT_ID}>
+              <Trans comment="Section heading: which language Potyro is shown in">Language</Trans>
+            </label>
           </h3>
           <LanguagePicker />
         </section>
