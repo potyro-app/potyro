@@ -234,7 +234,7 @@ only that part. Each is reported under a name in the app's own terms:
 
 | `what` | Contained by | What the person sees |
 |---|---|---|
-| `computed meal.kcal` | host/resolve.ts — the value is empty | on every view of `meal`: "This part of the app hit a problem: “Kcal” could not be worked out for some records: …" |
+| `computed meal.kcal` | host/resolve.ts — the value is empty | nothing but the empty value: every record still shows. No alert — it would take the place of a view that works to tell the person using the app about code they cannot fix. Whoever checks the app hears it here (the Studio's run of a change); the console says it once |
 | `page today` | runtime/watch.ts — the page's filter, sort or query | where its rows would be: "… its records could not be listed: …" |
 | `view today#1` | views `PartBoundary`, around each view a page shows | in that view's place: "… it could not be shown: …"; the views beside it and every other page carry on |
 | `action meal.log`, `page action today[0]` | runtime `runAction` / `runPageAction` | a toast, as before |

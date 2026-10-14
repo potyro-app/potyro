@@ -14,6 +14,14 @@ import type { Ctx, Resolved, ViewProps } from "potyro";
 // ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
 // it, and it runs anywhere the shell does. ----
 
+/**
+ * A recipe's ingredient rows, for the sums below. A recipe nobody has added ingredients to yet has
+ * none (not a list that is missing), and a row whose ingredient was deleted has nothing to add up.
+ */
+function ingredientRows(r: Resolved): any[] {
+  return (Array.isArray(r.ingredients) ? r.ingredients : []).filter((i: { ingredient?: unknown } | null) => i?.ingredient);
+}
+
 /** Rough difficulty from the amount of prep + steps. */
 function scoreDifficulty(r: Resolved): "easy" | "medium" | "hard" {
   const steps = Array.isArray(r.steps) ? r.steps.length : 0;
@@ -144,7 +152,7 @@ export default defineApp({
   id: "recipes",
   name: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
   icon: "🍳",
-  version: "1.1.0",
+  version: "1.1.1",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
@@ -414,13 +422,13 @@ export default defineApp({
       // ---- logic: ordinary functions; relations on `r` are pre-resolved ----
       computed: {
         calories: (r) =>
-          r.ingredients.reduce((s, i) => s + (i.ingredient.caloriesPer100 ?? 0) * i.quantity / 100, 0),
+          ingredientRows(r).reduce((s, i) => s + (i.ingredient.caloriesPer100 ?? 0) * i.quantity / 100, 0),
         protein: (r) =>
-          r.ingredients.reduce((s, i) => s + (i.ingredient.proteinPer100 ?? 0) * i.quantity / 100, 0),
+          ingredientRows(r).reduce((s, i) => s + (i.ingredient.proteinPer100 ?? 0) * i.quantity / 100, 0),
         fat: (r) =>
-          r.ingredients.reduce((s, i) => s + (i.ingredient.fatPer100 ?? 0) * i.quantity / 100, 0),
+          ingredientRows(r).reduce((s, i) => s + (i.ingredient.fatPer100 ?? 0) * i.quantity / 100, 0),
         carbs: (r) =>
-          r.ingredients.reduce((s, i) => s + (i.ingredient.carbsPer100 ?? 0) * i.quantity / 100, 0),
+          ingredientRows(r).reduce((s, i) => s + (i.ingredient.carbsPer100 ?? 0) * i.quantity / 100, 0),
         // A computed a page shows under a heading says what it is called, in every language (#310).
         caloriesPerServing: {
           label: { en: "Calories per serving", "pt-BR": "Calorias por porção", de: "Kalorien pro Portion", es: "Calorías por ración", pl: "Kalorie na porcję", it: "Calorie per porzione" },
@@ -442,7 +450,7 @@ export default defineApp({
             unknown: { en: "unknown", "pt-BR": "desconhecida", de: "unbekannt", es: "desconocida", pl: "nieznany", it: "sconosciuta" },
           },
           value: (r) => {
-            const diets = r.ingredients.map((i: any) => i.ingredient.diet).filter(Boolean);
+            const diets = ingredientRows(r).map((i: any) => i.ingredient.diet).filter(Boolean);
             if (diets.length === 0) return "unknown";
             if (diets.every((d: string) => d === "vegan")) return "vegan";
             if (diets.every((d: string) => d === "vegan" || d === "vegetarian")) return "vegetarian";
@@ -451,14 +459,14 @@ export default defineApp({
         },
         estimatedCost: {
           label: { en: "Estimated cost", "pt-BR": "Custo estimado", de: "Geschätzte Kosten", es: "Coste estimado", pl: "Szacowany koszt", it: "Costo stimato" },
-          value: (r) => r.ingredients.reduce((s: number, i: any) => s + (i.ingredient.pricePerKg ?? 0) * (i.quantity / 1000), 0),
+          value: (r) => ingredientRows(r).reduce((s: number, i: any) => s + (i.ingredient.pricePerKg ?? 0) * (i.quantity / 1000), 0),
         },
         // which ingredients this recipe needs that aren't currently in stock
         missingIngredients: {
           label: { en: "Missing ingredients", "pt-BR": "Ingredientes em falta", de: "Fehlende Zutaten", es: "Ingredientes que faltan", pl: "Brakujące składniki", it: "Ingredienti mancanti" },
-          value: (r) => r.ingredients.filter((i: any) => !i.ingredient.inStock).map((i: any) => i.ingredient.name),
+          value: (r) => ingredientRows(r).filter((i: any) => !i.ingredient.inStock).map((i: any) => i.ingredient.name),
         },
-        canCook: (r) => r.ingredients.length > 0 && r.ingredients.every((i: any) => i.ingredient.inStock),
+        canCook: (r) => ingredientRows(r).length > 0 && ingredientRows(r).every((i: any) => i.ingredient.inStock),
       },
 
       actions: {
@@ -574,7 +582,7 @@ export default defineApp({
         ],
         filter: (r, ctx) => {
           const have = new Set((ctx.params.pantry as string[]) ?? []);
-          return r.ingredients.length > 0 && r.ingredients.every((i) => have.has(i.ingredient.id));
+          return ingredientRows(r).length > 0 && ingredientRows(r).every((i) => have.has(i.ingredient.id));
         },
         display: {
           primary: "name",
@@ -588,7 +596,7 @@ export default defineApp({
                 pl: "{n, plural, one {# składnik} few {# składniki} many {# składników} other {# składnika}}",
                 it: "{n, plural, one {# ingrediente} other {# ingredienti}}",
               },
-              { n: r.ingredients.length },
+              { n: ingredientRows(r).length },
             ),
           media: "photo",
         },

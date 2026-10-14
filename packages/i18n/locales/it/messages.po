@@ -3749,6 +3749,11 @@ msgstr "Niente da fare."
 msgid "Nothing to investigate yet"
 msgstr "Ancora niente su cui indagare"
 
+#. Load your apps: the button when no app is ticked
+#: ../shell/src/restore-apps.tsx
+msgid "Nothing to load"
+msgstr "Niente da caricare"
+
 #: ../shell/src/filter-chrome.tsx
 msgid "Nothing to pick yet."
 msgstr "Ancora niente da scegliere."
