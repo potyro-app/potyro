@@ -11,24 +11,74 @@ runner accordingly.
 | provenance | example | runner | `ctx.caps` |
 |---|---|---|---|
 | **trusted** | app in your own workspace dir; app you authored/promoted | **direct**: real import / dynamic `import()` in the host (main thread or worker), full language, real modules | all real, unmediated, no prompts |
-| **untrusted** | app imported via share-sheet, URL, or received file, not yet promoted | **isolated**: bundled and run in a **QuickJS-WASM** isolate | denied by default; each declared permission granted only after a user consent prompt, then handed a **mediated** wrapper |
+| **untrusted** | app imported via share-sheet, URL, or received file, not yet promoted | **sealed**: bundled, and its logic run in a **browser realm** — a Worker inside an opaque-origin sandboxed iframe — reached only through the mediated `ctx` (#272; the QuickJS-WASM isolate is the fallback, behind a flag) | denied by default; each declared permission granted only after a user consent prompt, then handed a **mediated** wrapper |
 
 The user can inspect an untrusted app's source and **promote** it to trusted (then it runs
 direct, full authority) — same mental model as trusting a browser extension or a userscript.
 Promotion is explicit and revocable.
 
-## Why QuickJS-WASM for the untrusted runner
+## Why a browser realm for the untrusted runner (#272)
 
-- **Identical semantics on web and native.** The same isolate runs in the PWA and inside the
-  Capacitor app — no per-target sandbox divergence.
-- **No ambient authority.** The isolate has no `fetch`, `window`, DOM, filesystem, or storage
-  unless the host explicitly injects a function. `ctx` is the *only* bridge in.
-- **Hard limits.** Memory ceiling and execution timeout per call; a runaway or malicious app
-  is bounded, not fatal.
-- **Real JavaScript.** Full language inside the box — loops, closures, classes, the app's own
-  bundled helpers. Nothing about the *language* is reduced; only *authority* is.
+Measured in docs/22 (Chromium with and without site isolation, Firefox with and without Fission,
+WebKit), and shipped for shared apps' **logic** on 2026-10-14 (phase 1). Custom views of shared apps
+stay off, as before; the view phase waits for the Android WebView probe (docs/22 §5).
 
-Trusted apps **skip the isolate entirely** — native speed, real imports, native modules. You
+```
+ shell page ── createSharedAppLoader → createRealmLoader(frameSpawner()) ── LoadedApp.call*(…, ctx)
+   │  ctx = buildCtx(): mediateCaps, values gate, authorship — the same object a trusted app holds
+   │  RealmLoadedApp: op allow-list (OPS) + issued ctx ids → ctx.<method>(…); watchdog
+   │        ▲ one MessagePort per app
+   └────────┼──── <iframe sandbox="allow-scripts" srcdoc>   opaque origin, realm CSP, WebRTC deleted
+            └───── Worker (blob:)  the app bundle (the same IIFE QuickJS ran) + DirectLoadedApp
+```
+
+- **A browser's own built-ins, sealed.** `Intl`, `URL`, `TextEncoder`, `crypto`, timers,
+  `structuredClone`, `Intl.Segmenter`: a shared app behaves as it would in the person's own browser.
+  Through QuickJS the same app's computed values came back empty (docs/22 §2). What a Worker still
+  lacks is a page — `window`, `document` — so a library that touches one while it loads fails as
+  before, and the card says so (`missing-features.ts`).
+- **No ambient authority.** The frame's sandbox is `allow-scripts` and nothing else, so its origin
+  is opaque: no cookies, no storage of the shell's, no parent DOM, no popups, no top navigation, no
+  forms. Its CSP — `default-src 'none'; connect-src 'none'; …` (`REALM_CSP`, `host/src/realm/
+  protocol.ts`) — lets nothing load from a URL and nothing connect; the Worker inherits both. `ctx`
+  is the only bridge: every op the realm sends is checked against a fixed list and a ctx id the
+  host issued, and is then the very method call a trusted app makes, on the ctx `buildCtx` built —
+  `mediateCaps`, the values gate and authorship are not repeated anywhere, so they cannot drift.
+- **Two holes CSP leaves, closed** (docs/22 §3.2). WebRTC: CSP does not govern ICE and no engine
+  honours `webrtc 'block'`, so the frame deletes the RTC constructors before anything runs (a Worker
+  never has them). Self-navigation: the sandbox lets the frame navigate itself and its own CSP
+  cannot stop it, so **the shell is served with `frame-src 'none'`** — a `<meta>` in
+  `shell/index.html` (all the Capacitor WebView gets), and the same policy as a header from the dev
+  server and `vite preview` (`shell/vite.config.ts`) and Apache (`deploy/apps.vaz.io.conf`). A
+  srcdoc is not a fetch, so the realm still loads. `e2e/shell-csp-*.spec.ts` checks it where it is
+  served, with a control page that has no policy.
+- **Limits, by a watchdog** (`RealmLoadedApp`). Each call has a deadline (1 s, paused while a
+  question, a consent prompt, a dialog or a fetch waits on the person or the world); the Worker beats
+  every 100 ms and a second of silence stops it; a realm that floods the host with messages is
+  stopped too. A stop removes the frame, which ends its Worker, rejects what was waiting with the
+  reason, and the next call starts a fresh realm (40–60 ms). Logic in a loop is stopped in about a
+  second in every engine, and the shell's own thread never stalls (`e2e/realm-escape-sandbox.spec.ts`).
+- **Real JavaScript, and faster.** Full language and the browser's built-ins; `ctx.query` crosses
+  1.4–4.7× faster than through QuickJS, and formatting no longer crosses at all (docs/22 §6).
+
+What is lost against QuickJS, and how it is answered (docs/22 §7):
+
+| QuickJS gave | The realm | Answer |
+|---|---|---|
+| A memory cap (claimed 64 MB) | None per Worker | The cap never held as shipped (docs/22 §6.1). Cap what crosses `ctx`; process isolation where the engine has it. |
+| Interrupting one call, keeping the VM | The whole realm stops after ≤ 1 s of silence | App state lives in the Store, so a stop loses a cache; the next call restarts it. |
+| Pre-empting any code | Logic: yes, by ending its thread. Views: only where the frame is out of process | Views of shared apps stay off (phase 3 decides). |
+| The same semantics everywhere | The engine's own built-ins and ICU data | The point of #272: an app behaves as in the person's browser. Formatting is still `format.ts` at both provenances. |
+| No WebRTC, no navigation, by construction | Both exist in the frame | Deleted, and `frame-src 'none'` (above). |
+
+**The QuickJS fallback** stays until the owner removes it (docs/22 §8 phase 4). It runs when
+`localStorage["potyro:sandbox"] = "quickjs"` on a device, when the shell is built with
+`VITE_POTYRO_SANDBOX=quickjs`, under `pnpm dev:sandbox:quickjs`, wherever no realm can be built (no
+Worker, no DOM: the Node tests), and for the rest of a session in which the realm would not start
+(`RealmStartError`: the box failed, not the app). Either way the app is sealed. Verification and the
+Studio's checks still run candidates in QuickJS until phase 2 moves them.
+
+Trusted apps **skip the sealed box entirely** — native speed, real imports, native modules. You
 don't pay sandbox cost for your own code. (On web, a trusted app may still run in a Worker for
 UI responsiveness; that's a performance choice, not a trust boundary.)
 
@@ -52,7 +102,7 @@ Joining a shared link is itself the consent, and the join dialog says what synci
 `sync` in the manifest changes what the question says, not whether it is asked (KA-23).
 
 Data isolation: an untrusted app can never read another app's records — the `Store` is opened
-per app id, and the isolate only receives a `ctx` bound to that app's store.
+per app id, and the realm (or the isolate) only receives a `ctx` bound to that app's store.
 
 ## Distribution: what a shareable app is
 
@@ -75,16 +125,17 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   ships — before anything is saved.
 - **The card never runs code** (#271). `pnpm pack:app`, and the Export bundle, write what the app
   declares into `manifest.json` as `app`: the definition with every function replaced by the
-  isolate's marker (`store/src/app-declaration.ts`). `pack:app` reads it where the author packs it,
+  sealed box's marker (`store/src/app-declaration.ts`). `pack:app` reads it where the author packs it,
   in Node, so a top level that needs `Intl` still declares itself. The card is drawn from that. A
   package without it (an older one, pasted source) is read in the sealed box instead; if that
   throws, the card still comes up and says the app could not be previewed — never "does not load".
   If the code, once loaded, names a different app than its declaration, it is not added.
 - **A test load at install** (#271). Before the person confirms, the module and its libraries load in
-  the sealed box on a throwaway store and the generator's smoke run puts sample records through its
+  the sealed box the app will run in — the realm, or QuickJS behind the flag — on a throwaway store and the generator's smoke run puts sample records through its
   computed values, filters, actions and reminders (`shell/src/app-trial.ts`). A ReferenceError or
   TypeError on a global the box lacks is named in plain words on the card ("It uses a feature shared
-  apps don't have yet: date and number formatting (Intl)", `missing-features.ts`), with "Run it as my
+  apps don't have yet: a full web page (document)", `missing-features.ts`; in QuickJS also the
+  built-ins it lacks, such as `Intl`), with "Run it as my
   own app" beside it for a file or paste. An install link (`#add=`) goes through the same card and
   the same test load. (A `#join=` invite asks about trust before the app's code has arrived, so it
   cannot be tried first.)
@@ -98,8 +149,8 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   in — one dialog (`trust-dialog.tsx`), one warning, reachable by mouse, touch and keyboard, and it
   only ever acts when the person confirms it. It is offered from: the 🛡 badge of an open sealed
   app; a sealed custom screen's "Run it as mine…"; the screen that says the app **could not open**,
-  when the cause is the sealed box (a library that needs a full web page, or a feature it lacks such
-  as `Intl` — `promotion.ts`); the Add-an-app card right after install, when the test load found it
+  when the cause is the sealed box (a library that needs a full web page, or, in QuickJS, a feature
+  it lacks such as `Intl` — `promotion.ts`); the Add-an-app card right after install, when the test load found it
   only works as yours ("It only works when it runs as yours … Otherwise it stays sealed"); the
   app's tile menu on your apps ("Let it run as yours") — there even when the app crashes at boot;
   and the Studio, which previews a sealed app **sealed** (opening it there is not saying it is
@@ -151,13 +202,14 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
   (isolate IIFE) and `bundleTrustedModule` (trusted ESM) read each file through the Store and check
   its digest first. A mismatch refuses to bundle — "chart.js 4.4.1 is not the copy this app was
   installed with" — and the app shows that on its splash instead of opening.
-- **Libraries in the sealed box** are just more code inside the isolate (no DOM, no `fetch`). One
+- **Libraries in the sealed box** are just more code in the realm's Worker (no DOM; `fetch` refused by
+  its CSP), or in the isolate behind the flag. One
   that touches `window`/`document` while loading fails with its own name: "chart.js 4.4.1 needs a
   full web page to work … this app can only run as yours". The card says so when the bytes came with
   the package; when they were fetched at install, the dialog says it right after.
 - **The Studio's checks stand libraries in.** Checking or running a candidate change — the modify
   loop's check, run and shape gates, the Fix agent's verification, Edit mode's save check — happens in
-  the sealed box on purpose, so a library that needs a full web page would fail the app as the person
+  the sealed box on purpose (still QuickJS until docs/22 phase 2 moves verification to the realm), so a library that needs a full web page would fail the app as the person
   has it, and no change to it could pass. There every library the lock names loads as an inert
   stand-in (`withLibrariesStoodIn`), the same for the original and the candidate; the app's own
   modules stay real, a library the lock does not name is still refused, and the run says which
@@ -208,21 +260,25 @@ per app id, and the isolate only receives a `ctx` bound to that app's store.
 ## Authoring loop (offline)
 
 - **Trusted dev:** `pnpm dev` loads `examples/*.app.ts` directly via Vite; edit + hot-reload,
-  full debugging, real breakpoints. No isolate in the way.
-- **Sandbox check:** `pnpm dev:sandbox` bundles an app and runs it untrusted in QuickJS-WASM so
-  you can feel the mediated-caps experience a recipient would get.
+  full debugging, real breakpoints. No sealed box in the way.
+- **Sandbox check:** `pnpm dev:sandbox` bundles an app and runs it untrusted in the browser realm so
+  you can feel the mediated-caps experience a recipient would get; `pnpm dev:sandbox:quickjs` does
+  the same in the QuickJS fallback.
 - All authoring works offline; bundling is local (esbuild in-process / WASM).
 
 ## Targets
 
 ### PWA (first)
 Vite build + cache-first service worker. Persistence via OPFS SQLite. `WebCapabilities` backs
-`ctx.caps`. Trusted apps run direct (main/worker); untrusted in QuickJS-WASM (WASM runs fine in
-the browser).
+`ctx.caps`. Trusted apps run direct (main/worker); untrusted apps' logic in the browser realm, served
+with `frame-src 'none'` (QuickJS-WASM behind the flag).
 
 ### Capacitor (second)
 Wraps the same web build. `CapacitorCapabilities` backs `ctx.caps` with real native camera,
-**exact local notifications**, geolocation, filesystem. Same two runners. Added via
+**exact local notifications**, geolocation, filesystem. Same runners: the WebView builds the realm
+from the same build, and gets the shell's `frame-src 'none'` from the `<meta>` in `index.html`, since a
+Capacitor WebView serves no headers. Whether a view in a sandboxed frame there can freeze the shell
+is what the Android probe measures (docs/22 §5) before views of shared apps are planned. Added via
 `npx cap add`; only the composition root changes.
 
 ## Capability matrix (unchanged truths)
@@ -244,7 +300,7 @@ tiny relay. Map tiles: online by default; optional per-region offline caching la
 
 ## App Store note
 
-Your published shell app embeds a JS engine that runs app logic — that's a scripting host /
-browser pattern, which is permitted. Shared apps run **sandboxed and non-native**; you never
+Your published shell app runs app logic in the WebView's own JavaScript engine, sandboxed (and can
+embed QuickJS-WASM as the fallback) — that's a scripting host / browser pattern, which is permitted. Shared apps run **sandboxed and non-native**; you never
 download and execute *native* code. Keep it that way and you stay compliant while app logic
 remains full JavaScript.

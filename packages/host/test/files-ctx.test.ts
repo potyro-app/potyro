@@ -5,12 +5,11 @@
 // claim the isolate makes everywhere ("same code, two authority levels"), and files are where it is
 // easiest to break: bytes cannot cross a JSON bridge as they are, and the picker is a dialog.
 import { describe, expect, it } from "vitest";
-import { newAsyncContext } from "quickjs-emscripten";
 import { MemoryStore, fileSpace } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { defineApp } from "potyro";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { RUNNERS, type Runner } from "./runners.js";
 
 const ACTION = `async function (r, ctx) {
   var log = [];
@@ -47,14 +46,14 @@ const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async
 const nav: NavBridge = { navigate: () => {} };
 const picked = () => [new File(["hi there"], "hello.txt", { type: "text/plain" })];
 
-async function run(trust: "trusted" | "untrusted") {
+async function run(trust: "trusted" | Runner) {
   const store = new MemoryStore();
   await store.open("folder");
   const caps = new FakeCapabilities({ files: picked() });
   const host =
     trust === "trusted"
       ? createHost()
-      : createHost({ loadIsolated: createIsolateLoader({ store, newContext: () => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike> }) });
+      : createHost({ loadIsolated: await trust.loader(store) });
   const loaded =
     trust === "trusted"
       ? await host.load({
@@ -93,9 +92,9 @@ describe("ctx.files", () => {
     expect((await fileSpace(store).list()).map((f) => f.path)).toEqual(["bin/x.bin", "in/hello.txt", "notes/b.md"]);
   });
 
-  it("does exactly the same in the sealed box, bytes and the picker included", async () => {
+  it.each(RUNNERS)("does exactly the same in the sealed box ($name), bytes and the picker included", async (runner) => {
     const trusted = await run("trusted");
-    const sealed = await run("untrusted");
+    const sealed = await run(runner);
 
     expect(sealed.out).toBe(trusted.out);
     expect(await sealed.caps.savedFiles().get("b.md")?.text()).toBe("# A");

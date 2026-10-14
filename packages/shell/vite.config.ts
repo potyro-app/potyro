@@ -6,6 +6,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import react from "@vitejs/plugin-react";
 import { linguiBabelPlugin, linguiVitePlugins } from "@potyro/i18n/build.mjs";
+import { realmWorkerPlugin } from "@potyro/host/realm-build.mjs";
+
+/**
+ * The shell's own CSP (#272, docs/22 §3.2): it embeds no frame that fetches, so `frame-src 'none'`.
+ * A shared app's realm is a srcdoc iframe — not a fetch, so it still loads — and this is what stops
+ * that frame navigating itself to a URL (which its sandbox allows and its own CSP cannot). The same
+ * policy is a <meta> in index.html, which is what the Capacitor WebView gets (it serves no headers);
+ * the header here and in deploy/apps.vaz.io.conf is the same policy again, for the dev server,
+ * `vite preview` and the deployed site. Keep all three in step.
+ */
+const SHELL_CSP = "frame-src 'none'";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -150,12 +161,13 @@ function precacheCatalogs(): Plugin {
   };
 }
 
-// `pnpm dev` runs trusted; `pnpm dev:sandbox` (mode "sandbox") runs an example untrusted in the
-// QuickJS-WASM isolate.
+// `pnpm dev` runs trusted; `pnpm dev:sandbox` (mode "sandbox") runs the examples untrusted, in the
+// browser realm (or in QuickJS with VITE_POTYRO_SANDBOX=quickjs: `pnpm dev:sandbox:quickjs`).
 export default defineConfig({
   // The Lingui macros compile in plugin-react's Babel pass, and `.po` catalogs load as compiled JS
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin()],
+  // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272).
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.
@@ -173,5 +185,9 @@ export default defineConfig({
   server: {
     port: 5173,
     fs: { allow: [repoRoot] },
+    headers: { "Content-Security-Policy": SHELL_CSP },
+  },
+  preview: {
+    headers: { "Content-Security-Policy": SHELL_CSP },
   },
 });

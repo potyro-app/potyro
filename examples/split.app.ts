@@ -10,8 +10,9 @@
 // cents), and who is in it comes from the space's membership rather than typed names that drift.
 //
 // In six languages (#303); every language but English is a model's draft (#297). Amounts go through
-// `ctx.format.money`, so a Pole reads "12,50 €" and the sealed box, which has no `Intl`, can format
-// them at all. The names are the space's people, so they are never translated: "You" is the app's.
+// `ctx.format.money`, so a Pole reads "12,50 €" whichever box the app runs in — and the QuickJS
+// fallback, which has no `Intl`, can format them at all. The names are the space's people, so they
+// are never translated: "You" is the app's.
 import { defineApp, splitByShares, splitEvenly, type Ctx, type Resolved } from "potyro";
 
 /** A member value arrives resolved (a person) or as the account id it is stored as. */

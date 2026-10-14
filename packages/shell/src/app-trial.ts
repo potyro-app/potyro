@@ -23,7 +23,7 @@ import { FakeCapabilities } from "@potyro/capabilities";
 import { smokeRuntime } from "@potyro/generator/backends";
 import { createAppBundler, type AppBundler } from "./app-bundler.js";
 import { isLibraryStartError, type ModuleSource } from "./package-modules.js";
-import { createSandboxLoader } from "./isolate-bridge.js";
+import { createSharedAppLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
 import { validateDefinition } from "./validate-app.js";
@@ -91,7 +91,7 @@ async function load(code: string, store: MemoryStore): Promise<Composed> {
     // Sample records in a throwaway store: confirming is safe, and lets the code behind a confirm run.
     ui: { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null },
     nav: createNavBridge(() => {}),
-    loadIsolated: await createSandboxLoader(store, { timeoutMs: CALL_MS, memoryLimitBytes: MEMORY_BYTES, loadTimeoutMs: CALL_MS }),
+    loadIsolated: await createSharedAppLoader(store, { timeoutMs: CALL_MS, memoryLimitBytes: MEMORY_BYTES, loadTimeoutMs: CALL_MS }),
   });
 }
 

@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 // Safety nets for third-party code (#271), in a real browser.
 //
 //   1. The Add-an-app card never runs code: a package made by `pnpm pack:app` describes the app in its
-//      manifest, so an app whose top level needs `Intl` — which the sealed box does not have — still
-//      shows its whole card, and installs. Without that description the card says it could not
+//      manifest, so an app whose top level needs a web page — which the sealed box does not have (its
+//      logic runs in a Worker, #272) — still shows its whole card, and installs. Without that description the card says it could not
 //      preview the app; it never says the app "does not load".
 //   2. A failure stays where it happens: an app with a computed value and a custom view that throw
 //      opens, its other pages show their records, and the broken parts say so in plain words.
@@ -18,9 +18,12 @@ import { fileURLToPath } from "node:url";
 
 const PACK = fileURLToPath(new URL("../scripts/pack-app.mjs", import.meta.url));
 
-// Formats dates at the top level: fine where its author packs it, a ReferenceError in the sealed box.
-const TOP_LEVEL_INTL = `import { defineApp } from "potyro";
-const months = new Intl.DateTimeFormat("en", { month: "long" });
+// Sniffs for a browser the way many libraries do, then reads the page at the top level: fine where its
+// author packs it (Node takes the other branch), a ReferenceError in the sealed box — a Worker, which
+// has `self` but no page. (`Intl` used to be the example; the realm has it now, #272.)
+const TOP_LEVEL_PAGE = `import { defineApp } from "potyro";
+const lang = typeof self !== "undefined" ? document.documentElement.lang : "en";
+const months = new Intl.DateTimeFormat(lang || "en", { month: "long" });
 export default defineApp({
   id: "diary",
   name: "Diary",
@@ -40,8 +43,8 @@ export default defineApp({
 });
 `;
 
-// Uses Intl only inside a computed value: it loads in the sealed box, and only running it shows the gap.
-const COMPUTED_INTL = `import { defineApp } from "potyro";
+// Reads the page only inside a computed value: it loads in the sealed box, and only running it shows the gap.
+const COMPUTED_PAGE = `import { defineApp } from "potyro";
 export default defineApp({
   id: "budget",
   name: "Budget",
@@ -52,7 +55,7 @@ export default defineApp({
       label: "Cost",
       displayField: "what",
       fields: { what: { type: "text", required: true }, amount: { type: "number" } },
-      computed: { shown: (c) => new Intl.NumberFormat("en", { style: "currency", currency: "EUR" }).format(c.amount ?? 0) },
+      computed: { shown: (c) => new Intl.NumberFormat(document.documentElement.lang || "en", { style: "currency", currency: "EUR" }).format(c.amount ?? 0) },
     },
   },
   pages: [{ id: "all", title: "Costs", view: { type: "list", entity: "cost", display: { primary: "what", secondary: "shown" } } }],
@@ -113,14 +116,14 @@ test("a package whose top level throws in the sealed box shows its whole card fr
   const dialog = await openAdd(page);
   const chooser = page.waitForEvent("filechooser");
   await dialog.getByRole("button", { name: /From this device/ }).click();
-  await (await chooser).setFiles([packed("diary", TOP_LEVEL_INTL)]);
+  await (await chooser).setFiles([packed("diary", TOP_LEVEL_PAGE)]);
 
   const card = dialog.getByRole("region", { name: "About Diary" });
   await expect(card).toBeVisible({ timeout: 30_000 });
   await expect(card.locator(".k-launch-avatar")).toHaveText("📓");
   await expect(card).toContainText("KeepsEntry");
   await expect(card).toContainText("Asks fornotifications");
-  await expect(card).toContainText("It uses a feature shared apps don’t have yet: date and number formatting (Intl). In the sealed box it will not open.");
+  await expect(card).toContainText("It uses a feature shared apps don’t have yet: a full web page (document). In the sealed box it will not open.");
   await expect(card.getByRole("button", { name: "Run it as my own app" })).toBeVisible();
   await expect(dialog).not.toContainText("does not load");
 
@@ -138,11 +141,11 @@ test("a package whose top level throws in the sealed box shows its whole card fr
 });
 
 test("the same app without a manifest: the card says it could not be previewed, never that it does not load, and offers to run it as yours", async ({ page }) => {
-  const dialog = await paste(page, TOP_LEVEL_INTL);
+  const dialog = await paste(page, TOP_LEVEL_PAGE);
   const card = dialog.getByRole("region", { name: "About Diary" });
   await expect(card).toBeVisible({ timeout: 30_000 });
   await expect(card).toContainText("This app could not be previewed here");
-  await expect(card).toContainText("date and number formatting (Intl)");
+  await expect(card).toContainText("a full web page (document)");
   await expect(dialog).not.toContainText("does not load");
 
   // Run as theirs, it is a whole app.
@@ -154,11 +157,11 @@ test("the same app without a manifest: the card says it could not be previewed, 
 });
 
 test("an app from someone else is tried in the sealed box before it is added, and what it lacks there is named", async ({ page }) => {
-  const dialog = await paste(page, COMPUTED_INTL);
+  const dialog = await paste(page, COMPUTED_PAGE);
   const card = dialog.getByRole("region", { name: "About Budget" });
   await expect(card).toBeVisible({ timeout: 30_000 });
   await expect(card).toContainText("KeepsCost");
-  await expect(card).toContainText("It uses a feature shared apps don’t have yet: date and number formatting (Intl). In the sealed box, the parts of it that use it will not work.");
+  await expect(card).toContainText("It uses a feature shared apps don’t have yet: a full web page (document). In the sealed box, the parts of it that use it will not work.");
   await expect(dialog.getByRole("checkbox", { name: /I wrote this/ })).not.toBeChecked();
   await expect(dialog.getByRole("button", { name: "Add app" })).toBeEnabled();
 });
