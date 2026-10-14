@@ -31,7 +31,7 @@ test("closing the Studio after a save shows the app as it now is", async ({ page
   await expect(studio.locator(".k-studio-preview h1").first()).toHaveText("Shopping", { timeout: 60_000 });
   // Never renamed by hand, so it is called what its source now says.
   await expect(studio.locator(".k-studio-name")).toHaveText("Shopping", { timeout: 30_000 });
-  await tools.getByRole("button", { name: "Close code and history" }).click();
+  await tools.getByRole("button", { name: "Close code, files and history" }).click();
 
   // Close: the app behind the Studio is the saved one, not the one it booted with.
   await studio.getByRole("button", { name: "Close studio" }).click();
@@ -45,7 +45,7 @@ test("a form opened from the app in the Studio stays on the app's screen, on top
   const tools = await openSource(page, studio);
   await tools.getByRole("button", { name: "Save changes" }).click();
   await expect(currentCard(studio)).toBeVisible({ timeout: 30_000 });
-  await tools.getByRole("button", { name: "Close code and history" }).click();
+  await tools.getByRole("button", { name: "Close code, files and history" }).click();
 
   const screen = studio.locator(".k-preview-screen");
   await expect(screen.locator("h1").first()).toHaveText("My App", { timeout: 60_000 });

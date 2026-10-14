@@ -582,6 +582,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       hint: cases.length ? plural(cases.length, { one: "# reported", other: "# reported" }) : undefined,
       onSelect: () => setTools("history"),
     },
+    ...(hasApp ? [{ key: "files", label: t`Files it comes with`, icon: "▤", onSelect: () => setTools("files") } as MenuEntry] : []),
     { key: "model", label: t`Model settings`, icon: "⚙", hint: label, onSelect: () => setSettingsOpen(true) },
     ...(hasApp
       ? ([
@@ -763,6 +764,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
             void afterRestore(restored);
           }}
           onClose={() => setTools(null)}
+          definition={preview?.composed.runtime.definition}
         />
       ) : null}
       {caseReport ? <CaseReport report={caseReport} onClose={() => setCaseReport(null)} /> : null}

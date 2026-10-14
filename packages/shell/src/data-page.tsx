@@ -10,8 +10,13 @@
 // Each app is read through a data-only runtime (data-runtime.ts): values look and edit exactly as they
 // do in the app, without running the app's code. A synced app is opened on its shared space, so an
 // edit here reaches the people you share it with, just as it would from inside the app.
+//
+// Beside an app's kinds of record sits its Files tab (#254): the app's own folder, the same files its
+// `ctx.files` reads. A tile's menu opens it directly (`?data=<app>&files`).
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { fmt } from "@potyro/i18n";
+import type { Store } from "@potyro/store";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
 import { openDataSession, type DataSession } from "./data-runtime.js";
@@ -19,21 +24,26 @@ import { shellCaps } from "./shell-caps.js";
 import { canGoBack, navigateTo, urlFor } from "./router.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { Count, Table } from "./data-table.js";
+import { FilesPanel } from "./files-panel.js";
+import { listFolder } from "./app-folder.js";
+import { arrivedIn } from "./incoming-files.js";
 import { Trans, useLingui } from "@lingui/react/macro";
 
-export function DataPage({ initialAppId }: { initialAppId?: string }) {
+export function DataPage({ initialAppId, initialFiles }: { initialAppId?: string; initialFiles?: boolean }) {
   const { t } = useLingui();
   const apps = useInstalledApps()
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
   const [appId, setAppId] = useState(initialAppId);
+  const [files, setFiles] = useState(initialFiles === true);
   const app = apps.find((a) => a.id === appId) ?? apps[0] ?? null;
 
+  // The address follows the choice, so a reload or a shared link lands on the same app and tab.
+  // Replaced, not pushed: Back leaves the page rather than walking through every app you looked at.
+  const address = (id: string, onFiles: boolean): void => history.replaceState(history.state, "", urlFor({ kind: "data", id, files: onFiles }));
   const choose = (id: string): void => {
     setAppId(id);
-    // The address follows the choice, so a reload or a shared link lands on the same app. Replaced,
-    // not pushed: Back leaves the page rather than walking through every app you looked at.
-    history.replaceState(history.state, "", urlFor({ kind: "data", id }));
+    address(id, files);
   };
   const back = (): void => (canGoBack() ? history.back() : navigateTo({ kind: "home" }));
 
@@ -57,7 +67,21 @@ export function DataPage({ initialAppId }: { initialAppId?: string }) {
           ))}
         </nav>
         <main className="k-datapage-main">
-          {app ? <AppData key={app.id} app={app} /> : <p className="k-muted k-data-note"><Trans>No apps on this device yet.</Trans></p>}
+          {app ? (
+            <AppData
+              key={app.id}
+              app={app}
+              files={files}
+              onFiles={(on) => {
+                setFiles(on);
+                address(app.id, on);
+              }}
+            />
+          ) : (
+            <p className="k-muted k-data-note">
+              <Trans>No apps on this device yet.</Trans>
+            </p>
+          )}
         </main>
       </div>
     </div>
@@ -86,12 +110,30 @@ function AppChoice({ app, current, onChoose }: { app: InstalledApp; current: boo
   );
 }
 
+/** How many files an app's folder holds, live. */
+function FileCount({ store }: { store: Store }) {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    const read = (): void => void listFolder(store).then((f) => live && setN(f.length), () => {});
+    read();
+    const stop = store.subscribeFiles?.(read);
+    return () => {
+      live = false;
+      stop?.();
+    };
+  }, [store]);
+  return n === null ? null : <span className="k-data-count">{fmt.number(n)}</span>;
+}
+
 /** One app, opened for as long as it is the one being looked at. */
-function AppData({ app }: { app: InstalledApp }) {
+function AppData({ app, files, onFiles }: { app: InstalledApp; files: boolean; onFiles: (on: boolean) => void }) {
   const { t } = useLingui();
   const [session, setSession] = useState<DataSession | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [entity, setEntity] = useState<string | null>(null);
+  // Files that were just dropped or shared into this app (#254), pointed out once.
+  const [arrived] = useState(() => arrivedIn(app.id));
 
   useEffect(() => {
     let live = true;
@@ -124,21 +166,34 @@ function AppData({ app }: { app: InstalledApp }) {
   const name = app.name;
   if (failed) return <>{head}<p className="k-data-note k-data-error"><Trans>Couldn’t open {name}’s data: {failed}</Trans></p></>;
   if (!session) return <>{head}<p className="k-muted k-data-note"><Trans>Opening {name}…</Trans></p></>;
-  if (session.entities.length === 0) return <>{head}<p className="k-muted k-data-note"><Trans>{name} doesn’t declare any kinds of record.</Trans></p></>;
-  const current = session.entities.find((e) => e.key === entity) ?? session.entities[0]!;
+  // An app with no kinds of record can still have files: the Files tab is all it shows.
+  const onFilesTab = files || session.entities.length === 0;
+  const current = onFilesTab ? null : (session.entities.find((e) => e.key === entity) ?? session.entities[0]!);
+  const pickEntity = (key: string): void => {
+    setEntity(key);
+    if (files) onFiles(false);
+  };
 
   return (
     <>
       {head}
-      <div className="k-data-tabs" role="tablist" aria-label={t`${name} records`}>
+      <div className="k-data-tabs" role="tablist" aria-label={t`${name} records and files`}>
         {session.entities.map((e) => (
-          <button key={e.key} type="button" role="tab" aria-selected={e.key === current.key} className="k-data-tab" onClick={() => setEntity(e.key)}>
+          <button key={e.key} type="button" role="tab" aria-selected={e.key === current?.key} className="k-data-tab" onClick={() => pickEntity(e.key)}>
             {e.label}
             <Count session={session} entity={e.key} />
           </button>
         ))}
+        <button type="button" role="tab" aria-selected={onFilesTab} className="k-data-tab k-data-tab-files" data-tab="files" onClick={() => onFiles(true)}>
+          <Trans comment="Data page: the tab with the app's files, beside its kinds of record">Files</Trans>
+          <FileCount store={session.store} />
+        </button>
       </div>
-      <Table key={current.key} session={session} entity={current.key} fields={current.fields} opaque={current.opaque} />
+      {current ? (
+        <Table key={current.key} session={session} entity={current.key} fields={current.fields} opaque={current.opaque} />
+      ) : (
+        <FilesPanel store={session.store} appName={name} scope="all" caps={shellCaps()} arrived={arrived} />
+      )}
     </>
   );
 }

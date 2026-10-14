@@ -9,9 +9,9 @@
 // Nothing registered (a surface that is not the shell, a test), or the handler declines a route it
 // cannot switch to in place: it falls back to the full navigation, which always works.
 
-/** `data` is the Data page, open on one app's records when `id` says which. */
+/** `data` is the Data page, open on one app's records when `id` says which — or on its files (#254). */
 /** `share`: text shared into Potyro from another app, waiting for the person to pick an app (#213). */
-export type ShellRoute = { kind: "user"; id: string } | { kind: "home" } | { kind: "data"; id?: string } | { kind: "share" };
+export type ShellRoute = { kind: "user"; id: string } | { kind: "home" } | { kind: "data"; id?: string; files?: boolean } | { kind: "share" };
 
 /** Returns false to decline, and the router navigates the page instead. */
 type Handler = (route: ShellRoute) => boolean;
@@ -25,7 +25,7 @@ export function setRouteHandler(next: Handler | null): void {
 export function urlFor(route: ShellRoute): string {
   if (route.kind === "home") return location.pathname;
   if (route.kind === "share") return `${location.pathname}?share`;
-  if (route.kind === "data") return route.id ? `${location.pathname}?data=${encodeURIComponent(route.id)}` : `${location.pathname}?data`;
+  if (route.kind === "data") return route.id ? `${location.pathname}?data=${encodeURIComponent(route.id)}${route.files ? "&files" : ""}` : `${location.pathname}?data`;
   return `${location.pathname}?user=${encodeURIComponent(route.id)}`;
 }
 

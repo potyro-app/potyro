@@ -156,7 +156,7 @@ test("a made app is kept at once, with what was asked in its history", async ({ 
   // Before anything is made, History says there is nothing yet rather than showing an empty list.
   const empty = await openHistory(page, studio);
   await expect(empty.getByText(/Nothing yet/)).toBeVisible();
-  await empty.getByRole("button", { name: "Close code and history" }).click();
+  await empty.getByRole("button", { name: "Close code, files and history" }).click();
 
   await chooseOpenRouter(page, studio);
   await ask(studio, "a reading tracker");
@@ -168,7 +168,7 @@ test("a made app is kept at once, with what was asked in its history", async ({ 
   expect(saved.map((a) => a.name)).toContain("Reader");
   const history = await openHistory(page, studio);
   await expect(history.locator(".k-studio-history").getByText("a reading tracker")).toBeVisible();
-  await history.getByRole("button", { name: "Close code and history" }).click();
+  await history.getByRole("button", { name: "Close code, files and history" }).click();
 
   // Starting another app asks nothing — there is nothing to lose — and starts from empty.
   await studio.getByRole("button", { name: "Studio menu" }).click();
