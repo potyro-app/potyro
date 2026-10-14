@@ -149,12 +149,13 @@ test("a Polish browser reads groceries in Polish; an app without its language sa
   await expect(page.getByText("Lista jest pusta. Dodaj pierwszą rzecz poniżej.").or(page.locator(".k-check-row").first())).toBeVisible();
   await pl.close();
 
-  // Plants is English only: a German browser gets it in English, with one line in the app's menu.
-  const de = await browser.newContext({ locale: "de-DE" });
-  const p = await de.newPage();
+  // Every example carries the six languages the shell ships (#303), so a French browser is the one
+  // an example has no words for: Plants opens in English, with one line in the app's menu.
+  const fr = await browser.newContext({ locale: "fr-FR" });
+  const p = await fr.newPage();
   await p.goto("/?user=plants");
   await expect(p.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
   await expect(p.locator('[lang="en"]').first()).toBeAttached();
-  await expect(p.getByRole("button", { name: /Translate into Deutsch/ }).or(p.getByText("This app is in English.")).first()).toBeAttached();
-  await de.close();
+  await expect(p.getByRole("button", { name: /Translate into/ }).or(p.getByText("This app is in English.")).first()).toBeAttached();
+  await fr.close();
 });
