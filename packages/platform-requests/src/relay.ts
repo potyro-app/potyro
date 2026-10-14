@@ -19,7 +19,7 @@
 // Pure apart from `IssueTracker`: the HTTP server (server.ts) and the GitHub client (github.ts) are
 // thin, and everything here is tested with a fake tracker.
 
-import { LIMITS, issueBody, normalizeTitle, readPayload } from "./request.ts";
+import { LIMITS, issueBody, normalizeTitle, readPayload, type RequestKind } from "./request.ts";
 
 export interface Issue {
   number: number;
@@ -45,6 +45,8 @@ export interface Limits {
 
 export const DEFAULT_LIMITS: Limits = { perDevice: 5, perAddress: 20, windowMs: 24 * 60 * 60 * 1000 };
 export const LABEL = "platform-request";
+/** The label each other kind of request is filed under (#300). */
+export const KIND_LABELS: Readonly<Record<RequestKind, string>> = { translation: "translation" };
 /** How long the index of open issues is trusted before it is read again. */
 const INDEX_TTL_MS = 10 * 60 * 1000;
 /** Request ids remembered, for retries. */
@@ -93,13 +95,15 @@ export function createRelay(deps: RelayDeps): { handle: (req: RelayRequest) => P
   const label = deps.label ?? LABEL;
   const rate = limiter(limits.windowMs, deps.now);
   const answered = new Map<string, RelayResponse>();
-  let index: { at: number; byKey: Map<string, Issue> } | null = null;
+  // One index per label: a suggestion groups with suggestions, a platform request with requests.
+  const indexes = new Map<string, { at: number; byKey: Map<string, Issue> }>();
 
-  const openIssues = async (): Promise<Map<string, Issue>> => {
+  const openIssues = async (under: string): Promise<Map<string, Issue>> => {
+    let index = indexes.get(under);
     if (!index || deps.now() - index.at > INDEX_TTL_MS) {
       const byKey = new Map<string, Issue>();
-      for (const issue of await deps.issues.listOpen(label)) byKey.set(normalizeTitle(issue.title), issue);
-      index = { at: deps.now(), byKey };
+      for (const issue of await deps.issues.listOpen(under)) byKey.set(normalizeTitle(issue.title), issue);
+      indexes.set(under, (index = { at: deps.now(), byKey }));
     }
     return index.byKey;
   };
@@ -128,8 +132,9 @@ export function createRelay(deps: RelayDeps): { handle: (req: RelayRequest) => P
     if (!rate.allows(device, limits.perDevice) || !rate.allows(address, limits.perAddress)) {
       return { status: 429, body: { ok: false, error: "too many requests — try again tomorrow" } };
     }
+    const under = p.kind ? KIND_LABELS[p.kind] : label;
     try {
-      const open = await openIssues();
+      const open = await openIssues(under);
       const key = normalizeTitle(p.title);
       const same = key ? open.get(key) : undefined;
       rate.note(device);
@@ -138,7 +143,7 @@ export function createRelay(deps: RelayDeps): { handle: (req: RelayRequest) => P
         await deps.issues.comment(same.number, issueBody(p, { again: true }));
         return remember(p.id, { status: 201, body: { ok: true, grouped: true, issue: same.number, url: same.url } });
       }
-      const made = await deps.issues.create({ title: p.title, body: issueBody(p), labels: [label] });
+      const made = await deps.issues.create({ title: p.title, body: issueBody(p), labels: [under] });
       if (key) open.set(key, made);
       return remember(p.id, { status: 201, body: { ok: true, grouped: false, issue: made.number, url: made.url } });
     } catch (e) {
