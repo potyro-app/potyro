@@ -13,6 +13,11 @@
 //                                                    DEFAULT_REASONING in openrouter-backend.ts)
 //        --corpus wild|core|both  --limit N  --concurrency N  --repairs N
 //        --only id1,id2           --out <dir>
+//        --language pl|pt-BR      (#301) each prompt is its hand-checked translation (translated-cases.ts),
+//                                 the turn carries the language line, and the report adds whether the
+//                                 app's labels are in that language. `en` is today's run, unchanged.
+//        --backend scripted       no model: a small app whose words follow the language line the turn
+//                                 carried — proves the language column without a key
 //
 // Every backend is handed the same contract and the same turns (prompt.ts / chat-backend.ts), so
 // one run's report.json is directly comparable to another's.
@@ -26,6 +31,11 @@ import { WILD_PROMPTS, type WildPrompt } from "../src/wild-prompts.js";
 import { loadApp, scoreSource, type ScoreResult } from "../src/score.js";
 import { smokeApp, smokePassed, type SmokeResult } from "../src/smoke.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
+import { buildUserMessage } from "../src/prompt.js";
+import { LANGUAGE_NAMES, matchLanguage, type Language } from "../src/language.js";
+import { EVAL_LANGUAGES, isEvalLanguage, localizeCreatePrompt } from "../src/translated-cases.js";
+import { checkLabels, newLabels, summarizeLanguage, type LabelCheck } from "../src/language-eval.js";
+import { rate } from "../src/loop-eval.js";
 
 interface Outcome {
   prompt: GenPrompt;
@@ -36,6 +46,8 @@ interface Outcome {
   /** Deep gate: does the app's own logic actually run? Null when it never validated. */
   smoke: SmokeResult | null;
   works: boolean;
+  /** `--language` only (#301): are the app's labels in the person's language? */
+  labels?: LabelCheck;
   source: string;
   file: string;
   ms: number;
@@ -63,8 +75,37 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T, i: number) =>
   return out;
 }
 
+/** What the scripted backend's app says, by the language's English name as the create turn says it. */
+const SCRIPTED_WORDS: Readonly<Record<string, { app: string; entity: string; title: string; done: string; page: string }>> = {
+  English: { app: "My notes", entity: "Note", title: "Title", done: "Done", page: "All my notes" },
+  Polish: { app: "Moje notatki", entity: "Notatka", title: "Tytuł", done: "Zrobione", page: "Wszystkie notatki" },
+  "Brazilian Portuguese": { app: "Minhas anotações", entity: "Anotação", title: "Título", done: "Concluído", page: "Todas as minhas anotações" },
+};
+
+/**
+ * No model: one small app per prompt, in the language the TURN asked for — read from the message the
+ * backends send (`buildUserMessage`), not from the prompt object, so a language that never reached
+ * the turn comes back English and the column says so.
+ */
+function scriptedCreateBackend(): ModelBackend {
+  return {
+    name: "scripted:create",
+    async generate(prompt: GenPrompt) {
+      const said = /the person speaks ([A-Z][a-z]+(?: [A-Z][a-z]+)?)\./.exec(buildUserMessage(prompt))?.[1] ?? "English";
+      const w = SCRIPTED_WORDS[said] ?? SCRIPTED_WORDS.English!;
+      return `import { defineApp } from "potyro";
+export default defineApp({
+  id: "${prompt.id}", name: "${w.app}", version: "1.0.0", schemaVersion: 1,
+  entities: { note: { label: "${w.entity}", displayField: "title", fields: { title: { type: "text", label: "${w.title}", required: true }, done: { type: "boolean", label: "${w.done}", default: false } } } },
+  pages: [{ id: "all", title: "${w.page}", view: { type: "list", entity: "note", display: { primary: "title" } } }],
+});`;
+    },
+  };
+}
+
 /** Which model answers the corpus. Everything downstream reads only the `ModelBackend` contract. */
 async function makeBackend(kind: string, model: string | undefined, reasoning: string | undefined): Promise<ModelBackend> {
+  if (kind === "scripted") return scriptedCreateBackend();
   if (kind === "claude-cli") return new ClaudeCliBackend({ ...(model ? { model } : {}) });
   // Throws up-front on a missing OPENROUTER_API_KEY rather than 401-ing partway through the corpus.
   if (kind === "openrouter") {
@@ -73,7 +114,7 @@ async function makeBackend(kind: string, model: string | undefined, reasoning: s
       ...(reasoning ? { reasoning: { effort: reasoning as ReasoningEffort, exclude: true } } : {}),
     });
   }
-  throw new Error(`unknown --backend "${kind}" (expected claude-cli or openrouter)`);
+  throw new Error(`unknown --backend "${kind}" (expected claude-cli, openrouter or scripted)`);
 }
 
 async function main(): Promise<void> {
@@ -89,12 +130,18 @@ async function main(): Promise<void> {
     ...(corpus !== "core" ? WILD_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "wild" as const })) : []),
     ...(corpus !== "wild" ? PROMPTS.map((p) => ({ prompt: p, corpus: "core" as const })) : []),
   ];
-  let selected = only ? tagged.filter((t) => only.includes(t.prompt.id)) : tagged;
+  // #301: the person's language. English (or no flag) is today's run, byte for byte.
+  const languageArg = arg("language");
+  const language: Language | null = languageArg ? matchLanguage(languageArg) : null;
+  if (languageArg && !language) throw new Error(`--language ${languageArg}: not a language Potyro speaks`);
+  if (language && language !== "en" && !isEvalLanguage(language)) throw new Error(`--language ${language}: the corpus has hand-checked requests only in ${EVAL_LANGUAGES.join(", ")}`);
+  const localized = language && isEvalLanguage(language) ? tagged.map((t) => ({ ...t, prompt: localizeCreatePrompt(t.prompt, language) })) : tagged;
+  let selected = only ? localized.filter((t) => only.includes(t.prompt.id)) : localized;
   if (limit > 0) selected = selected.slice(0, limit);
 
   mkdirSync(outDir, { recursive: true });
   const backend = await makeBackend(arg("backend", "claude-cli") ?? "claude-cli", model, arg("reasoning"));
-  console.log(`backend=${backend.name} corpus=${corpus} n=${selected.length} concurrency=${concurrency} repairs=${maxRepairs}`);
+  console.log(`backend=${backend.name} corpus=${corpus} n=${selected.length} concurrency=${concurrency} repairs=${maxRepairs}${language ? ` language=${language}` : ""}`);
   console.log(`out=${outDir}\n`);
 
   let done = 0;
@@ -124,11 +171,13 @@ async function main(): Promise<void> {
         }
       }
       const works = Boolean(smoke && smokePassed(smoke));
+      const labels = language ? checkLabels(newLabels(source), language) : undefined;
 
-      const o: Outcome = { prompt, corpus: c, singlePass, repairsUsed, final, smoke, works, source, file, ms: Date.now() - started };
+      const o: Outcome = { prompt, corpus: c, singlePass, repairsUsed, final, smoke, works, ...(labels ? { labels } : {}), source, file, ms: Date.now() - started };
       const mark = works ? "✓" : final.renders ? "~" : "✗";
       const why = works ? "" : ` — ${(smoke?.errors[0] ?? final.errors[0] ?? "").split("\n")[0].slice(0, 70)}`;
-      console.log(`${mark} [${++done}/${selected.length}] ${prompt.id} (repairs=${repairsUsed}, ${Math.round(o.ms / 1000)}s)${why}`);
+      const lang = labels ? ` · labels ${labels.passed === null ? "—" : labels.passed ? "ok" : `NOT ${LANGUAGE_NAMES[labels.expected]}: ${labels.offenders.join(", ")}`}` : "";
+      console.log(`${mark} [${++done}/${selected.length}] ${prompt.id} (repairs=${repairsUsed}, ${Math.round(o.ms / 1000)}s)${why}${lang}`);
       return o;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -145,6 +194,7 @@ async function main(): Promise<void> {
     validWithinN: rows.filter((o) => o.final.validates).length,
     renders: rows.filter((o) => o.final.renders).length,
     works: rows.filter((o) => o.works).length,
+    ...(language ? { language: summarizeLanguage(rows.map((o) => ({ labels: o.labels ?? null }))) } : {}),
   });
 
   const groups = [
@@ -162,6 +212,12 @@ async function main(): Promise<void> {
       `  valid ≤${maxRepairs} repairs: ${s.validWithinN}/${s.n} (${pct(s.validWithinN, s.n)})`,
       `  renders:           ${s.renders}/${s.n} (${pct(s.renders, s.n)})`,
       `  WORKS (smoke):     ${s.works}/${s.n} (${pct(s.works, s.n)})   ← logic actually runs`,
+      ...(s.language && language
+        ? [
+            `  labels in ${LANGUAGE_NAMES[language]}: ${rate(s.language.labelsPassed, s.language.labelsChecked)} of apps with a label it could read` +
+              ` (${s.language.labels.inExpected} labels in it, ${s.language.labels.inOther} in another, ${s.language.labels.unknown} too short to tell)`,
+          ]
+        : []),
       "",
     );
   }
@@ -173,6 +229,7 @@ async function main(): Promise<void> {
       {
         backend: backend.name,
         maxRepairs,
+        ...(language ? { language } : {}),
         generatedAt: new Date().toISOString(),
         summary: Object.fromEntries(groups.filter(([, r]) => r.length).map(([n, r]) => [n, summarise(r)])),
         outcomes: outcomes.map(({ source: _s, ...rest }) => rest),

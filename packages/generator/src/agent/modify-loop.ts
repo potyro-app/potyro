@@ -41,6 +41,7 @@ import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
 import { NOT_IN_APP, buildModifyMessage, buildModifyOpener, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
+import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
@@ -93,6 +94,13 @@ export interface ModifyLoopDeps {
   run?: RunGate;
   /** The release's corpus: the passages that speak to the request go into the first message (#262). */
   corpus?: () => Promise<Corpus>;
+  /** The person's language (#301): the reply, questions and Not done lines are written in it. English when absent. */
+  language?: Language;
+  /**
+   * The language of the app's own words, when the app declares one (#302's `language` field). When
+   * absent it is read off the source (`appLanguage`); new labels follow it, not the person's language.
+   */
+  appLanguage?: Language | null;
   /** Model calls in all. */
   maxSteps?: number;
   /** Candidates that may fail the gate before the loop gives up. Tool reads do not count. */
@@ -138,7 +146,10 @@ export function repeatsItself(text: string, previous: string | null): string | n
 }
 
 async function firstMessage(deps: ModifyLoopDeps): Promise<string> {
-  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, deps.context)];
+  const language = { person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) };
+  // Where it was aimed (#284) and in which language to answer (#306), beside the request — both in
+  // this one opening message, which a fresh start reuses and a rollback keeps.
+  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, { ...deps.context, language })];
   if (deps.corpus) {
     const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
     if (primed) parts.push(primed);

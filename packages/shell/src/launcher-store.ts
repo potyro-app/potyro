@@ -13,6 +13,7 @@
 // bug in #78 (a list read once) cannot come back.
 
 import { useEffect, useSyncExternalStore } from "react";
+import { plural } from "@lingui/core/macro";
 import { USER_APPS_CHANGED, listUserApps, type UserApp } from "./user-apps.js";
 import { inspect } from "./app-source.js";
 
@@ -81,8 +82,9 @@ export function attentionOf(entry: LauncherEntry, now: number): Attention {
 
 /** "2 messages · 1 due" — the badge in words. Empty when there is nothing. */
 export function describeAttention(a: Attention): string {
-  const part = (n: number, one: string, many: string): string | null => (n ? `${n} ${n === 1 ? one : many}` : null);
-  return [part(a.chat, "message", "messages"), part(a.due, "due", "due")].filter(Boolean).join(" · ");
+  const chat = a.chat ? plural(a.chat, { one: "# message", other: "# messages" }) : null;
+  const due = a.due ? plural(a.due, { one: "# due", other: "# due" }) : null;
+  return [chat, due].filter(Boolean).join(" · ");
 }
 
 /** Merge new signal values into the app's entry — only when something changed, so a re-render does not write. */

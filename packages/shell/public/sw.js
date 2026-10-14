@@ -34,10 +34,47 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.add("/"))
+      .then((c) => Promise.all([c.add("/").catch(() => {}), precacheCatalogs(c)]))
       .catch(() => {}),
   );
 });
+
+/**
+ * Every language's catalog chunk, so switching language works offline (#298).
+ *
+ * Each language is a lazy chunk, fetched only when chosen — and this worker otherwise caches only
+ * what has been fetched, so a language never used online would be missing on a plane. The build
+ * writes the chunk list to `/i18n-precache.json` (packages/shell/vite.config.ts); the names are
+ * content-hashed, so they cannot be written here. Best-effort, one file at a time: a failure leaves
+ * that language to be fetched on demand, as before, and never fails the install.
+ */
+/**
+ * The response, minus its `Vary` header. Fetched here it was a plain request; the page later asks
+ * for it as a module script, which carries an `Origin` header — and a server that answers
+ * `Vary: Origin` (Vite's preview does) makes `caches.match` refuse the copy for that request. Offline
+ * the language then fell through to the HTML fallback and failed to load as a script. The file is
+ * content-hashed and the same for every origin, so nothing is lost by dropping it.
+ */
+function withoutVary(res) {
+  const headers = new Headers(res.headers);
+  headers.delete("vary");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+function precacheCatalogs(cache) {
+  return fetch("/i18n-precache.json", { cache: "no-store" })
+    .then((res) => (res.ok ? res.json() : { files: [] }))
+    .then(({ files }) =>
+      Promise.all(
+        (Array.isArray(files) ? files : []).map((url) =>
+          fetch(url)
+            .then((res) => (res.ok ? cache.put(url, withoutVary(res)) : undefined))
+            .catch(() => {}),
+        ),
+      ),
+    )
+    .catch(() => {});
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
