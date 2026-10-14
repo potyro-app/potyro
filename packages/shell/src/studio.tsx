@@ -421,7 +421,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!version || !app) return;
     if (!(await shellDialogs.confirm(t`Go back to version ${seq}?`, { detail: t`The versions after it stay in History.`, ok: t`Go back` }))) return;
     // The note is what History and the conversation show for this version; nothing parses it.
-    const note = t({ message: `went back to version ${seq}`, comment: "A version's note in History, lower case: the app was put back to an older version" });
+    const note = `went back to version ${seq}`; // stored in English; shownNote (version-notes.ts) translates it where it is read
     await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note }, new Date().toISOString());
     await afterRestore(version.source);
   };
@@ -647,10 +647,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           <div className="k-composer-box" data-pointed={point ? true : undefined}>
             {point ? (
               <div className="k-composer-point">
-                <span className="k-point-chip" title={`About ${point.words}`}>
+                <span className="k-point-chip" title={t({ message: `About ${point.label}`, comment: "The part of the app a message is about" })}>
                   <PointGlyph />
                   <span className="k-point-chip-label">{point.label}</span>
-                  <button type="button" className="k-point-chip-x" aria-label={`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
+                  <button type="button" className="k-point-chip-x" aria-label={t`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
                     ✕
                   </button>
                 </span>

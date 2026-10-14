@@ -6,7 +6,10 @@
 // held back (it has problems, or it rewrote the app) is a card too, marked as not saved, with what
 // can be done about it.
 
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
+import { shownNote } from "./version-notes.js";
 import { PointGlyph } from "./point-mode.js";
 import type { ChatItem } from "./studio-chat.js";
 
@@ -35,12 +38,12 @@ export interface ThreadViewProps {
   existing: boolean;
 }
 
-/** Things people make, worded the way people ask — not features. */
+/** Things people make, worded the way people ask — not features. Sent as the person's own words, so in their language. */
 const SUGGESTIONS = [
-  "Books I've read, with a rating and a note",
-  "My plants, and when each one needs water",
-  "Shared costs with my flatmates",
-  "A packing list I can reuse for trips",
+  msg`Books I've read, with a rating and a note`,
+  msg`My plants, and when each one needs water`,
+  msg`Shared costs with my flatmates`,
+  msg`A packing list I can reuse for trips`,
 ];
 
 function Mark({ app, name }: { app: { id: string } | null; name: string }) {
@@ -53,42 +56,54 @@ function Mark({ app, name }: { app: { id: string } | null; name: string }) {
 }
 
 export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing }: ThreadViewProps) {
+  const { t } = useLingui();
   if (!items.length && !working && !held) {
     return existing ? (
       <div className="k-studio-empty">
-        <p className="k-studio-eyebrow">Change {app?.name ?? "this app"}</p>
-        <h2 className="k-studio-hero">What should be different?</h2>
-        <p className="k-studio-lede">Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”.</p>
+        <p className="k-studio-eyebrow">{app ? <Trans comment="Studio, empty conversation about an existing app; name is the app's">Change {app.name}</Trans> : <Trans>Change this app</Trans>}</p>
+        <h2 className="k-studio-hero">
+          <Trans>What should be different?</Trans>
+        </h2>
+        <p className="k-studio-lede">
+          <Trans>Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”.</Trans>
+        </p>
       </div>
     ) : (
       <div className="k-studio-empty">
-        <p className="k-studio-eyebrow">New app</p>
-        <h2 className="k-studio-hero">What would you like to make?</h2>
-        <p className="k-studio-lede">
-          Describe it in your own words. If something isn’t clear I’ll ask first, then build it — you can open it, use it, and keep changing it here.
+        <p className="k-studio-eyebrow">
+          <Trans>New app</Trans>
         </p>
-        <ul className="k-studio-suggest" aria-label="Ideas to start from">
-          {SUGGESTIONS.map((s) => (
-            <li key={s}>
-              <button type="button" className="k-studio-chip" onClick={() => onSuggest(s)}>
-                {s}
-              </button>
-            </li>
-          ))}
+        <h2 className="k-studio-hero">
+          <Trans>What would you like to make?</Trans>
+        </h2>
+        <p className="k-studio-lede">
+          <Trans>Describe it in your own words. If something isn’t clear I’ll ask first, then build it — you can open it, use it, and keep changing it here.</Trans>
+        </p>
+        <ul className="k-studio-suggest" aria-label={t`Ideas to start from`}>
+          {SUGGESTIONS.map((d) => {
+            const s = t(d);
+            return (
+              <li key={s}>
+                <button type="button" className="k-studio-chip" onClick={() => onSuggest(s)}>
+                  {s}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     );
   }
 
   return (
-    <ol className="k-thread" aria-label="The conversation about this app">
+    <ol className="k-thread" aria-label={t`The conversation about this app`}>
       {items.map((item) => {
         if (item.type === "ask") {
           return (
             <li key={item.id} className="k-thread-turn k-thread-mine">
               {item.point ? (
                 // What it was about, on the message itself: "this" in what was said means that part.
-                <span className="k-point-chip k-thread-point" title={`About ${item.point.words}`}>
+                <span className="k-point-chip k-thread-point" title={t({ message: `About ${item.point.label}`, comment: "The part of the app a message is about" })}>
                   <PointGlyph />
                   <span className="k-point-chip-label">{item.point.label}</span>
                 </span>
@@ -100,7 +115,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
         if (item.type === "event") {
           return (
             <li key={item.id} className="k-thread-event">
-              {item.text}
+              {shownNote(item.text)}
               {item.seq ? <span className="k-thread-seq">v{item.seq}</span> : null}
             </li>
           );
@@ -116,17 +131,20 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
                 // The developer's words behind the plain ones, folded away: a person never needs them,
                 // and whoever reports the problem can still copy them.
                 <details className="k-thread-detail">
-                  <summary>Details</summary>
+                  <summary>
+                    <Trans comment="Folded developer details under a plain failure message">Details</Trans>
+                  </summary>
                   <p>{item.detail}</p>
                 </details>
               ) : null}
             </li>
           );
         }
-        const name = item.name ?? app?.name ?? "Your app";
+        const name = item.name ?? app?.name ?? t`Your app`;
+        const seq = item.seq;
         return (
           <li key={item.id} className="k-thread-turn k-thread-theirs">
-            <article className="k-card" data-current={item.current || undefined} aria-label={`${name}${item.seq ? `, version ${item.seq}` : ""}`}>
+            <article className="k-card" data-current={item.current || undefined} aria-label={seq ? t({ message: `${name}, version ${seq}`, comment: "A card in the Studio conversation: the app and which version it is" }) : name}>
               <Mark app={app} name={name} />
               <div className="k-card-body">
                 <p className="k-card-name">
@@ -137,11 +155,11 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
               </div>
               {item.current ? (
                 <button type="button" className="k-card-open" onClick={onOpen}>
-                  Open
+                  <Trans comment="Studio card: open the app this version made">Open</Trans>
                 </button>
               ) : item.seq ? (
                 <button type="button" className="k-card-back" onClick={() => onGoBack(item.seq!)}>
-                  Go back to this
+                  <Trans>Go back to this</Trans>
                 </button>
               ) : null}
             </article>
@@ -150,25 +168,27 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
       })}
       {held ? (
         <li className="k-thread-turn k-thread-theirs">
-          <article className="k-card k-card-held" aria-label={`${held.name}, not saved`}>
+          <article className="k-card k-card-held" aria-label={t({ message: `${held.name}, not saved`, comment: "A Studio card for a version that was made but not saved" })}>
             <Mark app={app} name={held.name} />
             <div className="k-card-body">
               <p className="k-card-name">
                 {held.name}
-                <span className="k-card-flag">not saved</span>
+                <span className="k-card-flag">
+                  <Trans>not saved</Trans>
+                </span>
               </p>
               <p className="k-card-what">{held.why}</p>
               <div className="k-card-actions">
                 {held.canFix ? (
                   <button type="button" className="k-card-open" onClick={onFix}>
-                    Try to fix it
+                    <Trans>Try to fix it</Trans>
                   </button>
                 ) : null}
                 <button type="button" className="k-card-back" onClick={onLook}>
-                  Look at it
+                  <Trans>Look at it</Trans>
                 </button>
                 <button type="button" className="k-card-back" onClick={onKeep}>
-                  Keep it anyway
+                  <Trans>Keep it anyway</Trans>
                 </button>
               </div>
             </div>
@@ -183,7 +203,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
               <i />
               <i />
             </span>
-            {working || "Working…"}
+            {working || t`Working…`}
           </p>
         </li>
       ) : null}

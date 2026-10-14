@@ -23,8 +23,27 @@ msgstr ""
 msgid "…thinking"
 msgstr ""
 
+#. placeholder {0}: edit.field
+#: ../shell/src/app-source.ts
+msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "\"{key}\" can only be in one group"
+msgstr ""
+
+#. placeholder {0}: edit.entity
+#: ../shell/src/app-source.ts
+msgid "\"{key}\" isn't a field or computed value of {0}"
+msgstr ""
+
 #: ../views/src/part-failure.tsx
 msgid "“{label}” could not be worked out for some records: {message}"
+msgstr ""
+
+#. Point chip: a field of a form, by its label
+#: ../shell/src/point-target.ts
+msgid "“{name}” field"
 msgstr ""
 
 #: ../shell/src/sync-consent.ts
@@ -33,6 +52,25 @@ msgstr ""
 
 #: ../shell/src/sync-consent.ts
 msgid "“{name}” was made by someone else, so it runs in a sandbox."
+msgstr ""
+
+#. Point chip: the text on a thing in the app's screen, then what kind of thing it is
+#: ../shell/src/point-target.ts
+msgid "“{text}” {tag}"
+msgstr ""
+
+#. Point chip: a view's title, then what kind of view it is
+#: ../shell/src/point-target.ts
+msgid "“{title}” {what}"
+msgstr ""
+
+#. Point chip: a page of the app, by its title
+#: ../shell/src/point-target.ts
+msgid "“{title}” page"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "\"{title}\" would be left with no fields"
 msgstr ""
 
 #. placeholder {0}: result.failed.length
@@ -77,6 +115,11 @@ msgstr ""
 msgid "{0, plural, one {# source} other {# sources}}"
 msgstr ""
 
+#. placeholder {0}: h.skippedBefore
+#: ../shell/src/history.tsx
+msgid "{0, plural, one {# unchanged line} other {# unchanged lines}}"
+msgstr ""
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Fetch the library this version uses?} other {Fetch the libraries this version uses?}}"
@@ -112,12 +155,23 @@ msgstr ""
 msgid "{0, plural, one {Show more (# left)} other {Show more (# left)}}"
 msgstr ""
 
+#. A Studio card for a version that was made but not saved
+#. placeholder {0}: held.name
+#: ../shell/src/studio-thread-view.tsx
+msgid "{0}, not saved"
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 msgid "{applied} Not done yet: {parts}"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "{apps} ({records})."
+msgstr ""
+
+#. A version's note in History: what a collaborator asked for, and that it came from them
+#: ../shell/src/version-notes.ts
+msgid "{asked} — from a collaborator"
 msgstr ""
 
 #. Ask's cost in US cents, e.g. 2.1¢
@@ -163,6 +217,11 @@ msgstr ""
 #. Model price: dollars in / dollars out, per million tokens (/M)
 #: ../shell/src/engine-settings.tsx
 msgid "{input}/{output} /M"
+msgstr ""
+
+#. Point chip: a kind of view, and the page it is on
+#: ../shell/src/point-target.ts
+msgid "{kind} · {pageName}"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -220,6 +279,11 @@ msgstr ""
 msgid "{name} records"
 msgstr ""
 
+#. A card in the Studio conversation: the app and which version it is
+#: ../shell/src/studio-thread-view.tsx
+msgid "{name}, version {seq}"
+msgstr ""
+
 #. The name of a duplicated app
 #: ../shell/src/user-apps.ts
 msgid "{original} (copy)"
@@ -227,6 +291,10 @@ msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "{repeats, plural, one {This text is written # time in the app — all of them change.} other {This text is written # times in the app — all of them change.}}"
 msgstr ""
 
 #. Data table: records matching the search, of all records
@@ -249,9 +317,25 @@ msgid ""
 "Once, now, and kept with the app: after that it works without the internet."
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "← Earlier"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "↑ Earlier"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "↓ Later"
+msgstr ""
+
 #. Date shortcut: a week from today
 #: ../views/src/date-input.tsx
 msgid "+1 week"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "<0>lock.json</0> — the libraries it uses, and the exact copy of each"
 msgstr ""
 
 #. A part of an app failed; {text} says what, e.g. 'it could not be shown: …'
@@ -287,6 +371,10 @@ msgstr ""
 msgid "A new device signed in with your words can bring them all back."
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "A packing list I can reuse for trips"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
 msgstr ""
@@ -303,6 +391,10 @@ msgstr ""
 msgid "a synced database in a worker (the fast one)"
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "a translated label needs words in every language it has"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://."
 msgstr ""
@@ -310,6 +402,15 @@ msgstr ""
 #. Launcher sort: by name; use your alphabet's first and last letter
 #: ../shell/src/launcher-order.ts
 msgid "A–Z"
+msgstr ""
+
+#. The part of the app a message is about
+#. The part of the app a message is about
+#. placeholder {0}: item.point.label
+#. placeholder {0}: point.label
+#: ../shell/src/studio-thread-view.tsx
+#: ../shell/src/studio.tsx
+msgid "About {0}"
 msgstr ""
 
 #: ../shell/src/ask-apply.ts
@@ -369,6 +470,11 @@ msgstr ""
 msgid "Add: {noun}"
 msgstr ""
 
+#. History: how a version came about (changed by hand in edit mode), lower case
+#: ../shell/src/history.tsx
+msgid "adjusted"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Advanced — sync relay, identity id"
 msgstr ""
@@ -406,8 +512,20 @@ msgstr ""
 msgid "Anything you make later goes too. The relay only ever sees encrypted data."
 msgstr ""
 
+#: ../shell/src/studio-tools.tsx
+msgid "App history"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "App launcher"
+msgstr ""
+
+#: ../shell/src/studio-preview.tsx
+msgid "App preview"
+msgstr ""
+
+#: ../shell/src/studio-tools.tsx
+msgid "App source"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -439,6 +557,10 @@ msgstr ""
 msgid "Ask"
 msgstr ""
 
+#: ../shell/src/point-mode.tsx
+msgid "Ask about this"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Ask for a change…"
 msgstr ""
@@ -449,6 +571,14 @@ msgstr ""
 
 #: ../shell/src/start-ask.ts
 msgid "Ask needs your OpenRouter key. Add it in the Studio’s Model settings."
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Ask the Studio"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Asked for, but not this app’s to fix"
 msgstr ""
 
 #: ../shell/src/studio-engine.ts
@@ -472,6 +602,10 @@ msgstr ""
 
 #: ../shell/src/tile-editor.tsx
 msgid "Back to the app's own name"
+msgstr ""
+
+#: ../shell/src/studio-preview.tsx
+msgid "Back to the chat"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -500,6 +634,20 @@ msgstr ""
 msgid "Best quality; larger download · non-commercial license"
 msgstr ""
 
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "board"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Books I've read, with a rating and a note"
+msgstr ""
+
+#. Point chip: a text box or other input inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "box"
+msgstr ""
+
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
 msgid "Bring this into…"
@@ -509,12 +657,26 @@ msgstr ""
 msgid "browser local storage (slow, and small)"
 msgstr ""
 
+#: ../shell/src/studio-tools.tsx
+msgid "Building…"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Bundled examples"
 msgstr ""
 
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "button"
+msgstr ""
+
 #: ../shell/src/launcher-order.ts
 msgid "By name"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "calendar"
 msgstr ""
 
 #. People panel: a person's role in a shared app
@@ -533,7 +695,9 @@ msgstr ""
 
 #. Dialog button: decline
 #: ../shell/src/dialog.tsx
+#: ../shell/src/inline-edit.tsx
 #: ../shell/src/picker.tsx
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/tile-editor.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/record-form.tsx
@@ -548,12 +712,34 @@ msgstr ""
 msgid "candidate passed replay — {detail}"
 msgstr ""
 
+#. Studio, empty conversation about an existing app; name is the app's
+#. placeholder {0}: app.name
+#: ../shell/src/studio-thread-view.tsx
+msgid "Change {0}"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Change field name"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "Change one thing"
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "Change page name"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Change relay"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Change text"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Change this app"
 msgstr ""
 
 #. Data table column: when the record was last changed
@@ -569,9 +755,34 @@ msgstr ""
 msgid "Changed."
 msgstr ""
 
+#. A diff between two versions of the app
+#: ../shell/src/history.tsx
+msgid "Changes"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Changes in version {seq}"
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Changing it via {label}… {elapsed}"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "chart"
+msgstr ""
+
+#. Heading of an app's shared chat
+#. Preview bar: back to the Studio conversation
+#: ../shell/src/chat-panel.tsx
+#: ../shell/src/studio-preview.tsx
+msgid "Chat"
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Chat about {name}"
 msgstr ""
 
 #: ../shell/src/engine-settings.tsx
@@ -584,6 +795,11 @@ msgstr ""
 
 #: ../shell/src/studio.tsx
 msgid "Checking it…"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "checklist"
 msgstr ""
 
 #. A list an app asks you to pick from
@@ -640,14 +856,25 @@ msgstr ""
 #. Button: close the replay report
 #: ../shell/src/activity-panel.tsx
 #: ../shell/src/case-report.tsx
+#: ../shell/src/chat-panel.tsx
 #: ../shell/src/fix-panel.tsx
+#: ../shell/src/history.tsx
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/people-panel.tsx
+#: ../shell/src/studio-preview.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/record-form.tsx
 msgid "Close"
+msgstr ""
+
+#: ../shell/src/studio-tools.tsx
+msgid "Close code and history"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Close history"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -668,12 +895,26 @@ msgstr ""
 msgid "Cloud"
 msgstr ""
 
+#. Preview bar button: see the app's source code
+#: ../shell/src/studio-preview.tsx
+msgid "Code"
+msgstr ""
+
+#: ../shell/src/studio-tools.tsx
+msgid "Code and history"
+msgstr ""
+
 #: ../shell/src/engine-settings.tsx
 msgid "Coder-tuned — the output is a structured .app.ts"
 msgstr ""
 
 #: ../shell/src/tile-editor.tsx
 msgid "Colour"
+msgstr ""
+
+#. A record's own conversation
+#: ../shell/src/chat-panel.tsx
+msgid "Comments"
 msgstr ""
 
 #. Dialog button: accept
@@ -692,6 +933,10 @@ msgstr ""
 
 #: ../shell/src/dialog.tsx
 msgid "Copied"
+msgstr ""
+
+#: ../shell/src/version-notes.ts
+msgid "copied from “{name}”"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -759,8 +1004,18 @@ msgstr ""
 msgid "Create the app"
 msgstr ""
 
+#. History: how a version came about, lower case
+#: ../shell/src/history.tsx
+msgid "created"
+msgstr ""
+
 #: ../shell/src/engine-settings.tsx
 msgid "Creating and modifying both use <0>{label}</0>."
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "custom view"
 msgstr ""
 
 #. Appearance
@@ -831,6 +1086,10 @@ msgstr ""
 msgid "Describe an app"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "Describe it in your own words. If something isn’t clear I’ll ask first, then build it — you can open it, use it, and keep changing it here."
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Describe the app"
 msgstr ""
@@ -843,6 +1102,16 @@ msgstr ""
 msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
 msgstr ""
 
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "detail view"
+msgstr ""
+
+#. Folded developer details under a plain failure message
+#: ../shell/src/studio-thread-view.tsx
+msgid "Details"
+msgstr ""
+
 #: ../views/src/record-form.tsx
 msgid "Discard"
 msgstr ""
@@ -853,6 +1122,10 @@ msgstr ""
 
 #: ../views/src/record-form.tsx
 msgid "Discard your changes?"
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Dismiss this message"
 msgstr ""
 
 #. Ask review: the sources disagree about this record
@@ -871,10 +1144,12 @@ msgstr ""
 #. Closes the model settings
 #. Closes the month grid
 #. Filter sheet: close it
+#. Leave edit mode
 #. Share dialog: close it
 #: ../shell/src/dialog.tsx
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
+#: ../shell/src/inline-edit.tsx
 #: ../views/src/date-input.tsx
 msgid "Done"
 msgstr ""
@@ -887,6 +1162,11 @@ msgstr ""
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio.tsx
 msgid "Duplicate"
+msgstr ""
+
+#. History: how a version came about, lower case
+#: ../shell/src/history.tsx
+msgid "edit"
 msgstr ""
 
 #. Data table: edit this record
@@ -930,6 +1210,10 @@ msgstr ""
 msgid "Enter coordinates"
 msgstr ""
 
+#: ../shell/src/history.tsx
+msgid "Every version of <0>{appName}</0> — review a change, or roll back to it."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
 msgstr ""
@@ -940,6 +1224,11 @@ msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Everything else"
+msgstr ""
+
+#. A version's note in History: the app came with Potyro
+#: ../shell/src/version-notes.ts
+msgid "example app"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -957,6 +1246,15 @@ msgstr ""
 #. Button: download the libraries a version uses
 #: ../shell/src/studio.tsx
 msgid "Fetch"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Field name"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "figures"
 msgstr ""
 
 #. Button that opens the filter options of a page
@@ -1014,6 +1312,19 @@ msgstr ""
 msgid "From {via}"
 msgstr ""
 
+#: ../shell/src/version-notes.ts
+msgid "from your account"
+msgstr ""
+
+#: ../shell/src/version-notes.ts
+msgid "from your account, replacing this device's copy"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "gallery"
+msgstr ""
+
 #. Fix agent outcome: it could not find a fix
 #: ../shell/src/fix-panel.tsx
 msgid "Gave up"
@@ -1027,12 +1338,25 @@ msgstr ""
 msgid "Go back"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "Go back to this"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Go back to version {seq}?"
 msgstr ""
 
 #: ../shell/src/share-page.tsx
 msgid "Go to your apps"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "group {n} would be left with no fields"
+msgstr ""
+
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "heading"
 msgstr ""
 
 #. Menu hint: the page you are on
@@ -1044,14 +1368,24 @@ msgstr ""
 msgid "Hide coordinates"
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "Hide from the form"
+msgstr ""
+
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
 msgid "High"
 msgstr ""
 
+#: ../shell/src/history.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio-tools.tsx
 #: ../shell/src/studio.tsx
 msgid "History"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "History of {appName}"
 msgstr ""
 
 #. Storage report: how much this site stores on the device
@@ -1067,6 +1401,10 @@ msgstr ""
 #: ../shell/src/thinking-settings.tsx
 #: ../shell/src/thinking-settings.tsx
 msgid "How hard it thinks"
+msgstr ""
+
+#: ../shell/src/version-notes.ts
+msgid "how it was made, as shared by its author"
 msgstr ""
 
 #. placeholder {0}: hueNumber(h)
@@ -1111,9 +1449,18 @@ msgstr ""
 msgid "Icon {i}"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "Ideas to start from"
+msgstr ""
+
 #. placeholder {0}: me.id
 #: ../shell/src/identity-panel.tsx
 msgid "Identity <0>{0}</0>"
+msgstr ""
+
+#. History: how a version came about, lower case
+#: ../shell/src/history.tsx
+msgid "imported"
 msgstr ""
 
 #: ../shell/src/share-chat.ts
@@ -1168,6 +1515,14 @@ msgstr ""
 msgid "It replayed clean against the app as it is — {detail}"
 msgstr ""
 
+#: ../shell/src/studio-preview.tsx
+msgid "It runs in the sealed box"
+msgstr ""
+
+#: ../shell/src/studio-preview.tsx
+msgid "It runs in the sealed box, and its libraries need a full web page, so here they stand in and draw nothing. Let it run as yours to see them work."
+msgstr ""
+
 #: ../shell/src/sync-consent.ts
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 msgstr ""
@@ -1183,11 +1538,16 @@ msgstr ""
 
 #. Activity feed: when a change was made, under a minute ago
 #: ../shell/src/activity-panel.tsx
+#: ../shell/src/history.tsx
 msgid "just now"
 msgstr ""
 
 #: ../shell/src/studio.tsx
 msgid "Keep it"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Keep it anyway"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -1210,6 +1570,11 @@ msgstr ""
 msgid "Kept with problems."
 msgstr ""
 
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "label"
+msgstr ""
+
 #. A place's name, typed beside its point on the map
 #: ../views/src/field-input.tsx
 msgid "Label"
@@ -1227,6 +1592,10 @@ msgstr ""
 #. Latitude, as short as your language writes it
 #: ../views/src/field-input.tsx
 msgid "lat"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Later →"
 msgstr ""
 
 #. Button: leave a shared app
@@ -1247,17 +1616,32 @@ msgstr ""
 msgid "Leave it blank to use this site’s own relay."
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "Leave it empty to keep the default."
+msgstr ""
+
 #: ../shell/src/share-chat.ts
 msgid "Leave it out"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio-preview.tsx
 msgid "Let it run as yours"
 msgstr ""
 
 #. Appearance
 #: ../shell/src/look-panel.tsx
 msgid "Light"
+msgstr ""
+
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "link"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "list"
 msgstr ""
 
 #. Longitude, as short as your language writes it
@@ -1273,6 +1657,11 @@ msgstr ""
 msgid "Load your apps?"
 msgstr ""
 
+#: ../shell/src/model-turn.ts
+msgid "Loading model…"
+msgstr ""
+
+#: ../shell/src/history.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/restore-apps.tsx
 #: ../views/src/aggregate.tsx
@@ -1302,6 +1691,10 @@ msgstr ""
 msgid "Look — appearance and colour"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "Look at it"
+msgstr ""
+
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
 msgid "Low"
@@ -1325,12 +1718,21 @@ msgstr ""
 msgid "Manual"
 msgstr ""
 
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "map"
+msgstr ""
+
 #: ../views/src/field-input.tsx
 msgid "Map unavailable here — the browser could not open a second map (or the tile host is blocked). Place the point on the main map instead, or use the coordinates below."
 msgstr ""
 
 #: ../shell/src/language-picker.tsx
 msgid "Match this device"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "May be out of date now."
 msgstr ""
 
 #: ../shell/src/storage-report.tsx
@@ -1340,6 +1742,15 @@ msgstr ""
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
 msgid "Medium"
+msgstr ""
+
+#. The box a chat message is typed in
+#: ../shell/src/chat-panel.tsx
+msgid "Message"
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Messages arrive when the other person next opens this app — nothing is pushed to their phone."
 msgstr ""
 
 #. Calendar column head: Monday, as short as your language writes it
@@ -1378,6 +1789,10 @@ msgstr ""
 msgid "More — something new"
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "More changes…"
+msgstr ""
+
 #: ../shell/src/chrome.tsx
 msgid "More pages"
 msgstr ""
@@ -1391,6 +1806,10 @@ msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "Moving…"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "My plants, and when each one needs water"
 msgstr ""
 
 #. Tile editor: the name shown on the launcher tile
@@ -1416,6 +1835,7 @@ msgstr ""
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio-thread-view.tsx
 #: ../shell/src/studio.tsx
 msgid "New app"
 msgstr ""
@@ -1442,8 +1862,31 @@ msgstr ""
 msgid "No apps yet — press New app to make one."
 msgstr ""
 
+#: ../shell/src/history.tsx
+msgid "No changes between these two versions."
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "no description recorded"
+msgstr ""
+
+#. placeholder {0}: edit.entity
+#: ../shell/src/app-source.ts
+msgid "no entity \"{0}\" is written literally here"
+msgstr ""
+
+#. placeholder {0}: edit.field
+#: ../shell/src/app-source.ts
+msgid "no field \"{0}\" is written literally here"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "No name yet"
+msgstr ""
+
+#. placeholder {0}: edit.page
+#: ../shell/src/app-source.ts
+msgid "no page \"{0}\" is written literally here"
 msgstr ""
 
 #: ../shell/src/ask-apply.ts
@@ -1456,6 +1899,14 @@ msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "No relay: synced apps stay on this device."
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here."
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Nobody else is here yet. Share this app and whatever you write will be waiting for them."
 msgstr ""
 
 #: ../shell/src/engine-settings.tsx
@@ -1476,6 +1927,11 @@ msgstr ""
 msgid "not opened yet"
 msgstr ""
 
+#: ../shell/src/studio-preview.tsx
+#: ../shell/src/studio-thread-view.tsx
+msgid "not saved"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr ""
@@ -1487,6 +1943,10 @@ msgstr ""
 #. Fix agent step: the model's reply could not be used
 #: ../shell/src/fix-panel.tsx
 msgid "not usable — {detail}"
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Nothing about {label} yet."
 msgstr ""
 
 #: ../shell/src/ask-apply.ts
@@ -1503,6 +1963,14 @@ msgstr ""
 
 #: ../shell/src/data-table.tsx
 msgid "Nothing matches."
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Nothing on this screen is written as plain text in the app."
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Nothing said yet. This is for everyone you share {name} with."
 msgstr ""
 
 #: ../shell/src/activity-panel.tsx
@@ -1534,6 +2002,10 @@ msgstr ""
 msgid "Nothing was made from it yet, so there is no app to keep."
 msgstr ""
 
+#: ../shell/src/studio-tools.tsx
+msgid "Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it."
+msgstr ""
+
 #. Reasoning level: the model does not think first
 #: ../shell/src/thinking-settings.tsx
 msgid "Off"
@@ -1556,6 +2028,16 @@ msgstr ""
 #. Menu hint: a tool that is switched on (Edit mode)
 #: ../shell/src/chrome.tsx
 msgid "on"
+msgstr ""
+
+#. Starts the person's message in the Studio box
+#: ../shell/src/inline-edit.tsx
+msgid "On {where}, about \"{text}\": "
+msgstr ""
+
+#. Starts the person's message in the Studio box; where is a page of the app
+#: ../shell/src/inline-edit.tsx
+msgid "On {where}: "
 msgstr ""
 
 #: ../shell/src/tile-editor.tsx
@@ -1606,8 +2088,12 @@ msgstr ""
 msgid "only while the dev server runs"
 msgstr ""
 
+#. Open the chat a message arrived in
+#. Studio card: open the app this version made
 #. Tile menu: open this app
+#: ../shell/src/chat-panel.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio-thread-view.tsx
 msgid "Open"
 msgstr ""
 
@@ -1638,6 +2124,10 @@ msgstr ""
 
 #: ../shell/src/filter-chrome.tsx
 msgid "Page actions"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Page name"
 msgstr ""
 
 #: ../shell/src/chrome.tsx
@@ -1676,6 +2166,11 @@ msgstr ""
 msgid "Pick a point on the map"
 msgstr ""
 
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "picture"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Pin"
 msgstr ""
@@ -1684,8 +2179,22 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
+#. Preview bar button: point at a part of the app to talk about it
+#: ../shell/src/studio-preview.tsx
+msgid "Point"
+msgstr ""
+
+#: ../shell/src/point-mode.tsx
+msgid "Point again"
+msgstr ""
+
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Point at the app"
+msgstr ""
+
+#: ../shell/src/point-mode.tsx
+msgid "Pointing at"
 msgstr ""
 
 #: ../shell/src/look-panel.tsx
@@ -1719,6 +2228,10 @@ msgstr ""
 
 #: ../shell/src/app-lock.tsx
 msgid "Read-only: your data still uses the previous version. Update it to keep making changes."
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Reading this app…"
 msgstr ""
 
 #. Launcher sort: by how often and how lately you open an app
@@ -1771,6 +2284,23 @@ msgstr ""
 msgid "Repaired with the whole file."
 msgstr ""
 
+#. Button: run a reported problem's steps again
+#: ../shell/src/studio-tools.tsx
+msgid "Replay"
+msgstr ""
+
+#: ../shell/src/studio-tools.tsx
+msgid "Replay this path against the app"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Reported as host-side"
+msgstr ""
+
+#: ../shell/src/studio-tools.tsx
+msgid "Reported problems"
+msgstr ""
+
 #. Under a form field that was left empty but must be filled
 #. Under a form field that was left empty but must be filled
 #: ../views/src/record-form.tsx
@@ -1793,12 +2323,48 @@ msgstr ""
 msgid "Reset name"
 msgstr ""
 
+#: ../shell/src/history.tsx
+msgid "Restore v{seq}"
+msgstr ""
+
+#. History: how a version came about, lower case
+#: ../shell/src/history.tsx
+msgid "restored"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Restoring…"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Rewrote the app instead of editing it."
 msgstr ""
 
 #: ../shell/src/engines.ts
 msgid "Rides your Claude Code CLI login. No API key, but only while the dev server is running."
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Roll back to v{seq}"
+msgstr ""
+
+#. A version's note, lower case: the app was put back to an older version from History
+#: ../shell/src/version-notes.ts
+msgid "rolled back to version {seq}"
+msgstr ""
+
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "row"
+msgstr ""
+
+#. Button: build and run the code in the editor
+#: ../shell/src/studio-tools.tsx
+msgid "Run ▶"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "running now"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -1811,10 +2377,12 @@ msgstr ""
 msgid "Sa"
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Save"
 msgstr ""
 
+#: ../shell/src/studio-tools.tsx
 #: ../views/src/record-form.tsx
 msgid "Save changes"
 msgstr ""
@@ -1823,8 +2391,13 @@ msgstr ""
 msgid "Save one thing"
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
 msgid "Saving…"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr ""
 
 #: ../shell/src/picker.tsx
@@ -1833,6 +2406,11 @@ msgstr ""
 
 #: ../shell/src/studio.tsx
 msgid "See the code"
+msgstr ""
+
+#. Send a chat message
+#: ../shell/src/chat-panel.tsx
+msgid "Send"
 msgstr ""
 
 #: ../shell/src/fix-panel.tsx
@@ -1900,8 +2478,17 @@ msgstr ""
 msgid "Shared — edits here reach everyone in it"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "Shared costs with my flatmates"
+msgstr ""
+
 #: ../shell/src/share-page.tsx
 msgid "Shared with Potyro"
+msgstr ""
+
+#. A version's note in History: someone shared the app with you
+#: ../shell/src/version-notes.ts
+msgid "shared with you"
 msgstr ""
 
 #: ../shell/src/sync-consent.ts
@@ -1936,6 +2523,14 @@ msgstr ""
 msgid "Shows text that missed the catalogs (dev only)"
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "some of these fields come from a spread or a computed key"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "some pages aren't written as plain objects with an id"
+msgstr ""
+
 #: ../shell/src/view-error-boundary.tsx
 msgid "Something went wrong opening {pageLabel}."
 msgstr ""
@@ -1944,8 +2539,18 @@ msgstr ""
 msgid "Sort apps"
 msgstr ""
 
+#. Tab: the app's source code
+#: ../shell/src/studio-tools.tsx
+msgid "Source"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Start a new app"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "steps"
 msgstr ""
 
 #. Button: stop the fix agent
@@ -1955,6 +2560,11 @@ msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "Stop backing up"
+msgstr ""
+
+#. placeholder {0}: point.label
+#: ../shell/src/studio.tsx
+msgid "Stop pointing at {0}"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -1995,6 +2605,11 @@ msgstr ""
 #. Calendar column head: Sunday, as short as your language writes it (two letters in English)
 #: ../views/src/date-input.tsx
 msgid "Su"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "summary"
 msgstr ""
 
 #. The strip of totals above a list
@@ -2056,17 +2671,45 @@ msgstr ""
 msgid "System"
 msgstr ""
 
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "table"
+msgstr ""
+
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Tap a part of the app to talk about it"
+msgstr ""
+
+#: ../shell/src/inline-edit.tsx
+msgid "Tap highlighted text to change it."
 msgstr ""
 
 #: ../views/src/field-input.tsx
 msgid "Tap the map to place a point"
 msgstr ""
 
+#: ../shell/src/studio-preview.tsx
+msgid "Tap the part you mean"
+msgstr ""
+
+#. Point chip: a thing inside an app's screen, lower case
+#: ../shell/src/point-target.ts
+msgid "text"
+msgstr ""
+
+#. Edit mode: the label above a box for changing a piece of the app's text
+#: ../shell/src/inline-edit.tsx
+msgid "Text"
+msgstr ""
+
 #. Calendar column head: Thursday, as short as your language writes it
 #: ../views/src/date-input.tsx
 msgid "Th"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "that change would have produced source that doesn't parse"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -2075,6 +2718,14 @@ msgstr ""
 
 #: ../shell/src/language-picker.tsx
 msgid "That language could not be loaded. Connect once and try again."
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "That message could not be sent."
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "the app changed since this text was read — try again"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -2090,12 +2741,24 @@ msgstr ""
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "The conversation about this app"
+msgstr ""
+
+#: ../shell/src/studio-chat.ts
+msgid "the conversation could not be saved"
+msgstr ""
+
 #: ../shell/src/share-chat.ts
 msgid "The conversation from the Studio goes with it — everything you asked for, in your own words, and the answers. Whoever opens the file can read it."
 msgstr ""
 
 #: ../shell/src/draft-strip.tsx
 msgid "The conversation goes. Nothing was made from it yet."
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "the groups must stay the groups that are there now"
 msgstr ""
 
 #: ../shell/src/studio-engine.ts
@@ -2110,6 +2773,22 @@ msgstr ""
 msgid "The model sent the whole file back instead of edits. Check that nothing else changed."
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "the new order must contain exactly the fields that are there now"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "the new order must contain exactly the pages that are there now"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "the new text is empty"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "the only version kept — nothing to compare against"
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 msgid "the repair could not be applied: {why}"
 msgstr ""
@@ -2122,8 +2801,20 @@ msgstr ""
 msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
 msgstr ""
 
+#: ../shell/src/version-notes.ts
+msgid "the source before history was kept"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "the source editor could not be loaded"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "The versions after it stay in History."
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "there is nothing to change"
 msgstr ""
 
 #: ../shell/src/start-fix.ts
@@ -2183,6 +2874,10 @@ msgstr ""
 msgid "This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again."
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "this app doesn't call defineApp with a plain object"
+msgstr ""
+
 #: ../shell/src/app-lock.tsx
 msgid "This app has a newer version. Update to keep making changes."
 msgstr ""
@@ -2204,6 +2899,15 @@ msgstr ""
 msgid "This app is not shared."
 msgstr ""
 
+#: ../shell/src/inline-edit.tsx
+msgid "This app isn't written in a way that can be changed in place."
+msgstr ""
+
+#: ../shell/src/app-source.ts
+#: ../shell/src/app-source.ts
+msgid "this app's pages aren't a plain array"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
 msgstr ""
@@ -2220,6 +2924,18 @@ msgstr ""
 msgid "This device"
 msgstr ""
 
+#: ../shell/src/model-turn.ts
+msgid "this engine needs its API key — add it in the Studio's Model settings."
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "this entity's fields aren't a plain object"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "this entity's groups aren't written as plain lists of field names"
+msgstr ""
+
 #: ../shell/src/share-sync.ts
 msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
 msgstr ""
@@ -2232,12 +2948,20 @@ msgstr ""
 msgid "This is my second device"
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "this label is not written as a translation map"
+msgstr ""
+
 #: ../shell/src/fix-panel.tsx
 msgid "This one isn’t in your app"
 msgstr ""
 
 #: ../shell/src/view-error-boundary.tsx
 msgid "This page couldn’t be shown"
+msgstr ""
+
+#: ../shell/src/app-source.ts
+msgid "this page's title is not written as a translation map"
 msgstr ""
 
 #: ../shell/src/data-table.tsx
@@ -2252,6 +2976,14 @@ msgstr ""
 msgid "This screen could not be worked out: {error}"
 msgstr ""
 
+#: ../shell/src/app-source.ts
+msgid "this source could not be parsed"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "this version is running"
+msgstr ""
+
 #: ../shell/src/tile-editor.tsx
 msgid "Tile icon"
 msgstr ""
@@ -2262,6 +2994,15 @@ msgstr ""
 
 #: ../views/src/date-input.tsx
 msgid "Time"
+msgstr ""
+
+#. Point chip: a kind of view, lower case
+#: ../shell/src/point-target.ts
+msgid "timeline"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "Times the agent was asked for a change this app cannot express, and said so instead of editing something that would not have helped. No version was written for these."
 msgstr ""
 
 #: ../views/src/date-input.tsx
@@ -2276,6 +3017,10 @@ msgstr ""
 
 #: ../shell/src/app-words.ts
 msgid "Translate into {into}"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Try to fix it"
 msgstr ""
 
 #. Calendar column head: Tuesday, as short as your language writes it
@@ -2344,6 +3089,10 @@ msgstr ""
 msgid "Update data"
 msgstr ""
 
+#: ../shell/src/version-notes.ts
+msgid "updated by a collaborator"
+msgstr ""
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr ""
@@ -2353,13 +3102,41 @@ msgstr ""
 msgid "varies"
 msgstr ""
 
+#. The list of an app's versions in History
+#: ../shell/src/history.tsx
+msgid "Versions"
+msgstr ""
+
+#. Point chip: a part of a page, lower case
+#: ../shell/src/point-target.ts
+msgid "view"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "vs previous"
+msgstr ""
+
+#: ../shell/src/history.tsx
+msgid "vs running"
+msgstr ""
+
+#. History: compared against version N
+#: ../shell/src/history.tsx
+msgid "vs v{beforeSeq}"
+msgstr ""
+
+#. History: compared against version N, which is the one running
+#: ../shell/src/history.tsx
+msgid "vs v{beforeSeq} (running)"
+msgstr ""
+
 #. Calendar column head: Wednesday, as short as your language writes it
 #: ../views/src/date-input.tsx
 msgid "We"
 msgstr ""
 
-#. A version's note in History, lower case: the app was put back to an older version
-#: ../shell/src/studio.tsx
+#. A version's note, lower case: the app was put back to an older version from the Studio
+#: ../shell/src/version-notes.ts
 msgid "went back to version {seq}"
 msgstr ""
 
@@ -2387,12 +3164,24 @@ msgstr ""
 msgid "What should be different about it?"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
+msgid "What should be different?"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "What should people you share with see you as?"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "What should the people you share with see you as?"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "What would you like to make?"
+msgstr ""
+
+#: ../shell/src/point-mode.tsx
+msgid "What you are pointing at"
 msgstr ""
 
 #: ../shell/src/launcher-order.ts
@@ -2407,8 +3196,20 @@ msgstr ""
 msgid "Which model writes and edits your app. Keys stay in this tab and are never saved."
 msgstr ""
 
+#: ../shell/src/point-mode.tsx
+msgid "Which part"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Which relay should this device use?"
+msgstr ""
+
+#: ../shell/src/studio-thread-view.tsx
+msgid "Working…"
+msgstr ""
+
+#: ../shell/src/chat-panel.tsx
+msgid "Write a message…"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -2456,6 +3257,7 @@ msgstr ""
 msgid "Your answer"
 msgstr ""
 
+#: ../shell/src/studio-thread-view.tsx
 #: ../shell/src/studio.tsx
 msgid "Your app"
 msgstr ""

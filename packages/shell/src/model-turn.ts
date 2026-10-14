@@ -6,6 +6,7 @@
 // in engine-store.ts); this is the one place that turns that choice into a model call, so every
 // surface that asks a model reaches the same one.
 
+import { t } from "@lingui/core/macro";
 import {
   SYSTEM_PROMPT,
   buildModifyMessage,
@@ -25,7 +26,7 @@ export async function backendFor(cfg: EngineConfig, onProgress?: (text: string) 
     case "edge":
       return (await createWebLLMBackend({
         model: cfg.edgeModel,
-        initProgressCallback: (p) => onProgress?.((p as { text?: string })?.text ?? "Loading model…"),
+        initProgressCallback: (p) => onProgress?.((p as { text?: string })?.text ?? t`Loading model…`),
       })) as never;
     case "builtin":
       return (await createGeminiNanoBackend()) as never;
@@ -59,8 +60,8 @@ export async function modifyTurn(opts: {
     const prompt = ["The current app:", "```ts", source, "```", "", buildModifyMessage(instruction, ctx)].join("\n");
     return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (s) => onProgress?.("Working", s) });
   }
-  if (!engineReady(engine)) throw new Error("this engine needs its API key — add it in the Studio's Model settings.");
-  const backend = await backendFor(engine, (t) => onProgress?.(t));
+  if (!engineReady(engine)) throw new Error(t`this engine needs its API key — add it in the Studio's Model settings.`);
+  const backend = await backendFor(engine, (text) => onProgress?.(text));
   const started = Date.now();
   const timer = setInterval(() => onProgress?.("Working", Math.round((Date.now() - started) / 1000)), 1000);
   try {

@@ -22,6 +22,8 @@
 // that change to the agent instead. Guessing here would corrupt someone's app.
 
 import type MagicStringType from "magic-string";
+// `tr`: `t` is this file's name for the parser tools. The reasons are shown in edit mode when a change cannot be made.
+import { t as tr } from "@lingui/core/macro";
 import {
   asArray,
   findDefinition,
@@ -677,22 +679,22 @@ function effectiveDisplayField(entityNode: Node, order: readonly string[]): stri
 
 export async function applyEdit(source: string, edit: Edit): Promise<EditResult> {
   const t = await load();
-  if (!t) return { ok: false, reason: "the source editor could not be loaded" };
+  if (!t) return { ok: false, reason: tr`the source editor could not be loaded` };
   const ast = parseModule(t, source);
-  if (!ast) return { ok: false, reason: "this source could not be parsed" };
+  if (!ast) return { ok: false, reason: tr`this source could not be parsed` };
   const def = findDefinition(ast);
-  if (!def) return { ok: false, reason: "this app doesn't call defineApp with a plain object" };
+  if (!def) return { ok: false, reason: tr`this app doesn't call defineApp with a plain object` };
   const ms = new t.MagicString(source);
 
   if (edit.kind === "text") {
     const value = edit.value.trim();
-    if (!value) return { ok: false, reason: "the new text is empty" };
-    if (edit.sites.length === 0) return { ok: false, reason: "there is nothing to change" };
+    if (!value) return { ok: false, reason: tr`the new text is empty` };
+    if (edit.sites.length === 0) return { ok: false, reason: tr`there is nothing to change` };
     // Re-derive the sites from THIS source: offsets from an older read would splice the wrong bytes.
     const current = collectSites(source, ast);
     for (const site of edit.sites) {
       const still = current.find((c) => c.start === site.start && c.end === site.end && c.text === edit.from);
-      if (!still) return { ok: false, reason: "the app changed since this text was read — try again" };
+      if (!still) return { ok: false, reason: tr`the app changed since this text was read — try again` };
       ms.overwrite(still.start, still.end, writeText(source, still, value));
     }
     const where = edit.sites.length > 1 ? ` (${edit.sites.length} places)` : "";
@@ -701,12 +703,12 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
 
   if (edit.kind === "page-order") {
     const pagesNode = propValue(def, "pages");
-    if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: "this app's pages aren't a plain array" };
+    if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: tr`this app's pages aren't a plain array` };
     const elements = asArray(pagesNode.elements);
     const ids = elements.map((el) => (el?.type === "ObjectExpression" ? literalString(propValue(el, "id")) : undefined));
-    if (ids.length === 0 || ids.some((id) => id === undefined)) return { ok: false, reason: "some pages aren't written as plain objects with an id" };
+    if (ids.length === 0 || ids.some((id) => id === undefined)) return { ok: false, reason: tr`some pages aren't written as plain objects with an id` };
     if ([...ids].sort().join("\0") !== [...edit.order].sort().join("\0")) {
-      return { ok: false, reason: "the new order must contain exactly the pages that are there now" };
+      return { ok: false, reason: tr`the new order must contain exactly the pages that are there now` };
     }
     const indent = indentAt(source, elements[0]!.start);
     const byId = new Map(ids.map((id, i) => [id!, extentOf(source, elements[i]!)]));
@@ -720,30 +722,30 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
 
   if (edit.kind === "page-title") {
     const pagesNode = propValue(def, "pages");
-    if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: "this app's pages aren't a plain array" };
+    if (pagesNode?.type !== "ArrayExpression") return { ok: false, reason: tr`this app's pages aren't a plain array` };
     for (const el of asArray(pagesNode.elements)) {
       if (el?.type !== "ObjectExpression" || literalString(propValue(el, "id")) !== edit.page) continue;
       if (edit.language) {
-        if (!setWordsEntry(ms, propValue(el, "title"), edit.language, edit.value)) return { ok: false, reason: "this page's title is not written as a translation map" };
+        if (!setWordsEntry(ms, propValue(el, "title"), edit.language, edit.value)) return { ok: false, reason: tr`this page's title is not written as a translation map` };
         return finish(t, ms, `renamed the "${edit.page}" page to "${edit.value}" in ${edit.language}`);
       }
       setProperty(ms, el, "title", literal(edit.value));
       return finish(t, ms, `renamed the "${edit.page}" page to "${edit.value}"`);
     }
-    return { ok: false, reason: `no page "${edit.page}" is written literally here` };
+    return { ok: false, reason: tr`no page "${edit.page}" is written literally here` };
   }
 
   const entityNode = propValue(propValue(def, "entities"), edit.entity);
-  if (entityNode?.type !== "ObjectExpression") return { ok: false, reason: `no entity "${edit.entity}" is written literally here` };
+  if (entityNode?.type !== "ObjectExpression") return { ok: false, reason: tr`no entity "${edit.entity}" is written literally here` };
   const fieldsNode = propValue(entityNode, "fields");
-  if (fieldsNode?.type !== "ObjectExpression") return { ok: false, reason: "this entity's fields aren't a plain object" };
-  if (hasOpaqueMembers(fieldsNode)) return { ok: false, reason: "some of these fields come from a spread or a computed key" };
+  if (fieldsNode?.type !== "ObjectExpression") return { ok: false, reason: tr`this entity's fields aren't a plain object` };
+  if (hasOpaqueMembers(fieldsNode)) return { ok: false, reason: tr`some of these fields come from a spread or a computed key` };
 
   if (edit.kind === "field-order") {
     const current = asArray(fieldsNode.properties);
     const currentKeys = current.map((p) => keyOf(p) ?? "");
     if ([...currentKeys].sort().join(" ") !== [...edit.order].sort().join(" ")) {
-      return { ok: false, reason: "the new order must contain exactly the fields that are there now" };
+      return { ok: false, reason: tr`the new order must contain exactly the fields that are there now` };
     }
 
     // Pin the display field BEFORE reordering when the reorder would change it. Without this,
@@ -767,9 +769,9 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     const groupsNode = propValue(entityNode, "groups");
     const current = literalGroups(groupsNode);
     if (!current || current === "opaque" || groupsNode?.type !== "ArrayExpression") {
-      return { ok: false, reason: "this entity's groups aren't written as plain lists of field names" };
+      return { ok: false, reason: tr`this entity's groups aren't written as plain lists of field names` };
     }
-    if (edit.groups.length !== current.length) return { ok: false, reason: "the groups must stay the groups that are there now" };
+    if (edit.groups.length !== current.length) return { ok: false, reason: tr`the groups must stay the groups that are there now` };
     const computedNode = propValue(entityNode, "computed");
     const known = new Set([
       ...asArray(fieldsNode.properties).map((p) => keyOf(p) ?? ""),
@@ -777,10 +779,10 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     ]);
     const seen = new Set<string>();
     for (const [i, keys] of edit.groups.entries()) {
-      if (keys.length === 0) return { ok: false, reason: `"${current[i]!.title ?? `group ${i + 1}`}" would be left with no fields` };
+      if (keys.length === 0) return { ok: false, reason: groupLeftEmpty(current[i]!.title, i + 1) };
       for (const key of keys) {
-        if (!known.has(key)) return { ok: false, reason: `"${key}" isn't a field or computed value of ${edit.entity}` };
-        if (seen.has(key)) return { ok: false, reason: `"${key}" can only be in one group` };
+        if (!known.has(key)) return { ok: false, reason: tr`"${key}" isn't a field or computed value of ${edit.entity}` };
+        if (seen.has(key)) return { ok: false, reason: tr`"${key}" can only be in one group` };
         seen.add(key);
       }
     }
@@ -795,18 +797,18 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
   }
 
   const fieldProp = prop(fieldsNode, edit.field);
-  if (!fieldProp) return { ok: false, reason: `no field "${edit.field}" is written literally here` };
+  if (!fieldProp) return { ok: false, reason: tr`no field "${edit.field}" is written literally here` };
   const fieldValue = fieldProp.value as Node;
   if (fieldValue.type !== "ObjectExpression") {
-    return { ok: false, reason: `"${edit.field}" isn't written as a plain object, so its properties can't be set here` };
+    return { ok: false, reason: tr`"${edit.field}" isn't written as a plain object, so its properties can't be set here` };
   }
 
   if (edit.kind === "field-label") {
     const trimmed = edit.value.trim();
     if (edit.language) {
       // One language of a translated label (#302): an empty one is a gap, not "the default".
-      if (!trimmed) return { ok: false, reason: "a translated label needs words in every language it has" };
-      if (!setWordsEntry(ms, propValue(fieldValue, "label"), edit.language, trimmed)) return { ok: false, reason: "this label is not written as a translation map" };
+      if (!trimmed) return { ok: false, reason: tr`a translated label needs words in every language it has` };
+      if (!setWordsEntry(ms, propValue(fieldValue, "label"), edit.language, trimmed)) return { ok: false, reason: tr`this label is not written as a translation map` };
       return finish(t, ms, `labelled ${edit.entity}.${edit.field} "${trimmed}" in ${edit.language}`);
     }
     // An empty label means "go back to the default", which is the ABSENCE of the property — not an
@@ -826,8 +828,13 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
 }
 
 /** Re-parse what we produced before handing it back. A splice that doesn't parse must never escape. */
+/** "“Details” would be left with no fields" — an untitled group by its number. */
+function groupLeftEmpty(title: string | undefined, n: number): string {
+  return title ? tr`"${title}" would be left with no fields` : tr`group ${n} would be left with no fields`;
+}
+
 function finish(t: Tools, ms: MagicStringType, note: string): EditResult {
   const next = ms.toString();
-  if (!parseModule(t, next)) return { ok: false, reason: "that change would have produced source that doesn't parse" };
+  if (!parseModule(t, next)) return { ok: false, reason: tr`that change would have produced source that doesn't parse` };
   return { ok: true, source: next, note };
 }

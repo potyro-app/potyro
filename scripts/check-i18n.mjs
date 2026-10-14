@@ -60,6 +60,35 @@ export const CLEAN = new Set([
   "packages/shell/src/backup-all.ts",
   "packages/shell/src/backup-setting.ts",
   "packages/shell/src/rename-migration.ts",
+  // #299, the Studio: conversation, cards, preview bar, point mode, edit mode, code and history.
+  "packages/shell/src/studio.tsx",
+  "packages/shell/src/studio-thread-view.tsx",
+  "packages/shell/src/studio-tools.tsx",
+  "packages/shell/src/studio-preview.tsx",
+  "packages/shell/src/studio-engine.ts",
+  "packages/shell/src/studio-libraries.ts",
+  "packages/shell/src/studio-chat.ts",
+  "packages/shell/src/studio-thread.ts",
+  "packages/shell/src/inline-edit.tsx",
+  "packages/shell/src/inline-targets.ts",
+  "packages/shell/src/code-editor.tsx",
+  "packages/shell/src/diff.ts",
+  "packages/shell/src/highlight.ts",
+  "packages/shell/src/model-turn.ts",
+  "packages/shell/src/generate-client.ts",
+  "packages/shell/src/start-modify.ts",
+  "packages/shell/src/run-candidate.ts",
+  "packages/shell/src/schema-drift.ts",
+  "packages/shell/src/history.tsx",
+  "packages/shell/src/app-history.ts",
+  "packages/shell/src/chat-panel.tsx",
+  "packages/shell/src/point-mode.tsx",
+  "packages/shell/src/point-target.ts",
+  "packages/shell/src/version-notes.ts",
+  "packages/shell/src/app-source.ts",
+  "packages/shell/src/source-ast.ts",
+  "packages/shell/src/source-declared.ts",
+  "packages/shell/src/app-source-words.ts",
 ]);
 
 const ATTRS = new Set([
@@ -76,7 +105,7 @@ const ATTRS = new Set([
 const PROPS = new Set(["label", "title", "placeholder", "ariaLabel", "detail"]);
 const DIALOG_OPTIONS = new Set(["detail", "ok", "cancel", "label", "title"]);
 const CALLEES = new Set(["toast", "confirm", "prompt", "alert", "share"]);
-const TRANSLATED = new Set(["t", "msg", "defineMessage", "plural", "select", "selectOrdinal"]);
+const TRANSLATED = new Set(["t", "tr", "msg", "defineMessage", "plural", "select", "selectOrdinal"]);
 const TRANS_ELEMENTS = new Set(["Trans", "Plural", "Select", "SelectOrdinal"]);
 const PROPER_NOUNS = /\bPotyro\b/g;
 

@@ -8,6 +8,7 @@
 // What it keeps from the old stage: editing the source by hand and running it, saving that edit as
 // a version, every version with a diff and a way back, and the problems people reported, replayable.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import type { Case } from "@potyro/runtime";
 import { caseLabel } from "./app-cases.js";
@@ -36,6 +37,7 @@ export interface StudioToolsProps {
 }
 
 export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave, error, busy, app, cases, onReplay, onRestored, onClose }: StudioToolsProps) {
+  const { t } = useLingui();
   const [tab, setTab] = useState<ToolsTab>(initialTab);
   return (
     <div className="k-modal-scrim k-tools-scrim" onClick={onClose}>
@@ -43,7 +45,7 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
         className="k-tools-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="Code and history"
+        aria-label={t`Code and history`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Escape") onClose();
@@ -52,44 +54,46 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
         <header className="k-tools-head">
           <div className="k-studio-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tab === "source"} className="k-tab" data-active={tab === "source"} onClick={() => setTab("source")}>
-              Source
+              <Trans comment="Tab: the app's source code">Source</Trans>
             </button>
             <button type="button" role="tab" aria-selected={tab === "history"} className="k-tab" data-active={tab === "history"} onClick={() => setTab("history")}>
-              History
+              <Trans>History</Trans>
             </button>
           </div>
           <span className="k-studio-tabs-spacer" />
           {tab === "source" ? (
             <>
               <button type="button" className="k-add" disabled={busy} onClick={() => void onRun()}>
-                {busy ? "Building…" : "Run ▶"}
+                {busy ? t`Building…` : t({ message: "Run ▶", comment: "Button: build and run the code in the editor" })}
               </button>
               <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void onSave()}>
-                Save changes
+                <Trans>Save changes</Trans>
               </button>
             </>
           ) : null}
-          <button type="button" className="k-tools-close" aria-label="Close code and history" onClick={onClose}>
+          <button type="button" className="k-tools-close" aria-label={t`Close code and history`} onClick={onClose}>
             ✕
           </button>
         </header>
         {tab === "source" ? (
           <div className="k-tools-body">
             {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
-            <CodeEditor className="k-studio-source" label="App source" value={source} onChange={onSourceChange} />
+            <CodeEditor className="k-studio-source" label={t`App source`} value={source} onChange={onSourceChange} />
           </div>
         ) : (
-          <div className="k-tools-body k-studio-history" aria-label="App history">
+          <div className="k-tools-body k-studio-history" aria-label={t`App history`}>
             {/* What people reported, above the versions — evidence someone handed you reads first. */}
             {app && cases.length ? (
               <section className="k-cases-section">
-                <h3 className="k-field-label">Reported problems</h3>
+                <h3 className="k-field-label">
+                  <Trans>Reported problems</Trans>
+                </h3>
                 <ul className="k-cases">
                   {cases.map((c) => (
                     <li key={c.id}>
                       <span className="k-case-title">{caseLabel(c)}</span>
-                      <button type="button" className="k-add" title="Replay this path against the app" onClick={() => onReplay(c)}>
-                        Replay
+                      <button type="button" className="k-add" title={t`Replay this path against the app`} onClick={() => onReplay(c)}>
+                        <Trans comment="Button: run a reported problem's steps again">Replay</Trans>
                       </button>
                     </li>
                   ))}
@@ -99,7 +103,9 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
             {app ? (
               <History appId={app.id} appName={app.name} embedded onClose={onClose} onRestored={onRestored} />
             ) : (
-              <p className="k-muted">Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it.</p>
+              <p className="k-muted">
+                <Trans>Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it.</Trans>
+              </p>
             )}
           </div>
         )}

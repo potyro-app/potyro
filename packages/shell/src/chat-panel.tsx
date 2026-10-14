@@ -35,6 +35,9 @@
 // empty CoMap and add a switch whose "off" position means "the people you share with cannot reach
 // you", which is not a setting worth offering.
 
+import { fmt } from "@potyro/i18n";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { PotyroRuntime } from "@potyro/runtime";
@@ -130,7 +133,7 @@ export function useThread(runtime: PotyroRuntime, thread: string | null): {
       } catch (e) {
         // Posting is the one operation whose failure MUST be visible. Losing what someone typed
         // silently is the worst thing a message box can do.
-        setError(e instanceof Error ? e.message : "That message could not be sent.");
+        setError(e instanceof Error ? e.message : t`That message could not be sent.`);
       }
     },
     [store, thread],
@@ -162,9 +165,8 @@ function when(at: Date): string {
   const today = new Date();
   const sameDay =
     at.getDate() === today.getDate() && at.getMonth() === today.getMonth() && at.getFullYear() === today.getFullYear();
-  return sameDay
-    ? at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : `${at.toLocaleDateString()} ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  const time: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+  return sameDay ? fmt.date(at, time) : fmt.date(at, { ...time, year: "numeric", month: "numeric", day: "numeric" });
 }
 
 /**
@@ -192,6 +194,7 @@ export function ChatPeek({
   onOpen: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useLingui();
   const { me, members } = useLiveMembers(runtime);
   const who = memberName(message.by, { me, members });
   const at = useAnchored(anchor);
@@ -222,9 +225,9 @@ export function ChatPeek({
         <p className="k-chat-peek-text">{message.text}</p>
       </div>
       <button type="button" className="k-add k-primary-action k-chat-peek-open" onClick={onOpen}>
-        Open
+        <Trans comment="Open the chat a message arrived in">Open</Trans>
       </button>
-      <button type="button" className="k-chat-peek-close" aria-label="Dismiss this message" onClick={onDismiss}>
+      <button type="button" className="k-chat-peek-close" aria-label={t`Dismiss this message`} onClick={onDismiss}>
         ✕
       </button>
     </div>,
@@ -284,6 +287,7 @@ export function Thread({
   emptyText: string;
   autoFocus?: boolean;
 }) {
+  const { t } = useLingui();
   const { messages, post, error } = useThread(runtime, thread);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -367,12 +371,12 @@ export function Thread({
           className="k-chat-input"
           value={draft}
           autoFocus={autoFocus}
-          aria-label="Message"
-          placeholder="Write a message…"
+          aria-label={t({ message: "Message", comment: "The box a chat message is typed in" })}
+          placeholder={t`Write a message…`}
           onChange={(e) => setDraft(e.target.value)}
         />
         <button type="submit" className="k-add k-chat-send" disabled={!draft.trim() || sending}>
-          Send
+          <Trans comment="Send a chat message">Send</Trans>
         </button>
       </form>
 
@@ -380,8 +384,8 @@ export function Thread({
           hides that is one people read silence into. */}
       <p className="k-chat-note">
         {alone
-          ? "Nobody else is here yet. Share this app and whatever you write will be waiting for them."
-          : "Messages arrive when the other person next opens this app — nothing is pushed to their phone."}
+          ? t`Nobody else is here yet. Share this app and whatever you write will be waiting for them.`
+          : t`Messages arrive when the other person next opens this app — nothing is pushed to their phone.`}
       </p>
     </div>
   );
@@ -397,6 +401,8 @@ export function ChatPanel({
   appId: string;
   onClose: () => void;
 }) {
+  const { t } = useLingui();
+  const name = runtime.definition.name;
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") onClose();
@@ -411,12 +417,14 @@ export function ChatPanel({
         className="k-modal k-chat-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={`Chat about ${runtime.definition.name}`}
+        aria-label={t`Chat about ${name}`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="k-activity-head">
-          <h2>Chat</h2>
-          <button type="button" className="k-add" onClick={onClose} aria-label="Close">
+          <h2>
+            <Trans comment="Heading of an app's shared chat">Chat</Trans>
+          </h2>
+          <button type="button" className="k-add" onClick={onClose} aria-label={t`Close`}>
             ✕
           </button>
         </header>
@@ -425,7 +433,7 @@ export function ChatPanel({
           appId={appId}
           thread={ROOM_THREAD}
           autoFocus
-          emptyText={`Nothing said yet. This is for everyone you share ${runtime.definition.name} with.`}
+          emptyText={t`Nothing said yet. This is for everyone you share ${name} with.`}
         />
       </div>
     </div>
@@ -452,6 +460,7 @@ export function RecordThread({
   recordId: string;
   label: string;
 }) {
+  const { t } = useLingui();
   const thread = useMemo(() => recordThread(entity, recordId), [entity, recordId]);
   const { messages } = useThread(runtime, thread);
   // Open when there is a conversation to see. Collapsed otherwise, so an empty box does not sit
@@ -467,7 +476,7 @@ export function RecordThread({
         aria-expanded={open || started}
         onClick={() => setOpen((v) => !v)}
       >
-        💬 Comments
+        💬 <Trans comment="A record's own conversation">Comments</Trans>
         {started ? <span className="k-activity-count">{messages.length}</span> : null}
       </button>
       {open || started ? (
@@ -476,7 +485,7 @@ export function RecordThread({
           appId={appId}
           thread={thread}
           autoFocus={open && !started}
-          emptyText={`Nothing about ${label} yet.`}
+          emptyText={t`Nothing about ${label} yet.`}
         />
       ) : null}
     </section>

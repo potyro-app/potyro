@@ -21,6 +21,11 @@
 // opens when you click it. An accordion rather than a second pane deliberately — the timeline stays
 // the spine at every width, instead of being a sidebar that a narrow window turns back into a sliver.
 
+import { shownNote } from "./version-notes.js";
+import { fmt } from "@potyro/i18n";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural, t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import { diffLines, diffStat, toHunks, type DiffLine } from "./diff.js";
 import { listVersions, type AppVersion } from "./app-history.js";
@@ -28,26 +33,26 @@ import { listDiagnoses, type AppDiagnosis } from "./app-diagnoses.js";
 import { highlightLines, type CodeRun } from "./highlight.js";
 import { saveUserApp, getUserApp, lockToRestore } from "./user-apps.js";
 
-const ORIGIN_LABEL: Record<AppVersion["origin"], string> = {
-  created: "created",
+const ORIGIN_LABEL: Record<AppVersion["origin"], MessageDescriptor> = {
+  created: msg({ message: "created", comment: "History: how a version came about, lower case" }),
   // Not "AI edit": a Studio save from the source editor lands here too, and mislabelling a hand
   // edit as the agent's work is exactly the confusion history exists to remove.
-  edited: "edit",
+  edited: msg({ message: "edit", comment: "History: how a version came about, lower case" }),
   // "you changed this" vs "the agent rewrote the file" — see VersionOrigin.
-  adjusted: "adjusted",
-  restored: "restored",
-  imported: "imported",
+  adjusted: msg({ message: "adjusted", comment: "History: how a version came about (changed by hand in edit mode), lower case" }),
+  restored: msg({ message: "restored", comment: "History: how a version came about, lower case" }),
+  imported: msg({ message: "imported", comment: "History: how a version came about, lower case" }),
 };
 
 function when(iso: string): string {
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return "";
-  const mins = Math.round((Date.now() - then) / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const now = Date.now();
+  const mins = Math.round((now - then) / 60_000);
+  if (mins < 1) return t`just now`;
+  // "5m ago", "3h ago" — each language's short form.
+  if (mins < 24 * 60) return fmt.relative(then, now, { style: "narrow", numeric: "always" });
+  return fmt.date(iso, { month: "short", day: "numeric" });
 }
 
 /** The highlighted form of both sides of the diff, indexed by 1-based line number. */
@@ -78,13 +83,19 @@ function DiffCode({ line, painted }: { line: DiffLine; painted: Painted | null }
 }
 
 function Diff({ lines, painted }: { lines: DiffLine[]; painted: Painted | null }) {
+  const { t } = useLingui();
   const hunks = toHunks(lines);
-  if (!hunks.length) return <p className="k-muted">No changes between these two versions.</p>;
+  if (!hunks.length)
+    return (
+      <p className="k-muted">
+        <Trans>No changes between these two versions.</Trans>
+      </p>
+    );
   return (
-    <div className="k-diff k-syntax" role="group" aria-label="Changes">
+    <div className="k-diff k-syntax" role="group" aria-label={t({ message: "Changes", comment: "A diff between two versions of the app" })}>
       {hunks.map((h, i) => (
         <div key={i} className="k-diff-hunk">
-          {h.skippedBefore ? <div className="k-diff-gap">⋯ {h.skippedBefore} unchanged lines</div> : null}
+          {h.skippedBefore ? <div className="k-diff-gap">⋯ {plural(h.skippedBefore, { one: "# unchanged line", other: "# unchanged lines" })}</div> : null}
           {h.lines.map((l, j) => (
             <div key={j} className={`k-diff-line k-diff-${l.kind}`}>
               <span className="k-diff-num" aria-hidden>{l.kind === "add" ? l.b : l.a}</span>
@@ -110,6 +121,7 @@ interface HistoryProps {
 }
 
 export function History({ appId, appName, onClose, onRestored, embedded }: HistoryProps) {
+  const { t } = useLingui();
   const [versions, setVersions] = useState<AppVersion[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [against, setAgainst] = useState<"parent" | "current">("parent");
@@ -148,6 +160,8 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
   // A library upgrade (#266) is a change to lock.json, often with no line of source changed.
   const lockLines = current && before && (before.lock ?? "") !== (current.lock ?? "") ? diffLines(before.lock ?? "", current.lock ?? "") : [];
   const stat = diffStat([...lines, ...lockLines]);
+  const seq = current?.seq;
+  const beforeSeq = before?.seq;
 
   // Highlight each SIDE once, not each row: tokenising a diff line alone loses the context that
   // tells a `}` from the inside of a template literal.
@@ -190,22 +204,32 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
     <>
         <header className="k-history-head">
           <div>
-            <h3>History</h3>
-            <p className="k-muted">Every version of <strong>{appName}</strong> — review a change, or roll back to it.</p>
+            <h3>
+              <Trans>History</Trans>
+            </h3>
+            <p className="k-muted">
+              <Trans>
+                Every version of <strong>{appName}</strong> — review a change, or roll back to it.
+              </Trans>
+            </p>
           </div>
           {embedded ? null : (
-            <button type="button" className="k-add" aria-label="Close history" onClick={onClose}>Close ✕</button>
+            <button type="button" className="k-add" aria-label={t`Close history`} onClick={onClose}>
+              <Trans>Close</Trans> ✕
+            </button>
           )}
         </header>
 
         {versions === null ? (
-          <p className="k-muted">Loading…</p>
+          <p className="k-muted">
+            <Trans>Loading…</Trans>
+          </p>
         ) : list.length === 0 ? (
           <p className="k-muted">
-            No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here.
+            <Trans>No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here.</Trans>
           </p>
         ) : (
-          <ol className="k-timeline" aria-label="Versions">
+          <ol className="k-timeline" aria-label={t({ message: "Versions", comment: "The list of an app's versions in History" })}>
             {list.map((v) => {
               const open = v.seq === selected;
               return (
@@ -221,12 +245,20 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                       {/* The prompt first and largest. It is what someone recognises their own change
                           by — "v7 · edit · 3h ago" identifies nothing. */}
                       <span className="k-timeline-note">
-                        {v.note ?? <span className="k-muted">no description recorded</span>}
+                        {v.note ? (
+                          shownNote(v.note)
+                        ) : (
+                          <span className="k-muted">
+                            <Trans>no description recorded</Trans>
+                          </span>
+                        )}
                       </span>
                       <span className="k-timeline-meta">
                         <span className="k-history-seq">v{v.seq}</span>
-                        <span className={`k-history-origin k-history-origin-${v.origin}`}>{ORIGIN_LABEL[v.origin]}</span>
-                        {v.seq === newest?.seq ? <span className="k-history-now">running now</span> : null}
+                        <span className={`k-history-origin k-history-origin-${v.origin}`}>{t(ORIGIN_LABEL[v.origin])}</span>
+                        {v.seq === newest?.seq ? <span className="k-history-now">
+                            <Trans>running now</Trans>
+                          </span> : null}
                         <span className="k-muted k-history-when">{when(v.createdAt)}</span>
                       </span>
                     </span>
@@ -236,7 +268,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                   </button>
 
                   {open && current ? (
-                    <section className="k-history-detail" aria-label={`Changes in version ${current.seq}`}>
+                    <section className="k-history-detail" aria-label={t`Changes in version ${seq}`}>
                       {/* The agent's own account of the change. It is kept here rather than as
                           comments in the source precisely so it informs you without becoming the
                           next edit's premise — see AppVersion.rationale. */}
@@ -244,8 +276,8 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                       <div className="k-history-detailhead">
                         <div className="k-muted">
                           {before
-                            ? `vs v${before.seq}${before.seq === newest?.seq ? " (running)" : ""} · +${stat.added} −${stat.removed}`
-                            : "the only version kept — nothing to compare against"}
+                            ? `${before.seq === newest?.seq ? t({ message: `vs v${beforeSeq} (running)`, comment: "History: compared against version N, which is the one running" }) : t({ message: `vs v${beforeSeq}`, comment: "History: compared against version N" })} · +${fmt.number(stat.added)} −${fmt.number(stat.removed)}`
+                            : t`the only version kept — nothing to compare against`}
                         </div>
                         <div className="k-history-detailactions">
                           {canToggle ? (
@@ -255,22 +287,24 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                               data-active={against === "current"}
                               onClick={() => setAgainst(against === "current" ? "parent" : "current")}
                             >
-                              {against === "current" ? "vs previous" : "vs running"}
+                              {against === "current" ? t`vs previous` : t`vs running`}
                             </button>
                           ) : null}
                           {/* No disabled Restore on the version already running — an amber button you
                               cannot press reads as a dead control. Say why instead. */}
                           {current.seq === newest?.seq ? (
-                            <span className="k-muted">this version is running</span>
+                            <span className="k-muted">
+                              <Trans>this version is running</Trans>
+                            </span>
                           ) : (
                             <button
                               type="button"
                               className="k-add k-primary-action"
                               disabled={busy}
-                              title={`Roll back to v${current.seq}`}
+                              title={t`Roll back to v${seq}`}
                               onClick={() => void restore(current)}
                             >
-                              {busy ? "Restoring…" : `Restore v${current.seq}`}
+                              {busy ? t`Restoring…` : t`Restore v${seq}`}
                             </button>
                           )}
                         </div>
@@ -280,7 +314,9 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                       {lockLines.length ? (
                         <div className="k-history-lock">
                           <p className="k-muted">
-                            <code>lock.json</code> — the libraries it uses, and the exact copy of each
+                            <Trans>
+                              <code>lock.json</code> — the libraries it uses, and the exact copy of each
+                            </Trans>
                           </p>
                           <Diff lines={lockLines} painted={null} />
                         </div>
@@ -294,11 +330,15 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
         )}
 
         {diagnoses.length ? (
-          <section className="k-history-diagnoses" aria-label="Reported as host-side">
-            <h4>Asked for, but not this app&rsquo;s to fix</h4>
+          <section className="k-history-diagnoses" aria-label={t`Reported as host-side`}>
+            <h4>
+              <Trans>Asked for, but not this app’s to fix</Trans>
+            </h4>
             <p className="k-muted">
-              Times the agent was asked for a change this app cannot express, and said so instead of editing
-              something that would not have helped. No version was written for these.
+              <Trans>
+                Times the agent was asked for a change this app cannot express, and said so instead of editing
+                something that would not have helped. No version was written for these.
+              </Trans>
             </p>
             <ul>
               {diagnoses.map((d) => (
@@ -319,7 +359,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
   if (embedded) return <div className="k-history k-history-embedded">{body}</div>;
   return (
     <div className="k-modal-scrim" onClick={() => (busy ? undefined : onClose())}>
-      <div className="k-modal k-history" role="dialog" aria-label={`History of ${appName}`} onClick={(e) => e.stopPropagation()}>
+      <div className="k-modal k-history" role="dialog" aria-label={t`History of ${appName}`} onClick={(e) => e.stopPropagation()}>
         {body}
       </div>
     </div>
