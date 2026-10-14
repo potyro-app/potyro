@@ -12,7 +12,7 @@ export const CREATE_AGENT_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
 
 ---
 
-YOU ARE MAKING A NEW APP, AND YOU HAVE TOOLS. Use them instead of guessing:
+YOU ARE MAKING A NEW APP, AND YOU HAVE TOOLS FOR CORRECTING IT. Use them instead of guessing:
 - \`lookup\` — the real declaration of a type, a property, a view type or a ctx member, from the potyro
   module. Call it when you are unsure an option exists or what it takes.
 - \`check\` — try an app before sending it: give it the WHOLE .app.ts source. It is bundled, validated
@@ -24,8 +24,10 @@ YOU ARE MAKING A NEW APP, AND YOU HAVE TOOLS. Use them instead of guessing:
 - \`read\` — read a file search_corpus pointed to, page by page.
 
 With the request may come passages from this release's example apps and docs that speak to it: read
-them first, they show how a real app does what is asked. Most requests need no tool at all — when you
-know how to build it, build it.
+them first, they show how a real app does what is asked. Your FIRST reply is the app itself — the
+tools are switched off for it. They are on when an app you sent comes back with a problem: then look
+up what you are unsure of, \`check\` the corrected app, and send it. Never spend more than a few calls
+looking before you send the corrected app.
 
 Every app you send is bundled, validated and run on sample records automatically. If it fails you are
 told what failed — the validator's words or the error it threw — and asked for the corrected app: send

@@ -240,6 +240,36 @@ describe("runCreateLoop", () => {
     expect(seen[1]!.messages.at(-1)!.content).toMatch(/That was not an app/);
   });
 
+  it("a first draft is one call with the tools off; the repair turns them on", async () => {
+    const { engine, seen } = scripted([{ content: fenced(app("One BROKEN")) }, { content: fenced(app("Two BROKEN BROKEN")) }, { content: fenced(app("One")) }]);
+    await runCreateLoop(base({ engine }));
+    expect(seen.map((r) => r.tool_choice)).toEqual(["none", "none", "auto"]);
+  });
+
+  it("an app the model's own check passed is kept when the calls run out before it is sent", async () => {
+    const { engine } = scripted([
+      { content: fenced(app("One BROKEN")) },
+      call("check", { source: app("Checked") }, "c1"),
+      call("lookup", { query: "a" }, "l1"),
+      call("lookup", { query: "b" }, "l2"),
+    ]);
+    const out = await runCreateLoop(base({ engine, drafts: 1, maxSteps: 4, tools: [lookup, ...buildCreateTools({ check, run }).filter((t) => t.name === "check")] }));
+    expect(out).toMatchObject({ kind: "source", source: app("Checked") });
+  });
+
+  it("never gives up while it holds an app that validates: one whose run threw is kept, the run's words beside it", async () => {
+    const { engine } = scripted([{ content: fenced(app("THROWS")) }, { content: fenced(app("BROKEN")) }, call("lookup", { query: "a" }, "l1"), call("lookup", { query: "b" }, "l2")]);
+    const out = await runCreateLoop(base({ engine, maxSteps: 4 }));
+    expect(out).toMatchObject({ kind: "source", source: app("THROWS"), candidate: 1 });
+    expect(out.kind === "source" && out.warnings.join("\n")).toMatch(/ctx\.nope is not a function/);
+  });
+
+  it("an app that does not validate is still a give-up, the best attached for the eval", async () => {
+    const { engine } = scripted([{ content: fenced(app("BROKEN")) }, { content: fenced(app("NOCOMPILE")) }, call("lookup", { query: "a" }, "l1"), call("lookup", { query: "b" }, "l2")]);
+    const out = await runCreateLoop(base({ engine, maxSteps: 4 }));
+    expect(out).toMatchObject({ kind: "failed", cause: "steps", best: app("BROKEN") });
+  });
+
   it("stops between steps when asked to", async () => {
     const stop = new AbortController();
     const engine: ChatEngine = { chat: { completions: { create: async () => (stop.abort(), { choices: [{ message: call("lookup", { query: "x" }) }] }) } } };

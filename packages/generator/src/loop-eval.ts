@@ -219,15 +219,15 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
  * Engines with no model behind them for `eval:cli --loop`, so the create half of the harness is
  * proven without a key. Usage is counted as `scriptedLoopEngine` counts it.
  *
- * `scripted-create-loop`: one `lookup`, then an app that validates and runs. Every case must pass on
- * its first candidate, from the first draft, in two calls.
+ * `scripted-create-loop`: an app that validates and runs. Every case must pass on its first
+ * candidate, from the first draft, in ONE call (a first draft has the tools off).
  *
  * `scripted-create-loop-second`: the first draft is an app whose page lists an entity it does not
  * declare (it fails validation); the second, independent draft is the good app. Every case must pass
  * on candidate 2, from draft 2 — and the second draft's request must not carry the first.
  *
- * `scripted-create-loop-repair`: both drafts fail validation; the repair sends the good app. Every
- * case must pass on candidate 3.
+ * `scripted-create-loop-repair`: both drafts fail validation; the repair (tools on) looks a
+ * declaration up, then sends the good app. Every case must pass on candidate 3, in four calls.
  */
 export type ScriptedCreateKind = "scripted-create-loop" | "scripted-create-loop-second" | "scripted-create-loop-repair";
 export const SCRIPTED_CREATE_KINDS: readonly ScriptedCreateKind[] = ["scripted-create-loop", "scripted-create-loop-second", "scripted-create-loop-repair"];
@@ -250,11 +250,13 @@ export function scriptedCreateEngine(kind: ScriptedCreateKind): ChatEngine {
         create: async (req) => {
           n += 1;
           const fresh = req.messages.length === 2;
-          const message =
-            kind === "scripted-create-loop"
-              ? n === 1
-                ? { content: "", tool_calls: [{ id: "t1", type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: "ListView" }) } }] }
-                : { content: scriptedApp("note") }
+          // A first draft has the tools off: no scripted reply calls one then. The repair has them on:
+          // the repair engine looks a declaration up first, once, as a model looking into a problem would.
+          const looksFirst = kind === "scripted-create-loop-repair" && req.tool_choice === "auto" && !req.messages.some((m) => m.role === "tool");
+          const message = looksFirst
+            ? { content: "", tool_calls: [{ id: `t${n}`, type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: "ListView" }) } }] }
+            : kind === "scripted-create-loop"
+              ? { content: scriptedApp("note") }
               : kind === "scripted-create-loop-second"
                 ? { content: scriptedApp(n === 1 ? "notes" : "note") }
                 : { content: scriptedApp(fresh ? (n === 1 ? "notes" : "memo") : "note") };

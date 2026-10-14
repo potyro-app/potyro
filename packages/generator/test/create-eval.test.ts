@@ -16,9 +16,9 @@ const seenBy = (engine: ChatEngine): { engine: ChatEngine; seen: ChatRequest[] }
 };
 
 describe("createCase: one create through the loop, metered", () => {
-  it("scripted-create-loop: passes on its first candidate from the first draft, in two calls", async () => {
+  it("scripted-create-loop: passes on its first candidate from the first draft, in ONE call", async () => {
     const { source, record } = await createCase({ engine: scriptedCreateEngine("scripted-create-loop"), brief: "notes", corpus });
-    expect(record).toMatchObject({ ended: "source", passedOn: 1, drafts: 1, passedOnDraft: 1, calls: 2, cause: null });
+    expect(record).toMatchObject({ ended: "source", passedOn: 1, drafts: 1, passedOnDraft: 1, calls: 1, cause: null });
     expect(record.cost).toBeGreaterThan(0);
     expect((await scoreSource(source)).validates).toBe(true);
   }, 60_000);
@@ -35,9 +35,9 @@ describe("createCase: one create through the loop, metered", () => {
     expect(record).toMatchObject({ ended: "source", passedOn: 2, drafts: 1, passedOnDraft: 1 });
   }, 60_000);
 
-  it("scripted-create-loop-repair: both drafts fail, the repair passes on candidate 3", async () => {
+  it("scripted-create-loop-repair: both drafts fail, the repair looks something up and passes on candidate 3", async () => {
     const { record } = await createCase({ engine: scriptedCreateEngine("scripted-create-loop-repair"), brief: "notes", corpus });
-    expect(record).toMatchObject({ ended: "source", passedOn: 3, drafts: 2, calls: 3 });
+    expect(record).toMatchObject({ ended: "source", passedOn: 3, drafts: 2, calls: 4 });
     const s = summarizeLoop([record]);
     expect(s.secondDrafts).toBe(1);
     expect(s.passedOn["3"]).toBe(1);
