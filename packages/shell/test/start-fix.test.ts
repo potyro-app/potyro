@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { addStep, newCase, type Case } from "@potyro/runtime";
-import { startFix } from "../src/start-fix.js";
+import { sourceShownIn, startFix } from "../src/start-fix.js";
 import { DEFAULT_ENGINE_CONFIG } from "../src/engines.js";
 import type { InvestigationDeps } from "@potyro/generator/agent";
 import type { OpenRouterOptions } from "@potyro/generator/backends";
@@ -187,6 +187,19 @@ describe("startFix — wiring (FINDING 3)", () => {
     expect(mocks.runAgentLoop).toHaveBeenCalledTimes(1);
     const deps = mocks.runAgentLoop.mock.calls[0]![0] as { task: string };
     expect(deps.task).toBe("Search stays empty\n\nit should list the matching cities");
+  });
+
+  it("hands the person's language to the loop, and a resumed question still finds the app it showed (#301)", async () => {
+    const APP = 'export default defineApp({\n  id: "x",\n  name: "Cities",\n});';
+    await startFix({ source: APP, theCase: buggyCase(), runtime, store: null as never, engine: cloudEngine, language: "pl" });
+
+    const deps = mocks.runAgentLoop.mock.calls[0]![0] as { language?: string };
+    expect(deps.language).toBe("pl");
+    const sent = mocks.chatCreate.mock.calls[0]![0] as { messages: Array<{ role: string; content: string }> };
+    const opening = sent.messages.find((m) => m.role === "user")!;
+    expect(opening.content).toContain("reply to the person in Polish");
+    // The language line sits before the app, so resuming after a question still reads the app back.
+    expect(sourceShownIn(sent.messages as never)).toBe(APP);
   });
 
   it("shows the model the app source it was handed, in the very first request", async () => {

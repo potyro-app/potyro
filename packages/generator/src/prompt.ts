@@ -4,6 +4,7 @@
 
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
+import { changeLanguageInstruction, createLanguageInstruction, type TurnLanguage } from "./language.js";
 import { SCHEMA_REFERENCE } from "./reference.generated.js";
 import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "potyro";
 
@@ -160,7 +161,7 @@ function assembleSystemPrompt(reference: string): string {
 
 CONTRACT
 - The file default-exports \`defineApp({ ... })\` imported from "potyro".
-- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`entities\`, \`pages\`.
+- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`language\`, \`entities\`, \`pages\`.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
 - Field \`type\` is one of the \`Field\` union in the REFERENCE below. There is NO "object" type.
 - To REFERENCE another object type, use a \`relation\` field: \`{ type: "relation", to: "<entity>" }\` (add
@@ -190,6 +191,22 @@ CONTRACT
       write a control; give it \`colors\` (red orange yellow green teal blue purple pink grey) only
       when a value's colour MEANS something ("overdue" red), never for decoration.
   When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.
+
+LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
+- Write a new app in ONE language: the person's, the one their request is written in, and declare it
+  — \`language: "pl"\` with Polish words. Every app declares \`language\`, even when all its strings are plain.
+- Add a language only when the person asks for one ("also in German"), and then with the \`translate\`
+  tool, not by hand. Its words become maps — \`label: { en: "Quantity", pl: "Ilość" }\` — and
+  \`languages: ["en", "pl"]\` lists every language, the app's own first.
+- Every map has the app's own \`language\`. In an app with several languages, everything you add or
+  change carries all of them: a new field gets every label; a renamed one is renamed in each.
+  Inside functions: \`ctx.t({ en: "Due now", pl: "Do podlania" })\`, with \`vars\` for plurals
+  (\`{n, plural, one {# plant} other {# plants}}\`), and \`ctx.format.date/number/money/relative/list\`
+  for formats — but return a Date or a number where a view formats it.
+- Records are never translated. An enum's options are stored values and stay as they are; their words
+  go in \`labels: { todo: { en: "To do", pl: "Do zrobienia" } }\`.
+- Words and languages are not data: a translation moves \`version\` but never \`schemaVersion\`, and
+  needs no migration.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
   \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
@@ -223,7 +240,7 @@ When you MODIFY an app, records already exist. Adding, removing or renaming a fi
 required relation, leaves every existing record in the old shape — and a required field they do not
 have makes them vanish from the app. That reads to the user as "you deleted my data".
 
-So whenever you change \`entities\`:
+So whenever you change what \`entities\` STORE (fields, relations, keys — not labels or other words):
 
 1. Bump BOTH versions. \`version\` is semver and moves e.g. "1.0.0" -> "1.1.0"; \`schemaVersion\` is an
    integer and goes up by one. Migrations are keyed off \`version\`, so leaving it alone means nothing
@@ -402,8 +419,11 @@ export const SYSTEM_PROMPT = assembleSystemPrompt(fullReferenceSection());
 export const SYSTEM_PROMPT_COMPACT = assembleSystemPrompt(compactReferenceSection());
 
 
+/** The create turn. A non-English `prompt.language` adds one line (#301); English is unchanged. */
 export function buildUserMessage(prompt: GenPrompt): string {
-  return `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+  const message = `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+  const language = createLanguageInstruction(prompt.language);
+  return language ? `${message}\n\n${language}` : message;
 }
 
 /**
@@ -440,10 +460,22 @@ export interface ModifyContext {
     /** From `PAGE_FIELDS` - what the PAGE can declare, as opposed to its view. */
     pageFields?: readonly string[];
   };
+  /**
+   * The part of the app the person pointed at while asking (#284): what it is, in words, and where it
+   * is in the source already shown — a few lines of it, never the app a second time.
+   */
+  pointedAt?: {
+    words: string;
+    /** 1-based, inclusive: the lines of the app above that hold it. */
+    lines?: readonly [number, number];
+    excerpt?: string;
+  };
   /** Edits already attempted on this app, newest first. */
   priorAttempts?: readonly string[];
   /** Requests already answered as host-side, so the same verdict is not re-derived. */
   priorDiagnoses?: readonly string[];
+  /** Which language to reply in, and which the app's words are in (#301). Nothing is added for English. */
+  language?: TurnLanguage;
 }
 
 /** Either an edit (possibly partial, with the undone parts named), or a reasoned refusal to make one. */
@@ -491,6 +523,15 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
     `"${instruction}"`,
     "",
   ];
+
+  if (ctx?.pointedAt) {
+    const p = ctx.pointedAt;
+    lines.push(`They pointed at ${p.words} while asking — "this", "here" and "it" mean that part.`);
+    if (p.lines && p.excerpt) {
+      lines.push(`In the app above it is lines ${p.lines[0]}–${p.lines[1]} (repeated here only to show where; edit the app above):`, "```ts", p.excerpt, "```");
+    }
+    lines.push("");
+  }
 
   if (ctx?.target) {
     const t = ctx.target;
@@ -545,6 +586,9 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
     'comments that assert a cause ("// the map ignores this") - a causal claim in a comment is unverifiable and',
     "the next edit reads it as fact.",
   );
+
+  const language = changeLanguageInstruction(ctx?.language);
+  if (language) lines.push("", language);
 
   return lines.join("\n");
 }

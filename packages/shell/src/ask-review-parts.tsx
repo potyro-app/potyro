@@ -2,7 +2,10 @@
 // sources it was checked against, and the approve / reject control. The card and the table only
 // arrange these differently.
 
-import { formatMoney, humanizeKey, type AppDefinition, type Field } from "potyro";
+import { formatMoney, humanizeKey, type AppDefinition as SourceDefinition, type Field as SourceField, type Localized } from "potyro";
+/** The definition as the person reads it — `runtime.definition`, localized (#302). */
+type AppDefinition = Localized<SourceDefinition>;
+type Field = Localized<SourceField>;
 import type { ReviewRow } from "./ask-apply.js";
 import { trustLabel } from "./ask-verdicts.js";
 

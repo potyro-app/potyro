@@ -12,13 +12,14 @@
 // split's selection is just a param.
 
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import type { LayoutItem, PageLayout, View } from "potyro";
+import type { Localized, PageLayout, View } from "potyro";
+import type { ShownLayoutItem as LayoutItem } from "./shown.js";
 import { layoutItemId } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { ViewHost } from "./host.js";
 
 export interface LayoutHostProps extends BuiltinViewProps {
-  layout: PageLayout;
+  layout: Localized<PageLayout>;
   registry?: Partial<Record<View["type"], ComponentType<BuiltinViewProps>>>;
 }
 

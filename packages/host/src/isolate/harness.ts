@@ -1,9 +1,14 @@
 // The in-VM harness (plain ES2020 for QuickJS). Concatenated after the app bundle, which must
-// set `globalThis.__potyroApp` to the app definition. The host injects ONE bridge:
+// set `globalThis.__potyroApp` to the app definition. The host injects two functions:
 //   - `__hostSync(opJson) -> void` : synchronous. Fire-and-forget ops (toast/log/nav) are handled
 //                                    on the spot; a host CALL (a query, a patch, a question for
 //                                    the person) is registered under an id and answered later
 //                                    through `__potyro.settle`, which resolves the waiting promise.
+//   - `__hostPure(reqJson) -> json` : synchronous and authority-free (#302): formatting only —
+//                                    `ctx.format.*` and `ctx.t(words, vars)` — because the box has
+//                                    no `Intl` and a formatter must answer inside a `filter`. It
+//                                    reaches no store, cap or person; see `hostPure` in format.ts.
+//                                    `ctx.locale` and `ctx.t(words)` without vars never leave the box.
 //
 // Why not an asyncified function that suspends the VM until the host is done (what this used to
 // be): QuickJS's asyncify build allows one suspended call per WebAssembly module, and a suspended
@@ -27,6 +32,30 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     });
   }
   function bridgeSync(obj){ __hostSync(__serialize(obj)); }
+  // Plain JSON out and a marked string back (see hostPure): no replacer, no reviver — they cost.
+  function pureArg(v){ return v instanceof Date ? { __kdate: v.toISOString() } : v; }
+  function pure(req){
+    req.value = pureArg(req.value);
+    if (req.vars && typeof req.vars === "object") { var ks = Object.keys(req.vars), vs = {}; for (var i = 0; i < ks.length; i++) vs[ks[i]] = pureArg(req.vars[ks[i]]); req.vars = vs; }
+    var out = __hostPure(JSON.stringify(req));
+    if (out.charAt(0) === "+") return out.slice(1);
+    throw new Error(out.slice(1));
+  }
+  // Words cross as they are — a string, or a map the host resolves in ctx.locale (#302).
+  function words(w){ return (w !== null && typeof w === "object") ? w : String(w); }
+  // The same choice as schema's word(): the language, the app's own, its languages, anything.
+  function pick(w, wl){
+    if (w === null || w === undefined) return "";
+    if (typeof w === "string") return w;
+    if (typeof w !== "object" || Array.isArray(w) || w instanceof Date) return String(w);
+    if (wl.locale && typeof w[wl.locale] === "string") return w[wl.locale];
+    if (wl.language && typeof w[wl.language] === "string") return w[wl.language];
+    var ls = wl.languages || [];
+    for (var i = 0; i < ls.length; i++) if (typeof w[ls[i]] === "string") return w[ls[i]];
+    var ks = Object.keys(w);
+    for (var j = 0; j < ks.length; j++) if (typeof w[ks[j]] === "string") return w[ks[j]];
+    return "";
+  }
 
   // Bytes cross the bridge as base64: it carries JSON, and QuickJS has neither Blob nor atob (#252).
   var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -74,10 +103,21 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   }
 
   var progressSeq = 0;
-  function makeCtx(app, params, nowIso, capsAvailable, me, space, scope){
+  function makeCtx(app, params, nowIso, capsAvailable, me, space, scope, wl){
     var fixedNow = new Date(nowIso);
+    wl = wl || {};
     var ctx = {
       params: params || {},
+      locale: wl.locale || "en",
+      t: function(w, vars){ return (vars === undefined || vars === null) ? pick(w, wl) : pure({op:"t", words:w, vars:vars}); },
+      format: {
+        locale: wl.formatLocale || wl.locale || "en",
+        date: function(d, o){ return pure({op:"date", value:d, opts:o || null}); },
+        number: function(n, o){ return pure({op:"number", value:n, opts:o || null}); },
+        money: function(m, c){ return pure({op:"money", value:m, currency: c == null ? null : c}); },
+        relative: function(d, o){ return pure({op:"relative", value:d, opts:o || null}); },
+        list: function(items, o){ return pure({op:"list", value:items, opts:o || null}); }
+      },
       // Always present, exactly as in a trusted app — so one app source behaves the same either way.
       me: me || { id: "local", name: "Me" },
       space: space,
@@ -149,16 +189,16 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         export: async function(f){ await bridge({op:"files.export", file:fileArg(f)}); }
       },
       ui: {
-        toast: function(m){ bridgeSync({op:"ui.toast", msg:String(m)}); },
-        confirm: function(m,o){ return bridge({op:"ui.confirm", msg:String(m), opts:o||null}); },
-        prompt: function(m,o){ return bridge({op:"ui.prompt", msg:String(m), opts:o||null}); },
+        toast: function(m){ bridgeSync({op:"ui.toast", msg:words(m)}); },
+        confirm: function(m,o){ return bridge({op:"ui.confirm", msg:words(m), opts:o||null}); },
+        prompt: function(m,o){ return bridge({op:"ui.prompt", msg:words(m), opts:o||null}); },
         pick: function(items,o){ return bridge({op:"ui.pick", items:items, opts:{multi: !!(o&&o.multi)}}); },
         sheet: function(o){ return bridge({op:"ui.sheet", opts:o}); },
         menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
         form: function(o){ return bridge({op:"ui.form", opts:o}); },
         progress: function(label){
           var id = "p" + (++progressSeq);
-          bridgeSync({op:"ui.progress", id:id, label:String(label)});
+          bridgeSync({op:"ui.progress", id:id, label:words(label)});
           return {
             update: function(f, d){ bridgeSync({op:"ui.progress", id:id, fraction:Number(f), detail: d == null ? null : String(d)}); },
             done: function(){ bridgeSync({op:"ui.progress", id:id, done:true}); }
@@ -219,7 +259,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       var p = __deserialize(payloadJson);
       var app = globalThis.__potyroApp;
       if (!app) return __serialize({ ok:false, error:"no app loaded" });
-      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope);
+      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope, p.words);
       var record = (p.record !== undefined && p.record !== null) ? p.record : null;
       try {
         var result = null;

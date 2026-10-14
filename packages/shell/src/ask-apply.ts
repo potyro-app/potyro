@@ -16,7 +16,10 @@
 
 import { t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
-import type { AppDefinition, Field, PotyroRecord } from "potyro";
+import type { AppDefinition as SourceDefinition, Field as SourceField, Localized, PotyroRecord } from "potyro";
+/** The definition as the person reads it — `runtime.definition`, localized (#302). */
+type AppDefinition = Localized<SourceDefinition>;
+type Field = Localized<SourceField>;
 import { actionInfo, humanizeKey } from "potyro";
 import type { Proposal, ProposedAction, ProposedEdit, ProposedRow, Trust } from "@potyro/generator/agent";
 
@@ -204,11 +207,12 @@ function matchNotes(entity: string, match: string, found: number, exact: number)
 
 function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow[], existing: Records, links: Links, dup: Map<string, string>): ReviewAction {
   const info = actionInfo(def.entities[run.entity], run.action);
+  const declared = info?.input as Record<string, Field> | undefined; // localized, as `def` is
   const notes: string[] = [];
   // A declared action always gets an input, even an empty one: with none, the runtime would take the
   // run for a button tap and ask with a form, in the middle of applying a review.
-  let input = info?.input ? (run.input ?? {}) : run.input;
-  if (input && info?.input) input = retarget(info.input, links.values(info.input, input, notes), dup);
+  let input = declared ? (run.input ?? {}) : run.input;
+  if (input && declared) input = retarget(declared, links.values(declared, input, notes), dup);
   const targets: ReviewTarget[] = [];
   if (run.on) {
     const ref = run.on.slice(1);
@@ -346,7 +350,7 @@ export function entitiesToLoad(def: AppDefinition, proposal: Proposal): string[]
   }
   for (const a of proposal.actions) {
     out.add(a.entity);
-    links(actionInfo(def.entities[a.entity], a.action)?.input);
+    links(actionInfo(def.entities[a.entity], a.action)?.input as Record<string, Field> | undefined);
   }
   for (const e of proposal.edits ?? []) {
     out.add(e.entity);

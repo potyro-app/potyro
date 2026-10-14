@@ -7,7 +7,7 @@
 // gets the focus, and is marked invalid; there is no summary line at the top to walk back from.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { Field } from "potyro";
+import type { ShownField as Field } from "./shown.js";
 import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { FieldInput } from "./field-input.js";

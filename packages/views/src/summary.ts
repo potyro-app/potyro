@@ -12,7 +12,8 @@
 
 import { t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
-import type { Ctx, Resolved, SummaryValue } from "potyro";
+import type { Ctx, Resolved } from "potyro";
+import type { ShownSummaryValue as SummaryValue } from "./shown.js";
 
 /** Invoke a figure's `value` function through the host, whichever runner the app is in. */
 export type CallSummaryValue = (rows: readonly Resolved[]) => Promise<unknown>;

@@ -22,8 +22,9 @@ export type InlineTarget =
   | { kind: "field"; node: Text; text: string; entity: EntityShape; field: FieldShape }
   | { kind: "page"; node: Text; text: string; page: PageShape };
 
-/** What the shell draws itself, not the app: its menus, tools, chat, and the edit UI. */
-const NOT_THE_APP = [
+/** What the shell draws itself, not the app: its menus, tools, chat, and the edit UI. Point mode
+ *  (#284) leaves these out too — they are not the app's, so there is nothing of the app to point at. */
+export const SHELL_PARTS = [
   "[data-k-noedit]",
   '[role="menu"]',
   ".k-tools",
@@ -33,6 +34,11 @@ const NOT_THE_APP = [
   ".k-brand",
   ".k-sidebar-heading",
   ".k-modal:not(.k-sheet)",
+].join(",");
+
+/** …and, for edit mode, the controls and code whose text is not words on the screen. */
+const NOT_THE_APP = [
+  SHELL_PARTS,
   "input",
   "textarea",
   "select",
@@ -92,7 +98,9 @@ function targetFor(node: Text, byText: Map<string, TextSite[]>, shape: AppShape)
     const entity = shape.entities.find((e) => e.key === entityKey);
     const field = entity?.fields.find((f) => f.key === key);
     // Only the label itself — a form row also holds help text, an error, the control's own words.
-    if (entity && field && !entity.blocked && !field.labelOpaque && text === (field.label ?? humanizeKey(field.key))) {
+    // A translated label shows one of its languages (#302): any of them is the label.
+    const isLabel = text === (field?.label ?? humanizeKey(field?.key ?? "")) || Object.values(field?.labels ?? {}).includes(text);
+    if (entity && field && !entity.blocked && !field.labelOpaque && isLabel) {
       return { kind: "field", node, text, entity, field };
     }
   }

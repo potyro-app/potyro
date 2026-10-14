@@ -7,6 +7,7 @@ import type { MediaRef, Resolved } from "potyro";
 import type { DisplayCell } from "./types.js";
 import { formatDateValue, getView, toBadges } from "./format.js";
 import { releaseMediaUrl } from "./media-input.js";
+import { optionLabel } from "./shown.js";
 
 function str(v: unknown): string {
   if (v == null) return "";
@@ -51,7 +52,8 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
           cell.badges = (display.badges as string[]).flatMap((key) => {
             const f = entity?.fields[key];
             const field = f?.type === "enum" ? { colors: f.colors } : undefined;
-            return toBadges(row[key]).map((text) => ({ text, field }));
+            const labels = f?.type === "enum" || f?.type === "tags" ? f : undefined;
+            return toBadges(row[key]).map((text) => ({ text, field, label: optionLabel(labels, text) }));
           });
         }
         return cell;

@@ -17,7 +17,7 @@ import {
   type LoopOutcome,
   type LoopStep,
 } from "@potyro/generator/agent";
-import { createOpenRouterEngine } from "@potyro/generator/backends";
+import { createOpenRouterEngine, type Language } from "@potyro/generator/backends";
 import { canInvestigate, isCloud, keyFor, openRouterOptions, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
@@ -37,6 +37,8 @@ export interface StartFixOpts {
   resumeFrom?: LoopDeps["resumeFrom"];
   /** The app's libraries and own modules (#266, #258), when it has any. */
   modules?: ModuleSource;
+  /** The person's language (#301): the explanation and any question come back in it. English when absent. */
+  language?: Language;
 }
 
 /**
@@ -175,6 +177,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     system: AGENT_SYSTEM_PROMPT,
     task,
     source: opts.source,
+    ...(opts.language ? { language: opts.language } : {}),
     // Closed over the case and the real store — never the candidate's own claim about itself.
     verify: (source) =>
       verifyCandidate({

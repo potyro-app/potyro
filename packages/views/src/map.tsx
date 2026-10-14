@@ -154,7 +154,7 @@ function popupContent(
       tag.className = "k-badge";
       const colour = badge.field?.colors?.[badge.text];
       if (colour) tag.style.setProperty("--badge", colour);
-      tag.textContent = badge.text;
+      tag.textContent = badge.label ?? badge.text;
       tags.append(tag);
     }
     el.append(tags);

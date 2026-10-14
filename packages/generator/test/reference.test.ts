@@ -82,7 +82,13 @@ describe("SYSTEM_PROMPT", () => {
     // `FileRef` and the `file` field, without which the model cannot build an app that keeps
     // documents, ships a data file or imports anything. Their comments were cut to one line each
     // first (from ~3.9k to ~2.3k characters); what is left is the API itself. ~600 cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(75_000);
+    //
+    // Raised 75k -> 80k on 2026-10-13 (#302) for an app's words in several languages: `Words` at every
+    // slot that shows text, `language`/`languages`, option `labels`, `ctx.locale`/`t`/`format`, and
+    // the LANGUAGES rules (write in the person's language; add one only when asked, with `translate`;
+    // a translation never moves `schemaVersion`). Trimmed first: every new comment is one line, and
+    // `Localized` (what views read) left the reference. ~1.2k cached tokens.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(80_000);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {

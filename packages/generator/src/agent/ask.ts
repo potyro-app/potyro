@@ -13,12 +13,13 @@
 // that the model cannot link to a record that already exists or know what is already there; the
 // shell de-duplicates against the person's records, locally, after the proposal comes back.
 
-import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "potyro";
+import { actionInfo, fieldValueProblem, humanizeKey, plainWords, type AppDefinition, type Field } from "potyro";
 import type { ChatEngine, ChatMessage, Citation } from "../chat-backend.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import { Retrieved, verifyRow, type Evidence, type Trust } from "./evidence.js";
 import { verifyClaims } from "./verify-claims.js";
 import { corroborate } from "./corroborate.js";
+import { LANGUAGE_NAMES, matchLanguage } from "../language.js";
 
 /** One record the model proposes. `ref` names it inside the proposal, so another row can link to it. */
 export interface ProposedRow {
@@ -130,7 +131,7 @@ const MAX_STEPS_WITH_SOURCES = 12;
 /** Field types a model cannot fill: a photo it does not have, a person it cannot see. */
 const UNSETTABLE = new Set<Field["type"]>(["media", "file", "member"]);
 
-const labelOf = (key: string, field: Field): string => field.label ?? humanizeKey(key);
+const labelOf = (key: string, field: Field): string => (field.label === undefined ? humanizeKey(key) : plainWords(field.label));
 
 function describeField(key: string, field: Field): string {
   const rules: string[] = [];
@@ -499,11 +500,28 @@ export function askSystemPrompt(opts: { canLookUp: boolean }): string {
 /** The prompt with nothing to look things up with; kept for callers that print it. */
 export const ASK_SYSTEM_PROMPT = askSystemPrompt({ canLookUp: false });
 
+/**
+ * Ask's language line (#301), or null for English or a language Potyro does not speak — then the
+ * context's "Their language" line is all there is, as before. Names of real things stay as the
+ * sources write them: a translated name would not be found on any page that was read.
+ */
+export function askLanguageInstruction(tag: string | undefined): string | null {
+  const language = matchLanguage(tag);
+  if (!language || language === "en") return null;
+  const name = LANGUAGE_NAMES[language];
+  return (
+    `Reply to the person in ${name}: the summary and any question. Write the values you choose yourself ` +
+    `(notes, descriptions, steps, list items) in ${name}; keep the names of real places, businesses and things as your sources write them.`
+  );
+}
+
 function describeContext(c: AskContext | undefined): string {
   if (!c) return "";
   const lines = ["", "Context, from the person's device (not the app's data):"];
   if (c.today) lines.push(`- Today: ${c.today}`);
   if (c.language) lines.push(`- Their language: ${c.language}`);
+  const instruction = askLanguageInstruction(c.language);
+  if (instruction) lines.push(`- ${instruction}`);
   if (c.area) {
     lines.push(
       `- Area: around ${c.area.lat.toFixed(4)}, ${c.area.lng.toFixed(4)}${c.area.radiusKm ? ` (within about ${c.area.radiusKm} km)` : ""}` +

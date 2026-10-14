@@ -59,6 +59,8 @@ export interface ChromeQuick {
 export interface ChromeTool {
   key: string;
   label: string;
+  /** Says something rather than does something (the app's language, when it cannot be changed here). */
+  disabled?: boolean;
   /** A glyph, or a drawn icon where no glyph says it (Data's database). */
   icon?: ReactNode;
   hint?: string;
@@ -180,6 +182,7 @@ function toolEntry(tool: ChromeTool): MenuEntry {
     onSelect: tool.onSelect,
     className: tool.className,
     danger: tool.danger,
+    disabled: tool.disabled,
   };
 }
 
@@ -361,6 +364,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
       // The same accessible names as the phone's controls, whatever the visible word.
       aria-label={tool.key === "edit-mode" ? t`Edit mode` : tool.key === "apps" ? t`Switch app` : tool.hint ? tool.label : undefined}
       title={tool.hint}
+      disabled={tool.disabled}
       onClick={tool.onSelect}
     >
       <span className="k-tool-icon" aria-hidden>

@@ -70,8 +70,10 @@ new relative to earlier drafts (it replaces the old expression evaluator entirel
   every consumer stub in the same PR.
 - Stub, don't block: code against interfaces with `MemoryStore` / `FakeCapabilities` /
   `DirectHost` fakes; mark `// STUB`.
-- Small PRs, conventional commits. Any change to `defineApp`'s shape or `ctx` bumps
-  `schemaVersion` and is noted for other agents.
+- Small PRs, conventional commits. A change to `defineApp`'s shape or `ctx` is a contract change:
+  note it in docs/04 / docs/05 and regenerate the reference (`gen:reference`), in the same PR, for
+  other agents. `schemaVersion` is each app's own DATA version — no app bumps it for an additive,
+  optional change that leaves its records as they are (a new `ctx` member, a language, #112, #302).
 
 ## Commands (fill in as scaffolding lands)
 

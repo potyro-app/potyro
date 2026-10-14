@@ -10,12 +10,13 @@
 import {
   runModifyLoop,
   buildDiscoveryTools,
+  createDraft,
   MODIFY_AGENT_SYSTEM_PROMPT,
   type LoopStep,
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
 } from "@potyro/generator/agent";
-import { createOpenRouterEngine, loadCorpus, regressionGate } from "@potyro/generator/backends";
+import { createOpenRouterEngine, loadCorpus, regressionGate, type Language, type ModifyContext } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
 import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
@@ -27,6 +28,8 @@ export interface StartModifyOpts {
   source: string;
   /** The change, in their words. */
   instruction: string;
+  /** Where it was aimed: the part of the app they pointed at (#284). */
+  context?: ModifyContext;
   /** The app's shape before the change — what a candidate must not lose. */
   before: AppShape;
   engine: EngineConfig;
@@ -35,6 +38,8 @@ export interface StartModifyOpts {
   resumeFrom?: ModifyLoopDeps["resumeFrom"];
   /** The app's libraries and own modules (#266, #258): a candidate is checked with them. */
   modules?: ModuleSource;
+  /** The person's language (#301): the model's reply and questions come back in it. English when absent. */
+  language?: Language;
 }
 
 /** Whether this engine can drive the modify loop at all (a chat engine with a key); else why not. */
@@ -57,18 +62,22 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   // A regression gate: the app as the person has it is run once, and a candidate is held back only
   // by what IT breaks — never by what was already failing (#262).
   const run = regressionGate((source) => runCandidate(source, { modules }), opts.source);
+  // What `translate` writes a language into, and what the loop's edits then apply to (#302).
+  const draft = createDraft(opts.source);
   return runModifyLoop({
     // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
     engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
     model: opts.engine.openrouterModel,
     escalate: thinkingFor(opts.engine).escalate,
-    tools: buildDiscoveryTools({ check, run, source: opts.source }),
+    tools: buildDiscoveryTools({ check, run, source: opts.source, draft }),
     // The passages from this release's examples and docs that speak to the request go in the first
     // message, so the model starts from how a real app does it (#262).
     corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: opts.instruction,
+    context: opts.context,
     source: opts.source,
+    ...(opts.language ? { language: opts.language } : {}),
     check,
     run,
     shapeOf: (source) => loadDefinition(source, modules),
@@ -76,5 +85,6 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     onStep: opts.onStep,
     signal: opts.signal,
     resumeFrom: opts.resumeFrom,
+    draft,
   });
 }

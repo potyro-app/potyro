@@ -19,6 +19,7 @@ import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
+import { currentLocale } from "./locale.js";
 import { currentVault } from "@potyro/identity";
 import { allowOrigin, approveAppSource, keyStore, sourceHttp, listMySources, makeSourceFetcher, resolveSources, type KeyStore, type ResolvedSource } from "./ask-sources.js";
 import { SourcesSection, type SourcesState } from "./ask-sources-panel.js";
@@ -193,7 +194,8 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
 
   const context = (): AskContext => ({
     today: localDay(),
-    language: globalThis.navigator?.language,
+    // The person's language (#301): the saved choice, else the device's — shown in the dialog, and Ask replies in it.
+    language: currentLocale(),
     ...(area && sendArea ? { area: { ...area, label: "the map on the person's screen" } } : {}),
   });
 

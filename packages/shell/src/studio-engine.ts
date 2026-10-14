@@ -9,13 +9,14 @@ import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
 import type { GiveUp } from "@potyro/generator/agent";
-import { SYSTEM_PROMPT, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn } from "@potyro/generator/backends";
+import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import type { ModuleSource } from "./package-modules.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
+import { currentLocale } from "./locale.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
@@ -62,7 +63,8 @@ const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ k
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
-  modify(source: string, before: AppShape, instruction: string): Promise<Outcome>;
+  /** `context`: where the change was aimed — the part of the app the person pointed at (#284). */
+  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome>;
   /** Repair from the validator's own words, through the same gate as a modify. */
   repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
 }
@@ -95,8 +97,17 @@ export async function shapeOrEmpty(src: string, modules?: ModuleSource): Promise
   }
 }
 
-/** `modules`: the libraries and own modules of the app being changed (#266, #258), when it has any. */
-export function studioEngine(engine: EngineConfig, progress: (text: string | null) => void, modules?: ModuleSource): StudioEngine {
+/**
+ * `modules`: the libraries and own modules of the app being changed (#266, #258), when it has any.
+ * `language`: the person's (#301) — the model replies in it and writes a new app's words in it; a
+ * change keeps the app's own language for its words. Read once, when the engine is made.
+ */
+export function studioEngine(
+  engine: EngineConfig,
+  progress: (text: string | null) => void,
+  modules?: ModuleSource,
+  language: Language = currentLocale(),
+): StudioEngine {
   const label = engineLabel(engine);
   const isCli = engine.engine === "cli";
 
@@ -124,11 +135,12 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
    * "an explanation instead of a change", so it is taken out here, before the guard sees it, and
    * comes back to the conversation as the question it is.
    */
-  const attempt = async (source: string, instruction: string): Promise<string> => {
+  const attempt = async (source: string, instruction: string, ctx?: ModifyContext): Promise<string> => {
     const reply = await modifyTurn({
       engine,
       source,
       instruction,
+      ctx: { ...ctx, ...languageOf(source) },
       onProgress: (text, secs) => {
         if (secs === undefined) progress(text);
         else if (isCli) {
@@ -141,6 +153,9 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     if (question) throw new Asked(question);
     return reply;
   };
+
+  /** Which language to answer in, and which the app's words are in (read off the source until #302 declares it). */
+  const languageOf = (source: string): ModifyContext => ({ language: { person: language, app: appLanguage(source) } });
 
   // Said to the person only: nothing parses this line (the model's own `Not done:` is read from its reply).
   const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string => {
@@ -156,14 +171,14 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
           // `system` travels separately so the dev endpoint passes it as the system prompt, replacing
           // Claude Code's own — the same setup the eval harness measures.
           return extractSource(
-            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief }), onProgress: (secs) => {
+            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief, language }), onProgress: (secs) => {
                 const elapsed = seconds(secs);
                 progress(t`Making it via ${label}… ${elapsed}`);
               },
             }),
           );
         }
-        return (await backendFor(engine, progress)).generate({ id: "studio", description: brief });
+        return (await backendFor(engine, progress)).generate({ id: "studio", description: brief, language });
       });
       const question = questionIn(reply);
       if (question) return { kind: "question", text: question };
@@ -177,7 +192,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
     }
   };
 
-  const modify = async (source: string, before: AppShape, instruction: string): Promise<Outcome> => {
+  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext): Promise<Outcome> => {
     try {
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
@@ -187,8 +202,10 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
           modules,
           source,
           instruction,
+          context,
           before,
           engine,
+          language,
           onStep: (step) => {
             if (step.kind === "thinking") return progress(t`Thinking via ${label}…`);
             // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
@@ -207,7 +224,7 @@ export function studioEngine(engine: EngineConfig, progress: (text: string | nul
       }
       const result = await ticking((elapsed) => t`Changing it via ${label}… ${elapsed}`, () =>
         guardedModify({
-          attempt: (instr) => attempt(source, instr),
+          attempt: (instr) => attempt(source, instr, context),
           shapeOf: async (src) => {
             const app = await loadTrustedModule(src, modules);
             return { pages: app.pages, entities: app.entities };

@@ -4,7 +4,8 @@
 // computed keys (which have no field definition — their value is already final).
 
 import { useEffect, useState } from "react";
-import type { Field, FileRef, Geo, MediaRef, DateTimeField, MoneyField } from "potyro";
+import type { FileRef, Geo, MediaRef, DateTimeField } from "potyro";
+import { optionLabel, type ShownField, type ShownMoneyField } from "./shown.js";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
@@ -30,7 +31,7 @@ export function FieldValue({
   return <FieldByType runtime={runtime} field={field} value={value} />;
 }
 
-function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field: Field; value: unknown }) {
+function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field: ShownField; value: unknown }) {
   if (value == null || value === "") return <span className="k-muted">–</span>;
 
   switch (field.type) {
@@ -138,7 +139,7 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
         <span className="k-badges">
           {tags.map((t) => (
             <span key={String(t)} className="k-badge">
-              {String(t)}
+              {optionLabel(field, String(t))}
             </span>
           ))}
         </span>
@@ -176,7 +177,7 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
       );
     case "money":
       // Whole minor units, written the way the reader's own device writes money (KA-26).
-      return <MoneyValue field={field as MoneyField} value={value} />;
+      return <MoneyValue field={field as ShownMoneyField} value={value} />;
     case "number":
       // The same formatting the form's suffix uses (#99): "7 days" reads the same everywhere.
       return <>{formatWithUnit(value, field)}</>;

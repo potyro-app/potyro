@@ -14,7 +14,10 @@
 import { useEffect, useState } from "react";
 import { useLingui } from "@lingui/react/macro";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { Field, Resolved, SummaryValue } from "potyro";
+import type { Field, Localized, Resolved, SummaryValue as SourceSummaryValue } from "potyro";
+
+/** A figure as the person reads it: the localized definition's (#302). */
+type SummaryValue = Localized<SourceSummaryValue>;
 import { computeSummary, type SummaryFigure } from "@potyro/views";
 
 interface SummaryStripProps {
