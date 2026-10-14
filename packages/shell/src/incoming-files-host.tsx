@@ -16,6 +16,9 @@ import { tileIdentity } from "./tile-identity.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { navigateTo } from "./router.js";
 import { totalSize } from "./app-folder.js";
+import { confirmLargeForSharing } from "./files-panel.js";
+import { offerDeviceOnly } from "./device-files.js";
+import { SpaceFullError } from "@potyro/store";
 
 type Arrival = { kind: "app"; files: File[] } | { kind: "files"; files: File[] };
 
@@ -128,12 +131,18 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
   }, [installed, fits, here]);
 
   const choose = async (app: InstalledApp): Promise<void> => {
+    if (!(await confirmLargeForSharing(files, app.name, app.sync === true))) return;
     setBusy(app.id);
     setFailed(null);
     try {
       const store = await openAppStore(app.user, { sync: await syncAllowedFor(app.user) });
       try {
         await landFiles(store, app.id, files);
+      } catch (e) {
+        // The app's shared space is full (#255): what fitted landed; offer to keep the rest here.
+        if (!(e instanceof SpaceFullError)) throw e;
+        const rest = (e as SpaceFullError & { rest?: File[] }).rest ?? files;
+        await offerDeviceOnly(e, rest, app.id, app.name);
       } finally {
         await store.close?.();
       }

@@ -11198,6 +11198,162 @@ body:has(.k-tabbar) .k-toasts {
   font-weight: 600;
 }
 
+/* tokens-only: start — shared files */
+/* A shared app's file whose bytes are not on this device yet (#255): the tag is drawn as an outline
+   of itself, the name stays, and a line under it says how it comes. Opening it fetches it. */
+.k-files-row[data-away] .k-files-tag {
+  background: transparent;
+  box-shadow: none;
+  outline: 1.5px dashed oklch(var(--person-avatar-line) var(--k-hue, 80));
+  outline-offset: -1.5px;
+  color: var(--ink-faint);
+}
+.k-files-row[data-away] .k-files-name strong {
+  color: var(--ink-soft);
+}
+.k-files-away {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.k-files-summary-away {
+  color: var(--ink-faint);
+}
+/* A shared space's use of its budget on the relay (#255): a thin bar that warms as it fills. */
+.k-files-space {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.k-files-space-bar {
+  flex: 0 0 7rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.k-files-space-bar span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease);
+}
+.k-files-space[data-level="high"] .k-files-space-bar span {
+  background: var(--warn);
+}
+.k-files-space[data-level="full"] .k-files-space-bar span {
+  background: var(--danger);
+}
+.k-files-space[data-level="full"] {
+  color: var(--danger);
+}
+/* Files kept on this device only, under a shared app's own (#255). */
+.k-files-device {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--line);
+}
+.k-files-device .k-files,
+.k-files:has(+ .k-files-device) {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+.k-files-heading h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+.k-files-heading p {
+  margin: 0.2rem 0 0;
+  max-width: 40rem;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+.k-files-add {
+  white-space: nowrap;
+}
+.k-viewer-head .k-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+/* In the viewer: on its way, or waiting for the network. */
+.k-viewer-away {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  max-width: 26rem;
+  margin: var(--space-6) auto;
+  text-align: center;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.k-viewer-away strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.k-viewer-away-mark {
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-bottom: 0.3rem;
+  border-radius: 999px;
+  border: 3px solid var(--line);
+}
+.k-viewer-away-mark[data-online] {
+  border-top-color: var(--accent);
+  animation: viewer-fetch 0.9s linear infinite;
+}
+@keyframes viewer-fetch {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.k-viewer-earlier {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.k-viewer-earlier h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.k-viewer-earlier ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.k-viewer-earlier li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.k-viewer-earlier .k-add {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-viewer-away-mark[data-online] {
+    animation: none;
+  }
+}
+/* tokens-only: end — shared files */
+
 /* tokens-only: start — incoming files */
 /* Files held over Potyro's window (#254): the whole window says it will take them. Pointer events
    pass through, so the drop lands on the page underneath — or on a Files panel, which takes it. */

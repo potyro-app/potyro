@@ -48,11 +48,18 @@ export interface Store {
   kvGet(k: string): Promise<string | null>;  kvSet(k: string, v: string): Promise<void>;  kvDelete(k: string): Promise<void>;
   subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;  // KA-20: a photo's bytes arrived
+  blobHere?(r: MediaRef): Promise<boolean>;  // #255: bytes on this device? asks no one (getBlob fetches); absent = always
+  spaceUsage?(): Promise<{ used: number; budget: number }>;  // #255: a shared space's bytes on the relay vs its budget; a file write past it throws SpaceFullError
   memberIds?(): readonly string[];  // synced stores: every account ever in the space, removed ones too (KA-19)
   deleteBlob(key: string): Promise<void>;  // a replaced or removed file's old bytes
   // the app's own folder (#252): an INDEX of files by id; bytes are blobs under `entry.blob`.
   // Paths, types, hashing and "one file per path" live once in `file-space.ts` (`fileSpace(store)`),
-  // so stores only keep entries. In a synced store the index syncs and bytes come on demand (#255).
+  // so stores only keep entries. In a synced store the index syncs and bytes come on demand (#255):
+  // a member has every entry, and a file's bytes only once someone on that device has read it. A
+  // write replaces at the file level (last writer wins); what it replaced is kept on the entry as
+  // `earlier` copies (the last 3, from the last 30 days). Entries members made at one path apart
+  // read as one file, the newest, the rest its earlier copies. A synced store refuses an entry under
+  // `.modules/` or `.src/`: the app's code never rides its shared space (#281).
   listFiles(): Promise<StoredFile[]>;  getFile(id: string): Promise<StoredFile | null>;
   setFile(entry: StoredFile): Promise<void>;  deleteFile(id: string): Promise<void>;
   subscribeFiles?(cb: () => void): Unsubscribe;

@@ -47,6 +47,26 @@ export interface StoreRules {
 /** A file's index entry as a store keeps it: what the app sees, plus the blob key of its bytes. */
 export interface StoredFile extends FileInfo {
   blob: string;
+  /** What newer writes replaced, newest first, kept for a while (#255; `file-space.ts`). */
+  earlier?: EarlierCopy[];
+}
+
+/** What a shared space holds on the relay, in bytes, and how much it may (#255). */
+export interface SpaceUsage {
+  used: number;
+  budget: number;
+}
+
+/** A file's bytes as they were before a newer write replaced them. */
+export interface EarlierCopy {
+  blob: string;
+  hash: string;
+  size: number;
+  mime: string;
+  /** When this copy was written. */
+  updated: string;
+  /** When a newer write replaced it: how long it has been kept counts from here. */
+  replaced: string;
 }
 
 export interface Store {
@@ -121,6 +141,17 @@ export interface Store {
   getBlob(r: MediaRef): Promise<Blob | null>;
   /** Fires when a blob's bytes arrive. Only a synced store has anything to wait for. */
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;
+  /**
+   * Whether a blob's bytes are on this device, WITHOUT fetching them (#255). A store that keeps
+   * everything locally need not implement it: its bytes are always here.
+   */
+  blobHere?(r: MediaRef): Promise<boolean>;
+  /**
+   * How much a SHARED space holds on the relay, against its budget (#255). Every byte ever written
+   * counts — cojson keeps history, so replacing or deleting frees nothing there. Absent where nothing
+   * leaves the device.
+   */
+  spaceUsage?(): Promise<SpaceUsage>;
   /**
    * Drop a blob's bytes. Called when a file is replaced or removed and nothing else points at the
    * old bytes. A synced store may only forget its index entry; the bytes there are history.
