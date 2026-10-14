@@ -127,6 +127,12 @@ describe("reading an app's language", () => {
     for (const [file, src] of ENGLISH_APPS) expect(appLanguage(src), file).toBe("en");
   });
 
+  it("takes a declared `language` at its word, even for an app whose words are in several (#302)", () => {
+    const both = `defineApp({ id: "g", name: { en: "Groceries", pl: "Zakupy" }, language: "pl", languages: ["pl", "en"], pages: [{ id: "p", title: { pl: "Lista zakupów", en: "Shopping list" } }] })`;
+    expect(appLanguage(both)).toBe("pl");
+    expect(appLanguage(both.replace('language: "pl"', 'language: "pt-PT"'))).toBe("pt-BR");
+  });
+
   it("reads a Polish app as Polish, from its labels, titles and help", () => {
     expect(userFacingStrings(POLISH_APP)).toEqual(expect.arrayContaining(["Moje rośliny", "Pokój", "W którym pokoju stoi", "Wszystkie rośliny"]));
     expect(appLanguage(POLISH_APP)).toBe("pl");

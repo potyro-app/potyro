@@ -11,7 +11,7 @@
 // declare it. The app itself is already in the conversation, once (the modify loop's rule), so this
 // is a slice of it with its line numbers, never a second copy.
 
-import { basePageId, type AppDefinition, type View } from "potyro";
+import { basePageId, isWordsMap, plainWords, type AppDefinition, type View, type Words } from "potyro";
 import { humanizeKey } from "@potyro/views";
 import type { ModifyContext } from "@potyro/generator/backends";
 import { partRange, textSites, type SourcePart } from "./app-source.js";
@@ -57,9 +57,14 @@ const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seven
 const ordinal = (i: number): string => ORDINALS[i] ?? `${i + 1}th`;
 const article = (word: string): string => (/^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`);
 
+/** Words as one string: the runtime's definition already has them in the person's language; a raw
+ *  one (a translation map, #302) reads in its first — the app's own — language. */
+const said = (w: unknown): string | undefined => (typeof w === "string" ? w : isWordsMap(w) ? plainWords(w as Words) : undefined);
+
 export function pageTitle(def: Def, id: string): string {
   const page = def.pages.find((p) => p.id === id);
-  return typeof page?.title === "string" && page.title.trim() ? page.title : humanizeKey(id);
+  const title = said(page?.title);
+  return title?.trim() ? title : humanizeKey(id);
 }
 
 /** The view a part names, its title when it has one, and where it is. */
@@ -70,7 +75,8 @@ function viewAt(def: Def, part: string): { page: string; index: number | null; v
   if (hash < 0) return { page, index: null, view: p?.view ?? p?.layout?.items[0]?.view };
   const index = Number(part.slice(hash + 1));
   const item = p?.layout?.items[index];
-  return { page, index, view: item?.view, ...(item?.title ? { title: item.title } : {}) };
+  const title = said(item?.title);
+  return { page, index, view: item?.view, ...(title ? { title } : {}) };
 }
 
 /** "the "Nights" list on the "Patterns" page" — and the short form, for the chip. */
@@ -100,9 +106,9 @@ export function describePoint(ref: PointRef, def: Def): Pointed {
   }
   if (ref.kind === "field") {
     const entity = def.entities[ref.entity];
-    const field = entity?.fields[ref.field] as { label?: string } | undefined;
-    const name = field?.label ?? humanizeKey(ref.field);
-    const of = entity?.label ?? humanizeKey(ref.entity);
+    const field = entity?.fields[ref.field] as { label?: unknown } | undefined;
+    const name = said(field?.label) ?? humanizeKey(ref.field);
+    const of = said(entity?.label) ?? humanizeKey(ref.entity);
     const where = ref.part ? `, as shown ${describeView(def, ref.part).within}` : "";
     return { ref, label: `“${name}” field`, words: `the "${name}" field of ${of}${where}` };
   }

@@ -22,6 +22,8 @@ import { describeEditFailures } from "../edits.js";
 import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
+import { buildTranslateTool, type TranslationDraft } from "./translate-tool.js";
+import { describeWordsReport, wordsReport } from "../source-words.js";
 
 interface Declaration {
   name: string;
@@ -57,9 +59,12 @@ export function lookupReference(reference: string, rawQuery: string): string {
   const propertyRe = new RegExp(`^\\s*(?:readonly\\s+)?${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\??\\s*[:(]`, "im");
   const byProperty = decls.filter((d) => propertyRe.test(d.text));
   const byPartialName = decls.filter((d) => d.name.toLowerCase().includes(lower) && d.name.toLowerCase() !== lower);
+  // A type NAMED after the query ("scope" → ScopeDef) answers it before the big interfaces that only
+  // hold a property of that name, which can fill the answer on their own (Ctx is ~4k characters).
+  const byPrefix = byPartialName.filter((d) => d.name.toLowerCase().startsWith(lower));
 
   const picked: Declaration[] = [];
-  for (const d of [...byName, ...viewType, ...byProperty, ...byPartialName]) {
+  for (const d of [...byName, ...viewType, ...byPrefix, ...byProperty, ...byPartialName]) {
     if (!picked.includes(d)) picked.push(d);
     if (picked.length >= 4) break;
   }
@@ -87,6 +92,8 @@ export interface DiscoveryDeps {
   run?: RunGate;
   /** The release's corpus. Defaults to the one shipped with this build, loaded on first use. */
   corpus?: () => Promise<Corpus>;
+  /** With it, `translate` is offered, and `check`'s edits apply to the app it has written into (#302). */
+  draft?: TranslationDraft;
 }
 
 const EXAMPLES: ReadonlyArray<{ title: string; source: string }> = [
@@ -121,7 +128,7 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
       },
       run: async (args) => {
         const edits = String(args.edits ?? args.source ?? "");
-        const read = readEditsOrFile(deps.source, edits);
+        const read = readEditsOrFile(deps.draft?.source ?? deps.source, edits);
         if (read.kind === "whole-file") {
           return {
             ok: false,
@@ -140,9 +147,13 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
           return { ok: false, detail: `${applied}; the result does not compile: ${e instanceof Error ? e.message : String(e)}` };
         }
         if (issues.length) return { ok: false, detail: `${applied}; the result fails validation:\n${issues.map((i) => `- ${i}`).join("\n")}` };
-        if (!deps.run) return { ok: true, detail: `${applied}; it compiles and validates.` };
+        // Translations kept in step (#302): a gap the edits add fails, like a validation issue.
+        const words = describeWordsReport(await wordsReport(deps.source, read.source));
+        const wordsLine = words.text ? `\n${words.text}` : "";
+        if (words.fails) return { ok: false, detail: `${applied}; it compiles and validates, but${wordsLine}` };
+        if (!deps.run) return { ok: true, detail: `${applied}; it compiles and validates.${wordsLine}` };
         const { report, preexisting } = await deps.run(read.source);
-        return { ok: report.errors.length === 0, detail: `${applied}; it compiles and validates. ${describeRun(report, preexisting)}` };
+        return { ok: report.errors.length === 0, detail: `${applied}; it compiles and validates. ${describeRun(report, preexisting)}${wordsLine}` };
       },
     },
     {
@@ -179,5 +190,6 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
       },
       run: async (args) => ({ ok: true, detail: readCorpus(await corpus(), String(args.path ?? ""), Number(args.line ?? 1)) }),
     },
+    ...(deps.draft ? [buildTranslateTool({ draft: deps.draft, check: deps.check })] : []),
   ];
 }

@@ -36,3 +36,4 @@ export { formatDateAbsolute, formatDateRelative, formatDateForInput, parseTypedD
 export { formatValue, formatDateValue, toBadges, getView, fieldLabel, displayFieldFor, humanizeKey } from "./format.js";
 export type { BuiltinViewProps, DisplayCell, ViewRegistration } from "./types.js";
 export { MoneyInput, MoneyValue, MoneyTotal, moneyColumn, currencySign, editableAmount } from "./money-input.js";
+export { optionLabel, type ShownField, type ShownEntity } from "./shown.js";

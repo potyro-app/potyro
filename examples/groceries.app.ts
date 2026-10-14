@@ -3,43 +3,54 @@
 // tapping it, drag items between aisles, and aisles that are RECORDS you can rename, reorder and
 // delete from the list itself. All of it declared: no custom view, no JSX, not one function beyond
 // the sort. If a shopping list needs React to rename a row, nobody but a programmer has one.
+//
+// Also: an app in two languages (#302). Every word is a map, `{ en, pl }`, and each device shows the
+// person's — "Zakupy" on a Polish phone, "Groceries" on an English one — over the same records. The
+// items and aisles people type are records, so they are never translated.
 import { defineApp } from "potyro";
 
 export default defineApp({
   id: "groceries",
-  name: "Groceries",
+  name: { en: "Groceries", pl: "Zakupy" },
   icon: "🛒",
-  version: "2.0.0",
+  version: "2.1.0",
   schemaVersion: 2,
+  language: "en",
+  languages: ["en", "pl"],
   theme: { accent: "#5B9C5B" },
 
   entities: {
     // The aisles of the shop you actually go to — so the list comes out in walking order.
     aisle: {
-      label: "Aisle",
+      label: { en: "Aisle", pl: "Dział" },
       icon: "🧭",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, placeholder: "Produce" },
+        name: { type: "text", required: true, label: { en: "Name", pl: "Nazwa" }, placeholder: { en: "Produce", pl: "Warzywa" } },
         order: { type: "number", integer: true, default: 0, hidden: true },
       },
     },
 
     item: {
-      label: "Item",
+      label: { en: "Item", pl: "Produkt" },
       icon: "🛒",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, placeholder: "Milk" },
-        aisle: { type: "relation", to: "aisle" },
-        quantity: { type: "text", placeholder: "2 × 1 l", help: "How much, in your own words" },
-        bought: { type: "boolean", default: false },
+        name: { type: "text", required: true, label: { en: "Name", pl: "Nazwa" }, placeholder: { en: "Milk", pl: "Mleko" } },
+        aisle: { type: "relation", to: "aisle", label: { en: "Aisle", pl: "Dział" } },
+        quantity: {
+          type: "text",
+          label: { en: "Quantity", pl: "Ilość" },
+          placeholder: "2 × 1 l", // the same in every language
+          help: { en: "How much, in your own words", pl: "Ile — własnymi słowami" },
+        },
+        bought: { type: "boolean", default: false, label: { en: "Bought", pl: "Kupione" } },
         position: { type: "number", integer: true, default: 0, hidden: true },
-        note: { type: "text", multiline: true },
+        note: { type: "text", multiline: true, label: { en: "Note", pl: "Notatka" } },
       },
       groups: [
-        { title: "Item", fields: ["name", "quantity", "aisle"] },
-        { title: "More", fields: ["note", "bought"], collapsed: true },
+        { title: { en: "Item", pl: "Produkt" }, fields: ["name", "quantity", "aisle"] },
+        { title: { en: "More", pl: "Więcej" }, fields: ["note", "bought"], collapsed: true },
       ],
     },
   },
@@ -47,7 +58,7 @@ export default defineApp({
   pages: [
     {
       id: "shopping",
-      title: "Shopping",
+      title: { en: "Shopping", pl: "Zakupy" },
       view: {
         type: "checklist",
         entity: "item",
@@ -59,13 +70,13 @@ export default defineApp({
         reorder: "position",
         editText: true,
         quickAdd: true,
-        emptyText: "Nothing on the list. Add the first thing below.",
+        emptyText: { en: "Nothing on the list. Add the first thing below.", pl: "Lista jest pusta. Dodaj pierwszą rzecz poniżej." },
         onOpen: { page: "item", param: { itemId: "id" } },
       },
     },
     {
       id: "item",
-      title: "Item",
+      title: { en: "Item", pl: "Produkt" },
       hidden: true,
       view: { type: "detail", entity: "item", param: "itemId" },
     },

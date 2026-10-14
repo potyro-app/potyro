@@ -47,6 +47,9 @@ import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
+import { isRtl, languageNote, shownName } from "./app-words.js";
+import { languagePrefs } from "./locale.js";
+import { optionLabel } from "@potyro/views";
 
 interface EditorState {
   entity: string;
@@ -157,7 +160,10 @@ interface AppProps {
 
 export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
   const def = runtime.definition;
-  const appLabel = name?.trim() || def.name;
+  // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
+  const appLabel = shownName(name, runtime.core.app.definition, [runtime.language.current ?? "", ...languagePrefs()]);
+  // The app lacks the person's language: one quiet line in its menu, never a banner (#302).
+  const langNote = languageNote(runtime.core.app.definition, languagePrefs());
   const locked = useAppLock(lock);
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -845,6 +851,15 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ...(onData ? [{ key: "data", label: "Data", icon: <DatabaseIcon />, hint: "every record", onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
+    // "This app is in English." Where it can be changed, the line offers the translation, which the
+    // Studio makes (docs/20 §3.3); elsewhere it only says so.
+    ...(langNote
+      ? [
+          canEdit
+            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(`Translate this app into ${langNote.into.name} (${langNote.into.tag}).`) }
+            : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
+        ]
+      : []),
   ];
   const chromeReport: ChromeTool[] = appId
     ? recording
@@ -879,6 +894,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   return (
     <div
       className="k-app"
+      // The app's words are in this language (#302): screen readers pronounce them right, and a
+      // right-to-left one turns the app's own area round (Q11 — a first step, not full RTL).
+      lang={runtime.language.current}
+      dir={isRtl(runtime.language.current) ? "rtl" : undefined}
       data-provenance={provenance}
       data-locked={locked ? "" : undefined}
       style={{ ["--accent" as string]: accent }}
@@ -1077,7 +1096,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
             <div className="k-quickmenu-options">
               {quickMenu.options.map((opt) => (
                 <button key={opt} type="button" className="k-add" onClick={() => void pickQuick(opt)}>
-                  {opt}
+                  {optionLabel(def.entities[quickMenu.qa.entity]?.fields[quickMenu.field] as { labels?: Record<string, string> } | undefined, opt)}
                 </button>
               ))}
             </div>

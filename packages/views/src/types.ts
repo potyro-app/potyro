@@ -18,7 +18,10 @@ export interface BuiltinViewProps {
 }
 
 export interface Badge {
+  /** The value: what the badge is keyed and tinted by. */
   text: string;
+  /** What it reads as, when that differs from the value — an enum or tags option's `labels` (#302). */
+  label?: string;
   /** The enum field the value came from, when it came from one — it carries the colour map. */
   field?: { colors?: Record<string, string> };
 }

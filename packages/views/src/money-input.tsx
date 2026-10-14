@@ -6,7 +6,8 @@
 // becomes an integer on every keystroke that parses, and is tidied when the field is left.
 
 import { useEffect, useState } from "react";
-import { formatMoney, minorDigits, parseMoney, type MoneyField } from "potyro";
+import { formatMoney, minorDigits, parseMoney } from "potyro";
+import type { ShownMoneyField as MoneyField } from "./shown.js";
 
 /** The symbol for a currency, on its own — "€", "$", "¥". */
 export function currencySign(currency: string): string {

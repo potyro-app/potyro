@@ -16,6 +16,7 @@ import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
 import { editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
+import { optionLabel } from "./shown.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -180,7 +181,7 @@ export function ListView(props: BuiltinViewProps) {
                 <span className="k-badges">
                   {cell.badges.map((b) => (
                     <span key={b.text} className="k-badge" data-tinted={b.field ? "true" : undefined} {...enumSwatch(b.field, b.text)}>
-                      {b.text}
+                      {b.label ?? b.text}
                     </span>
                   ))}
                 </span>
@@ -311,6 +312,13 @@ export function TableView(props: BuiltinViewProps) {
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
   const columns = view.display?.columns ?? [];
   const groups = useRowGroups(runtime, pageId, rows, view);
+  // An enum or tags column reads as its options' words (`labels`, #302), not their stored values.
+  const fieldsHere = runtime.definition.entities[view.entity]?.fields ?? {};
+  const cellValue = (key: string, v: unknown): unknown => {
+    const f = fieldsHere[key];
+    if (v == null || (f?.type !== "enum" && f?.type !== "tags")) return v;
+    return Array.isArray(v) ? v.map((x) => optionLabel(f, String(x))) : optionLabel(f, String(v));
+  };
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">Loading…</p>;
@@ -341,7 +349,7 @@ export function TableView(props: BuiltinViewProps) {
             <tr key={row.id} data-clickable={Boolean(onEdit)} onClick={onEdit ? () => onEdit(view.entity, String(row.id)) : undefined}>
               {columns.map((c) => (
                 <td key={c} data-k-value>
-                  {formatValue(row[c])}
+                  {formatValue(cellValue(c, row[c]))}
                 </td>
               ))}
               {onEdit ? (

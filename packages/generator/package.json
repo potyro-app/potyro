@@ -21,16 +21,20 @@
     "eval:modify": "vite-node scripts/run-modify-eval.ts --",
     "eval:modify:fixture": "vite-node scripts/fixture-review-sheet.ts --",
     "eval:modify:edits": "vite-node scripts/run-modify-edits-eval.ts --",
-    "eval:ask": "vite-node scripts/run-ask-eval.ts --"
+    "eval:ask": "vite-node scripts/run-ask-eval.ts --",
+    "eval:translate": "vite-node scripts/run-translate-eval.ts --",
+    "eval:translate:fixture": "vite-node scripts/run-translate-eval.ts -- --fixture"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
+    "@babel/parser": "^7.29.8",
+    "@mlc-ai/web-llm": "^0.2.84",
     "@potyro/capabilities": "workspace:*",
     "@potyro/host": "workspace:*",
     "@potyro/runtime": "workspace:*",
     "@potyro/store": "workspace:*",
-    "@mlc-ai/web-llm": "^0.2.84",
     "esbuild": "^0.21.5",
+    "magic-string": "^1.1.0",
     "potyro": "workspace:*"
   },
   "devDependencies": {

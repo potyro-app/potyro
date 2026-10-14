@@ -9,8 +9,8 @@
 // and compares, so a schema change without a regeneration fails CI instead of quietly narrowing
 // what the model believes is possible.
 
-/** The type files, in reading order: primitives, then fields, then `ctx`, then the app shape. */
-export const REFERENCE_FILES = ["core.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
+/** The type files, in reading order: primitives and words, then fields, then `ctx`, then the app shape. */
+export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 

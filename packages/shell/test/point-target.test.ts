@@ -164,3 +164,21 @@ describe("the brief", () => {
     );
   });
 });
+
+// A translated app (#302): pointing at a label written as a map says it in the person's language,
+// and the slice is the field's own lines — the map, every language of it.
+describe("pointing at a translated label", () => {
+  it("names it in the language shown, or the app's own for a raw definition, and slices the map", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { localize } = await import("potyro");
+    const source = readFileSync(resolve(process.cwd(), "../../examples/groceries.app.ts"), "utf8");
+    const raw = (await import("../../../examples/groceries.app.js")).default as unknown as AppDefinition;
+    const ref: PointRef = { kind: "field", entity: "item", field: "quantity", part: "shopping" };
+    expect(describePoint(ref, localize(raw, "pl") as AppDefinition).words).toBe('the "Ilość" field of Produkt, as shown in the checklist on the "Zakupy" page');
+    expect(describePoint(ref, raw).words).toBe('the "Quantity" field of Item, as shown in the checklist on the "Shopping" page');
+    const slice = (await pointSlice(source, ref))!;
+    expect(slice.excerpt).toContain('label: { en: "Quantity", pl: "Ilość" }');
+    expect(slice.excerpt).toContain('help: { en: "How much, in your own words", pl: "Ile — własnymi słowami" }');
+  });
+});

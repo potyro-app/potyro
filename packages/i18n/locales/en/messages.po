@@ -558,6 +558,10 @@ msgstr "The rest are on the relay; nothing was lost. Try again, or turn sync on 
 msgid "This app"
 msgstr "This app"
 
+#: ../shell/src/app-words.ts
+msgid "This app is in {language}."
+msgstr "This app is in {language}."
+
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "This device"
@@ -569,6 +573,10 @@ msgstr "This is my second device"
 #: ../shell/src/identity-panel.tsx
 msgid "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
 msgstr "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
+
+#: ../shell/src/app-words.ts
+msgid "Translate into {into}"
+msgstr "Translate into {into}"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn off sync for “{name}”? Its data will be copied back to local-only storage."

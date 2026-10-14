@@ -10,6 +10,7 @@
 import {
   runModifyLoop,
   buildDiscoveryTools,
+  createDraft,
   MODIFY_AGENT_SYSTEM_PROMPT,
   type LoopStep,
   type ModifyLoopDeps,
@@ -61,12 +62,14 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   // A regression gate: the app as the person has it is run once, and a candidate is held back only
   // by what IT breaks — never by what was already failing (#262).
   const run = regressionGate((source) => runCandidate(source, { modules }), opts.source);
+  // What `translate` writes a language into, and what the loop's edits then apply to (#302).
+  const draft = createDraft(opts.source);
   return runModifyLoop({
     // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
     engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
     model: opts.engine.openrouterModel,
     escalate: thinkingFor(opts.engine).escalate,
-    tools: buildDiscoveryTools({ check, run, source: opts.source }),
+    tools: buildDiscoveryTools({ check, run, source: opts.source, draft }),
     // The passages from this release's examples and docs that speak to the request go in the first
     // message, so the model starts from how a real app does it (#262).
     corpus: loadCorpus,
@@ -82,5 +85,6 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     onStep: opts.onStep,
     signal: opts.signal,
     resumeFrom: opts.resumeFrom,
+    draft,
   });
 }

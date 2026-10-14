@@ -2,25 +2,35 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value } from "potyro";
-import { checkFormFields } from "potyro";
+import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
+import { checkFormFields, localize, localizeFields, word } from "potyro";
+import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
 import { fileInfo, fileSpace, isReservedPath, mimeOf, type FileSpace, type FileTarget, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
-import type { LoadedApp, MakeCtxBase } from "./types.js";
+import type { LoadedApp, MakeCtxBase, ShownUiItem } from "./types.js";
 
 const KV_PREFIX = "kv:";
 
-/** A sheet or menu's items, checked: each needs an id and a label, or there is nothing to choose. */
-function checkItems<T>(opts: { title?: string; items: UiItem<T>[] }): { title?: string; items: UiItem<T>[] } {
+/**
+ * A sheet or menu's items, checked — each needs an id and a label, or there is nothing to choose —
+ * and with their words in the language the app is shown in (#302).
+ */
+function checkItems<T>(opts: { title?: Words; items: UiItem<T>[] }, say: (w: Words | undefined) => string) {
   const items = opts?.items;
   if (!Array.isArray(items) || !items.length) throw new Error("ui.sheet / ui.menu need `items`: at least one { id, label }");
-  for (const it of items) if (it == null || typeof it.label !== "string" || it.id === undefined) throw new Error("every ui.sheet / ui.menu item needs an `id` and a `label`");
-  return opts;
+  for (const it of items) if (it == null || (typeof it.label !== "string" && (it.label == null || typeof it.label !== "object")) || it.id === undefined) throw new Error("every ui.sheet / ui.menu item needs an `id` and a `label`");
+  return {
+    ...(opts.title === undefined ? {} : { title: say(opts.title) }),
+    items: items.map((it): ShownUiItem<T> => ({ ...it, label: say(it.label), detail: it.detail === undefined ? undefined : say(it.detail) })),
+  };
 }
+
+/** The base language of a tag: "pt-BR" → "pt". */
+const baseOf = (tag: string): string => tag.split("-")[0]!.toLowerCase();
 
 /**
  * Stand-in identity for hosts built without one (tests, fakes, the Studio preview).
@@ -156,10 +166,20 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
   const fixedNow = base.now ?? new Date();
   const me = base.me ?? ANONYMOUS;
 
+  // The app's words and the person's formats (#302). `language` comes from the runtime, which picked
+  // it from the person's languages; an app that declares none is shown in the person's own.
+  const formatLocale = base.formatLocale ?? formatLocaleFor(undefined, base.language ?? app.definition.language);
+  const locale = base.language ?? app.definition.language ?? baseOf(formatLocale);
+  const words: WordsContext = { language: locale, app: app.definition, formatLocale, now: () => fixedNow };
+  const say = (w: Words | undefined): string => word(w, locale, app.definition);
+  // The definition as the person reads it: messages about a value ("Amount must be a number.") name
+  // the field the way the form does. Cached per definition and language, so this is free per pass.
+  const shown = localize(app.definition, base.language);
+
   // Resolver dependencies. `ctx` is filled in after construction (computed fns receive it).
   // memo/computing are per-ctx → per evaluation pass (docs/04: now() is fixed per pass too).
   const deps: ResolveDeps = {
-    definition: app.definition,
+    definition: shown,
     store,
     callComputed: (entity, key, record, c) => app.callComputed(entity, key, record, c),
     ctx: undefined as unknown as Ctx,
@@ -264,6 +284,10 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       return startOfDay(fixedNow);
     },
 
+    locale,
+    t: (w, vars) => translate(w, vars, words),
+    format: makeFormat(formatLocale, () => fixedNow),
+
     params: Object.freeze({ ...(base.params ?? {}) }),
     // Fixed per pass like `now()`: a filter must see the same selection for every row it judges.
     scope: Object.freeze({ ...(base.scope ?? {}) }),
@@ -292,7 +316,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       provenance: app.provenance,
       permissions: app.permissions,
       ui,
-      appName: app.definition.name,
+      appName: say(app.definition.name),
     }),
 
     media: {
@@ -303,20 +327,29 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     files: filesFor(store, caps),
 
     ui: {
-      toast: (msg) => ui.toast(msg),
-      confirm: (msg, opts) => ui.confirm(msg, opts),
-      prompt: (msg, opts) => ui.prompt(msg, opts),
+      // Words in, strings out: a map shows in `ctx.locale`, so `toast({ en, pl })` never reads
+      // "[object Object]" (#302).
+      toast: (msg) => ui.toast(say(msg)),
+      confirm: (msg, opts) =>
+        ui.confirm(say(msg), opts && { ...opts, detail: opts.detail === undefined ? undefined : say(opts.detail), ok: opts.ok === undefined ? undefined : say(opts.ok), cancel: opts.cancel === undefined ? undefined : say(opts.cancel) }),
+      prompt: (msg, opts) => ui.prompt(say(msg), opts),
       pick: (items, opts) => ui.pick(items, opts),
-      sheet: async <T,>(opts: { title?: string; items: UiItem<T>[] }) => (ui.sheet ? ui.sheet(checkItems(opts)) : null),
-      menu: async <T,>(opts: { title?: string; items: UiItem<T>[] }) => (ui.menu ? ui.menu(checkItems(opts)) : null),
-      form: async <T,>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }) => {
+      sheet: async <T,>(opts: { title?: Words; items: UiItem<T>[] }) => (ui.sheet ? ui.sheet(checkItems(opts, say)) : null),
+      menu: async <T,>(opts: { title?: Words; items: UiItem<T>[] }) => (ui.menu ? ui.menu(checkItems(opts, say)) : null),
+      form: async <T,>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }) => {
         // Checked like an entity's fields, and before anything renders: a typo in a form is the app's
         // bug, and it should read as one rather than as a form that silently shows nothing.
         const issues = checkFormFields(opts?.fields, Object.keys(app.definition.entities));
         if (issues.length) throw new Error(issues.join("\n"));
-        return ((await ui.form?.({ ...opts, initial: opts.initial as Record<string, unknown> | undefined })) ?? null) as T | null;
+        const form = {
+          title: say(opts.title),
+          fields: localizeFields(opts.fields, locale, app.definition),
+          initial: opts.initial as Record<string, unknown> | undefined,
+          ...(opts.submit === undefined ? {} : { submit: say(opts.submit) }),
+        };
+        return ((await ui.form?.(form)) ?? null) as T | null;
       },
-      progress: (label) => ui.progress?.(label) ?? { update: () => {}, done: () => {} },
+      progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
     },
 
     // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is

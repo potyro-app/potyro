@@ -98,7 +98,9 @@ function targetFor(node: Text, byText: Map<string, TextSite[]>, shape: AppShape)
     const entity = shape.entities.find((e) => e.key === entityKey);
     const field = entity?.fields.find((f) => f.key === key);
     // Only the label itself — a form row also holds help text, an error, the control's own words.
-    if (entity && field && !entity.blocked && !field.labelOpaque && text === (field.label ?? humanizeKey(field.key))) {
+    // A translated label shows one of its languages (#302): any of them is the label.
+    const isLabel = text === (field?.label ?? humanizeKey(field?.key ?? "")) || Object.values(field?.labels ?? {}).includes(text);
+    if (entity && field && !entity.blocked && !field.labelOpaque && isLabel) {
       return { kind: "field", node, text, entity, field };
     }
   }
