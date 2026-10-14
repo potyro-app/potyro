@@ -213,3 +213,18 @@ describe("the part the person pointed at survives the recovery (#284)", () => {
     pointedIn(third.messages[1]!.content);
   });
 });
+
+describe("the pointed-at part and the model's language travel together (#284, #306)", () => {
+  it("are both in the opening message, and both again after a fresh start", async () => {
+    const { engine, seen } = scripted([rename("bad1"), rename("bad2"), rename("ok")]);
+    const context = { pointedAt: { words: 'the "Nights" list on the "Patterns" page', lines: [2, 2] as const, excerpt: '  id: "x",' } };
+    const out = await runModifyLoop(base({ engine, context, language: "pt-BR" }));
+    expect(out.kind).toBe("source");
+    for (const req of [seen[0]!, seen[2]!]) {
+      const opening = req.messages[1]!.content;
+      expect(opening).toContain('They pointed at the "Nights" list on the "Patterns" page');
+      expect(opening).toMatch(/Portuguese|português/i);
+      expect(opening.split(SOURCE).length - 1).toBe(1);
+    }
+  });
+});
