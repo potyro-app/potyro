@@ -5,6 +5,8 @@
 // would be kept and unreachable, which is worse than not keeping it. It stays until you delete it.
 
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import { clearChat, listDrafts, STUDIO_CHAT_CHANGED, type DraftChat } from "./studio-chat.js";
 import { shellDialogs } from "./dialog.js";
 
@@ -23,41 +25,45 @@ function useDrafts(): DraftChat[] {
   return drafts;
 }
 
-/** "2 hours ago", in the person's words. */
+/** "2 hours ago", "yesterday", in the person's language. Under a minute is "now". */
 function ago(iso: string, now = Date.now()): string {
-  const mins = Math.round((now - Date.parse(iso)) / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? "yesterday" : `${days} days ago`;
+  const then = Date.parse(iso);
+  // Rounded down to the minute, so a conversation from seconds ago does not read "in 0 minutes".
+  return fmt.relative(Math.abs(now - then) < 60_000 ? now : then, now);
 }
 
 export function DraftStrip({ onResume }: { onResume: (id: string) => void }) {
+  const { t } = useLingui();
   const drafts = useDrafts();
   if (!drafts.length) return null;
   const remove = async (d: DraftChat): Promise<void> => {
-    if (await shellDialogs.confirm(`Delete “${d.title}”?`, { detail: "The conversation goes. Nothing was made from it yet.", ok: "Delete", destructive: true })) {
+    const title = d.title;
+    if (
+      await shellDialogs.confirm(t`Delete “${title}”?`, {
+        detail: t`The conversation goes. Nothing was made from it yet.`,
+        ok: t`Delete`,
+        destructive: true,
+      })
+    ) {
       await clearChat(d.id);
     }
   };
   return (
     <section className="k-launch-section k-drafts" aria-labelledby="k-launch-drafts">
       <h3 className="k-launch-title" id="k-launch-drafts">
-        Unfinished
+        <Trans comment="Launcher: Studio conversations that have not made an app yet">Unfinished</Trans>
       </h3>
       <ul className="k-drafts-list">
         {drafts.map((d) => (
           <li key={d.id} className="k-draft">
-            <button type="button" className="k-draft-open" onClick={() => onResume(d.id)} aria-label={`Continue “${d.title}”`}>
+            <button type="button" className="k-draft-open" onClick={() => onResume(d.id)} aria-label={t`Continue “${d.title}”`}>
               <span className="k-draft-mark" aria-hidden>
                 ✦
               </span>
               <span className="k-draft-title">{d.title}</span>
               <span className="k-draft-when">{ago(d.updatedAt)}</span>
             </button>
-            <button type="button" className="k-draft-del" aria-label={`Delete “${d.title}”`} title="Delete" onClick={() => void remove(d)}>
+            <button type="button" className="k-draft-del" aria-label={t`Delete “${d.title}”`} title={t`Delete`} onClick={() => void remove(d)}>
               ✕
             </button>
           </li>

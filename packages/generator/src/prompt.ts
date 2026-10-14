@@ -4,6 +4,7 @@
 
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
+import { changeLanguageInstruction, createLanguageInstruction, type TurnLanguage } from "./language.js";
 import { SCHEMA_REFERENCE } from "./reference.generated.js";
 import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "potyro";
 
@@ -402,8 +403,11 @@ export const SYSTEM_PROMPT = assembleSystemPrompt(fullReferenceSection());
 export const SYSTEM_PROMPT_COMPACT = assembleSystemPrompt(compactReferenceSection());
 
 
+/** The create turn. A non-English `prompt.language` adds one line (#301); English is unchanged. */
 export function buildUserMessage(prompt: GenPrompt): string {
-  return `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+  const message = `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+  const language = createLanguageInstruction(prompt.language);
+  return language ? `${message}\n\n${language}` : message;
 }
 
 /**
@@ -454,6 +458,8 @@ export interface ModifyContext {
   priorAttempts?: readonly string[];
   /** Requests already answered as host-side, so the same verdict is not re-derived. */
   priorDiagnoses?: readonly string[];
+  /** Which language to reply in, and which the app's words are in (#301). Nothing is added for English. */
+  language?: TurnLanguage;
 }
 
 /** Either an edit (possibly partial, with the undone parts named), or a reasoned refusal to make one. */
@@ -564,6 +570,9 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
     'comments that assert a cause ("// the map ignores this") - a causal claim in a comment is unverifiable and',
     "the next edit reads it as fact.",
   );
+
+  const language = changeLanguageInstruction(ctx?.language);
+  if (language) lines.push("", language);
 
   return lines.join("\n");
 }

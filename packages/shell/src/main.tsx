@@ -15,7 +15,8 @@ import { setShellCaps } from "./shell-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
-import { getLaunchUrl, onUrlOpen } from "@potyro/native";
+import { getLaunchUrl, onUrlOpen, systemLanguages } from "@potyro/native";
+import { setSystemLanguages, startI18n } from "@potyro/i18n";
 import { createWebCapabilities, type Capabilities } from "@potyro/capabilities";
 import { listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@potyro/native";
 import { setSourceHttp } from "./ask-sources.js";
@@ -788,6 +789,16 @@ async function boot(): Promise<void> {
   // Before anything paints. A light flash on a device set to dark is the whole feature failing in
   // the one moment it is most visible.
   applyLook();
+
+  // The language, before anything paints for the same reason (#298): the saved choice, else the
+  // device's, else English. English needs no fetch; another language is one small chunk, from the
+  // service worker's cache when offline. The pseudo-language is offered in dev builds only.
+  await startI18n({ pseudo: import.meta.env.DEV });
+  // On Android the OS can say more than the WebView does (a per-app language, say). Not awaited:
+  // it only matters when it disagrees, and then the switch is live.
+  void systemLanguages()
+    .then((tags) => (tags ? setSystemLanguages(tags) : undefined))
+    .catch((e: unknown) => console.warn("[potyro] could not apply the system language:", e));
 
   // Move secrets an older build left in plain storage into the vault. Not awaited: nothing on screen
   // waits on it, and every read of a secret performs the same move if this has not finished.
