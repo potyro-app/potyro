@@ -20,6 +20,8 @@ export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHo
       // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is chosen.
       return null;
     },
+    // Words or a link to send on, through the share dialog; headless, nothing is sent.
+    ...(dialogs ? { share: (opts: { text?: string; url?: string; title?: string }) => dialogs.send(opts) } : {}),
     // #112. Without a host (headless) these are left out, and ctx answers them as dismissed.
     ...(questions ? { sheet: questions.sheet, menu: questions.menu, form: questions.form, progress: questions.progress } : {}),
   };

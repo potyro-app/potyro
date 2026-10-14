@@ -648,6 +648,15 @@ button {
   font-size: 0.82rem;
   color: var(--ink-soft);
 }
+/* What an app hands over (`ctx.ui.share`): shown as it will be sent — a result grid keeps its rows. */
+.k-input.k-share-text {
+  resize: none;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
 .k-share-status {
   margin: -0.4rem 0 0;
   min-height: 1.3em;

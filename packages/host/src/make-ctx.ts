@@ -29,6 +29,33 @@ function checkItems<T>(opts: { title?: Words; items: UiItem<T>[] }, say: (w: Wor
   };
 }
 
+/** The longest text `ui.share` hands on: a result, a message — never a document. */
+const SHARE_MAX = 10_000;
+
+/**
+ * What `ui.share` hands the shell, checked: something to send, a link only if it is http(s) — the
+ * share sheet opens it, so a `javascript:` or `file:` address must never get there — and words in
+ * the language the app is shown in.
+ */
+export function checkShare(opts: { text?: Words; url?: string; title?: Words } | undefined, say: (w: Words | undefined) => string): { text?: string; url?: string; title?: string } {
+  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text } or { url }");
+  const text = opts.text === undefined || opts.text === null ? undefined : say(opts.text);
+  let url: string | undefined;
+  if (opts.url !== undefined && opts.url !== null) {
+    let parsed: URL;
+    try {
+      parsed = new URL(String(opts.url));
+    } catch {
+      throw new Error("ui.share: `url` must be a whole http(s) address");
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("ui.share: `url` must be http(s)");
+    url = parsed.href;
+  }
+  if (!text && !url) throw new Error("ui.share needs { text } or { url }");
+  if (text && text.length > SHARE_MAX) throw new Error(`ui.share: \`text\` is longer than ${SHARE_MAX} characters`);
+  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
+}
+
 /** The base language of a tag: "pt-BR" → "pt". */
 const baseOf = (tag: string): string => tag.split("-")[0]!.toLowerCase();
 
@@ -354,6 +381,10 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         return ((await ui.form?.(form)) ?? null) as T | null;
       },
       progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
+      share: async (opts) => {
+        const shared = checkShare(opts, say);
+        return ui.share ? ui.share(shared) : false;
+      },
     },
 
     // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is

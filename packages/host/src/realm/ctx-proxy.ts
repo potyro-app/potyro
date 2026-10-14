@@ -173,6 +173,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       sheet: (o) => call("ui.sheet", o),
       menu: (o) => call("ui.menu", o),
       form: (o) => call("ui.form", o),
+      share: (o) => call("ui.share", o),
       progress: (label): UiProgress => {
         const pid = `p${++progressSeq}`;
         send("ui.progress", pid, "open", label);
