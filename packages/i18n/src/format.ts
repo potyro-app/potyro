@@ -66,6 +66,13 @@ export function formatRelativeTime(
   return cached("relative", l, options, () => new Intl.RelativeTimeFormat(l, options)).format(Math.round(secs / size), unit);
 }
 
+/** A whole number of days from today in words: "today", "tomorrow", "in 3 days", "3 days ago" — "dzisiaj", "übermorgen"… */
+export function formatRelativeDays(locale: string, days: number): string {
+  const l = intlLocale(locale);
+  const options: Intl.RelativeTimeFormatOptions = { numeric: "auto" };
+  return cached("relative", l, options, () => new Intl.RelativeTimeFormat(l, options)).format(days, "day");
+}
+
 /** "a, b and c" — or "a, b oraz c", "a, b und c"… `type: "disjunction"` for "or". */
 export function formatList(locale: string, items: readonly string[], options: Intl.ListFormatOptions = { type: "conjunction" }): string {
   const l = intlLocale(locale);

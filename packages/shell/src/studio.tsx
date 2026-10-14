@@ -421,7 +421,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!version || !app) return;
     if (!(await shellDialogs.confirm(t`Go back to version ${seq}?`, { detail: t`The versions after it stay in History.`, ok: t`Go back` }))) return;
     // The note is what History and the conversation show for this version; nothing parses it.
-    const note = t({ message: "went back to version {seq}", comment: "A version's note in History, lower case: the app was put back to an older version", values: { seq } });
+    const note = t({ message: `went back to version ${seq}`, comment: "A version's note in History, lower case: the app was put back to an older version" });
     await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note }, new Date().toISOString());
     await afterRestore(version.source);
   };

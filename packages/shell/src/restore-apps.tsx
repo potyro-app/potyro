@@ -126,6 +126,7 @@ export async function installFromAccount(app: AccountApp, now: string): Promise<
       ...(app.lock ? { lock: app.lock } : {}),
       trusted: true,
       origin: "created",
+      // Stored in English: SYSTEM_NOTES (studio-thread.ts) recognises it by its words, and it syncs to devices in other languages.
       note: here ? "from your account, replacing this device's copy" : "from your account",
       // Synced, because that is where its data is — written WITH the app, not after it. Set in a
       // second call it lands after this function's history write, and an app that opened in between

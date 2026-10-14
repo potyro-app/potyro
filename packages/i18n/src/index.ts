@@ -12,7 +12,7 @@
 import { i18n } from "./i18n.js";
 import { accent } from "./accent.js";
 import { PSEUDO_LOCALE, intlLocale } from "./locale.js";
-import { formatDate, formatList, formatNumber, formatRelativeTime, type DateInput } from "./format.js";
+import { formatDate, formatList, formatNumber, formatRelativeDays, formatRelativeTime, type DateInput } from "./format.js";
 
 export {
   i18n,
@@ -44,7 +44,7 @@ export {
   type DeviceLanguages,
   type LocaleInfo,
 } from "./locale.js";
-export { formatDate, formatList, formatNumber, formatRelativeTime, type DateInput } from "./format.js";
+export { formatDate, formatList, formatNumber, formatRelativeDays, formatRelativeTime, type DateInput } from "./format.js";
 
 /** In the pseudo-language, what went through these helpers is accented too — so a raw `toLocaleString()` is not. */
 const marked = (s: string): string => (i18n.locale === PSEUDO_LOCALE ? accent(s) : s);
@@ -58,6 +58,8 @@ export const fmt = {
   number: (value: number, options?: Intl.NumberFormatOptions): string => marked(formatNumber(i18n.locale, value, options)),
   relative: (value: DateInput, now?: DateInput, options?: Intl.RelativeTimeFormatOptions): string =>
     marked(formatRelativeTime(i18n.locale, value, now, options)),
+  /** Whole days from today: "today", "yesterday", "in 3 days" (`numeric: "auto"`). */
+  days: (days: number): string => marked(formatRelativeDays(i18n.locale, days)),
   list: (items: readonly string[], options?: Intl.ListFormatOptions): string => marked(formatList(i18n.locale, items, options)),
   /** A language's name in the active language ("Polish", "polski", "Polnisch"); the tag itself where `Intl` cannot say. */
   language: (tag: string): string => {

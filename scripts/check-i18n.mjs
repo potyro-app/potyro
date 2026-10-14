@@ -43,6 +43,23 @@ export const CLEAN = new Set([
   "packages/shell/src/language-picker.tsx",
   "packages/shell/src/backup-switch.tsx",
   "packages/shell/src/storage-report.tsx",
+  // #299, the launcher remainder: tiles, restore, removal, sync state, the picker.
+  "packages/shell/src/tile-editor.tsx",
+  "packages/shell/src/tile-identity.ts",
+  "packages/shell/src/remove-app.ts",
+  "packages/shell/src/restore-apps.tsx",
+  "packages/shell/src/summary-strip.tsx",
+  "packages/shell/src/app-lock.tsx",
+  "packages/shell/src/sync-status.tsx",
+  "packages/shell/src/toggle-sync.ts",
+  "packages/shell/src/launcher-live.ts",
+  "packages/shell/src/picker.tsx",
+  "packages/shell/src/user-apps.ts",
+  "packages/shell/src/examples.ts",
+  "packages/shell/src/seed.ts",
+  "packages/shell/src/backup-all.ts",
+  "packages/shell/src/backup-setting.ts",
+  "packages/shell/src/rename-migration.ts",
 ]);
 
 const ATTRS = new Set([

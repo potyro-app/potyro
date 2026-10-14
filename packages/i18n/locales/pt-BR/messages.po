@@ -13,6 +13,28 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. People panel: after your own name in the list
+#: ../shell/src/people-panel.tsx
+msgid " (you)"
+msgstr ""
+
+#. Fix agent step: the model is reasoning
+#: ../shell/src/fix-panel.tsx
+msgid "…thinking"
+msgstr ""
+
+#: ../views/src/part-failure.tsx
+msgid "“{label}” could not be worked out for some records: {message}"
+msgstr ""
+
+#: ../shell/src/sync-consent.ts
+msgid "“{name}” never asked to sync."
+msgstr ""
+
+#: ../shell/src/sync-consent.ts
+msgid "“{name}” was made by someone else, so it runs in a sandbox."
+msgstr ""
+
 #. placeholder {0}: result.failed.length
 #: ../shell/src/backup-switch.tsx
 msgid "{0, plural, one {# app could not be moved: {which}.} other {# apps could not be moved: {which}.}}"
@@ -23,14 +45,46 @@ msgstr ""
 msgid "{0, plural, one {# due} other {# due}}"
 msgstr ""
 
+#. placeholder {0}: copied.skippedBlobs.length
+#: ../shell/src/toggle-sync.ts
+msgid "{0, plural, one {# media file could not be moved: {reason}.} other {# media files could not be moved: {reason}.}}"
+msgstr ""
+
 #. placeholder {0}: a.chat
 #: ../shell/src/launcher-store.ts
 msgid "{0, plural, one {# message} other {# messages}}"
 msgstr ""
 
+#. placeholder {0}: held.issues.length
+#: ../shell/src/studio.tsx
+msgid "{0, plural, one {# problem with it.} other {# problems with it.}}"
+msgstr ""
+
 #. placeholder {0}: result.records
+#. placeholder {0}: rows.length
 #: ../shell/src/backup-switch.tsx
+#: ../shell/src/data-table.tsx
 msgid "{0, plural, one {# record} other {# records}}"
+msgstr ""
+
+#. placeholder {0}: cases.length
+#: ../shell/src/studio.tsx
+msgid "{0, plural, one {# reported} other {# reported}}"
+msgstr ""
+
+#. placeholder {0}: trust.sources.length
+#: ../shell/src/ask-verdicts.ts
+msgid "{0, plural, one {# source} other {# sources}}"
+msgstr ""
+
+#. placeholder {0}: lines.length
+#: ../shell/src/studio.tsx
+msgid "{0, plural, one {Fetch the library this version uses?} other {Fetch the libraries this version uses?}}"
+msgstr ""
+
+#. placeholder {0}: chosen.size
+#: ../shell/src/restore-apps.tsx
+msgid "{0, plural, one {Load # app} other {Load # apps}}"
 msgstr ""
 
 #. placeholder {0}: result.moved
@@ -38,17 +92,114 @@ msgstr ""
 msgid "{0, plural, one {Moved # app} other {Moved # apps}}"
 msgstr ""
 
+#. placeholder {0}: lines.length
+#: ../shell/src/studio.tsx
+msgid "{0, plural, one {Not saved: it uses {names}, which was not fetched.} other {Not saved: it uses {names}, which were not fetched.}}"
+msgstr ""
+
 #. placeholder {0}: result.rows
 #: ../shell/src/storage-report.tsx
 msgid "{0, plural, one {Read # back} other {Read # back}}"
+msgstr ""
+
+#. placeholder {0}: result.applied
+#: ../shell/src/studio-engine.ts
+msgid "{0, plural, one {Repaired with # edit.} other {Repaired with # edits.}}"
+msgstr ""
+
+#. placeholder {0}: sorted.length - drawn
+#: ../shell/src/data-table.tsx
+msgid "{0, plural, one {Show more (# left)} other {Show more (# left)}}"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "{applied} Not done yet: {parts}"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "{apps} ({records})."
 msgstr ""
 
+#. Ask's cost in US cents, e.g. 2.1¢
+#: ../shell/src/ask-spend.ts
+msgid "{cents}¢"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
+msgstr ""
+
+#: ../shell/src/start-fix.ts
+msgid "{engine} cannot investigate this — it has no transcript to hang a multi-step tool loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, like OpenRouter, to drive the loop."
+msgstr ""
+
+#: ../shell/src/start-fix.ts
+msgid "{engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app."
+msgstr ""
+
+#: ../shell/src/start-fix.ts
+msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
+msgstr ""
+
+#. Ask review: entity is the app's own name for a kind of record
+#: ../shell/src/ask-apply.ts
+msgid "{entity}: more than one is called “{match}”; tick the ones you meant."
+msgstr ""
+
+#. Ask review: entity is the app's own name for a kind of record
+#: ../shell/src/ask-apply.ts
+msgid "{entity}: nothing called “{match}”."
+msgstr ""
+
+#. A chosen filter value; pressing it takes the filter off
+#: ../shell/src/filter-chrome.tsx
+msgid "{filter}: {value} — remove"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "{first} can no longer open or change “{appName}”, and won’t receive anything new. What’s already on {first}’s devices stays there. Links you shared before stop working — share again to invite someone new."
+msgstr ""
+
+#. Model price: dollars in / dollars out, per million tokens (/M)
+#: ../shell/src/engine-settings.tsx
+msgid "{input}/{output} /M"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "{label} needs an API key — open Model settings"
+msgstr ""
+
+#. The Today/Yesterday/Tomorrow chips under a date field; {label} is the field
+#: ../views/src/date-input.tsx
+msgid "{label} shortcuts"
+msgstr ""
+
+#. The hour box beside a date field; {label} is the field
+#: ../views/src/date-input.tsx
+msgid "{label} time"
+msgstr ""
+
+#. Ask review: a link the model named matches several records; label is the field
+#: ../shell/src/ask-apply.ts
+msgid "{label}: “{name}” could be {candidates}; left empty."
+msgstr ""
+
+#. A choice field with nothing chosen yet; {label} is the field
+#: ../views/src/enum-input.tsx
+msgid "{label}: choose"
+msgstr ""
+
+#. Ask review: label is the field the link is in
+#: ../shell/src/ask-apply.ts
+msgid "{label}: nothing called “{name}”; left empty."
+msgstr ""
+
+#: ../shell/src/case-report.tsx
+msgid "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
 msgstr ""
 
 #. A language in the picker whose translation is an unreviewed model draft
@@ -56,8 +207,31 @@ msgstr ""
 msgid "{name} (draft)"
 msgstr ""
 
+#. The name of an app someone shared with you, when you already have one with that name
+#: ../shell/src/share-sync.ts
+msgid "{name} (shared)"
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "{name} doesn’t declare any kinds of record."
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "{name} records"
+msgstr ""
+
+#. The name of a duplicated app
+#: ../shell/src/user-apps.ts
+msgid "{original} (copy)"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
+msgstr ""
+
+#. Data table: records matching the search, of all records
+#: ../shell/src/data-table.tsx
+msgid "{shownCount} of {totalCount}"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -66,6 +240,35 @@ msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "{waiting, plural, one {# app still lives only on this device and will be copied there now.} other {# apps still live only on this device and will be copied there now.}}"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid ""
+"{what}\n"
+"\n"
+"Once, now, and kept with the app: after that it works without the internet."
+msgstr ""
+
+#. Date shortcut: a week from today
+#: ../views/src/date-input.tsx
+msgid "+1 week"
+msgstr ""
+
+#. A part of an app failed; {text} says what, e.g. 'it could not be shown: …'
+#: ../views/src/part-failure.tsx
+msgid "<0>This part of the app hit a problem:</0> {text}"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "📍 Use my location"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "A change passed the check."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "A change was turned back: {first}"
 msgstr ""
 
 #: ../shell/src/storage-report.tsx
@@ -88,6 +291,14 @@ msgstr ""
 msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
 msgstr ""
 
+#: ../shell/src/engines.ts
+msgid "A small coder model in the browser via WebGPU. Fully offline once the weights are cached."
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "A suggestion — not verified"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "a synced database in a worker (the fast one)"
 msgstr ""
@@ -101,10 +312,42 @@ msgstr ""
 msgid "A–Z"
 msgstr ""
 
+#: ../shell/src/ask-apply.ts
+msgid "About {distance} from the area on your map."
+msgstr ""
+
+#. The colour the shell wears
+#: ../shell/src/look-panel.tsx
+msgid "Accent"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Accent colour"
+msgstr ""
+
+#. A colour swatch; the number is the hue on the colour wheel
+#: ../shell/src/look-panel.tsx
+msgid "Accent hue {degrees}"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Actions"
+msgstr ""
+
 #. placeholder {0}: app.name
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Actions for {0}"
+msgstr ""
+
+#. Picker: add the chosen items
+#: ../shell/src/picker.tsx
+msgid "Add"
+msgstr ""
+
+#. Picker: add the chosen items; the number is how many
+#: ../shell/src/picker.tsx
+msgid "Add {count}"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -121,8 +364,42 @@ msgstr ""
 msgid "Add an app someone sent you"
 msgstr ""
 
+#. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
+#: ../views/src/record-form.tsx
+msgid "Add: {noun}"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Advanced — sync relay, identity id"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+msgid "All apps"
+msgstr ""
+
+#: ../shell/src/ask-verdicts.ts
+msgid "Already in your app"
+msgstr ""
+
+#: ../shell/src/ask-verdicts.ts
+msgid "Already in your app."
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Always dark"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Always light"
+msgstr ""
+
+#. Company name; keep as is
+#: ../shell/src/engines.ts
+msgid "Anthropic"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Anthropic API key"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -133,8 +410,68 @@ msgstr ""
 msgid "App launcher"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "App studio"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+#: ../shell/src/look-panel.tsx
+msgid "Appearance"
+msgstr ""
+
+#. Button: apply the verified fix to the app
+#: ../shell/src/fix-panel.tsx
+msgid "Apply"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Apply anyway"
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+#: ../shell/src/data-page.tsx
 #: ../shell/src/launcher.tsx
 msgid "Apps"
+msgstr ""
+
+#. Tile editor: the AI feature called Ask
+#: ../shell/src/tile-editor.tsx
+msgid "Ask"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Ask for a change…"
+msgstr ""
+
+#: ../shell/src/start-ask.ts
+msgid "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings."
+msgstr ""
+
+#: ../shell/src/start-ask.ts
+msgid "Ask needs your OpenRouter key. Add it in the Studio’s Model settings."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Asked to try again: {first}"
+msgstr ""
+
+#. Data page: leave the page
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+#: ../shell/src/data-page.tsx
+msgid "Back"
+msgstr ""
+
+#: ../shell/src/view-error-boundary.tsx
+msgid "Back to a working page"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Back to the app's own icon"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Back to the app's own name"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -146,7 +483,26 @@ msgid "Backup"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
-msgid "Before you share “{name}” — two people using it at once can lose each other's work:"
+msgid ""
+"Before you share “{name}” — two people using it at once can lose each other's work:\n"
+"\n"
+"{list}\n"
+"\n"
+"Nothing is wrong with it on your own. Share anyway?"
+msgstr ""
+
+#. Badge on the app the shared text suits best
+#: ../shell/src/share-page.tsx
+msgid "Best fit"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Best quality; larger download · non-commercial license"
+msgstr ""
+
+#. Heading over a list of your apps: pick which one the shared text goes into
+#: ../shell/src/share-page.tsx
+msgid "Bring this into…"
 msgstr ""
 
 #: ../shell/src/storage-report.tsx
@@ -161,6 +517,37 @@ msgstr ""
 msgid "By name"
 msgstr ""
 
+#. People panel: a person's role in a shared app
+#. People panel: invite someone who can change the app
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/people-panel.tsx
+msgid "Can edit"
+msgstr ""
+
+#. People panel: a person's role in a shared app
+#. People panel: invite someone who can only look
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/people-panel.tsx
+msgid "Can view"
+msgstr ""
+
+#. Dialog button: decline
+#: ../shell/src/dialog.tsx
+#: ../shell/src/picker.tsx
+#: ../shell/src/tile-editor.tsx
+#: ../views/src/record-form.tsx
+#: ../views/src/record-form.tsx
+msgid "Cancel"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "candidate failed replay — {detail}"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "candidate passed replay — {detail}"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "Change one thing"
 msgstr ""
@@ -169,16 +556,97 @@ msgstr ""
 msgid "Change relay"
 msgstr ""
 
+#. Data table column: when the record was last changed
+#: ../shell/src/data-table.tsx
+msgid "Changed"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Changed by hand, in the code."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Changed."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
+msgid "Changing it via {label}… {elapsed}"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Cheap, fast, 1M context — start here"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "Check storage speed"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Checking it…"
+msgstr ""
+
+#. A list an app asks you to pick from
+#: ../shell/src/picker.tsx
+#: ../views/src/enum-input.tsx
+msgid "Choose"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "choose an app"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Choose which model writes and edits your app"
+msgstr ""
+
+#: ../views/src/enum-input.tsx
+msgid "Choose…"
+msgstr ""
+
+#. Engine name: the model built into the Chrome browser
+#: ../shell/src/engines.ts
+msgid "Chrome built-in"
+msgstr ""
+
+#: ../shell/src/engines.ts
+msgid "Chrome's built-in Gemini Nano. Runs locally, nothing to download."
+msgstr ""
+
+#. A command name; keep as is
+#: ../shell/src/engines.ts
+msgid "claude -p"
+msgstr ""
+
+#: ../shell/src/engines.ts
+msgid "Claude, with your own API key."
+msgstr ""
+
+#. Empties a date field
+#. Empties a date field
+#. Filter sheet: take every chosen filter off
+#: ../shell/src/filter-chrome.tsx
+#: ../views/src/date-input.tsx
+#: ../views/src/date-input.tsx
+msgid "Clear"
+msgstr ""
+
+#. Empties a filter's search box
+#: ../shell/src/filter-chrome.tsx
+msgid "Clear {filter}"
+msgstr ""
+
+#. Button: close the fix panel
+#. Button: close the replay report
+#: ../shell/src/activity-panel.tsx
+#: ../shell/src/case-report.tsx
+#: ../shell/src/fix-panel.tsx
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/look-panel.tsx
+#: ../shell/src/people-panel.tsx
+#: ../views/src/record-form.tsx
+#: ../views/src/record-form.tsx
 msgid "Close"
 msgstr ""
 
@@ -187,9 +655,43 @@ msgstr ""
 msgid "Close launcher"
 msgstr ""
 
+#: ../shell/src/engine-settings.tsx
+msgid "Close model settings"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Close studio"
+msgstr ""
+
+#. Model settings heading: engines reached over the internet
+#: ../shell/src/engines.ts
+msgid "Cloud"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Coder-tuned — the output is a structured .app.ts"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Colour"
+msgstr ""
+
+#. Dialog button: accept
+#: ../shell/src/dialog.tsx
+msgid "Confirm"
+msgstr ""
+
+#: ../shell/src/sync-status.tsx
+msgid "Connecting…"
+msgstr ""
+
 #. placeholder {0}: d.title
 #: ../shell/src/draft-strip.tsx
 msgid "Continue “{0}”"
+msgstr ""
+
+#: ../shell/src/dialog.tsx
+msgid "Copied"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -200,6 +702,10 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
+#: ../shell/src/dialog.tsx
+msgid "Copy link"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Could not add it back: {reason}"
 msgstr ""
@@ -208,22 +714,79 @@ msgstr ""
 msgid "Could not change sync: {reason}"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Could not fix it: {reason}"
+msgstr ""
+
+#: ../shell/src/filter-chrome.tsx
+msgid "Could not get your location"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Could not make it: {reason}"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "Could not measure: {failed}"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Could not reproduce this"
+msgstr ""
+
+#: ../shell/src/dialog.tsx
+msgid "Couldn't copy — select the link and copy it yourself."
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "Couldn’t open {name}’s data: {failed}"
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Couldn't save: {saveError}"
+msgstr ""
+
+#. Form button that saves a new record
+#: ../views/src/record-form.tsx
+msgid "Create"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Create “{typed}”"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Create the app"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Creating and modifying both use <0>{label}</0>."
+msgstr ""
+
+#. Appearance
+#: ../shell/src/look-panel.tsx
+msgid "Dark"
+msgstr ""
+
+#. Data page title: every app's records
 #. Tile menu: this app's records, on the Data page
+#: ../shell/src/data-page.tsx
 #: ../shell/src/launcher.tsx
 msgid "Data"
 msgstr ""
 
+#: ../views/src/date-input.tsx
+msgid "Date"
+msgstr ""
+
+#. Data table: delete this record
+#: ../shell/src/data-table.tsx
+#: ../shell/src/data-table.tsx
 #: ../shell/src/draft-strip.tsx
 #: ../shell/src/draft-strip.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/remove-app.ts
+#: ../shell/src/studio.tsx
 msgid "Delete"
 msgstr ""
 
@@ -232,8 +795,32 @@ msgstr ""
 msgid "Delete “{0}”"
 msgstr ""
 
+#: ../shell/src/remove-app.ts
+msgid "Delete “{name}” and everything in it?"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Delete “{name}”?"
+msgstr ""
+
 #: ../shell/src/draft-strip.tsx
 msgid "Delete “{title}”?"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Delete {appName}"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Delete {record}"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Delete this conversation"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Delete this conversation?"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -244,8 +831,52 @@ msgstr ""
 msgid "Describe an app"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Describe the app"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Describe the app you want…"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Discard"
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Discard what you entered?"
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Discard your changes?"
+msgstr ""
+
+#. Ask review: the sources disagree about this record
+#: ../shell/src/ask-verdicts.ts
+msgid "Disputed"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Don’t add it"
+msgstr ""
+
+#: ../shell/src/sync-consent.ts
+msgid "Don't share"
+msgstr ""
+
+#. Closes the model settings
+#. Closes the month grid
+#. Filter sheet: close it
+#. Share dialog: close it
+#: ../shell/src/dialog.tsx
+#: ../shell/src/engine-settings.tsx
+#: ../shell/src/filter-chrome.tsx
+#: ../views/src/date-input.tsx
+msgid "Done"
 msgstr ""
 
 #. Tag beside a language in the picker: its translation is an unreviewed model draft
@@ -254,15 +885,57 @@ msgid "draft"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 msgid "Duplicate"
 msgstr ""
 
+#. Data table: edit this record
+#: ../shell/src/data-table.tsx
+msgid "Edit"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Edit {record}"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+msgid "Edit mode"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
+#: ../shell/src/tile-editor.tsx
 msgid "Edit tile"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Edit tile: {appName}"
+msgstr ""
+
+#. Form title for changing a record; {noun} is the app's own name for the kind of record
+#: ../views/src/record-form.tsx
+msgid "Edit: {noun}"
+msgstr ""
+
+#. A version's note in History, lower case
+#: ../shell/src/studio.tsx
+msgid "edited the code by hand"
+msgstr ""
+
+#. The list of model engines to choose from
+#: ../shell/src/engine-settings.tsx
+msgid "Engine"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Enter coordinates"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Everyone who can open “{appName}”."
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -273,6 +946,36 @@ msgstr ""
 msgid "Examples to try"
 msgstr ""
 
+#: ../shell/src/thinking-settings.tsx
+msgid "Fastest and cheapest. Enough for most changes."
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Fastest, weakest — for low-end devices"
+msgstr ""
+
+#. Button: download the libraries a version uses
+#: ../shell/src/studio.tsx
+msgid "Fetch"
+msgstr ""
+
+#. Button that opens the filter options of a page
+#. Title of the sheet with a page's filter options
+#. Title of the sheet with a page's filter options
+#: ../shell/src/filter-chrome.tsx
+#: ../shell/src/filter-chrome.tsx
+#: ../shell/src/filter-chrome.tsx
+msgid "Filter"
+msgstr ""
+
+#: ../shell/src/picker.tsx
+msgid "Filter the list"
+msgstr ""
+
+#: ../shell/src/filter-chrome.tsx
+msgid "Filters"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -280,7 +983,74 @@ msgstr ""
 msgid "Find an app"
 msgstr ""
 
+#: ../shell/src/data-table.tsx
+#: ../shell/src/data-table.tsx
+msgid "Find in these records"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Fix found"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Fix this"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Fixing it via {label}… {elapsed}"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Follows this device"
+msgstr ""
+
+#. Calendar column head: Friday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "Fr"
+msgstr ""
+
+#. Ask review: where a proposed record was confirmed, e.g. From Wikidata
+#: ../shell/src/ask-verdicts.ts
+msgid "From {via}"
+msgstr ""
+
+#. Fix agent outcome: it could not find a fix
+#: ../shell/src/fix-panel.tsx
+msgid "Gave up"
+msgstr ""
+
+#: ../shell/src/ask-verdicts.ts
+msgid "General knowledge"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Go back"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Go back to version {seq}?"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Go to your apps"
+msgstr ""
+
+#. Menu hint: the page you are on
+#: ../shell/src/chrome.tsx
+msgid "here"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Hide coordinates"
+msgstr ""
+
+#. Reasoning level
+#: ../shell/src/thinking-settings.tsx
+msgid "High"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 msgid "History"
 msgstr ""
 
@@ -294,17 +1064,155 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
+#: ../shell/src/thinking-settings.tsx
+#: ../shell/src/thinking-settings.tsx
+msgid "How hard it thinks"
+msgstr ""
+
+#. placeholder {0}: hueNumber(h)
+#: ../shell/src/tile-editor.tsx
+msgid "Hue {0}"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this change: I kept coming back to the same answer without finding one that works. Try saying it another way, or ask for a smaller step."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this change: I ran out of tries before finding a version that works. Try asking for a smaller step."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this change: something went wrong while working on it. Try again in a moment."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I didn't change the app: this isn't something it can change. {text}"
+msgstr ""
+
+#. Tile editor: the emoji or letters shown on the tile
+#: ../shell/src/tile-editor.tsx
+msgid "Icon"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Icon {i}"
+msgstr ""
+
 #. placeholder {0}: me.id
 #: ../shell/src/identity-panel.tsx
 msgid "Identity <0>{0}</0>"
+msgstr ""
+
+#: ../shell/src/share-chat.ts
+msgid "Include how this app was made?"
+msgstr ""
+
+#: ../shell/src/share-chat.ts
+msgid "Include it"
 msgstr ""
 
 #: ../shell/src/storage-report.tsx
 msgid "IndexedDB, rewritten whole on every save (slow)"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+#: ../shell/src/studio.tsx
+msgid ""
+"Invalid app structure:\n"
+"- {problems}"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Investigating…"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Investigation finished"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/people-panel.tsx
+msgid "Invite someone"
+msgstr ""
+
+#: ../shell/src/ask-apply.ts
+msgid "It already holds these values."
+msgstr ""
+
+#: ../views/src/part-failure.tsx
+msgid "it could not be shown: {message}"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "It has a question"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "It is removed from the app too, and can’t be brought back."
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "It replayed clean against the app as it is — {detail}"
+msgstr ""
+
+#: ../shell/src/sync-consent.ts
+msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
+msgstr ""
+
+#: ../views/src/part-failure.tsx
+msgid "its records could not be listed: {message}"
+msgstr ""
+
+#: ../shell/src/ask-apply.ts
+#: ../shell/src/ask-verdicts.ts
+msgid "Its sources say otherwise."
+msgstr ""
+
+#. Activity feed: when a change was made, under a minute ago
+#: ../shell/src/activity-panel.tsx
+msgid "just now"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Keep it"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Keep it anyway? It has problems, so parts of it may not work."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Keep it anyway? This version {loss}."
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Kept in storage; this app no longer shows it"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Kept with problems."
+msgstr ""
+
+#. A place's name, typed beside its point on the map
+#: ../views/src/field-input.tsx
+msgid "Label"
 msgstr ""
 
 #. Section heading: which language Potyro is shown in
@@ -312,16 +1220,81 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
+#: ../shell/src/fix-panel.tsx
+msgid "Last thing it tried (did not pass replay — not applied)"
+msgstr ""
+
+#. Latitude, as short as your language writes it
+#: ../views/src/field-input.tsx
+msgid "lat"
+msgstr ""
+
+#. Button: leave a shared app
+#: ../shell/src/remove-app.ts
+msgid "Leave"
+msgstr ""
+
+#: ../shell/src/remove-app.ts
+msgid "Leave “{name}”?"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+msgid "Leave full screen"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Leave it blank to use this site’s own relay."
+msgstr ""
+
+#: ../shell/src/share-chat.ts
+msgid "Leave it out"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Let it run as yours"
 msgstr ""
 
+#. Appearance
+#: ../shell/src/look-panel.tsx
+msgid "Light"
+msgstr ""
+
+#. Longitude, as short as your language writes it
+#: ../views/src/field-input.tsx
+msgid "lng"
+msgstr ""
+
+#: ../shell/src/restore-apps.tsx
+msgid "Load your apps"
+msgstr ""
+
+#: ../shell/src/restore-apps.tsx
+msgid "Load your apps?"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/restore-apps.tsx
+#: ../views/src/aggregate.tsx
+#: ../views/src/record-form.tsx
+msgid "Loading…"
+msgstr ""
+
+#: ../shell/src/filter-chrome.tsx
+#: ../views/src/field-input.tsx
+msgid "Locating…"
+msgstr ""
+
+#: ../shell/src/ask-geocode.ts
+msgid "Location approximate: “{address}” could not be confirmed on the map."
+msgstr ""
+
+#. The panel for light/dark appearance and accent colour
+#. The panel for light/dark appearance and accent colour
 #. The panel for light/dark appearance and accent colour
 #: ../shell/src/launcher.tsx
+#: ../shell/src/look-panel.tsx
+#: ../shell/src/look-panel.tsx
 msgid "Look"
 msgstr ""
 
@@ -329,13 +1302,31 @@ msgstr ""
 msgid "Look — appearance and colour"
 msgstr ""
 
+#. Reasoning level
+#: ../shell/src/thinking-settings.tsx
+msgid "Low"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Made “{name}”."
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
+msgid "Making it via {label}… {elapsed}"
 msgstr ""
 
 #. Launcher sort: your own order
 #: ../shell/src/launcher-order.ts
 msgid "Manual"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Map unavailable here — the browser could not open a second map (or the tile host is blocked). Place the point on the main map instead, or use the coordinates below."
 msgstr ""
 
 #: ../shell/src/language-picker.tsx
@@ -344,6 +1335,51 @@ msgstr ""
 
 #: ../shell/src/storage-report.tsx
 msgid "Measuring…"
+msgstr ""
+
+#. Reasoning level
+#: ../shell/src/thinking-settings.tsx
+msgid "Medium"
+msgstr ""
+
+#. Calendar column head: Monday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "Mo"
+msgstr ""
+
+#. Model settings title: which AI model is used
+#: ../shell/src/engine-settings.tsx
+msgid "Model"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+#: ../shell/src/studio.tsx
+#: ../shell/src/studio.tsx
+msgid "Model settings"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Modify the app"
+msgstr ""
+
+#. Tile editor placeholder: with no icon the tile shows the name's first letters
+#: ../shell/src/tile-editor.tsx
+msgid "monogram"
+msgstr ""
+
+#. Tab bar: the pages that did not fit
+#. The app's ⋯ menu of tools
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+msgid "More"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+msgid "More — something new"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+msgid "More pages"
 msgstr ""
 
 #. placeholder {0}: progress.name
@@ -357,17 +1393,49 @@ msgstr ""
 msgid "Moving…"
 msgstr ""
 
+#. Tile editor: the name shown on the launcher tile
+#: ../shell/src/tile-editor.tsx
+msgid "Name"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "needs a WebGPU browser"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "needs an API key"
+msgstr ""
+
+#. Ask review: a proposed record, not checked against anything
+#: ../shell/src/ask-verdicts.ts
+msgid "New"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 msgid "New app"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Next month"
+msgstr ""
+
+#: ../views/src/format.ts
+#: ../views/src/summary.ts
+msgid "No"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "No app called “{typed}”."
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "No apps on this device yet."
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -378,11 +1446,29 @@ msgstr ""
 msgid "No name yet"
 msgstr ""
 
+#: ../shell/src/ask-apply.ts
+msgid "No record to change."
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "No records yet."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "No relay: synced apps stay on this device."
 msgstr ""
 
+#: ../shell/src/engine-settings.tsx
+msgid "not available in this browser"
+msgstr ""
+
+#: ../shell/src/ask-verdicts.ts
+msgid "Not confirmed"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
+#: ../shell/src/restore-apps.tsx
+#: ../shell/src/sync-consent.ts
 msgid "Not now"
 msgstr ""
 
@@ -390,12 +1476,134 @@ msgstr ""
 msgid "not opened yet"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Not saved: {issue}"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Not saved: {reason}"
+msgstr ""
+
+#. Fix agent step: the model's reply could not be used
+#: ../shell/src/fix-panel.tsx
+msgid "not usable — {detail}"
+msgstr ""
+
+#: ../shell/src/ask-apply.ts
+msgid "Nothing is called exactly “{match}”; tick the ones you meant."
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "Nothing is kept anywhere but this device."
 msgstr ""
 
-#: ../shell/src/launcher.tsx
-msgid "Nothing is wrong with it on your own. Share anyway?"
+#: ../shell/src/picker.tsx
+msgid "Nothing matches “{query}”."
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "Nothing matches."
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "Nothing since you last looked. Changes made by anyone you share {appName} with will show up here."
+msgstr ""
+
+#: ../shell/src/ask-apply.ts
+#: ../shell/src/ask-verdicts.ts
+msgid "Nothing that was read supports it."
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Nothing to bring in"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Nothing to investigate yet"
+msgstr ""
+
+#: ../shell/src/filter-chrome.tsx
+msgid "Nothing to pick yet."
+msgstr ""
+
+#: ../views/src/aggregate.tsx
+msgid "Nothing to show yet."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Nothing was made from it yet, so there is no app to keep."
+msgstr ""
+
+#. Reasoning level: the model does not think first
+#: ../shell/src/thinking-settings.tsx
+msgid "Off"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Offer “Ask” in this app, to add records with AI."
+msgstr ""
+
+#: ../shell/src/sync-status.tsx
+msgid "Offline · changes saved here"
+msgstr ""
+
+#. Prompt button: accept what was typed
+#: ../shell/src/dialog.tsx
+#: ../views/src/record-form.tsx
+msgid "OK"
+msgstr ""
+
+#. Menu hint: a tool that is switched on (Edit mode)
+#: ../shell/src/chrome.tsx
+msgid "on"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "On this device only. The app itself keeps its own name and look."
+msgstr ""
+
+#. Model settings heading: engines that run on this computer
+#: ../shell/src/engines.ts
+msgid "On this machine"
+msgstr ""
+
+#. Engine name: a model running in this browser
+#: ../shell/src/engines.ts
+msgid "On-device"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "On-device model"
+msgstr ""
+
+#: ../shell/src/engines.ts
+msgid "One key, any hosted model — DeepSeek, Qwen, Llama. Cheap models are the point of measuring."
+msgstr ""
+
+#. Ask review: stands in for a website's name when none is known
+#: ../shell/src/ask-verdicts.ts
+msgid "one site"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Only {name}, who created this app, can invite or remove people."
+msgstr ""
+
+#. Ask review: only this one website mentions the record
+#: ../shell/src/ask-verdicts.ts
+msgid "Only {site}"
+msgstr ""
+
+#: ../shell/src/ask-verdicts.ts
+msgid "Only {site} mentions it; nothing else confirmed it."
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Only the person who created this app, who created this app, can invite or remove people."
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "only while the dev server runs"
 msgstr ""
 
 #. Tile menu: open this app
@@ -403,12 +1611,69 @@ msgstr ""
 msgid "Open"
 msgstr ""
 
+#: ../shell/src/data-page.tsx
+msgid "Open app"
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "Opening {name}…"
+msgstr ""
+
+#. Service name; keep as is
+#: ../shell/src/engines.ts
+msgid "OpenRouter"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "OpenRouter API key"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "OpenRouter model"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Owner · can invite and remove people"
+msgstr ""
+
+#: ../shell/src/filter-chrome.tsx
+msgid "Page actions"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+msgid "Pages"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Paste the words from your other device."
 msgstr ""
 
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/people-panel.tsx
+msgid "People"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "People you share an app with see you as “Me”."
+msgstr ""
+
+#. Button that opens a month grid for a date field; {label} is the field
+#: ../views/src/date-input.tsx
+msgid "Pick {label}"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Pick a date"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Pick a day"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Pick a point on the map"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -419,18 +1684,121 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Point at the app"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Potyro gold"
+msgstr ""
+
+#. Studio bar: open the app being made
+#: ../shell/src/studio.tsx
+msgid "Preview"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Previous generation, for a regression check"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Previous month"
+msgstr ""
+
+#: ../shell/src/chrome.tsx
+msgid "Quick actions"
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "Read-only"
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "Read-only: this app has a newer version. Update to keep making changes."
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "Read-only: your data still uses the previous version. Update it to keep making changes."
+msgstr ""
+
 #. Launcher sort: by how often and how lately you open an app
 #: ../shell/src/launcher-order.ts
 msgid "Recent"
 msgstr ""
 
+#: ../shell/src/engine-settings.tsx
+msgid "Recommended balance"
+msgstr ""
+
+#. Status: a bug report is being recorded
+#. Status: a bug report is being recorded
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
+msgid "Recording"
+msgstr ""
+
+#. Button: remove a person from a shared app
+#. Button: remove a person from a shared app
+#: ../shell/src/people-panel.tsx
+#: ../shell/src/people-panel.tsx
+msgid "Remove"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Remove {name}?"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Remove {tag}"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Removed {name}"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 msgid "Rename"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 msgid "Rename app"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Repaired with the whole file."
+msgstr ""
+
+#. Under a form field that was left empty but must be filled
+#. Under a form field that was left empty but must be filled
+#: ../views/src/record-form.tsx
+#: ../views/src/record-form.tsx
+msgid "Required"
+msgstr ""
+
+#. Tile editor: undo this device's override
+#. Tile editor: undo this device's override
+#: ../shell/src/tile-editor.tsx
+#: ../shell/src/tile-editor.tsx
+msgid "Reset"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Reset icon"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Reset name"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Rewrote the app instead of editing it."
+msgstr ""
+
+#: ../shell/src/engines.ts
+msgid "Rides your Claude Code CLI login. No API key, but only while the dev server is running."
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -438,19 +1806,62 @@ msgstr ""
 msgid "Runs in a sandbox"
 msgstr ""
 
+#. Calendar column head: Saturday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "Sa"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Save"
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Save changes"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "Save one thing"
+msgstr ""
+
+#: ../views/src/record-form.tsx
+msgid "Saving…"
+msgstr ""
+
+#: ../shell/src/picker.tsx
+msgid "Search…"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "See the code"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Send answer"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Send this link. Whoever opens it can see your app, but not change it."
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "Send this link. Whoever opens it joins your app and can change it."
 msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Send this link. Whoever opens it joins your app and its data."
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "Send to {label}"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Set a name"
 msgstr ""
 
+#. Button: share the app (turns sync on)
 #: ../shell/src/launcher.tsx
+#: ../shell/src/sync-consent.ts
 msgid "Share"
 msgstr ""
 
@@ -458,9 +1869,55 @@ msgstr ""
 msgid "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
 msgstr ""
 
+#: ../shell/src/sync-consent.ts
+msgid "Share anyway"
+msgstr ""
+
+#: ../shell/src/dialog.tsx
+#: ../shell/src/dialog.tsx
+msgid "Share link"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Share text to Potyro from another app and it will wait here for you to pick where it goes."
+msgstr ""
+
+#. Opens the device's own share sheet
+#: ../shell/src/dialog.tsx
+msgid "Share…"
+msgstr ""
+
+#. Data page: a tag on an app that is synced with other people
 #. Mark on a launcher tile: the app's data is shared with other people
+#. Restore list: this app is shared with other people
+#: ../shell/src/data-page.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/restore-apps.tsx
 msgid "shared"
+msgstr ""
+
+#: ../shell/src/data-page.tsx
+msgid "Shared — edits here reach everyone in it"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Shared with Potyro"
+msgstr ""
+
+#: ../shell/src/sync-consent.ts
+msgid "Sharing it turns on sync: from then on its own code writes into data that leaves this device, where the people you share with can read it. The app asks for this. Share it?"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Shortcuts"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Show all of it"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Show less"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -479,8 +1936,21 @@ msgstr ""
 msgid "Shows text that missed the catalogs (dev only)"
 msgstr ""
 
+#: ../shell/src/view-error-boundary.tsx
+msgid "Something went wrong opening {pageLabel}."
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Sort apps"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Start a new app"
+msgstr ""
+
+#. Button: stop the fix agent
+#: ../shell/src/fix-panel.tsx
+msgid "Stop"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -489,6 +1959,15 @@ msgstr ""
 
 #: ../shell/src/backup-switch.tsx
 msgid "Stop putting new apps on the relay?"
+msgstr ""
+
+#. Fix agent outcome: the person stopped it
+#: ../shell/src/fix-panel.tsx
+msgid "Stopped"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Stopped. Nothing was changed."
 msgstr ""
 
 #. Storage report: which kind of storage this device ended up on
@@ -500,10 +1979,35 @@ msgstr ""
 msgid "Storage speed"
 msgstr ""
 
+#: ../shell/src/engine-settings.tsx
+msgid "Stronger sibling, still ~50× cheaper than a frontier model"
+msgstr ""
+
+#. The Studio's name, above the app's: where apps are made by talking
+#: ../shell/src/studio.tsx
+msgid "Studio"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Studio menu"
+msgstr ""
+
+#. Calendar column head: Sunday, as short as your language writes it (two letters in English)
+#: ../views/src/date-input.tsx
+msgid "Su"
+msgstr ""
+
+#. The strip of totals above a list
+#: ../shell/src/summary-strip.tsx
+msgid "Summary"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "switch app"
 msgstr ""
 
+#: ../shell/src/chrome.tsx
+#: ../shell/src/chrome.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Switch app"
@@ -517,9 +2021,22 @@ msgstr ""
 msgid "Sync is on."
 msgstr ""
 
+#: ../shell/src/open-store.ts
+msgid "Sync needs IndexedDB, which this browser has disabled or blocked."
+msgstr ""
+
+#: ../shell/src/sync-status.tsx
+msgid "Sync on · no relay"
+msgstr ""
+
 #. Mark on a launcher tile: the app syncs to your other devices
 #: ../shell/src/launcher.tsx
 msgid "synced"
+msgstr ""
+
+#. Header status: this app's data reaches the relay
+#: ../shell/src/sync-status.tsx
+msgid "Synced"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -534,6 +2051,24 @@ msgstr ""
 msgid "Synced to your other devices"
 msgstr ""
 
+#. Appearance: follow the device's light/dark setting
+#: ../shell/src/look-panel.tsx
+msgid "System"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Tap a part of the app to talk about it"
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Tap the map to place a point"
+msgstr ""
+
+#. Calendar column head: Thursday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "Th"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "That is not a websocket URL. It needs to start with wss:// or ws://."
 msgstr ""
@@ -542,40 +2077,210 @@ msgstr ""
 msgid "That language could not be loaded. Connect once and try again."
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "the app, not its data"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+#: ../shell/src/tile-editor.tsx
+msgid "The app's own colour"
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
+msgstr ""
+
+#: ../shell/src/share-chat.ts
+msgid "The conversation from the Studio goes with it — everything you asked for, in your own words, and the answers. Whoever opens the file can read it."
 msgstr ""
 
 #: ../shell/src/draft-strip.tsx
 msgid "The conversation goes. Nothing was made from it yet."
 msgstr ""
 
+#: ../shell/src/studio-engine.ts
+msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "The model sent the whole file back instead of edits."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "The model sent the whole file back instead of edits. Check that nothing else changed."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "the repair could not be applied: {why}"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "the repair was declined: {why}"
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
 msgstr ""
 
+#: ../shell/src/studio.tsx
+msgid "The versions after it stay in History."
+msgstr ""
+
+#: ../shell/src/start-fix.ts
+msgid "There's nothing to investigate: this recording has no title and no note about what you expected. Add a note when you record the case — \"What did you expect?\" — or give the case a title, and try again."
+msgstr ""
+
+#: ../shell/src/restore-apps.tsx
+msgid "These are on your account. Anything you leave unticked stays there — you can pull it onto this device later."
+msgstr ""
+
+#: ../shell/src/thinking-settings.tsx
+msgid "Think hard when stuck"
+msgstr ""
+
+#: ../shell/src/thinking-settings.tsx
+msgid "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "Thinking via {label}…"
+msgstr ""
+
+#. Shown after the model's name: its reasoning level is low
+#: ../shell/src/engines.ts
+msgid "thinks a little"
+msgstr ""
+
+#: ../shell/src/thinking-settings.tsx
+msgid "Thinks a little first. A bit slower; costs a little more."
+msgstr ""
+
+#. Shown after the model's name: its reasoning level is high
+#: ../shell/src/engines.ts
+msgid "thinks hard"
+msgstr ""
+
+#: ../shell/src/thinking-settings.tsx
+msgid "Thinks hard. Slowest and costs the most, but may get hard changes right."
+msgstr ""
+
+#: ../shell/src/thinking-settings.tsx
+msgid "Thinks it through. Slower; a change can cost a few times more."
+msgstr ""
+
+#. Shown after the model's name: its reasoning level is medium
+#: ../shell/src/engines.ts
+msgid "thinks more"
+msgstr ""
+
+#. Sidebar heading over the shell's tools for the open app
+#: ../shell/src/chrome.tsx
 #: ../shell/src/launcher.tsx
 msgid "This app"
+msgstr ""
+
+#: ../shell/src/start-fix.ts
+msgid "This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again."
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "This app has a newer version. Update to keep making changes."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid ""
+"This app has structure problems:\n"
+"\n"
+"{listed}\n"
+"\n"
+"Save anyway?"
 msgstr ""
 
 #: ../shell/src/app-words.ts
 msgid "This app is in {language}."
 msgstr ""
 
+#: ../shell/src/open-store.ts
+msgid "This app is not shared."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "This conversation could not be saved: {reason}"
+msgstr ""
+
+#: ../shell/src/remove-app.ts
+msgid "This deletes the app AND its data — every record you have added to it. It cannot be undone."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
+msgstr ""
+
+#: ../shell/src/share-sync.ts
+msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
+msgstr ""
+
+#: ../shell/src/remove-app.ts
+msgid "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "This is my second device"
 msgstr ""
 
+#: ../shell/src/fix-panel.tsx
+msgid "This one isn’t in your app"
+msgstr ""
+
+#: ../shell/src/view-error-boundary.tsx
+msgid "This page couldn’t be shown"
+msgstr ""
+
+#: ../shell/src/data-table.tsx
+msgid "this record"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
 msgstr ""
 
+#: ../views/src/aggregate.tsx
+msgid "This screen could not be worked out: {error}"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Tile icon"
+msgstr ""
+
+#: ../shell/src/tile-editor.tsx
+msgid "Tile name"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+msgid "Time"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+#: ../views/src/date-input.tsx
+msgid "Today"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+#: ../views/src/date-input.tsx
+msgid "Tomorrow"
+msgstr ""
+
 #: ../shell/src/app-words.ts
 msgid "Translate into {into}"
+msgstr ""
+
+#. Calendar column head: Tuesday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "Tu"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -594,12 +2299,25 @@ msgstr ""
 msgid "Turn sync on"
 msgstr ""
 
+#: ../shell/src/share-sync.ts
+msgid "Turn sync on for this app first — sharing needs a space to invite into."
+msgstr ""
+
+#: ../views/src/field-input.tsx
+msgid "Type a tag, press Enter"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Type the words from your first device to bring its apps here."
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe."
+msgstr ""
+
+#. Ask's cost: less than one US cent
+#: ../shell/src/ask-spend.ts
+msgid "under 1¢"
 msgstr ""
 
 #. Launcher: Studio conversations that have not made an app yet
@@ -609,6 +2327,64 @@ msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Unpin"
+msgstr ""
+
+#. The name an app gets when it was given none
+#: ../shell/src/studio.tsx
+#: ../shell/src/user-apps.ts
+msgid "Untitled app"
+msgstr ""
+
+#. Lock banner button: install the newer version of the app
+#: ../shell/src/app-lock.tsx
+msgid "Update"
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "Update data"
+msgstr ""
+
+#: ../shell/src/look-panel.tsx
+msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
+msgstr ""
+
+#. Model price: it depends on the provider
+#: ../shell/src/engine-settings.tsx
+msgid "varies"
+msgstr ""
+
+#. Calendar column head: Wednesday, as short as your language writes it
+#: ../views/src/date-input.tsx
+msgid "We"
+msgstr ""
+
+#. A version's note in History, lower case: the app was put back to an older version
+#: ../shell/src/studio.tsx
+msgid "went back to version {seq}"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid ""
+"What came back has problems, so it was not saved:\n"
+"- {problems}"
+msgstr ""
+
+#: ../shell/src/people-panel.tsx
+msgid "What can they do?"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+#: ../shell/src/activity-panel.tsx
+msgid "What changed"
+msgstr ""
+
+#: ../shell/src/case-report.tsx
+#: ../shell/src/case-report.tsx
+msgid "What happened"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "What should be different about it?"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -623,8 +2399,34 @@ msgstr ""
 msgid "What you open often and lately, first"
 msgstr ""
 
+#: ../shell/src/thinking-settings.tsx
+msgid "When a change keeps being turned back, the next try thinks hard. It costs more only on changes that were going badly."
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Which model writes and edits your app. Keys stay in this tab and are never saved."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Which relay should this device use?"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Write the code yourself"
+msgstr ""
+
+#: ../shell/src/engine-settings.tsx
+msgid "Writes and edits apps; cannot investigate a reported problem step by step."
+msgstr ""
+
+#: ../views/src/format.ts
+#: ../views/src/summary.ts
+msgid "Yes"
+msgstr ""
+
+#: ../views/src/date-input.tsx
+#: ../views/src/date-input.tsx
+msgid "Yesterday"
 msgstr ""
 
 #. Heading of the panel about the person using Potyro and their devices
@@ -636,6 +2438,30 @@ msgstr ""
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "You and your devices"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "You can go back to the version before from History."
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "You ended this before it finished."
+msgstr ""
+
+#: ../shell/src/case-report.tsx
+msgid "You expected: {expectation}"
+msgstr ""
+
+#: ../shell/src/fix-panel.tsx
+msgid "Your answer"
+msgstr ""
+
+#: ../shell/src/studio.tsx
+msgid "Your app"
+msgstr ""
+
+#: ../shell/src/share-page.tsx
+msgid "Your apps"
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -660,6 +2486,10 @@ msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "Your data now lives in more than one place."
+msgstr ""
+
+#: ../shell/src/app-lock.tsx
+msgid "Your data still uses the previous version. Update it to keep making changes."
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
