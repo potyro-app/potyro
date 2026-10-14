@@ -32,7 +32,11 @@ async function englishIn(scope: Locator): Promise<string[]> {
       // Names also appear INSIDE messages ("Actions for Recipes", "Polski (draft)"): the bundled
       // examples' as well as the seeded ones, and each language's own name for itself — so they are
       // read off the page rather than listed here.
-      const names = [...seeded, ...[...document.querySelectorAll(".k-launch-name, [translate=no]")].map((n) => n.textContent?.trim() ?? "")]
+      const names = [
+        ...seeded,
+        ...[...document.querySelectorAll(".k-launch-name, [translate=no]")].map((n) => n.textContent?.trim() ?? ""),
+        ...[...document.querySelectorAll("option[data-autonym]")].map((o) => o.getAttribute("data-autonym") ?? ""),
+      ]
         .filter(Boolean)
         .sort((a, b) => b.length - a.length);
       const strip = (s: string): string => {
@@ -47,6 +51,12 @@ async function englishIn(scope: Locator): Promise<string[]> {
         const el = n.parentElement;
         if (!el || el.closest(notOurs) || !el.checkVisibility()) continue;
         if (english(n.textContent ?? "")) leaks.push(`text: ${n.textContent!.trim()}`);
+      }
+      // A closed select draws only its chosen option, and no option is "visible" to the walk above —
+      // so every option of a visible select is read, as the open list would show them.
+      for (const select of root.querySelectorAll("select")) {
+        if (!select.checkVisibility() || select.closest(notOurs)) continue;
+        for (const o of select.options) if (english(o.text)) leaks.push(`option: ${o.text}`);
       }
       for (const el of [root, ...root.querySelectorAll("*")]) {
         if (!(el as HTMLElement).checkVisibility?.() || el.closest(notOurs)) continue;
@@ -85,11 +95,12 @@ test.describe("device language", () => {
 
     const panel = await openYou(page);
     // Following the device is the choice made, and it says which language that is.
-    const auto = panel.getByRole("radio", { name: /Match this device/ });
-    await expect(auto).toHaveAttribute("aria-checked", "true");
-    await expect(auto).toContainText("Polski");
-    await expect(panel.getByRole("radio", { name: /^Polski \(draft\)/ })).toBeVisible();
-    await expect(panel.getByRole("radio", { name: /^English/ })).not.toContainText("draft");
+    const picker = panel.getByRole("combobox", { name: "Language" });
+    await expect(picker).toHaveValue("auto");
+    await expect(picker.locator("option:checked")).toHaveText("Match this device (Polski)");
+    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski (draft)");
+    await expect(picker.locator('option[value="de"]')).toHaveText("Deutsch — niemiecki (draft)");
+    await expect(picker.locator('option[value="en"]')).toHaveText("English — angielski");
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBeNull();
   });
 });
@@ -103,16 +114,24 @@ test.describe("switching", () => {
 
     const panel = await openYou(page);
     await expect(panel.getByRole("heading", { name: "Language" })).toBeVisible();
-    await panel.getByRole("radio", { name: /Ƥšéûðö/ }).click();
+    // Its label is the heading, so its name changes language with everything else; hold it by id.
+    await expect(panel.getByRole("combobox", { name: "Language" })).toBeVisible();
+    const picker = panel.locator("#k-lang-select");
+    await expect(picker).toHaveValue("auto");
+    await expect(picker.locator('option[value="en"]')).toHaveText("English");
+    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski — Polish (draft)");
+    await picker.selectOption(PSEUDO);
 
     await expect(panel.getByRole("heading", { level: 2 })).toHaveText(/^⟦Ýöû ·+⟧$/);
-    await expect(panel.getByRole("radio", { name: /Ƥšéûðö/ })).toHaveAttribute("aria-checked", "true");
+    await expect(picker).toHaveValue(PSEUDO);
+    // The options re-render in the new language too: the name in the current language is accented.
+    await expect(picker.locator('option[value="pl"]')).toHaveText(/Polski — Þöļîšĥ \(ðŕåƒţ\)/);
     await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", /^⟦Ƒîñð åñ åþþ ·+⟧$/);
     expect(await page.evaluate(() => (window as unknown as { __stillHere?: boolean }).__stillHere)).toBe(true);
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBe(PSEUDO);
 
     // And back, without leaving.
-    await panel.getByRole("radio", { name: /^English/ }).click();
+    await picker.selectOption("en");
     await expect(panel.getByRole("heading", { level: 2 })).toHaveText("You");
     await page.reload();
     await expect(page.locator(".k-launcher-home").getByRole("searchbox")).toHaveAttribute("placeholder", "Find an app");
