@@ -11,6 +11,9 @@
 // the sources from disk (Node, for the build script and the staleness test); `load-corpus.ts` loads
 // the generated corpus lazily, as its own chunk, in the browser.
 
+import { buildLexicon, englishFor, withSource, type Lexicon, type WordPair } from "./corpus-lexicon.js";
+import { classifyText, type Language } from "./language.js";
+
 export interface CorpusFile {
   /** Repository-relative, forward slashes: `examples/recipes.app.tsx`. */
   path: string;
@@ -21,6 +24,9 @@ export interface Corpus {
   /** A hash of every path and text, so a transcript can say which corpus the model read. */
   version: string;
   files: CorpusFile[];
+  /** Potyro's own short messages in each language beside their English (the shell's catalogs): words
+   *  priming reads a request in, never a passage to show (corpus-lexicon.ts). */
+  words?: WordPair[];
 }
 
 /** What a release's corpus is made of, as plain rules. `corpus-files.ts` applies them to the disk. */
@@ -54,9 +60,11 @@ function hash(text: string): string {
 }
 
 /** Files sorted by path, so the same sources always make the same corpus and the same version. */
-export function buildCorpus(files: readonly CorpusFile[]): Corpus {
+export function buildCorpus(files: readonly CorpusFile[], words: readonly WordPair[] = []): Corpus {
   const sorted = [...files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return { version: hash(sorted.map((f) => `${f.path}\0${f.text}`).join("\0")), files: sorted };
+  const content = sorted.map((f) => `${f.path}\0${f.text}`).join("\0");
+  if (!words.length) return { version: hash(content), files: sorted };
+  return { version: hash(`${content}\0${words.map((w) => w.join("\u0001")).join("\0")}`), files: sorted, words: [...words] };
 }
 
 // ---- search ----
@@ -83,8 +91,9 @@ function chunks(file: CorpusFile): Chunk[] {
   return out;
 }
 
+/** A query's words, in any script ("ćwiczenie" stays one word), with `ctx.files` read as both parts. */
 function terms(query: string): string[] {
-  return [...new Set(query.toLowerCase().split(/[^a-z0-9_$.]+/).flatMap((t) => t.split(".")).filter((t) => t.length > 1))];
+  return [...new Set(query.toLowerCase().split(/[^\p{L}\p{N}_$.]+/u).flatMap((t) => t.split(".")).filter((t) => t.length > 1))];
 }
 
 function count(haystack: string, needle: string): number {
@@ -101,24 +110,30 @@ interface Scored {
 }
 
 /**
- * Every passage of `files` that has any of `words`, best first. Every query term found counts more
- * than many hits of one term, so `ctx.files import` prefers a passage with both over one that says
- * `files` twenty times; `bonus` terms (the app's own shape) only tip the balance between equals.
+ * Every passage of `files` that has any of the query's terms, best first. Each term is a group of
+ * alternatives — a word and the English words it stands for (corpus-lexicon.ts) — that counts once,
+ * by its best alternative. Every term found counts more than many hits of one, so `ctx.files import`
+ * prefers a passage with both over one that says `files` twenty times; `bonus` terms (the app's own
+ * shape) only tip the balance between equals.
  */
-function rankChunks(files: readonly CorpusFile[], words: readonly string[], bonus: readonly string[] = []): Scored[] {
+function rankChunks(files: readonly CorpusFile[], groups: readonly (readonly string[])[], bonus: readonly string[] = []): Scored[] {
   const all = files.flatMap(chunks);
   const lowered = all.map((c) => c.lines.join("\n").toLowerCase());
   const docFreq = new Map<string, number>();
-  for (const w of words) docFreq.set(w, lowered.filter((t) => t.includes(w)).length);
+  for (const w of groups.flat()) if (!docFreq.has(w)) docFreq.set(w, lowered.filter((t) => t.includes(w)).length);
   return all
     .map((chunk, i) => {
       let score = 0;
       let matched = 0;
-      for (const w of words) {
-        const n = count(lowered[i]!, w);
-        if (!n) continue;
+      for (const group of groups) {
+        let best = 0;
+        for (const w of group) {
+          const n = count(lowered[i]!, w);
+          if (n) best = Math.max(best, (1 + Math.log(n)) * Math.log(1 + all.length / (docFreq.get(w)! || 1)));
+        }
+        if (!best) continue;
         matched++;
-        score += (1 + Math.log(n)) * Math.log(1 + all.length / (docFreq.get(w)! || 1));
+        score += best;
       }
       const tip = bonus.filter((b) => lowered[i]!.includes(b)).length * BONUS;
       return { chunk, score: score * matched * matched + (matched ? tip : 0), matched };
@@ -155,7 +170,7 @@ const passage = (c: Chunk, maxChars = Infinity): string => {
 export function searchCorpus(corpus: Corpus, query: string): string {
   const words = terms(query);
   if (!words.length) return "Ask with a few words: a feature (\"custom view canvas\"), a ctx member (\"ctx.files\"), a field type (\"relation many\").";
-  const picked = distinct(rankChunks(corpus.files, words), SEARCH_MAX_HITS);
+  const picked = distinct(rankChunks(corpus.files, words.map((w) => [w])), SEARCH_MAX_HITS);
   if (!picked.length) return `Nothing in the examples, the docs or the schema types mentions ${words.map((w) => `"${w}"`).join(" or ")}.`;
 
   let out = "";
@@ -180,6 +195,41 @@ const STOPWORDS = new Set(["the", "and", "for", "with", "that", "this", "from", 
 
 const primeTerms = (instruction: string): string[] => terms(instruction).filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 
+/** The corpus's lexicon, mined once per corpus (it is a release's, and never changes). */
+const lexicons = new WeakMap<Corpus, Lexicon>();
+function corpusLexicon(corpus: Corpus): Lexicon {
+  let lex = lexicons.get(corpus);
+  if (!lex) {
+    const sources = corpus.files.filter((f) => /\.tsx?$/.test(f.path)).map((f) => f.text);
+    lexicons.set(corpus, (lex = buildLexicon(sources, corpus.words ?? [])));
+  }
+  return lex;
+}
+
+/** Whether the request is in a language other than English: the one the loop was told, else as it reads. */
+function foreign(instruction: string, language: Language | undefined): boolean {
+  if (language) return language !== "en";
+  const read = classifyText(instruction);
+  return read !== null && read !== "en";
+}
+
+/**
+ * The request's terms, each a group: the word, then the English words it stands for in the corpus
+ * and the app being edited (corpus-lexicon.ts) when the request is not in English. A word the
+ * sources also use in English is matched as it is. An English request's groups are its words alone,
+ * so it primes exactly as it did.
+ */
+export function primeGroups(corpus: Corpus, instruction: string, source: string, language?: Language): string[][] {
+  const words = primeTerms(instruction);
+  if (!foreign(instruction, language)) return words.map((w) => [w]);
+  const lex = source ? withSource(corpusLexicon(corpus), source) : corpusLexicon(corpus);
+  return words.map((w) => {
+    if (lex.englishCount.has(w) || !/\p{L}/u.test(w)) return [w];
+    const english = englishFor(lex, w).filter((e) => e.length >= 3 && !STOPWORDS.has(e));
+    return [w, ...english];
+  });
+}
+
 /** The `type: "…"` values an app source uses — its shape, as words the corpus can be matched on. */
 const shapeTerms = (source: string): string[] => [...new Set([...source.matchAll(/\btype:\s*["']([a-z]+)["']/g)].map((m) => m[1]!))];
 
@@ -194,14 +244,14 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
  * request's own turn carries the declarations of the capabilities it names (`capabilityNotes`,
  * #341). Empty when the corpus has nothing to say, so the first message says nothing either.
  */
-export function primeCorpus(corpus: Corpus, instruction: string, source: string): string {
-  const words = primeTerms(instruction);
-  if (words.length < 2) return "";
+export function primeCorpus(corpus: Corpus, instruction: string, source: string, language?: Language): string {
+  const groups = primeGroups(corpus, instruction, source, language);
+  if (groups.length < 2) return "";
   const self = appIdOf(source);
   const selfRe = self ? new RegExp(`\\bid:\\s*["']${escapeRe(self)}["']`) : null;
   const files = corpus.files.filter((f) => !f.path.startsWith("packages/") && !(selfRe && selfRe.test(f.text)));
   const picked = distinct(
-    rankChunks(files, words, shapeTerms(source)).filter((s) => s.matched >= 2),
+    rankChunks(files, groups, shapeTerms(source)).filter((s) => s.matched >= 2),
     PRIME_FILES,
     1,
   );

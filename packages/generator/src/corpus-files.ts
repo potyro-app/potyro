@@ -5,6 +5,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inCorpus, type CorpusFile } from "./corpus.js";
+import type { WordPair } from "./corpus-lexicon.js";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -43,4 +44,37 @@ export function collectCorpusFiles(root: string = REPO_ROOT): CorpusFile[] {
     .map((full) => relative(root, full).split(sep).join("/"))
     .filter(inCorpus)
     .map((path) => ({ path, text: stripFrontmatter(readFileSync(join(root, path), "utf8")) }));
+}
+
+/** Longest message the catalogs lend priming: a label or a button, not a sentence. */
+const CATALOG_MAX_WORDS = 3;
+
+/**
+ * Potyro's own short messages in every language beside their English, from the shell's catalogs
+ * (packages/i18n/locales): "Mapa" is "Map", "Wykres" is "Chart". Messages with placeholders or markup
+ * and untranslated ones are left out; sorted, so the same catalogs make the same corpus.
+ */
+export function collectCatalogWords(root: string = REPO_ROOT): WordPair[] {
+  const dir = join(root, "packages/i18n/locales");
+  const seen = new Set<string>();
+  const out: WordPair[] = [];
+  for (const language of readdirSync(dir).sort()) {
+    if (language === "en") continue;
+    let po: string;
+    try {
+      po = readFileSync(join(dir, language, "messages.po"), "utf8");
+    } catch {
+      continue;
+    }
+    for (const m of po.matchAll(/^msgid "((?:[^"\\]|\\.)*)"\r?\nmsgstr "((?:[^"\\]|\\.)*)"/gm)) {
+      const [english, text] = [m[1]!, m[2]!];
+      if (!english || !text || text === english || /[{<]/.test(english + text)) continue;
+      if (english.split(/\s+/).length > CATALOG_MAX_WORDS) continue;
+      const key = `${language}\u0001${text}\u0001${english}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push([language, text, english]);
+    }
+  }
+  return out.sort((a, b) => (a.join("\u0001") < b.join("\u0001") ? -1 : 1));
 }
