@@ -78,6 +78,14 @@ msgstr "Aplikacja „{name}” została właśnie zaktualizowana do nowszej wers
 msgid "“{name}” was made by someone else, so it runs in a sandbox."
 msgstr "Aplikację „{name}” zrobił ktoś inny, więc działa w piaskownicy."
 
+#: ../shell/src/add-app.ts
+msgid "“{name}” was not added: its files could not be saved. {why}"
+msgstr "Nie dodano „{name}”: nie udało się zapisać jej plików. {why}"
+
+#: ../shell/src/add-app.ts
+msgid "“{name}” was not fully updated: its files could not be saved. {why}"
+msgstr "Nie zaktualizowano w pełni „{name}”: nie udało się zapisać jej plików. {why}"
+
 #: ../shell/src/version-gate.ts
 msgid "“{name}” was updated by someone you share it with."
 msgstr "Aplikację „{name}” zaktualizowała osoba, z którą ją udostępniasz."
@@ -1066,6 +1074,10 @@ msgstr "Dodaj tutaj: {entityLabel}"
 #: ../shell/src/files-panel.tsx
 msgid "Add it"
 msgstr "Dodaj"
+
+#: ../shell/src/main.tsx
+msgid "Add it again from its package, and choose “Replace it, keep its data”: its records stay."
+msgstr "Dodaj ją ponownie z jej pakietu i wybierz „Zastąp, zachowaj dane”: jej wpisy zostaną."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -2954,6 +2966,10 @@ msgstr "Działa w zamkniętym pudełku: ma dostęp tylko do tego, na co pozwolis
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 msgstr "Zrobił ją ktoś inny i działa w piaskownicy. Udostępnienie pozwoliłoby jej kodowi zapisywać dane, które opuszczają to urządzenie — a ona nie mówi, że tego potrzebuje. Możesz ją mimo to udostępnić."
 
+#: ../shell/src/shipped-files.ts
+msgid "It was not added from a link, so its files can only come back from its package: add it again, and choose “Replace it, keep its data”."
+msgstr "Nie została dodana z linku, więc jej pliki mogą wrócić tylko z jej pakietu: dodaj ją ponownie i wybierz „Zastąp, zachowaj dane”."
+
 #: ../shell/src/main.tsx
 msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
 msgstr "Jej dane synchronizują się z osobami, które ją udostępniają: to, co aplikacja zapisze na tym urządzeniu, mogą przeczytać. Aplikacje od innych osób domyślnie działają w piaskownicy. Możesz to później zmienić w nagłówku aplikacji."
@@ -4190,6 +4206,10 @@ msgstr "Nagraj dźwięk"
 msgid "Recording"
 msgstr "Nagrywanie"
 
+#: ../shell/src/main.tsx
+msgid "Reinstall its files"
+msgstr "Zainstaluj jej pliki ponownie"
+
 #: ../shell/src/ask-review-parts.tsx
 msgid "Reject"
 msgstr "Odrzuć"
@@ -5073,6 +5093,14 @@ msgstr "Punkt końcowy musi być adresem https://."
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
 msgstr "Plik w obecnej postaci zostanie zachowany jako wcześniejsza kopia, więc możesz zmienić zdanie."
 
+#: ../shell/src/shipped-files.ts
+msgid "The file it came with, {list}, is not on this device, so it cannot run."
+msgstr "Pliku, z którym przyszła, {list}, nie ma na tym urządzeniu, więc nie może działać."
+
+#: ../shell/src/shipped-files.ts
+msgid "The files it came with — {list} — are not on this device, so it cannot run."
+msgstr "Plików, z którymi przyszła — {list} — nie ma na tym urządzeniu, więc nie może działać."
+
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
 msgstr "grupy muszą pozostać tymi, które są teraz"
@@ -5187,6 +5215,10 @@ msgstr "Nie ma czego badać: to nagranie nie ma tytułu ani notatki o tym, co mi
 msgid "These are on your account. Anything you leave unticked stays there — you can pull it onto this device later."
 msgstr "Są na twoim koncie. To, czego nie zaznaczysz, tam zostaje — możesz to później pobrać na to urządzenie."
 
+#: ../shell/src/add-app.ts
+msgid "These files did not land in its folder: {list}."
+msgstr "Te pliki nie trafiły do jej folderu: {list}."
+
 #: ../shell/src/thinking-settings.tsx
 msgid "Think hard when stuck"
 msgstr "Myśl mocniej, gdy utknie"
@@ -5299,6 +5331,10 @@ msgstr "Ta aplikacja nie jest zapisana na tym urządzeniu, więc nie można jej 
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
 msgstr "Ta aplikacja nie jest napisana tak, by dało się ją zmienić na miejscu."
+
+#: ../shell/src/open-store.ts
+msgid "This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again."
+msgstr "Dane tej aplikacji są otwarte w innej karcie lub oknie Potyro, więc nie można ich otworzyć także tutaj. Zamknij ją tam i spróbuj ponownie."
 
 #: ../shell/src/app-source.ts
 #: ../shell/src/app-source.ts
@@ -5501,6 +5537,7 @@ msgstr "Zaufana aplikacja"
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
 msgstr "Zaufane aplikacje działają <0>bezpośrednio</0> z pełnym dostępem — bez piaskownicy. Oznacz jako zaufaną tylko aplikację własnego autorstwa albo taką, której w pełni ufasz. <1>{name}</1> deklaruje:"
 
+#: ../shell/src/main.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Spróbuj ponownie"
@@ -5812,6 +5849,7 @@ msgstr "Które słowa brzmią źle?"
 msgid "Working on it…"
 msgstr "Pracuję nad tym…"
 
+#: ../shell/src/splash.tsx
 #: ../shell/src/studio-thread-view.tsx
 msgid "Working…"
 msgstr "Pracuję…"
