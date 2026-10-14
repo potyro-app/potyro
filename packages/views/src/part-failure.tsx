@@ -2,15 +2,22 @@
 //
 // An app is many parts — computed values, filters, views, its own screens — and any of them is code
 // that can throw: on data it did not expect, or, in the sealed box, on a feature that is not there.
-// One part failing must not take the rest with it, and must not be silent either. So every view a
-// page shows is held in its own boundary, and what failed is said where it would have been, in words
-// for the person using the app: "This part of the app hit a problem: …". The other views on the page,
-// and every other page, carry on.
+// One part failing must not take the rest with it. So every view a page shows is held in its own
+// boundary, and a view that cannot show at all — it crashed while rendering, its custom view would
+// not mount, its page's records could not be listed — says so in its place, in words for the person
+// using the app: "This part of the app hit a problem: …". The other views on the page, and every
+// other page, carry on.
 //
-// The runtime is the one that knows: a computed that threw is reported there (host/resolve.ts, as
-// `computed entity.key`), as is a page whose filter or query threw (`page id`). A view listens for the
-// failures that concern it. A view that crashes while rendering reports itself (`view id`), so whoever
-// checks an app off-screen (the Studio) hears it as well.
+// A computed value that throws for SOME records is not one of those. The view still has every record
+// to show; only that value is missing where it failed, and it shows as empty (host/resolve.ts). An
+// alert for it took the whole view's place — over a map, because one place had no opening hours —
+// to tell the person using the app about code they cannot fix. So it is quiet here: the runtime still
+// reports it (`computed entity.key`) to whoever checks the app — the Studio's run of a change hears
+// it (shell/run-candidate.ts) — and the console says it once. Not a view's business.
+//
+// The runtime is the one that knows: a page whose filter or query threw is reported there (`page
+// id`), and a view listens for that. A view that crashes while rendering reports itself (`view id`),
+// so whoever checks an app off-screen (the Studio) hears it as well.
 
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { t } from "@lingui/core/macro";
@@ -80,15 +87,16 @@ export class PartBoundary extends Component<BoundaryProps, { error: Error | null
 const SAY_THEIR_OWN_LOAD_ERROR = new Set(["list", "gallery", "table"]);
 
 /**
- * Failures, reported while this view is up, of the parts it shows: the computed values of its
- * entity, and — unless the view says it itself — its own page's records. Each once, newest message kept.
+ * Failures, reported while this view is up, that leave it with nothing to show: its own page's
+ * records, unless the view says that itself. Each once, newest message kept. Never a computed value
+ * that failed for some records — the view still shows them (see the top of this file).
  */
-export function usePartFailures(runtime: PotyroRuntime, pageId: string, entity: string | undefined, viewType?: string): Failure[] {
+export function usePartFailures(runtime: PotyroRuntime, pageId: string, viewType?: string): Failure[] {
   const [failures, setFailures] = useState<Failure[]>([]);
   useEffect(() => {
     setFailures([]);
     const ownPage = !SAY_THEIR_OWN_LOAD_ERROR.has(viewType ?? "");
-    const concerns = (what: string): boolean => (ownPage && what === `page ${pageId}`) || (!!entity && what.startsWith(`computed ${entity}.`));
+    const concerns = (what: string): boolean => ownPage && what === `page ${pageId}`;
     // A runtime from before #271 (a test's stand-in) has nothing to say.
     return runtime.onFailure?.((f) => {
       if (!concerns(f.what)) return;
@@ -99,6 +107,6 @@ export function usePartFailures(runtime: PotyroRuntime, pageId: string, entity: 
         return [...next, { what: f.what, message: f.message }];
       });
     });
-  }, [runtime, pageId, entity, viewType]);
+  }, [runtime, pageId, viewType]);
   return failures;
 }
