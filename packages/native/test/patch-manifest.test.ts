@@ -60,14 +60,34 @@ describe("the share target (#213)", () => {
 </manifest>
 `;
 
-  it("puts a SEND text/* filter inside the main activity, once", () => {
+  it("puts the share and open-with filters inside the main activity, once (#213, #254)", () => {
     const once = withShareTarget(WITH_ACTIVITY) as { xml: string; added: boolean };
     expect(once.added).toBe(true);
     const activity = once.xml.slice(once.xml.indexOf("<activity"), once.xml.indexOf("</activity>"));
     expect(activity).toContain('<action android:name="android.intent.action.SEND" />');
-    expect(activity).toContain('android:mimeType="text/*"');
+    expect(activity).toContain('<action android:name="android.intent.action.SEND_MULTIPLE" />');
+    expect(activity).toContain('<action android:name="android.intent.action.VIEW" />');
+    expect(activity).toContain('android:scheme="content"');
+    expect(activity).toContain('android:mimeType="*/*"');
     const twice = withShareTarget(once.xml) as { xml: string; added: boolean };
     expect(twice.added).toBe(false);
     expect(twice.xml).toBe(once.xml);
+  });
+
+  it("upgrades a manifest patched when only text could be shared", () => {
+    const old = WITH_ACTIVITY.replace(
+      "        </activity>",
+      `            <intent-filter android:label="Add to Potyro">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+        </activity>`,
+    );
+    const next = withShareTarget(old) as { xml: string; added: boolean };
+    expect(next.added).toBe(true);
+    expect(next.xml).not.toContain('android:mimeType="text/*"');
+    expect(next.xml.match(/action\.SEND"/g)).toHaveLength(1);
+    expect(next.xml).toContain("SEND_MULTIPLE");
   });
 });

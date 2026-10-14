@@ -82,6 +82,14 @@ msgstr "“{name}” la hizo otra persona, así que se ejecuta en un entorno ais
 msgid "“{name}” was updated by someone you share it with."
 msgstr "Alguien con quien la compartes actualizó “{name}”."
 
+#: ../shell/src/app-folder.ts
+msgid "“{path}” is kept for the app’s own code"
+msgstr "“{path}” está reservado para el código de la app"
+
+#: ../shell/src/app-folder.ts
+msgid "“{raw}” cannot be a file’s name"
+msgstr "“{raw}” no puede ser el nombre de un archivo"
+
 #. Point chip: the text on a thing in the app's screen, then what kind of thing it is
 #: ../shell/src/point-target.ts
 msgid "“{text}” {tag}"
@@ -182,6 +190,11 @@ msgstr "{0, plural, one {# fuente} other {# fuentes}}"
 msgid "{0, plural, one {# unchanged line} other {# unchanged lines}}"
 msgstr "{0, plural, one {# línea sin cambios} other {# líneas sin cambios}}"
 
+#. placeholder {0}: count - 4
+#: ../shell/src/incoming-files-host.tsx
+msgid "{0, plural, one {and # more} other {and # more}}"
+msgstr "{0, plural, one {y # más} other {y # más}}"
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Fetch the library this version uses?} other {Fetch the libraries this version uses?}}"
@@ -252,6 +265,18 @@ msgstr "{0}, sin guardar"
 msgid "{applied} Not done yet: {parts}"
 msgstr "{applied} Aún sin hacer: {parts}"
 
+#: ../shell/src/files-panel.tsx
+msgid "{appName} comes with no files yet"
+msgstr "{appName} todavía no trae archivos"
+
+#: ../shell/src/files-panel.tsx
+msgid "{appName} files"
+msgstr "Archivos de {appName}"
+
+#: ../shell/src/files-panel.tsx
+msgid "{appName} will no longer come with it. Copies already installed keep theirs until they update."
+msgstr "{appName} dejará de traerlo. Las copias ya instaladas conservan el suyo hasta que se actualicen."
+
 #: ../shell/src/ask-review.tsx
 msgid "{approvedN} of {totalN} approved"
 msgstr "{approvedN} de {totalN} aprobados"
@@ -293,6 +318,10 @@ msgstr "{cents} ¢"
 msgid "{changed, plural, one {changed # record} other {changed # records}}"
 msgstr "{changed, plural, one {cambió # registro} other {cambió # registros}}"
 
+#: ../shell/src/files-panel.tsx
+msgid "{count, plural, one {# file · {size}} other {# files · {size}}}"
+msgstr "{count, plural, one {# archivo · {size}} other {# archivos · {size}}}"
+
 #: ../views/src/checklist.tsx
 msgid "{count, plural, one {# item is in it.} other {# items are in it.}}"
 msgstr "{count, plural, one {Tiene # elemento.} other {Tiene # elementos.}}"
@@ -301,9 +330,17 @@ msgstr "{count, plural, one {Tiene # elemento.} other {Tiene # elementos.}}"
 msgid "{count, plural, one {# ready} other {# ready}}"
 msgstr "{count, plural, one {# lista} other {# listas}}"
 
+#: ../shell/src/incoming-files-host.tsx
+msgid "{count, plural, one {Add this file to…} other {Add these # files to…}}"
+msgstr "{count, plural, one {Añadir este archivo a…} other {Añadir estos # archivos a…}}"
+
 #: ../views/src/checklist.tsx
 msgid "{count, plural, one {Delete its item too?} other {Delete its # items too?}}"
 msgstr "{count, plural, one {¿Borrar también su elemento?} other {¿Borrar también sus # elementos?}}"
+
+#: ../shell/src/incoming-files-host.tsx
+msgid "{count, plural, one {Don’t add it} other {Don’t add them}}"
+msgstr "{count, plural, one {No añadirlo} other {No añadirlos}}"
 
 #: ../views/src/checklist.tsx
 msgid "{count, plural, one {Otherwise it moves to “{aboveName}”.} other {Otherwise they move to “{aboveName}”.}}"
@@ -566,10 +603,6 @@ msgstr "{n} MB"
 msgid "{name} (shared)"
 msgstr "{name} (compartida)"
 
-#: ../shell/src/data-page.tsx
-msgid "{name} doesn’t declare any kinds of record."
-msgstr "{name} no declara ningún tipo de registro."
-
 #: ../shell/src/ask-material.tsx
 msgid "{name} has no text in it."
 msgstr "{name} no tiene texto."
@@ -578,9 +611,14 @@ msgstr "{name} no tiene texto."
 msgid "{name} is {size} KB; files up to {max} KB can be brought in."
 msgstr "{name} pesa {size} KB; se pueden traer archivos de hasta {max} KB."
 
+#: ../shell/src/file-viewer.tsx
+#: ../shell/src/files-panel.tsx
+msgid "{name} is not on this device yet."
+msgstr "{name} todavía no está en este dispositivo."
+
 #: ../shell/src/data-page.tsx
-msgid "{name} records"
-msgstr "Registros de {name}"
+msgid "{name} records and files"
+msgstr "Registros y archivos de {name}"
 
 #. A card in the Studio conversation: the app and which version it is
 #: ../shell/src/studio-thread-view.tsx
@@ -785,6 +823,14 @@ msgstr "una base de datos en el hilo principal"
 msgid "A draft translation was written by a model and may read oddly in places. It is being improved."
 msgstr "Una traducción en borrador la escribió un modelo y puede sonar rara en algunos sitios. Se está mejorando."
 
+#: ../shell/src/files-panel.tsx
+msgid "A file added here goes wherever the app goes: everyone who installs it gets a copy, ready to use — a list to start from, a picture, a sound."
+msgstr "Un archivo que añades aquí va a donde vaya la app: todos los que la instalen reciben una copia, lista para usar — una lista para empezar, una imagen, un sonido."
+
+#: ../shell/src/app-folder.ts
+msgid "A file needs a name"
+msgstr "Un archivo necesita un nombre"
+
 #: ../shell/src/missing-features.ts
 msgid "a full web page"
 msgstr "una página web completa"
@@ -979,6 +1025,11 @@ msgstr "añadir archivo"
 msgid "Add file"
 msgstr "Añadir archivo"
 
+#. Files: bring files from this device into the app
+#: ../shell/src/files-panel.tsx
+msgid "Add files"
+msgstr "Añadir archivos"
+
 #. Map: add a new record at a point; entityLabel is the app's word for it
 #: ../views/src/map.tsx
 msgid "Add here: {entityLabel}"
@@ -1034,11 +1085,17 @@ msgstr "Añadir: {noun}"
 msgid "Add: {noun} “{trimmed}”…"
 msgstr "Añadir: {noun} “{trimmed}”…"
 
+#. Files: a file the person brought in
+#: ../shell/src/files-panel.tsx
+msgid "added by you"
+msgstr "añadido por ti"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Adding {addingName}…"
 msgstr "Añadiendo {addingName}…"
 
 #: ../shell/src/ask-panel.tsx
+#: ../shell/src/incoming-files-host.tsx
 #: ../views/src/media-input.tsx
 msgid "Adding…"
 msgstr "Añadiendo…"
@@ -1100,6 +1157,10 @@ msgstr "Siempre oscuro"
 #: ../shell/src/look-panel.tsx
 msgid "Always light"
 msgstr "Siempre claro"
+
+#: ../shell/src/incoming-files-host.tsx
+msgid "An app is added to your apps. Any other file goes into the app you choose."
+msgstr "Una app se añade a tus apps. Cualquier otro archivo va a la app que elijas."
 
 #. Company name; keep as is
 #: ../shell/src/engines.ts
@@ -1367,6 +1428,11 @@ msgstr "calendario"
 #: ../views/src/calendar.tsx
 msgid "Calendar — {monthLabel}"
 msgstr "Calendario — {monthLabel}"
+
+#. Files: a file that was installed with the app
+#: ../shell/src/files-panel.tsx
+msgid "came with the app"
+msgstr "vino con la app"
 
 #. What an app asks this device for, lower case
 #: ../shell/src/capability-words.ts
@@ -1654,9 +1720,13 @@ msgstr "Borrar {filter}"
 msgid "Close"
 msgstr "Cerrar"
 
+#: ../shell/src/file-viewer.tsx
+msgid "Close {name}"
+msgstr "Cerrar {name}"
+
 #: ../shell/src/studio-tools.tsx
-msgid "Close code and history"
-msgstr "Cerrar código e historial"
+msgid "Close code, files and history"
+msgstr "Cerrar código, archivos e historial"
 
 #: ../shell/src/history.tsx
 msgid "Close history"
@@ -1690,13 +1760,13 @@ msgstr "En la nube"
 msgid "Code"
 msgstr "Código"
 
-#: ../shell/src/studio-tools.tsx
-msgid "Code and history"
-msgstr "Código e historial"
-
 #: ../shell/src/add-app-dialog.tsx
 msgid "Code files"
 msgstr "Archivos de código"
+
+#: ../shell/src/studio-tools.tsx
+msgid "Code, files and history"
+msgstr "Código, archivos e historial"
 
 #: ../shell/src/engine-settings.tsx
 msgid "Coder-tuned — the output is a structured .app.ts"
@@ -1733,6 +1803,10 @@ msgstr "Confirmado"
 #: ../shell/src/sync-status.tsx
 msgid "Connecting…"
 msgstr "Conectando…"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Contents of {name}"
+msgstr "Contenido de {name}"
 
 #. placeholder {0}: d.title
 #: ../shell/src/draft-strip.tsx
@@ -1940,6 +2014,8 @@ msgstr "Disminuir {label}"
 #: ../shell/src/data-table.tsx
 #: ../shell/src/draft-strip.tsx
 #: ../shell/src/draft-strip.tsx
+#: ../shell/src/files-panel.tsx
+#: ../shell/src/files-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/remove-app.ts
 #: ../shell/src/studio.tsx
@@ -1983,6 +2059,10 @@ msgstr "Borrar {label}"
 #: ../views/src/builtins.tsx
 msgid "Delete {label}?"
 msgstr "¿Borrar {label}?"
+
+#: ../shell/src/files-panel.tsx
+msgid "Delete {name}?"
+msgstr "¿Eliminar {name}?"
 
 #: ../shell/src/data-table.tsx
 msgid "Delete {record}"
@@ -2119,6 +2199,14 @@ msgstr "Arrastra para reordenar"
 #: ../views/src/media-input.tsx
 msgid "Drop to add it"
 msgstr "Suelta para añadirlo"
+
+#: ../shell/src/files-panel.tsx
+msgid "Drop to add to {appName}"
+msgstr "Suelta para añadir a {appName}"
+
+#: ../shell/src/incoming-files-host.tsx
+msgid "Drop to add to Potyro"
+msgstr "Suelta para añadir a Potyro"
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio.tsx
@@ -2286,14 +2374,40 @@ msgstr "Archivo"
 msgid "File to bring in"
 msgstr "Archivo para traer"
 
+#. Data page: the tab with the app's files, beside its kinds of record
+#. Tab: the files an app ships with
+#. Tile menu: this app's files, on the Data page
+#: ../shell/src/data-page.tsx
+#: ../shell/src/incoming-files-host.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/studio-tools.tsx
+msgid "Files"
+msgstr "Archivos"
+
+#: ../shell/src/files-panel.tsx
+msgid "Files {appName} comes with"
+msgstr "Archivos que trae {appName}"
+
+#: ../shell/src/studio-files.tsx
+msgid "Files here go wherever {name} goes. Everyone who adds the app gets a copy, and the app reads them as its own."
+msgstr "Los archivos de aquí van a donde vaya {name}. Todos los que añadan la app reciben una copia, y la app los lee como suyos."
+
 #: ../shell/src/missing-features.ts
 msgid "files in memory"
 msgstr "archivos en memoria"
+
+#: ../shell/src/studio.tsx
+msgid "Files it comes with"
+msgstr "Archivos que trae"
 
 #. What an app asks this device for, lower case
 #: ../shell/src/capability-words.ts
 msgid "files outside the app"
 msgstr "archivos fuera de la app"
+
+#: ../shell/src/files-panel.tsx
+msgid "Files you add, files {appName} makes and files it came with all show up here. Drop files on this page, or add them from this device."
+msgstr "Aquí aparecen los archivos que añades, los que crea {appName} y los que vinieron con la app. Suelta archivos en esta página o añádelos desde este dispositivo."
 
 #. Button that opens the filter options of a page
 #. Title of the sheet with a page's filter options
@@ -2374,6 +2488,11 @@ msgstr "De {via}"
 #: ../shell/src/add-app-dialog.tsx
 msgid "From a link"
 msgstr "Desde un enlace"
+
+#. Over the question of which app some files go into
+#: ../shell/src/incoming-files-host.tsx
+msgid "From outside Potyro"
+msgstr "Desde fuera de Potyro"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "from this app"
@@ -2719,6 +2838,10 @@ msgstr "No se pudo abrir."
 msgid "It couldn’t make this fit"
 msgstr "No consiguió encajarlo"
 
+#: ../shell/src/files-panel.tsx
+msgid "It goes from {appName} for good. Anything in the app that uses it will no longer find it."
+msgstr "Se va de {appName} para siempre. Lo que en la app lo use ya no lo encontrará."
+
 #: ../shell/src/platform-request-card.tsx
 msgid "It goes on a public list of requests the Potyro team reads, without your name. No account needed."
 msgstr "Va a una lista pública de peticiones que lee el equipo de Potyro, sin tu nombre. No hace falta cuenta."
@@ -2807,6 +2930,7 @@ msgstr "Uniéndose…"
 
 #. Activity feed: when a change was made, under a minute ago
 #: ../shell/src/activity-panel.tsx
+#: ../shell/src/files-panel.tsx
 #: ../shell/src/history.tsx
 msgid "just now"
 msgstr "ahora mismo"
@@ -3050,6 +3174,11 @@ msgstr "Bajo"
 msgid "Made “{name}”."
 msgstr "Se creó “{name}”."
 
+#. Files: a file the app wrote itself
+#: ../shell/src/files-panel.tsx
+msgid "made by the app"
+msgstr "creado por la app"
+
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Crea la app que necesitas"
@@ -3159,6 +3288,10 @@ msgstr "Más acciones"
 #: ../shell/src/inline-edit.tsx
 msgid "More changes…"
 msgstr "Más cambios…"
+
+#: ../shell/src/files-panel.tsx
+msgid "More for {name}"
+msgstr "Más para {name}"
 
 #: ../shell/src/chrome.tsx
 msgid "More pages"
@@ -3310,6 +3443,10 @@ msgstr "aquí no hay ningún campo “{0}” escrito literalmente"
 #: ../shell/src/add-app.ts
 msgid "No file was chosen"
 msgstr "No se eligió ningún archivo"
+
+#: ../shell/src/files-panel.tsx
+msgid "No files yet"
+msgstr "Todavía no hay archivos"
 
 #: ../views/src/file-input.tsx
 msgid "no longer in this app"
@@ -3690,11 +3827,13 @@ msgid "only while the dev server runs"
 msgstr "solo mientras se ejecuta el servidor de desarrollo"
 
 #. Board card menu: open the record
+#. Files: open a file in the viewer
 #. Map pin: open the place's page
 #. Open the chat a message arrived in
 #. Studio card: open the app this version made
 #. Tile menu: open this app
 #: ../shell/src/chat-panel.tsx
+#: ../shell/src/files-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio-thread-view.tsx
 #: ../views/src/board.tsx
@@ -3706,6 +3845,7 @@ msgstr "Abrir"
 msgid "Open {doneName}"
 msgstr "Abrir {doneName}"
 
+#: ../shell/src/files-panel.tsx
 #: ../views/src/checklist.tsx
 msgid "Open {name}"
 msgstr "Abrir {name}"
@@ -3715,6 +3855,8 @@ msgid "Open app"
 msgstr "Abrir app"
 
 #: ../shell/src/data-page.tsx
+#: ../shell/src/file-viewer.tsx
+#: ../shell/src/studio-files.tsx
 msgid "Opening {name}…"
 msgstr "Abriendo {name}…"
 
@@ -3738,6 +3880,10 @@ msgstr "Modelo de OpenRouter"
 #: ../shell/src/people-panel.tsx
 msgid "Owner · can invite and remove people"
 msgstr "Propietario · puede invitar y quitar personas"
+
+#: ../shell/src/studio-files.tsx
+msgid "Packing…"
+msgstr "Empaquetando…"
 
 #: ../shell/src/filter-chrome.tsx
 msgid "Page actions"
@@ -3850,6 +3996,10 @@ msgstr "Señalando"
 msgid "Potyro can't do this yet"
 msgstr "Potyro aún no puede hacer esto"
 
+#: ../shell/src/file-viewer.tsx
+msgid "Potyro can’t show this kind of file. Save a copy to open it with another app."
+msgstr "Potyro no puede mostrar este tipo de archivo. Guarda una copia para abrirlo con otra app."
+
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Oro Potyro"
@@ -3911,6 +4061,10 @@ msgstr "Leyendo {reading}…"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Reading it…"
 msgstr "Leyéndola…"
+
+#: ../shell/src/files-panel.tsx
+msgid "Reading the folder…"
+msgstr "Leyendo la carpeta…"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Reading this app…"
@@ -4015,6 +4169,7 @@ msgstr "Quitar: {noun}"
 msgid "Removed {name}"
 msgstr "Se quitó a {name}"
 
+#: ../shell/src/files-panel.tsx
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio.tsx
@@ -4026,6 +4181,7 @@ msgstr "Renombrar"
 msgid "Rename {heading}"
 msgstr "Renombrar {heading}"
 
+#: ../shell/src/files-panel.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 msgid "Rename {name}"
@@ -4047,6 +4203,11 @@ msgstr "Reparado con el archivo completo."
 #: ../shell/src/add-app-dialog.tsx
 msgid "Replace it, keep its data"
 msgstr "Reemplazarla, conservar sus datos"
+
+#. Files: choose another file to put in this one's place
+#: ../shell/src/files-panel.tsx
+msgid "Replace…"
+msgstr "Reemplazar…"
 
 #. Button: run a reported problem's steps again
 #: ../shell/src/studio-tools.tsx
@@ -4191,6 +4352,8 @@ msgstr "aislada"
 msgid "Save"
 msgstr "Guardar"
 
+#: ../shell/src/file-viewer.tsx
+#: ../shell/src/files-panel.tsx
 #: ../views/src/file-input.tsx
 msgid "Save a copy"
 msgstr "Guardar una copia"
@@ -4198,6 +4361,11 @@ msgstr "Guardar una copia"
 #: ../views/src/file-input.tsx
 msgid "Save a copy of {fileName}"
 msgstr "Guardar una copia de {fileName}"
+
+#. Studio Files tab: save the app and its files as one zip
+#: ../shell/src/studio-files.tsx
+msgid "Save as a package"
+msgstr "Guardar como paquete"
 
 #: ../shell/src/studio-tools.tsx
 #: ../views/src/record-form.tsx
@@ -4215,6 +4383,10 @@ msgstr "Guardar nota"
 #: ../shell/src/storage-report.tsx
 msgid "Save one thing"
 msgstr "Guardar una cosa"
+
+#: ../shell/src/studio-files.tsx
+msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
+msgstr "Se guardó {packed}. Envíalo a alguien y lo añadirá con “Añadir una app”."
 
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
@@ -4663,6 +4835,11 @@ msgstr "Hacer una foto"
 msgid "Take a video"
 msgstr "Grabar un vídeo"
 
+#. Badge: an app with a file field for this kind of file
+#: ../shell/src/incoming-files-host.tsx
+msgid "Takes these files"
+msgstr "Acepta estos archivos"
+
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Tap a part of the app to talk about it"
@@ -4718,6 +4895,10 @@ msgstr "ese cambio habría producido código que no se puede analizar"
 msgid "That could not be sent."
 msgstr "No se pudo enviar."
 
+#: ../shell/src/app-folder.ts
+msgid "That file is no longer in this app"
+msgstr "Ese archivo ya no está en esta app"
+
 #: ../shell/src/add-app.ts
 msgid "That is not a link"
 msgstr "Eso no es un enlace"
@@ -4737,6 +4918,10 @@ msgstr "No se pudo enviar ese mensaje."
 #: ../shell/src/App.tsx
 msgid "the \"{shownTitle}\" page"
 msgstr "la página “{shownTitle}”"
+
+#: ../shell/src/studio-files.tsx
+msgid "The app and the files it comes with, as one file"
+msgstr "La app y los archivos que trae, en un solo archivo"
 
 #: ../shell/src/app-source.ts
 msgid "the app changed since this text was read — try again"
@@ -4881,6 +5066,10 @@ msgstr "La búsqueda web no estaba disponible, así que esto sale de la memoria 
 msgid "The whole app, as text"
 msgstr "La app entera, como texto"
 
+#: ../shell/src/app-folder.ts
+msgid "There is already a file called {path}"
+msgstr "Ya hay un archivo llamado {path}"
+
 #: ../shell/src/app-source.ts
 msgid "there is nothing to change"
 msgstr "no hay nada que cambiar"
@@ -4932,8 +5121,10 @@ msgstr "Lo piensa bien. Más lento; un cambio puede costar varias veces más."
 msgid "thinks more"
 msgstr "piensa más"
 
+#. Badge: the app you were in when files arrived
 #. Sidebar heading over the shell's tools for the open app
 #: ../shell/src/chrome.tsx
+#: ../shell/src/incoming-files-host.tsx
 #: ../shell/src/launcher.tsx
 msgid "This app"
 msgstr "Esta app"
@@ -4987,6 +5178,10 @@ msgstr ""
 #: ../shell/src/app-words.ts
 msgid "This app is in {language}."
 msgstr "Esta app está en {language}."
+
+#: ../shell/src/studio-files.tsx
+msgid "This app is not saved yet"
+msgstr "Esta app todavía no está guardada"
 
 #: ../shell/src/open-store.ts
 msgid "This app is not shared."
@@ -5064,6 +5259,10 @@ msgstr "Esto es exactamente lo que se enviará: la petición de arriba y cómo e
 #: ../shell/src/identity-panel.tsx
 msgid "This is my second device"
 msgstr "Este es mi segundo dispositivo"
+
+#: ../shell/src/file-viewer.tsx
+msgid "This is the beginning of {name}. Save a copy to read all of it."
+msgstr "Esto es el principio de {name}. Guarda una copia para leerlo entero."
 
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -5600,6 +5799,7 @@ msgstr "Tu respuesta se recuerda para esta fuente."
 msgid "Your app"
 msgstr "Tu app"
 
+#: ../shell/src/incoming-files-host.tsx
 #: ../shell/src/share-page.tsx
 msgid "Your apps"
 msgstr "Tus apps"

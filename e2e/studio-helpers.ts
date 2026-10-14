@@ -45,7 +45,7 @@ export async function openFromCard(studio: Locator): Promise<Locator> {
 export async function openSource(page: Page, studio: Locator): Promise<Locator> {
   await studio.getByRole("button", { name: "Studio menu" }).click();
   await page.getByRole("menuitem", { name: /See the code|Write the code yourself/ }).click();
-  const tools = page.getByRole("dialog", { name: "Code and history" });
+  const tools = page.getByRole("dialog", { name: "Code, files and history" });
   await expect(tools.getByRole("textbox", { name: "App source" })).toBeVisible();
   return tools;
 }
@@ -54,7 +54,7 @@ export async function openSource(page: Page, studio: Locator): Promise<Locator> 
 export async function openHistory(page: Page, studio: Locator): Promise<Locator> {
   await studio.getByRole("button", { name: "Studio menu" }).click();
   await page.getByRole("menuitem", { name: "History" }).click();
-  const tools = page.getByRole("dialog", { name: "Code and history" });
+  const tools = page.getByRole("dialog", { name: "Code, files and history" });
   await expect(tools).toBeVisible();
   return tools;
 }

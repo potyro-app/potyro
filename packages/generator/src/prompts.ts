@@ -29,4 +29,7 @@ export const PROMPTS: GenPrompt[] = [
   { id: "bookmarks", description: "Bookmarks with a title, url, and tags; a list grouped feel with badges.", tags: ["url", "tags"] },
   { id: "pantry", description: "A pantry: ingredients with quantity and a 'low stock' computed flag; a list filtered to low stock.", tags: ["computed", "filter"] },
   { id: "gym-prs", description: "Track personal records per exercise, with an action to log a new PR that updates the record.", tags: ["action", "relation"] },
+  // Files (#254): an app that reads a file it ships with, and one whose records ARE files.
+  { id: "shipped-json", description: "A vocabulary trainer: the word list comes with the app as words.json ([{ word, meaning }]); show a word, reveal its meaning, and keep a count of the words I got right.", tags: ["files", "custom"] },
+  { id: "markdown-notes", description: "An app that shows my notes: bring in .md files from my device, list them by title, read one rendered as markdown, edit it, and save a copy back out.", tags: ["files", "file-field", "custom"] },
 ];

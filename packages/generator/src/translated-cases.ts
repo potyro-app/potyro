@@ -234,6 +234,8 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
     bookmarks: "Zakładki z tytułem, adresem url i tagami; lista z grupowaniem i plakietkami.",
     pantry: "Spiżarnia: składniki z ilością i wyliczanym znacznikiem „mało w zapasie”; lista przefiltrowana do tych, których jest mało.",
     "gym-prs": "Śledź rekordy osobiste dla każdego ćwiczenia, z akcją do zapisania nowego rekordu, która aktualizuje rekord.",
+    "shipped-json": "Trener słówek: lista słów przychodzi razem z aplikacją jako words.json ([{ word, meaning }]); pokaż słowo, odsłoń jego znaczenie i licz słowa, które znałem.",
+    "markdown-notes": "Aplikacja, która pokazuje moje notatki: wczytaj pliki .md z mojego urządzenia, wyświetl je według tytułu, pokaż jedną sformatowaną jako markdown, pozwól ją edytować i zapisać kopię z powrotem.",
   },
   "pt-BR": {
     // --- wild ---
@@ -304,6 +306,8 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
     bookmarks: "Favoritos com título, url e tags; uma lista com cara de agrupada, com etiquetas.",
     pantry: "Uma despensa: ingredientes com quantidade e um indicador calculado de 'estoque baixo'; uma lista filtrada pelos que estão acabando.",
     "gym-prs": "Acompanhar recordes pessoais por exercício, com uma ação pra registrar um novo recorde que atualiza o recorde.",
+    "shipped-json": "Um treinador de vocabulário: a lista de palavras vem com o app como words.json ([{ word, meaning }]); mostra uma palavra, revela o significado e conta as palavras que eu acertei.",
+    "markdown-notes": "Um app que mostra minhas notas: trazer arquivos .md do meu aparelho, listar pelo título, ler uma renderizada como markdown, editar e salvar uma cópia de volta.",
   },
 };
 

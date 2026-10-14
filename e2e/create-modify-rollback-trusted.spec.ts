@@ -194,7 +194,7 @@ async function openHistory(page: Page): Promise<void> {
 
 /** Leave the timeline the way a person does: close the sheet. */
 async function closeHistory(page: Page): Promise<void> {
-  await studioOf(page).getByRole("button", { name: "Close code and history" }).click();
+  await studioOf(page).getByRole("button", { name: "Close code, files and history" }).click();
   await expect(timeline(page)).toHaveCount(0);
 }
 

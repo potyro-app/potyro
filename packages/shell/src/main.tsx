@@ -20,7 +20,7 @@ import { migrateOnLoad } from "./migrate-on-load.js";
 import { getLaunchUrl, onUrlOpen, systemLanguages } from "@potyro/native";
 import { setSystemLanguages, startI18n } from "@potyro/i18n";
 import { createWebCapabilities, type Capabilities } from "@potyro/capabilities";
-import { listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault } from "@potyro/native";
+import { isOpenedFile, listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault, nameFromUri } from "@potyro/native";
 import { setSourceHttp } from "./ask-sources.js";
 import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@potyro/identity";
 import type { Provenance } from "@potyro/host";
@@ -48,6 +48,8 @@ import { navigateTo, setRouteHandler, type ShellRoute } from "./router.js";
 import { DataPage } from "./data-page.js";
 import { SharePage } from "./share-page.js";
 import { rememberShare } from "./share-inbox.js";
+import { IncomingFiles } from "./incoming-files-host.js";
+import { receiveSharedFiles } from "./incoming-files.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -57,7 +59,7 @@ const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "
 type Route = ShellRoute;
 function route(): Route {
   const p = new URLSearchParams(location.search);
-  if (p.has("data")) return { kind: "data", ...(p.get("data") ? { id: p.get("data")! } : {}) };
+  if (p.has("data")) return { kind: "data", ...(p.get("data") ? { id: p.get("data")! } : {}), ...(p.has("files") ? { files: true } : {}) };
   if (p.has("share")) return { kind: "share" };
   const id = p.get("user") ?? p.get("app");
   if (id && getUserApp(id)) return { kind: "user", id };
@@ -241,6 +243,8 @@ function mount(root: HTMLElement, node: ReactNode): void {
       {node}
       {/* Once, around every route — home, a built-in, or a saved app. */}
       <Dialogs host={shellDialogs} />
+      {/* Files dropped on Potyro, shared to it or opened with it (#254). */}
+      <IncomingFiles />
     </StrictMode>,
   );
   registerServiceWorker();
@@ -256,7 +260,10 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
   // Web: the address bar. Device COLD start: the app was launched by the link, so nothing has
   // listened yet and the URL must be fetched. (Warm starts are handled by the listener below.)
-  const invite = pendingInvite() ?? pendingInvite((await getLaunchUrl()) ?? undefined);
+  const launched = (await getLaunchUrl()) ?? undefined;
+  // Launched by "Open with Potyro" on a file (#254): offered once the shell is on screen, like a drop.
+  if (launched && isOpenedFile(launched)) void receiveSharedFiles([{ uri: launched, name: nameFromUri(launched), mimeType: "" }]);
+  const invite = pendingInvite() ?? pendingInvite(launched);
   if (!invite) return null;
 
   // Ask BEFORE opening. A shared app runs sandboxed by default, and a sandboxed app whose screens
@@ -648,7 +655,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   if (r.kind === "data") {
     // Mounted before the app it came from is put away: the page opens that app's store too, and the
     // storage worker keeps a database open while anyone still holds it.
-    mount(root, <DataPage key={`data:${seq}`} initialAppId={r.id} />);
+    mount(root, <DataPage key={`data:${seq}`} initialAppId={r.id} initialFiles={r.files} />);
     await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
     return;
   }
@@ -894,10 +901,13 @@ let sharesRegistered = false;
 function registerShares(): void {
   if (sharesRegistered) return;
   sharesRegistered = true;
-  void listenForShares((share) => {
-    rememberShare(share);
-    navigateTo({ kind: "share" });
-  }).catch((e: unknown) => console.warn("[potyro] could not listen for shares:", e));
+  void listenForShares(
+    (share) => {
+      rememberShare(share);
+      navigateTo({ kind: "share" });
+    },
+    (files) => void receiveSharedFiles(files),
+  ).catch((e: unknown) => console.warn("[potyro] could not listen for shares:", e));
 }
 
 function registerDeepLinks(): void {
@@ -906,6 +916,8 @@ function registerDeepLinks(): void {
   if (deepLinksRegistered) return;
   deepLinksRegistered = true;
   void onUrlOpen((url) => {
+    // "Open with Potyro" on a file (#254): the same question as a file dropped on it.
+    if (isOpenedFile(url)) return void receiveSharedFiles([{ uri: url, name: nameFromUri(url), mimeType: "" }]);
     if (!/[#&]join=/.test(url)) return;
     const hash = url.slice(url.indexOf("#"));
     location.replace(`${location.pathname}${hash}`);

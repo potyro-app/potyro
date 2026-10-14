@@ -159,6 +159,8 @@ interface UserActions {
   onDelete: () => void;
   /** Its records, on the Data page. */
   onData: () => void;
+  /** Its files, on the Data page's Files tab (#254). */
+  onFiles: () => void;
   /** Sealed apps only: let it run as yours (owner, 2026-10-13) — reachable even when the app cannot
    *  open sealed at all, which is when the app's own badge never appears. */
   onPromote: () => void;
@@ -249,6 +251,7 @@ function TileMenu({
             {item("edit-tile", t`Edit tile`, user.onEditTile)}
             {item("history", t`History`, user.onHistory)}
             {item("data", t({ message: "Data", comment: "Tile menu: this app's records, on the Data page" }), user.onData)}
+            {item("files", t({ message: "Files", comment: "Tile menu: this app's files, on the Data page" }), user.onFiles)}
             {item("sync", app.sync ? t`Turn sync off` : t`Turn sync on`, user.onSync, { disabled: busy })}
             {item("share", t`Share`, user.onShare)}
             {item("rename", t`Rename`, user.onRename)}
@@ -656,6 +659,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
         onData: () => navigateTo({ kind: "data", id: a.id }),
+        onFiles: () => navigateTo({ kind: "data", id: a.id, files: true }),
         onPromote: () => setPromoting(a.user),
       }}
     />
