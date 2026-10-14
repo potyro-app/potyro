@@ -184,3 +184,47 @@ describe("a fresh start after the second failed candidate (F2)", () => {
     expect(seen[3]!.messages.at(-1)!.content).toContain('id must be "ok" (got b1)');
   });
 });
+
+describe("the part the person pointed at survives the recovery (#284)", () => {
+  const context = { pointedAt: { words: 'the "Nights" list on the "Patterns" page', lines: [2, 2] as const, excerpt: '  id: "x",' } };
+  const pointedIn = (content: string): void => {
+    expect(content).toContain('They pointed at the "Nights" list on the "Patterns" page');
+    expect(content).toContain("lines 2–2");
+    // The slice is a slice: the app itself is still there exactly once.
+    expect(content.split(SOURCE).length - 1).toBe(1);
+  };
+
+  it("a fresh start's single message still carries the target and its source slice", async () => {
+    const { engine, seen } = scripted([rename("bad1"), rename("bad2"), rename("ok")]);
+    const out = await runModifyLoop(base({ engine, context }));
+    expect(out.kind === "source" && out.source).toContain('id: "ok"');
+    const fresh = seen[2]!;
+    expect(fresh.messages.map((m) => m.role)).toEqual(["system", "user"]);
+    pointedIn(fresh.messages[1]!.content);
+    expect(fresh.messages[1]!.content).toContain("Rename to bad1.");
+  });
+
+  it("a rolled-back repeat keeps the opening message, target and all", async () => {
+    const { engine, seen } = scripted([rename("bad"), rename("bad"), rename("ok")]);
+    const out = await runModifyLoop(base({ engine, context }));
+    expect(out.kind).toBe("source");
+    const third = seen[2]!;
+    expect(third.messages.filter((m) => m.role === "user" && m.content.includes(SOURCE))).toHaveLength(1);
+    pointedIn(third.messages[1]!.content);
+  });
+});
+
+describe("the pointed-at part and the model's language travel together (#284, #306)", () => {
+  it("are both in the opening message, and both again after a fresh start", async () => {
+    const { engine, seen } = scripted([rename("bad1"), rename("bad2"), rename("ok")]);
+    const context = { pointedAt: { words: 'the "Nights" list on the "Patterns" page', lines: [2, 2] as const, excerpt: '  id: "x",' } };
+    const out = await runModifyLoop(base({ engine, context, language: "pt-BR" }));
+    expect(out.kind).toBe("source");
+    for (const req of [seen[0]!, seen[2]!]) {
+      const opening = req.messages[1]!.content;
+      expect(opening).toContain('They pointed at the "Nights" list on the "Patterns" page');
+      expect(opening).toMatch(/Portuguese|português/i);
+      expect(opening.split(SOURCE).length - 1).toBe(1);
+    }
+  });
+});

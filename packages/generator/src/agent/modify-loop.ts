@@ -39,7 +39,7 @@ import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { NOT_IN_APP, buildModifyMessage, buildModifyOpener } from "../prompt.js";
+import { NOT_IN_APP, buildModifyMessage, buildModifyOpener, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
 import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
@@ -81,6 +81,8 @@ export interface ModifyLoopDeps {
   system: string;
   /** The change the person asked for, in their words. */
   instruction: string;
+  /** Where it was aimed — the part they pointed at (#284) — said beside the instruction. */
+  context?: ModifyContext;
   /** The app as they have it. Edits are applied to it; every retry is told so. */
   source: string;
   /** Bundle + validate a candidate: the validator's issues, or [] when well-formed. Throws when it does not compile. */
@@ -152,7 +154,9 @@ export function repeatsItself(text: string, previous: string | null): string | n
 
 async function firstMessage(deps: ModifyLoopDeps): Promise<string> {
   const language = { person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) };
-  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, { language })];
+  // Where it was aimed (#284) and in which language to answer (#306), beside the request — both in
+  // this one opening message, which a fresh start reuses and a rollback keeps.
+  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, { ...deps.context, language })];
   if (deps.corpus) {
     const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
     if (primed) parts.push(primed);
