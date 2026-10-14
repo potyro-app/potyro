@@ -118,7 +118,7 @@ test("a relation to an empty entity can create its first record inline", async (
   const relation = form.locator(".k-relation-input");
   await expect(relation.locator("select")).toHaveCount(0);
   const trigger = relation.getByRole("button", { name: /: choose$/ });
-  await expect(trigger).toContainText("No place type yet");
+  await expect(trigger).toContainText("Place Type: none yet");
   await trigger.click();
   // What you type becomes the new record's name.
   await page.getByRole("searchbox", { name: /^Search/ }).fill("Park");
@@ -179,8 +179,8 @@ test("arming placement, then tapping, starts a place at that point", async ({ pa
   await page.waitForTimeout(600);
   await expect(page.locator(".k-modal"), "an unarmed tap created a place").toHaveCount(0);
 
-  await page.getByRole("button", { name: /Add .* here/i }).click();
-  await expect(page.getByText(/Tap the map to place/i)).toBeVisible();
+  await page.getByRole("button", { name: /Add here: /i }).click();
+  await expect(page.getByText(/tap the map to place it/i)).toBeVisible();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
   // The create form opens with the tapped point already in the geo field.
@@ -199,7 +199,7 @@ test("tapping an existing marker shows which place it is, not a new form", async
   // (Arming is explicit — a bare tap used to create a record, so you could never just look around.)
   const canvas = page.locator(".maplibregl-canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: /Add .* here/i }).click();
+  await page.getByRole("button", { name: /Add here: /i }).click();
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
