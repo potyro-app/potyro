@@ -220,14 +220,22 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
 
   test("the Studio: an empty conversation, a version's card, and the preview bar", async ({ page }) => {
     test.slow();
+    /** The app's name and the page title the change gives it: the app's words. */
+    const APP_NAMES = ["Notes", "Jotter"];
     await seed(page, [{ id: "notes", name: "Notes", source: NOTES("Notes"), trusted: true, updatedAt: new Date().toISOString() }]);
     await stubGenerator(page, NOTES("Jotter"));
     await openApp(page, "notes", "Notes");
-    await page.locator("[data-tool=studio]:visible").first().click();
+    // A wide screen has the tool in the bar; a phone has it in the ⋯ menu.
+    const tool = page.locator("[data-tool=studio]:visible");
+    if (await tool.count()) await tool.first().click();
+    else {
+      await page.locator(".k-topbar .k-topbar-btn[aria-haspopup]").last().click();
+      await page.locator('[role=menuitem][data-action=studio]').click();
+    }
     const studio = page.locator(".k-studio");
     await expect(studio.locator(".k-studio-empty")).toBeVisible({ timeout: 30_000 });
     await settled(studio);
-    expect(await englishIn(studio)).toEqual([]);
+    expect(await englishIn(studio, APP_NAMES)).toEqual([]);
     await shot(page, "studio-empty");
 
     await studio.locator(".k-composer textarea").fill("rename the page to Jotter");
@@ -235,14 +243,15 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     const card = studio.locator(".k-card[data-current]");
     await expect(card).toBeVisible({ timeout: 60_000 });
     await expect(studio.locator(".k-thread-working")).toHaveCount(0);
-    expect(await englishIn(studio)).toEqual([]);
-    expect(await englishIn(card)).toEqual([]);
+    expect(await englishIn(studio, APP_NAMES)).toEqual([]);
+    expect(await englishIn(card, APP_NAMES)).toEqual([]);
     await shot(page, "studio-card");
 
     const bar = studio.locator(".k-preview-bar");
     if (!(await bar.isVisible())) await card.locator(".k-card-open").click();
     await expect(bar).toBeVisible();
-    expect(await englishIn(bar)).toEqual([]);
+    await settled(studio);
+    expect(await englishIn(bar, APP_NAMES)).toEqual([]);
     await shot(page, "studio-preview");
   });
 
