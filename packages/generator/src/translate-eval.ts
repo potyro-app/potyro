@@ -2,12 +2,12 @@
 //
 // Five kinds of request, each scored WITHOUT a judge model — by reading the app before and after:
 //
-//   translate   "Translate this app into German": it compiles and validates; every words slot and
-//               ctx.t map has `de`; in English it reads exactly as before; its shape is untouched;
-//               and fewer than 10% of the German strings equal their English (it really translated)
-//   rename      "Rename the Quantity label to Amount" (en+pl+de): that slot changed in all three, no
-//               other slot changed
-//   add-field   "Add a due date to items" (en+pl): the new field has en and pl; no new gaps
+//   translate   "Translate this app into French": it compiles and validates; every words slot and
+//               ctx.t map has `fr`; in English it reads exactly as before; its shape is untouched;
+//               and fewer than 10% of the French strings equal their English (it really translated)
+//   rename      "Rename the Quantity label to Amount" (groceries, six languages): that slot changed in
+//               every one of them, no other slot changed
+//   add-field   "Add a due date to items": the new field has every language the app carries; no new gaps
 //   one-lang    "Make the Polish say 'Ilość' instead": only pl of that slot changed
 //   polish-ask  a request in Polish on an en-default app: new words in BOTH en and pl; default stays en
 //
