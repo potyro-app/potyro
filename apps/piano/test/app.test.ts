@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { checkReferences, isPotyroApp } from "potyro";
+import { checkReferences, checkWords, isPotyroApp, wordGaps, wordSlots } from "potyro";
 import app from "../piano.app.js";
 
 describe("the piano app", () => {
@@ -19,3 +19,19 @@ describe("the piano app", () => {
 // There is no build step of its own any more (#258): `pnpm --filter @potyro/app-piano build` packs
 // piano.app.tsx as written, its helpers in src/ and plan.json in files/ — checked by
 // packages/shell/test/piano-package.test.ts, which also bundles the package the way the shell does.
+
+describe("in six languages (#303)", () => {
+  it("is written in English and carries all six, with no map missing one", () => {
+    expect(app.language).toBe("en");
+    expect(app.languages).toEqual(["en", "pt-BR", "de", "es", "pl", "it"]);
+    expect(checkWords(app)).toEqual([]);
+    expect(wordGaps(app)).toEqual([]);
+  });
+
+  it("leaves plain only what reads the same everywhere: units and the game's name", () => {
+    const plain = wordSlots(app)
+      .filter((s) => typeof s.value === "string")
+      .map((s) => s.value as string);
+    for (const p of plain) expect(p, p).toMatch(/^(\S{1,5}|Breakout)$/);
+  });
+});

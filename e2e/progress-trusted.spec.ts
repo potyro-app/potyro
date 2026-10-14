@@ -43,8 +43,8 @@ test.describe("desktop", () => {
     // The same numbers for a screen reader, oldest week first.
     const cells = page.locator(".k-chart table tbody tr");
     await expect(cells).toHaveCount(8);
-    await expect(cells.first()).toHaveText(/20 Jul\s*3 sessions/);
-    await expect(cells.last()).toHaveText(/7 Sep\s*1 session$/);
+    await expect(cells.first()).toHaveText(/Jul 20\s*3 sessions/);
+    await expect(cells.last()).toHaveText(/Sep 7\s*1 session$/);
     // Bars are as tall as their values: the 3s share a top, the latest is a third of it.
     const box = async (i: number) => (await page.locator(".k-chart-bar").nth(i).boundingBox())!;
     const [three, one] = [await box(0), await box(7)];
@@ -54,15 +54,15 @@ test.describe("desktop", () => {
     // Hover answers for any bar; the arrow keys walk them.
     const hit = page.locator(".k-chart-hit").nth(4);
     await hit.hover();
-    await expect(page.locator(".k-chart-tip")).toHaveText("17 Aug · 3 sessions");
+    await expect(page.locator(".k-chart-tip")).toHaveText("Aug 17 · 3 sessions");
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/progress-desktop.png` });
     await page.mouse.move(5, 5);
     await expect(page.locator(".k-chart-tip")).toHaveCount(0);
     await page.locator(".k-chart-plot").focus();
     await page.keyboard.press("ArrowLeft");
-    await expect(page.locator(".k-chart-tip")).toHaveText("7 Sep · 1 session");
+    await expect(page.locator(".k-chart-tip")).toHaveText("Sep 7 · 1 session");
     await page.keyboard.press("ArrowLeft");
-    await expect(page.locator(".k-chart-tip")).toHaveText("31 Aug · 2 sessions");
+    await expect(page.locator(".k-chart-tip")).toHaveText("Aug 31 · 2 sessions");
     await page.keyboard.press("Escape");
     await expect(page.locator(".k-chart-tip")).toHaveCount(0);
 
@@ -94,7 +94,7 @@ test.describe("phone", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
     await page.locator(".k-chart-hit").nth(1).tap();
-    await expect(page.locator(".k-chart-tip")).toHaveText("27 Jul · 2 sessions");
+    await expect(page.locator(".k-chart-tip")).toHaveText("Jul 27 · 2 sessions");
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/progress-phone.png`, fullPage: true });
     await page.locator(".k-chart-hit").nth(1).tap();
     await expect(page.locator(".k-chart-tip")).toHaveCount(0);
