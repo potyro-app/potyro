@@ -17,11 +17,11 @@ import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import type { FileInfo, FileOrigin } from "potyro";
-import type { Store } from "@potyro/store";
+import { SpaceFullError, type SpaceUsage, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { pickFilesFromInput } from "@potyro/capabilities";
 import { ActionMenu, formatSize, type MenuEntry } from "@potyro/views";
-import { bringIn, filesHere, largeForSharing, listFolder, readFile, removeFile, renameFile, replaceFile, totalSize } from "./app-folder.js";
+import { bringIn, filesHere, largeForSharing, listFolder, readFile, removeFile, renameFile, replaceFile, spaceUsageOf, totalSize } from "./app-folder.js";
 import { FileViewer } from "./file-viewer.js";
 import { shellDialogs } from "./dialog.js";
 
@@ -39,6 +39,15 @@ export interface FilesPanelProps {
   extra?: ReactNode;
   /** The app is shared: its files are everyone's, and their bytes arrive on demand (#255). */
   shared?: boolean;
+  /**
+   * The shared space has no room for these (#255). Without it, the panel says so; with it, the
+   * caller offers what can be done (keep them on this device only).
+   */
+  onSpaceFull?: (err: SpaceFullError, files: File[]) => Promise<void>;
+  /** Above the list, in place of the count: what this list is, when it is not the app's own folder. */
+  heading?: ReactNode;
+  /** Render nothing at all while there are no files. */
+  hideWhenEmpty?: boolean;
 }
 
 /**
@@ -85,11 +94,13 @@ function changed(iso: string, now: number, justNow: string): string {
   return fmt.date(iso, { month: "short", day: "numeric" });
 }
 
-export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared = false }: FilesPanelProps) {
+export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared = false, onSpaceFull, heading, hideWhenEmpty }: FilesPanelProps) {
   const { t } = useLingui();
   const [files, setFiles] = useState<FileInfo[] | null>(null);
   // Which files' bytes are on this device (#255): asked of the store, never found out by reading.
   const [here, setHere] = useState<ReadonlyMap<string, boolean>>(new Map());
+  // How much of its budget a shared space has used on the relay (#255).
+  const [usage, setUsage] = useState<SpaceUsage | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const [viewing, setViewing] = useState<FileInfo | null>(null);
@@ -102,6 +113,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
     const shown = scope === "shipped" ? all.filter((f) => f.origin === "shipped") : all;
     setFiles(shown);
     setHere(await filesHere(store, shown));
+    setUsage(await spaceUsageOf(store));
   }, [store, scope]);
 
   useEffect(() => {
@@ -130,10 +142,29 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
   const add = async (chosen: File[]): Promise<void> => {
     if (!chosen.length) return;
     if (!(await confirmLargeForSharing(chosen, appName, shared))) return;
+    const landed: FileInfo[] = [];
+    const full: { at?: { err: SpaceFullError; rest: File[] } } = {};
     await act(async () => {
-      const landed = await bringIn(store, chosen, { origin });
+      // One at a time: when the space fills up part way, what fitted stays and the rest is offered on.
+      for (const [i, file] of chosen.entries()) {
+        try {
+          landed.push(...(await bringIn(store, [file], { origin })));
+        } catch (e) {
+          if (!(e instanceof SpaceFullError)) throw e;
+          full.at = { err: e, rest: chosen.slice(i) };
+          break;
+        }
+      }
       setFresh(new Set(landed.map((f) => f.id)));
     });
+    if (full.at) await spaceFull(full.at.err, full.at.rest);
+  };
+
+  const spaceFull = async (err: SpaceFullError, rest: File[]): Promise<void> => {
+    if (onSpaceFull) return onSpaceFull(err, rest);
+    const used = formatSize(err.used);
+    const budget = formatSize(err.budget);
+    setFailed(t`${appName}’s shared space is full: ${used} of ${budget} is used.`);
   };
 
   const pick = async (multiple: boolean): Promise<File[]> =>
@@ -160,10 +191,17 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
   const replace = async (f: FileInfo): Promise<void> => {
     const [chosen] = await pick(false);
     if (!chosen) return;
+    const full: { err?: SpaceFullError } = {};
     await act(async () => {
-      await replaceFile(store, f.id, chosen, scope === "shipped" ? { origin: "shipped" } : {});
-      setFresh(new Set([f.id]));
+      try {
+        await replaceFile(store, f.id, chosen, scope === "shipped" ? { origin: "shipped" } : {});
+        setFresh(new Set([f.id]));
+      } catch (e) {
+        if (!(e instanceof SpaceFullError)) throw e;
+        full.err = e;
+      }
     });
+    if (full.err) await spaceFull(full.err, [chosen]);
   };
 
   const remove = async (f: FileInfo): Promise<void> => {
@@ -232,6 +270,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
     </button>
   );
 
+  if (hideWhenEmpty && files !== null && files.length === 0) return null;
   return (
     <section
       className="k-files"
@@ -242,6 +281,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      {heading ? <div className="k-files-heading">{heading}</div> : null}
       {files?.length || extra ? (
         <header className="k-files-bar">
           <p className="k-files-summary">
@@ -253,6 +293,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
           {count ? addButton : null}
         </header>
       ) : null}
+      {usage ? <SpaceMeter usage={usage} /> : null}
       {files === null ? <p className="k-files-summary">{t`Reading the folder…`}</p> : null}
       {failed ? (
         <p className="k-files-error" role="alert">
@@ -301,6 +342,29 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
 }
 
 /** In a shared app a file someone brought in may be anyone's in it, so it does not say "you". */
+/**
+ * How much of its budget a shared space has used on the relay (#255). Counts every version ever
+ * shared, so it only grows; the bar warms as it fills.
+ */
+function SpaceMeter({ usage }: { usage: SpaceUsage }) {
+  const used = formatSize(usage.used);
+  const budget = formatSize(usage.budget);
+  const share = Math.min(1, usage.budget > 0 ? usage.used / usage.budget : 1);
+  const level = share >= 1 ? "full" : share >= 0.8 ? "high" : undefined;
+  return (
+    <div className="k-files-space" data-level={level}>
+      <span className="k-files-space-bar" aria-hidden>
+        <span style={{ transform: `scaleX(${share})` }} />
+      </span>
+      <span>
+        <Trans comment="Files tab of a shared app: how much of its relay budget is used">
+          Shared space: {used} of {budget} used
+        </Trans>
+      </span>
+    </div>
+  );
+}
+
 function OriginTag({ origin, shared }: { origin: FileOrigin; shared: boolean }) {
   const { t } = useLingui();
   const words: Record<FileOrigin, string> = {

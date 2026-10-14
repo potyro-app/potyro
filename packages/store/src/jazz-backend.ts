@@ -68,6 +68,8 @@ const DEVICE_DB = "karta-jazz";
 const rootKey = (appId: string) => `potyro:jazz:root:${appId}`;
 
 export interface CreateJazzStoreOpts {
+  /** How many bytes this app's shared space may hold on the relay (#255). `SPACE_BUDGET` when absent. */
+  spaceBudget?: number;
   /**
    * An open SQLite handle that cojson may own outright (its own file — see the driver module).
    *
@@ -429,6 +431,7 @@ export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts):
     group: group as never,
     rootId: savedRoot,
     whenDurable: durability.whenDurable,
+    spaceBudget: opts.spaceBudget,
   });
   await store.open(appId);
   if (!savedRoot) keys.set(rootKey(appId), store.rootId);
@@ -571,6 +574,8 @@ export async function openJazzStore(
     account?: { id: string; secret: string };
     /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
     expectExisting?: boolean;
+    /** See `CreateJazzStoreOpts.spaceBudget`. */
+    spaceBudget?: number;
   },
 ): Promise<JazzStoreHandle> {
   const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
@@ -663,6 +668,7 @@ export async function openJazzStore(
     relay: opts?.relay,
     expectExisting: opts?.expectExisting,
     peers,
+    spaceBudget: opts?.spaceBudget,
   });
   if (!whenPersisted) return handle;
 

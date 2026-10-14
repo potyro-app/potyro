@@ -103,9 +103,21 @@ its bytes there, so the relay holds every byte of every file in every shared app
 the space's members (it cannot read them), but stored. What that means for running it:
 
 - **Disk grows with files, not with members.** One 40 MB video in a shared app is ~40 MB on the
-  relay, however many people are in it. There is no size limit on a file (owner, 2026-10-11); the
-  shell only asks before a file over 50 MB goes into a shared app (`LARGE_FOR_SHARING`), and an
-  app's own `ctx.files.write` is not asked about at all.
+  relay, however many people are in it.
+- **Each shared space has a budget: 200 MB** (`SPACE_BUDGET` in `packages/store/src/jazz-store.ts`;
+  owner, 2026-10-14). It counts every file byte the space ever put on the relay — replaced and
+  deleted ones too, since the relay keeps them (the space's `usage` map, one entry per blob, written
+  once by whoever wrote it, so members merge without double counting). A write that would pass it is
+  refused before a byte is written, in plain words (`SpaceFullError`, from the app's `ctx.files.write`
+  too); the Files tab offers to keep the file on that device only, outside the space, and says that
+  removing files or earlier copies would not make room. The Files tab of a shared app shows the use
+  ("Shared space: 12 MB of 200 MB used"). Bringing an earlier copy back costs nothing — its bytes are
+  already there. Photos (`media` fields) are counted but not refused. A relay with more room can be
+  given a bigger budget per device (`potyro:space-budget` in localStorage, bytes) until it is a
+  setting. Size the relay's disk from it: spaces × 200 MB is the most files can take, next to the
+  records and chat history the backups of #214 and the sizing of #287 already plan for.
+- **Asked before, not refused:** a file over 10 MB going into a shared app is asked about first
+  (`LARGE_FOR_SHARING`, owner 2026-10-14). There is no limit per file, only the space's budget.
 - **Nothing is freed.** cojson keeps history: a deleted file disappears from every member's list,
   and its bytes stay on the relay. Replacing a file keeps the old bytes as an earlier copy for up to
   30 days (the last three), and after that the folder lets them go — on the devices; the relay

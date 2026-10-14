@@ -137,8 +137,8 @@ describe("a shared app's files (#255)", () => {
   });
 
   it("asks before a large file goes into a shared app, and only then", () => {
-    const big = { name: "film.mov", size: 80 * 1024 * 1024 } as File;
-    const small = { name: "a.md", size: 10 } as File;
+    const big = { name: "film.mov", size: 11 * 1024 * 1024 } as File;
+    const small = { name: "a.md", size: 10 * 1024 * 1024 } as File;
     expect(largeForSharing([small, big], true)).toEqual([big]);
     expect(largeForSharing([small, big], false)).toEqual([]);
   });

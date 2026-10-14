@@ -85,7 +85,7 @@ export async function createPeerPair(appId = "pair"): Promise<PeerPair> {
  * client that asked for it, which is what makes a shared app's files arrive on demand. Anything
  * claiming "not fetched until read" has to be tested through one.
  */
-export async function createRelayedPair(appId = "relayed"): Promise<PeerPair> {
+export async function createRelayedPair(appId = "relayed", opts: { spaceBudget?: number } = {}): Promise<PeerPair> {
   const [{ LocalNode, cojsonInternals }, { WasmCrypto }] = await Promise.all([import("cojson"), import("cojson/crypto/WasmCrypto")]);
   const crypto = await WasmCrypto.create();
   const relay = await LocalNode.withNewlyCreatedAccount({ creationProps: { name: "Relay" }, crypto });
@@ -101,13 +101,13 @@ export async function createRelayedPair(appId = "relayed"): Promise<PeerPair> {
 
   const group = one.node.createGroup();
   group.addMember(await two.node.expectCurrentAccount("b"), "writer");
-  const a = new JazzStore({ node: one.node as never, group: group as never });
+  const a = new JazzStore({ node: one.node as never, group: group as never, spaceBudget: opts.spaceBudget });
   await a.open(appId);
 
   const settle = (ms = 300): Promise<void> => new Promise((r) => setTimeout(r, ms));
   await settle();
   const groupForTwo = await two.node.load(group.id);
-  const b = new JazzStore({ node: two.node as never, group: groupForTwo as never, rootId: a.rootId });
+  const b = new JazzStore({ node: two.node as never, group: groupForTwo as never, rootId: a.rootId, spaceBudget: opts.spaceBudget });
   await b.open(appId);
   return {
     a,

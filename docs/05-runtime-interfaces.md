@@ -49,6 +49,7 @@ export interface Store {
   subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;  // KA-20: a photo's bytes arrived
   blobHere?(r: MediaRef): Promise<boolean>;  // #255: bytes on this device? asks no one (getBlob fetches); absent = always
+  spaceUsage?(): Promise<{ used: number; budget: number }>;  // #255: a shared space's bytes on the relay vs its budget; a file write past it throws SpaceFullError
   memberIds?(): readonly string[];  // synced stores: every account ever in the space, removed ones too (KA-19)
   deleteBlob(key: string): Promise<void>;  // a replaced or removed file's old bytes
   // the app's own folder (#252): an INDEX of files by id; bytes are blobs under `entry.blob`.

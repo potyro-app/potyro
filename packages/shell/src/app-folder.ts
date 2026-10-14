@@ -9,7 +9,7 @@
 // It gets a free name beside it ("notes 2.md"). Overwriting is what Replace is for, asked by name.
 import { t } from "@lingui/core/macro";
 import type { FileInfo, FileOrigin } from "potyro";
-import { FileSpaceError, fileSpace, isReservedPath, normalisePath, packAppPackage, type AppDeclaration, type AppLock, type EarlierCopy, type PackagedFile, type Store } from "@potyro/store";
+import { FileSpaceError, fileSpace, isReservedPath, normalisePath, packAppPackage, type AppDeclaration, type AppLock, type EarlierCopy, type PackagedFile, type SpaceUsage, type Store } from "@potyro/store";
 
 /** The person's files, by path: everything in the folder but the app's code. */
 export async function listFolder(store: Store): Promise<FileInfo[]> {
@@ -136,11 +136,17 @@ export async function restoreCopy(store: Store, id: string, copy: EarlierCopy): 
 }
 
 /**
- * Past this, adding a file to a SHARED app is asked first. Not a limit — there is none (owner,
- * 2026-10-11) — but a file there is kept, encrypted, on the relay, and anyone in the app may fetch
- * it: a film should not get there by a slip of the thumb.
+ * Past this (10 MB, owner 2026-10-14), adding a file to a SHARED app is asked first. It is not the
+ * limit — that is the space's budget on the relay (`SPACE_BUDGET`) — but a file there is kept,
+ * encrypted, on the relay for good, and anyone in the app may fetch it: a film should not get there
+ * by a slip of the thumb.
  */
-export const LARGE_FOR_SHARING = 50 * 1024 * 1024;
+export const LARGE_FOR_SHARING = 10 * 1024 * 1024;
+
+/** A shared space's use of its relay budget, or null where nothing leaves the device (#255). */
+export async function spaceUsageOf(store: Store): Promise<SpaceUsage | null> {
+  return store.spaceUsage ? store.spaceUsage().catch(() => null) : null;
+}
 
 /** The files that are worth a question before they go into an app, given whether it is shared. */
 export function largeForSharing(files: readonly File[], shared: boolean): File[] {

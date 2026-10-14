@@ -27,6 +27,7 @@ import { Count, Table } from "./data-table.js";
 import { FilesPanel } from "./files-panel.js";
 import { listFolder } from "./app-folder.js";
 import { arrivedIn } from "./incoming-files.js";
+import { DeviceOnlyFiles, offerDeviceOnly } from "./device-files.js";
 import { Trans, useLingui } from "@lingui/react/macro";
 
 export function DataPage({ initialAppId, initialFiles }: { initialAppId?: string; initialFiles?: boolean }) {
@@ -192,7 +193,18 @@ function AppData({ app, files, onFiles }: { app: InstalledApp; files: boolean; o
       {current ? (
         <Table key={current.key} session={session} entity={current.key} fields={current.fields} opaque={current.opaque} />
       ) : (
-        <FilesPanel store={session.store} appName={name} scope="all" caps={shellCaps()} arrived={arrived} shared={app.sync} />
+        <>
+          <FilesPanel
+            store={session.store}
+            appName={name}
+            scope="all"
+            caps={shellCaps()}
+            arrived={arrived}
+            shared={app.sync}
+            onSpaceFull={async (err, files) => void (await offerDeviceOnly(err, files, app.id, name))}
+          />
+          {app.sync ? <DeviceOnlyFiles appId={app.id} appName={name} /> : null}
+        </>
       )}
     </>
   );
