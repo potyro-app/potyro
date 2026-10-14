@@ -8,6 +8,7 @@
 
 import type { FileInfo, FileRef, Geo, Id, MediaRef, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
+import type { Language, Words } from "./words.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -109,8 +110,8 @@ export interface CtxStorage {
 /** One choice in `ui.sheet` / `ui.menu`. A destructive item is shown last, in red. */
 export interface UiItem<T = string> {
   id: T;
-  label: string;
-  detail?: string;
+  label: Words;
+  detail?: Words;
   icon?: string;
   destructive?: boolean;
 }
@@ -122,25 +123,26 @@ export interface UiProgress {
   done(): void;
 }
 
+/** Takes `Words` wherever it takes words. */
 export interface CtxUi {
-  toast(msg: string): void;
+  toast(msg: Words): void;
   /**
    * `ok` names the button ("Delete"); `destructive` makes it red; `detail` is a quieter second line.
    *
    * `cancel` names the other button — worth naming whenever both answers are real choices ("Delete
    * them" / "Move them up") rather than an action and a way out of it.
    */
-  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean>;
-  prompt(msg: string, opts?: { default?: string }): Promise<string | null>;
+  confirm(msg: Words, opts?: { detail?: Words; ok?: Words; cancel?: Words; destructive?: boolean }): Promise<boolean>;
+  prompt(msg: Words, opts?: { default?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
   /** A short list of choices: a bottom sheet on a phone, a small dialog on a wide screen. Null when dismissed. */
-  sheet<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  sheet<T = string>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
   /** The same, hanging under the button that ran the action on a wide screen (a sheet on a phone). */
-  menu<T = string>(opts: { title?: string; items: UiItem<T>[] }): Promise<T | null>;
+  menu<T = string>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
   /** Several values at once, with the record form's controls. Relations come back as ids; null when cancelled. */
-  form<T = Record<string, unknown>>(opts: { title: string; fields: Record<string, Field>; initial?: Partial<T>; submit?: string }): Promise<T | null>;
+  form<T = Record<string, unknown>>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
   /** A progress bar for a long action. */
-  progress(label: string): UiProgress;
+  progress(label: Words): UiProgress;
 }
 
 /**
@@ -195,6 +197,43 @@ export interface CtxFiles {
   import(opts?: { folder?: string; accept?: string; multiple?: boolean }): Promise<FileInfo[]>;
   /** Save a copy outside the app. */
   export(file: string | FileRef): Promise<void>;
+}
+
+/** The options `ctx.format.date` takes; no others. */
+export interface FormatDateOptions {
+  dateStyle?: "full" | "long" | "medium" | "short";
+  timeStyle?: "short" | "medium";
+  weekday?: "long" | "short";
+  day?: "numeric" | "2-digit";
+  month?: "long" | "short" | "numeric";
+  year?: "numeric" | "2-digit";
+  hour?: "numeric" | "2-digit";
+  minute?: "2-digit";
+}
+
+export interface FormatNumberOptions {
+  style?: "decimal" | "percent" | "unit";
+  /** With `style: "unit"`: "kilogram", "kilometer-per-hour", "day". */
+  unit?: string;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+  signDisplay?: "auto" | "always" | "exceptZero";
+}
+
+/**
+ * Formats for the person, the same in the sealed box. Only for text the app composes: return a Date
+ * or a number where a view formats it (a `datetime` field, `AggregateRow.value`).
+ */
+export interface CtxFormat {
+  /** The tag these format in: "pl-PL". */
+  locale: string;
+  date(d: Date | string | number, opts?: FormatDateOptions): string;
+  number(n: number, opts?: FormatNumberOptions): string;
+  /** Whole minor units: `money(4200, "EUR")` → "42,00 €". */
+  money(minor: number, currency?: string): string;
+  /** From `ctx.now()`: "in 3 days". */
+  relative(d: Date | string | number, opts?: { unit?: "minute" | "hour" | "day" | "week" | "month" | "year"; numeric?: "auto" | "always" }): string;
+  list(items: string[], opts?: { type?: "conjunction" | "disjunction" }): string;
 }
 
 /** Media helpers (docs/04). */
@@ -265,6 +304,13 @@ export interface Ctx {
    * Per device — which trip *you* are looking at is not shared state.
    */
   scope: Readonly<Record<string, Resolved | undefined>>;
+
+  // ---- the app's words and the person's formats (#302) ----
+  /** The language the app's words are shown in: one of its `languages`. Fixed per pass. */
+  locale: Language;
+  /** Words for `ctx.locale`. With `vars`, an ICU message: `ctx.t({ en: "{n, plural, one {# plant} other {# plants}}", pl: "…" }, { n })`. */
+  t(words: Words, vars?: Record<string, string | number | Date>): string;
+  format: CtxFormat;
 
   // ---- app-scoped key/value storage ----
   storage: CtxStorage;

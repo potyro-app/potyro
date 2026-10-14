@@ -16,6 +16,7 @@
   "dependencies": {
     "@potyro/capabilities": "workspace:*",
     "@potyro/store": "workspace:*",
+    "intl-messageformat": "^10.7.18",
     "potyro": "workspace:*",
     "quickjs-emscripten": "^0.31.0"
   }

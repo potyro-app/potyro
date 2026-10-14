@@ -6,6 +6,7 @@ import type { ActionDef, ActionFn, EntityDef } from "./types/app.js";
 import type { Field } from "./types/fields.js";
 import { humanizeKey } from "./humanize.js";
 import { recordValueProblem } from "./values.js";
+import { plainWords } from "./words-schema.js";
 
 export interface ActionInfo {
   /** The function; a placeholder string in a definition read out of the sandbox. */
@@ -19,7 +20,7 @@ export function actionInfo(entity: EntityDef | undefined, key: string): ActionIn
   const a = entity?.actions?.[key] as ActionFn | ActionDef | string | undefined;
   if (a === undefined) return undefined;
   if (typeof a === "function" || typeof a === "string") return { run: a, label: humanizeKey(key) };
-  return { run: a.run, label: a.label ?? humanizeKey(key), description: a.description, input: a.input };
+  return { run: a.run, label: a.label === undefined ? humanizeKey(key) : plainWords(a.label), description: a.description, input: a.input };
 }
 
 /** The callable, or undefined when there is none here (unknown key, or only the sandbox's placeholder). */
@@ -38,7 +39,7 @@ export function actionInputProblem(fields: Record<string, Field>, value: unknown
   for (const key of Object.keys(given)) if (!fields[key]) return `The action does not take "${key}".`;
   for (const [key, field] of Object.entries(fields)) {
     const v = given[key];
-    if (field.required && (v == null || v === "")) return `${field.label ?? humanizeKey(key)} is required.`;
+    if (field.required && (v == null || v === "")) return `${field.label === undefined ? humanizeKey(key) : plainWords(field.label)} is required.`;
   }
   return recordValueProblem(fields, given, "write");
 }

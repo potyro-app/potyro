@@ -34,6 +34,8 @@ describe("seedExamples", () => {
     expect(workout.source).toContain('defineApp({');
     expect(workout.source).toContain("function LogSession"); // one file: the view travels with it
     expect(getUserApp("recipes")?.name).toBe("Recipes");
+    // A translated name is saved in the app's own language (#302), not as the id.
+    expect(getUserApp("groceries")?.name).toBe("Groceries");
     // Again: nothing to do.
     expect(await seedExamples({ trusted: true, now: "2026-09-12T00:00:00.000Z" })).toEqual([]);
     expect(getUserApp("workout")?.updatedAt).toBe(NOW);

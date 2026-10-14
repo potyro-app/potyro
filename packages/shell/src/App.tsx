@@ -15,6 +15,7 @@ import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { FixPanel } from "./fix-panel.js";
 import { startFix } from "./start-fix.js";
+import { currentLocale } from "./locale.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import type { LoopDeps, LoopOutcome, LoopStep } from "@potyro/generator/agent";
@@ -29,6 +30,7 @@ import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import { TrustDialog } from "./trust-dialog.js";
 import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
+import { describePoint, type Pointed, type PointRef } from "./point-target.js";
 import { buildAndValidate } from "./validate-app.js";
 import { modulesOf } from "./app-modules.js";
 import { withLibrariesStoodIn } from "./package-modules.js";
@@ -45,6 +47,9 @@ import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
+import { isRtl, languageNote, shownName } from "./app-words.js";
+import { languagePrefs } from "./locale.js";
+import { optionLabel } from "@potyro/views";
 
 interface EditorState {
   entity: string;
@@ -155,7 +160,10 @@ interface AppProps {
 
 export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
   const def = runtime.definition;
-  const appLabel = name?.trim() || def.name;
+  // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
+  const appLabel = shownName(name, runtime.core.app.definition, [runtime.language.current ?? "", ...languagePrefs()]);
+  // The app lacks the person's language: one quiet line in its menu, never a banner (#302).
+  const langNote = languageNote(runtime.core.app.definition, languagePrefs());
   const locked = useAppLock(lock);
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -223,6 +231,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     return () => document.removeEventListener("keydown", onKey);
   }, [generator]);
   const [studioPrefill, setStudioPrefill] = useState<string | undefined>(undefined);
+  // The part of the app edit mode was on when it asked the Studio for more (#284).
+  const [studioPoint, setStudioPoint] = useState<Pointed | undefined>(undefined);
   // Which saved app the Studio opens on: this one, when it is opened as "change this app"; none when
   // the launcher opens it to create something new.
   const [studioAppId, setStudioAppId] = useState<string | undefined>(undefined);
@@ -364,6 +374,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       runtime,
       store: runtime.core.store,
       engine: engineCfg,
+      language: currentLocale(),
       onStep: (step) => {
         if (fixRunId.current !== runId) return; // a superseded run's step; the panel moved on
         setFixSteps((prev) => [...prev, step]);
@@ -730,8 +741,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     }
   };
 
-  const askStudioAbout = (prefill: string): void => {
+  const askStudioAbout = (prefill: string, point?: PointRef): void => {
     setStudioPrefill(prefill);
+    setStudioPoint(point ? describePoint(point, def) : undefined);
     setStudioAppId(appId);
     openStudio();
   };
@@ -822,6 +834,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     // on a build with no engine at all.
     ...(generator ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
             setStudioPrefill(undefined);
+            setStudioPoint(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
             openStudio();
           } }] : []),
@@ -838,6 +851,15 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ...(onData ? [{ key: "data", label: "Data", icon: <DatabaseIcon />, hint: "every record", onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
+    // "This app is in English." Where it can be changed, the line offers the translation, which the
+    // Studio makes (docs/20 §3.3); elsewhere it only says so.
+    ...(langNote
+      ? [
+          canEdit
+            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(`Translate this app into ${langNote.into.name} (${langNote.into.tag}).`) }
+            : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
+        ]
+      : []),
   ];
   const chromeReport: ChromeTool[] = appId
     ? recording
@@ -872,6 +894,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   return (
     <div
       className="k-app"
+      // The app's words are in this language (#302): screen readers pronounce them right, and a
+      // right-to-left one turns the app's own area round (Q11 — a first step, not full RTL).
+      lang={runtime.language.current}
+      dir={isRtl(runtime.language.current) ? "rtl" : undefined}
       data-provenance={provenance}
       data-locked={locked ? "" : undefined}
       style={{ ["--accent" as string]: accent }}
@@ -1070,7 +1096,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
             <div className="k-quickmenu-options">
               {quickMenu.options.map((opt) => (
                 <button key={opt} type="button" className="k-add" onClick={() => void pickQuick(opt)}>
-                  {opt}
+                  {optionLabel(def.entities[quickMenu.qa.entity]?.fields[quickMenu.field] as { labels?: Record<string, string> } | undefined, opt)}
                 </button>
               ))}
             </div>
@@ -1108,6 +1134,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           onNewApp={(prefill) => {
             setLauncherOpen(false);
             setStudioPrefill(prefill);
+            setStudioPoint(undefined);
             setStudioAppId(undefined);
             openStudio();
           }}
@@ -1144,7 +1171,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
-      {genOpen ? <Studio onClose={closeStudio} initialDescription={studioPrefill} initialAppId={studioAppId} /> : null}
+      {genOpen ? <Studio onClose={closeStudio} initialDescription={studioPrefill} initialAppId={studioAppId} initialPoint={studioPoint} /> : null}
 
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>

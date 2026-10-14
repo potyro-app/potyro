@@ -14,7 +14,7 @@ import { Component, createElement, type ErrorInfo, type ReactNode } from "react"
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { LayoutHost, ViewHost } from "@potyro/views";
-import type { PageLayout } from "potyro";
+import type { Localized, PageLayout } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { RunReport } from "@potyro/generator/backends";
 import { canObserveRender, SETTLE_MS } from "./observe-render.js";
@@ -61,7 +61,7 @@ function text(args: unknown[]): string {
 
 export interface PageToRender {
   id: string;
-  layout?: PageLayout;
+  layout?: Localized<PageLayout>;
   params: Record<string, unknown>;
 }
 

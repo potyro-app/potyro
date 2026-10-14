@@ -15,6 +15,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { humanizeKey } from "@potyro/views";
 import { applyEdit, fieldStep, inspect, textSites, type AppShape, type Edit, type TextSite } from "./app-source.js";
 import { appRoots, collectTargets, sameThing, type InlineTarget } from "./inline-targets.js";
+import { editorLanguages } from "./app-source-words.js";
+import { languageName } from "./app-words.js";
+import { pointFromInline, type PointRef } from "./point-target.js";
 
 export interface InlineEditProps {
   /** The app's source as last saved. Sites are re-read from it after every change. */
@@ -25,7 +28,8 @@ export interface InlineEditProps {
   save: (next: string, note: string) => Promise<string | null>;
   /** After a change the page can't show without re-running the app (a move, hiding a field). */
   rerun: () => void;
-  askStudio: (prefill: string) => void;
+  /** `point`: the part the person was changing, so the Studio's next message is about it (#284). */
+  askStudio: (prefill: string, point?: PointRef) => void;
   done: () => void;
 }
 
@@ -194,7 +198,10 @@ export function InlineEdit({ source, where, save, rerun, askStudio, done }: Inli
           close={() => setOpen(null)}
           ask={(text) => {
             setOpen(null);
-            askStudio(`On ${where}, about "${text}": `);
+            // What the label belongs to goes as a point — the Studio says it on its box, the model
+            // reads it with the lines that declare it. Without one, the words carry it as before.
+            const point = pointFromInline(open.target);
+            askStudio(point ? "" : `On ${where}, about "${text}": `, point ?? undefined);
           }}
         />
       ) : null}
@@ -217,6 +224,10 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
   const { target } = at;
   const initial = target.kind === "field" ? target.field.label ?? "" : target.text;
   const [value, setValue] = useState(initial);
+  // A translated label or title: one input per language (#302).
+  const map = target.kind === "field" ? target.field.labels : target.kind === "page" ? target.page.titles : undefined;
+  const langs = map ? editorLanguages(map, shape.language, shape.languages) : [];
+  const [values, setValues] = useState<Record<string, string>>(map ?? {});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The checkbox reflects the SOURCE, which only changes once the save lands and the app re-runs.
@@ -267,7 +278,40 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
     return !problem;
   };
 
+  /** Save every language whose words changed, as one version. */
+  const renameEach = async (): Promise<void> => {
+    if (!map || target.kind === "text") return;
+    const changed = langs.filter((l) => (values[l] ?? "").trim() !== (map[l] ?? "").trim());
+    if (!changed.length) return close();
+    setBusy(true);
+    setError(null);
+    let next = source;
+    const notes: string[] = [];
+    for (const language of changed) {
+      const edit: Edit =
+        target.kind === "field"
+          ? { kind: "field-label", entity: target.entity.key, field: target.field.key, value: values[language] ?? "", language }
+          : { kind: "page-title", page: target.page.id, value: values[language] ?? "", language };
+      const result = await applyEdit(next, edit);
+      if (!result.ok) {
+        setBusy(false);
+        setError(result.reason);
+        return;
+      }
+      next = result.source;
+      notes.push(result.note);
+    }
+    const problem = await save(next, notes.join("; "));
+    setBusy(false);
+    if (problem) return setError(problem);
+    // What is on screen is one of the languages: it changes at once, the rest when edit mode ends.
+    const shown = langs.find((l) => map[l] === target.text);
+    if (shown) patch(target, (values[shown] ?? "").trim());
+    close();
+  };
+
   const rename = async (): Promise<void> => {
+    if (map) return renameEach();
     const next = value.trim();
     if (next === initial.trim()) return close();
     const edit: Edit =
@@ -318,20 +362,45 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
           void rename();
         }}
       >
-        <label className="k-inline-pop-label">
-          <span>{kindWord(target)}</span>
-          <input
-            className="k-input"
-            value={value}
-            autoFocus
-            disabled={busy}
-            placeholder={target.kind === "field" ? humanizeKey(target.field.key) : undefined}
-            onFocus={(e) => e.currentTarget.select()}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </label>
+        {map ? (
+          langs.map((l, i) => {
+            // Changing the app's own words may leave the others behind; said here, never written.
+            const own = langs[0]!;
+            const stale = i > 0 && (values[own] ?? "") !== (map[own] ?? "") && (values[l] ?? "") === (map[l] ?? "");
+            return (
+              <label key={l} className="k-inline-pop-label">
+                <span>
+                  {kindWord(target)} — {languageName(l, "en")}
+                </span>
+                <input
+                  className="k-input"
+                  lang={l}
+                  value={values[l] ?? ""}
+                  autoFocus={map[l] === target.text}
+                  disabled={busy}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setValues((v) => ({ ...v, [l]: e.target.value }))}
+                />
+                {stale ? <span className="k-inline-pop-note">May be out of date now.</span> : null}
+              </label>
+            );
+          })
+        ) : (
+          <label className="k-inline-pop-label">
+            <span>{kindWord(target)}</span>
+            <input
+              className="k-input"
+              value={value}
+              autoFocus
+              disabled={busy}
+              placeholder={target.kind === "field" ? humanizeKey(target.field.key) : undefined}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => setValue(e.target.value)}
+            />
+          </label>
+        )}
         {repeats > 1 ? <p className="k-inline-pop-note">This text is written {repeats} times in the app — all of them change.</p> : null}
-        {target.kind === "field" && !target.field.label ? <p className="k-inline-pop-note">Leave it empty to keep the default.</p> : null}
+        {target.kind === "field" && !target.field.label && !map ? <p className="k-inline-pop-note">Leave it empty to keep the default.</p> : null}
 
         {canMove ? (
           <div className="k-inline-pop-moves">

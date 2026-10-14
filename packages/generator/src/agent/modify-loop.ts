@@ -39,12 +39,15 @@ import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { NOT_IN_APP, buildModifyMessage, buildModifyOpener } from "../prompt.js";
+import { NOT_IN_APP, buildModifyMessage, buildModifyOpener, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
+import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
+import type { TranslationDraft } from "./translate-tool.js";
+import { describeWordsReport, wordsReport } from "../source-words.js";
 
 export type ModifyLoopOutcome =
   | {
@@ -78,6 +81,8 @@ export interface ModifyLoopDeps {
   system: string;
   /** The change the person asked for, in their words. */
   instruction: string;
+  /** Where it was aimed — the part they pointed at (#284) — said beside the instruction. */
+  context?: ModifyContext;
   /** The app as they have it. Edits are applied to it; every retry is told so. */
   source: string;
   /** Bundle + validate a candidate: the validator's issues, or [] when well-formed. Throws when it does not compile. */
@@ -91,6 +96,13 @@ export interface ModifyLoopDeps {
   run?: RunGate;
   /** The release's corpus: the passages that speak to the request go into the first message (#262). */
   corpus?: () => Promise<Corpus>;
+  /** The person's language (#301): the reply, questions and Not done lines are written in it. English when absent. */
+  language?: Language;
+  /**
+   * The language of the app's own words, when the app declares one (#302's `language` field). When
+   * absent it is read off the source (`appLanguage`); new labels follow it, not the person's language.
+   */
+  appLanguage?: Language | null;
   /** Model calls in all. */
   maxSteps?: number;
   /** Candidates that may fail the gate before the loop gives up. Tool reads do not count. */
@@ -98,6 +110,11 @@ export interface ModifyLoopDeps {
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
   resumeFrom?: ChatMessage[];
+  /**
+   * The app the edits apply to once `translate` has written a language into it (#302) — the same
+   * object the tool was built with. Without it, edits apply to `source` as first shown, as before.
+   */
+  draft?: TranslationDraft;
   /**
    * Think hard (`reasoning: "high"`) for the one turn after the loop got stuck — a rolled-back
    * repeat or a fresh start (#280, docs/19 F6). The extra cost lands only on changes that were going
@@ -114,7 +131,7 @@ const DEFAULT_MAX_CANDIDATES = 4;
 const REPEAT_LINES = 5;
 const ASK = "ASK:";
 /** The tools whose use makes a refusal informed. */
-const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read"]);
+const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read", "translate"]);
 
 type Accepted = Extract<ModifyLoopOutcome, { kind: "source" }>;
 
@@ -136,7 +153,10 @@ export function repeatsItself(text: string, previous: string | null): string | n
 }
 
 async function firstMessage(deps: ModifyLoopDeps): Promise<string> {
-  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction)];
+  const language = { person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) };
+  // Where it was aimed (#284) and in which language to answer (#306), beside the request — both in
+  // this one opening message, which a fresh start reuses and a rollback keeps.
+  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, { ...deps.context, language })];
   if (deps.corpus) {
     const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
     if (primed) parts.push(primed);
@@ -314,7 +334,13 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     previousReply = text;
     previousReplyAt = messages.length;
 
-    const read = readEditsOrFile(deps.source, text);
+    // Edits apply to the app as it now is: the translated one, once `translate` wrote into it. A
+    // reply with no edits after a translation sends the translation as it is (#302).
+    const base = deps.draft?.source ?? deps.source;
+    const translated = base !== deps.source;
+    const parsed = readEditsOrFile(base, text);
+    const read: typeof parsed =
+      parsed.kind === "unusable" && translated ? { kind: "edits", source: base, applied: 0, ...(text.trim() ? { rationale: text.trim() } : {}) } : parsed;
     if (read.kind === "unusable" || read.kind === "no-match") {
       unusableReplies += 1;
       deps.onStep?.({ kind: "unusable", detail: read.kind === "no-match" ? describeEditFailures(read.failures) : text.trim() || "(empty reply)" });
@@ -406,11 +432,20 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
  */
 async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>): Promise<{ problem: string | null; warning: boolean; gated: GatedRun | null }> {
   let problem: string | null = null;
+  /** A map renamed in the app's own language only (#302): said once the rest of the gate has passed. */
+  let staleWords: string | null = null;
   try {
     const issues = await deps.check(candidate);
     if (issues.length) problem = `The result failed validation:\n${issues.map((i) => `- ${i}`).join("\n")}`;
   } catch (e) {
     problem = `The result does not compile: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (!problem) {
+    // Every language the app carries, kept in step (#302): a gap the candidate ADDS sends it back; a
+    // gap that was there is said, never held against it.
+    const words = describeWordsReport(await wordsReport(deps.source, candidate).catch(() => ({ added: [], existing: [], plain: [], stale: [] })));
+    if (words.fails) problem = `It compiles and validates, but it leaves a translation incomplete.\n${words.text}`;
+    else if (words.warns) staleWords = words.text;
   }
   if (!problem) {
     let shape: AppShape | null = null;
@@ -435,6 +470,14 @@ async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>
         `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
         "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
     }
+  }
+  // Last, so a candidate held on it has passed everything else; its own key, so a run warning on the
+  // same candidate is still said. Sent again unchanged, it is meant: one language on purpose.
+  const wordsKey = `\u0000words\u0000${candidate}`;
+  if (!problem && staleWords && !warned.has(wordsKey)) {
+    warned.add(wordsKey);
+    warning = true;
+    problem = `It compiles and validates, but look at this.\n${staleWords}`;
   }
   return { problem, warning, gated };
 }

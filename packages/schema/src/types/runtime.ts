@@ -7,13 +7,17 @@ import type { ReactElement } from "react";
 import type { Ctx } from "./ctx.js";
 import type { Id, PotyroRecord, Resolved } from "./core.js";
 import type { AppDefinition } from "./app.js";
+import type { Language } from "./words.js";
+import type { Localized } from "./localized.js";
 
 /** Stop receiving updates. */
 export type Unsubscribe = () => void;
 
 /** What views consume (docs/05 "Runtime API"). Views call this — never Store/Host/Caps. */
 export interface Runtime {
-  definition: AppDefinition;
+  /** In the language it is shown in: every `Words` slot is its string. */
+  definition: Localized<AppDefinition>;
+  language: { current: Language | undefined; default: Language | undefined; available: Language[] };
   /** Full host surface (trust-scoped). */
   ctx: Ctx;
 

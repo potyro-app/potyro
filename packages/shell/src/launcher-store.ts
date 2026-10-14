@@ -16,6 +16,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { plural } from "@lingui/core/macro";
 import { USER_APPS_CHANGED, listUserApps, type UserApp } from "./user-apps.js";
 import { inspect } from "./app-source.js";
+import { shownName } from "./app-words.js";
+import { LOCALE_KEY, languagePrefs, onLanguagePrefsChange } from "./locale.js";
 
 /** There is one kind of app (#152): the examples are seeded into the same registry as yours. The
  *  key keeps its `user:` prefix so entries written before that stay valid. */
@@ -99,6 +101,10 @@ export function recordSignals(key: AppKey, patch: Partial<AppSignals>): void {
 export interface AppIdentity {
   hash: string;
   name?: string;
+  /** The declared name per language, its own language, and the ones it carries (#302). */
+  names?: Record<string, string>;
+  language?: string;
+  languages?: string[];
   icon?: string;
   accent?: string;
 }
@@ -151,7 +157,15 @@ export async function ensureIdentities(apps: readonly InstalledApp[]): Promise<v
       try {
         if (getEntry(app.key).identity?.hash === hash) return;
         const shape = await inspect(app.user.source);
-        const identity: AppIdentity = { hash, ...(shape.name ? { name: shape.name } : {}), ...(shape.icon ? { icon: shape.icon } : {}), ...(shape.accent ? { accent: shape.accent } : {}) };
+        const identity: AppIdentity = {
+          hash,
+          ...(shape.name ? { name: shape.name } : {}),
+          ...(shape.names ? { names: shape.names } : {}),
+          ...(shape.language ? { language: shape.language } : {}),
+          ...(shape.languages ? { languages: shape.languages } : {}),
+          ...(shape.icon ? { icon: shape.icon } : {}),
+          ...(shape.accent ? { accent: shape.accent } : {}),
+        };
         updateEntry(app.key, { identity });
       } finally {
         reading.delete(app.key);
@@ -273,7 +287,8 @@ export function listInstalledApps(): InstalledApp[] {
       key,
       kind: "user",
       id: user.id,
-      name: entry.displayName ?? user.name,
+      // A translated app's tile says its name in the person's language, unless they renamed it (#302).
+      name: entry.displayName ?? (identity?.names ? shownName(user.name, { name: identity.names, language: identity.language, languages: identity.languages }, languagePrefs()) : user.name),
       ...(entry.icon ?? identity?.icon ? { icon: entry.icon ?? identity?.icon } : {}),
       ...(identity?.accent ? { accent: identity.accent } : {}),
       ...(typeof entry.hue === "number" ? { hue: entry.hue } : {}),
@@ -292,13 +307,16 @@ export function subscribe(cb: () => void): () => void {
   if (!target?.addEventListener) return () => {};
   const onStorage = (e: Event): void => {
     const k = (e as StorageEvent).key;
-    if (k === null || k === KEY || k === SORT_KEY || k === "potyro:user-apps") cb();
+    if (k === null || k === KEY || k === SORT_KEY || k === "potyro:user-apps" || k === LOCALE_KEY) cb();
   };
   target.addEventListener(CHANGED, cb);
+  // A tile's name follows the person's language (#302).
+  const offLanguage = onLanguagePrefsChange(cb);
   target.addEventListener(USER_APPS_CHANGED, cb);
   target.addEventListener("storage", onStorage);
   return () => {
     target.removeEventListener(CHANGED, cb);
+    offLanguage();
     target.removeEventListener(USER_APPS_CHANGED, cb);
     target.removeEventListener("storage", onStorage);
   };
@@ -308,7 +326,8 @@ export function subscribe(cb: () => void): () => void {
 // The raw JSON of both keys is the fingerprint: cheap to compare, and it changes iff the list does.
 let snapshot: { raw: string; apps: InstalledApp[] } | null = null;
 function getSnapshot(): InstalledApp[] {
-  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""}`;
+  // The person's languages are part of it: a translated app's tile name follows them (#302).
+  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""} ${languagePrefs().join(",")}`;
   if (!snapshot || snapshot.raw !== raw) snapshot = { raw, apps: listInstalledApps() };
   return snapshot.apps;
 }

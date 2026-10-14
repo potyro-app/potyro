@@ -23,6 +23,8 @@
 //   modify-system-prompt.ts -> ../prompt.js (SYSTEM_PROMPT)
 //   ask.ts           -> potyro (fieldValueProblem, humanizeKey), tools.ts, and `import type` from
 //                       ../chat-backend.js — Ask (#213)
+//   translate-tool.ts -> ../source-words.js -> potyro, and @babel/parser + magic-string by dynamic
+//                       import (browser-safe; the shell's structural editor loads the same two) — #302
 //
 // Along every one of those, each cross-package import is either `import type` (erased at build
 // time) or a real value import that bottoms out in `potyro` (zod only) or `react` — nothing here
@@ -36,8 +38,13 @@ export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAcces
 export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
+export { buildTranslateTool, createDraft, type TranslationDraft, type TranslateToolDeps } from "./translate-tool.js";
+export { readSourceWords, sourceSlots, spliceLanguage, functionStrings, wordsReport, describeWordsReport, type WordSlot, type WordsReport, type SpliceResult } from "../source-words.js";
 export { MATERIAL_MAX } from "./ask.js";
 export { runAskLoop, checkProposal, checkProposedRows, describeStructure, askSystemPrompt, ASK_SYSTEM_PROMPT, type AskLoopDeps, type AskOutcome, type AskContext, type AskStep, type Proposal, type ProposedRow, type ProposedAction, type ProposedEdit, editAsRow, type AskSource, type SourceFetch, type SourceRequest } from "./ask.js";
 export type { ChatMessage, Citation } from "../chat-backend.js";
 export { verifyRow, Retrieved, normText, type Evidence, type Trust, type TrustStatus } from "./evidence.js";
 export { verifyClaims } from "./verify-claims.js";
+// The person's language (#301): language.ts imports nothing, so it adds no edge to the graph above.
+export { LANGUAGES, LANGUAGE_NAMES, isLanguage, matchLanguage, bestLanguage, appLanguage, type Language, type TurnLanguage } from "../language.js";
+export { askLanguageInstruction } from "./ask.js";

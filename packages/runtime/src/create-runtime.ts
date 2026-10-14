@@ -1,9 +1,9 @@
 // createRuntime — assembles the RuntimeCore and exposes the docs/05 `Runtime` surface plus a
 // few page-aware extras the shell/views use. Views consume this; never Store/Host/Caps.
 
-import type { AppDefinition, Ctx, Id, PotyroRecord, Resolved, Runtime } from "potyro";
+import type { AppDefinition, Ctx, Id, Localized, PotyroRecord, Resolved, Runtime } from "potyro";
 import { onAppFailure, reportAppFailure, type AppFailure, type BindingRef } from "@potyro/host";
-import { RuntimeCore, type RuntimeDeps } from "./core.js";
+import { RuntimeCore, type RuntimeDeps, type RuntimeLanguage } from "./core.js";
 import { useEntityQuery, usePageQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 import { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
 
@@ -63,6 +63,15 @@ export interface PotyroRuntime extends Runtime {
   onFailure(cb: (failure: AppFailure) => void): () => void;
   /** Say that a part of this app failed and was contained — for the views that contain it. */
   reportFailure(what: string, error: unknown): void;
+  /** Which of the app's languages it is shown in, its own, and all it carries (#302). */
+  readonly language: RuntimeLanguage;
+  /**
+   * The person's languages changed: localize again, re-run every watcher, re-title reminders.
+   * Returns whether the app now reads differently.
+   */
+  setLanguages(prefs: readonly string[]): boolean;
+  /** Hear that the app's language changed. Returns the unsubscribe. */
+  onLanguageChange(cb: () => void): () => void;
 }
 
 const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -116,9 +125,14 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       reportAppFailure({ app: core.definition.id, what, message: messageOf(error) });
     },
     core,
-    get definition(): AppDefinition {
+    get definition(): Localized<AppDefinition> {
       return core.definition;
     },
+    get language(): RuntimeLanguage {
+      return core.language;
+    },
+    setLanguages: (prefs) => core.setLanguages(prefs),
+    onLanguageChange: (cb) => core.onLanguageChange(cb),
     get ctx(): Ctx {
       // A fresh ctx per access (deterministic now within the access). Custom views use this for
       // imperative calls; hooks build their own per-pass ctx internally.

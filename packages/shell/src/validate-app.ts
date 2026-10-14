@@ -3,7 +3,7 @@
 // SAME Zod schema + referential checks the trusted path uses, against a source's definition — used by
 // the Studio (generate/preview/save) and by in-app Edit-mode (quick modify) so both catch + repair.
 
-import { structureSchema, checkReferences, describeIssue } from "potyro";
+import { structureSchema, checkReferences, checkWords, describeIssue } from "potyro";
 import type { AppShape } from "@potyro/runtime";
 import { MemoryStore } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
@@ -60,14 +60,15 @@ export function validateDefinition(def: unknown): string[] {
   const revived = reviveFns(asAuthored(def));
   const parsed = structureSchema.safeParse(revived);
   if (!parsed.success) return parsed.error.issues.map((i) => describeIssue(i, revived));
-  return checkReferences(parsed.data as Parameters<typeof checkReferences>[0]);
+  const definition = parsed.data as Parameters<typeof checkReferences>[0];
+  return [...checkReferences(definition), ...checkWords(definition)];
 }
 
 /** Compose a source UNTRUSTED (in the isolate, throwaway store) and return its runtime definition.
  *  Throws if the source fails to compile/bundle. Never runs the source directly: Edit mode edits
  *  imported apps too, and their code must not get ambient authority just to be inspected.
  *  `modules` is the app's package — its libraries and its own modules — when it has one. */
-async function composeUntrusted(source: string, modules?: ModuleSource, opts?: BundleOptions): Promise<{ definition: unknown }> {
+async function composeUntrusted(source: string, modules?: ModuleSource, opts?: BundleOptions): Promise<{ definition: unknown; source: unknown }> {
   const bundle = await createAppBundler();
   const bundleCode = await bundle(source, modules, opts);
   const store = new MemoryStore();
@@ -81,13 +82,15 @@ async function composeUntrusted(source: string, modules?: ModuleSource, opts?: B
     nav: createNavBridge(() => {}),
     loadIsolated: await createSandboxLoader(store),
   });
-  return { definition: composed.runtime.definition };
+  // `definition` as the person reads it; `source` as written — translation maps and all (#302), which
+  // is what the structure is validated against.
+  return { definition: composed.runtime.definition, source: composed.loaded.definition };
 }
 
 /** Bundle a source, run it untrusted with a throwaway store, and return its structure issues. Throws
  *  if the source fails to compile/bundle (that surfaces to the caller as a hard error). */
 export async function buildAndValidate(source: string, modules?: ModuleSource): Promise<string[]> {
-  return validateDefinition((await composeUntrusted(source, modules)).definition);
+  return validateDefinition((await composeUntrusted(source, modules)).source);
 }
 
 /**
@@ -95,8 +98,8 @@ export async function buildAndValidate(source: string, modules?: ModuleSource): 
  * definition, or the reason it cannot load, and its structure issues.
  */
 export async function inspectSource(source: string, modules?: ModuleSource, opts?: BundleOptions): Promise<{ definition: unknown; issues: string[] }> {
-  const { definition } = await composeUntrusted(source, modules, opts);
-  return { definition, issues: validateDefinition(definition) };
+  const composed = await composeUntrusted(source, modules, opts);
+  return { definition: composed.definition, issues: validateDefinition(composed.source) };
 }
 
 /** The shape `guardedModify` compares: pages and entities of a source, loaded in the isolate. */

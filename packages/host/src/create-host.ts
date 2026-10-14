@@ -7,6 +7,7 @@ import type { Ctx, PotyroApp } from "potyro";
 import { isPotyroApp } from "potyro";
 import { DirectLoadedApp } from "./direct-host.js";
 import { buildCtx } from "./make-ctx.js";
+import { loadMessageFormat } from "./format.js";
 import type { AppSource, Host, LoadedApp, MakeCtxBase, Provenance } from "./types.js";
 
 export interface CreateHostOptions {
@@ -29,6 +30,9 @@ export function createHost(options: CreateHostOptions = {}): Host {
 
   return {
     async load(source: AppSource): Promise<LoadedApp> {
+      // The ICU formatter `ctx.t(words, vars)` needs is a lazy chunk; it is in place before any of
+      // the app's functions can run, at either provenance (#302).
+      await loadMessageFormat();
       if (source.kind === "module") {
         if (!isPotyroApp(source.app as PotyroApp)) {
           throw new Error("load: module source is not a PotyroApp (did you defineApp() it?)");

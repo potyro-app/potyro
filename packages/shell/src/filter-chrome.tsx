@@ -16,10 +16,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { FilterChip } from "potyro";
-import { usePortalRoot } from "@potyro/views";
+import type { FilterChip as SourceChip, Localized } from "potyro";
+import { optionLabel, usePortalRoot } from "@potyro/views";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
+
+/** A chip as the person reads it: the localized definition's (#302). */
+type FilterChip = Localized<SourceChip>;
 
 interface ChromeProps {
   runtime: PotyroRuntime;
@@ -150,7 +153,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
           aria-label={t({ message: `${filter}: ${value} — remove`, comment: "A chosen filter value; pressing it takes the filter off" })}
           onClick={() => drop(chip, value)}
         >
-          <ValueLabel chip={chip} runtime={runtime} value={value} />
+          <ValueLabel chip={chip} entity={entity} runtime={runtime} value={value} />
           <span className="k-chip-x" aria-hidden>
             ✕
           </span>
@@ -180,11 +183,11 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   );
 }
 
-/** A chosen value's name: an option speaks for itself, a record id has to be looked up. */
-function ValueLabel({ chip, runtime, value }: { chip: FilterChip; runtime: PotyroRuntime; value: string }) {
+/** A chosen value's name: an option reads as its words (`labels`), a record id has to be looked up. */
+function ValueLabel({ chip, entity, runtime, value }: { chip: FilterChip; entity: string; runtime: PotyroRuntime; value: string }) {
   const fromEntity = chip.from && runtime.definition.entities[chip.from] ? chip.from : "";
   const { rows } = runtime.useQuery(fromEntity);
-  if (!fromEntity) return <>{value}</>;
+  if (!fromEntity) return <>{optionLabel(chip.from ? (runtime.definition.entities[entity]?.fields[chip.from] as { labels?: Record<string, string> } | undefined) : undefined, value)}</>;
   const field = (runtime.definition.entities[fromEntity]?.displayField as string | undefined) ?? "id";
   const row = rows.find((r) => String(r.id) === value);
   return <>{row ? String(row[field] ?? value) : value}</>;
@@ -385,7 +388,7 @@ function BooleanChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "run
 
 function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
   const field = chip.from
-    ? (runtime.definition.entities[entity]?.fields[chip.from] as { options?: string[] } | undefined)
+    ? (runtime.definition.entities[entity]?.fields[chip.from] as { options?: string[]; labels?: Record<string, string> } | undefined)
     : undefined;
   const options = field?.options ?? [];
   if (options.length === 0) return null;
@@ -411,7 +414,7 @@ function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
       <div className="k-chips">
         {options.map((opt) => (
           <button key={opt} type="button" className="k-chip" data-on={isSelected(opt)} onClick={() => toggle(opt)}>
-            {opt}
+            {optionLabel(field, opt)}
           </button>
         ))}
       </div>

@@ -7,9 +7,9 @@
 // gave.
 
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { EnumField } from "potyro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { enumSwatch, wantsSegmented } from "./enum.js";
+import { optionLabel, type ShownEnumField as EnumField } from "./shown.js";
 import { PickList } from "./pick-list.js";
 
 export interface EnumInputProps {
@@ -29,11 +29,11 @@ export function EnumInput({ field, value, onChange, label }: EnumInputProps) {
   );
 }
 
-/** The value as it reads everywhere else: the word, tinted by its colour. */
-export function EnumPill({ field, value }: { field?: Pick<EnumField, "colors">; value: string }) {
+/** The value as it reads everywhere else: its words (`labels`, #302), tinted by its colour. */
+export function EnumPill({ field, value }: { field?: Pick<EnumField, "colors" | "labels">; value: string }) {
   return (
     <span className="k-enum-pill" {...enumSwatch(field, value)}>
-      {value}
+      {optionLabel(field, value)}
     </span>
   );
 }
@@ -72,7 +72,7 @@ function EnumSegments({ field, current, onChange, label }: { field: EnumField; c
             tabIndex={on || (!current && field.options[0] === o) ? 0 : -1}
             {...enumSwatch(field, o)}
           >
-            {o}
+            {optionLabel(field, o)}
           </button>
         );
       })}
@@ -93,7 +93,7 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
         className="k-enum-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={label ? (current ? `${label}: ${current}` : t({ message: `${label}: choose`, comment: "A choice field with nothing chosen yet; {label} is the field" })) : undefined}
+        aria-label={label ? (current ? `${label}: ${optionLabel(field, current)}` : t({ message: `${label}: choose`, comment: "A choice field with nothing chosen yet; {label} is the field" })) : undefined}
         onClick={() => setOpen(true)}
       >
         {current ? <EnumPill field={field} value={current} /> : <span className="k-enum-empty"><Trans>Choose…</Trans></span>}
@@ -104,7 +104,7 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
       {open ? (
         <PickList
           title={label ?? t`Choose`}
-          items={field.options.map((o) => ({ id: o, label: o, swatch: enumSwatch(field, o) }))}
+          items={field.options.map((o) => ({ id: o, label: optionLabel(field, o), swatch: enumSwatch(field, o) }))}
           selected={new Set(current ? [current] : [])}
           anchor={btnRef}
           onToggle={(v) => onChange(v)}
