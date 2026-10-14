@@ -8,6 +8,7 @@ import { DEFAULT_ENGINE_CONFIG, type EngineConfig } from "../src/engines.js";
 
 const seen = vi.hoisted(() => ({
   startModify: [] as Array<{ language?: string }>,
+  startCreate: [] as Array<{ brief: string; language?: string }>,
   generate: [] as GenPrompt[],
   modifyTurn: [] as Array<{ ctx?: ModifyContext; instruction: string }>,
 }));
@@ -17,6 +18,14 @@ vi.mock("../src/start-modify.js", async (importOriginal) => ({
   startModify: async (opts: { language?: string }) => {
     seen.startModify.push(opts);
     return { kind: "question", text: "Który pokój?", transcript: [] };
+  },
+}));
+
+vi.mock("../src/start-create.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/start-create.js")>()),
+  startCreate: async (opts: { brief: string; language?: string }) => {
+    seen.startCreate.push(opts);
+    return { kind: "question", text: "Jaka lista?" };
   },
 }));
 
@@ -47,6 +56,7 @@ const oneTurnEngine: EngineConfig = { ...DEFAULT_ENGINE_CONFIG, engine: "anthrop
 afterEach(() => {
   vi.unstubAllGlobals();
   seen.startModify.length = 0;
+  seen.startCreate.length = 0;
   seen.generate.length = 0;
   seen.modifyTurn.length = 0;
 });
@@ -81,9 +91,16 @@ describe("currentLocale", () => {
 
 describe("the Studio's turns carry the person's language", () => {
   it("create: the prompt the backend gets says Polish, and the question comes back as one", async () => {
-    const out = await studioEngine(loopEngine, () => {}, undefined, "pl").create("lista zakupów");
+    const out = await studioEngine(oneTurnEngine, () => {}, undefined, "pl").create("lista zakupów");
     expect(seen.generate[0]).toMatchObject({ description: "lista zakupów", language: "pl" });
     expect(out).toEqual({ kind: "question", text: "Jaka lista?" });
+  });
+
+  it("create through the loop (#262 phase 3): startCreate is handed the language", async () => {
+    const out = await studioEngine(loopEngine, () => {}, undefined, "pl").create("lista zakupów");
+    expect(seen.startCreate[0]).toMatchObject({ brief: "lista zakupów", language: "pl" });
+    expect(out).toEqual({ kind: "question", text: "Jaka lista?" });
+    expect(seen.generate).toHaveLength(0);
   });
 
   it("modify through the loop: startModify is handed the language", async () => {
@@ -105,7 +122,7 @@ describe("the Studio's turns carry the person's language", () => {
 
   it("without a language given, reads it from the device", async () => {
     vi.stubGlobal("localStorage", storage("pl"));
-    await studioEngine(loopEngine, () => {}).create("lista");
+    await studioEngine(oneTurnEngine, () => {}).create("lista");
     expect(seen.generate[0]!.language).toBe("pl");
   });
 });

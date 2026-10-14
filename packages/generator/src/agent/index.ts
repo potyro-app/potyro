@@ -38,10 +38,13 @@ export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
 export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
+// The create loop (#262 phase 3): the same edges as modify-loop.ts, plus ../prompt.js (buildUserMessage).
+export { runCreateLoop, DEFAULT_DRAFTS, type CreateLoopDeps, type CreateLoopOutcome } from "./create-loop.js";
+export { CREATE_AGENT_SYSTEM_PROMPT } from "./create-system-prompt.js";
 export { conversationRecap, conversationRounds, buildConversationTool, DEFAULT_RECAP_ROUNDS, type ConversationEntry, type ConversationKind } from "./conversation.js";
 export { NEEDS_PLATFORM, appStructure, platformSignal, type PlatformRequest } from "./platform-request.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
-export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
+export { buildDiscoveryTools, buildCreateTools, lookupReference, type DiscoveryDeps, type CreateToolDeps } from "./discovery-tools.js";
 export { buildTranslateTool, createDraft, type TranslationDraft, type TranslateToolDeps } from "./translate-tool.js";
 export { readSourceWords, sourceSlots, spliceLanguage, functionStrings, wordsReport, describeWordsReport, type WordSlot, type WordsReport, type SpliceResult } from "../source-words.js";
 export { MATERIAL_MAX } from "./ask.js";
