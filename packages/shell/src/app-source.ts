@@ -89,6 +89,8 @@ export interface FieldShape {
 /** One of the entity's `groups`, as written: its title and the keys it lists (fields or computed). */
 export interface GroupShape {
   title?: string;
+  /** The title per language, when it is a literal translation map (#302). */
+  titles?: Record<string, string>;
   fields: string[];
 }
 
@@ -200,8 +202,10 @@ function literalGroups(node: Node | null): GroupShape[] | undefined | "opaque" {
       if (key === undefined) return "opaque";
       fields.push(key);
     }
-    const title = literalString(propValue(el, "title"));
-    out.push({ ...(title !== undefined ? { title } : {}), fields });
+    const titleNode = propValue(el, "title");
+    const title = literalString(titleNode);
+    const titles = wordsMapOf(titleNode);
+    out.push({ ...(title !== undefined ? { title } : {}), ...(titles ? { titles } : {}), fields });
   }
   return out;
 }
@@ -777,7 +781,7 @@ export async function applyEdit(source: string, edit: Edit): Promise<EditResult>
     ]);
     const seen = new Set<string>();
     for (const [i, keys] of edit.groups.entries()) {
-      if (keys.length === 0) return { ok: false, reason: `"${current[i]!.title ?? `group ${i + 1}`}" would be left with no fields` };
+      if (keys.length === 0) return { ok: false, reason: `"${current[i]!.title ?? Object.values(current[i]!.titles ?? {})[0] ?? `group ${i + 1}`}" would be left with no fields` };
       for (const key of keys) {
         if (!known.has(key)) return { ok: false, reason: `"${key}" isn't a field or computed value of ${edit.entity}` };
         if (seen.has(key)) return { ok: false, reason: `"${key}" can only be in one group` };
