@@ -27,20 +27,23 @@ export function ViewHost(
       {body}
     </PartBoundary>
   );
-  // A custom view is the app's own JSX: every word in it is the app's to change (edit mode).
+  // A custom view is the app's own JSX: every word in it is the app's to change (edit mode). Its
+  // wrapper only names the part — `data-k-part`, for point mode (#284) — and lays nothing out.
   if (view.type === "custom") {
     return (
-      <>
+      <div data-k-part={props.pageId} data-k-custom style={{ display: "contents" }}>
         {notes}
         {part(<Component {...props} />)}
-      </>
+      </div>
     );
   }
   // A built-in view prints records, and its text is theirs unless marked `data-k-wording`. Edit mode
   // pairs text with the app's literals, and a record called "Milk" must never pass for one of them —
   // so here the default is "data", and a view that forgets to mark its wording just offers less.
+  // `data-k-part` is the page ref this view renders (`today`, or a layout item's `today#1`): what
+  // point mode (#284) names when the person points at it.
   return (
-    <div data-k-view style={{ display: "contents" }}>
+    <div data-k-view data-k-part={props.pageId} style={{ display: "contents" }}>
       {notes}
       {part(<Component {...props} />)}
     </div>

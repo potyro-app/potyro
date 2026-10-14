@@ -273,6 +273,69 @@ function literalGroups(node: Node | null): GroupShape[] | undefined | "opaque" {
 // ---------------------------------------------------------------------------------------------
 // Reading
 
+// ---------------------------------------------------------------------------------------------
+// Where a part of the app is written (#284)
+//
+// Point mode tells the model which part of the app the person pointed at, and shows it the lines
+// that declare it — a slice of the app already in the conversation, never the app a second time.
+
+/** A part of the app, as point mode names it. */
+export type SourcePart =
+  | { kind: "page"; page: string }
+  /** One item of a page's `layout`. */
+  | { kind: "item"; page: string; index: number }
+  | { kind: "field"; entity: string; field: string }
+  /** What encloses a position: the outermost function around it — a custom view's component. */
+  | { kind: "around"; offset: number };
+
+const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "ObjectMethod"]);
+
+/** The page object literal in `pages` whose `id` is `id`. */
+function pageNode(def: Node, id: string): Node | null {
+  const pages = propValue(def, "pages");
+  if (pages?.type !== "ArrayExpression") return null;
+  return asArray(pages.elements).find((el) => el?.type === "ObjectExpression" && literalString(propValue(el, "id")) === id) ?? null;
+}
+
+function outermostFunctionAround(ast: Node, offset: number): Node | null {
+  let found: Node | null = null;
+  const walk = (n: unknown): void => {
+    if (found || !n || typeof n !== "object") return;
+    const node = n as Node;
+    if (typeof node.type !== "string") return;
+    if (typeof node.start === "number" && (offset < node.start || offset >= node.end) && node.type !== "File" && node.type !== "Program") return;
+    if (FUNCTIONS.has(node.type)) {
+      found = node;
+      return;
+    }
+    for (const [k, value] of Object.entries(node)) {
+      if (k === "leadingComments" || k === "trailingComments" || k === "innerComments" || k === "extra" || k === "loc") continue;
+      if (Array.isArray(value)) value.forEach(walk);
+      else if (value && typeof value === "object") walk(value);
+    }
+  };
+  walk(ast);
+  return found;
+}
+
+/** Where `part` is written in `source`, as offsets; null when it is not written where it can be found. */
+export async function partRange(source: string, part: SourcePart): Promise<{ start: number; end: number } | null> {
+  const t = await load();
+  const ast = t ? parseModule(t, source) : null;
+  if (!ast) return null;
+  const at = (node: Node | null | undefined): { start: number; end: number } | null => (node ? { start: node.start, end: node.end } : null);
+  if (part.kind === "around") return at(outermostFunctionAround(ast, part.offset));
+  const def = findDefinition(ast);
+  if (!def) return null;
+  if (part.kind === "page") return at(pageNode(def, part.page));
+  if (part.kind === "item") {
+    const items = propValue(propValue(pageNode(def, part.page), "layout"), "items");
+    return items?.type === "ArrayExpression" ? at(asArray(items.elements)[part.index]) : null;
+  }
+  const entity = propValue(propValue(def, "entities"), part.entity);
+  return at(prop(propValue(entity, "fields"), part.field));
+}
+
 /**
  * What this module can edit in `source`, and where it can't, with reasons.
  *

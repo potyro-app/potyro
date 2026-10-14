@@ -30,6 +30,7 @@ import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import { TrustDialog } from "./trust-dialog.js";
 import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
+import { describePoint, type Pointed, type PointRef } from "./point-target.js";
 import { buildAndValidate } from "./validate-app.js";
 import { modulesOf } from "./app-modules.js";
 import { withLibrariesStoodIn } from "./package-modules.js";
@@ -224,6 +225,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     return () => document.removeEventListener("keydown", onKey);
   }, [generator]);
   const [studioPrefill, setStudioPrefill] = useState<string | undefined>(undefined);
+  // The part of the app edit mode was on when it asked the Studio for more (#284).
+  const [studioPoint, setStudioPoint] = useState<Pointed | undefined>(undefined);
   // Which saved app the Studio opens on: this one, when it is opened as "change this app"; none when
   // the launcher opens it to create something new.
   const [studioAppId, setStudioAppId] = useState<string | undefined>(undefined);
@@ -732,8 +735,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     }
   };
 
-  const askStudioAbout = (prefill: string): void => {
+  const askStudioAbout = (prefill: string, point?: PointRef): void => {
     setStudioPrefill(prefill);
+    setStudioPoint(point ? describePoint(point, def) : undefined);
     setStudioAppId(appId);
     openStudio();
   };
@@ -824,6 +828,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     // on a build with no engine at all.
     ...(generator ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
             setStudioPrefill(undefined);
+            setStudioPoint(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
             openStudio();
           } }] : []),
@@ -1110,6 +1115,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           onNewApp={(prefill) => {
             setLauncherOpen(false);
             setStudioPrefill(prefill);
+            setStudioPoint(undefined);
             setStudioAppId(undefined);
             openStudio();
           }}
@@ -1146,7 +1152,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
       {chatOpen && appId ? <ChatPanel runtime={runtime} appId={appId} onClose={() => setChatOpen(false)} /> : null}
 
-      {genOpen ? <Studio onClose={closeStudio} initialDescription={studioPrefill} initialAppId={studioAppId} /> : null}
+      {genOpen ? <Studio onClose={closeStudio} initialDescription={studioPrefill} initialAppId={studioAppId} initialPoint={studioPoint} /> : null}
 
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
