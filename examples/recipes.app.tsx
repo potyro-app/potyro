@@ -434,6 +434,13 @@ export default defineApp({
         // derived from the ingredient models — the whole point of relations being resolved
         diet: {
           label: { en: "Diet", "pt-BR": "Dieta", de: "Ernährung", es: "Dieta", pl: "Dieta", it: "Dieta" },
+          // What each value reads as on a badge or the detail page; the value stays the key a filter compares.
+          labels: {
+            vegan: { en: "vegan", "pt-BR": "vegana", de: "vegan", es: "vegana", pl: "wegański", it: "vegana" },
+            vegetarian: { en: "vegetarian", "pt-BR": "vegetariana", de: "vegetarisch", es: "vegetariana", pl: "wegetariański", it: "vegetariana" },
+            "animal-based": { en: "animal-based", "pt-BR": "de origem animal", de: "tierisch", es: "de origen animal", pl: "odzwierzęcy", it: "di origine animale" },
+            unknown: { en: "unknown", "pt-BR": "desconhecida", de: "unbekannt", es: "desconocida", pl: "nieznany", it: "sconosciuta" },
+          },
           value: (r) => {
             const diets = r.ingredients.map((i: any) => i.ingredient.diet).filter(Boolean);
             if (diets.length === 0) return "unknown";

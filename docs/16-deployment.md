@@ -281,6 +281,12 @@ a small relay files it as an issue in `fuzue/potyro`, labelled `platform-request
 says "couldn't send, saved to send later", keeps the request on the device, and sends it the next
 time the Studio opens and `/requests/` answers.
 
+The same relay carries **wording suggestions** (#300): You → Language → "Something reads wrong?
+Suggest a better wording" sends the person's wording beside the words it would replace (their
+English and the message's id), as a request of `kind: "translation"`, filed under the label
+`translation` and grouped only with other suggestions. Until the relay runs they wait on the device
+too, and go the next time You is opened.
+
 What it accepts and does, so you know what you are putting on the internet:
 
 | | |
@@ -289,7 +295,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | What is in a request | The request's title and body in the person's words, the app's **structure** (its declaration as data, every function and piece of code shown as a marker — never its records), the app's name, the language, a request id and a random device id. |
 | Size | 64 KiB a request, checked before parsing; per-part caps after (`LIMITS` in `src/request.ts`). Too long is refused, never cut. |
 | Rate limit | 5 a day per device id **and** 20 a day per address (the first `X-Forwarded-For` entry, which Apache sets), in memory. |
-| Duplicates | A title that normalises to an open `platform-request` issue's (case, accents, punctuation, filler words, plurals and word order ignored) becomes a **comment** on that issue rather than a new one. |
+| Duplicates | A title that normalises to an open issue's under the same label (`platform-request`, or `translation` for a wording suggestion) (case, accents, punctuation, filler words, plurals and word order ignored) becomes a **comment** on that issue rather than a new one. |
 | Retries | The same request id again gets the first answer back; it is filed once. |
 | On the issue | The words quoted, marked as untrusted text, and the structure folded away. Never the device id or the address. |
 
@@ -304,6 +310,8 @@ tokens): resource owner `fuzue`, **only** the repository `fuzue/potyro`, reposit
 ```bash
 gh label create platform-request -R fuzue/potyro --color 5319e7 \
   --description "Asked for from the Studio: something Potyro itself does not offer yet (#263, #288)"
+gh label create translation -R fuzue/potyro --color 0e8a16 \
+  --description "A better wording for Potyro's own words, suggested from You → Language (#300)"
 ```
 
 On the server, out of the repository and readable by root only:

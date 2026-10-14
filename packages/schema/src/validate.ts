@@ -181,6 +181,8 @@ const computedDefSchema = z
   .object({
     value: z.union([zFn, z.literal("__potyro_fn__")]),
     label: zWords.optional(),
+    labels: z.record(z.string(), zWords).optional(),
+    format: zWordsNonEmpty.optional(),
   })
   .strict();
 

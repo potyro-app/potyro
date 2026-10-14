@@ -124,11 +124,35 @@ export async function sendPlatformRequest(payload: PlatformRequestPayload, chatI
   return { state: "saved" };
 }
 
-/** Try the ones kept for later. `onSent` hears each that went, so its conversation can say so. */
-export async function sendSaved(onSent: (chatId: string, payload: PlatformRequestPayload, url?: string) => void | Promise<void>, opts: { fetch?: typeof fetch } = {}): Promise<void> {
+/**
+ * Try the ones kept for later. `onSent` hears each that went, so its conversation can say so. `only`
+ * picks which this caller sends: the Studio its platform requests (each has a conversation), You →
+ * Language its wording suggestions (#300, none has); the rest wait for their own caller.
+ */
+export function sendSaved(
+  onSent: (chatId: string, payload: PlatformRequestPayload, url?: string) => void | Promise<void>,
+  opts: { fetch?: typeof fetch; only?: (payload: PlatformRequestPayload) => boolean } = {},
+): Promise<void> {
+  // One run at a time, each reading the outbox afresh: two at once (the Studio and You opening
+  // together, or React running an effect twice) would both send what the other is sending.
+  const run = flushing.then(() => flush(onSent, opts));
+  flushing = run.catch(() => {});
+  return run;
+}
+
+let flushing: Promise<void> = Promise.resolve();
+
+async function flush(
+  onSent: (chatId: string, payload: PlatformRequestPayload, url?: string) => void | Promise<void>,
+  opts: { fetch?: typeof fetch; only?: (payload: PlatformRequestPayload) => boolean },
+): Promise<void> {
   const get = opts.fetch ?? fetch;
   const left: Saved[] = [];
   for (const s of savedRequests()) {
+    if (opts.only && !opts.only(s.payload)) {
+      left.push(s);
+      continue;
+    }
     const result = await attempt(s.payload, get);
     if (result?.state === "sent") await onSent(s.chatId, s.payload, result.url);
     else if (result?.state !== "refused") left.push(s);

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { Resolved } from "potyro";
+import { computedInfo, type EntityDef, type Resolved } from "potyro";
 import { optionLabel, type ShownField as Field } from "./shown.js";
 import { displayFieldFor, formatValue } from "./format.js";
 
@@ -31,7 +31,7 @@ interface Membership {
   label: string;
 }
 
-function membershipsOf(runtime: PotyroRuntime, field: Field | undefined, value: unknown): Membership[] {
+function membershipsOf(runtime: PotyroRuntime, field: Field | undefined, value: unknown, computedLabels?: Readonly<Record<string, string>>): Membership[] {
   if (value == null || value === "") return [{ key: "", label: "" }];
   if (field?.type === "relation") {
     const one = (v: unknown): Membership => {
@@ -45,7 +45,8 @@ function membershipsOf(runtime: PotyroRuntime, field: Field | undefined, value: 
     return list.length ? list : [{ key: "", label: "" }];
   }
   // An option's heading is its words (`labels`, #302); its key stays the value.
-  const words = field?.type === "enum" || field?.type === "tags" ? field : undefined;
+  // A computed key's are its own `labels`.
+  const words = field?.type === "enum" || field?.type === "tags" ? field : computedLabels ? { labels: computedLabels } : undefined;
   if (Array.isArray(value)) {
     const list = value.filter((v) => v != null && v !== "").map((v) => ({ key: String(v), label: optionLabel(words, String(v)) }));
     return list.length ? list : [{ key: "", label: "" }];
@@ -109,8 +110,10 @@ export function useRowGroups(runtime: PotyroRuntime, pageId: string, rows: Resol
   if (view.group === undefined) return [{ key: "", label: "", rows }];
   if (byField) {
     const key = view.group as string;
-    const field = runtime.definition.entities[view.entity]?.fields[key];
-    return groupRows(runtime, view, rows, rows.map((row) => membershipsOf(runtime, field, row[key])));
+    const entity = runtime.definition.entities[view.entity];
+    const field = entity?.fields[key];
+    const labels = field ? undefined : computedInfo(entity as EntityDef | undefined, key)?.labels;
+    return groupRows(runtime, view, rows, rows.map((row) => membershipsOf(runtime, field, row[key], labels)));
   }
   return resolved?.rows === rows ? resolved.groups : null;
 }

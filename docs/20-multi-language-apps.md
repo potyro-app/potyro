@@ -745,3 +745,12 @@ Where the build differs from the design above, and why:
   `examples/test/apps.test.ts` fails on one that does not. Still open from the issue: an enum-like
   computed shown as a badge (recipes' `diet`) has no option `labels`, and a computed returning an
   object (`lastBest`) shows raw.
+- **Both built since**: the object form also takes `labels` (keyed by value, as an enum's) and
+  `format` (an ICU message over an object value's properties), both `zWords` slots, so the walker,
+  `wordGaps` and `translate` see them with no code of their own. The views' `shownValue` reads them on
+  detail rows, table cells, badges and group headings; the host formats the message (`ctx.t`), the
+  same at both provenances because the words are data. `format` is words, not a function, for that
+  reason: a function would need a host call per shown value, and the translation tooling could not
+  see it. Recipes' `diet` carries `labels` in the six languages; workout's `lastBest` a `format`
+  ("82.5 kg × 8", "12 powt." for a bodyweight set). `examples/test/apps.test.ts` fails on a computed
+  badge with no `labels`.
