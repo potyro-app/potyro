@@ -13,6 +13,8 @@
 // not to grade the quality of the change. A case can keep and not land, land and not keep (the
 // rewrite that happens to include the feature), or both.
 
+import type { ConversationEntry } from "./agent/conversation.js";
+
 /** The slice of a loaded definition the predicates look at. Structural, so the eval needs no
  *  schema import and a scripted backend can satisfy it in tests. */
 export interface DefinitionShape {
@@ -54,11 +56,15 @@ export interface ModifyCase {
    */
   class?: "conversation" | "platform" | "wrong-gate";
   /**
-   * What the person and the Studio said about EARLIER versions of the app, oldest first. Nothing
-   * hands it to the model today — the loop sees only what was said since the last version — so
-   * these cases measure what is lost without it, and #279 will be measured on the same cases.
+   * What the person and the Studio said about EARLIER versions of the app, oldest first, as the
+   * Studio's conversation keeps it (`studio-chat`): an `ask` is the person, the rest the Studio. The
+   * loop gets it as a recap and through `read_conversation` (#279); `--conversation none` measures
+   * what is lost without it. Every change in it was undone or never made, so the app as it is in
+   * examples/ is still the app the conversation ends on.
    */
-  earlier?: Array<{ who: "person" | "studio"; text: string }>;
+  earlier?: ConversationEntry[];
+  /** Words from the earlier message the case turns on: how far back it is decides which recap sizes can see it. */
+  decidedBy?: string;
   /** The error the app's check throws for every candidate, the original included (`wrong-gate`, loop mode only). */
   gateRefuses?: string;
 }
@@ -257,11 +263,12 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     app: "plants",
     class: "conversation",
     earlier: [
-      { who: "person", text: "Add a page with the plants that need direct sun." },
-      { who: "studio", text: "Done: a new page, Sunny plants, lists the plants that need direct sun." },
-      { who: "person", text: "No, I don't want more pages, the menu is long enough already. Undo that. Put things like that on the Plants list as a filter instead." },
-      { who: "studio", text: "Undone: the Sunny plants page is gone and the app is as it was." },
+      { kind: "ask", text: "Add a page with the plants that need direct sun." },
+      { kind: "version", text: "Done: a new page, Sunny plants, lists the plants that need direct sun." },
+      { kind: "ask", text: "No, I don't want more pages, the menu is long enough already. Undo that. Put things like that on the Plants list as a filter instead." },
+      { kind: "version", text: "Undone: the Sunny plants page is gone and the app is as it was." },
     ],
+    decidedBy: "I don't want more pages",
     instruction: "Let me see only the plants that need direct sun.",
     landed: (d, before) => d.pages.length === before.pages.length && filtersOn(d, "list") > filtersOn(before, "list"),
     expects: "no page added, and the Plants list gains a filter",
@@ -271,11 +278,12 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     app: "workout",
     class: "conversation",
     earlier: [
-      { who: "person", text: "Add a rating to each session." },
-      { who: "studio", text: "Should the rating be stars out of 5, or a score out of 10?" },
-      { who: "person", text: "Out of 10, I score everything out of 10. Actually leave it for now, I'll ask again later." },
-      { who: "studio", text: "Okay, I didn't change anything." },
+      { kind: "ask", text: "Add a rating to each session." },
+      { kind: "question", text: "Should the rating be stars out of 5, or a score out of 10?" },
+      { kind: "ask", text: "Out of 10, I score everything out of 10. Actually leave it for now, I'll ask again later." },
+      { kind: "answer", text: "Okay, I didn't change anything." },
     ],
+    decidedBy: "Out of 10",
     instruction: "Ok, now add the rating to each session.",
     landed: (d) => fieldsOf(d, "session").some(([k, f]) => /rat|score/i.test(k) && f.type === "number" && f.max === 10),
     expects: "session gains a number rating with max 10",
@@ -285,17 +293,79 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     app: "recipes",
     class: "conversation",
     earlier: [
-      { who: "person", text: "Add how spicy each recipe is: mild, medium or hot, in colours." },
-      { who: "studio", text: "Done: recipes have a Spiciness choice (mild, medium, hot), shown as a coloured badge." },
-      { who: "person", text: "Take the spiciness away again, I don't use it." },
-      { who: "studio", text: "Done: the Spiciness choice is gone." },
+      { kind: "ask", text: "Add how spicy each recipe is: mild, medium or hot, in colours." },
+      { kind: "version", text: "Done: recipes have a Spiciness choice (mild, medium, hot), shown as a coloured badge." },
+      { kind: "ask", text: "Take the spiciness away again, I don't use it." },
+      { kind: "version", text: "Done: the Spiciness choice is gone." },
     ],
+    decidedBy: "mild, medium or hot",
     instruction: "I changed my mind, put the spiciness thing back like it was.",
     landed: (d) =>
       fieldsOf(d, "recipe").some(
         ([, f]) => f.type === "enum" && Array.isArray(f.options) && ["mild", "medium", "hot"].every((o) => (f.options as unknown[]).some((x) => String(x).toLowerCase() === o)),
       ),
     expects: "recipe gains an enum with mild, medium and hot",
+  },
+
+  // Further back (#279): what decides these was said five or seven requests ago, with requests in
+  // between that changed nothing that lasted — refused, answered, or undone. They are what tells a
+  // short recap from a long one, and a recap from the tool that pages older requests.
+  {
+    id: "plants-water-in-ml",
+    app: "plants",
+    class: "conversation",
+    earlier: [
+      { kind: "ask", text: "How much water do my plants get? I always measure it in millilitres, never cups or litres." },
+      { kind: "answer", text: "Your app doesn't keep how much water a plant gets yet, so I didn't change anything. Tell me when you want it added." },
+      { kind: "ask", text: "Text my sister when a plant needs water." },
+      { kind: "refusal", text: "I didn't change the app: this isn't something it can change. Potyro apps can't send text messages." },
+      { kind: "ask", text: "Make the whole app pink." },
+      { kind: "version", text: "Done: the app's colour is pink." },
+      { kind: "event", text: "went back to version 3" },
+      { kind: "ask", text: "Can it tell me which plants are poisonous to cats?" },
+      { kind: "question", text: "Should I add a yes/no “poisonous to cats” to each plant, or a note you write yourself?" },
+      { kind: "ask", text: "Never mind, I'll look it up myself." },
+      { kind: "answer", text: "Okay, I didn't change anything." },
+    ],
+    decidedBy: "millilitres",
+    instruction: "Ok, now let me write down how much water each plant gets.",
+    landed: (d, before) =>
+      fieldsOf(d, "plant").some(
+        ([k, f]) =>
+          !(k in (before.entities.plant?.fields ?? {})) &&
+          f.type === "number" &&
+          /\bml\b|millilit/i.test(`${k} ${String((f as { unit?: unknown }).unit ?? "")} ${String((f as { label?: unknown }).label ?? "")}`),
+      ),
+    expects: "plant gains a number field in millilitres (its unit, label or name says ml)",
+  },
+  {
+    id: "places-visited-starts-off",
+    app: "places",
+    class: "conversation",
+    earlier: [
+      { kind: "ask", text: "Places I add should start as not visited — I add places I want to go to, not places I've been." },
+      { kind: "question", text: "Should visited places also move off the main list, onto a page of their own?" },
+      { kind: "ask", text: "No, keep them all in one list. And don't do anything yet, I'm showing the app to a friend." },
+      { kind: "answer", text: "Okay, I didn't change anything." },
+      { kind: "ask", text: "Show the places on a satellite map." },
+      { kind: "refusal", text: "I didn't change the app: this isn't something it can change. The map's look is Potyro's, not the app's." },
+      { kind: "ask", text: "Add a page with only the bars." },
+      { kind: "version", text: "Done: a new page, Bars, lists the bars." },
+      { kind: "event", text: "went back to version 4" },
+      { kind: "ask", text: "Can it book a table for me?" },
+      { kind: "refusal", text: "I didn't change the app: this isn't something it can change. Potyro apps can't make bookings." },
+      { kind: "ask", text: "What are vibes for?" },
+      { kind: "answer", text: "Vibes are your own tags for a place — cheap, quiet, dog-friendly — and the list can filter by them." },
+      { kind: "ask", text: "Make the rating out of 10." },
+      { kind: "question", text: "Should the ratings you already gave be doubled, so a 4 becomes an 8?" },
+      { kind: "ask", text: "Hmm, then leave it out of 5." },
+      { kind: "answer", text: "Okay, I didn't change anything." },
+    ],
+    decidedBy: "start as not visited",
+    instruction: "Ok, now do that thing with visited that I asked for.",
+    landed: (d, before) =>
+      d.pages.length === before.pages.length && (d.entities.place?.fields?.visited as { default?: unknown } | undefined)?.default === false,
+    expects: "a new place starts as not visited, and no page is added",
   },
 
   // platform (#263): what the person mostly wants needs a device feature Potyro does not offer (no

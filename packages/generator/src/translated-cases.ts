@@ -10,8 +10,9 @@
 // Kept as they are on purpose:
 //   - code names the person quotes (`servings`, `portions`) and the button they saw ("New Place"),
 //     because the app they are looking at is English and that is what it says on screen;
-//   - `earlier` (what was said about earlier versions) stays English: nothing hands it to the model
-//     today (modify-corpus.ts), so translating it would measure nothing.
+//   - `earlier` (what was said about earlier versions) stays English. Since #279 it reaches the model
+//     as a recap, so a translated run reads an English conversation before a request in the
+//     language: what it measures is whether the request is understood, and the reply's language.
 // One request changes meaning: "learn Portuguese vocabulary" is "learn English vocabulary" in
 // Portuguese — a Brazilian learning Portuguese is not the same request.
 
@@ -57,6 +58,8 @@ export const MODIFY_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
     "plants-no-more-pages": "Chcę widzieć tylko rośliny, które potrzebują bezpośredniego słońca.",
     "workout-rating-out-of-10": "Dobra, to teraz dodaj ocenę do każdej sesji.",
     "recipes-put-spice-back": "Zmieniłem zdanie, przywróć to z ostrością tak, jak było.",
+    "plants-water-in-ml": "Dobra, to teraz chcę zapisywać, ile wody dostaje każda roślina.",
+    "places-visited-starts-off": "Dobra, to teraz zrób to z odwiedzonymi, o co prosiłem.",
     "plants-scan-barcode":
       "Kiedy kupuję nową roślinę, chcę zeskanować kod kreskowy z doniczki, żeby uzupełnić jej nazwę, i zapisać numer kodu kreskowego przy roślinie.",
     "workout-heart-rate-strap":
@@ -85,6 +88,8 @@ export const MODIFY_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
     "plants-no-more-pages": "Quero ver só as plantas que precisam de sol direto.",
     "workout-rating-out-of-10": "Beleza, agora adicione a nota a cada sessão.",
     "recipes-put-spice-back": "Mudei de ideia, volta com aquele negócio da picância do jeito que estava.",
+    "plants-water-in-ml": "Beleza, agora eu quero anotar quanta água cada planta recebe, pra eu não esquecer.",
+    "places-visited-starts-off": "Beleza, agora pode fazer aquilo do visitado que eu pedi, não esquece.",
     "plants-scan-barcode":
       "Quando eu comprar uma planta nova, quero escanear o código de barras do vaso pra preencher o nome dela, e guardar o número do código de barras junto com a planta.",
     "workout-heart-rate-strap":

@@ -27,6 +27,12 @@
 //                          expected in it. Without it the corpus apps read as English, so a Polish
 //                          request on them is expected to keep English labels and reply in Polish.
 //        --backend scripted-loop-language --loop   proves the language columns with no model
+//        --conversation both|recap|tool|none  (#279, with --loop) how a `conversation` case's earlier
+//                          requests reach the model: the recap in the opening message and the
+//                          `read_conversation` tool (both, the Studio's default), one of them, or
+//                          neither (what the loop saw before #279)
+//        --recap-rounds N  how many earlier requests the recap shows (default DEFAULT_RECAP_ROUNDS)
+//        --backend scripted-loop-conversation --loop   proves the conversation columns with no model
 //        --case-timeout S  a hard limit per case (default 900): the loop is told to stop and the case
 //                          is recorded as crashed with the reason — three cases once hung ten hours
 //
@@ -66,6 +72,7 @@ import type { GenPrompt, ModelBackend } from "../src/backend.js";
 import type { AppShape } from "@potyro/runtime";
 import { LANGUAGE_NAMES, appLanguage, isLanguage, matchLanguage, type Language, type TurnLanguage } from "../src/language.js";
 import { isEvalLanguage, localizeModifyCase, EVAL_LANGUAGES } from "../src/translated-cases.js";
+import { DEFAULT_RECAP_ROUNDS, recapCoverage, requestsBack } from "../src/agent/conversation.js";
 import { checkLabels, newLabels, replyLanguage, summarizeLanguage, type LabelCheck } from "../src/language-eval.js";
 
 interface Outcome {
@@ -252,6 +259,26 @@ interface LoopSetup {
   engine: () => ChatEngine;
   /** Think hard for the turn after the loop got stuck (#280). */
   escalate: boolean;
+  /** How a conversation case's earlier requests reach the model (#279); null: they do not. */
+  conversation: { recapRounds: number; tool: boolean } | null;
+}
+
+/** `--conversation` and `--recap-rounds`: the Studio's default is both, with DEFAULT_RECAP_ROUNDS. */
+function conversationFrom(mode: string | undefined, rounds: string | undefined): LoopSetup["conversation"] {
+  const recapRounds = rounds === undefined ? DEFAULT_RECAP_ROUNDS : Number(rounds);
+  if (!Number.isInteger(recapRounds) || recapRounds < 0) throw new Error(`--recap-rounds ${rounds}: a whole number, 0 or more`);
+  switch (mode ?? "both") {
+    case "both":
+      return { recapRounds, tool: true };
+    case "recap":
+      return { recapRounds, tool: false };
+    case "tool":
+      return { recapRounds: 0, tool: true };
+    case "none":
+      return null;
+    default:
+      throw new Error(`--conversation ${mode}: expected both, recap, tool or none`);
+  }
 }
 
 /** What the turns are told about language (#301); null on an English run, which then is today's run. */
@@ -285,6 +312,8 @@ async function loopModify(
     model,
     escalate: loop.escalate,
     tools: buildDiscoveryTools({ check, source, ...(runCandidates ? { run } : {}) }),
+    // What was said about earlier versions (#279), the way the Studio hands it over.
+    ...(c.earlier?.length && loop.conversation ? { conversation: c.earlier, conversationAccess: loop.conversation } : {}),
     corpus: loadCorpus,
     system: MODIFY_AGENT_SYSTEM_PROMPT,
     instruction: c.instruction,
@@ -549,10 +578,13 @@ async function main(): Promise<void> {
           ? () => scriptedLoopEngine(backendKind as ScriptedLoopKind)
           : () => createOpenRouterEngine({ ...(model ? { model } : {}), ...thinkingFrom(reasoning) }),
         escalate: process.argv.includes("--escalate"),
+        conversation: conversationFrom(arg("conversation"), arg("recap-rounds")),
       }
     : null;
   const caseTimeoutMs = Number(arg("case-timeout", "900")) * 1000;
-  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}${loop.escalate ? ", thinking hard when stuck" : ""}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
+  const conversationLabel = (c: LoopSetup["conversation"]): string =>
+    !c ? ", no earlier conversation" : c.recapRounds && c.tool ? `, recap of ${c.recapRounds} + read_conversation` : c.tool ? ", read_conversation only" : `, recap of ${c.recapRounds} only`;
+  console.log(`backend=${backend.name}${loop ? ` via the modify LOOP${loop.run ? ", running candidates" : ""}${loop.escalate ? ", thinking hard when stuck" : ""}${conversationLabel(loop.conversation)}` : ""} cases=${selected.length}${runs > 1 ? ` × ${runs} runs` : ""} concurrency=${concurrency}\nout=${outDir}\n`);
 
   let done = 0;
   const outcomes = await pool(cases, concurrency, async (c) => {
@@ -617,6 +649,18 @@ async function main(): Promise<void> {
     ...(loop ? { loop: summarizeLoop(loopRecords), deadEnds: deadEnds.map((o) => ({ id: o.id, ended: o.loop?.ended ?? "crashed", cause: o.loop?.cause ?? null, calls: o.loop?.calls ?? 0, cost: o.loop?.cost ?? 0 })) } : {}),
   };
   const ls = summary.loop;
+  /** #279: for the conversation cases, whether the recap could show what decides them, and how often the model read further back. */
+  function conversationLines(): string[] {
+    const of = outcomes.filter((o) => o.class === "conversation");
+    if (!loop || !of.length) return [];
+    const setup = loop.conversation;
+    const cases = selected.filter((c) => c.class === "conversation");
+    const shows = setup ? cases.filter((c) => recapCoverage(Infinity, requestsBack(c.earlier ?? [], c.decidedBy ?? "") ?? Infinity, setup.recapRounds)).length : 0;
+    const read = of.filter((o) => (o.loop?.conversationReads ?? 0) > 0).length;
+    return [
+      `  conversation (#279):      ${setup ? `the recap shows what decides ${shows}/${cases.length} cases` : "earlier requests not given"}${setup?.tool ? `; read older requests in ${read}/${of.length} runs` : ""}`,
+    ];
+  }
   const money = (x: number) => `$${x.toFixed(4)}`;
   const lines = [
     "",
@@ -640,6 +684,7 @@ async function main(): Promise<void> {
       if (!b.n || k === "wrong-gate") return [];
       return [`  class ${k.padEnd(13)} landed ${b.landed}/${b.n}, validates ${b.validates}/${b.n}${k === "platform" ? `, named what Potyro lacks ${b.namedNotDone}/${b.n}` : ""}`];
     }),
+    ...conversationLines(),
     ...(ls
       ? [
           `  gave up, by cause:        repeated ${ls.gaveUp.repeated} · candidates ${ls.gaveUp.candidates} · steps ${ls.gaveUp.steps} · engine ${ls.gaveUp.engine}${ls.asked ? ` · asked the person ${ls.asked}` : ""}`,
