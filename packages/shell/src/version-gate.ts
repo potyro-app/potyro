@@ -14,6 +14,7 @@
 //
 // The store half is `guardedStore` reading `AppLock`; this file decides when the lock is set.
 
+import { plural, t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import type { Store } from "@potyro/store";
 import type { AppLock } from "./app-lock.js";
@@ -48,7 +49,8 @@ async function takeUpdate(id: string, update: PublishedApp): Promise<void> {
   location.reload();
 }
 
-const NEWER_DETAIL = "Update to keep making changes. Until you do, it stays open read-only, so your older copy can’t damage the shared data.";
+/** Said at the moment it is shown (a function, not a constant: the language may have changed since this module loaded). */
+const newerDetail = (): string => t`Update to keep making changes. Until you do, it stays open read-only, so your older copy can’t damage the shared data.`;
 
 export interface GateResult {
   /** False when the user took an update and the page is reloading into it. */
@@ -108,11 +110,13 @@ export async function openVersionGate(opts: {
   const behind = appSync.isSchemaBehind(mine, published);
 
   if (update) {
+    const name = update.name;
+    const ok = t({ message: "Update", comment: "Button: take the newer version of a shared app" });
     const take = await shellDialogs.confirm(
-      behind ? `“${update.name}” has been updated to a newer version.` : `“${update.name}” was updated by someone you share it with.`,
+      behind ? t`“${name}” has been updated to a newer version.` : t`“${name}” was updated by someone you share it with.`,
       behind
-        ? { detail: NEWER_DETAIL, ok: "Update", cancel: "Not now" }
-        : { detail: "Update your copy? Your version is kept in History, so you can go back.", ok: "Update", cancel: "Not now" },
+        ? { detail: newerDetail(), ok, cancel: t`Not now` }
+        : { detail: t`Update your copy? Your version is kept in History, so you can go back.`, ok, cancel: t`Not now` },
     );
     if (take) {
       await takeUpdate(id, update);
@@ -138,10 +142,11 @@ export async function openVersionGate(opts: {
     lockBehind(now);
     asking = true;
     try {
-      const take = await shellDialogs.confirm(`“${now.name}” was just updated to a newer version.`, {
-        detail: NEWER_DETAIL,
-        ok: "Update",
-        cancel: "Not now",
+      const name = now.name;
+      const take = await shellDialogs.confirm(t`“${name}” was just updated to a newer version.`, {
+        detail: newerDetail(),
+        ok: t({ message: "Update", comment: "Button: take the newer version of a shared app" }),
+        cancel: t`Not now`,
       });
       if (take) await takeUpdate(id, now);
     } finally {
@@ -188,7 +193,11 @@ export async function migrateShared(opts: {
     await gate.published;
     try {
       const { ran, from } = await migrateOnLoad(rawStore, definition, { recordVersion: gate.recordVersion });
-      if (ran.length) toast.push(`Updated your data from ${from} to ${definition.version}.`);
+      if (ran.length) {
+        const to = definition.version;
+        const was = from ?? "";
+        toast.push(t`Updated your data from ${was} to ${to}.`);
+      }
       lock.set(null);
       refresh();
     } catch (e) {
@@ -196,18 +205,21 @@ export async function migrateShared(opts: {
       // throws leaves the data as it was. Stay read-only rather than let a new-version app write
       // into data that is still in the old shape.
       console.warn("[potyro] migration failed:", e);
-      toast.push(`Could not update your data: ${e instanceof Error ? e.message : String(e)}`);
+      const why = e instanceof Error ? e.message : String(e);
+      toast.push(t`Could not update your data: ${why}`);
       lock.set({ kind: "data", resolve: run });
     }
   };
 
   if (!chain.length || others.length === 0) return run();
 
-  const who = others.length === 1 ? others[0]! : `${others[0]} and ${others.length - 1} other ${others.length === 2 ? "person" : "people"}`;
-  const yes = await shellDialogs.confirm(`This version changes how “${definition.name}” stores its data.`, {
-    detail: `Update the shared data now? ${who} will need to update their copy too — until they do, it opens read-only for them. Your previous version stays in History.`,
-    ok: "Update data",
-    cancel: "Not now",
+  const first = others[0]!;
+  const who = others.length === 1 ? first : plural(others.length - 1, { one: `${first} and # other person`, other: `${first} and # other people` });
+  const name = definition.name;
+  const yes = await shellDialogs.confirm(t`This version changes how “${name}” stores its data.`, {
+    detail: t`Update the shared data now? ${who} will need to update their copy too — until they do, it opens read-only for them. Your previous version stays in History.`,
+    ok: t`Update data`,
+    cancel: t`Not now`,
   });
   if (yes) return run();
   lock.set({ kind: "data", resolve: run });

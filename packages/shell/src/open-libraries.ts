@@ -11,6 +11,8 @@
 //
 // An app shared before locks travelled has none: its libraries are fetched fresh, with the same
 // consent, and locked here — exactly what adding a package without a lock does.
+import { fmt } from "@potyro/i18n";
+import { plural, t } from "@lingui/core/macro";
 import { libraryHost, libraryLabel, sameCode, type AppLock, type PackagedFile, type Store } from "@potyro/store";
 import { getEsbuild, type EsbuildLike } from "./app-bundler.js";
 import { browserGet, fetchLibraries, type HttpGet } from "./library-fetch.js";
@@ -60,7 +62,7 @@ async function missing(roots: string[], lock: AppLock | undefined, have: ModuleS
 }
 
 function listOf(names: string[]): string {
-  return names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)!}`;
+  return fmt.list(names);
 }
 
 /**
@@ -78,7 +80,15 @@ export async function librariesForOpen(
 
   const lines: LibraryLine[] = absent.map((url) => ({ url, label: libraryLabel(url), host: libraryHost(url), here: false, size: sizeIn(app.lock, url) }));
   if (!(await deps.ask(lines))) {
-    return { ok: false, message: `“${app.name}” can’t open until it has ${listOf(lines.map((l) => l.label))}. Open it again to fetch ${lines.length === 1 ? "it" : "them"}.` };
+    const name = app.name;
+    const what = listOf(lines.map((l) => l.label));
+    return {
+      ok: false,
+      message: plural(lines.length, {
+        one: `“${name}” can’t open until it has ${what}. Open it again to fetch it.`,
+        other: `“${name}” can’t open until it has ${what}. Open it again to fetch them.`,
+      }),
+    };
   }
 
   const held = have ?? memoryModules({}, new Map());
@@ -104,11 +114,12 @@ export async function librariesForOpen(
 /** The question, in the card's own words: "It fetches chart.js 4.4.1, 190 KB, from esm.sh, once." */
 export async function askToFetch(name: string, lines: LibraryLine[]): Promise<boolean> {
   const [{ shellDialogs }, { describeLibrary }] = await Promise.all([import("./dialog.js"), import("./package-libraries.js")]);
-  const what = lines.length === 1 ? lines[0]!.label : `${lines.length} libraries`;
-  return shellDialogs.confirm(`“${name}” needs ${what} on this device.`, {
-    detail: `It ${lines.map((l) => describeLibrary(l)).join(", and ")}, once. After that it opens without the internet.`,
-    ok: "Fetch and open",
-    cancel: "Not now",
+  const what = lines.length === 1 ? lines[0]!.label : plural(lines.length, { one: "# library", other: "# libraries" });
+  const fetches = fmt.list(lines.map((l) => describeLibrary(l)));
+  return shellDialogs.confirm(t`“${name}” needs ${what} on this device.`, {
+    detail: t({ message: `It ${fetches}, once. After that it opens without the internet.`, comment: "fetches is one or more of “fetches chart.js 4.4.1, 190 KB, from esm.sh”" }),
+    ok: t`Fetch and open`,
+    cancel: t`Not now`,
   });
 }
 

@@ -16,6 +16,7 @@
 // Nothing here has authority: the store is in memory, the capabilities are fakes, a confirm says yes
 // to a question about sample records, and a budget stops a loop that never ends.
 
+import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
@@ -69,7 +70,8 @@ function libraryProblemOf(e: unknown, found: MissingFeature | undefined): string
   const sentence = startProblem(e);
   const library = /^(.*?) (?:needs a full web page to work \(|could not start: )/.exec(sentence)?.[1];
   if (!library || !found || found.words.startsWith("a full web page")) return sentence;
-  return `${library} uses a feature shared apps don’t have yet: ${found.words}. Apps in the sealed box do not get it, so this app can only run as yours.`;
+  const words = found.words;
+  return t`${library} uses a feature shared apps don’t have yet: ${words}. Apps in the sealed box do not get it, so this app can only run as yours.`;
 }
 
 function within<T>(ms: number, work: Promise<T>): Promise<T | undefined> {
