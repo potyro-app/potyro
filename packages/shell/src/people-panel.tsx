@@ -154,7 +154,7 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
           )
         ) : members ? (
           <p className="k-muted">
-            {owner ? <OnlyOwner name={owner.name} /> : <Trans>Only the person who created this app, who created this app, can invite or remove people.</Trans>}
+            {owner ? <OnlyOwner name={owner.name} /> : <Trans>Only the person who created this app can invite or remove people.</Trans>}
           </p>
         ) : null}
       </div>
