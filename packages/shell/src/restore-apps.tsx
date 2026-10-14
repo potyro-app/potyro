@@ -18,6 +18,8 @@ import { receiveCode } from "./app-modules.js";
 
 export interface RestoreAppsProps {
   apps: readonly AccountApp[];
+  /** The ids ticked when it opens. Every app when absent. */
+  ticked?: ReadonlySet<string>;
   /** Install the chosen apps: writes them into this device's registry and records where their data is. */
   onRestore: (apps: readonly AccountApp[]) => Promise<void>;
   onClose: () => void;
@@ -31,9 +33,9 @@ function weight(app: AccountApp): string | null {
   return fmt.number(Math.max(1, Math.round(app.sizeBytes / 1000)), { style: "unit", unit: "kilobyte" });
 }
 
-export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
+export function RestoreApps({ apps, ticked, onRestore, onClose }: RestoreAppsProps) {
   const { t } = useLingui();
-  const [chosen, setChosen] = useState<Set<string>>(() => new Set(apps.map((a) => a.id)));
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(ticked ?? apps.map((a) => a.id)));
   const [busy, setBusy] = useState(false);
 
   const toggle = (id: string): void =>
@@ -87,7 +89,11 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
             <Trans>Not now</Trans>
           </button>
           <button type="button" className="k-add k-primary-action" onClick={() => void restore()} disabled={busy || chosen.size === 0}>
-            {busy ? t`Loading…` : plural(chosen.size, { one: "Load # app", other: "Load # apps" })}
+            {busy
+              ? t`Loading…`
+              : chosen.size === 0
+                ? t({ message: "Nothing to load", comment: "Load your apps: the button when no app is ticked" })
+                : plural(chosen.size, { one: "Load # app", other: "Load # apps" })}
           </button>
         </div>
       </div>

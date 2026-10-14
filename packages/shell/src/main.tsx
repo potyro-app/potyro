@@ -786,8 +786,12 @@ async function offerAccountApps(): Promise<void> {
     // already had a Groceries of its own and the Groceries with the shopping list in it was never
     // offered: "groceries is not with sync on and with the same data as before". A factory example
     // is not a reason to withhold someone's own app.
-    const missing = mine.filter((a) => !getUserApp(a.id)?.sync);
-    if (missing.length === 0) return;
+    //
+    // And not what this device deleted, nor what it has already been offered and passed on: the
+    // offer comes back only when an app it has never been offered appears (account-offer.ts).
+    const { accountOffer, recordDeclined } = await import("./account-offer.js");
+    const offer = accountOffer(mine, (id) => getUserApp(id)?.sync === true);
+    if (!offer) return;
 
     const { RestoreApps, installFromAccount } = await import("./restore-apps.js");
     // Its own React root, over the launcher rather than in place of it. The shell renders every
@@ -800,12 +804,18 @@ async function offerAccountApps(): Promise<void> {
     await new Promise<void>((done) => {
       panel.render(
         <RestoreApps
-          apps={missing}
-          onClose={done}
+          apps={offer.apps}
+          ticked={offer.ticked}
+          onClose={() => {
+            recordDeclined(offer.apps);
+            done();
+          }}
           onRestore={async (chosen) => {
             const now = new Date().toISOString();
             for (const app of chosen) await installFromAccount(app, now);
             installed = chosen.length;
+            // What was left unticked was answered too.
+            recordDeclined(offer.apps.filter((a) => !chosen.includes(a)));
             done();
           }}
         />,
@@ -814,8 +824,7 @@ async function offerAccountApps(): Promise<void> {
     panel.unmount();
     host.remove();
     // The launcher was drawn before these apps existed and does not re-read the registry on its own.
-    // Only after something was actually installed: reloading on "Not now" would offer the same apps
-    // again on the next boot, and again, which is nagging rather than offering.
+    // Only after something was actually installed: there is nothing new to draw after "Not now".
     if (installed > 0) globalThis.location.reload();
   } catch (e) {
     // Never block boot on it: the apps already on this device are what someone came for.

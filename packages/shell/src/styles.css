@@ -10256,6 +10256,11 @@ body:has(.k-tabbar) .k-toasts {
 .k-restore-actions .k-add {
   min-height: 2.75rem;
 }
+/* Nothing ticked: the button says so, and looks it — it used to look ready and do nothing. */
+.k-restore-actions .k-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* The storage speed readout in the identity panel: a definition list of plain numbers, meant to be
    read aloud to someone who cannot see the device. */

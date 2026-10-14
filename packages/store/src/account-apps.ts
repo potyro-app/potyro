@@ -218,14 +218,20 @@ export async function publishAppToAccount(node: unknown, app: AccountApp): Promi
   }
 }
 
-/** Forget an app: it was deleted, and a new device should not offer to bring it back. */
-export async function removeAppFromAccount(node: unknown, appId: string): Promise<boolean> {
+/**
+ * Forget an app: it was deleted, and a new device should not offer to bring it back.
+ *
+ * `waitMs` as for `readAccountApps`: a node opened just for this has not necessarily got the
+ * registry yet, and a removal that finds nothing to remove from is a removal that did not happen.
+ */
+export async function removeAppFromAccount(node: unknown, appId: string, opts?: { waitMs?: number }): Promise<boolean> {
   try {
-    const map = await registry(node as Nodeish, false);
+    const waitMs = opts?.waitMs ?? 0;
+    const map = await registry(node as Nodeish, false, waitMs);
     if (!map) return false;
     map.set(appId, "", "private");
     // And in the pre-rename list, if it is a different map: it must not offer the app back.
-    const { legacy } = await find(node as Nodeish, 0);
+    const { legacy } = await find(node as Nodeish, waitMs);
     if (legacy.map && legacy.map.id !== map.id && legacy.map.get(appId)) legacy.map.set(appId, "", "private");
     return true;
   } catch {

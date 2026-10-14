@@ -8,6 +8,7 @@
 import { t } from "@lingui/core/macro";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, type UserApp } from "./user-apps.js";
+import { recordLeft } from "./account-offer.js";
 
 /**
  * Ask, then delete. Answers whether it happened.
@@ -30,6 +31,26 @@ export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sy
     },
   );
   if (!ok) return false;
+  // First: the rest of the removal clears conversations and history and can take a while, and an
+  // app gone from the launcher must not be offered back by a boot that happens in between.
+  forgetOnAccount(app.id);
   await removeUserApp(app.id);
   return true;
+}
+
+/**
+ * Take a deleted app off your account's list of apps, so "Load your apps?" does not offer it back.
+ *
+ * Only an app that had a space has an entry there. This device also remembers that it left that
+ * space, so the app is not offered back HERE even while the account cannot be reached, or while
+ * another of your devices that still has it keeps putting it back on the list.
+ */
+function forgetOnAccount(appId: string): void {
+  const root = globalThis.localStorage?.getItem(`potyro:jazz:root:user:${appId}`);
+  if (!root) return;
+  recordLeft({ id: appId, root });
+  // Not awaited: the relay may take seconds, and this device already knows not to offer it.
+  void import("./open-store.js")
+    .then((store) => store.forgetAppOnAccount(appId))
+    .catch((e: unknown) => console.warn("[potyro] could not take a deleted app off your account:", e));
 }
