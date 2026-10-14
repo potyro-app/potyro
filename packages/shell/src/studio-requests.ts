@@ -36,7 +36,7 @@ export function useStudioRequests(deps: StudioRequestsDeps): {
   useEffect(() => {
     void sendSaved(async (chatId, payload, url) => {
       await appendMessage(chatId, { kind: "event", text: sentLine(payload.title, { state: "sent", url }), request: { id: payload.id, state: "sent", ...(url ? { url } : {}) } }, new Date().toISOString());
-    }).then(deps.refresh, () => {});
+    }, { only: (p) => !p.kind }).then(deps.refresh, () => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return useMemo(

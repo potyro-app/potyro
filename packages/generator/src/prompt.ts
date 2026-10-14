@@ -211,7 +211,8 @@ LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
   shows under a heading — listed in a group, a detail \`sections\` entry or a table's \`columns\` — says
   what it is called: \`perServing: { label: "Calories per serving", value: (r) => r.kcal / r.servings }\`.
   Without a label the heading is the key ("Per Serving"), in every language. A computed used only in
-  a binding, a filter or a sort stays a bare function.
+  a binding, a filter or a sort stays a bare function. A shown one returning a key takes \`labels\` (as
+  an enum); one returning an object, \`format: "{kg, number} kg × {reps}"\`.
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
   \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
   NEVER \`actions: { water: { label: "...", run: ... } }\`. A detail view lists action KEYS:
