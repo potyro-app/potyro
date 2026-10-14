@@ -60,6 +60,10 @@ export interface ComputedDef {
   value: Computed;
   /** What the value is called where a page shows it; default: the key, humanised. */
   label?: Words;
+  /** Words per returned key, like an enum's `labels`. */
+  labels?: Record<string, Words>;
+  /** How an object value reads: an ICU message over its properties. */
+  format?: Words;
 }
 
 export interface EntityDef {

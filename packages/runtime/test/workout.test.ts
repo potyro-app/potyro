@@ -5,7 +5,7 @@
 
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import workout from "../../../examples/workout.app.js";
-import { defineApp, type AppDefinition } from "potyro";
+import { computedInfo, defineApp, type AppDefinition, type EntityDef } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
@@ -167,4 +167,25 @@ describe("self-referential cycle guard", () => {
     await store.insert("node", { n: 1 });
     await expect(runtime.queryPage("nodes")).rejects.toThrow(/Computed cycle/);
   });
+});
+
+describe("the rolling best reads as words", () => {
+  // It is an object (the session view prefills from it); its `format` says it on the detail page.
+  for (const [language, heavy, bodyweight] of [
+    ["en", "82.5 kg × 8", "12 reps"],
+    ["pl", "82,5 kg × 8", "12 powt."],
+    ["de", "82,5 kg × 8", "12 Wdh."],
+  ] as const) {
+    it(`in ${language}`, async () => {
+      const store = new MemoryStore();
+      await store.open("workout");
+      const host = createHost();
+      const loaded = await host.load({ kind: "module", app: workout as never });
+      const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav, languages: [language] });
+      const format = computedInfo(runtime.definition.entities.exercise as unknown as EntityDef, "lastBest")?.format;
+      expect(format).toBeDefined();
+      expect(runtime.ctx.t(format!, { kg: 82.5, reps: 8 })).toBe(heavy);
+      expect(runtime.ctx.t(format!, { kg: 0, reps: 12 })).toBe(bodyweight);
+    });
+  }
 });
