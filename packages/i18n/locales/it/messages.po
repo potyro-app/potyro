@@ -1227,6 +1227,7 @@ msgid "Asked for, but not this app’s to fix"
 msgstr "Richiesto, ma non spetta a quest’app risolverlo"
 
 #: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
 msgid "Asked to try again: {first}"
 msgstr "Chiesto di riprovare: {first}"
 
@@ -1544,6 +1545,7 @@ msgstr "Controllala"
 msgid "Check storage speed"
 msgstr "Controlla la velocità della memoria"
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio.tsx
 msgid "Checking it…"
 msgstr "Controllo in corso…"
@@ -1795,6 +1797,7 @@ msgstr "Non è stato possibile importare quei dati: {why}"
 msgid "Could not join: {why}"
 msgstr "Non è stato possibile entrare: {why}"
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Could not make it: {reason}"
 msgstr "Non è stato possibile crearla: {reason}"
@@ -2527,6 +2530,18 @@ msgid "Hue {0}"
 msgstr "Tonalità {0}"
 
 #: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: every version I tried failed the app's own checks. Try describing a smaller app, or say it another way."
+msgstr "Non è stato possibile fare questa app: ogni versione provata non ha superato i controlli dell’app. Descrivi un’app più piccola, o dillo in un altro modo."
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: I kept coming back to the same answer without finding one that works. Try saying it another way."
+msgstr "Non è stato possibile fare questa app: tornava sempre la stessa risposta, senza trovarne una che funzioni. Dillo in un altro modo."
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: I ran out of tries before finding a version that works. Try describing a smaller app."
+msgstr "Non è stato possibile fare questa app: i tentativi sono finiti prima di trovare una versione che funzioni. Descrivi un’app più piccola."
+
+#: ../shell/src/studio-engine.ts
 msgid "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way."
 msgstr "Non è stato possibile fare questa modifica: ogni versione provata non ha superato i controlli dell’app. Chiedi un passo più piccolo, o dillo in un altro modo."
 
@@ -2557,6 +2572,10 @@ msgstr "L’app non è stata modificata: non è qualcosa che si possa cambiare. 
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: what you asked for needs something Potyro can't do yet."
 msgstr "L’app non è stata modificata: ciò che chiedi richiede qualcosa che Potyro non sa ancora fare."
+
+#: ../shell/src/studio-engine.ts
+msgid "I didn't make the app: what you asked for needs something Potyro can't do yet."
+msgstr "L’app non è stata fatta: ciò che chiedi richiede qualcosa che Potyro non sa ancora fare."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
@@ -4463,6 +4482,7 @@ msgid "Stopped"
 msgstr "Fermato"
 
 #: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
 msgid "Stopped. Nothing was changed."
 msgstr "Fermato. Non è stato cambiato nulla."
 
@@ -4808,6 +4828,7 @@ msgstr "Ragiona a fondo se si blocca"
 msgid "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
 msgstr "Il ragionamento si paga come la risposta, al prezzo di output indicato sopra, quindi ogni livello costa più del precedente per ogni modifica."
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Thinking via {label}…"
 msgstr "Ragionamento tramite {label}…"

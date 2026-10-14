@@ -24,7 +24,7 @@ export interface EntityShape {
   fields: Record<string, Field>;
   editableBy?: "anyone" | "creator";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  computed?: Record<string, (...args: any[]) => any>;
+  computed?: Record<string, ((...args: any[]) => any) | { value: (...args: any[]) => any }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actions?: Record<string, (...args: any[]) => any>;
 }

@@ -1,4 +1,4 @@
-import { resolveView, humanizeKey } from "potyro";
+import { computedInfo, resolveView, humanizeKey, type EntityDef } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { View } from "potyro";
 import { t } from "@lingui/core/macro";
@@ -60,7 +60,9 @@ export function displayFieldFor(runtime: PotyroRuntime, entity: string): string 
 // re-exported, because `fieldLabel` below calls it and `export … from` does not bring it into scope.
 export { humanizeKey };
 
-/** A readable label for a field/computed key on an entity. */
-export function fieldLabel(runtime: PotyroRuntime, entity: string, key: string): string {
-  return runtime.definition.entities[entity]?.fields[key]?.label ?? humanizeKey(key);
+/** A readable label for a field/computed key on an entity: the field's label, else the computed's
+ *  (#310) — both already in the person's language — else the key, humanised. */
+export function fieldLabel(runtime: Pick<PotyroRuntime, "definition">, entity: string, key: string): string {
+  const def = runtime.definition.entities[entity];
+  return def?.fields[key]?.label ?? computedInfo(def as EntityDef | undefined, key)?.label ?? humanizeKey(key);
 }

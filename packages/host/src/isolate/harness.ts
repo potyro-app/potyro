@@ -94,11 +94,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
 
   // async so computed may be async (and call ctx.query). Sequential in declaration order so a
   // computed can read an earlier one.
+  // A computed is a function or { value, label } (#310): the function either way.
+  function computedFn(c){ return typeof c === "function" ? c : c.value; }
   async function evalComputed(app, entity, row, ctx){
     var def = app.entities[entity];
     if (!def || !def.computed) return row;
     var keys = Object.keys(def.computed);
-    for (var i=0;i<keys.length;i++){ row[keys[i]] = await def.computed[keys[i]](row, ctx); }
+    for (var i=0;i<keys.length;i++){ row[keys[i]] = await computedFn(def.computed[keys[i]])(row, ctx); }
     return row;
   }
 
@@ -264,7 +266,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       try {
         var result = null;
         switch (p.kind){
-          case "computed": result = await app.entities[p.entity].computed[p.key](record, ctx); break;
+          case "computed": result = await computedFn(app.entities[p.entity].computed[p.key])(record, ctx); break;
           case "action": { var act = app.entities[p.entity].actions[p.key]; await (typeof act === "function" ? act : act.run)(record, ctx, p.input); result = null; break; }
           case "filter": { var v = findView(app, p.pageId); result = (v && v.filter) ? !!(await v.filter(record, ctx)) : true; break; }
           case "sort": { var vs = findView(app, p.pageId); result = (vs && vs.sort) ? Number(vs.sort(p.a, p.b, ctx)) : 0; break; }

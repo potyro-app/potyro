@@ -591,23 +591,27 @@ export default defineApp({
         // ASYNC computed that reads history: the rolling personal best for this exercise across
         // the last N sessions of its day. Queries a *different* entity (session), reading the
         // nested entries → sets of each. Returns the best set, or null.
-        lastBest: async (e, ctx) => {
-          const sessions = await ctx.query("session", {
-            filter: (s: any) => s.day === e.day,
-            sort: (a: any, b: any) => b.date.getTime() - a.date.getTime(),
-            limit: LOOKBACK,
-          });
-          let best: { kg?: number; reps?: number; score: number } | null = null;
-          for (const s of sessions) {
-            for (const entry of (s.entries as any[]) ?? []) {
-              if (refId(entry.exercise) !== e.id) continue;
-              for (const set of (entry.sets as any[]) ?? []) {
-                const score = setScore(Boolean(e.bodyweight), set);
-                if (score > 0 && (!best || score > best.score)) best = { ...set, score };
+        lastBest: {
+          // The same words as the section it is the only row of, so the row's own heading is hidden.
+          label: { en: "Rolling best", "pt-BR": "Melhor recente", de: "Aktueller Bestwert", es: "Mejor reciente", pl: "Ostatni rekord", it: "Record recente" },
+          value: async (e, ctx) => {
+            const sessions = await ctx.query("session", {
+              filter: (s: any) => s.day === e.day,
+              sort: (a: any, b: any) => b.date.getTime() - a.date.getTime(),
+              limit: LOOKBACK,
+            });
+            let best: { kg?: number; reps?: number; score: number } | null = null;
+            for (const s of sessions) {
+              for (const entry of (s.entries as any[]) ?? []) {
+                if (refId(entry.exercise) !== e.id) continue;
+                for (const set of (entry.sets as any[]) ?? []) {
+                  const score = setScore(Boolean(e.bodyweight), set);
+                  if (score > 0 && (!best || score > best.score)) best = { ...set, score };
+                }
               }
             }
-          }
-          return best;
+            return best;
+          },
         },
       },
     },
@@ -669,13 +673,22 @@ export default defineApp({
       computed: {
         // The day is an option ("push"), shown in the person's words; the date as their calendar writes it.
         label: (s, ctx) => `${capital(dayName(s.day, ctx))} — ${ctx.format.date(s.date, { day: "numeric", month: "numeric", year: "numeric" })}`,
-        duration: (s, ctx) => (s.durationSec ? ctx.format.number(Math.round(s.durationSec / 60), { style: "unit", unit: "minute" }) : "—"),
-        totalSets: (s) => ((s.entries as any[]) ?? []).reduce((n: number, e: any) => n + (e.sets?.length ?? 0), 0),
-        totalVolume: (s) =>
-          ((s.entries as any[]) ?? []).reduce(
-            (v: number, e: any) => v + ((e.sets as any[]) ?? []).reduce((a: number, x: any) => a + (x.kg ?? 0) * (x.reps ?? 0), 0),
-            0,
-          ),
+        duration: {
+          label: { en: "Duration", "pt-BR": "Duração", de: "Dauer", es: "Duración", pl: "Czas trwania", it: "Durata" },
+          value: (s, ctx) => (s.durationSec ? ctx.format.number(Math.round(s.durationSec / 60), { style: "unit", unit: "minute" }) : "—"),
+        },
+        totalSets: {
+          label: { en: "Total sets", "pt-BR": "Total de séries", de: "Sätze gesamt", es: "Series totales", pl: "Serie łącznie", it: "Serie totali" },
+          value: (s) => ((s.entries as any[]) ?? []).reduce((n: number, e: any) => n + (e.sets?.length ?? 0), 0),
+        },
+        totalVolume: {
+          label: { en: "Total volume (kg)", "pt-BR": "Volume total (kg)", de: "Gesamtvolumen (kg)", es: "Volumen total (kg)", pl: "Objętość łącznie (kg)", it: "Volume totale (kg)" },
+          value: (s) =>
+            ((s.entries as any[]) ?? []).reduce(
+              (v: number, e: any) => v + ((e.sets as any[]) ?? []).reduce((a: number, x: any) => a + (x.kg ?? 0) * (x.reps ?? 0), 0),
+              0,
+            ),
+        },
       },
       actions: {
         // One set, asked for in one form (#112): which exercise, how heavy, how many. It starts from

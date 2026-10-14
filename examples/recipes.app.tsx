@@ -421,22 +421,36 @@ export default defineApp({
           r.ingredients.reduce((s, i) => s + (i.ingredient.fatPer100 ?? 0) * i.quantity / 100, 0),
         carbs: (r) =>
           r.ingredients.reduce((s, i) => s + (i.ingredient.carbsPer100 ?? 0) * i.quantity / 100, 0),
-        caloriesPerServing: (r) => r.calories / Math.max(r.servings, 1),
-        proteinPerServing: (r) => r.protein / Math.max(r.servings, 1),
+        // A computed a page shows under a heading says what it is called, in every language (#310).
+        caloriesPerServing: {
+          label: { en: "Calories per serving", "pt-BR": "Calorias por porção", de: "Kalorien pro Portion", es: "Calorías por ración", pl: "Kalorie na porcję", it: "Calorie per porzione" },
+          value: (r) => r.calories / Math.max(r.servings, 1),
+        },
+        proteinPerServing: {
+          label: { en: "Protein per serving", "pt-BR": "Proteína por porção", de: "Eiweiß pro Portion", es: "Proteína por ración", pl: "Białko na porcję", it: "Proteine per porzione" },
+          value: (r) => r.protein / Math.max(r.servings, 1),
+        },
         difficulty: (r) => scoreDifficulty(r), // "easy" | "medium" | "hard"
         // derived from the ingredient models — the whole point of relations being resolved
-        diet: (r) => {
-          const diets = r.ingredients.map((i: any) => i.ingredient.diet).filter(Boolean);
-          if (diets.length === 0) return "unknown";
-          if (diets.every((d: string) => d === "vegan")) return "vegan";
-          if (diets.every((d: string) => d === "vegan" || d === "vegetarian")) return "vegetarian";
-          return "animal-based";
+        diet: {
+          label: { en: "Diet", "pt-BR": "Dieta", de: "Ernährung", es: "Dieta", pl: "Dieta", it: "Dieta" },
+          value: (r) => {
+            const diets = r.ingredients.map((i: any) => i.ingredient.diet).filter(Boolean);
+            if (diets.length === 0) return "unknown";
+            if (diets.every((d: string) => d === "vegan")) return "vegan";
+            if (diets.every((d: string) => d === "vegan" || d === "vegetarian")) return "vegetarian";
+            return "animal-based";
+          },
         },
-        estimatedCost: (r) =>
-          r.ingredients.reduce((s: number, i: any) => s + (i.ingredient.pricePerKg ?? 0) * (i.quantity / 1000), 0),
+        estimatedCost: {
+          label: { en: "Estimated cost", "pt-BR": "Custo estimado", de: "Geschätzte Kosten", es: "Coste estimado", pl: "Szacowany koszt", it: "Costo stimato" },
+          value: (r) => r.ingredients.reduce((s: number, i: any) => s + (i.ingredient.pricePerKg ?? 0) * (i.quantity / 1000), 0),
+        },
         // which ingredients this recipe needs that aren't currently in stock
-        missingIngredients: (r) =>
-          r.ingredients.filter((i: any) => !i.ingredient.inStock).map((i: any) => i.ingredient.name),
+        missingIngredients: {
+          label: { en: "Missing ingredients", "pt-BR": "Ingredientes em falta", de: "Fehlende Zutaten", es: "Ingredientes que faltan", pl: "Brakujące składniki", it: "Ingredienti mancanti" },
+          value: (r) => r.ingredients.filter((i: any) => !i.ingredient.inStock).map((i: any) => i.ingredient.name),
+        },
         canCook: (r) => r.ingredients.length > 0 && r.ingredients.every((i: any) => i.ingredient.inStock),
       },
 

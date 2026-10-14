@@ -212,7 +212,7 @@ export function primeCorpus(corpus: Corpus, instruction: string, source: string)
     out += block;
   }
   if (!out) return "";
-  return `From this release's example apps and docs, passages that may speak to this change (search_corpus finds more; read(path, line) shows a file):\n${out}`;
+  return `From this release's example apps and docs, passages that may speak to this request (search_corpus finds more; read(path, line) shows a file):\n${out}`;
 }
 
 // ---- read ----

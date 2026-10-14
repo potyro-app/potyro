@@ -178,12 +178,12 @@ test("a made app is kept at once, with what was asked in its history", async ({ 
   await expect(studio.getByRole("button", { name: "Create the app" })).toBeVisible();
 });
 
-// A generate that comes back structurally broken is repaired through the SAME gate as a modify — an
-// edit block, not a whole-file rewrite. Before this, a repair asked for the whole file again, so a
-// good edit followed by one validation slip reintroduced the retyping the edit format exists to
-// prevent. This drives GENERATE with an invalid reply, then proves the follow-up repair round is an
-// edit, applied, and that the validator's own words (not just "fix it") reached the model.
-test("a generate that needs repair is repaired with an edit, through the same gate as a modify", async ({ page }) => {
+// A generate that comes back structurally broken is repaired with an edit block, not a whole-file
+// rewrite — a repair that asked for the whole file again reintroduced the retyping the edit format
+// exists to prevent. Since #262 phase 3 the repair happens inside the create loop: the gate turns
+// the first draft back, a second independent draft is tried (here it fails too), and the draft with
+// the fewest problems is repaired with the validator's own words (not just "fix it").
+test("a generate that needs repair is repaired with an edit, with the validator's words", async ({ page }) => {
   // Pretty-printed so the page's view sits on its own lines — the repair edit below targets exactly
   // one of them.
   const GENERATED = [
@@ -225,7 +225,8 @@ test("a generate that needs repair is repaired with an edit, through the same ga
     const body = route.request().postDataJSON() as { messages: Array<{ role: string; content: string }> };
     hits.push("openrouter");
     sent.push(JSON.stringify(body.messages));
-    const content = hits.length === 1 ? "```ts\n" + GENERATED + "\n```" : EDIT_REPLY;
+    // 1: the first draft; 2: the second, independent draft, broken another way; 3: the repair.
+    const content = hits.length === 1 ? "```ts\n" + GENERATED + "\n```" : hits.length === 2 ? "```ts\n" + GENERATED.replace('"lisst"', '"lisst2"') + "\n```" : EDIT_REPLY;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -237,11 +238,10 @@ test("a generate that needs repair is repaired with an edit, through the same ga
   await chooseOpenRouter(page, studio);
 
   await ask(studio, "a reading tracker");
-  // The repair round runs after the first (invalid) build, so the card waits out both.
+  // The repair runs inside the loop, after both drafts, so the card waits out all three.
   const preview = await openFromCard(studio);
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
-  await expect(currentCard(studio).locator(".k-card-what")).toContainText("Repaired with 1 edit.");
   await expect(studio.locator(".k-card-held")).toHaveCount(0);
   await expect(page.locator(".k-form-error")).toHaveCount(0);
 
@@ -250,11 +250,13 @@ test("a generate that needs repair is repaired with an edit, through the same ga
   expect(after).toContain('type: "list"'); // the repair landed
   expect(after).not.toContain('type: "lisst"');
 
-  // Exactly two requests: the invalid generate, then one repair round — no extra retries.
-  expect(hits).toEqual(["openrouter", "openrouter"]);
-  expect(sent[1]).toContain("Fix exactly these problems"); // buildRepairInstruction's own words
+  // Exactly three requests: two drafts, then one repair — no extra retries.
+  expect(hits).toEqual(["openrouter", "openrouter", "openrouter"]);
+  expect(sent[2]).toContain("Send the corrected app"); // the loop's repair turn
+  // The repair continues the FIRST draft's conversation (fewest problems, first on a tie), not the second's.
+  expect(sent[2]).not.toContain("lisst2");
   // The validator's own words reached the model — including the bad value itself (#76), so the
   // model can SEARCH for the line it wrote rather than hunt for it from a path.
-  expect(sent[1]).toContain("Invalid discriminator value");
-  expect(sent[1]).toMatch(/got \\?"lisst\\?"/);
+  expect(sent[2]).toContain("Invalid discriminator value");
+  expect(sent[2]).toMatch(/got \\?"lisst\\?"/);
 });
