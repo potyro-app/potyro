@@ -40,21 +40,34 @@ export function withPermissions(xml) {
   return { xml: xml.replace(/<\/manifest>\s*$/, `${block}</manifest>\n`), added: missing.map(nameOf) };
 }
 
-// Potyro in Android's share sheet (#213): text shared from another app — what another AI made —
-// arrives as ACTION_SEND text/*, which @capgo/capacitor-share-target hands to the shell. Text only for
-// now; images come later. Inside the main activity, where the plugin reads the intent.
+// Potyro in Android's share sheet (#213, #254): text shared from another app — what another AI made —
+// arrives as ACTION_SEND text, and a file (or several) as ACTION_SEND / SEND_MULTIPLE with a stream,
+// which @capgo/capacitor-share-target copies into the app's cache and hands to the shell. "Open with
+// Potyro" on a file is ACTION_VIEW on a content:// (or file://) address; `@capacitor/app` reports it
+// as an opened URL. Inside the main activity, where both plugins read the intent.
 export const SHARE_FILTER = `<intent-filter android:label="Add to Potyro">
                 <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/*" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter android:label="Potyro">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="*/*" />
+                <data android:scheme="file" android:mimeType="*/*" />
             </intent-filter>`;
 
-/** The manifest with the share intent filter in the main activity, once. Pure. */
+/** The text-only filter an earlier build wrote, which this one replaces. */
+const TEXT_ONLY = /<intent-filter android:label="Add to Potyro">\s*<action android:name="android\.intent\.action\.SEND" \/>\s*<category android:name="android\.intent\.category\.DEFAULT" \/>\s*<data android:mimeType="text\/\*" \/>\s*<\/intent-filter>\s*/;
+
+/** The manifest with the share and open-with filters in the main activity, once. Pure. */
 export function withShareTarget(xml) {
-  if (xml.includes("android.intent.action.SEND")) return { xml, added: false };
+  if (xml.includes("android.intent.action.SEND_MULTIPLE")) return { xml, added: false };
+  const base = xml.replace(TEXT_ONLY, "");
   const activity = /(<activity\b[^>]*android:name="[^"]*MainActivity"[\s\S]*?)(\s*<\/activity>)/;
-  if (!activity.test(xml)) return { xml, added: false };
-  return { xml: xml.replace(activity, (_, body, close) => `${body}\n            ${SHARE_FILTER}${close}`), added: true };
+  if (!activity.test(base)) return { xml, added: false };
+  return { xml: base.replace(activity, (_, body, close) => `${body}\n            ${SHARE_FILTER}${close}`), added: true };
 }
 
 // Running it (rather than importing it) patches the generated project.
@@ -71,6 +84,6 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
   } else {
     writeFileSync(manifest, share.xml);
     if (added.length) console.log(`[patch-manifest] added ${added.length} permission(s): ${added.join(", ")}.`);
-    if (share.added) console.log("[patch-manifest] added the share target (text/*) to MainActivity.");
+    if (share.added) console.log("[patch-manifest] added the share and open-with targets to MainActivity.");
   }
 }

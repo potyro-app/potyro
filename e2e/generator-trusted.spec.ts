@@ -52,7 +52,7 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   const tools = await openSource(page, studio);
   await expect(tools.getByRole("textbox", { name: "App source" })).toHaveValue(/defineApp/);
   await tools.getByRole("button", { name: "Save changes" }).click();
-  await tools.getByRole("button", { name: "Close code and history" }).click();
+  await tools.getByRole("button", { name: "Close code, files and history" }).click();
   const preview = await openFromCard(studio);
   await expect(preview.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
   await expect(preview.locator(".k-app")).toHaveAttribute("data-provenance", "trusted"); // the user's own app runs direct

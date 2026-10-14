@@ -186,6 +186,7 @@ CONTRACT
     - \`media\` -> a \`MediaRef\`; render it through a media binding, do not read it as a URL.
     - \`media\` is a tile with a preview and (on a phone) Camera / Library; set \`accept\` and, when
       a record can have several, \`multiple: true\`. Never ask for a URL field "for the photo".
+    - \`file\` -> a \`FileRef\` or null, a pointer: read it with \`await ctx.files.text(n.doc)\`.
     - text/number/boolean/enum/tags/geo/list read as written. An \`enum\` picks its own control
       from the option count (up to five are a row of buttons, more a searchable picker) — never
       write a control; give it \`colors\` (red orange yellow green teal blue purple pink grey) only
@@ -296,6 +297,9 @@ migrations: [
     \`ctx.caps.filesystem.pick()\` / \`.save(name, blob)\`, \`ctx.caps.haptics\`, \`ctx.caps.network\`
   Declare what the app needs at the top level: \`permissions: { geo: true, camera: true }\`.
 - \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
+- \`ctx.files\` — the app's own folder. \`null\` from \`text\`/\`json\` = not here
+  yet, never empty. \`import()\` = the person picks; a \`file\` field stores \`{ id, path, name, mime }\`.
+  Starting data is a shipped JSON: \`ctx.files.json("plan.json")\`.
 - \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg, { ok, destructive })\`, \`await prompt(msg)\`, \`await pick(items)\`,
   \`await sheet({ title, items: [{ id, label, detail, destructive }] })\` / \`menu(...)\` for a short choice,
   \`await form({ title, fields: { kg: { type: "number", unit: "kg" } }, initial, submit })\` when an action needs

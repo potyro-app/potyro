@@ -1572,6 +1572,402 @@ th.k-data-raw {
   }
 }
 
+/* tokens-only: start — files */
+/* An app's files (#254): the Data page's Files tab and the Studio's. A list of names, each with a
+   small coloured tag saying what kind of file it is (the hue per kind is set on the tag, the
+   lightness and chroma are the person-colour tokens, so both themes read), where it came from, its
+   size and when it changed. The whole panel is a drop target; while files are held over it, it says
+   so and lifts. */
+.k-files {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 12rem;
+  flex: 1 1 auto;
+  border-radius: var(--radius);
+  transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.k-files-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-files-bar-spacer {
+  flex: 1;
+}
+.k-files-summary {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.k-files-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.k-files-error {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--danger-line);
+  border-radius: var(--radius-sm);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+.k-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+.k-files-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-files-row:last-child {
+  border-bottom: 0;
+}
+.k-files-row:hover {
+  background: color-mix(in oklab, var(--accent) 7%, var(--surface-raised));
+}
+.k-files-row[data-fresh] {
+  animation: files-arrived 2.4s var(--ease) 1;
+}
+@keyframes files-arrived {
+  0%,
+  35% {
+    background: var(--accent-tint);
+  }
+}
+.k-files-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.6rem 0.4rem 0.6rem 0.75rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.k-files-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+.k-files-tag {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.6rem;
+  border-radius: 7px 11px 7px 7px;
+  background: oklch(var(--person-avatar) var(--k-hue, 80));
+  color: oklch(var(--person-avatar-ink) var(--k-hue, 80));
+  box-shadow: inset 0 -2px 0 oklch(var(--person-avatar-line) var(--k-hue, 80) / 0.6);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.k-files-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.k-files-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--ink);
+}
+.k-files-folder {
+  order: -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.k-files-meta {
+  display: grid;
+  grid-template-columns: 9.5rem 4.5rem 4.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.k-files-size,
+.k-files-when {
+  text-align: right;
+  white-space: nowrap;
+}
+.k-files-meta[data-no-origin] {
+  grid-template-columns: 4.5rem 4.5rem;
+}
+.k-files-origin {
+  justify-self: start;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.k-files-origin[data-origin="shipped"] {
+  border-color: var(--accent-line);
+  background: var(--accent-tint);
+  color: var(--ink);
+}
+.k-files-origin[data-origin="imported"] {
+  border-color: var(--ok-line);
+  background: var(--ok-tint);
+  color: var(--ok);
+}
+.k-files-more {
+  flex: none;
+}
+.k-files-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4) 2.5rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.k-files-empty h3 {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+.k-files-empty p {
+  max-width: 30rem;
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.k-files-empty .k-files-add {
+  margin-top: var(--space-3);
+}
+/* The Studio's Files tab: one line on what these files are, above the same panel. */
+.k-studio-files-lede {
+  max-width: 44rem;
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.k-studio-files-done {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--ok-line);
+  border-radius: var(--radius-sm);
+  background: var(--ok-tint);
+  color: var(--ok);
+  font-size: 0.88rem;
+}
+/* Three sheets, fanned: a folder without a folder icon. */
+.k-files-empty-mark {
+  position: relative;
+  width: 3.4rem;
+  height: 3.4rem;
+}
+.k-files-empty-mark span {
+  position: absolute;
+  inset: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px 10px 6px 6px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+}
+.k-files-empty-mark span:nth-child(1) {
+  transform: rotate(-11deg) translateX(-0.45rem);
+  background: oklch(var(--person-avatar) 240);
+}
+.k-files-empty-mark span:nth-child(2) {
+  transform: rotate(8deg) translateX(0.45rem);
+  background: oklch(var(--person-avatar) 150);
+}
+/* What the panel says while files are held over it. Hidden until then. */
+.k-files-drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.99);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur) var(--ease);
+}
+.k-files[data-dropping] .k-files-drop {
+  opacity: 1;
+  transform: none;
+}
+.k-files[data-dropping] > :not(.k-files-drop) {
+  opacity: 0.35;
+}
+@media (max-width: 720px) {
+  .k-files-open {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0.15rem;
+  }
+  .k-files-tag {
+    grid-row: span 2;
+  }
+  .k-files-meta {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.55rem;
+    font-size: 0.76rem;
+  }
+  .k-files-origin {
+    padding: 0 0.4rem;
+    font-size: 0.68rem;
+  }
+  .k-files-size,
+  .k-files-when {
+    text-align: left;
+  }
+  .k-files-origin + .k-files-size::before,
+  .k-files-when::before {
+    content: "·";
+    margin-right: 0.55rem;
+    color: var(--ink-faint);
+  }
+  .k-files-bar .k-files-add {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* The viewer: a file, read-only. Wide enough for a page of text; the whole screen on a phone. */
+.k-modal-scrim.k-viewer-scrim {
+  align-items: center;
+}
+.k-viewer {
+  width: min(52rem, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: modal-in var(--dur) var(--ease);
+}
+.k-viewer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+.k-viewer-title {
+  flex: 1;
+  min-width: 0;
+}
+.k-viewer-title h3 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+.k-viewer-title p {
+  margin: 0.1rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.k-viewer-body {
+  flex: 1 1 auto;
+  min-height: min(18rem, 50vh);
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--surface-raised);
+}
+.k-viewer-body[data-kind="image"],
+.k-viewer-body[data-kind="video"],
+.k-viewer-body[data-kind="audio"] {
+  display: grid;
+  place-items: center;
+  background: var(--surface-sunken);
+}
+.k-viewer-text {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+.k-viewer-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.k-viewer-media {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: var(--radius-sm);
+}
+.k-viewer-note {
+  margin: var(--space-3) 0 0;
+  color: var(--ink-soft);
+}
+@media (max-width: 720px) {
+  .k-modal-scrim.k-viewer-scrim {
+    padding: 0;
+    align-items: stretch;
+  }
+  .k-viewer {
+    max-height: none;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    padding-top: var(--k-safe-top);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-files-row[data-fresh] {
+    animation: none;
+    background: var(--accent-tint);
+  }
+}
+/* tokens-only: end — files */
+
 /* A chip you type into — search, or a figure picked at view time. Chip-shaped so it belongs in the
    row, but it is an input: it wears the ink of typed text and lights up when it is holding one. */
 .k-value-chip {
@@ -10801,6 +11197,119 @@ body:has(.k-tabbar) .k-toasts {
   flex: 1;
   font-weight: 600;
 }
+
+/* tokens-only: start — incoming files */
+/* Files held over Potyro's window (#254): the whole window says it will take them. Pointer events
+   pass through, so the drop lands on the page underneath — or on a Files panel, which takes it. */
+.k-dropcover {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--scrim-soft);
+  pointer-events: none;
+  animation: scrim-in var(--dur-fast) var(--ease);
+}
+.k-dropcover-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  width: min(26rem, 100%);
+  padding: 2rem 1.6rem 1.8rem;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: modal-in var(--dur) var(--ease);
+}
+.k-dropcover-mark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.k-dropcover-card strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+.k-dropcover-card span:last-child {
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+/* "Add these files to…": the share page's question, in a dialog. */
+.k-incoming {
+  width: min(32rem, 100%);
+  display: grid;
+  gap: 0.8rem;
+}
+.k-incoming .k-ask-eyebrow {
+  margin: 0;
+}
+.k-incoming-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.k-incoming-files {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: 0.86rem;
+}
+.k-incoming-files li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0.25rem 0;
+}
+.k-incoming-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.k-incoming-file-size,
+.k-incoming-more {
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.k-incoming .k-share-apps {
+  max-height: min(22rem, 45vh);
+  overflow-y: auto;
+  padding: 2px;
+}
+.k-incoming .k-ask-off {
+  justify-self: start;
+}
+@media (max-width: 720px) {
+  .k-modal-scrim:has(> .k-incoming) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .k-incoming {
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(1.25rem + var(--k-safe-bottom));
+  }
+}
+/* tokens-only: end — incoming files */
 
 /* What Ask cost (#213): quiet, always said. */
 .k-ask-cost {
