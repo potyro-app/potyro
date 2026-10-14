@@ -74,6 +74,40 @@ export async function loadActivity(runtime: PotyroRuntime, appId: string): Promi
   );
 }
 
+/** A value, short: the runtime's rules (activity.ts `show`), said in the person's language. */
+function shown(v: unknown): string {
+  if (v == null || v === "") return t({ message: "nothing", comment: "Activity feed: a field that has no value" });
+  if (v instanceof Date) return fmt.date(v);
+  if (typeof v === "boolean") return v ? t({ message: "yes", comment: "Activity feed: a ticked box" }) : t({ message: "no", comment: "Activity feed: an unticked box" });
+  if (typeof v === "number") return fmt.number(v);
+  if (Array.isArray(v)) return v.length ? v.map(shown).join(", ") : t({ message: "nothing", comment: "Activity feed: a field that has no value" });
+  if (typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    for (const k of ["name", "title", "label"]) if (typeof o[k] === "string") return o[k] as string;
+    return t({ message: "something", comment: "Activity feed: a value that cannot be shown in words" });
+  }
+  return String(v);
+}
+
+/**
+ * The line for one change. The runtime assembles an English one (`item.text`, kept for its tests and
+ * its other readers); the feed says it in the person's language from the same parts. Yourself and
+ * someone else are separate sentences, because many languages conjugate them differently.
+ */
+function sentence(item: ActivityItem, me: boolean): string {
+  const who = item.byName;
+  const field = item.fieldLabel;
+  const to = shown(item.to);
+  const record = item.recordLabel;
+  if (item.from === undefined) {
+    if (me) return record ? t`You set ${field} to ${to} on ${record}` : t`You set ${field} to ${to}`;
+    return record ? t`${who} set ${field} to ${to} on ${record}` : t`${who} set ${field} to ${to}`;
+  }
+  const from = shown(item.from);
+  if (me) return record ? t`You changed ${field} from ${from} to ${to} on ${record}` : t`You changed ${field} from ${from} to ${to}`;
+  return record ? t`${who} changed ${field} from ${from} to ${to} on ${record}` : t`${who} changed ${field} from ${from} to ${to}`;
+}
+
 /** "2 minutes ago" — precise enough for a feed, and it never says "in -3 seconds". */
 function ago(at: Date, now: number): string {
   const seconds = Math.max(0, Math.round((now - at.getTime()) / 1000));
@@ -97,6 +131,7 @@ export function ActivityPanel({
   const { t } = useLingui();
   const now = Date.now();
   const appName = runtime.definition.name;
+  const me = runtime.ctx.me?.id;
 
   // Reading the panel IS having seen it, so the watermark moves on close rather than on open —
   // closing it without reading would otherwise silently discard everything it was showing.
@@ -139,7 +174,7 @@ export function ActivityPanel({
           <ul className="k-activity-list">
             {items.map((item) => (
               <li key={`${item.recordId}:${item.field}:${item.at.getTime()}`} className="k-activity-item">
-                <span className="k-activity-text">{item.text}</span>
+                <span className="k-activity-text">{sentence(item, item.by === me)}</span>
                 <time className="k-activity-when" dateTime={item.at.toISOString()}>
                   {ago(item.at, now)}
                 </time>
