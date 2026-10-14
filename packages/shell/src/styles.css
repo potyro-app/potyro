@@ -7226,6 +7226,23 @@ body:has(.k-tabbar) .k-toasts {
   font-family: var(--font-display);
   font-size: 1.5rem;
 }
+/* "· choose an app" is a caption, not a control: in German it is "· App auswählen", which broke
+   across two lines and was cut by the actions at 375 px (issue 300). One line, ellipsis when tight, and
+   gone on a phone, where the buttons need the room more than the caption. */
+.k-launcher-head .k-brand {
+  flex: 1 1 auto;
+}
+.k-launcher-head .k-brand .k-muted {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+@media (max-width: 480px) {
+  .k-launcher-head .k-brand .k-muted {
+    display: none;
+  }
+}
 .k-launch-section {
   display: flex;
   flex-direction: column;

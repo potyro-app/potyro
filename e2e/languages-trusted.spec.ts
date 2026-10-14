@@ -82,7 +82,7 @@ async function add(page: Page, opts: { newButton: RegExp; nameLabel: string; nam
   await page.getByRole("button", { name: opts.newButton }).first().click();
   await page.getByLabel(new RegExp(`^${opts.nameLabel}`)).first().fill(opts.name);
   await page.getByRole("radio", { name: opts.kind }).click();
-  await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
+  await page.getByRole("button", { name: /^(Save|Create|Zapisz|Utwórz)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: opts.name })).toBeVisible({ timeout: 30_000 });
 }
 
@@ -120,10 +120,11 @@ test("one app, two languages: an English owner and a Polish guest in the sealed 
   const ctxB = await browser.newContext({ locale: "pl-PL" });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: "Join, keep sandboxed" }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: "Dołącz, zostaw w piaskownicy" }).click();
   await answerNamePrompt(b);
   await expect(b.locator("h1").first()).toHaveText("Miejsca", { timeout: 60_000 });
-  await expect(b.getByRole("button", { name: "Runs in a sandbox: review" })).toBeVisible(); // the sealed box
+  // Potyro's own words are Polish too, now that Polish is translated (#300).
+  await expect(b.getByRole("button", { name: "Działa w piaskownicy: przejrzyj" })).toBeVisible(); // the sealed box
   await expect(row(b, "Miradouro")).toBeVisible({ timeout: 60_000 }); // the record, as typed
   await expect(row(b, "Miradouro")).toContainText(PL_MONTH); // ctx.format, answered by the host
   await expect(row(b, "Miradouro")).toContainText("Dodane ");
@@ -131,7 +132,7 @@ test("one app, two languages: an English owner and a Polish guest in the sealed 
   await expect(b.getByText("1 miejsce", { exact: true })).toBeVisible(); // an ICU plural, in Polish
 
   // ---- the guest adds one, in Polish; the owner reads it in English ----
-  await add(b, { newButton: /Add: Miejsce|Add Miejsce|Add: Spot/i, nameLabel: "Nazwa", name: "Łazienki", kind: "Park miejski" });
+  await add(b, { newButton: /^Dodaj: Miejsce/, nameLabel: "Nazwa", name: "Łazienki", kind: "Park miejski" });
   await expect(b.getByText("2 miejsca", { exact: true })).toBeVisible();
   await expect(row(a, "Łazienki")).toBeVisible({ timeout: 60_000 });
   await expect(row(a, "Łazienki").locator(".k-badge")).toHaveText("Park"); // stored "park", read in English
