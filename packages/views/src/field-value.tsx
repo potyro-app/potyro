@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import type { FileRef, Geo, MediaRef, DateTimeField } from "potyro";
 import { optionLabel, type ShownField, type ShownMoneyField } from "./shown.js";
 import type { PotyroRuntime } from "@potyro/runtime";
-import { displayFieldFor, formatValue, humanizeKey } from "./format.js";
+import { displayFieldFor, formatValue, humanizeKey, shownValue } from "./format.js";
 import { formatDuration, formatWithUnit } from "./units.js";
 import { formatDateAbsolute, precisionOf, toDate } from "./dates.js";
 import { EnumPill } from "./enum-input.js";
@@ -28,7 +28,7 @@ export function FieldValue({
   value: unknown;
 }) {
   const field = runtime.definition.entities[entity]?.fields[fieldKey];
-  if (!field) return <>{formatValue(value)}</>; // computed / unknown key
+  if (!field) return <>{formatValue(shownValue(runtime, entity, fieldKey, value))}</>; // computed / unknown key
   return <FieldByType runtime={runtime} field={field} value={value} />;
 }
 
