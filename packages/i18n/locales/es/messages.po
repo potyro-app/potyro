@@ -309,6 +309,10 @@ msgstr "{autonym} — {language} (borrador)"
 msgid "{autonym} (draft)"
 msgstr "{autonym} (borrador)"
 
+#: ../shell/src/files-panel.tsx
+msgid "{away, plural, one {# not on this device yet} other {# not on this device yet}}"
+msgstr "{away, plural, one {# todavía no está en este dispositivo} other {# todavía no están en este dispositivo}}"
+
 #. Ask's cost in US cents, e.g. 2.1¢
 #: ../shell/src/ask-spend.ts
 msgid "{cents}¢"
@@ -612,9 +616,12 @@ msgid "{name} is {size} KB; files up to {max} KB can be brought in."
 msgstr "{name} pesa {size} KB; se pueden traer archivos de hasta {max} KB."
 
 #: ../shell/src/file-viewer.tsx
-#: ../shell/src/files-panel.tsx
 msgid "{name} is not on this device yet."
 msgstr "{name} todavía no está en este dispositivo."
+
+#: ../shell/src/files-panel.tsx
+msgid "{name} is not on this device yet. Open it to get it, then save a copy."
+msgstr "{name} todavía no está en este dispositivo. Ábrelo para traerlo y después guarda una copia."
 
 #: ../shell/src/data-page.tsx
 msgid "{name} records and files"
@@ -629,6 +636,10 @@ msgstr "{name}, versión {seq}"
 #: ../views/src/list-input.tsx
 msgid "{name}: more"
 msgstr "{name}: más"
+
+#: ../shell/src/main.tsx
+msgid "{notHere, plural, one {Exported {file}. # file is not on this device yet, so it is listed in the export but not inside it.} other {Exported {file}. # files are not on this device yet, so they are listed in the export but not inside it.}}"
+msgstr "{notHere, plural, one {Se exportó {file}. # archivo todavía no está en este dispositivo, así que aparece en la lista de la exportación pero no va dentro.} other {Se exportó {file}. # archivos todavía no están en este dispositivo, así que aparecen en la lista de la exportación pero no van dentro.}}"
 
 #. An unnamed row of a list field: the field's word and the row's number
 #: ../views/src/list-input.tsx
@@ -957,6 +968,10 @@ msgstr "Añadir"
 msgid "Add {count}"
 msgstr "Añadir {count}"
 
+#: ../shell/src/files-panel.tsx
+msgid "Add {names} to {appName}?"
+msgstr "¿Añadir {names} a {appName}?"
+
 #. Ask review button, lower case, may be joined with others: add N records
 #: ../shell/src/ask-review.tsx
 msgid "add {rowsN}"
@@ -1034,6 +1049,11 @@ msgstr "Añadir archivos"
 #: ../views/src/map.tsx
 msgid "Add here: {entityLabel}"
 msgstr "Añadir aquí: {entityLabel}"
+
+#. Confirm adding a large file to a shared app
+#: ../shell/src/files-panel.tsx
+msgid "Add it"
+msgstr "Añadirlo"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -1388,6 +1408,20 @@ msgstr "Error al arrancar: {why}"
 msgid "box"
 msgstr "casilla"
 
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back"
+msgstr "Recuperar"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back the copy from {when}?"
+msgstr "¿Recuperar la copia del {when}?"
+
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring it back"
+msgstr "Recuperarla"
+
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
 msgid "Bring this into…"
@@ -1396,6 +1430,11 @@ msgstr "Traer esto a…"
 #: ../views/src/file-input.tsx
 msgid "Bringing it in…"
 msgstr "Trayéndolo…"
+
+#. Files, in a shared app: a file one of its people brought in from outside
+#: ../shell/src/files-panel.tsx
+msgid "brought in"
+msgstr "traído de fuera"
 
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
@@ -2212,6 +2251,11 @@ msgstr "p. ej., cinco cafés junto al río que admitan perros"
 msgid "e.g. Places search"
 msgstr "p. ej., Búsqueda de lugares"
 
+#. Files viewer: copies of this file that newer writes replaced
+#: ../shell/src/file-viewer.tsx
+msgid "Earlier copies"
+msgstr "Copias anteriores"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "edit"
@@ -2523,6 +2567,10 @@ msgstr "Se rindió"
 msgid "General knowledge"
 msgstr "Conocimiento general"
 
+#: ../shell/src/file-viewer.tsx
+msgid "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
+msgstr "Se está trayendo desde la app compartida — se abre aquí cuando llegue y después se queda en este dispositivo."
+
 #: ../views/src/media-input.tsx
 msgid "Getting the photo…"
 msgstr "Obteniendo la foto…"
@@ -2829,6 +2877,10 @@ msgstr "Va a una lista pública de peticiones que lee el equipo de Potyro, sin t
 #: ../shell/src/fix-panel.tsx
 msgid "It has a question"
 msgstr "Tiene una pregunta"
+
+#: ../shell/src/files-panel.tsx
+msgid "It is {size}. {appName} is shared, so everyone in it can get the file, and a copy is kept, encrypted, on the relay."
+msgstr "Ocupa {size}. {appName} está compartida, así que todos los que están en ella pueden obtener el archivo, y se guarda una copia cifrada en el relay."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It is already here"
@@ -3531,6 +3583,11 @@ msgstr "no se sabe hasta que se ejecuta"
 #: ../shell/src/version-gate.ts
 msgid "Not now"
 msgstr "Ahora no"
+
+#. Files: a shared app's file whose bytes have not been fetched to this device
+#: ../shell/src/files-panel.tsx
+msgid "not on this device yet · open it to get it"
+msgstr "todavía no está en este dispositivo · ábrelo para traerlo"
 
 #: ../shell/src/storage-report.tsx
 msgid "not opened yet"
@@ -4896,6 +4953,10 @@ msgstr "El enlace a la documentación debe ser una dirección https://."
 msgid "The endpoint must be an https:// address."
 msgstr "El endpoint debe ser una dirección https://."
 
+#: ../shell/src/file-viewer.tsx
+msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
+msgstr "El archivo tal como está ahora se guarda como copia anterior, así que puedes cambiar de idea."
+
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
 msgstr "los grupos deben seguir siendo los que hay ahora"
@@ -5159,6 +5220,10 @@ msgstr "Esto borra la app Y sus datos: todos los registros que añadiste. No se 
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "Este dispositivo"
+
+#: ../shell/src/file-viewer.tsx
+msgid "This device is offline. It arrives once it is back online."
+msgstr "Este dispositivo está sin conexión. Llegará cuando vuelva a estar en línea."
 
 #: ../shell/src/model-turn.ts
 msgid "this engine needs its API key — add it in the Studio's Model settings."

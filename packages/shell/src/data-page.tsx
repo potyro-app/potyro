@@ -192,7 +192,7 @@ function AppData({ app, files, onFiles }: { app: InstalledApp; files: boolean; o
       {current ? (
         <Table key={current.key} session={session} entity={current.key} fields={current.fields} opaque={current.opaque} />
       ) : (
-        <FilesPanel store={session.store} appName={name} scope="all" caps={shellCaps()} arrived={arrived} />
+        <FilesPanel store={session.store} appName={name} scope="all" caps={shellCaps()} arrived={arrived} shared={app.sync} />
       )}
     </>
   );

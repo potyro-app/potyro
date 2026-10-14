@@ -94,6 +94,7 @@ export function StudioFiles({ app, definition }: StudioFilesProps) {
           store={store}
           appName={name}
           scope="shipped"
+          shared={getUserApp(app.id)?.sync === true}
           caps={shellCaps()}
           extra={
             <button type="button" className="k-add" disabled={packing} onClick={() => void savePackage()} title={t`The app and the files it comes with, as one file`}>

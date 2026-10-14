@@ -3,7 +3,7 @@
 // dev:sandbox` (mode "sandbox") seeds the examples untrusted, which is what exercises the isolate.
 
 // First, before any module below reads localStorage: the codename-to-product key move (#114).
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import "./rename-migration.js";
 import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
@@ -93,7 +93,9 @@ async function exportApp(
     //
     // The app's code (`.modules/`, `.src/`) is not its data: it goes beside the data, with the lock
     // that vouches for it (#282), so the bundle restores on a device with no network.
-    await copyStoreData(store, snapshot.store, { entities: Object.keys(def.entities), skipFile: isReservedPath });
+    const copied = await copyStoreData(store, snapshot.store, { entities: Object.keys(def.entities), skipFile: isReservedPath });
+    // A shared app's files that never reached this device are listed, not fetched for the export (#255).
+    const missingFiles = copied.skippedFiles.map(({ path, size }) => ({ path, size }));
     const lock = appId ? getUserApp(appId)?.lock : undefined;
     const code = await appCode((await modulesOf(appId)) ?? store, lock);
     const zip = packBundle({
@@ -110,6 +112,7 @@ async function exportApp(
         entities: Object.keys(def.entities),
         // What the app is, as data: a device adding this bundle describes it without running it (#271).
         app: declareApp(def),
+        ...(missingFiles.length ? { missingFiles } : {}),
       },
       appSource,
       chat,
@@ -119,7 +122,12 @@ async function exportApp(
     });
     await caps.filesystem.save(`${def.id}.potyro.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
     const file = `${def.id}.potyro.zip`;
-    toaster.push(t`Exported ${file}`);
+    const notHere = missingFiles.length;
+    toaster.push(
+      notHere
+        ? plural(notHere, { one: `Exported ${file}. # file is not on this device yet, so it is listed in the export but not inside it.`, other: `Exported ${file}. # files are not on this device yet, so they are listed in the export but not inside it.` })
+        : t`Exported ${file}`,
+    );
   } finally {
     snapshot.destroy();
   }

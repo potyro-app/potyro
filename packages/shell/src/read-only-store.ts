@@ -55,6 +55,7 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     subscribe: (entity, cb) => store.subscribe(entity, cb),
     getBlob: (ref) => store.getBlob(ref),
     subscribeBlob: store.subscribeBlob ? (ref, cb) => store.subscribeBlob!(ref, cb) : undefined,
+    blobHere: store.blobHere ? (ref) => store.blobHere!(ref) : undefined,
     kvGet: (k) => store.kvGet(k),
     listFiles: () => store.listFiles(),
     getFile: (id) => store.getFile(id),

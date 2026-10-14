@@ -309,6 +309,10 @@ msgstr "{autonym} — {language} (draft)"
 msgid "{autonym} (draft)"
 msgstr "{autonym} (draft)"
 
+#: ../shell/src/files-panel.tsx
+msgid "{away, plural, one {# not on this device yet} other {# not on this device yet}}"
+msgstr "{away, plural, one {# not on this device yet} other {# not on this device yet}}"
+
 #. Ask's cost in US cents, e.g. 2.1¢
 #: ../shell/src/ask-spend.ts
 msgid "{cents}¢"
@@ -612,9 +616,12 @@ msgid "{name} is {size} KB; files up to {max} KB can be brought in."
 msgstr "{name} is {size} KB; files up to {max} KB can be brought in."
 
 #: ../shell/src/file-viewer.tsx
-#: ../shell/src/files-panel.tsx
 msgid "{name} is not on this device yet."
 msgstr "{name} is not on this device yet."
+
+#: ../shell/src/files-panel.tsx
+msgid "{name} is not on this device yet. Open it to get it, then save a copy."
+msgstr "{name} is not on this device yet. Open it to get it, then save a copy."
 
 #: ../shell/src/data-page.tsx
 msgid "{name} records and files"
@@ -629,6 +636,10 @@ msgstr "{name}, version {seq}"
 #: ../views/src/list-input.tsx
 msgid "{name}: more"
 msgstr "{name}: more"
+
+#: ../shell/src/main.tsx
+msgid "{notHere, plural, one {Exported {file}. # file is not on this device yet, so it is listed in the export but not inside it.} other {Exported {file}. # files are not on this device yet, so they are listed in the export but not inside it.}}"
+msgstr "{notHere, plural, one {Exported {file}. # file is not on this device yet, so it is listed in the export but not inside it.} other {Exported {file}. # files are not on this device yet, so they are listed in the export but not inside it.}}"
 
 #. An unnamed row of a list field: the field's word and the row's number
 #: ../views/src/list-input.tsx
@@ -957,6 +968,10 @@ msgstr "Add"
 msgid "Add {count}"
 msgstr "Add {count}"
 
+#: ../shell/src/files-panel.tsx
+msgid "Add {names} to {appName}?"
+msgstr "Add {names} to {appName}?"
+
 #. Ask review button, lower case, may be joined with others: add N records
 #: ../shell/src/ask-review.tsx
 msgid "add {rowsN}"
@@ -1034,6 +1049,11 @@ msgstr "Add files"
 #: ../views/src/map.tsx
 msgid "Add here: {entityLabel}"
 msgstr "Add here: {entityLabel}"
+
+#. Confirm adding a large file to a shared app
+#: ../shell/src/files-panel.tsx
+msgid "Add it"
+msgstr "Add it"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -1388,6 +1408,20 @@ msgstr "Boot error: {why}"
 msgid "box"
 msgstr "box"
 
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back"
+msgstr "Bring back"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back the copy from {when}?"
+msgstr "Bring back the copy from {when}?"
+
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring it back"
+msgstr "Bring it back"
+
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
 msgid "Bring this into…"
@@ -1396,6 +1430,11 @@ msgstr "Bring this into…"
 #: ../views/src/file-input.tsx
 msgid "Bringing it in…"
 msgstr "Bringing it in…"
+
+#. Files, in a shared app: a file one of its people brought in from outside
+#: ../shell/src/files-panel.tsx
+msgid "brought in"
+msgstr "brought in"
 
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
@@ -2212,6 +2251,11 @@ msgstr "e.g. five dog-friendly cafés near the river"
 msgid "e.g. Places search"
 msgstr "e.g. Places search"
 
+#. Files viewer: copies of this file that newer writes replaced
+#: ../shell/src/file-viewer.tsx
+msgid "Earlier copies"
+msgstr "Earlier copies"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "edit"
@@ -2523,6 +2567,10 @@ msgstr "Gave up"
 msgid "General knowledge"
 msgstr "General knowledge"
 
+#: ../shell/src/file-viewer.tsx
+msgid "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
+msgstr "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
+
 #: ../views/src/media-input.tsx
 msgid "Getting the photo…"
 msgstr "Getting the photo…"
@@ -2829,6 +2877,10 @@ msgstr "It goes on a public list of requests the Potyro team reads, without your
 #: ../shell/src/fix-panel.tsx
 msgid "It has a question"
 msgstr "It has a question"
+
+#: ../shell/src/files-panel.tsx
+msgid "It is {size}. {appName} is shared, so everyone in it can get the file, and a copy is kept, encrypted, on the relay."
+msgstr "It is {size}. {appName} is shared, so everyone in it can get the file, and a copy is kept, encrypted, on the relay."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It is already here"
@@ -3531,6 +3583,11 @@ msgstr "not known until it runs"
 #: ../shell/src/version-gate.ts
 msgid "Not now"
 msgstr "Not now"
+
+#. Files: a shared app's file whose bytes have not been fetched to this device
+#: ../shell/src/files-panel.tsx
+msgid "not on this device yet · open it to get it"
+msgstr "not on this device yet · open it to get it"
 
 #: ../shell/src/storage-report.tsx
 msgid "not opened yet"
@@ -4896,6 +4953,10 @@ msgstr "The docs link must be an https:// address."
 msgid "The endpoint must be an https:// address."
 msgstr "The endpoint must be an https:// address."
 
+#: ../shell/src/file-viewer.tsx
+msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
+msgstr "The file as it is now is kept as an earlier copy, so you can change your mind."
+
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
 msgstr "the groups must stay the groups that are there now"
@@ -5159,6 +5220,10 @@ msgstr "This deletes the app AND its data — every record you have added to it.
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "This device"
+
+#: ../shell/src/file-viewer.tsx
+msgid "This device is offline. It arrives once it is back online."
+msgstr "This device is offline. It arrives once it is back online."
 
 #: ../shell/src/model-turn.ts
 msgid "this engine needs its API key — add it in the Studio's Model settings."
