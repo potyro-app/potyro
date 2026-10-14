@@ -16,6 +16,9 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
     const body = route.request().postDataJSON() as { messages: Array<{ role: string; content: string }> };
     hits.push("openrouter");
     sent.push(JSON.stringify(body.messages));
+    // The first (create) answer takes a moment, as a real one does: an instant reply left the
+    // heartbeat below on screen for less time than the check takes to look for it.
+    if (hits.length === 1) await new Promise((r) => setTimeout(r, 1500));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
