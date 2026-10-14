@@ -6,10 +6,15 @@ import type { Locator, Page } from "@playwright/test";
 //
 // Not a `.spec.ts`, so Playwright does not collect it as a test file.
 
-export type TileAction = "open" | "pin" | "edit-tile" | "history" | "sync" | "share" | "rename" | "duplicate" | "delete" | "data" | "files";
+/**
+ * `share` is the invite (use it together): Share opens a sheet since docs/24, and the invite is its
+ * second way. `share-sheet` only opens the sheet.
+ */
+export type TileAction = "open" | "pin" | "edit-tile" | "history" | "sync" | "share" | "share-sheet" | "rename" | "duplicate" | "delete" | "data" | "files";
 
 /** Open the tile's menu and choose an action. `root` is the page, or the launcher overlay within it. */
 export async function tileAction(root: Page | Locator, appName: string, action: TileAction): Promise<void> {
   await root.getByRole("button", { name: `Actions for ${appName}` }).click();
-  await root.getByRole("menu").locator(`[data-action="${action}"]`).click();
+  await root.getByRole("menu").locator(`[data-action="${action === "share-sheet" ? "share" : action}"]`).click();
+  if (action === "share") await root.locator('[data-share="invite"]').click();
 }

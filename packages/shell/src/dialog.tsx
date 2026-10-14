@@ -180,7 +180,7 @@ type CopyState = "idle" | "copied" | "failed";
  * is told, and the link is left selected so that the recourse — copy it by hand — is one keystroke
  * rather than a 200-character drag on a phone.
  */
-function ShareBody({ link, onDone }: { link: string; onDone: () => void }) {
+export function ShareBody({ link, onDone }: { link: string; onDone: () => void }) {
   const { t } = useLingui();
   const [state, setState] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
