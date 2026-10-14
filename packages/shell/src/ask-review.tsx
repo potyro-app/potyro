@@ -7,6 +7,9 @@
 // changes to records the person has, each field as it is now and as it would be; then the actions:
 // what runs, with what, on which records. One button does all of it, and says how much.
 
+import { fmt } from "@potyro/i18n";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { humanizeKey, type AppDefinition as SourceDefinition, type Localized } from "potyro";
 /** The definition as the person reads it — `runtime.definition`, localized (#302). */
@@ -50,9 +53,8 @@ const toggled = (set: Set<string>, key: string): Set<string> => {
 
 const targetKey = (ai: number, t: ReviewTarget): string => `${ai}:${t.kind === "new" ? `@${t.ref}` : t.id}`;
 
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
-}
+/** The first letter up, in any script: the parts below are lower-case fragments joined into one line. */
+const capitalised = (s: string): string => s.replace(/^\p{Ll}/u, (c) => c.toUpperCase());
 
 function ActionItem({
   action,
@@ -90,7 +92,12 @@ function ActionItem({
                   <input type="checkbox" checked={on} disabled={waitsOnRow} onChange={() => onToggle(key)} />
                   <span>
                     {t.name}
-                    {t.kind === "new" ? <span className="k-ask-target-new"> new</span> : null}
+                    {t.kind === "new" ? (
+                      <span className="k-ask-target-new">
+                        {" "}
+                        <Trans comment="Ask review: a record the proposal would add, not one you have">new</Trans>
+                      </span>
+                    ) : null}
                   </span>
                 </label>
               </li>
@@ -116,6 +123,7 @@ export function ReviewPanel({
   onAccept: (rows: ReviewRow[], runs: AcceptedRun[], edits: AcceptedEdit[]) => void;
   onDiscard: () => void;
 }) {
+  const { t } = useLingui();
   const { rows, actions, edits } = review;
   const [layout, setLayout] = useState<Layout>(savedLayout);
   /** The person's own decisions, by ref; everything else follows its default. */
@@ -162,10 +170,19 @@ export function ReviewPanel({
   const nRows = approvedRows.length;
   const nRuns = runs.length;
   const nEdits = accepted.length;
-  const parts = [nRows ? `add ${nRows}` : "", nEdits ? `change ${nEdits}` : "", nRuns ? `run ${nRuns}` : ""].filter(Boolean);
-  const joined = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "");
-  const verb = joined.charAt(0).toUpperCase() + joined.slice(1);
+  const rowsN = fmt.number(nRows);
+  const editsN = fmt.number(nEdits);
+  const runsN = fmt.number(nRuns);
+  const parts = [
+    nRows ? t({ message: `add ${rowsN}`, comment: "Ask review button, lower case, may be joined with others: add N records" }) : "",
+    nEdits ? t({ message: `change ${editsN}`, comment: "Ask review button, lower case, may be joined with others: change N records" }) : "",
+    nRuns ? t({ message: `run ${runsN}`, comment: "Ask review button, lower case, may be joined with others: run N actions" }) : "",
+  ].filter(Boolean);
+  const verb = capitalised(fmt.list(parts));
   const held = rows.length - nRows;
+  const approvedN = fmt.number(nRows);
+  const totalN = fmt.number(rows.length);
+  const heldN = fmt.number(held);
 
   const pickLayout = (l: Layout): void => {
     setLayout(l);
@@ -182,14 +199,14 @@ export function ReviewPanel({
       {rows.length ? (
         <div className="k-ask-review-bar">
           <span className="k-ask-review-count">
-            {nRows} of {rows.length} approved{held ? ` · ${held} held back` : ""}
+            {held ? t`${approvedN} of ${totalN} approved · ${heldN} held back` : t`${approvedN} of ${totalN} approved`}
           </span>
-          <span className="k-ask-layout" role="group" aria-label="Show as">
+          <span className="k-ask-layout" role="group" aria-label={t`Show as`}>
             <button type="button" aria-pressed={layout === "cards"} onClick={() => pickLayout("cards")}>
-              Cards
+              <Trans comment="Ask review: show proposed records as cards">Cards</Trans>
             </button>
             <button type="button" aria-pressed={layout === "table"} onClick={() => pickLayout("table")}>
-              Table
+              <Trans comment="Ask review: show proposed records as a table">Table</Trans>
             </button>
           </span>
         </div>
@@ -200,7 +217,7 @@ export function ReviewPanel({
             <h3 className="k-ask-group-head">
               {def.entities[entity]?.icon ? <span aria-hidden>{def.entities[entity]!.icon} </span> : null}
               {def.entities[entity]?.label ?? humanizeKey(entity)}
-              <span className="k-ask-group-count">{list.length}</span>
+              <span className="k-ask-group-count">{fmt.number(list.length)}</span>
             </h3>
             {layout === "table" ? (
               <EntityTable def={def} entity={entity} rows={list} stateOf={stateOf} names={linkNames} onDecide={decide} onKeep={keep} />
@@ -214,9 +231,9 @@ export function ReviewPanel({
           </section>
         ))}
         {edits.length ? (
-          <section className="k-ask-group" aria-label="Changes">
+          <section className="k-ask-group" aria-label={t({ message: "Changes", comment: "Ask review: changes to records you already have" })}>
             <h3 className="k-ask-group-head">
-              Changes to your records <span className="k-ask-group-count">{edits.length}</span>
+              <Trans>Changes to your records</Trans> <span className="k-ask-group-count">{fmt.number(edits.length)}</span>
             </h3>
             <ul className="k-ask-cards">
               {edits.map((e) => (
@@ -235,9 +252,9 @@ export function ReviewPanel({
           </section>
         ) : null}
         {actions.length ? (
-          <section className="k-ask-group" aria-label="Actions">
+          <section className="k-ask-group" aria-label={t({ message: "Actions", comment: "Ask review: an app's actions the proposal would run" })}>
             <h3 className="k-ask-group-head">
-              Actions <span className="k-ask-group-count">{actions.length}</span>
+              <Trans comment="Ask review: an app's actions the proposal would run">Actions</Trans> <span className="k-ask-group-count">{fmt.number(actions.length)}</span>
             </h3>
             <ul className="k-ask-rows">
               {actions.map((a, ai) => (
@@ -249,7 +266,7 @@ export function ReviewPanel({
       </div>
       <footer className="k-ask-actions">
         <button type="button" className="k-add" onClick={onDiscard}>
-          Discard
+          <Trans comment="Ask review: throw the whole proposal away">Discard</Trans>
         </button>
         <button
           type="button"
@@ -257,7 +274,7 @@ export function ReviewPanel({
           disabled={!nRows && !nRuns && !nEdits}
           onClick={() => onAccept(approvedRows.map((r) => ({ ...r, values: valuesToSave(r, keptOf(r)) })), runs, accepted)}
         >
-          {verb || "Nothing approved"}
+          {verb || t`Nothing approved`}
         </button>
       </footer>
     </>
@@ -265,8 +282,12 @@ export function ReviewPanel({
 }
 
 export function doneText(created: number, ran: number, changed = 0): string {
-  const text = [created ? `added ${plural(created, "record", "records")}` : "", changed ? `changed ${plural(changed, "record", "records")}` : "", ran ? `ran ${plural(ran, "action", "actions")}` : ""]
+  const text = [
+    created ? plural(created, { one: "added # record", other: "added # records" }) : "",
+    changed ? plural(changed, { one: "changed # record", other: "changed # records" }) : "",
+    ran ? plural(ran, { one: "ran # action", other: "ran # actions" }) : "",
+  ]
     .filter(Boolean)
     .join(", ");
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+  return `${capitalised(text)}.`;
 }

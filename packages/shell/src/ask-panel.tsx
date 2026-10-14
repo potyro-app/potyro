@@ -7,6 +7,10 @@
 // The dialog also says, before anyone types, what leaves the device: how the app is organised and the
 // request, never what is in it. And it holds the one switch that makes Ask go away for this app.
 
+import { fmt } from "@potyro/i18n";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural, t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@potyro/generator/agent";
@@ -77,20 +81,39 @@ function localDay(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const NOTE_HEAD: Record<string, string> = {
-  refused: "Ask can’t run yet",
-  failed: "It couldn’t make this fit",
-  stopped: "Stopped",
+const NOTE_HEAD: Record<string, MessageDescriptor> = {
+  refused: msg`Ask can’t run yet`,
+  failed: msg`It couldn’t make this fit`,
+  stopped: msg({ message: "Stopped", comment: "Ask: the person stopped the request" }),
 };
+
+/** What leaves the device, said before anything is typed. One sentence per case, so each reads whole. */
+function privacyLine(engine: string, pasted: boolean, area: boolean): string {
+  if (pasted && area) return t`${engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added.`;
+  if (pasted) return t`${engine} sees how this app is organised, what you type and paste. Nothing already in the app is sent. You choose what gets added.`;
+  if (area) return t`${engine} sees how this app is organised, what you type, and the area on your map. Nothing already in the app is sent. You choose what gets added.`;
+  return t`${engine} sees how this app is organised, what you type. Nothing already in the app is sent. You choose what gets added.`;
+}
+
+/** "Area on your map · 44.385, 7.543 · 2 km". */
+function mapChip(area: { lat: number; lng: number; radiusKm: number }): string {
+  const lat = fmt.number(area.lat, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  const lng = fmt.number(area.lng, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  if (area.radiusKm < 1) return t`Area on your map · ${lat}, ${lng} · <1 km`;
+  const km = fmt.number(Math.round(area.radiusKm));
+  return t`Area on your map · ${lat}, ${lng} · ${km} km`;
+}
 
 /** Where the web search looked: the sites, then every page, so a person can check a place is real. */
 function Found({ citations }: { citations: Citation[] }) {
+  const { t } = useLingui();
   const hosts = [...new Set(citations.map((c) => { try { return new URL(c.url).host.replace(/^www\./, ""); } catch { return ""; } }).filter(Boolean))];
+  const sites = hosts.slice(0, 3).join(", ");
+  const more = hosts.length - 3;
   return (
     <details className="k-ask-found">
       <summary>
-        Found on {hosts.slice(0, 3).join(", ")}
-        {hosts.length > 3 ? ` and ${hosts.length - 3} more` : ""}
+        {more > 0 ? plural(more, { one: `Found on ${sites} and # more`, other: `Found on ${sites} and # more` }) : t`Found on ${sites}`}
       </summary>
       <ul>
         {citations.map((c) => (
@@ -106,7 +129,9 @@ function Found({ citations }: { citations: Citation[] }) {
 }
 
 export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: AskPanelProps) {
+  const { t } = useLingui();
   const def = runtime.definition;
+  const name = def.name;
   const [request, setRequest] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
   const [tries, setTries] = useState(0);
@@ -176,8 +201,8 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
       setPhase({ kind: "question", text: outcome.text, transcript: outcome.transcript });
       return;
     }
-    const text = outcome.kind === "refused" ? outcome.text : outcome.kind === "failed" ? outcome.reason : "You stopped it before it finished.";
-    setPhase({ kind: "note", head: NOTE_HEAD[outcome.kind]!, text });
+    const text = outcome.kind === "refused" ? outcome.text : outcome.kind === "failed" ? outcome.reason : t`You stopped it before it finished.`;
+    setPhase({ kind: "note", head: t(NOTE_HEAD[outcome.kind]!), text });
   };
 
   /** Names, links and duplicates are judged here, against this device's records — the model never saw them. */
@@ -196,6 +221,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
     today: localDay(),
     // The person's language (#301): the saved choice, else the device's — shown in the dialog, and Ask replies in it.
     language: currentLocale(),
+    // i18n-ignore — told to the model, which reads English (#297)
     ...(area && sendArea ? { area: { ...area, label: "the map on the person's screen" } } : {}),
   });
 
@@ -290,11 +316,19 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
       const done = doneRows || doneRuns || doneEdits ? doneText(doneRows, doneRuns, doneEdits).replace(/\.$/, "") : "";
       setPhase({
         kind: "note",
-        head: done ? `${done}, then it stopped` : "Nothing was done",
-        text: `${why}${done ? " What was already done is in the app; asking again will mark what is already there." : ""}`,
+        head: done ? t({ message: `${done}, then it stopped`, comment: "done is e.g. “Added 3 places”" }) : t`Nothing was done`,
+        text: done ? t`${why} What was already done is in the app; asking again will mark what is already there.` : why,
       });
     }
   };
+
+  const spentHere = formatSpend(appSpent);
+  const lastSpent = lastCost === null ? "" : formatSpend(lastCost);
+  const placedNow = placing ? fmt.number(placing.done + 1) : "";
+  const placedOf = placing ? fmt.number(placing.of) : "";
+  const attempt = fmt.number(tries + 1);
+  const sourceLabel = question?.source.ask.label ?? "";
+  const host = question ? new URL(question.origin).host : "";
 
   const turnOff = (): void => {
     setAskEnabled(appId, false);
@@ -303,13 +337,15 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
 
   return (
     <div className="k-modal-scrim" onClick={close}>
-      <div className="k-modal k-ask" role="dialog" aria-modal="true" aria-label={`Ask ${def.name}`} onClick={(e) => e.stopPropagation()} data-phase={phase.kind}>
+      <div className="k-modal k-ask" role="dialog" aria-modal="true" aria-label={t({ message: `Ask ${name}`, comment: "The Ask dialog of an app; Ask is the feature's name" })} onClick={(e) => e.stopPropagation()} data-phase={phase.kind}>
         <header className="k-modal-head k-ask-head">
           <div>
-            <p className="k-ask-eyebrow">Ask</p>
-            <h2 className="k-ask-title">{phase.kind === "review" ? "Look it over" : `What should go into ${def.name}?`}</h2>
+            <p className="k-ask-eyebrow">
+              <Trans comment="The name of the feature that adds records with AI">Ask</Trans>
+            </p>
+            <h2 className="k-ask-title">{phase.kind === "review" ? t`Look it over` : t`What should go into ${name}?`}</h2>
           </div>
-          <button type="button" className="k-add" onClick={close} aria-label="Close">
+          <button type="button" className="k-add" onClick={close} aria-label={t`Close`}>
             ✕
           </button>
         </header>
@@ -318,10 +354,10 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
           <>
             <textarea
               className="k-input k-ask-input"
-              aria-label="What to add"
+              aria-label={t`What to add`}
               rows={3}
               autoFocus
-              placeholder="e.g. five dog-friendly cafés near the river"
+              placeholder={t`e.g. five dog-friendly cafés near the river`}
               value={request}
               onChange={(e) => setRequest(e.target.value)}
               onKeyDown={(e) => {
@@ -335,17 +371,15 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
               </p>
             ) : (
               <p className="k-ask-privacy">
-                {engineLabel(engine)} sees how this app is organised, what you type{hasMaterial ? " and paste" : ""}
-                {area && sendArea ? ", and the area on your map" : ""}. Nothing already in the app is sent.
-                You choose what gets added.
+                {privacyLine(engineLabel(engine), hasMaterial, Boolean(area && sendArea))}
               </p>
             )}
-            {appSpent > 0 ? <p className="k-ask-cost">Ask has used {formatSpend(appSpent)} of your OpenRouter credit in this app, on this device.</p> : null}
-            <div className="k-ask-context" aria-label="Sent with your request">
+            {appSpent > 0 ? <p className="k-ask-cost">{t`Ask has used ${spentHere} of your OpenRouter credit in this app, on this device.`}</p> : null}
+            <div className="k-ask-context" aria-label={t`Sent with your request`}>
               {area && sendArea ? (
                 <span className="k-ask-chip">
-                  <span aria-hidden>📍</span> Area on your map · {area.lat.toFixed(3)}, {area.lng.toFixed(3)} · {area.radiusKm < 1 ? "<1" : Math.round(area.radiusKm)} km
-                  <button type="button" className="k-ask-chip-x" aria-label="Don’t send the map area" onClick={() => setSendArea(false)}>
+                  <span aria-hidden>📍</span> {mapChip(area)}
+                  <button type="button" className="k-ask-chip-x" aria-label={t`Don’t send the map area`} onClick={() => setSendArea(false)}>
                     ✕
                   </button>
                 </span>
@@ -359,16 +393,16 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                     rememberWeb(e.target.checked);
                   }}
                 />
-                <span aria-hidden>🔎</span> Search the web when needed · about 2¢
+                <span aria-hidden>🔎</span> <Trans>Search the web when needed · about 2¢</Trans>
               </label>
             </div>
             <SourcesSection state={sources} keys={keys} onChange={loadSources} />
             <footer className="k-ask-actions">
               <button type="button" className="k-ask-off" onClick={turnOff}>
-                Turn off Ask for this app
+                <Trans>Turn off Ask for this app</Trans>
               </button>
               <button type="button" className="k-add k-primary-action" disabled={(!request.trim() && !hasMaterial) || Boolean(refused)} onClick={() => ask()}>
-                Ask
+                <Trans comment="Button: send the request to Ask">Ask</Trans>
               </button>
             </footer>
           </>
@@ -379,14 +413,14 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             <span className="k-ask-pulse" aria-hidden />
             <p>
               {phase.kind === "saving"
-                ? "Adding…"
+                ? t`Adding…`
                 : placing
-                  ? `Putting places at their address (${placing.done + 1} of ${placing.of})…`
+                  ? t`Putting places at their address (${placedNow} of ${placedOf})…`
                 : tries
-                  ? `Fitting it to ${def.name}’s fields (try ${tries + 1})…`
+                  ? t`Fitting it to ${name}’s fields (try ${attempt})…`
                   : reading
-                    ? `Reading ${reading}…`
-                    : "Working on it…"}
+                    ? t`Reading ${reading}…`
+                    : t`Working on it…`}
             </p>
             {phase.kind === "working" ? (
               <button
@@ -397,27 +431,28 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                   question?.answer(false);
                 }}
               >
-                Stop
+                <Trans comment="Ask: stop the request">Stop</Trans>
               </button>
             ) : null}
           </div>
         ) : null}
 
         {phase.kind === "working" && question ? (
-          <div className="k-ask-question" role="alertdialog" aria-label="Allow this address?">
+          <div className="k-ask-question" role="alertdialog" aria-label={t`Allow this address?`}>
             <p className="k-ask-note-head">
-              {question.sendsKey ? `Send your ${question.source.ask.label} key to ${new URL(question.origin).host}?` : `Let Ask read from ${new URL(question.origin).host}?`}
+              {question.sendsKey ? t`Send your ${sourceLabel} key to ${host}?` : t`Let Ask read from ${host}?`}
             </p>
             <p className="k-ask-privacy">
-              For {question.source.ask.label}
-              {question.source.pin === "endpoint" ? ", which this app names" : ""}. {question.sendsKey ? "Only allow an address that belongs to that service." : "What you asked for may go there; nothing already in the app does."} Your answer is remembered for this source.
+              {question.source.pin === "endpoint" ? t`For ${sourceLabel}, which this app names.` : t`For ${sourceLabel}.`}{" "}
+              {question.sendsKey ? t`Only allow an address that belongs to that service.` : t`What you asked for may go there; nothing already in the app does.`}{" "}
+              {t`Your answer is remembered for this source.`}
             </p>
             <div className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => question.answer(false)}>
-                Don’t allow
+                <Trans>Don’t allow</Trans>
               </button>
               <button type="button" className="k-add k-primary-action" onClick={() => question.answer(true)}>
-                Allow
+                <Trans>Allow</Trans>
               </button>
             </div>
           </div>
@@ -425,12 +460,14 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
 
         {phase.kind === "question" ? (
           <div className="k-ask-note k-ask-asks">
-            <p className="k-ask-note-head">It needs to know one thing</p>
+            <p className="k-ask-note-head">
+              <Trans>It needs to know one thing</Trans>
+            </p>
             <p>{phase.text}</p>
-            <textarea className="k-input" aria-label="Your answer" rows={2} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
+            <textarea className="k-input" aria-label={t`Your answer`} rows={2} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
             <footer className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => setPhase({ kind: "compose" })}>
-                Start over
+                <Trans>Start over</Trans>
               </button>
               <button
                 type="button"
@@ -438,7 +475,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                 disabled={!reply.trim()}
                 onClick={() => ask([...phase.transcript, { role: "user", content: reply.trim() }])}
               >
-                Send
+                <Trans comment="Ask: send the answer to its question">Send</Trans>
               </button>
             </footer>
           </div>
@@ -448,7 +485,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
           <>
             {searchDown ? (
               <p className="k-ask-note" role="note">
-                The web search was unavailable, so this comes from the model’s memory. Check it before you rely on it.
+                <Trans>The web search was unavailable, so this comes from the model’s memory. Check it before you rely on it.</Trans>
               </p>
             ) : null}
             {phase.citations.length ? <Found citations={phase.citations} /> : null}
@@ -456,7 +493,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             {fetched.length ? (
               <details className="k-ask-fetched">
                 <summary>
-                  Read from {fetched.length} {fetched.length === 1 ? "address" : "addresses"}
+                  {plural(fetched.length, { one: "Read from # address", other: "Read from # addresses" })}
                 </summary>
                 <ul>
                   {fetched.map((u, i) => (
@@ -473,10 +510,10 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             <p className="k-ask-done-count">{doneText(phase.created, phase.ran, phase.changed)}</p>
             <footer className="k-ask-actions">
               <button type="button" className="k-add" onClick={() => setPhase({ kind: "compose" })}>
-                Ask for more
+                <Trans>Ask for more</Trans>
               </button>
               <button type="button" className="k-add k-primary-action" onClick={close}>
-                Done
+                <Trans>Done</Trans>
               </button>
             </footer>
           </div>
@@ -488,14 +525,14 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             <p>{phase.text}</p>
             <footer className="k-ask-actions">
               <button type="button" className="k-add k-primary-action" onClick={() => setPhase({ kind: "compose" })}>
-                Back
+                <Trans>Back</Trans>
               </button>
             </footer>
           </div>
         ) : null}
 
         {lastCost !== null && phase.kind !== "compose" && phase.kind !== "working" && phase.kind !== "saving" ? (
-          <p className="k-ask-cost">This request cost {formatSpend(lastCost)} of your OpenRouter credit.</p>
+          <p className="k-ask-cost">{t`This request cost ${lastSpent} of your OpenRouter credit.`}</p>
         ) : null}
       </div>
     </div>

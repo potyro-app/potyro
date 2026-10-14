@@ -201,6 +201,11 @@ msgstr "{0, plural, one {Not saved: it uses {names}, which was not fetched.} oth
 msgid "{0, plural, one {Read # back} other {Read # back}}"
 msgstr "{0, plural, one {Read # back} other {Read # back}}"
 
+#. placeholder {0}: fetched.length
+#: ../shell/src/ask-panel.tsx
+msgid "{0, plural, one {Read from # address} other {Read from # addresses}}"
+msgstr "{0, plural, one {Read from # address} other {Read from # addresses}}"
+
 #. placeholder {0}: result.applied
 #: ../shell/src/studio-engine.ts
 msgid "{0, plural, one {Repaired with # edit.} other {Repaired with # edits.}}"
@@ -226,6 +231,14 @@ msgstr "{0}, not saved"
 msgid "{applied} Not done yet: {parts}"
 msgstr "{applied} Not done yet: {parts}"
 
+#: ../shell/src/ask-review.tsx
+msgid "{approvedN} of {totalN} approved"
+msgstr "{approvedN} of {totalN} approved"
+
+#: ../shell/src/ask-review.tsx
+msgid "{approvedN} of {totalN} approved · {heldN} held back"
+msgstr "{approvedN} of {totalN} approved · {heldN} held back"
+
 #: ../shell/src/backup-switch.tsx
 msgid "{apps} ({records})."
 msgstr "{apps} ({records})."
@@ -240,9 +253,26 @@ msgstr "{asked} — from a collaborator"
 msgid "{cents}¢"
 msgstr "{cents}¢"
 
+#: ../shell/src/ask-review.tsx
+msgid "{changed, plural, one {changed # record} other {changed # records}}"
+msgstr "{changed, plural, one {changed # record} other {changed # records}}"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "{count, plural, one {# ready} other {# ready}}"
+msgstr "{count, plural, one {# ready} other {# ready}}"
+
 #: ../shell/src/launcher.tsx
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Shared with # person} other {Shared with # people}}"
+
+#: ../shell/src/ask-review.tsx
+msgid "{created, plural, one {added # record} other {added # records}}"
+msgstr "{created, plural, one {added # record} other {added # records}}"
+
+#. done is e.g. “Added 3 places”
+#: ../shell/src/ask-panel.tsx
+msgid "{done}, then it stopped"
+msgstr "{done}, then it stopped"
 
 #: ../shell/src/start-fix.ts
 msgid "{engine} cannot investigate this — it has no transcript to hang a multi-step tool loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, like OpenRouter, to drive the loop."
@@ -255,6 +285,22 @@ msgstr "{engine} claims it can investigate this, but startFix has no client wire
 #: ../shell/src/start-fix.ts
 msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
 msgstr "{engine} needs your own API key to investigate — add one in Engine Settings."
+
+#: ../shell/src/ask-panel.tsx
+msgid "{engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added."
+msgstr "{engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added."
+
+#: ../shell/src/ask-panel.tsx
+msgid "{engine} sees how this app is organised, what you type and paste. Nothing already in the app is sent. You choose what gets added."
+msgstr "{engine} sees how this app is organised, what you type and paste. Nothing already in the app is sent. You choose what gets added."
+
+#: ../shell/src/ask-panel.tsx
+msgid "{engine} sees how this app is organised, what you type, and the area on your map. Nothing already in the app is sent. You choose what gets added."
+msgstr "{engine} sees how this app is organised, what you type, and the area on your map. Nothing already in the app is sent. You choose what gets added."
+
+#: ../shell/src/ask-panel.tsx
+msgid "{engine} sees how this app is organised, what you type. Nothing already in the app is sent. You choose what gets added."
+msgstr "{engine} sees how this app is organised, what you type. Nothing already in the app is sent. You choose what gets added."
 
 #. Ask review: entity is the app's own name for a kind of record
 #: ../shell/src/ask-apply.ts
@@ -283,6 +329,14 @@ msgstr "{filter}: {value} — remove"
 msgid "{first} can no longer open or change “{appName}”, and won’t receive anything new. What’s already on {first}’s devices stays there. Links you shared before stop working — share again to invite someone new."
 msgstr "{first} can no longer open or change “{appName}”, and won’t receive anything new. What’s already on {first}’s devices stays there. Links you shared before stop working — share again to invite someone new."
 
+#: ../shell/src/ask-review-layouts.tsx
+msgid "{flagged, plural, one {All details · # to check} other {All details · # to check}}"
+msgstr "{flagged, plural, one {All details · # to check} other {All details · # to check}}"
+
+#: ../shell/src/ask-review-layouts.tsx
+msgid "{flagged, plural, one {All details and sources · # to check} other {All details and sources · # to check}}"
+msgstr "{flagged, plural, one {All details and sources · # to check} other {All details and sources · # to check}}"
+
 #: ../shell/src/library-fetch.ts
 msgid "{importer} imports \"{path}\", which is not a web address, so {label} cannot be kept on this device."
 msgstr "{importer} imports \"{path}\", which is not a web address, so {label} cannot be kept on this device."
@@ -296,6 +350,11 @@ msgstr "{input}/{output} /M"
 #: ../shell/src/point-target.ts
 msgid "{kind} · {pageName}"
 msgstr "{kind} · {pageName}"
+
+#. Ask review: pick which of your records a change is for; kind is the app's name for them
+#: ../shell/src/ask-review-edits.tsx
+msgid "{kind}: which ones"
+msgstr "{kind}: which ones"
 
 #. A library the app uses: name and version
 #: ../shell/src/package-libraries.ts
@@ -376,6 +435,10 @@ msgstr "{library} uses a feature shared apps don’t have yet: {words}. Apps in 
 msgid "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
 msgstr "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
 
+#: ../shell/src/ask-panel.tsx
+msgid "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
+msgstr "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
+
 #: ../shell/src/studio-engine.ts
 msgid "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
 msgstr "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
@@ -409,6 +472,14 @@ msgstr "{name} (shared)"
 msgid "{name} doesn’t declare any kinds of record."
 msgstr "{name} doesn’t declare any kinds of record."
 
+#: ../shell/src/ask-material.tsx
+msgid "{name} has no text in it."
+msgstr "{name} has no text in it."
+
+#: ../shell/src/ask-material.tsx
+msgid "{name} is {size} KB; files up to {max} KB can be brought in."
+msgstr "{name} is {size} KB; files up to {max} KB can be brought in."
+
 #: ../shell/src/data-page.tsx
 msgid "{name} records"
 msgstr "{name} records"
@@ -422,6 +493,10 @@ msgstr "{name}, version {seq}"
 #: ../shell/src/user-apps.ts
 msgid "{original} (copy)"
 msgstr "{original} (copy)"
+
+#: ../shell/src/ask-review.tsx
+msgid "{ran, plural, one {ran # action} other {ran # actions}}"
+msgstr "{ran, plural, one {ran # action} other {ran # actions}}"
 
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
@@ -453,6 +528,10 @@ msgstr ""
 "{what}\n"
 "\n"
 "Once, now, and kept with the app: after that it works without the internet."
+
+#: ../shell/src/ask-panel.tsx
+msgid "{why} What was already done is in the app; asking again will mark what is already there."
+msgstr "{why} What was already done is in the app; asking again will mark what is already there."
 
 #: ../shell/src/inline-edit.tsx
 msgid "← Earlier"
@@ -532,6 +611,10 @@ msgstr "A draft translation was written by a model and may read oddly in places.
 msgid "a full web page"
 msgstr "a full web page"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "A header named…"
+msgstr "A header named…"
+
 #: ../shell/src/backup-switch.tsx
 msgid "A new device signed in with your words can bring them all back."
 msgstr "A new device signed in with your words can bring them all back."
@@ -543,6 +626,10 @@ msgstr "A package (.zip), or the app’s file with the files it uses"
 #: ../shell/src/studio-thread-view.tsx
 msgid "A packing list I can reuse for trips"
 msgstr "A packing list I can reuse for trips"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "A query parameter named…"
+msgstr "A query parameter named…"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "A separate copy, starting empty."
@@ -609,6 +696,10 @@ msgstr "Accent colour"
 msgid "Accent hue {degrees}"
 msgstr "Accent hue {degrees}"
 
+#. Ask review: an app's actions the proposal would run
+#. Ask review: an app's actions the proposal would run
+#: ../shell/src/ask-review.tsx
+#: ../shell/src/ask-review.tsx
 #: ../shell/src/data-table.tsx
 msgid "Actions"
 msgstr "Actions"
@@ -629,9 +720,27 @@ msgstr "Add"
 msgid "Add {count}"
 msgstr "Add {count}"
 
+#. Ask review button, lower case, may be joined with others: add N records
+#: ../shell/src/ask-review.tsx
+msgid "add {rowsN}"
+msgstr "add {rowsN}"
+
 #: ../shell/src/identity-panel.tsx
 msgid "Add a device"
 msgstr "Add a device"
+
+#: ../shell/src/ask-material.tsx
+msgid "Add a file"
+msgstr "Add a file"
+
+#: ../shell/src/ask-material.tsx
+msgid "Add a file instead"
+msgstr "Add a file instead"
+
+#: ../shell/src/ask-sources-panel.tsx
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Add a source"
+msgstr "Add a source"
 
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/add-app-dialog.tsx
@@ -653,6 +762,14 @@ msgstr "Add app"
 msgid "Add it as a second app"
 msgstr "Add it as a second app"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Add source"
+msgstr "Add source"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Add the API's address, or a link to its documentation."
+msgstr "Add the API's address, or a link to its documentation."
+
 #. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
 #: ../views/src/record-form.tsx
 msgid "Add: {noun}"
@@ -661,6 +778,10 @@ msgstr "Add: {noun}"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Adding {addingName}…"
 msgstr "Adding {addingName}…"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Adding…"
+msgstr "Adding…"
 
 #. History: how a version came about (changed by hand in edit mode), lower case
 #: ../shell/src/history.tsx
@@ -674,6 +795,22 @@ msgstr "Advanced — sync relay, identity id"
 #: ../shell/src/chrome.tsx
 msgid "All apps"
 msgstr "All apps"
+
+#: ../shell/src/ask-review-layouts.tsx
+msgid "All details"
+msgstr "All details"
+
+#: ../shell/src/ask-review-layouts.tsx
+msgid "All details and sources"
+msgstr "All details and sources"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Allow"
+msgstr "Allow"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Allow this address?"
+msgstr "Allow this address?"
 
 #: ../shell/src/ask-verdicts.ts
 msgid "Already in your app"
@@ -707,6 +844,10 @@ msgstr "Anthropic API key"
 #: ../shell/src/backup-switch.tsx
 msgid "Anything you make later goes too. The relay only ever sees encrypted data."
 msgstr "Anything you make later goes too. The relay only ever sees encrypted data."
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "API address"
+msgstr "API address"
 
 #: ../shell/src/studio-tools.tsx
 msgid "App history"
@@ -742,24 +883,61 @@ msgstr "Apply"
 msgid "Apply anyway"
 msgstr "Apply anyway"
 
+#: ../shell/src/ask-review-parts.tsx
+msgid "Approve"
+msgstr "Approve"
+
+#: ../shell/src/ask-review-parts.tsx
+msgid "Approve {name}"
+msgstr "Approve {name}"
+
 #: ../shell/src/data-page.tsx
 #: ../shell/src/data-page.tsx
 #: ../shell/src/launcher.tsx
 msgid "Apps"
 msgstr "Apps"
 
+#: ../shell/src/ask-panel.tsx
+msgid "Area on your map · {lat}, {lng} · {km} km"
+msgstr "Area on your map · {lat}, {lng} · {km} km"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Area on your map · {lat}, {lng} · <1 km"
+msgstr "Area on your map · {lat}, {lng} · <1 km"
+
+#. Button: send the request to Ask
+#. The name of the feature that adds records with AI
 #. Tile editor: the AI feature called Ask
+#: ../shell/src/ask-panel.tsx
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Ask"
 msgstr "Ask"
+
+#. The Ask dialog of an app; Ask is the feature's name
+#: ../shell/src/ask-panel.tsx
+msgid "Ask {name}"
+msgstr "Ask {name}"
 
 #: ../shell/src/point-mode.tsx
 msgid "Ask about this"
 msgstr "Ask about this"
 
+#: ../shell/src/ask-panel.tsx
+msgid "Ask can’t run yet"
+msgstr "Ask can’t run yet"
+
 #: ../shell/src/studio.tsx
 msgid "Ask for a change…"
 msgstr "Ask for a change…"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Ask for more"
+msgstr "Ask for more"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Ask has used {spentHere} of your OpenRouter credit in this app, on this device."
+msgstr "Ask has used {spentHere} of your OpenRouter credit in this app, on this device."
 
 #: ../shell/src/start-ask.ts
 msgid "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings."
@@ -788,6 +966,7 @@ msgstr "Asks for"
 
 #. Data page: leave the page
 #: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
@@ -829,6 +1008,11 @@ msgstr "Backup"
 #: ../shell/src/missing-features.ts
 msgid "base64 text"
 msgstr "base64 text"
+
+#. Ask review: an old value → its new value
+#: ../shell/src/ask-review-edits.tsx
+msgid "becomes"
+msgstr "becomes"
 
 #: ../shell/src/launcher.tsx
 msgid ""
@@ -919,6 +1103,7 @@ msgstr "Can view"
 
 #. Dialog button: decline
 #: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/dialog.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/picker.tsx
@@ -942,11 +1127,26 @@ msgstr "candidate failed replay — {detail}"
 msgid "candidate passed replay — {detail}"
 msgstr "candidate passed replay — {detail}"
 
+#. Ask review: show proposed records as cards
+#: ../shell/src/ask-review.tsx
+msgid "Cards"
+msgstr "Cards"
+
+#. Ask review: a badge on a proposed change to a record
+#: ../shell/src/ask-review-edits.tsx
+msgid "Change"
+msgstr "Change"
+
 #. Studio, empty conversation about an existing app; name is the app's
 #. placeholder {0}: app.name
 #: ../shell/src/studio-thread-view.tsx
 msgid "Change {0}"
 msgstr "Change {0}"
+
+#. Ask review button, lower case, may be joined with others: change N records
+#: ../shell/src/ask-review.tsx
+msgid "change {editsN}"
+msgstr "change {editsN}"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Change field name"
@@ -986,6 +1186,8 @@ msgid "Changed."
 msgstr "Changed."
 
 #. A diff between two versions of the app
+#. Ask review: changes to records you already have
+#: ../shell/src/ask-review.tsx
 #: ../shell/src/history.tsx
 msgid "Changes"
 msgstr "Changes"
@@ -993,6 +1195,10 @@ msgstr "Changes"
 #: ../shell/src/history.tsx
 msgid "Changes in version {seq}"
 msgstr "Changes in version {seq}"
+
+#: ../shell/src/ask-review.tsx
+msgid "Changes to your records"
+msgstr "Changes to your records"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
@@ -1093,6 +1299,7 @@ msgstr "Clear {filter}"
 #. Button: close the fix panel
 #. Button: close the replay report
 #: ../shell/src/activity-panel.tsx
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/case-report.tsx
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/fix-panel.tsx
@@ -1173,6 +1380,11 @@ msgstr "compiled code (WebAssembly)"
 #: ../shell/src/dialog.tsx
 msgid "Confirm"
 msgstr "Confirm"
+
+#. Ask review table: how far the sources confirm the record
+#: ../shell/src/ask-review-layouts.tsx
+msgid "Confirmed"
+msgstr "Confirmed"
 
 #: ../shell/src/sync-status.tsx
 msgid "Connecting…"
@@ -1298,6 +1510,11 @@ msgstr "Date"
 msgid "date and number formatting"
 msgstr "date and number formatting"
 
+#. Ask review table: the approve/reject column
+#: ../shell/src/ask-review-layouts.tsx
+msgid "Decision"
+msgstr "Decision"
+
 #. Data table: delete this record
 #: ../shell/src/data-table.tsx
 #: ../shell/src/data-table.tsx
@@ -1380,6 +1597,8 @@ msgstr "Details"
 msgid "Directly, with everything this device lets apps do. Leave it off for an app from someone else: it then runs in the sealed box."
 msgstr "Directly, with everything this device lets apps do. Leave it off for an app from someone else: it then runs in the sealed box."
 
+#. Ask review: throw the whole proposal away
+#: ../shell/src/ask-review.tsx
 #: ../views/src/record-form.tsx
 msgid "Discard"
 msgstr "Discard"
@@ -1401,9 +1620,25 @@ msgstr "Dismiss this message"
 msgid "Disputed"
 msgstr "Disputed"
 
+#: ../shell/src/ask-review-parts.tsx
+msgid "Disputed:"
+msgstr "Disputed:"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Docs link"
+msgstr "Docs link"
+
 #: ../shell/src/share-page.tsx
 msgid "Don’t add it"
 msgstr "Don’t add it"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Don’t allow"
+msgstr "Don’t allow"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Don’t send the map area"
+msgstr "Don’t send the map area"
 
 #: ../shell/src/sync-consent.ts
 msgid "Don't share"
@@ -1414,6 +1649,7 @@ msgstr "Don't share"
 #. Filter sheet: close it
 #. Leave edit mode
 #. Share dialog: close it
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/dialog.tsx
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
@@ -1431,6 +1667,14 @@ msgstr "draft"
 #: ../shell/src/studio.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
+
+#: ../shell/src/ask-panel.tsx
+msgid "e.g. five dog-friendly cafés near the river"
+msgstr "e.g. five dog-friendly cafés near the river"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "e.g. Places search"
+msgstr "e.g. Places search"
 
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
@@ -1555,6 +1799,11 @@ msgstr "Field name"
 msgid "figures"
 msgstr "figures"
 
+#: ../shell/src/ask-material.tsx
+#: ../shell/src/ask-material.tsx
+msgid "File to bring in"
+msgstr "File to bring in"
+
 #: ../shell/src/missing-features.ts
 msgid "files in memory"
 msgstr "files in memory"
@@ -1593,6 +1842,10 @@ msgstr "Find an app"
 msgid "Find in these records"
 msgstr "Find in these records"
 
+#: ../shell/src/ask-panel.tsx
+msgid "Fitting it to {name}’s fields (try {attempt})…"
+msgstr "Fitting it to {name}’s fields (try {attempt})…"
+
 #: ../shell/src/fix-panel.tsx
 msgid "Fix found"
 msgstr "Fix found"
@@ -1609,6 +1862,22 @@ msgstr "Fixing it via {label}… {elapsed}"
 msgid "Follows this device"
 msgstr "Follows this device"
 
+#: ../shell/src/ask-panel.tsx
+msgid "For {sourceLabel}, which this app names."
+msgstr "For {sourceLabel}, which this app names."
+
+#: ../shell/src/ask-panel.tsx
+msgid "For {sourceLabel}."
+msgstr "For {sourceLabel}."
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Forget the key"
+msgstr "Forget the key"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Found on {sites}"
+msgstr "Found on {sites}"
+
 #. Calendar column head: Friday, as short as your language writes it
 #: ../views/src/date-input.tsx
 msgid "Fr"
@@ -1622,6 +1891,10 @@ msgstr "From {via}"
 #: ../shell/src/add-app-dialog.tsx
 msgid "From a link"
 msgstr "From a link"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "from this app"
+msgstr "from this app"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "From this device"
@@ -1649,6 +1922,10 @@ msgstr "Gave up"
 msgid "General knowledge"
 msgstr "General knowledge"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Give it a name."
+msgstr "Give it a name."
+
 #: ../shell/src/studio.tsx
 msgid "Go back"
 msgstr "Go back"
@@ -1673,6 +1950,10 @@ msgstr "going online on its own"
 msgid "group {n} would be left with no fields"
 msgstr "group {n} would be left with no fields"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Header name"
+msgstr "Header name"
+
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
 msgid "heading"
@@ -1686,6 +1967,10 @@ msgstr "here"
 #: ../views/src/field-input.tsx
 msgid "Hide coordinates"
 msgstr "Hide coordinates"
+
+#: ../shell/src/ask-review-layouts.tsx
+msgid "Hide details"
+msgstr "Hide details"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Hide from the form"
@@ -1781,6 +2066,10 @@ msgstr "Ideas to start from"
 msgid "Identity <0>{0}</0>"
 msgstr "Identity <0>{0}</0>"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "If the API needs one"
+msgstr "If the API needs one"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "imported"
@@ -1857,6 +2146,10 @@ msgstr "It could not be tried in the sealed box: {trialProblem}"
 msgid "It could not open."
 msgstr "It could not open."
 
+#: ../shell/src/ask-panel.tsx
+msgid "It couldn’t make this fit"
+msgstr "It couldn’t make this fit"
+
 #: ../shell/src/fix-panel.tsx
 msgid "It has a question"
 msgstr "It has a question"
@@ -1868,6 +2161,10 @@ msgstr "It is already here"
 #: ../shell/src/data-table.tsx
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "It is removed from the app too, and can’t be brought back."
+
+#: ../shell/src/ask-panel.tsx
+msgid "It needs to know one thing"
+msgstr "It needs to know one thing"
 
 #: ../shell/src/fix-panel.tsx
 msgid "It replayed clean against the app as it is — {detail}"
@@ -1920,6 +2217,14 @@ msgstr "Joining…"
 msgid "just now"
 msgstr "just now"
 
+#: ../shell/src/ask-review-parts.tsx
+msgid "Keep {name}?"
+msgstr "Keep {name}?"
+
+#: ../shell/src/ask-review-parts.tsx
+msgid "Keep anyway"
+msgstr "Keep anyway"
+
 #: ../shell/src/studio.tsx
 msgid "Keep it"
 msgstr "Keep it"
@@ -1952,6 +2257,19 @@ msgstr "Kept in storage; this app no longer shows it"
 #: ../shell/src/studio.tsx
 msgid "Kept with problems."
 msgstr "Kept with problems."
+
+#. An API key
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Key"
+msgstr "Key"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Key for {sourceName}"
+msgstr "Key for {sourceName}"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Keys stay on this device, in its secure store. Apps never see them."
+msgstr "Keys stay on this device, in its secure store. Apps never see them."
 
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
@@ -2003,9 +2321,14 @@ msgstr "Leave it blank to use this site’s own relay."
 msgid "Leave it empty to keep the default."
 msgstr "Leave it empty to keep the default."
 
+#: ../shell/src/ask-review-parts.tsx
 #: ../shell/src/share-chat.ts
 msgid "Leave it out"
 msgstr "Leave it out"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Let Ask read from {host}?"
+msgstr "Let Ask read from {host}?"
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio-preview.tsx
@@ -2093,6 +2416,10 @@ msgstr "Look — appearance and colour"
 #: ../shell/src/studio-thread-view.tsx
 msgid "Look at it"
 msgstr "Look at it"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Look it over"
+msgstr "Look it over"
 
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
@@ -2215,10 +2542,20 @@ msgstr "Moving…"
 msgid "My plants, and when each one needs water"
 msgstr "My plants, and when each one needs water"
 
+#. A data source's name
 #. Tile editor: the name shown on the launcher tile
+#: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Name"
 msgstr "Name"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Name the header the key goes in."
+msgstr "Name the header the key goes in."
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Name the query parameter the key goes in."
+msgstr "Name the query parameter the key goes in."
 
 #: ../shell/src/engine-settings.tsx
 msgid "needs a WebGPU browser"
@@ -2227,6 +2564,11 @@ msgstr "needs a WebGPU browser"
 #: ../shell/src/studio.tsx
 msgid "needs an API key"
 msgstr "needs an API key"
+
+#. Ask review: a record the proposal would add, not one you have
+#: ../shell/src/ask-review.tsx
+msgid "new"
+msgstr "new"
 
 #. Ask review: a proposed record, not checked against anything
 #: ../shell/src/ask-verdicts.ts
@@ -2251,6 +2593,7 @@ msgstr "New on this device"
 msgid "Next month"
 msgstr "Next month"
 
+#: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
 msgid "No"
@@ -2328,6 +2671,10 @@ msgstr "Nobody else is here yet. Share this app and whatever you write will be w
 msgid "None of these is an app: choose its source (a .ts or .tsx file) or a package zip."
 msgstr "None of these is an app: choose its source (a .ts or .tsx file) or a package zip."
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "none yet"
+msgstr "none yet"
+
 #: ../shell/src/engine-settings.tsx
 msgid "not available in this browser"
 msgstr "not available in this browser"
@@ -2335,6 +2682,10 @@ msgstr "not available in this browser"
 #: ../shell/src/ask-verdicts.ts
 msgid "Not confirmed"
 msgstr "Not confirmed"
+
+#: ../shell/src/ask-review-parts.tsx
+msgid "Not in its sources:"
+msgstr "Not in its sources:"
 
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/add-app-dialog.tsx
@@ -2377,6 +2728,10 @@ msgstr "not usable — {detail}"
 #: ../shell/src/chat-panel.tsx
 msgid "Nothing about {label} yet."
 msgstr "Nothing about {label} yet."
+
+#: ../shell/src/ask-review.tsx
+msgid "Nothing approved"
+msgstr "Nothing approved"
 
 #: ../shell/src/ask-apply.ts
 msgid "Nothing is called exactly “{match}”; tick the ones you meant."
@@ -2434,6 +2789,10 @@ msgstr "Nothing to pick yet."
 #: ../views/src/aggregate.tsx
 msgid "Nothing to show yet."
 msgstr "Nothing to show yet."
+
+#: ../shell/src/ask-panel.tsx
+msgid "Nothing was done"
+msgstr "Nothing was done"
 
 #: ../shell/src/studio.tsx
 msgid "Nothing was made from it yet, so there is no app to keep."
@@ -2526,6 +2885,10 @@ msgstr "Only {site}"
 msgid "Only {site} mentions it; nothing else confirmed it."
 msgstr "Only {site} mentions it; nothing else confirmed it."
 
+#: ../shell/src/ask-panel.tsx
+msgid "Only allow an address that belongs to that service."
+msgstr "Only allow an address that belongs to that service."
+
 #: ../shell/src/add-app.ts
 msgid "Only http and https links can be fetched"
 msgstr "Only http and https links can be fetched"
@@ -2533,6 +2896,10 @@ msgstr "Only http and https links can be fetched"
 #: ../shell/src/splash.tsx
 msgid "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
 msgstr "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
+
+#: ../shell/src/ask-material.tsx
+msgid "Only the first {maxChars} characters will be used ({hereChars} here)."
+msgstr "Only the first {maxChars} characters will be used ({hereChars} here)."
 
 #: ../shell/src/people-panel.tsx
 msgid "Only the person who created this app, who created this app, can invite or remove people."
@@ -2598,6 +2965,14 @@ msgstr "Page name"
 msgid "Pages"
 msgstr "Pages"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Parameter name"
+msgstr "Parameter name"
+
+#: ../shell/src/ask-material.tsx
+msgid "Paste a list, a plan, a table…"
+msgstr "Paste a list, a plan, a table…"
+
 #: ../shell/src/add-app.ts
 msgid "Paste the app's source first"
 msgstr "Paste the app's source first"
@@ -2609,6 +2984,19 @@ msgstr "Paste the source"
 #: ../shell/src/identity-panel.tsx
 msgid "Paste the words from your other device."
 msgstr "Paste the words from your other device."
+
+#: ../shell/src/ask-material.tsx
+msgid "Paste what another AI made"
+msgstr "Paste what another AI made"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Paste your key"
+msgstr "Paste your key"
+
+#. Ask: the text the person pasted in
+#: ../shell/src/ask-material.tsx
+msgid "Pasted"
+msgstr "Pasted"
 
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
@@ -2696,6 +3084,10 @@ msgstr "Promote to trusted"
 msgid "Promote to trusted?"
 msgstr "Promote to trusted?"
 
+#: ../shell/src/ask-panel.tsx
+msgid "Putting places at their address ({placedNow} of {placedOf})…"
+msgstr "Putting places at their address ({placedNow} of {placedOf})…"
+
 #: ../shell/src/chrome.tsx
 msgid "Quick actions"
 msgstr "Quick actions"
@@ -2711,6 +3103,10 @@ msgstr "Read-only: this app has a newer version. Update to keep making changes."
 #: ../shell/src/app-lock.tsx
 msgid "Read-only: your data still uses the previous version. Update it to keep making changes."
 msgstr "Read-only: your data still uses the previous version. Update it to keep making changes."
+
+#: ../shell/src/ask-panel.tsx
+msgid "Reading {reading}…"
+msgstr "Reading {reading}…"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Reading it…"
@@ -2740,6 +3136,14 @@ msgstr "Recommended balance"
 msgid "Recording"
 msgstr "Recording"
 
+#: ../shell/src/ask-review-parts.tsx
+msgid "Reject"
+msgstr "Reject"
+
+#: ../shell/src/ask-review-parts.tsx
+msgid "Reject {name}"
+msgstr "Reject {name}"
+
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
 #: ../shell/src/people-panel.tsx
@@ -2754,6 +3158,14 @@ msgstr "Remove {name}?"
 #: ../views/src/field-input.tsx
 msgid "Remove {tag}"
 msgstr "Remove {tag}"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Remove this source"
+msgstr "Remove this source"
+
+#: ../shell/src/ask-material.tsx
+msgid "Remove what you brought"
+msgstr "Remove what you brought"
 
 #: ../shell/src/people-panel.tsx
 msgid "Removed {name}"
@@ -2856,6 +3268,11 @@ msgstr "rolled back to version {seq}"
 msgid "row"
 msgstr "row"
 
+#. Ask review button, lower case, may be joined with others: run N actions
+#: ../shell/src/ask-review.tsx
+msgid "run {runsN}"
+msgstr "run {runsN}"
+
 #. Button: build and run the code in the editor
 #: ../shell/src/studio-tools.tsx
 msgid "Run ▶"
@@ -2889,6 +3306,10 @@ msgstr "Save"
 msgid "Save changes"
 msgstr "Save changes"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Save key"
+msgstr "Save key"
+
 #: ../shell/src/storage-report.tsx
 msgid "Save one thing"
 msgstr "Save one thing"
@@ -2901,6 +3322,10 @@ msgstr "Saving…"
 #: ../shell/src/studio-thread-view.tsx
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
+
+#: ../shell/src/ask-panel.tsx
+msgid "Search the web when needed · about 2¢"
+msgstr "Search the web when needed · about 2¢"
 
 #: ../shell/src/picker.tsx
 msgid "Search…"
@@ -2918,7 +3343,9 @@ msgstr "See the code"
 msgid "seed.json is not valid JSON: {why}"
 msgstr "seed.json is not valid JSON: {why}"
 
+#. Ask: send the answer to its question
 #. Send a chat message
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/chat-panel.tsx
 msgid "Send"
 msgstr "Send"
@@ -2942,6 +3369,14 @@ msgstr "Send this link. Whoever opens it joins your app and its data."
 #: ../shell/src/studio.tsx
 msgid "Send to {label}"
 msgstr "Send to {label}"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Send your {sourceLabel} key to {host}?"
+msgstr "Send your {sourceLabel} key to {host}?"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Sent with your request"
+msgstr "Sent with your request"
 
 #: ../shell/src/identity-panel.tsx
 msgid "Set a name"
@@ -3018,6 +3453,10 @@ msgstr "Shortcuts"
 msgid "Show all of it"
 msgstr "Show all of it"
 
+#: ../shell/src/ask-review.tsx
+msgid "Show as"
+msgstr "Show as"
+
 #: ../shell/src/share-page.tsx
 msgid "Show less"
 msgstr "Show less"
@@ -3067,9 +3506,22 @@ msgstr "Sort apps"
 msgid "Source"
 msgstr "Source"
 
+#. Ask: the outside data an app can read
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Sources"
+msgstr "Sources"
+
+#: ../shell/src/ask-review-layouts.tsx
+msgid "Sources and notes"
+msgstr "Sources and notes"
+
 #: ../shell/src/studio.tsx
 msgid "Start a new app"
 msgstr "Start a new app"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Start over"
+msgstr "Start over"
 
 #. Add an app card: the records it comes with
 #: ../shell/src/add-app-dialog.tsx
@@ -3081,7 +3533,9 @@ msgstr "Starts with"
 msgid "steps"
 msgstr "steps"
 
+#. Ask: stop the request
 #. Button: stop the fix agent
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Stop"
 msgstr "Stop"
@@ -3099,7 +3553,9 @@ msgstr "Stop pointing at {0}"
 msgid "Stop putting new apps on the relay?"
 msgstr "Stop putting new apps on the relay?"
 
+#. Ask: the person stopped the request
 #. Fix agent outcome: the person stopped it
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Stopped"
 msgstr "Stopped"
@@ -3204,6 +3660,11 @@ msgstr "System"
 msgid "table"
 msgstr "table"
 
+#. Ask review: show proposed records as a table
+#: ../shell/src/ask-review.tsx
+msgid "Table"
+msgstr "Table"
+
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Tap a part of the app to talk about it"
@@ -3293,6 +3754,14 @@ msgstr "The conversation from the Studio goes with it — everything you asked f
 msgid "The conversation goes. Nothing was made from it yet."
 msgstr "The conversation goes. Nothing was made from it yet."
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "The docs link must be an https:// address."
+msgstr "The docs link must be an https:// address."
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "The endpoint must be an https:// address."
+msgstr "The endpoint must be an https:// address."
+
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
 msgstr "the groups must stay the groups that are there now"
@@ -3301,6 +3770,10 @@ msgstr "the groups must stay the groups that are there now"
 #: ../shell/src/capability-words.ts
 msgid "the internet"
 msgstr "the internet"
+
+#: ../shell/src/ask-sources-panel.tsx
+msgid "The key goes in"
+msgstr "The key goes in"
 
 #: ../shell/src/add-app.ts
 msgid "The link answered {status}"
@@ -3365,6 +3838,10 @@ msgstr "the source editor could not be loaded"
 #: ../shell/src/studio.tsx
 msgid "The versions after it stay in History."
 msgstr "The versions after it stay in History."
+
+#: ../shell/src/ask-panel.tsx
+msgid "The web search was unavailable, so this comes from the model’s memory. Check it before you rely on it."
+msgstr "The web search was unavailable, so this comes from the model’s memory. Check it before you rely on it."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "The whole app, as text"
@@ -3490,6 +3967,10 @@ msgstr "This app isn't written in a way that can be changed in place."
 msgid "this app's pages aren't a plain array"
 msgstr "this app's pages aren't a plain array"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "This browser has no secure store, so keys are kept only until you close this page."
+msgstr "This browser has no secure store, so keys are kept only until you close this page."
+
 #: ../shell/src/studio.tsx
 msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
 msgstr "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
@@ -3557,6 +4038,10 @@ msgstr "this record"
 #: ../shell/src/identity-panel.tsx
 msgid "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
 msgstr "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
+
+#: ../shell/src/ask-panel.tsx
+msgid "This request cost {lastSpent} of your OpenRouter credit."
+msgstr "This request cost {lastSpent} of your OpenRouter credit."
 
 #: ../views/src/aggregate.tsx
 msgid "This screen could not be worked out: {error}"
@@ -3637,6 +4122,10 @@ msgstr "Try to fix it"
 #: ../views/src/date-input.tsx
 msgid "Tu"
 msgstr "Tu"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Turn off Ask for this app"
+msgstr "Turn off Ask for this app"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn off sync for “{name}”? Its data will be copied back to local-only storage."
@@ -3788,6 +4277,10 @@ msgstr "weak references"
 msgid "went back to version {seq}"
 msgstr "went back to version {seq}"
 
+#: ../shell/src/ask-material.tsx
+msgid "What another AI made"
+msgstr "What another AI made"
+
 #: ../shell/src/studio.tsx
 msgid ""
 "What came back has problems, so it was not saved:\n"
@@ -3822,6 +4315,10 @@ msgstr "What should be different about it?"
 msgid "What should be different?"
 msgstr "What should be different?"
 
+#: ../shell/src/ask-panel.tsx
+msgid "What should go into {name}?"
+msgstr "What should go into {name}?"
+
 #: ../shell/src/identity-panel.tsx
 msgid "What should people you share with see you as?"
 msgstr "What should people you share with see you as?"
@@ -3830,6 +4327,10 @@ msgstr "What should people you share with see you as?"
 msgid "What should the people you share with see you as?"
 msgstr "What should the people you share with see you as?"
 
+#: ../shell/src/ask-panel.tsx
+msgid "What to add"
+msgstr "What to add"
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "What would you like to make?"
 msgstr "What would you like to make?"
@@ -3837,6 +4338,10 @@ msgstr "What would you like to make?"
 #: ../shell/src/point-mode.tsx
 msgid "What you are pointing at"
 msgstr "What you are pointing at"
+
+#: ../shell/src/ask-panel.tsx
+msgid "What you asked for may go there; nothing already in the app does."
+msgstr "What you asked for may go there; nothing already in the app does."
 
 #: ../shell/src/launcher-order.ts
 msgid "What you open often and lately, first"
@@ -3850,6 +4355,14 @@ msgstr "When a change keeps being turned back, the next try thinks hard. It cost
 msgid "Where it comes from"
 msgstr "Where it comes from"
 
+#: ../shell/src/ask-sources-panel.tsx
+msgid "Where the key goes"
+msgstr "Where the key goes"
+
+#: ../shell/src/ask-review-parts.tsx
+msgid "Where this was found"
+msgstr "Where this was found"
+
 #: ../shell/src/engine-settings.tsx
 msgid "Which model writes and edits your app. Keys stay in this tab and are never saved."
 msgstr "Which model writes and edits your app. Keys stay in this tab and are never saved."
@@ -3861,6 +4374,10 @@ msgstr "Which part"
 #: ../shell/src/identity-panel.tsx
 msgid "Which relay should this device use?"
 msgstr "Which relay should this device use?"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Working on it…"
+msgstr "Working on it…"
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "Working…"
@@ -3878,6 +4395,7 @@ msgstr "Write the code yourself"
 msgid "Writes and edits apps; cannot investigate a reported problem step by step."
 msgstr "Writes and edits apps; cannot investigate a reported problem step by step."
 
+#: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
 msgid "Yes"
@@ -3887,6 +4405,11 @@ msgstr "Yes"
 #: ../views/src/date-input.tsx
 msgid "Yesterday"
 msgstr "Yesterday"
+
+#. Ask review: a value came from what the person typed or pasted
+#: ../shell/src/ask-review-parts.tsx
+msgid "you"
+msgstr "you"
 
 #. Heading of the panel about the person using Potyro and their devices
 #: ../shell/src/identity-panel.tsx
@@ -3911,9 +4434,18 @@ msgstr "You ended this before it finished."
 msgid "You expected: {expectation}"
 msgstr "You expected: {expectation}"
 
+#: ../shell/src/ask-panel.tsx
+msgid "You stopped it before it finished."
+msgstr "You stopped it before it finished."
+
+#: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Your answer"
 msgstr "Your answer"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Your answer is remembered for this source."
+msgstr "Your answer is remembered for this source."
 
 #: ../shell/src/studio-thread-view.tsx
 #: ../shell/src/studio.tsx
@@ -3959,3 +4491,8 @@ msgstr "Your devices"
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"
 msgstr "Your order: drag tiles, or Alt+arrows"
+
+#. A data source the person added themselves
+#: ../shell/src/ask-sources-panel.tsx
+msgid "yours"
+msgstr "yours"
