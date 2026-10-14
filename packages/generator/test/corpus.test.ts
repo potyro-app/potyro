@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCorpus, exampleFromCorpus, inCorpus, primeCorpus, readCorpus, searchCorpus, type Corpus } from "../src/corpus.js";
-import { collectCorpusFiles } from "../src/corpus-files.js";
+import { buildCorpus, exampleFromCorpus, inCorpus, primeCorpus, primeGroups, readCorpus, searchCorpus, type Corpus } from "../src/corpus.js";
+import { collectCatalogWords, collectCorpusFiles } from "../src/corpus-files.js";
 import { CORPUS } from "../src/corpus.generated.js";
 import { loadCorpus } from "../src/load-corpus.js";
 
@@ -29,7 +29,7 @@ describe("corpus sources", () => {
   });
 
   it("is up to date with the repository (run `pnpm --filter @potyro/generator gen:corpus`)", () => {
-    const fresh = buildCorpus(collectCorpusFiles());
+    const fresh = buildCorpus(collectCorpusFiles(), collectCatalogWords());
     expect(CORPUS.files.map((f) => f.path)).toEqual(fresh.files.map((f) => f.path));
     expect(CORPUS.version).toBe(fresh.version);
   });
@@ -119,6 +119,37 @@ describe("primeCorpus — retrieval done by the harness before the first turn (#
 
   it("is empty when nothing in the corpus speaks to the request", () => {
     expect(primeCorpus(corpus, "bluetooth heart-rate pairing", editing)).toBe("");
+  });
+
+  describe("a request in another language (#306 follow-up)", () => {
+    const multi = buildCorpus(
+      [
+        ...corpus.files,
+        // Words in two languages, under packages/ so priming never quotes it: what teaches "mapa".
+        { path: "packages/demo/trips.app.ts", text: 'export default defineApp({ id: "tripsx", pages: [{ id: "m", title: { en: "Map", pl: "Mapa" } }], entities: { place: { label: { en: "Place", pl: "Miejsce" }, fields: { camera: { type: "text", label: { en: "Camera", pl: "Kamera" } } } } } });' },
+      ],
+      [["pl", "Pozycja", "Position"]],
+    );
+
+    it("primes a Polish request with what the English one gets", () => {
+      const en = primeCorpus(multi, "open the map on the camera position of the selected place", editing, "en");
+      const pl = primeCorpus(multi, "otwórz mapę na pozycji kamery wybranego miejsca", editing, "pl");
+      expect(en).toContain("examples/places.app.ts");
+      expect(pl).toContain("examples/places.app.ts");
+    });
+
+    it("reads a request's language off it when the loop was not told", () => {
+      expect(primeGroups(multi, "otwórz mapę na pozycji kamery wybranego miejsca", editing).some((g) => g.includes("map"))).toBe(true);
+    });
+
+    it("matches an English request word for word, even where a word looks like another language's", () => {
+      expect(primeGroups(multi, "open the map on the camera position", editing, "en").every((g) => g.length === 1)).toBe(true);
+    });
+
+    it("learns the words of the app being edited, even one written only in Polish", () => {
+      const polish = 'export default defineApp({ id: "mine", entities: { item: { fields: { rating: { type: "number", label: "Ocena" } } } } });';
+      expect(primeGroups(multi, "dodaj ocenę do przepisów", polish, "pl")[1]).toEqual(["ocenę", "rating"]);
+    });
   });
 
   it("stays small", () => {

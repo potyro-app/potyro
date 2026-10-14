@@ -205,7 +205,7 @@ async function firstMessage(deps: ModifyLoopDeps, tool: boolean): Promise<string
     buildModifyMessage(deps.instruction, { ...deps.context, language }, { source: deps.source }),
   ];
   if (deps.corpus) {
-    const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
+    const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source, deps.language);
     if (primed) parts.push(primed);
   }
   return parts.join("\n\n");
