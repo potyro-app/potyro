@@ -12,13 +12,17 @@
 // Only the value that is RENDERED is looked at: the branches of `a ? "x" : "y"`, both sides of
 // `"x" + y`, a template literal. A string compared, used as a key or a class name is not text.
 //
-// Two levels, so the extraction can go batch by batch (#299):
-//   - ERROR for the files in CLEAN below — a batch that has been extracted cannot regress;
-//   - WARN for everything else, summarised per file (`--verbose` lists each one).
-// `--strict` makes every finding an error, which is where #299 ends.
+// Every finding is an error, in every file of shell and views (#299 extracted them all, batch by
+// batch; the per-file allow-list it went through is gone with it). A new file is covered the moment
+// it exists.
 //
-// Escape hatch, for proper nouns and code that is not language: `// i18n-ignore` on the line, or
-// on the line before. "Potyro" is allowed everywhere; it is a name.
+// Escape hatch, for proper nouns and code that is not language: `// i18n-ignore — <why>` on the
+// line, or on the line before (in JSX, `{/* i18n-ignore — <why> */}`). Say why: an example address,
+// a name, text a model reads (#297 keeps model-facing text English). "Potyro" is allowed everywhere;
+// it is a name.
+//
+// What this cannot see: a string a function returns or throws that ends up on screen. Those were
+// moved by reading (#299); the pseudo-language e2e (e2e/i18n-trusted.spec.ts) is the net for them.
 //
 // TypeScript's own parser (already a dependency), like the other checks in scripts/: no ESLint in
 // this repo to hang a rule on, and a parser rather than a regex because JSX text cannot be found
@@ -32,180 +36,6 @@ import ts from "typescript";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const ROOTS = ["packages/shell/src", "packages/views/src"];
 
-/** Extracted batches: any finding here fails the check. */
-export const CLEAN = new Set([
-  // #298, batch 1: the launcher and the You panel, and everything drawn inside them.
-  "packages/shell/src/launcher.tsx",
-  "packages/shell/src/launcher-order.ts",
-  "packages/shell/src/launcher-store.ts",
-  "packages/shell/src/draft-strip.tsx",
-  "packages/shell/src/identity-panel.tsx",
-  "packages/shell/src/language-picker.tsx",
-  "packages/shell/src/backup-switch.tsx",
-  "packages/shell/src/storage-report.tsx",
-  // #299, the launcher remainder: tiles, restore, removal, sync state, the picker.
-  "packages/shell/src/tile-editor.tsx",
-  "packages/shell/src/tile-identity.ts",
-  "packages/shell/src/remove-app.ts",
-  "packages/shell/src/restore-apps.tsx",
-  "packages/shell/src/summary-strip.tsx",
-  "packages/shell/src/app-lock.tsx",
-  "packages/shell/src/sync-status.tsx",
-  "packages/shell/src/toggle-sync.ts",
-  "packages/shell/src/launcher-live.ts",
-  "packages/shell/src/picker.tsx",
-  "packages/shell/src/user-apps.ts",
-  "packages/shell/src/examples.ts",
-  "packages/shell/src/seed.ts",
-  "packages/shell/src/backup-all.ts",
-  "packages/shell/src/backup-setting.ts",
-  "packages/shell/src/rename-migration.ts",
-  // #299, the Studio: conversation, cards, preview bar, point mode, edit mode, code and history.
-  "packages/shell/src/studio.tsx",
-  "packages/shell/src/studio-thread-view.tsx",
-  "packages/shell/src/studio-tools.tsx",
-  "packages/shell/src/studio-preview.tsx",
-  "packages/shell/src/studio-engine.ts",
-  "packages/shell/src/studio-libraries.ts",
-  "packages/shell/src/studio-chat.ts",
-  "packages/shell/src/studio-thread.ts",
-  "packages/shell/src/inline-edit.tsx",
-  "packages/shell/src/inline-targets.ts",
-  "packages/shell/src/code-editor.tsx",
-  "packages/shell/src/diff.ts",
-  "packages/shell/src/highlight.ts",
-  "packages/shell/src/model-turn.ts",
-  "packages/shell/src/generate-client.ts",
-  "packages/shell/src/start-modify.ts",
-  "packages/shell/src/run-candidate.ts",
-  "packages/shell/src/schema-drift.ts",
-  "packages/shell/src/history.tsx",
-  "packages/shell/src/app-history.ts",
-  "packages/shell/src/chat-panel.tsx",
-  "packages/shell/src/point-mode.tsx",
-  "packages/shell/src/point-target.ts",
-  "packages/shell/src/version-notes.ts",
-  "packages/shell/src/app-source.ts",
-  "packages/shell/src/source-ast.ts",
-  "packages/shell/src/source-declared.ts",
-  "packages/shell/src/app-source-words.ts",
-  // #299, Add an app, the trust dialog, the splash, promotion, missing features, libraries and their consent.
-  "packages/shell/src/add-app-dialog.tsx",
-  "packages/shell/src/add-app.ts",
-  "packages/shell/src/trust-dialog.tsx",
-  "packages/shell/src/splash.tsx",
-  "packages/shell/src/promotion.ts",
-  "packages/shell/src/missing-features.ts",
-  "packages/shell/src/app-trial.ts",
-  "packages/shell/src/verify-candidate.ts",
-  "packages/shell/src/validate-app.ts",
-  "packages/shell/src/open-libraries.ts",
-  "packages/shell/src/library-fetch.ts",
-  "packages/shell/src/package-libraries.ts",
-  "packages/shell/src/package-modules.ts",
-  "packages/shell/src/version-gate.ts",
-  "packages/shell/src/app-bundler.ts",
-  "packages/shell/src/app-modules.ts",
-  "packages/shell/src/trusted-loader.ts",
-  "packages/shell/src/migrate-on-load.ts",
-  "packages/shell/src/observe-render.ts",
-  "packages/shell/src/isolate-bridge.ts",
-  "packages/shell/src/check-concurrency.ts",
-  "packages/shell/src/capability-words.ts",
-  // #299, the Data page: apps, tables, filters.
-  "packages/shell/src/data-page.tsx",
-  "packages/shell/src/data-table.tsx",
-  "packages/shell/src/filter-chrome.tsx",
-  "packages/shell/src/data-runtime.ts",
-  "packages/shell/src/data-icon.tsx",
-  "packages/shell/src/read-only-store.ts",
-  "packages/shell/src/scope.ts",
-  // #299, You and settings: model settings, reasoning level, Look, Ask's switch.
-  "packages/shell/src/engine-settings.tsx",
-  "packages/shell/src/engines.ts",
-  "packages/shell/src/engine-store.ts",
-  "packages/shell/src/thinking-settings.tsx",
-  "packages/shell/src/look-panel.tsx",
-  "packages/shell/src/look.ts",
-  "packages/shell/src/ask-setting.ts",
-  "packages/shell/src/shell-caps.ts",
-  // #299, Ask: the request, sources and keys, the review, what was added.
-  "packages/shell/src/ask-panel.tsx",
-  "packages/shell/src/ask-sources-panel.tsx",
-  "packages/shell/src/ask-review.tsx",
-  "packages/shell/src/ask-review-parts.tsx",
-  "packages/shell/src/ask-review-layouts.tsx",
-  "packages/shell/src/ask-review-edits.tsx",
-  "packages/shell/src/ask-material.tsx",
-  "packages/shell/src/ask-sources.ts",
-  "packages/shell/src/ask-apply.ts",
-  "packages/shell/src/ask-spend.ts",
-  "packages/shell/src/ask-verdicts.ts",
-  "packages/shell/src/ask-geocode.ts",
-  "packages/shell/src/start-ask.ts",
-  // #299, sharing, people, sync, chat and activity.
-  "packages/shell/src/people-panel.tsx",
-  "packages/shell/src/share-page.tsx",
-  "packages/shell/src/share-chat.ts",
-  "packages/shell/src/share-sync.ts",
-  "packages/shell/src/share-inbox.ts",
-  "packages/shell/src/sync-consent.ts",
-  "packages/shell/src/app-sync.ts",
-  "packages/shell/src/chat-sync.ts",
-  "packages/shell/src/activity-panel.tsx",
-  "packages/shell/src/app-store.ts",
-  "packages/shell/src/reminder-sync.ts",
-  // #299, the views package: forms and inputs, list/board/calendar/timeline/map/stats/aggregate/chart, menus, part failures.
-  "packages/views/src/aggregate.tsx",
-  "packages/views/src/board.tsx",
-  "packages/views/src/builtins.tsx",
-  "packages/views/src/calendar.tsx",
-  "packages/views/src/cells.ts",
-  "packages/views/src/chart.tsx",
-  "packages/views/src/checklist.tsx",
-  "packages/views/src/custom.tsx",
-  "packages/views/src/date-input.tsx",
-  "packages/views/src/dates.ts",
-  "packages/views/src/dynamic.ts",
-  "packages/views/src/edit-lock.ts",
-  "packages/views/src/enum-input.tsx",
-  "packages/views/src/enum.ts",
-  "packages/views/src/field-input.tsx",
-  "packages/views/src/field-value.tsx",
-  "packages/views/src/file-input.tsx",
-  "packages/views/src/fold.tsx",
-  "packages/views/src/format.ts",
-  "packages/views/src/form-sheet.tsx",
-  "packages/views/src/groups.ts",
-  "packages/views/src/host.tsx",
-  "packages/views/src/image-scale.ts",
-  "packages/views/src/index.ts",
-  "packages/views/src/layout-host.tsx",
-  "packages/views/src/list-input.tsx",
-  "packages/views/src/map.tsx",
-  "packages/views/src/media-input.tsx",
-  "packages/views/src/media.ts",
-  "packages/views/src/menu.tsx",
-  "packages/views/src/money-input.tsx",
-  "packages/views/src/number-input.tsx",
-  "packages/views/src/part-failure.tsx",
-  "packages/views/src/pick-list.tsx",
-  "packages/views/src/popover.ts",
-  "packages/views/src/portal-root.tsx",
-  "packages/views/src/record-form.tsx",
-  "packages/views/src/registry.ts",
-  "packages/views/src/relation-input.tsx",
-  "packages/views/src/reorder.ts",
-  "packages/views/src/row-groups.ts",
-  "packages/views/src/shown.ts",
-  "packages/views/src/stats.tsx",
-  "packages/views/src/steps.tsx",
-  "packages/views/src/summary.ts",
-  "packages/views/src/switch.tsx",
-  "packages/views/src/timeline.tsx",
-  "packages/views/src/types.ts",
-  "packages/views/src/units.ts",
-]);
 
 const ATTRS = new Set([
   "aria-label",
@@ -321,37 +151,21 @@ function check(file) {
   return findings;
 }
 
-const args = new Set(process.argv.slice(2));
-const strict = args.has("--strict");
-const verbose = args.has("--verbose");
-
 let errors = 0;
-let warnings = 0;
-const warnedFiles = [];
+let files = 0;
 for (const base of ROOTS) {
   for (const file of walk(join(root, base))) {
+    files++;
     const rel = relative(root, file).split("\\").join("/");
-    const findings = check(file);
-    if (!findings.length) continue;
-    const isError = strict || CLEAN.has(rel);
-    if (isError) {
-      errors += findings.length;
-      for (const f of findings) console.error(`[i18n] ${rel}:${f.line}  ${f.what}: "${f.text}" — put it in a catalog (t\`…\` / <Trans>)`);
-    } else {
-      warnings += findings.length;
-      warnedFiles.push([rel, findings.length]);
-      if (verbose) for (const f of findings) console.warn(`[i18n] warn ${rel}:${f.line}  ${f.what}: "${f.text}"`);
+    for (const f of check(file)) {
+      errors++;
+      console.error(`[i18n] ${rel}:${f.line}  ${f.what}: "${f.text}" — put it in a catalog (t\`…\` / <Trans>)`);
     }
   }
 }
 
-if (warnings) {
-  console.warn(`[i18n] ${warnings} hardcoded string(s) in ${warnedFiles.length} file(s) not yet extracted (warn; #299). --verbose lists them.`);
-  if (!verbose)
-    for (const [rel, n] of warnedFiles.sort((a, b) => b[1] - a[1]).slice(0, 10)) console.warn(`[i18n]   ${String(n).padStart(4)}  ${rel}`);
-}
 if (errors) {
-  console.error(`\n[i18n] ${errors} hardcoded string(s) in extracted files.`);
+  console.error(`\n[i18n] ${errors} hardcoded string(s).`);
   process.exit(1);
 }
-console.log(`[i18n] OK — ${CLEAN.size} extracted file(s) clean`);
+console.log(`[i18n] OK — ${files} file(s) in shell and views, no hardcoded words`);
