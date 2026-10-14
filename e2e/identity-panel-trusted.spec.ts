@@ -38,6 +38,9 @@ for (const [name, viewport, touch] of [["phone", { width: 375, height: 812 }, tr
       await expect(panel.getByText(/wss?:\/\//)).toBeHidden();
       await expect(panel).not.toContainText("no identity yet");
 
+      // Measure colours once the panel has finished fading in: mid-animation text is half
+      // transparent, and on a busy CI machine axe caught it there as low contrast.
+      await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))));
       expect((await new AxeBuilder({ page }).include(".k-identity").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations.map((v) => v.id)).toEqual([]);
       if (SHOTS) await page.screenshot({ path: `${SHOTS}/identity-${name}.png` });
 
