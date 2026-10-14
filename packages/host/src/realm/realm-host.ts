@@ -15,6 +15,15 @@ import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, Valu
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost } from "./protocol.js";
 
+/**
+ * The realm itself could not start on this browser — the frame did not load, or could not make its
+ * Worker — as opposed to the app failing in it. The shell falls back to QuickJS on this (still
+ * sealed); an app's own failure is never a reason to change boxes.
+ */
+export class RealmStartError extends Error {
+  override name = "RealmStartError";
+}
+
 /** One started realm: the port to its worker, and a way to end it. */
 export interface RealmHandle {
   port: MessagePort;
@@ -134,8 +143,12 @@ export class RealmLoadedApp implements LoadedApp {
 
   private async spawn(): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let up = false;
     const late = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`the app did not load within ${this.o.loadTimeoutMs} ms`)), this.o.loadTimeoutMs);
+      timer = setTimeout(
+        () => reject(up ? new Error(`the app did not load within ${this.o.loadTimeoutMs} ms`) : new RealmStartError(`the sealed box did not start within ${this.o.loadTimeoutMs} ms`)),
+        this.o.loadTimeoutMs,
+      );
     });
     late.catch(() => {});
     let realm: RealmHandle | null = null;
@@ -146,7 +159,8 @@ export class RealmLoadedApp implements LoadedApp {
       const ready = new Promise<string>((resolve, reject) => {
         port.onmessage = (e: MessageEvent) => {
           const m = e.data as RealmToHost;
-          if (m?.t === "ready") (m.error != null ? reject(new Error(m.error)) : resolve(String(m.definition)));
+          if (m?.t === "up") up = true;
+          else if (m?.t === "ready") (m.error != null ? reject(m.start ? new RealmStartError(m.error) : new Error(m.error)) : resolve(String(m.definition)));
         };
       });
       port.postMessage({ t: "load", code: this.code });

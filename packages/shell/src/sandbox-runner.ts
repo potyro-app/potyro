@@ -36,7 +36,18 @@ function asked(): string | undefined {
   return (import.meta.env?.VITE_POTYRO_SANDBOX as string | undefined)?.trim() || undefined;
 }
 
+let realmFailed = false;
+
+/**
+ * The realm could not start on this browser (`RealmStartError`: no frame, no Worker). For the rest of
+ * the session shared apps run in QuickJS — still sealed — and the missing-feature card says what that
+ * box lacks. An app's own failure never lands here.
+ */
+export function markRealmUnavailable(): void {
+  realmFailed = true;
+}
+
 export function sandboxRunner(): SandboxRunner {
-  if (asked() === "quickjs") return "quickjs";
+  if (asked() === "quickjs" || realmFailed) return "quickjs";
   return realmAvailable() ? "realm" : "quickjs";
 }
