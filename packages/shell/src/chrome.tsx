@@ -252,7 +252,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
             ‹
           </button>
         ) : onApps ? (
-          <button type="button" className="k-topbar-btn" aria-label={t`Switch app`} onClick={onApps}>
+          <button type="button" className="k-topbar-btn" data-tool="apps" aria-label={t`Switch app`} onClick={onApps}>
             ⊞
           </button>
         ) : null}
@@ -358,6 +358,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
   const toolButton = (tool: ChromeTool) => (
     <button
       key={tool.key}
+      data-tool={tool.key}
       type="button"
       className={`k-tool${tool.className ? ` ${tool.className}` : ""}${tool.danger ? " k-danger" : ""}${tool.news ? " k-has-news" : ""}`}
       data-active={tool.active}

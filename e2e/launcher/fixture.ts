@@ -61,7 +61,8 @@ export async function openApp(page: Page, id: string, name: string): Promise<voi
 
 /** From inside an app: the ⊞ Apps button and the overlay it slides in. */
 export async function openSwitcher(page: Page): Promise<Locator> {
-  await page.getByRole("button", { name: "Switch app" }).click();
+  // By what it is, not by its name: the guard opens it in the pseudo-language too (#299).
+  await page.locator("[data-tool=apps]:visible").first().click();
   const overlay = page.locator(".k-launcher-overlay");
   await expect(overlay).toBeVisible();
   // It slides in; a finger or a box measured mid-slide lands in the wrong place.
