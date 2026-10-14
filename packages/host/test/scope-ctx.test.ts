@@ -1,19 +1,17 @@
 // `ctx.scope` and `callViewOption` across both hosts (#134, #133).
 //
-// The selection must reach app code identically whether the app runs directly or in the isolate:
+// The selection must reach app code identically whether the app runs directly or sealed (realm or isolate):
 // a shared trip planner is exactly the app whose filters read `ctx.scope`, and it runs untrusted.
 
 import { describe, expect, it } from "vitest";
-import { newAsyncContext } from "quickjs-emscripten";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { defineApp, type Ctx } from "potyro";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { RUNNERS, type Runner } from "./runners.js";
 
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const nav: NavBridge = { navigate: () => {} };
-const newContext = (): Promise<QuickJSAsyncContextLike> => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>;
 
 const berlin = { id: "t1", createdAt: "", updatedAt: "", city: "Berlin", location: { lat: 52.52, lng: 13.405 } };
 
@@ -83,20 +81,20 @@ async function direct(extra: Partial<MakeCtxBase> = {}) {
   return { loaded, ctx: host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui, nav, ...extra }) };
 }
 
-async function isolated(extra: Partial<MakeCtxBase> = {}) {
+const isolated = (runner: Runner) => async (extra: Partial<MakeCtxBase> = {}) => {
   const store = new MemoryStore();
   await store.open("trips");
-  const host = createHost({ loadIsolated: createIsolateLoader({ store, newContext }) });
+  const host = createHost({ loadIsolated: await runner.loader(store) });
   const loaded = await host.load({ kind: "bundle", code: UNTRUSTED_BUNDLE, provenance: "untrusted" });
   return { loaded, ctx: host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui, nav, ...extra }) };
-}
+};
 
 const inBerlin = { id: "p1", createdAt: "", updatedAt: "", name: "Cozy Bar", trip: berlin };
 const elsewhere = { id: "p2", createdAt: "", updatedAt: "", name: "Pastelaria", trip: { ...berlin, id: "t2", city: "Lisbon" } };
 
 for (const [name, setup] of [
   ["direct (trusted)", direct],
-  ["isolate (untrusted)", isolated],
+  ...RUNNERS.map((r) => [`${r.name} (untrusted)`, isolated(r)] as const),
 ] as const) {
   describe(`ctx.scope — ${name}`, () => {
     it("is {} when nothing is selected, and a filter reading it passes everything", async () => {
