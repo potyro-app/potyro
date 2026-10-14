@@ -11,6 +11,8 @@
 // row, and none of them is what someone opened a recipe list to do.
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { t as tr } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
 
 const WIDE_FROM = 760;
@@ -158,9 +160,10 @@ function FullscreenFrame({ onExit, children }: { onExit: () => void; children: R
       void import("@potyro/native").then((n) => n.setImmersive(false));
     };
   }, [onExit]);
+  const { t } = useLingui();
   return (
     <div className="k-fullscreen">
-      <button type="button" className="k-fullscreen-exit" aria-label="Leave full screen" title="Leave full screen" onClick={onExit}>
+      <button type="button" className="k-fullscreen-exit" aria-label={t`Leave full screen`} title={t`Leave full screen`} onClick={onExit}>
         ✕
       </button>
       <div className="k-fullscreen-page">{children}</div>
@@ -168,14 +171,23 @@ function FullscreenFrame({ onExit, children }: { onExit: () => void; children: R
   );
 }
 
-function toolEntry(t: ChromeTool): MenuEntry {
-  return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger };
+function toolEntry(tool: ChromeTool): MenuEntry {
+  return {
+    key: tool.key,
+    label: tool.label,
+    icon: tool.icon,
+    hint: tool.hint ?? (tool.active ? tr({ message: "on", comment: "Menu hint: a tool that is switched on (Edit mode)" }) : undefined),
+    onSelect: tool.onSelect,
+    className: tool.className,
+    danger: tool.danger,
+  };
 }
 
 function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const [dial, setDial] = useState(false);
+  const { t } = useLingui();
 
   // The floating button runs the page's quick action on a tap; held, it shows the others above it.
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,7 +230,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
   const shown = pages.slice(0, pages.length > TAB_SLOTS + 1 ? TAB_SLOTS : TAB_SLOTS + 1);
   const more = pages.slice(shown.length);
   // A menu that hides something new says so on the outside.
-  const news = [...tools, ...report].some((t) => t.news);
+  const news = [...tools, ...report].some((tool) => tool.news);
 
   // How much room the chrome takes at the bottom of the screen, as a custom property the PAGE can
   // read. A view that draws its own bottom bar — the workout tracker's rest timer — otherwise has
@@ -233,11 +245,11 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
     >
       <header className="k-topbar">
         {onBack ? (
-          <button type="button" className="k-topbar-btn k-topbar-back" aria-label="Back" onClick={onBack}>
+          <button type="button" className="k-topbar-btn k-topbar-back" aria-label={t`Back`} onClick={onBack}>
             ‹
           </button>
         ) : onApps ? (
-          <button type="button" className="k-topbar-btn" aria-label="Switch app" onClick={onApps}>
+          <button type="button" className="k-topbar-btn" aria-label={t`Switch app`} onClick={onApps}>
             ⊞
           </button>
         ) : null}
@@ -249,16 +261,16 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
         {status}
         {extras}
         {menu.length ? (
-          <ActionMenu label={news ? "More — something new" : "More"} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
+          <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
         ) : null}
       </header>
       {recording ? (
         <div className="k-recbar" role="status">
           <span className="k-recbar-dot" aria-hidden />
-          Recording
-          {report.map((t) => (
-            <button key={t.key} type="button" className="k-add" onClick={t.onSelect}>
-              {t.label}
+          <Trans comment="Status: a bug report is being recorded">Recording</Trans>
+          {report.map((tool) => (
+            <button key={tool.key} type="button" className="k-add" onClick={tool.onSelect}>
+              {tool.label}
             </button>
           ))}
         </div>
@@ -272,7 +284,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
           {dial ? (
             <>
               <div className="k-fab-scrim" onClick={() => setDial(false)} />
-              <div className="k-fab-dial" role="group" aria-label="Quick actions">
+              <div className="k-fab-dial" role="group" aria-label={t`Quick actions`}>
                 {others.map((q) => (
                   <button
                     key={q.id}
@@ -302,7 +314,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
       {/* A tab bar with one tab is a label for where you already are, and it takes a phone-sized
           bite out of the list above it. One page, no bar: the top bar already carries the name. */}
       {tabs ? (
-        <nav className="k-nav k-tabbar" aria-label="Pages">
+        <nav className="k-nav k-tabbar" aria-label={t`Pages`}>
           {shown.map((p) => (
             <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
               <span className="k-tab-icon" aria-hidden>
@@ -315,17 +327,19 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
           ))}
           {more.length ? (
             <ActionMenu
-              label="More pages"
+              label={t`More pages`}
               trigger={
                 <>
                   <span className="k-tab-icon" aria-hidden>
                     ⋯
                   </span>
-                  <span className="k-tab-label">More</span>
+                  <span className="k-tab-label">
+                    <Trans comment="Tab bar: the pages that did not fit">More</Trans>
+                  </span>
                 </>
               }
               buttonClassName={`k-tab${more.some((p) => p.active) ? " k-tab-more-active" : ""}`}
-              entries={more.map((p): MenuEntry => ({ key: p.id, label: p.title, icon: p.icon, hint: p.active ? "here" : undefined, onSelect: p.onOpen, className: "k-tab k-tab-in-menu" }))}
+              entries={more.map((p): MenuEntry => ({ key: p.id, label: p.title, icon: p.icon, hint: p.active ? t({ message: "here", comment: "Menu hint: the page you are on" }) : undefined, onSelect: p.onOpen, className: "k-tab k-tab-in-menu" }))}
             />
           ) : null}
         </nav>
@@ -337,24 +351,25 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
 function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
-  const toolButton = (t: ChromeTool) => (
+  const { t } = useLingui();
+  const toolButton = (tool: ChromeTool) => (
     <button
-      key={t.key}
+      key={tool.key}
       type="button"
-      className={`k-tool${t.className ? ` ${t.className}` : ""}${t.danger ? " k-danger" : ""}${t.news ? " k-has-news" : ""}`}
-      data-active={t.active}
+      className={`k-tool${tool.className ? ` ${tool.className}` : ""}${tool.danger ? " k-danger" : ""}${tool.news ? " k-has-news" : ""}`}
+      data-active={tool.active}
       // The same accessible names as the phone's controls, whatever the visible word.
-      aria-label={t.key === "edit-mode" ? "Edit mode" : t.key === "apps" ? "Switch app" : t.hint ? t.label : undefined}
-      title={t.hint}
-      onClick={t.onSelect}
+      aria-label={tool.key === "edit-mode" ? t`Edit mode` : tool.key === "apps" ? t`Switch app` : tool.hint ? tool.label : undefined}
+      title={tool.hint}
+      onClick={tool.onSelect}
     >
       <span className="k-tool-icon" aria-hidden>
-        {t.icon ?? ""}
+        {tool.icon ?? ""}
       </span>
-      <span>{t.label}</span>
-      {t.hint ? (
+      <span>{tool.label}</span>
+      {tool.hint ? (
         <span className="k-tool-hint" aria-hidden>
-          {t.hint}
+          {tool.hint}
         </span>
       ) : null}
     </button>
@@ -375,8 +390,10 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
             {extras}
           </div>
         ) : null}
-        <nav className="k-nav k-sidenav" aria-label="Pages">
-          <h5 className="k-sidebar-heading">Pages</h5>
+        <nav className="k-nav k-sidenav" aria-label={t`Pages`}>
+          <h5 className="k-sidebar-heading">
+            <Trans>Pages</Trans>
+          </h5>
           {pages.map((p) => (
             <button key={p.id} type="button" className="k-tab" data-active={p.active} onClick={p.onOpen}>
               <span className="k-tab-icon" aria-hidden>
@@ -399,17 +416,19 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
         ) : null}
         {tools.length || report.length || trust || onApps ? (
           <div className="k-tools">
-            <h5 className="k-sidebar-heading">This app</h5>
+            <h5 className="k-sidebar-heading">
+              <Trans comment="Sidebar heading over the shell's tools for the open app">This app</Trans>
+            </h5>
             {tools.map(toolButton)}
             {recording ? (
               <div className="k-recbar" role="status">
                 <span className="k-recbar-dot" aria-hidden />
-                Recording
+                <Trans comment="Status: a bug report is being recorded">Recording</Trans>
               </div>
             ) : null}
             {report.map(toolButton)}
             {trust ? toolButton(trust) : null}
-            {onApps ? toolButton({ key: "apps", label: "All apps", icon: "⊞", onSelect: onApps }) : null}
+            {onApps ? toolButton({ key: "apps", label: t`All apps`, icon: "⊞", onSelect: onApps }) : null}
           </div>
         ) : null}
       </aside>
@@ -417,7 +436,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
         {pageTitle ? (
           <div className="k-page-head">
             {onBack ? (
-              <button type="button" className="k-topbar-btn k-topbar-back" aria-label="Back" onClick={onBack}>
+              <button type="button" className="k-topbar-btn k-topbar-back" aria-label={t`Back`} onClick={onBack}>
                 ‹
               </button>
             ) : null}

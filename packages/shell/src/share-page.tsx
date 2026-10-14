@@ -4,6 +4,7 @@
 // opens that app with its Ask filled in, where the same review as any Ask decides what is added.
 
 import { useMemo, useState, type CSSProperties } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useInstalledApps } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
 import { listUserApps } from "./user-apps.js";
@@ -13,6 +14,7 @@ import { navigateTo } from "./router.js";
 const PREVIEW = 420;
 
 export function SharePage() {
+  const { t } = useLingui();
   const [share] = useState(peekShare);
   const [full, setFull] = useState(false);
   const installed = useInstalledApps();
@@ -25,10 +27,14 @@ export function SharePage() {
   if (!share) {
     return (
       <main className="k-share-page">
-        <h1 className="k-share-title">Nothing to bring in</h1>
-        <p className="k-muted">Share text to Potyro from another app and it will wait here for you to pick where it goes.</p>
+        <h1 className="k-share-title">
+          <Trans>Nothing to bring in</Trans>
+        </h1>
+        <p className="k-muted">
+          <Trans>Share text to Potyro from another app and it will wait here for you to pick where it goes.</Trans>
+        </p>
         <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
-          Go to your apps
+          <Trans>Go to your apps</Trans>
         </button>
       </main>
     );
@@ -37,18 +43,22 @@ export function SharePage() {
   const long = share.text.length > PREVIEW;
   return (
     <main className="k-share-page">
-      <p className="k-ask-eyebrow">Shared with Potyro</p>
-      <h1 className="k-share-title">Bring this into…</h1>
+      <p className="k-ask-eyebrow">
+        <Trans>Shared with Potyro</Trans>
+      </p>
+      <h1 className="k-share-title">
+        <Trans comment="Heading over a list of your apps: pick which one the shared text goes into">Bring this into…</Trans>
+      </h1>
       <figure className="k-share-preview">
         {share.title ? <figcaption>{share.title}</figcaption> : null}
         <pre>{full || !long ? share.text : `${share.text.slice(0, PREVIEW)}…`}</pre>
         {long ? (
           <button type="button" className="k-ask-more" onClick={() => setFull((v) => !v)}>
-            {full ? "Show less" : "Show all of it"}
+            {full ? t`Show less` : t`Show all of it`}
           </button>
         ) : null}
       </figure>
-      <ul className="k-share-apps" aria-label="Your apps">
+      <ul className="k-share-apps" aria-label={t`Your apps`}>
         {apps.map((app, i) => {
           const identity = tileIdentity({ key: app.key, name: app.name, icon: app.icon, accent: app.accent, hue: app.entry.hue });
           const best = i === 0 && fits[0] === app.id;
@@ -68,7 +78,9 @@ export function SharePage() {
                   {identity.glyph}
                 </span>
                 <span className="k-share-app-name">{app.name}</span>
-                {best ? <span className="k-ask-badge" data-tone="good">Best fit</span> : null}
+                {best ? <span className="k-ask-badge" data-tone="good">
+                    <Trans comment="Badge on the app the shared text suits best">Best fit</Trans>
+                  </span> : null}
               </button>
             </li>
           );
@@ -82,7 +94,7 @@ export function SharePage() {
           navigateTo({ kind: "home" });
         }}
       >
-        Don’t add it
+        <Trans>Don’t add it</Trans>
       </button>
     </main>
   );

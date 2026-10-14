@@ -129,7 +129,7 @@ test("a relation to an empty entity can create its first record inline", async (
   const inline = page.locator(".k-inline-create");
   await expect(inline).toBeVisible();
   expect(await inline.locator("form").count()).toBe(0);
-  await expect(page.getByRole("dialog", { name: "New Place Type" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Add: Place Type" })).toBeVisible();
 
   await expect(inline.getByLabel(/^Name/)).toHaveValue("Park");
   await inline.getByRole("button", { name: "Create" }).click();

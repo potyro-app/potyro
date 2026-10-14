@@ -9,6 +9,9 @@
 // leave stay on the list to pull later rather than disappearing.
 
 import { useState } from "react";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import { rememberAppSpace, type AccountApp } from "@potyro/store";
 import { saveUserApp, getUserApp } from "./user-apps.js";
 import { receiveCode } from "./app-modules.js";
@@ -24,11 +27,12 @@ export interface RestoreAppsProps {
 function weight(app: AccountApp): string | null {
   if (typeof app.sizeBytes !== "number" || app.sizeBytes <= 0) return null;
   const mb = app.sizeBytes / 1_000_000;
-  if (mb >= 1) return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(app.sizeBytes / 1000))} KB`;
+  if (mb >= 1) return fmt.number(mb >= 10 ? Math.round(mb) : Number(mb.toFixed(1)), { style: "unit", unit: "megabyte", maximumFractionDigits: 1 });
+  return fmt.number(Math.max(1, Math.round(app.sizeBytes / 1000)), { style: "unit", unit: "kilobyte" });
 }
 
 export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
+  const { t } = useLingui();
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(apps.map((a) => a.id)));
   const [busy, setBusy] = useState(false);
 
@@ -51,10 +55,12 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
 
   return (
     <div className="k-modal-scrim">
-      <div className="k-modal k-restore" role="dialog" aria-modal="true" aria-label="Load your apps">
-        <h2 className="k-restore-title">Load your apps?</h2>
+      <div className="k-modal k-restore" role="dialog" aria-modal="true" aria-label={t`Load your apps`}>
+        <h2 className="k-restore-title">
+          <Trans>Load your apps?</Trans>
+        </h2>
         <p className="k-restore-lede">
-          These are on your account. Anything you leave unticked stays there — you can pull it onto this device later.
+          <Trans>These are on your account. Anything you leave unticked stays there — you can pull it onto this device later.</Trans>
         </p>
         <ul className="k-restore-list">
           {apps.map((app) => {
@@ -68,7 +74,9 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
                   </span>
                   <span className="k-restore-name">{app.name}</span>
                   {size ? <span className="k-restore-size">{size}</span> : null}
-                  {app.shared ? <span className="k-restore-shared">shared</span> : null}
+                  {app.shared ? <span className="k-restore-shared">
+                      <Trans comment="Restore list: this app is shared with other people">shared</Trans>
+                    </span> : null}
                 </label>
               </li>
             );
@@ -76,10 +84,10 @@ export function RestoreApps({ apps, onRestore, onClose }: RestoreAppsProps) {
         </ul>
         <div className="k-restore-actions">
           <button type="button" className="k-add" onClick={onClose} disabled={busy}>
-            Not now
+            <Trans>Not now</Trans>
           </button>
           <button type="button" className="k-add k-primary-action" onClick={() => void restore()} disabled={busy || chosen.size === 0}>
-            {busy ? "Loading…" : `Load ${chosen.size} app${chosen.size === 1 ? "" : "s"}`}
+            {busy ? t`Loading…` : plural(chosen.size, { one: "Load # app", other: "Load # apps" })}
           </button>
         </div>
       </div>

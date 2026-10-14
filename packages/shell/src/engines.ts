@@ -5,7 +5,10 @@
 // meant pressing "Cloud" first, which replaced the app you were trying to edit. One engine, chosen
 // deliberately in one place, is what removes that whole class of surprise.
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { OPENROUTER_MODELS, WEBLLM_MODELS, thinkingOptions, type ReasoningLevel } from "@potyro/generator/backends";
+import { i18n } from "@potyro/i18n";
 
 export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter";
 
@@ -32,11 +35,20 @@ export interface EngineConfig {
   thinking?: Partial<Record<Engine, ThinkingSetting>>;
 }
 
+export type EngineGroup = "local" | "cloud";
+/** The settings' two headings, in order. */
+export const ENGINE_GROUPS: readonly { id: EngineGroup; label: MessageDescriptor }[] = [
+  { id: "local", label: msg({ message: "On this machine", comment: "Model settings heading: engines that run on this computer" }) },
+  { id: "cloud", label: msg({ message: "Cloud", comment: "Model settings heading: engines reached over the internet" }) },
+];
+
 export interface EngineChoice {
   id: Engine;
-  label: string;
-  group: "On this machine" | "Cloud";
-  blurb: string;
+  /** A descriptor, read at use time, so the name follows a language switch. */
+  label: MessageDescriptor;
+  /** Which heading it sits under; `ENGINE_GROUPS` has the words. */
+  group: EngineGroup;
+  blurb: MessageDescriptor;
   /** Cloud engines cannot run without the user's own key. */
   needsKey?: boolean;
   /**
@@ -54,18 +66,18 @@ export interface EngineChoice {
 export const ENGINES: readonly EngineChoice[] = [
   {
     id: "cli",
-    label: "claude -p",
-    group: "On this machine",
-    blurb: "Rides your Claude Code CLI login. No API key, but only while the dev server is running.",
+    label: msg({ message: "claude -p", comment: "A command name; keep as is" }),
+    group: "local",
+    blurb: msg`Rides your Claude Code CLI login. No API key, but only while the dev server is running.`,
     // ClaudeCliBackend shells out to `claude -p` for one completion per call — a one-shot POST,
     // not a ChatEngine, so there is no transcript to hang a multi-step tool loop off of.
     canInvestigate: false,
   },
   {
     id: "edge",
-    label: "On-device",
-    group: "On this machine",
-    blurb: "A small coder model in the browser via WebGPU. Fully offline once the weights are cached.",
+    label: msg({ message: "On-device", comment: "Engine name: a model running in this browser" }),
+    group: "local",
+    blurb: msg`A small coder model in the browser via WebGPU. Fully offline once the weights are cached.`,
     // WebLLMBackend holds its ChatEngine as `private readonly` — never exposed for reuse — and
     // MLC's OpenAI shim mostly doesn't honor tool calls even if it were. A ~1.5B on-device model
     // is also a poor multi-step investigator regardless of plumbing.
@@ -73,17 +85,17 @@ export const ENGINES: readonly EngineChoice[] = [
   },
   {
     id: "builtin",
-    label: "Chrome built-in",
-    group: "On this machine",
-    blurb: "Chrome's built-in Gemini Nano. Runs locally, nothing to download.",
+    label: msg({ message: "Chrome built-in", comment: "Engine name: the model built into the Chrome browser" }),
+    group: "local",
+    blurb: msg`Chrome's built-in Gemini Nano. Runs locally, nothing to download.`,
     // GeminiNanoBackend has no chat shape at all — no ChatEngine, no tools, no tool_calls.
     canInvestigate: false,
   },
   {
     id: "anthropic",
-    label: "Anthropic",
-    group: "Cloud",
-    blurb: "Claude, with your own API key.",
+    label: msg({ message: "Anthropic", comment: "Company name; keep as is" }),
+    group: "cloud",
+    blurb: msg`Claude, with your own API key.`,
     needsKey: true,
     // ClaudeBackend implements ModelBackend directly against the Messages API — it never extends
     // ChatBackend, so it has no ChatEngine surface, even though Claude itself supports tool calls.
@@ -91,9 +103,9 @@ export const ENGINES: readonly EngineChoice[] = [
   },
   {
     id: "openrouter",
-    label: "OpenRouter",
-    group: "Cloud",
-    blurb: "One key, any hosted model — DeepSeek, Qwen, Llama. Cheap models are the point of measuring.",
+    label: msg({ message: "OpenRouter", comment: "Service name; keep as is" }),
+    group: "cloud",
+    blurb: msg`One key, any hosted model — DeepSeek, Qwen, Llama. Cheap models are the point of measuring.`,
     needsKey: true,
     // OpenRouterBackend extends ChatBackend and createOpenRouterEngine returns a real ChatEngine
     // over OpenRouter's OpenAI-compatible API, which carries `tools`/`tool_calls` end to end — the
@@ -128,7 +140,12 @@ export function openRouterOptions(cfg: EngineConfig): { apiKey: string; model: s
 }
 
 /** How a level reads on the engine's name. */
-const THINKS: Record<ReasoningLevel, string> = { off: "", low: "thinks a little", medium: "thinks more", high: "thinks hard" };
+const THINKS: Record<ReasoningLevel, MessageDescriptor | null> = {
+  off: null,
+  low: msg({ message: "thinks a little", comment: "Shown after the model's name: its reasoning level is low" }),
+  medium: msg({ message: "thinks more", comment: "Shown after the model's name: its reasoning level is medium" }),
+  high: msg({ message: "thinks hard", comment: "Shown after the model's name: its reasoning level is high" }),
+};
 
 export function isCloud(engine: Engine): boolean {
   return engine === "anthropic" || engine === "openrouter";
@@ -156,10 +173,12 @@ export function engineReady(cfg: EngineConfig): boolean {
 
 /** How the engine names itself in the UI — on the settings button and in every progress line. */
 export function engineLabel(cfg: EngineConfig): string {
-  const base = ENGINES.find((e) => e.id === cfg.engine)?.label ?? cfg.engine;
+  const choice = ENGINES.find((e) => e.id === cfg.engine);
+  const base = choice ? i18n._(choice.label) : cfg.engine;
   if (cfg.engine === "openrouter") {
     const m = OPENROUTER_MODELS.find((x) => x.id === cfg.openrouterModel);
-    const thinks = THINKS[thinkingFor(cfg).level];
+    const level = THINKS[thinkingFor(cfg).level];
+    const thinks = level ? i18n._(level) : "";
     return `${base} · ${m?.label ?? cfg.openrouterModel}${thinks ? ` · ${thinks}` : ""}`;
   }
   if (cfg.engine === "edge") {

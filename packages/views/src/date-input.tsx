@@ -6,6 +6,10 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import type { DateTimeField } from "potyro";
 import { buildMonthGrid, sameDay } from "./calendar.js";
 import { usePhone } from "./media.js";
@@ -21,10 +25,20 @@ export interface DateInputProps {
 }
 
 // Sunday-first, like `buildMonthGrid` and the calendar view — one week shape across the app.
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const MONTH = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+// Descriptors, not strings: read when drawn, so they follow a language switch.
+const WEEKDAYS: readonly MessageDescriptor[] = [
+  msg({ message: "Su", comment: "Calendar column head: Sunday, as short as your language writes it (two letters in English)" }),
+  msg({ message: "Mo", comment: "Calendar column head: Monday, as short as your language writes it" }),
+  msg({ message: "Tu", comment: "Calendar column head: Tuesday, as short as your language writes it" }),
+  msg({ message: "We", comment: "Calendar column head: Wednesday, as short as your language writes it" }),
+  msg({ message: "Th", comment: "Calendar column head: Thursday, as short as your language writes it" }),
+  msg({ message: "Fr", comment: "Calendar column head: Friday, as short as your language writes it" }),
+  msg({ message: "Sa", comment: "Calendar column head: Saturday, as short as your language writes it" }),
+];
+const monthTitle = (d: Date): string => fmt.date(d, { month: "long", year: "numeric" });
 
 export function DateInput({ field, value, onChange, label }: DateInputProps) {
+  const { t } = useLingui();
   const precision = precisionOf(field);
   const current = toDate(value);
   const [editing, setEditing] = useState<string | null>(null);
@@ -77,7 +91,7 @@ export function DateInput({ field, value, onChange, label }: DateInputProps) {
           type="text"
           inputMode="numeric"
           aria-label={label}
-          placeholder="Pick a day"
+          placeholder={t`Pick a day`}
           // The box holds the day. A minute field's hour lives in the time box beside it, so it is
           // not repeated here — repeating it overflowed the box on a phone and read as two answers.
           value={editing ?? (current ? formatDateForInput(current, "day") : "")}
@@ -93,24 +107,24 @@ export function DateInput({ field, value, onChange, label }: DateInputProps) {
           <input
             className="k-input k-date-time"
             type="time"
-            aria-label={label ? `${label} time` : "Time"}
+            aria-label={label ? t({ message: `${label} time`, comment: "The hour box beside a date field; {label} is the field" }) : t`Time`}
             value={current ? toIsoTime(current) : ""}
             onChange={(e) => onChange(withTime(current ?? today, e.target.value))}
           />
         ) : null}
-        <button ref={openRef} type="button" className="k-date-open" aria-label={label ? `Pick ${label}` : "Pick a date"} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
+        <button ref={openRef} type="button" className="k-date-open" aria-label={label ? t({ message: `Pick ${label}`, comment: "Button that opens a month grid for a date field; {label} is the field" }) : t`Pick a date`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
           📅
         </button>
       </div>
-      <div className="k-date-chips" role="group" aria-label={label ? `${label} shortcuts` : "Shortcuts"}>
-        {chip("Today", today, isDay(today))}
-        {chip("Yesterday", addDays(today, -1), isDay(addDays(today, -1)))}
-        {chip("Tomorrow", addDays(today, 1), isDay(addDays(today, 1)))}
-        {current ? chip("Clear", null, false) : null}
+      <div className="k-date-chips" role="group" aria-label={label ? t({ message: `${label} shortcuts`, comment: "The Today/Yesterday/Tomorrow chips under a date field; {label} is the field" }) : t`Shortcuts`}>
+        {chip(t`Today`, today, isDay(today))}
+        {chip(t`Yesterday`, addDays(today, -1), isDay(addDays(today, -1)))}
+        {chip(t`Tomorrow`, addDays(today, 1), isDay(addDays(today, 1)))}
+        {current ? chip(t({ message: "Clear", comment: "Empties a date field" }), null, false) : null}
       </div>
       {open ? (
         <DatePicker
-          title={label ?? "Date"}
+          title={label ?? t`Date`}
           value={current}
           anchor={boxRef}
           onPick={(d) => pickDay(d)}
@@ -128,6 +142,7 @@ export function DateInput({ field, value, onChange, label }: DateInputProps) {
 
 /** The month grid: a sheet on a phone, a popover under the box on a wide screen. */
 function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; value: Date | null; anchor: React.RefObject<HTMLInputElement | null>; onPick: (d: Date | null) => void; onClose: () => void }) {
+  const { t } = useLingui();
   const phone = usePhone();
   const today = startOfDay(new Date());
   const [month, setMonth] = useState<Date>(() => new Date((value ?? today).getFullYear(), (value ?? today).getMonth(), 1));
@@ -182,24 +197,24 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
           {title}
         </h4>
         <div className="k-date-chips">
-          {chip("Today", today)}
-          {chip("Yesterday", addDays(today, -1))}
-          {chip("Tomorrow", addDays(today, 1))}
-          {chip("+1 week", addDays(today, 7))}
+          {chip(t`Today`, today)}
+          {chip(t`Yesterday`, addDays(today, -1))}
+          {chip(t`Tomorrow`, addDays(today, 1))}
+          {chip(t({ message: "+1 week", comment: "Date shortcut: a week from today" }), addDays(today, 7))}
         </div>
         <div className="k-date-month">
-          <button type="button" className="k-date-nav" aria-label="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
+          <button type="button" className="k-date-nav" aria-label={t`Previous month`} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
             ‹
           </button>
-          <strong aria-live="polite">{MONTH.format(month)}</strong>
-          <button type="button" className="k-date-nav" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
+          <strong aria-live="polite">{monthTitle(month)}</strong>
+          <button type="button" className="k-date-nav" aria-label={t`Next month`} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
             ›
           </button>
         </div>
-        <div className="k-date-grid" role="grid" aria-label={MONTH.format(month)}>
-          {WEEKDAYS.map((w) => (
-            <span key={w} className="k-date-weekday" aria-hidden>
-              {w}
+        <div className="k-date-grid" role="grid" aria-label={monthTitle(month)}>
+          {WEEKDAYS.map((w, i) => (
+            <span key={i} className="k-date-weekday" aria-hidden>
+              {t(w)}
             </span>
           ))}
           {grid.map((cell) => (
@@ -210,7 +225,7 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
               data-out={!cell.inMonth || undefined}
               data-today={sameDay(cell.date, today) || undefined}
               data-selected={value && sameDay(cell.date, value) ? "true" : undefined}
-              aria-label={cell.date.toDateString()}
+              aria-label={fmt.date(cell.date, { dateStyle: "full" })}
               aria-pressed={value ? sameDay(cell.date, value) : undefined}
               onClick={() => pick(cell.date)}
             >
@@ -227,10 +242,10 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
               onClose();
             }}
           >
-            Clear
+            <Trans comment="Empties a date field">Clear</Trans>
           </button>
           <button type="button" className="k-add k-primary-action" onClick={onClose}>
-            Done
+            <Trans comment="Closes the month grid">Done</Trans>
           </button>
         </div>
       </div>

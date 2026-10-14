@@ -14,6 +14,10 @@
 // on the space, both outside the tree, and the store wrapper reads it on every write.
 
 import { useSyncExternalStore } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { i18n } from "@potyro/i18n";
 
 export type LockKind = "version" | "data";
 
@@ -23,14 +27,18 @@ export interface LockState {
   resolve: () => Promise<void>;
 }
 
-const REFUSAL: Record<LockKind, string> = {
-  version: "Read-only: this app has a newer version. Update to keep making changes.",
-  data: "Read-only: your data still uses the previous version. Update it to keep making changes.",
+// Descriptors, read when shown: the words must follow a language switch.
+const REFUSAL: Record<LockKind, MessageDescriptor> = {
+  version: msg`Read-only: this app has a newer version. Update to keep making changes.`,
+  data: msg`Read-only: your data still uses the previous version. Update it to keep making changes.`,
 };
 
-const BANNER: Record<LockKind, { body: string; action: string }> = {
-  version: { body: "This app has a newer version. Update to keep making changes.", action: "Update" },
-  data: { body: "Your data still uses the previous version. Update it to keep making changes.", action: "Update data" },
+const BANNER: Record<LockKind, { body: MessageDescriptor; action: MessageDescriptor }> = {
+  version: {
+    body: msg`This app has a newer version. Update to keep making changes.`,
+    action: msg({ message: "Update", comment: "Lock banner button: install the newer version of the app" }),
+  },
+  data: { body: msg`Your data still uses the previous version. Update it to keep making changes.`, action: msg`Update data` },
 };
 
 export class AppLock {
@@ -50,7 +58,7 @@ export class AppLock {
   };
 
   /** Why a write is refused right now, or `null` when it is not. What `guardedStore` asks. */
-  refusal = (): string | null => (this.state ? REFUSAL[this.state.kind] : null);
+  refusal = (): string | null => (this.state ? i18n._(REFUSAL[this.state.kind]) : null);
 }
 
 export function useAppLock(lock: AppLock | undefined): LockState | null {
@@ -69,6 +77,7 @@ const noState = (): null => null;
 export const WRITE_CONTROLS = ".k-quick, .k-fab-other, .k-action";
 
 export function LockBanner({ state }: { state: LockState }) {
+  const { t } = useLingui();
   const words = BANNER[state.kind];
   return (
     <div className="k-lock-banner" role="status">
@@ -76,16 +85,18 @@ export function LockBanner({ state }: { state: LockState }) {
         🔒
       </span>
       <div className="k-lock-text">
-        <strong>Read-only</strong>
-        <span>{words.body}</span>
+        <strong>
+          <Trans>Read-only</Trans>
+        </strong>
+        <span>{t(words.body)}</span>
       </div>
       <button type="button" className="k-add k-primary-action" onClick={() => void state.resolve()}>
-        {words.action}
+        {t(words.action)}
       </button>
     </div>
   );
 }
 
 export function lockRefusal(kind: LockKind): string {
-  return REFUSAL[kind];
+  return i18n._(REFUSAL[kind]);
 }

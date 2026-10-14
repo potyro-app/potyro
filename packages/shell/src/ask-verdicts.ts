@@ -10,21 +10,30 @@
 // A disputed value is left out of what is saved unless the person keeps it; an unconfirmed one is
 // saved, and shown with its note.
 
+import { t, plural } from "@lingui/core/macro";
 import { humanizeKey, type AppDefinition } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 
 export type Tone = "good" | "warn" | "bad" | "neutral";
 
+/** The one site a single-source row names, or "one site" when it named none. */
+const oneSite = (host: string | undefined): string =>
+  host ?? t({ message: "one site", comment: "Ask review: stands in for a website's name when none is known" });
+
 export function defaultApproval(def: AppDefinition, row: ReviewRow, kept: ReadonlySet<string> = new Set()): { approved: boolean; reason?: string } {
-  if (row.duplicate) return { approved: false, reason: "Already in your app." };
-  const t = row.trust;
-  if (t?.status === "single") return { approved: false, reason: `Only ${t.sources[0]?.host ?? "one site"} mentions it; nothing else confirmed it.` };
-  if (t?.status === "unsupported") return { approved: false, reason: t.issues[0] ?? "Nothing that was read supports it." };
-  if (t?.status === "contradicted") {
-    const why = Object.values(t.fieldIssues ?? {}).find((f) => f.kind === "contradicted")?.why;
-    return { approved: false, reason: why ?? t.issues[0] ?? "Its sources say otherwise." };
+  if (row.duplicate) return { approved: false, reason: t`Already in your app.` };
+  const trust = row.trust;
+  if (trust?.status === "single") {
+    const site = oneSite(trust.sources[0]?.host);
+    return { approved: false, reason: t`Only ${site} mentions it; nothing else confirmed it.` };
   }
-  for (const [key, issue] of Object.entries(t?.fieldIssues ?? {})) {
+  // `issues` and `why` are the generator's own sentences about what was read (verify-claims.ts).
+  if (trust?.status === "unsupported") return { approved: false, reason: trust.issues[0] ?? t`Nothing that was read supports it.` };
+  if (trust?.status === "contradicted") {
+    const why = Object.values(trust.fieldIssues ?? {}).find((f) => f.kind === "contradicted")?.why;
+    return { approved: false, reason: why ?? trust.issues[0] ?? t`Its sources say otherwise.` };
+  }
+  for (const [key, issue] of Object.entries(trust?.fieldIssues ?? {})) {
     const field = def.entities[row.entity]?.fields[key];
     if (issue.kind === "contradicted" && field?.required && !kept.has(key)) return { approved: false, reason: `${field.label ?? humanizeKey(key)}: ${issue.why}` };
   }
@@ -39,22 +48,27 @@ export function valuesToSave(row: ReviewRow, kept: ReadonlySet<string>): Record<
 }
 
 export function trustLabel(row: ReviewRow): { text: string; tone: Tone } {
-  if (row.duplicate) return { text: "Already in your app", tone: "neutral" };
-  const t = row.trust;
-  switch (t?.status) {
+  if (row.duplicate) return { text: t`Already in your app`, tone: "neutral" };
+  const trust = row.trust;
+  switch (trust?.status) {
     case "corroborated": {
-      const via = t.sources.find((x) => x.via)?.via;
-      return { text: via ? `From ${via}` : `${t.sources.length} sources`, tone: "good" };
+      const via = trust.sources.find((x) => x.via)?.via;
+      const text = via
+        ? t({ message: `From ${via}`, comment: "Ask review: where a proposed record was confirmed, e.g. From Wikidata" })
+        : plural(trust.sources.length, { one: "# source", other: "# sources" });
+      return { text, tone: "good" };
     }
-    case "single":
-      return { text: `Only ${t.sources[0]?.host ?? "one site"}`, tone: "warn" };
+    case "single": {
+      const site = oneSite(trust.sources[0]?.host);
+      return { text: t({ message: `Only ${site}`, comment: "Ask review: only this one website mentions the record" }), tone: "warn" };
+    }
     case "general":
-      return { text: "General knowledge", tone: "neutral" };
+      return { text: t`General knowledge`, tone: "neutral" };
     case "unsupported":
-      return { text: "Not confirmed", tone: "bad" };
+      return { text: t`Not confirmed`, tone: "bad" };
     case "contradicted":
-      return { text: "Disputed", tone: "bad" };
+      return { text: t({ message: "Disputed", comment: "Ask review: the sources disagree about this record" }), tone: "bad" };
     default:
-      return { text: "New", tone: "neutral" };
+      return { text: t({ message: "New", comment: "Ask review: a proposed record, not checked against anything" }), tone: "neutral" };
   }
 }

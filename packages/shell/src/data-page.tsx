@@ -19,8 +19,10 @@ import { shellCaps } from "./shell-caps.js";
 import { canGoBack, navigateTo, urlFor } from "./router.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { Count, Table } from "./data-table.js";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function DataPage({ initialAppId }: { initialAppId?: string }) {
+  const { t } = useLingui();
   const apps = useInstalledApps()
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -39,21 +41,23 @@ export function DataPage({ initialAppId }: { initialAppId?: string }) {
     <div className="k-datapage">
       <header className="k-datapage-bar">
         <button type="button" className="k-add k-datapage-back" onClick={back}>
-          <span aria-hidden>‹</span> Back
+          <span aria-hidden>‹</span> <Trans comment="Data page: leave the page">Back</Trans>
         </button>
         <h1 className="k-datapage-title">
-          <DatabaseIcon /> Data
+          <DatabaseIcon /> <Trans comment="Data page title: every app's records">Data</Trans>
         </h1>
       </header>
       <div className="k-datapage-body">
-        <nav className="k-datapage-apps" aria-label="Apps">
-          <h2 className="k-datapage-apps-head">Apps</h2>
+        <nav className="k-datapage-apps" aria-label={t`Apps`}>
+          <h2 className="k-datapage-apps-head">
+            <Trans>Apps</Trans>
+          </h2>
           {apps.map((a) => (
             <AppChoice key={a.id} app={a} current={a.id === app?.id} onChoose={() => choose(a.id)} />
           ))}
         </nav>
         <main className="k-datapage-main">
-          {app ? <AppData key={app.id} app={app} /> : <p className="k-muted k-data-note">No apps on this device yet.</p>}
+          {app ? <AppData key={app.id} app={app} /> : <p className="k-muted k-data-note"><Trans>No apps on this device yet.</Trans></p>}
         </main>
       </div>
     </div>
@@ -61,6 +65,7 @@ export function DataPage({ initialAppId }: { initialAppId?: string }) {
 }
 
 function AppChoice({ app, current, onChoose }: { app: InstalledApp; current: boolean; onChoose: () => void }) {
+  const { t } = useLingui();
   const identity = tileIdentity(app);
   return (
     <button
@@ -74,13 +79,16 @@ function AppChoice({ app, current, onChoose }: { app: InstalledApp; current: boo
         {identity.glyph}
       </span>
       <span className="k-datapage-app-name">{app.name}</span>
-      {app.sync ? <span className="k-data-shared" title="Shared — edits here reach everyone in it">shared</span> : null}
+      {app.sync ? <span className="k-data-shared" title={t`Shared — edits here reach everyone in it`}>
+          <Trans comment="Data page: a tag on an app that is synced with other people">shared</Trans>
+        </span> : null}
     </button>
   );
 }
 
 /** One app, opened for as long as it is the one being looked at. */
 function AppData({ app }: { app: InstalledApp }) {
+  const { t } = useLingui();
   const [session, setSession] = useState<DataSession | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [entity, setEntity] = useState<string | null>(null);
@@ -108,20 +116,21 @@ function AppData({ app }: { app: InstalledApp }) {
     <header className="k-datapage-apphead">
       <h2>{app.name}</h2>
       <button type="button" className="k-add" onClick={() => navigateTo({ kind: "user", id: app.id })}>
-        Open app <span aria-hidden>›</span>
+        <Trans>Open app</Trans> <span aria-hidden>›</span>
       </button>
     </header>
   );
 
-  if (failed) return <>{head}<p className="k-data-note k-data-error">Couldn’t open {app.name}’s data: {failed}</p></>;
-  if (!session) return <>{head}<p className="k-muted k-data-note">Opening {app.name}…</p></>;
-  if (session.entities.length === 0) return <>{head}<p className="k-muted k-data-note">{app.name} doesn’t declare any kinds of record.</p></>;
+  const name = app.name;
+  if (failed) return <>{head}<p className="k-data-note k-data-error"><Trans>Couldn’t open {name}’s data: {failed}</Trans></p></>;
+  if (!session) return <>{head}<p className="k-muted k-data-note"><Trans>Opening {name}…</Trans></p></>;
+  if (session.entities.length === 0) return <>{head}<p className="k-muted k-data-note"><Trans>{name} doesn’t declare any kinds of record.</Trans></p></>;
   const current = session.entities.find((e) => e.key === entity) ?? session.entities[0]!;
 
   return (
     <>
       {head}
-      <div className="k-data-tabs" role="tablist" aria-label={`${app.name} records`}>
+      <div className="k-data-tabs" role="tablist" aria-label={t`${name} records`}>
         {session.entities.map((e) => (
           <button key={e.key} type="button" role="tab" aria-selected={e.key === current.key} className="k-data-tab" onClick={() => setEntity(e.key)}>
             {e.label}

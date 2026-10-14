@@ -5,10 +5,30 @@
 // provider you are not using is noise you have to read past every time.
 
 import { useEffect, useRef } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
-import { ENGINES, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
+import { ENGINES, ENGINE_GROUPS, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
 import { ThinkingSettings } from "./thinking-settings.js";
+
+/**
+ * The shortlists' notes, in the person's language. The lists live in the generator, which has no
+ * catalog; a model added there without a note here shows the generator's English note.
+ */
+const MODEL_NOTES: Record<string, MessageDescriptor> = {
+  "deepseek/deepseek-v4-flash-0731": msg`Cheap, fast, 1M context — start here`,
+  "deepseek/deepseek-v4-pro-0813": msg`Stronger sibling, still ~50× cheaper than a frontier model`,
+  "deepseek/deepseek-v3.2": msg`Previous generation, for a regression check`,
+  "qwen/qwen3-coder": msg`Coder-tuned — the output is a structured .app.ts`,
+  "Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC": msg`Fastest, weakest — for low-end devices`,
+  "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC": msg`Recommended balance`,
+  "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC": msg`Best quality; larger download · non-commercial license`,
+};
+
+const usd = (n: string): string => fmt.number(Number(n), { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
 interface EngineSettingsProps {
   config: EngineConfig;
@@ -18,9 +38,8 @@ interface EngineSettingsProps {
   hasBuiltIn: boolean;
 }
 
-const GROUPS = ["On this machine", "Cloud"] as const;
-
 export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltIn }: EngineSettingsProps) {
+  const { t } = useLingui();
   const set = (patch: Partial<EngineConfig>): void => onChange({ ...config, ...patch });
 
   // Choosing an engine reveals ITS settings underneath it, which on a short window opens below the
@@ -33,30 +52,54 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
   // An engine the browser cannot run is shown, disabled, with the reason — hiding it makes the
   // Studio look different on different machines with nothing to explain why.
   const unavailable = (id: Engine): string | null => {
-    if (id === "cli" && !canGenerate()) return "only while the dev server runs";
-    if (id === "edge" && !hasWebGPU) return "needs a WebGPU browser";
-    if (id === "builtin" && !hasBuiltIn) return "not available in this browser";
+    if (id === "cli" && !canGenerate()) return t`only while the dev server runs`;
+    if (id === "edge" && !hasWebGPU) return t`needs a WebGPU browser`;
+    if (id === "builtin" && !hasBuiltIn) return t`not available in this browser`;
     return null;
   };
 
+  const label = engineLabel(config);
+  const noteOf = (m: { id: string; note?: string }): string => {
+    const d = MODEL_NOTES[m.id];
+    return d ? t(d) : (m.note ?? "");
+  };
+  /** "$0.14/$0.28" (in/out per million tokens) in the active language's number format. */
+  const priceOf = (price: string): string => {
+    const both = /^\$([\d.]+)\/\$([\d.]+)$/.exec(price);
+    if (both) {
+      const input = usd(both[1]!);
+      const output = usd(both[2]!);
+      return t({ message: `${input}/${output} /M`, comment: "Model price: dollars in / dollars out, per million tokens (/M)" });
+    }
+    return price === "varies" ? t({ message: "varies", comment: "Model price: it depends on the provider" }) : price;
+  };
+  /** "~1 GB" in the active language's number format. */
+  const sizeOf = (download: string): string => {
+    const gb = /^~([\d.]+) GB$/.exec(download);
+    return gb ? `~${fmt.number(Number(gb[1]), { style: "unit", unit: "gigabyte" })}` : download;
+  };
   return (
     <div className="k-modal-scrim" onClick={onClose}>
-      <div className="k-modal k-engines" role="dialog" aria-label="Model settings" onClick={(e) => e.stopPropagation()}>
+      <div className="k-modal k-engines" role="dialog" aria-label={t`Model settings`} onClick={(e) => e.stopPropagation()}>
         <header className="k-modal-head">
           <div>
-            <h2 className="k-modal-title">Model</h2>
-            <p className="k-muted">Which model writes and edits your app. Keys stay in this tab and are never saved.</p>
+            <h2 className="k-modal-title">
+              <Trans comment="Model settings title: which AI model is used">Model</Trans>
+            </h2>
+            <p className="k-muted">
+              <Trans>Which model writes and edits your app. Keys stay in this tab and are never saved.</Trans>
+            </p>
           </div>
-          <button type="button" className="k-add" aria-label="Close model settings" onClick={onClose}>
-            Done ✕
+          <button type="button" className="k-add" aria-label={t`Close model settings`} onClick={onClose}>
+            <Trans comment="Closes the model settings">Done</Trans> ✕
           </button>
         </header>
 
-        <div className="k-engine-list" role="radiogroup" aria-label="Engine" ref={listRef}>
-          {GROUPS.map((group) => (
-            <section key={group} className="k-engine-group">
-              <h3 className="k-field-label">{group}</h3>
-              {ENGINES.filter((e) => e.group === group).map((e) => {
+        <div className="k-engine-list" role="radiogroup" aria-label={t({ message: "Engine", comment: "The list of model engines to choose from" })} ref={listRef}>
+          {ENGINE_GROUPS.map((group) => (
+            <section key={group.id} className="k-engine-group">
+              <h3 className="k-field-label">{t(group.label)}</h3>
+              {ENGINES.filter((e) => e.group === group.id).map((e) => {
                 const why = unavailable(e.id);
                 const active = config.engine === e.id;
                 return (
@@ -70,14 +113,14 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                         disabled={Boolean(why)}
                         onChange={() => set({ engine: e.id })}
                       />
-                      <span className="k-engine-name">{e.label}</span>
+                      <span className="k-engine-name">{t(e.label)}</span>
                       {why ? <span className="k-muted k-engine-why">{why}</span> : null}
-                      <span className="k-muted k-engine-blurb">{e.blurb}</span>
+                      <span className="k-muted k-engine-blurb">{t(e.blurb)}</span>
                       {/* Honest about the one thing this engine can't do yet — not alarming, since
                           every engine here still writes and edits apps fine; see engines.ts. */}
                       {canInvestigate(e.id) ? null : (
                         <span className="k-muted k-engine-note">
-                          Writes and edits apps; cannot investigate a reported problem step by step.
+                          <Trans>Writes and edits apps; cannot investigate a reported problem step by step.</Trans>
                         </span>
                       )}
                     </label>
@@ -86,8 +129,9 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                     {active && e.id === "anthropic" ? (
                       <input
                         className="k-input"
-                        aria-label="Anthropic API key"
+                        aria-label={t`Anthropic API key`}
                         type="password"
+                        // i18n-ignore — the shape of an Anthropic key, not words
                         placeholder="sk-ant-…"
                         value={config.anthropicKey}
                         onChange={(ev) => set({ anthropicKey: ev.target.value })}
@@ -98,26 +142,30 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                       <div className="k-engine-fields">
                         <input
                           className="k-input"
-                          aria-label="OpenRouter API key"
+                          aria-label={t`OpenRouter API key`}
                           type="password"
+                          // i18n-ignore — the shape of an OpenRouter key, not words
                           placeholder="sk-or-…"
                           value={config.openrouterKey}
                           onChange={(ev) => set({ openrouterKey: ev.target.value })}
                         />
                         <select
                           className="k-input"
-                          aria-label="OpenRouter model"
+                          aria-label={t`OpenRouter model`}
                           value={config.openrouterModel}
                           onChange={(ev) => set({ openrouterModel: ev.target.value })}
                         >
                           {OPENROUTER_MODELS.map((m) => (
-                            <option key={m.id} value={m.id} title={m.note}>
-                              {m.label} · {m.price} /M
+                            <option key={m.id} value={m.id} title={noteOf(m)}>
+                              {m.label} · {priceOf(m.price)}
                             </option>
                           ))}
                         </select>
                         <p className="k-muted">
-                          {OPENROUTER_MODELS.find((m) => m.id === config.openrouterModel)?.note ?? ""}
+                          {(() => {
+                            const chosen = OPENROUTER_MODELS.find((m) => m.id === config.openrouterModel);
+                            return chosen ? noteOf(chosen) : "";
+                          })()}
                         </p>
                       </div>
                     ) : null}
@@ -128,13 +176,13 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                     {active && e.id === "edge" ? (
                       <select
                         className="k-input"
-                        aria-label="On-device model"
+                        aria-label={t`On-device model`}
                         value={config.edgeModel}
                         onChange={(ev) => set({ edgeModel: ev.target.value })}
                       >
                         {WEBLLM_MODELS.map((m) => (
-                          <option key={m.id} value={m.id} title={m.note}>
-                            {m.label} · {m.download}
+                          <option key={m.id} value={m.id} title={noteOf(m)}>
+                            {m.label} · {sizeOf(m.download)}
                           </option>
                         ))}
                       </select>
@@ -148,7 +196,9 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
 
         <footer className="k-modal-foot">
           <span className="k-muted">
-            Creating and modifying both use <strong>{engineLabel(config)}</strong>.
+            <Trans>
+              Creating and modifying both use <strong>{label}</strong>.
+            </Trans>
           </span>
         </footer>
       </div>

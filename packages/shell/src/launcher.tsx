@@ -536,7 +536,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       const records = copied.records;
       const moved = plural(records, { one: "Moved # record.", other: "Moved # records." });
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
-      // path exists to avoid. (The warnings are the store's own words; #299 takes them.)
+      // path exists to avoid. (The warnings come translated from `toggleAppSync`.)
       await shellDialogs.confirm(warnings.length ? `${moved} ${warnings.join(" ")}` : `${moved} ${on ? t`Sync is on.` : t`Sync is off.`}`);
       // Only after the outcome is reported. The first time anything syncs is the first time the
       // recovery words are TRUE — before that they restore nothing, because the data has never left
@@ -586,9 +586,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         const name = a.name;
         const list = `• ${hazards.join("\n• ")}`;
         const go = await shellDialogs.confirm(
-          t`Before you share “${name}” — two people using it at once can lose each other's work:` +
-            `\n\n${list}\n\n` +
-            t`Nothing is wrong with it on your own. Share anyway?`,
+          t`Before you share “${name}” — two people using it at once can lose each other's work:\n\n${list}\n\nNothing is wrong with it on your own. Share anyway?`,
         );
         if (!go) return;
       }

@@ -5,6 +5,7 @@
 // and a model backend (`createOpenRouterEngine`) are each built and tested in isolation. Nothing
 // before this file ever constructed a `LoopDeps` for real — this is where that finally happens.
 
+import { t } from "@lingui/core/macro";
 import type { Store } from "@potyro/store";
 import { replayCase, replayPassed, type Case, type ReplayTarget } from "@potyro/runtime";
 import type { PotyroRuntime } from "@potyro/runtime";
@@ -46,19 +47,17 @@ export interface StartFixOpts {
  * tools) so refusing costs nothing.
  */
 function refusal(cfg: EngineConfig): LoopOutcome | undefined {
-  if (!canInvestigate(cfg.engine)) {
+  const engine = cfg.engine;
+  if (!canInvestigate(engine)) {
     return {
       kind: "refused",
-      text:
-        `${cfg.engine} cannot investigate this — it has no transcript to hang a multi-step tool ` +
-        `loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, ` +
-        `like OpenRouter, to drive the loop.`,
+      text: t`${engine} cannot investigate this — it has no transcript to hang a multi-step tool loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, like OpenRouter, to drive the loop.`,
     };
   }
-  if (isCloud(cfg.engine) && !keyFor(cfg)) {
+  if (isCloud(engine) && !keyFor(cfg)) {
     return {
       kind: "refused",
-      text: `${cfg.engine} needs your own API key to investigate — add one in Engine Settings.`,
+      text: t`${engine} needs your own API key to investigate — add one in Engine Settings.`,
     };
   }
   return undefined;
@@ -100,7 +99,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     if (shown !== opts.source) {
       return {
         kind: "refused",
-        text: "This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again.",
+        text: t`This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again.`,
       };
     }
   }
@@ -134,10 +133,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   if (!task.trim()) {
     return {
       kind: "refused",
-      text:
-        "There's nothing to investigate: this recording has no title and no note about what you " +
-        'expected. Add a note when you record the case — "What did you expect?" — or give the case ' +
-        "a title, and try again.",
+      text: t`There's nothing to investigate: this recording has no title and no note about what you expected. Add a note when you record the case — "What did you expect?" — or give the case a title, and try again.`,
     };
   }
 
@@ -165,11 +161,10 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   // model the person never chose.) This guard is the one line that keeps those two facts from
   // silently disagreeing.
   if (opts.engine.engine !== "openrouter") {
+    const engine = opts.engine.engine;
     return {
       kind: "refused",
-      text:
-        `${opts.engine.engine} claims it can investigate this, but startFix has no client wired for ` +
-        `it — only OpenRouter does today. This is a configuration bug, not a problem with your app.`,
+      text: t`${engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app.`,
     };
   }
 

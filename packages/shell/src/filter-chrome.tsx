@@ -18,6 +18,8 @@ import { createPortal } from "react-dom";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { FilterChip } from "potyro";
 import { usePortalRoot } from "@potyro/views";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 
 interface ChromeProps {
   runtime: PotyroRuntime;
@@ -92,6 +94,7 @@ function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; page
 }
 
 export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps) {
+  const { t } = useLingui();
   const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
     | { entity?: string; filters?: FilterChip[] }
     | undefined;
@@ -103,7 +106,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   // A page with buttons and no chips still has chrome to draw.
   if (!filters?.length) {
     return hasActions ? (
-      <section className="k-chrome" aria-label="Page actions" data-k-view>
+      <section className="k-chrome" aria-label={t`Page actions`} data-k-view>
         <PageActions runtime={runtime} pageId={pageId} params={params} />
       </section>
     ) : null;
@@ -120,7 +123,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   };
 
   return (
-    <section className="k-chrome" aria-label="Filters" data-k-view>
+    <section className="k-chrome" aria-label={t`Filters`} data-k-view>
       {options.length ? (
         <button
           type="button"
@@ -130,19 +133,21 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
           aria-haspopup="dialog"
           onClick={() => setOpen(true)}
         >
-          <span aria-hidden>⚟</span> Filter
-          {picked.length ? <span className="k-filter-count">{picked.length}</span> : null}
+          <span aria-hidden>⚟</span> <Trans comment="Button that opens the filter options of a page">Filter</Trans>
+          {picked.length ? <span className="k-filter-count">{fmt.number(picked.length)}</span> : null}
         </button>
       ) : null}
 
       {/* What was chosen, and nothing else. A tap on one takes it off. */}
-      {picked.map(({ chip, value }) => (
+      {picked.map(({ chip, value }) => {
+        const filter = chip.label;
+        return (
         <button
           key={`${chip.param}:${value}`}
           type="button"
           className="k-chip k-chip-picked"
           data-on
-          aria-label={`${chip.label}: ${value} — remove`}
+          aria-label={t({ message: `${filter}: ${value} — remove`, comment: "A chosen filter value; pressing it takes the filter off" })}
           onClick={() => drop(chip, value)}
         >
           <ValueLabel chip={chip} runtime={runtime} value={value} />
@@ -150,7 +155,8 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
             ✕
           </span>
         </button>
-      ))}
+        );
+      })}
 
       {direct.map((chip) => (
         <ChipControl key={chip.param} chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />
@@ -204,6 +210,7 @@ function FilterSheet({
   onClose: () => void;
   onClear: () => void;
 }) {
+  const { t } = useLingui();
   const screen = usePortalRoot();
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -225,11 +232,13 @@ function FilterSheet({
   const host = (screen !== document.body ? screen.querySelector(".k-app") : null) ?? document.querySelector(".k-app") ?? document.body;
   return createPortal(
     <div className="k-modal-scrim k-filter-scrim" onClick={onClose}>
-      <div className="k-filter-sheet" role="dialog" aria-label="Filter" data-k-view onClick={(e) => e.stopPropagation()}>
+      <div className="k-filter-sheet" role="dialog" aria-label={t({ message: "Filter", comment: "Title of the sheet with a page's filter options" })} data-k-view onClick={(e) => e.stopPropagation()}>
         <header className="k-filter-head">
-          <h2 className="k-filter-title">Filter</h2>
+          <h2 className="k-filter-title">
+            <Trans comment="Title of the sheet with a page's filter options">Filter</Trans>
+          </h2>
           <button type="button" className="k-filter-clear" disabled={picked === 0} onClick={onClear}>
-            Clear
+            <Trans comment="Filter sheet: take every chosen filter off">Clear</Trans>
           </button>
         </header>
         <div className="k-filter-body">
@@ -239,7 +248,7 @@ function FilterSheet({
         </div>
         <div className="k-filter-foot">
           <button type="button" className="k-add k-primary-action" onClick={onClose}>
-            Done
+            <Trans comment="Filter sheet: close it">Done</Trans>
           </button>
         </div>
       </div>
@@ -284,7 +293,9 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
             {String(r[displayField] ?? r.id)}
           </button>
         ))}
-        {rows.length === 0 ? <span className="k-muted">Nothing to pick yet.</span> : null}
+        {rows.length === 0 ? <span className="k-muted">
+            <Trans>Nothing to pick yet.</Trans>
+          </span> : null}
       </div>
     </div>
   );
@@ -303,6 +314,8 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
  * a phone; a controlled input written straight through also fights the keyboard on Android.
  */
 function ValueChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "runtime">) {
+  const { t } = useLingui();
+  const filter = chip.label;
   const live = params[chip.param];
   const [text, setText] = useState(live == null ? "" : String(live));
   // Re-sync when the param changes from somewhere else (a cleared filter, a navigation), but never
@@ -341,7 +354,7 @@ function ValueChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "runti
         <button
           type="button"
           className="k-chip-x-button"
-          aria-label={`Clear ${chip.label}`}
+          aria-label={t({ message: `Clear ${filter}`, comment: "Empties a filter's search box" })}
           onClick={() => {
             typed.current = true;
             setText("");
@@ -407,6 +420,7 @@ function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
 }
 
 function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">) {
+  const { t } = useLingui();
   const [busy, setBusy] = useState(false);
   const active = Boolean(params[chip.param]);
   const geo = runtime.ctx.caps.geo;
@@ -420,7 +434,7 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
     } catch (e) {
       // Say so. Swallowing this left the button looking like it simply does nothing when location is
       // denied — you press it, the label flicks to "Locating…" and back, and nothing ever explains why.
-      runtime.ctx.ui.toast(e instanceof Error ? e.message : "Could not get your location");
+      runtime.ctx.ui.toast(e instanceof Error ? e.message : t`Could not get your location`);
     } finally {
       setBusy(false);
     }
@@ -435,7 +449,7 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
         disabled={busy || !geo}
         onClick={active ? () => setParam(chip.param, undefined) : useLocation}
       >
-        {active ? `${chip.label} ✓` : busy ? "Locating…" : chip.label}
+        {active ? `${chip.label} ✓` : busy ? t`Locating…` : chip.label}
       </button>
     </div>
   );
