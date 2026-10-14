@@ -231,8 +231,8 @@ test("a tap on the map does nothing until placing is armed", async ({ page }) =>
   await expect(page.locator(".k-modal"), "an unarmed tap created a record").toHaveCount(0);
 
   // Arm it, and the map says what it now expects.
-  await page.getByRole("button", { name: /Add spot here/i }).click();
-  await expect(page.getByText(/Tap the map to place the spot/i)).toBeVisible();
+  await page.getByRole("button", { name: /Add here: spot/i }).click();
+  await expect(page.getByText(/spot: tap the map to place it/i)).toBeVisible();
 
   await page.mouse.click(box.x + 90, box.y + 90);
   await expect(page.locator(".k-modal")).toBeVisible();

@@ -5,6 +5,7 @@
 // closing after every tick would make choosing four things four trips. A relation can also offer
 // to create what the search did not find, named with what was typed.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePhone } from "./media.js";
@@ -36,6 +37,7 @@ export interface PickListProps {
 }
 
 export function PickList({ title, items, selected, multi = false, anchor, onToggle, onClear, onCreate, createNoun, onClose }: PickListProps) {
+  const { t } = useLingui();
   const phone = usePhone();
   const [query, setQuery] = useState("");
   const headingId = useId();
@@ -91,7 +93,7 @@ export function PickList({ title, items, selected, multi = false, anchor, onTogg
     next?.focus();
   };
 
-  const noun = createNoun ?? title.toLowerCase();
+  const noun = createNoun ?? title;
 
   return createPortal(
     <div className="k-menu-layer">
@@ -113,8 +115,8 @@ export function PickList({ title, items, selected, multi = false, anchor, onTogg
           ref={searchRef}
           className="k-input k-enum-search"
           type="search"
-          placeholder="Search"
-          aria-label={`Search ${title}`}
+          placeholder={t({ message: "Search", comment: "The search box at the top of a list to pick from" })}
+          aria-label={t`Search ${title}`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -136,17 +138,18 @@ export function PickList({ title, items, selected, multi = false, anchor, onTogg
               </button>
             );
           })}
-          {shown.length === 0 && !onCreate ? <p className="k-enum-none">Nothing matches “{query}”.</p> : null}
+          {shown.length === 0 && !onCreate ? <p className="k-enum-none">
+              <Trans>Nothing matches “{query}”.</Trans>
+            </p> : null}
         </div>
         {onCreate ? (
           <button type="button" className="k-pick-create" onClick={create}>
-            ＋ New {noun}
-            {trimmed ? ` “${trimmed}”…` : ""}
+            ＋ {trimmed ? t({ message: `Add: ${noun} “${trimmed}”…`, comment: "Make a new record named with what was typed; noun is the app's word for it" }) : t({ message: `Add: ${noun}`, comment: "Make a new record; noun is the app's word for it" })}
           </button>
         ) : null}
         {multi ? (
           <button type="button" className="k-add k-primary-action k-enum-clear" onClick={onClose}>
-            Done
+            <Trans comment="Close a list where several can be picked">Done</Trans>
           </button>
         ) : onClear && selected.size ? (
           <button
@@ -157,7 +160,7 @@ export function PickList({ title, items, selected, multi = false, anchor, onTogg
               onClose();
             }}
           >
-            Clear
+            <Trans comment="Take the chosen value off">Clear</Trans>
           </button>
         ) : null}
       </div>

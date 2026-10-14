@@ -257,8 +257,24 @@ msgstr ""
 msgid "{changed, plural, one {changed # record} other {changed # records}}"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+msgid "{count, plural, one {# item is in it.} other {# items are in it.}}"
+msgstr ""
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "{count, plural, one {# ready} other {# ready}}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "{count, plural, one {Delete its item too?} other {Delete its # items too?}}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "{count, plural, one {Otherwise it moves to “{aboveName}”.} other {Otherwise they move to “{aboveName}”.}}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "{count, plural, one {Otherwise it stays on the list ({kind}: none).} other {Otherwise they stay on the list ({kind}: none).}}"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -272,6 +288,10 @@ msgstr ""
 #. done is e.g. “Added 3 places”
 #: ../shell/src/ask-panel.tsx
 msgid "{done}, then it stopped"
+msgstr ""
+
+#: ../views/src/steps.tsx
+msgid "{doneCount} of {stepCount} done"
 msgstr ""
 
 #: ../shell/src/start-fix.ts
@@ -312,8 +332,23 @@ msgstr ""
 msgid "{entity}: nothing called “{match}”."
 msgstr ""
 
+#. Map: placing a new record; entityLabel is the app's word for it
+#: ../views/src/map.tsx
+msgid "{entityLabel}: tap the map to place it."
+msgstr ""
+
+#. A board: the app's records, in columns by a field
+#: ../views/src/board.tsx
+msgid "{entityName} by {byWhat}"
+msgstr ""
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "{fetches, plural, one {It is fetched once, when you add the app, and kept with it: after that the app works without the internet.} other {They are fetched once, when you add the app, and kept with it: after that the app works without the internet.}}"
+msgstr ""
+
+#. Board: the column for cards with no value in the field
+#: ../views/src/board.tsx
+msgid "{fieldLabel}: none"
 msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
@@ -361,6 +396,14 @@ msgstr ""
 msgid "{label} came with the app"
 msgstr ""
 
+#: ../views/src/number-input.tsx
+msgid "{label} hours"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "{label} minutes"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "{label} needs an API key — open Model settings"
 msgstr ""
@@ -383,6 +426,16 @@ msgstr ""
 #. Ask review: a link the model named matches several records; label is the field
 #: ../shell/src/ask-apply.ts
 msgid "{label}: “{name}” could be {candidates}; left empty."
+msgstr ""
+
+#. A media field's add button: the field's name, then what it does
+#: ../views/src/media-input.tsx
+msgid "{label}: {addAfter}"
+msgstr ""
+
+#. A file field's button: the field's name, then what it does
+#: ../views/src/file-input.tsx
+msgid "{label}: {wordAfter}"
 msgstr ""
 
 #. A choice field with nothing chosen yet; {label} is the field
@@ -439,22 +492,32 @@ msgstr ""
 msgid "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
 msgstr ""
 
+#: ../views/src/chart.tsx
+msgid "{n, plural, one {{chartName}: # bar. The values are in the table that follows.} other {{chartName}: # bars. The values are in the table that follows.}}"
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 msgid "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
 msgstr ""
 
 #. A size in bytes
+#. A size in bytes
 #: ../shell/src/package-libraries.ts
+#: ../views/src/file-input.tsx
 msgid "{n} B"
 msgstr ""
 
 #. A size in kilobytes
+#. A size in kilobytes
 #: ../shell/src/package-libraries.ts
+#: ../views/src/file-input.tsx
 msgid "{n} KB"
 msgstr ""
 
 #. A size in megabytes
+#. A size in megabytes
 #: ../shell/src/package-libraries.ts
+#: ../views/src/file-input.tsx
 msgid "{n} MB"
 msgstr ""
 
@@ -489,9 +552,29 @@ msgstr ""
 msgid "{name}, version {seq}"
 msgstr ""
 
+#. The menu button of a card or row; title is its name
+#: ../views/src/list-input.tsx
+msgid "{name}: more"
+msgstr ""
+
+#. An unnamed row of a list field: the field's word and the row's number
+#: ../views/src/list-input.tsx
+msgid "{noun} {n}"
+msgstr ""
+
+#. A field that links a record, when there are none to pick; noun is the app's word for them
+#: ../views/src/relation-input.tsx
+msgid "{noun}: none yet — add one"
+msgstr ""
+
 #. The name of a duplicated app
 #: ../shell/src/user-apps.ts
 msgid "{original} (copy)"
+msgstr ""
+
+#. Checklist: pick a group for the item; the app's word for a group comes first (no agreement with it)
+#: ../views/src/checklist.tsx
+msgid "{pendingKind}: tap the one for “{pendingText}”"
 msgstr ""
 
 #: ../shell/src/ask-review.tsx
@@ -509,6 +592,31 @@ msgstr ""
 #. Data table: records matching the search, of all records
 #: ../shell/src/data-table.tsx
 msgid "{shownCount} of {totalCount}"
+msgstr ""
+
+#. A figure compared with an earlier one; label is e.g. “last week”
+#: ../views/src/stats.tsx
+msgid "{size} less than {label}"
+msgstr ""
+
+#. A figure compared with an earlier one; label is e.g. “last week”
+#: ../views/src/stats.tsx
+msgid "{size} more than {label}"
+msgstr ""
+
+#. A field that links several records: the field's name, then what the button does
+#: ../views/src/relation-input.tsx
+msgid "{title}: add"
+msgstr ""
+
+#. A field that links a record, nothing chosen yet
+#: ../views/src/relation-input.tsx
+msgid "{title}: choose"
+msgstr ""
+
+#. The menu button of a card or row; title is its name
+#: ../views/src/board.tsx
+msgid "{title}: more"
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -723,8 +831,21 @@ msgstr ""
 msgid "Actions for {0}"
 msgstr ""
 
+#. After a field's name and a colon, lower case: add one more
+#: ../views/src/media-input.tsx
+msgid "add"
+msgstr ""
+
+#. Add one more photo or file to a field that holds several
+#. Board: add a card to this column
+#. Checklist: add the typed item
+#. Link another record
 #. Picker: add the chosen items
 #: ../shell/src/picker.tsx
+#: ../views/src/board.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/media-input.tsx
+#: ../views/src/relation-input.tsx
 msgid "Add"
 msgstr ""
 
@@ -767,12 +888,52 @@ msgstr ""
 msgid "Add an app someone sent you"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+msgid "Add an item"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Add an item…"
+msgstr ""
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add app"
 msgstr ""
 
+#. After a field's name and a colon, lower case
+#: ../views/src/media-input.tsx
+msgid "add audio"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Add audio"
+msgstr ""
+
+#. After a field's name and a colon, lower case
+#: ../views/src/media-input.tsx
+msgid "add file"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Add file"
+msgstr ""
+
+#. Map: add a new record at a point; entityLabel is the app's word for it
+#: ../views/src/map.tsx
+msgid "Add here: {entityLabel}"
+msgstr ""
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
+msgstr ""
+
+#. After a field's name and a colon, lower case
+#: ../views/src/media-input.tsx
+msgid "add photo"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Add photo"
 msgstr ""
 
 #: ../shell/src/ask-sources-panel.tsx
@@ -783,9 +944,27 @@ msgstr ""
 msgid "Add the API's address, or a link to its documentation."
 msgstr ""
 
+#. After a field's name and a colon, lower case
+#: ../views/src/media-input.tsx
+msgid "add video"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Add video"
+msgstr ""
+
+#. Add a row to a list field; noun is the field's word for one
 #. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
+#. Make a new record; noun is the app's word for it
+#: ../views/src/list-input.tsx
+#: ../views/src/pick-list.tsx
 #: ../views/src/record-form.tsx
 msgid "Add: {noun}"
+msgstr ""
+
+#. Make a new record named with what was typed; noun is the app's word for it
+#: ../views/src/pick-list.tsx
+msgid "Add: {noun} “{trimmed}”…"
 msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
@@ -793,6 +972,7 @@ msgid "Adding {addingName}…"
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
+#: ../views/src/media-input.tsx
 msgid "Adding…"
 msgstr ""
 
@@ -815,6 +995,11 @@ msgstr ""
 
 #: ../shell/src/ask-review-layouts.tsx
 msgid "All details and sources"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+#: ../views/src/steps.tsx
+msgid "All done."
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
@@ -1064,6 +1249,10 @@ msgstr ""
 msgid "Bring this into…"
 msgstr ""
 
+#: ../views/src/file-input.tsx
+msgid "Bringing it in…"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
 msgstr ""
@@ -1088,6 +1277,10 @@ msgstr ""
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "calendar"
+msgstr ""
+
+#: ../views/src/calendar.tsx
+msgid "Calendar — {monthLabel}"
 msgstr ""
 
 #. What an app asks this device for, lower case
@@ -1118,6 +1311,7 @@ msgstr ""
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/tile-editor.tsx
 #: ../shell/src/trust-dialog.tsx
+#: ../views/src/map.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/record-form.tsx
 msgid "Cancel"
@@ -1140,8 +1334,19 @@ msgstr ""
 msgid "Cards"
 msgstr ""
 
+#: ../views/src/map.tsx
+msgid "Centre the map on my location"
+msgstr ""
+
+#. After a field's name and a colon, lower case: pick another file
+#: ../views/src/file-input.tsx
+msgid "change"
+msgstr ""
+
 #. Ask review: a badge on a proposed change to a record
+#. Pick another file for a file field
 #: ../shell/src/ask-review-edits.tsx
+#: ../views/src/file-input.tsx
 msgid "Change"
 msgstr ""
 
@@ -1218,6 +1423,11 @@ msgstr ""
 msgid "chart"
 msgstr ""
 
+#. A bar chart with no title of its own
+#: ../views/src/chart.tsx
+msgid "Chart"
+msgstr ""
+
 #. Heading of an app's shared chat
 #. Preview bar: back to the Studio conversation
 #: ../shell/src/chat-panel.tsx
@@ -1251,9 +1461,20 @@ msgid "checklist"
 msgstr ""
 
 #. A list an app asks you to pick from
+#. A list of choices with no title of its own
 #: ../shell/src/picker.tsx
 #: ../views/src/enum-input.tsx
+#: ../views/src/menu.tsx
 msgid "Choose"
+msgstr ""
+
+#. After a field's name and a colon, lower case
+#: ../views/src/file-input.tsx
+msgid "choose a file"
+msgstr ""
+
+#: ../views/src/file-input.tsx
+msgid "Choose a file"
 msgstr ""
 
 #: ../shell/src/add-app.ts
@@ -1264,11 +1485,20 @@ msgstr ""
 msgid "choose an app"
 msgstr ""
 
+#: ../views/src/media-input.tsx
+msgid "Choose from library"
+msgstr ""
+
+#: ../views/src/layout-host.tsx
+msgid "Choose one on the left."
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "Choose which model writes and edits your app"
 msgstr ""
 
 #: ../views/src/enum-input.tsx
+#: ../views/src/relation-input.tsx
 msgid "Choose…"
 msgstr ""
 
@@ -1293,9 +1523,11 @@ msgstr ""
 #. Empties a date field
 #. Empties a date field
 #. Filter sheet: take every chosen filter off
+#. Take the chosen value off
 #: ../shell/src/filter-chrome.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx
+#: ../views/src/pick-list.tsx
 msgid "Clear"
 msgstr ""
 
@@ -1318,6 +1550,7 @@ msgstr ""
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/trust-dialog.tsx
+#: ../views/src/map.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/record-form.tsx
 msgid "Close"
@@ -1431,8 +1664,21 @@ msgstr ""
 msgid "Could not add it back: {reason}"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Could not add that"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Could not change sync: {reason}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Could not delete that"
+msgstr ""
+
+#: ../views/src/builtins.tsx
+msgid "Could not delete that record"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -1443,6 +1689,10 @@ msgstr ""
 msgid "Could not get your location"
 msgstr ""
 
+#: ../views/src/map.tsx
+msgid "Could not get your location."
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 msgid "Could not make it: {reason}"
 msgstr ""
@@ -1451,12 +1701,35 @@ msgstr ""
 msgid "Could not measure: {failed}"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Could not move that"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Could not rename that"
+msgstr ""
+
 #: ../shell/src/fix-panel.tsx
 msgid "Could not reproduce this"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+msgid "Could not save that"
+msgstr ""
+
 #: ../shell/src/version-gate.ts
 msgid "Could not update your data: {why}"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Couldn’t add it: {failed}"
+msgstr ""
+
+#: ../views/src/file-input.tsx
+msgid "Couldn’t bring it in: {failed}"
 msgstr ""
 
 #: ../shell/src/dialog.tsx
@@ -1523,6 +1796,14 @@ msgstr ""
 msgid "Decision"
 msgstr ""
 
+#: ../views/src/number-input.tsx
+msgid "Decrease"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "Decrease {label}"
+msgstr ""
+
 #. Data table: delete this record
 #: ../shell/src/data-table.tsx
 #: ../shell/src/data-table.tsx
@@ -1531,12 +1812,21 @@ msgstr ""
 #: ../shell/src/launcher.tsx
 #: ../shell/src/remove-app.ts
 #: ../shell/src/studio.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
 msgid "Delete"
 msgstr ""
 
 #. placeholder {0}: d.title
 #: ../shell/src/draft-strip.tsx
 msgid "Delete “{0}”"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Delete “{groupName}”?"
 msgstr ""
 
 #: ../shell/src/remove-app.ts
@@ -1555,8 +1845,20 @@ msgstr ""
 msgid "Delete {appName}"
 msgstr ""
 
+#: ../views/src/builtins.tsx
+msgid "Delete {label}"
+msgstr ""
+
+#: ../views/src/builtins.tsx
+msgid "Delete {label}?"
+msgstr ""
+
 #: ../shell/src/data-table.tsx
 msgid "Delete {record}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Delete them"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -1597,7 +1899,9 @@ msgid "detail view"
 msgstr ""
 
 #. Folded developer details under a plain failure message
+#. Map pin: show the place's record over the map
 #: ../shell/src/studio-thread-view.tsx
+#: ../views/src/map.tsx
 msgid "Details"
 msgstr ""
 
@@ -1652,6 +1956,7 @@ msgstr ""
 msgid "Don't share"
 msgstr ""
 
+#. Close a list where several can be picked
 #. Closes the model settings
 #. Closes the month grid
 #. Filter sheet: close it
@@ -1663,12 +1968,28 @@ msgstr ""
 #: ../shell/src/filter-chrome.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/date-input.tsx
+#: ../views/src/pick-list.tsx
 msgid "Done"
+msgstr ""
+
+#. Checklist: the folded section of ticked items, and how many
+#: ../views/src/checklist.tsx
+msgid "Done ({doneCount})"
 msgstr ""
 
 #. Tag beside a language in the picker: its translation is an unreviewed model draft
 #: ../shell/src/language-picker.tsx
 msgid "draft"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/list-input.tsx
+msgid "Drag to reorder"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Drop to add it"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -1691,6 +2012,13 @@ msgstr ""
 
 #. Data table: edit this record
 #: ../shell/src/data-table.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/map.tsx
 msgid "Edit"
 msgstr ""
 
@@ -1807,6 +2135,11 @@ msgstr ""
 msgid "figures"
 msgstr ""
 
+#. A file field with no name of its own
+#: ../views/src/file-input.tsx
+msgid "File"
+msgstr ""
+
 #: ../shell/src/ask-material.tsx
 #: ../shell/src/ask-material.tsx
 msgid "File to bring in"
@@ -1908,6 +2241,10 @@ msgstr ""
 msgid "From this device"
 msgstr ""
 
+#: ../views/src/file-input.tsx
+msgid "From this device…"
+msgstr ""
+
 #: ../shell/src/version-notes.ts
 msgid "from your account"
 msgstr ""
@@ -1928,6 +2265,14 @@ msgstr ""
 
 #: ../shell/src/ask-verdicts.ts
 msgid "General knowledge"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Getting the photo…"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Getting the video…"
 msgstr ""
 
 #: ../shell/src/ask-sources-panel.tsx
@@ -1954,8 +2299,20 @@ msgstr ""
 msgid "going online on its own"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Group"
+msgstr ""
+
 #: ../shell/src/app-source.ts
 msgid "group {n} would be left with no fields"
+msgstr ""
+
+#. Short for hours, beside a duration's hours box
+#: ../views/src/number-input.tsx
+msgid "h"
 msgstr ""
 
 #: ../shell/src/ask-sources-panel.tsx
@@ -2008,6 +2365,10 @@ msgstr ""
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Home"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "hours"
 msgstr ""
 
 #: ../shell/src/thinking-settings.tsx
@@ -2101,6 +2462,14 @@ msgstr ""
 
 #: ../shell/src/share-chat.ts
 msgid "Include it"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "Increase"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "Increase {label}"
 msgstr ""
 
 #: ../shell/src/storage-report.tsx
@@ -2204,6 +2573,7 @@ msgstr ""
 msgid "Its file {file} is not the copy this app was saved with, so it was not added."
 msgstr ""
 
+#: ../views/src/builtins.tsx
 #: ../views/src/part-failure.tsx
 msgid "its records could not be listed: {message}"
 msgstr ""
@@ -2247,6 +2617,10 @@ msgstr ""
 msgid "Keep it anyway? This version {loss}."
 msgstr ""
 
+#: ../views/src/checklist.tsx
+msgid "Keep them"
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
 msgstr ""
@@ -2283,6 +2657,8 @@ msgid "label"
 msgstr ""
 
 #. A place's name, typed beside its point on the map
+#. Chart data table: the bar's label
+#: ../views/src/chart.tsx
 #: ../views/src/field-input.tsx
 msgid "Label"
 msgstr ""
@@ -2294,6 +2670,10 @@ msgstr ""
 
 #: ../shell/src/fix-panel.tsx
 msgid "Last thing it tried (did not pass replay — not applied)"
+msgstr ""
+
+#: ../views/src/timeline.tsx
+msgid "Last week"
 msgstr ""
 
 #. Latitude, as short as your language writes it
@@ -2330,6 +2710,10 @@ msgstr ""
 #: ../shell/src/ask-review-parts.tsx
 #: ../shell/src/share-chat.ts
 msgid "Leave it out"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Leave it without one"
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
@@ -2386,7 +2770,19 @@ msgstr ""
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/restore-apps.tsx
 #: ../views/src/aggregate.tsx
+#: ../views/src/board.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/calendar.tsx
+#: ../views/src/chart.tsx
+#: ../views/src/checklist.tsx
 #: ../views/src/record-form.tsx
+#: ../views/src/relation-input.tsx
+#: ../views/src/stats.tsx
+#: ../views/src/steps.tsx
+#: ../views/src/timeline.tsx
 msgid "Loading…"
 msgstr ""
 
@@ -2455,6 +2851,11 @@ msgstr ""
 msgid "map"
 msgstr ""
 
+#. The map view, read aloud
+#: ../views/src/map.tsx
+msgid "Map"
+msgstr ""
+
 #: ../views/src/field-input.tsx
 msgid "Map unavailable here — the browser could not open a second map (or the tile host is blocked). Place the point on the main map instead, or use the coordinates below."
 msgstr ""
@@ -2483,6 +2884,15 @@ msgstr ""
 
 #: ../shell/src/chat-panel.tsx
 msgid "Messages arrive when the other person next opens this app — nothing is pushed to their phone."
+msgstr ""
+
+#. Short for minutes, beside a duration's minutes box
+#: ../views/src/number-input.tsx
+msgid "min"
+msgstr ""
+
+#: ../views/src/number-input.tsx
+msgid "minutes"
 msgstr ""
 
 #. Calendar column head: Monday, as short as your language writes it
@@ -2521,6 +2931,11 @@ msgstr ""
 msgid "More — something new"
 msgstr ""
 
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+msgid "More actions"
+msgstr ""
+
 #: ../shell/src/inline-edit.tsx
 msgid "More changes…"
 msgstr ""
@@ -2531,6 +2946,22 @@ msgstr ""
 
 #: ../shell/src/add-app.ts
 msgid "More than one of these could be the app. Name the app's own file *.app.ts or *.app.tsx."
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Move to “{aboveName}”"
+msgstr ""
+
+#: ../views/src/board.tsx
+msgid "Move to {to}"
+msgstr ""
+
+#: ../views/src/reorder.ts
+msgid "Moved {what} to {where}."
+msgstr ""
+
+#: ../views/src/reorder.ts
+msgid "Moved {what} to position {at} of {count}."
 msgstr ""
 
 #. placeholder {0}: progress.name
@@ -2591,12 +3022,21 @@ msgstr ""
 msgid "New app"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+msgid "New group name"
+msgstr ""
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr ""
 
+#: ../views/src/calendar.tsx
 #: ../views/src/date-input.tsx
 msgid "Next month"
+msgstr ""
+
+#: ../views/src/timeline.tsx
+msgid "Next week"
 msgstr ""
 
 #. Activity feed: an unticked box
@@ -2604,7 +3044,9 @@ msgstr ""
 msgid "no"
 msgstr ""
 
+#. An unticked yes/no field
 #: ../shell/src/ask-review-parts.tsx
+#: ../views/src/field-value.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
 msgid "No"
@@ -2645,6 +3087,14 @@ msgstr ""
 msgid "No file was chosen"
 msgstr ""
 
+#: ../views/src/file-input.tsx
+msgid "no longer in this app"
+msgstr ""
+
+#: ../views/src/builtins.tsx
+msgid "No matching rows."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "No name yet"
 msgstr ""
@@ -2652,6 +3102,10 @@ msgstr ""
 #. placeholder {0}: edit.page
 #: ../shell/src/app-source.ts
 msgid "no page \"{0}\" is written literally here"
+msgstr ""
+
+#: ../views/src/map.tsx
+msgid "No places to show."
 msgstr ""
 
 #: ../shell/src/ask-apply.ts
@@ -2670,12 +3124,21 @@ msgstr ""
 msgid "no special capabilities"
 msgstr ""
 
+#: ../views/src/steps.tsx
+msgid "No steps yet."
+msgstr ""
+
 #: ../shell/src/history.tsx
 msgid "No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here."
 msgstr ""
 
 #: ../shell/src/chat-panel.tsx
 msgid "Nobody else is here yet. Share this app and whatever you write will be waiting for them."
+msgstr ""
+
+#. A list field with no rows
+#: ../views/src/field-value.tsx
+msgid "None"
 msgstr ""
 
 #: ../shell/src/add-app.ts
@@ -2692,6 +3155,15 @@ msgstr ""
 
 #: ../shell/src/ask-verdicts.ts
 msgid "Not confirmed"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Not downloaded — tap to get it"
+msgstr ""
+
+#: ../views/src/builtins.tsx
+#: ../views/src/steps.tsx
+msgid "Not found."
 msgstr ""
 
 #: ../shell/src/ask-review-parts.tsx
@@ -2751,6 +3223,17 @@ msgstr ""
 msgid "Nothing approved"
 msgstr ""
 
+#. Board: an empty column
+#: ../views/src/board.tsx
+msgid "Nothing here"
+msgstr ""
+
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/timeline.tsx
+msgid "Nothing here yet."
+msgstr ""
+
 #: ../shell/src/ask-apply.ts
 msgid "Nothing is called exactly “{match}”; tick the ones you meant."
 msgstr ""
@@ -2760,6 +3243,7 @@ msgid "Nothing is kept anywhere but this device."
 msgstr ""
 
 #: ../shell/src/picker.tsx
+#: ../views/src/pick-list.tsx
 msgid "Nothing matches “{query}”."
 msgstr ""
 
@@ -2783,6 +3267,10 @@ msgstr ""
 msgid "Nothing said yet. This is for everyone you share {name} with."
 msgstr ""
 
+#: ../views/src/calendar.tsx
+msgid "Nothing scheduled this month."
+msgstr ""
+
 #: ../shell/src/activity-panel.tsx
 msgid "Nothing since you last looked. Changes made by anyone you share {appName} with will show up here."
 msgstr ""
@@ -2794,6 +3282,14 @@ msgstr ""
 
 #: ../shell/src/share-page.tsx
 msgid "Nothing to bring in"
+msgstr ""
+
+#: ../views/src/chart.tsx
+msgid "Nothing to chart yet."
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Nothing to do."
 msgstr ""
 
 #: ../shell/src/fix-panel.tsx
@@ -2890,6 +3386,10 @@ msgstr ""
 msgid "one site"
 msgstr ""
 
+#: ../views/src/edit-lock.ts
+msgid "Only {name}, who added this, can change it."
+msgstr ""
+
 #: ../shell/src/people-panel.tsx
 msgid "Only {name}, who created this app, can invite or remove people."
 msgstr ""
@@ -2919,6 +3419,10 @@ msgstr ""
 msgid "Only the first {maxChars} characters will be used ({hereChars} here)."
 msgstr ""
 
+#: ../views/src/edit-lock.ts
+msgid "Only the person who added this can change it."
+msgstr ""
+
 #: ../shell/src/people-panel.tsx
 msgid "Only the person who created this app, who created this app, can invite or remove people."
 msgstr ""
@@ -2927,17 +3431,25 @@ msgstr ""
 msgid "only while the dev server runs"
 msgstr ""
 
+#. Board card menu: open the record
+#. Map pin: open the place's page
 #. Open the chat a message arrived in
 #. Studio card: open the app this version made
 #. Tile menu: open this app
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio-thread-view.tsx
+#: ../views/src/board.tsx
+#: ../views/src/map.tsx
 msgid "Open"
 msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Open {doneName}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Open {name}"
 msgstr ""
 
 #: ../shell/src/data-page.tsx
@@ -3090,6 +3602,7 @@ msgstr ""
 msgid "Previous generation, for a regression check"
 msgstr ""
 
+#: ../views/src/calendar.tsx
 #: ../views/src/date-input.tsx
 msgid "Previous month"
 msgstr ""
@@ -3100,6 +3613,10 @@ msgstr ""
 
 #: ../shell/src/trust-dialog.tsx
 msgid "Promote to trusted?"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+msgid "Put {pendingName} in {heading}"
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
@@ -3166,7 +3683,18 @@ msgstr ""
 #. Button: remove a person from a shared app
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
+#: ../views/src/file-input.tsx
+#: ../views/src/list-input.tsx
+#: ../views/src/media-input.tsx
 msgid "Remove"
+msgstr ""
+
+#: ../views/src/relation-input.tsx
+msgid "Remove {chip}"
+msgstr ""
+
+#: ../views/src/list-input.tsx
+msgid "Remove {name}"
 msgstr ""
 
 #: ../shell/src/people-panel.tsx
@@ -3177,12 +3705,41 @@ msgstr ""
 msgid "Remove {tag}"
 msgstr ""
 
+#: ../views/src/media-input.tsx
+msgid "Remove audio"
+msgstr ""
+
+#: ../views/src/file-input.tsx
+#: ../views/src/media-input.tsx
+msgid "Remove file"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Remove photo"
+msgstr ""
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Remove this source"
 msgstr ""
 
+#: ../views/src/media-input.tsx
+msgid "Remove video"
+msgstr ""
+
 #: ../shell/src/ask-material.tsx
 msgid "Remove what you brought"
+msgstr ""
+
+#. Clear a file field; label is the field's name
+#. Remove the media in a field; label is the field's name
+#: ../views/src/file-input.tsx
+#: ../views/src/media-input.tsx
+msgid "Remove: {label}"
+msgstr ""
+
+#. Remove this row of a list field; noun is the field's word for one
+#: ../views/src/list-input.tsx
+msgid "Remove: {noun}"
 msgstr ""
 
 #: ../shell/src/people-panel.tsx
@@ -3195,9 +3752,23 @@ msgstr ""
 msgid "Rename"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Rename {heading}"
+msgstr ""
+
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "Rename {name}"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio.tsx
 msgid "Rename app"
+msgstr ""
+
+#: ../views/src/list-input.tsx
+msgid "Reorder {name}, {position} of {count}. Use the arrow keys."
 msgstr ""
 
 #: ../shell/src/studio-engine.ts
@@ -3296,6 +3867,10 @@ msgstr ""
 msgid "Run ▶"
 msgstr ""
 
+#: ../views/src/custom.tsx
+msgid "Run it as mine…"
+msgstr ""
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Run it as my own app"
 msgstr ""
@@ -3314,9 +3889,22 @@ msgstr ""
 msgid "Sa"
 msgstr ""
 
+#. A figure compared with an earlier one; label is e.g. “last week”
+#: ../views/src/stats.tsx
+msgid "same as {label}"
+msgstr ""
+
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Save"
+msgstr ""
+
+#: ../views/src/file-input.tsx
+msgid "Save a copy"
+msgstr ""
+
+#: ../views/src/file-input.tsx
+msgid "Save a copy of {fileName}"
 msgstr ""
 
 #: ../shell/src/studio-tools.tsx
@@ -3341,12 +3929,32 @@ msgstr ""
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr ""
 
+#. The search box at the top of a list to pick from
+#: ../views/src/pick-list.tsx
+msgid "Search"
+msgstr ""
+
+#: ../views/src/pick-list.tsx
+msgid "Search {title}"
+msgstr ""
+
 #: ../shell/src/ask-panel.tsx
 msgid "Search the web when needed · about 2¢"
 msgstr ""
 
 #: ../shell/src/picker.tsx
 msgid "Search…"
+msgstr ""
+
+#. An untitled section, by its number
+#. placeholder {0}: num(i + 1)
+#: ../views/src/layout-host.tsx
+msgid "Section {0}"
+msgstr ""
+
+#. The tabs of a page made of several parts
+#: ../views/src/layout-host.tsx
+msgid "Sections"
 msgstr ""
 
 #: ../shell/src/missing-features.ts
@@ -3543,6 +4151,7 @@ msgid "Start a new app"
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
+#: ../views/src/steps.tsx
 msgid "Start over"
 msgstr ""
 
@@ -3554,6 +4163,11 @@ msgstr ""
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "steps"
+msgstr ""
+
+#. A recipe's or a routine's steps, ticked off one by one
+#: ../views/src/steps.tsx
+msgid "Steps"
 msgstr ""
 
 #. Ask: stop the request
@@ -3678,6 +4292,12 @@ msgstr ""
 msgid "System"
 msgstr ""
 
+#. An untitled tab, by its number
+#. placeholder {0}: num(i + 1)
+#: ../views/src/layout-host.tsx
+msgid "Tab {0}"
+msgstr ""
+
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "table"
@@ -3686,6 +4306,22 @@ msgstr ""
 #. Ask review: show proposed records as a table
 #: ../shell/src/ask-review.tsx
 msgid "Table"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Take a audio"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Take a file"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Take a photo"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Take a video"
 msgstr ""
 
 #: ../shell/src/studio-preview.tsx
@@ -3858,6 +4494,11 @@ msgstr ""
 msgid "the source editor could not be loaded"
 msgstr ""
 
+#. Read aloud after a move: the item went to the top of the list
+#: ../views/src/checklist.tsx
+msgid "the top"
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "The versions after it stay in History."
 msgstr ""
@@ -3983,12 +4624,24 @@ msgstr ""
 msgid "this app's pages aren't a plain array"
 msgstr ""
 
+#: ../views/src/board.tsx
+msgid "This board needs an enum field for its columns."
+msgstr ""
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "This browser has no secure store, so keys are kept only until you close this page."
 msgstr ""
 
+#: ../views/src/builtins.tsx
+msgid "This can't be undone."
+msgstr ""
+
 #: ../shell/src/studio.tsx
 msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
+msgstr ""
+
+#: ../views/src/chart.tsx
+msgid "This chart could not be worked out: {error}"
 msgstr ""
 
 #: ../shell/src/studio.tsx
@@ -4027,12 +4680,22 @@ msgstr ""
 msgid "This is my second device"
 msgstr ""
 
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
+msgid "this item"
+msgstr ""
+
 #: ../shell/src/app-source.ts
 msgid "this label is not written as a translation map"
 msgstr ""
 
 #: ../shell/src/add-app.ts
 msgid "This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file."
+msgstr ""
+
+#: ../views/src/timeline.tsx
+msgid "This month"
 msgstr ""
 
 #: ../shell/src/fix-panel.tsx
@@ -4048,6 +4711,9 @@ msgid "this page's title is not written as a translation map"
 msgstr ""
 
 #: ../shell/src/data-table.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
+#: ../views/src/builtins.tsx
 msgid "this record"
 msgstr ""
 
@@ -4061,6 +4727,10 @@ msgstr ""
 
 #: ../views/src/aggregate.tsx
 msgid "This screen could not be worked out: {error}"
+msgstr ""
+
+#: ../views/src/custom.tsx
+msgid "This screen is built with the app’s own code, so it only runs when the app runs as yours."
 msgstr ""
 
 #: ../shell/src/app-source.ts
@@ -4077,6 +4747,10 @@ msgstr ""
 
 #: ../shell/src/history.tsx
 msgid "this version is running"
+msgstr ""
+
+#: ../views/src/timeline.tsx
+msgid "This week"
 msgstr ""
 
 #: ../shell/src/tile-editor.tsx
@@ -4128,6 +4802,10 @@ msgstr ""
 
 #: ../shell/src/trust-dialog.tsx
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
+msgstr ""
+
+#: ../views/src/media-input.tsx
+msgid "Try again"
 msgstr ""
 
 #: ../shell/src/studio-thread-view.tsx
@@ -4239,6 +4917,11 @@ msgstr ""
 
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
+msgstr ""
+
+#. Chart data table: the bar's value
+#: ../views/src/chart.tsx
+msgid "Value"
 msgstr ""
 
 #. Model price: it depends on the provider
@@ -4414,7 +5097,9 @@ msgstr ""
 msgid "yes"
 msgstr ""
 
+#. A ticked yes/no field
 #: ../shell/src/ask-review-parts.tsx
+#: ../views/src/field-value.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
 msgid "Yes"

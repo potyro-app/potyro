@@ -3,6 +3,7 @@
 // display field, tags become chips, media becomes an image, etc. Falls back to formatValue for
 // computed keys (which have no field definition — their value is already final).
 
+import { Trans } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import type { FileRef, Geo, MediaRef, DateTimeField } from "potyro";
 import { optionLabel, type ShownField, type ShownMoneyField } from "./shown.js";
@@ -37,7 +38,12 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
   switch (field.type) {
     case "list": {
       const rows = (Array.isArray(value) ? value : []) as Record<string, unknown>[];
-      if (rows.length === 0) return <span className="k-muted">None</span>;
+      if (rows.length === 0)
+        return (
+          <span className="k-muted">
+            <Trans comment="A list field with no rows">None</Trans>
+          </span>
+        );
       const subEntries = Object.entries(field.of);
       const nested = subEntries.filter(([, f]) => f.type === "list");
       const scalar = subEntries.filter(([, f]) => f.type !== "list");
@@ -168,7 +174,7 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
       return <span title={formatDateAbsolute(d, precision)}>{formatDateAbsolute(d, precision)}</span>;
     }
     case "boolean":
-      return <>{value ? "Yes" : "No"}</>;
+      return value ? <Trans comment="A ticked yes/no field">Yes</Trans> : <Trans comment="An unticked yes/no field">No</Trans>;
     case "url":
       return (
         <a href={String(value)} target="_blank" rel="noreferrer noopener">

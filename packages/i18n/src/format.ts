@@ -31,6 +31,16 @@ export function formatDate(locale: string, value: DateInput, options: Intl.DateT
   return cached("date", l, options, () => new Intl.DateTimeFormat(l, options)).format(date);
 }
 
+/** "25 – 31 Aug", "25. – 31. Aug." — `formatRange`, so each language joins the two ends its own way. */
+export function formatDateRange(locale: string, from: DateInput, to: DateInput, options: Intl.DateTimeFormatOptions = { dateStyle: "medium" }): string {
+  const a = toDate(from);
+  const b = toDate(to);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return "";
+  const l = intlLocale(locale);
+  const f = cached("date", l, options, () => new Intl.DateTimeFormat(l, options)) as Intl.DateTimeFormat & { formatRange?: (x: Date, y: Date) => string };
+  return f.formatRange ? f.formatRange(a, b) : `${f.format(a)} – ${f.format(b)}`;
+}
+
 export function formatNumber(locale: string, value: number, options?: Intl.NumberFormatOptions): string {
   const l = intlLocale(locale);
   return cached("number", l, options, () => new Intl.NumberFormat(l, options)).format(value);

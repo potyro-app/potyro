@@ -58,13 +58,13 @@ test.describe("desktop", () => {
     const cards = page.locator(".k-rows[data-ordered] .k-row-card");
     const n = await cards.count();
     await cards.first().getByRole("button", { name: /: more$/ }).click();
-    await page.getByRole("menuitem", { name: /Remove step/ }).click();
+    await page.getByRole("menuitem", { name: /Remove: step/ }).click();
     await expect(cards).toHaveCount(n - 1);
   });
 
   test("the button names what it adds, and a new row takes the focus", async ({ page }) => {
     await openRecipeForm(page);
-    const add = page.getByRole("button", { name: "＋ Add step" });
+    const add = page.getByRole("button", { name: "＋ Add: step" });
     await expect(add).toBeVisible();
     const n = await page.locator(".k-rows[data-ordered] .k-row-card").count();
     await add.click();
