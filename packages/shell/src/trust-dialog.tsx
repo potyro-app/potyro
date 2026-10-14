@@ -11,6 +11,8 @@
 // Promoting needs the person to SAY so. A link is still never trusted on the way in, and a failure
 // that promoting would not fix (promotion.ts) never offers this as the way out.
 
+import { capabilityWords } from "./capability-words.js";
+import { Trans } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UserApp } from "./user-apps.js";
@@ -30,6 +32,7 @@ export interface TrustDialogProps {
 export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, onRevoke }: TrustDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => cancelRef.current?.focus(), []);
+  // A permission key (`camera`) is code; the list says what it means.
   // On the page itself: opened from inside another dialog (the Add an app card) or a menu, it must
   // not be placed — or clipped — by them.
   return createPortal(
@@ -48,36 +51,56 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
       >
         {trusted ? (
           <>
-            <h3 id="k-trustdialog-title">Trusted app</h3>
+            <h3 id="k-trustdialog-title">
+              <Trans>Trusted app</Trans>
+            </h3>
             <p className="k-muted">
-              <strong>{name}</strong> runs directly on this device (not sandboxed). Revoke to run it in the isolate again.
+              <Trans>
+                <strong>{name}</strong> runs directly on this device (not sandboxed). Revoke to run it in the isolate again.
+              </Trans>
             </p>
             <div className="k-form-actions">
-              <button ref={cancelRef} type="button" className="k-add" onClick={onCancel}>Close</button>
-              <button type="button" className="k-add" onClick={onRevoke}>Revoke trust</button>
+              <button ref={cancelRef} type="button" className="k-add" onClick={onCancel}>
+                <Trans>Close</Trans>
+              </button>
+              <button type="button" className="k-add" onClick={onRevoke}>
+                <Trans>Revoke trust</Trans>
+              </button>
             </div>
           </>
         ) : (
           <>
-            <h3 id="k-trustdialog-title">Promote to trusted?</h3>
+            <h3 id="k-trustdialog-title">
+              <Trans>Promote to trusted?</Trans>
+            </h3>
             <p className="k-muted">
-              Trusted apps run <strong>directly</strong> with full access — no sandbox. Only promote an app you wrote or fully trust.{" "}
-              <strong>{name}</strong> declares:
+              <Trans>
+                Trusted apps run <strong>directly</strong> with full access — no sandbox. Only promote an app you wrote or fully trust.{" "}
+                <strong>{name}</strong> declares:
+              </Trans>
             </p>
             <ul className="k-trust-caps">
               {permissions === undefined ? (
                 <li className="k-muted">…</li>
               ) : permissions === null ? (
-                <li className="k-muted">what it asks for cannot be read without running it</li>
+                <li className="k-muted">
+                  <Trans>what it asks for cannot be read without running it</Trans>
+                </li>
               ) : permissions.length ? (
-                permissions.map((c) => <li key={c}>{c}</li>)
+                permissions.map((c) => <li key={c}>{capabilityWords(c)}</li>)
               ) : (
-                <li className="k-muted">no special capabilities</li>
+                <li className="k-muted">
+                  <Trans>no special capabilities</Trans>
+                </li>
               )}
             </ul>
             <div className="k-form-actions">
-              <button ref={cancelRef} type="button" className="k-add" onClick={onCancel}>Cancel</button>
-              <button type="button" className="k-add k-primary-action" onClick={onPromote}>Promote to trusted</button>
+              <button ref={cancelRef} type="button" className="k-add" onClick={onCancel}>
+                <Trans>Cancel</Trans>
+              </button>
+              <button type="button" className="k-add k-primary-action" onClick={onPromote}>
+                <Trans>Promote to trusted</Trans>
+              </button>
             </div>
           </>
         )}
@@ -112,7 +135,7 @@ export function PromoteButton({ app, primary }: { app: Pick<UserApp, "id" | "nam
   return (
     <>
       <button type="button" className={primary ? "k-add k-primary-action" : "k-add"} onClick={() => setAsking(true)}>
-        Let it run as yours
+        <Trans>Let it run as yours</Trans>
       </button>
       {asking ? <PromoteDialog app={app} onCancel={() => setAsking(false)} /> : null}
     </>

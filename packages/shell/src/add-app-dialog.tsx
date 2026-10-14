@@ -6,6 +6,9 @@
 // "I wrote this", which a link cannot offer. The card is drawn from what the package declares, never by
 // running the app (#271); a test load in the sealed box then says, in plain words, what the app would
 // miss there, and offers to run it as theirs instead.
+import { fmt } from "@potyro/i18n";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import { pickFilesFromInput } from "@potyro/capabilities";
 import type { AppPackage } from "@potyro/store";
@@ -46,10 +49,11 @@ function sealedAfter(done: Installed, inspected: Inspected): SealedAfter {
 }
 
 
-const list = (words: string[]): string =>
-  words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+/** "a, b and c" in the active language. */
+const list = (words: readonly string[]): string => fmt.list(words);
 
 export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; initialLink?: string }) {
+  const { t } = useLingui();
   const [step, setStep] = useState<Step>({ kind: "choose", tab: initialLink ? "link" : null });
   const [link, setLink] = useState(initialLink ?? "");
   const [paste, setPaste] = useState("");
@@ -104,6 +108,10 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
   };
 
   const busy = step.kind === "reading" || step.kind === "installing";
+  const addingName = step.kind === "installing" ? step.name : "";
+  const doneName = step.kind === "updated" ? step.done.app.name : "";
+  const keptFiles = step.kind === "updated" ? list(step.done.files.kept) : "";
+  const removedFiles = step.kind === "updated" ? list(step.done.files.removed) : "";
 
   return (
     <div className="k-modal-scrim" onClick={busy ? undefined : onClose}>
@@ -111,32 +119,48 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
         className="k-modal k-add-app"
         role="dialog"
         aria-modal="true"
-        aria-label="Add an app"
+        aria-label={t`Add an app`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === "Escape" && !busy && onClose()}
       >
         <header className="k-add-app-head">
-          <h2>Add an app</h2>
-          <p className="k-muted">Someone sent you one, or you made it somewhere else.</p>
+          <h2>
+            <Trans>Add an app</Trans>
+          </h2>
+          <p className="k-muted">
+            <Trans>Someone sent you one, or you made it somewhere else.</Trans>
+          </p>
         </header>
 
         {step.kind === "choose" ? (
           <>
-            <div className="k-add-app-sources" role="group" aria-label="Where it comes from">
+            <div className="k-add-app-sources" role="group" aria-label={t`Where it comes from`}>
               <button type="button" className="k-add-app-source" onClick={() => void fromDevice()}>
                 <span className="k-add-app-source-glyph" aria-hidden>⤓</span>
-                <span className="k-add-app-source-title">From this device</span>
-                <span className="k-muted">A package (.zip), or the app’s file with the files it uses</span>
+                <span className="k-add-app-source-title">
+                  <Trans>From this device</Trans>
+                </span>
+                <span className="k-muted">
+                  <Trans>A package (.zip), or the app’s file with the files it uses</Trans>
+                </span>
               </button>
               <button type="button" className="k-add-app-source" aria-pressed={step.tab === "link"} onClick={() => setStep({ kind: "choose", tab: "link" })}>
                 <span className="k-add-app-source-glyph" aria-hidden>🔗</span>
-                <span className="k-add-app-source-title">From a link</span>
-                <span className="k-muted">To the app’s source or its package</span>
+                <span className="k-add-app-source-title">
+                  <Trans>From a link</Trans>
+                </span>
+                <span className="k-muted">
+                  <Trans>To the app’s source or its package</Trans>
+                </span>
               </button>
               <button type="button" className="k-add-app-source" aria-pressed={step.tab === "paste"} onClick={() => setStep({ kind: "choose", tab: "paste" })}>
                 <span className="k-add-app-source-glyph" aria-hidden>✎</span>
-                <span className="k-add-app-source-title">Paste the source</span>
-                <span className="k-muted">The whole app, as text</span>
+                <span className="k-add-app-source-title">
+                  <Trans>Paste the source</Trans>
+                </span>
+                <span className="k-muted">
+                  <Trans>The whole app, as text</Trans>
+                </span>
               </button>
             </div>
 
@@ -148,9 +172,10 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
                   void read("link", () => gatherFromLink(link), link.trim());
                 }}
               >
-                <input ref={linkRef} id="k-add-app-link" className="k-input" type="url" inputMode="url" placeholder="https://…" aria-label="Link to the app" value={link} onChange={(e) => setLink(e.target.value)} />
+                {/* i18n-ignore — the placeholder is the start of a web address */}
+                <input ref={linkRef} id="k-add-app-link" className="k-input" type="url" inputMode="url" placeholder="https://…" aria-label={t`Link to the app`} value={link} onChange={(e) => setLink(e.target.value)} />
                 <button type="submit" className="k-add k-primary-action" disabled={!link.trim()}>
-                  Fetch
+                  <Trans comment="Add an app: download the app from the link">Fetch</Trans>
                 </button>
               </form>
             ) : null}
@@ -163,9 +188,10 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
                   void read("paste", async () => gatherFromPaste(paste));
                 }}
               >
-                <textarea ref={pasteRef} id="k-add-app-paste" className="k-input k-add-app-paste" spellCheck={false} placeholder={'import { defineApp } from "potyro";\n…'} aria-label="The app's source" value={paste} onChange={(e) => setPaste(e.target.value)} />
+                {/* i18n-ignore — the placeholder is code */}
+                <textarea ref={pasteRef} id="k-add-app-paste" className="k-input k-add-app-paste" spellCheck={false} placeholder={'import { defineApp } from "potyro";\n…'} aria-label={t`The app's source`} value={paste} onChange={(e) => setPaste(e.target.value)} />
                 <button type="submit" className="k-add k-primary-action" disabled={!paste.trim()}>
-                  Check it
+                  <Trans>Check it</Trans>
                 </button>
               </form>
             ) : null}
@@ -175,7 +201,7 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
         {step.kind === "reading" || step.kind === "installing" ? (
           <p className="k-add-app-busy" role="status">
             <span className="k-media-bar" aria-hidden />
-            {step.kind === "reading" ? "Reading it…" : `Adding ${step.name}…`}
+            {step.kind === "reading" ? t`Reading it…` : t`Adding ${addingName}…`}
           </p>
         ) : null}
 
@@ -184,11 +210,33 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
         {step.kind === "updated" ? (
           <div className="k-add-app-updated" role="status">
             <p>
-              <strong>{step.done.app.name}</strong> {step.done.updated ? "is updated, with your data as it was." : "is added."}
+              {step.done.updated ? (
+                <Trans>
+                  <strong>{doneName}</strong> is updated, with your data as it was.
+                </Trans>
+              ) : (
+                <Trans>
+                  <strong>{doneName}</strong> is added.
+                </Trans>
+              )}
             </p>
             {step.sealed.problem || step.sealed.missing.length ? <RunsAsYours done={step.done} sealed={step.sealed} /> : null}
-            {step.done.files.kept.length ? <p>Kept your own version of {list(step.done.files.kept)}: you changed {step.done.files.kept.length === 1 ? "it" : "them"} after it came with the app.</p> : null}
-            {step.done.files.removed.length ? <p>The new version no longer comes with {list(step.done.files.removed)}, so {step.done.files.removed.length === 1 ? "it is" : "they are"} gone.</p> : null}
+            {step.done.files.kept.length ? (
+              <p>
+                {plural(step.done.files.kept.length, {
+                  one: `Kept your own version of ${keptFiles}: you changed it after it came with the app.`,
+                  other: `Kept your own version of ${keptFiles}: you changed them after it came with the app.`,
+                })}
+              </p>
+            ) : null}
+            {step.done.files.removed.length ? (
+              <p>
+                {plural(step.done.files.removed.length, {
+                  one: `The new version no longer comes with ${removedFiles}, so it is gone.`,
+                  other: `The new version no longer comes with ${removedFiles}, so they are gone.`,
+                })}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -206,21 +254,21 @@ export function AddAppDialog({ onClose, initialLink }: { onClose: () => void; in
               className={step.sealed.problem || step.sealed.missing.length ? "k-add" : "k-add k-primary-action"}
               onClick={() => navigateTo({ kind: "user", id: step.done.app.id })}
             >
-              Open {step.done.app.name}
+              <Trans>Open {doneName}</Trans>
             </button>
           ) : (
             <>
               {step.kind === "card" ? (
                 <button type="button" className="k-add" onClick={() => setStep({ kind: "choose", tab: step.source === "file" ? null : step.source })}>
-                  Back
+                  <Trans>Back</Trans>
                 </button>
               ) : null}
               <button type="button" className="k-add" onClick={onClose} disabled={busy}>
-                Cancel
+                <Trans>Cancel</Trans>
               </button>
               {step.kind === "card" ? (
                 <button type="button" className="k-add k-primary-action" disabled={step.inspected.issues.length > 0} onClick={() => void install()}>
-                  {step.inspected.installed && mode === "replace" ? "Update app" : "Add app"}
+                  {step.inspected.installed && mode === "replace" ? t`Update app` : t`Add app`}
                 </button>
               ) : null}
             </>
@@ -244,49 +292,63 @@ function Card({
   mode: "replace" | "copy";
   setMode: (v: "replace" | "copy") => void;
 }) {
+  const { t } = useLingui();
   const { inspected: app, source } = step;
-  const shippedBytes = app.files.reduce((n, f) => n + f.size, 0);
+  const name = app.name;
+  const fileCount = app.files.length;
+  const size = formatSize(app.files.reduce((n, f) => n + f.size, 0));
+  const trialProblem = app.trialProblem;
   const fetches = app.libraries.filter((l) => !l.here).length;
   // Whether it will run in the sealed box once added: what decides if a library that needs a web page matters.
   const sealed = source === "link" || (!mine && !(app.installed?.trusted && mode === "replace"));
   return (
-    <section className="k-add-app-card" aria-label={`About ${app.name}`}>
+    <section className="k-add-app-card" aria-label={t({ message: `About ${name}`, comment: "Add an app: the card describing the app" })}>
       <div className="k-add-app-ident">
         <span className="k-launch-avatar" aria-hidden>
           {app.icon ?? app.name.slice(0, 2).toUpperCase()}
         </span>
         <div>
           <h3>{app.name}</h3>
-          <p className="k-muted">{app.installed ? "Already on this device" : "New on this device"}</p>
+          <p className="k-muted">{app.installed ? t`Already on this device` : t`New on this device`}</p>
         </div>
       </div>
 
       <dl className="k-add-app-facts">
         <div>
-          <dt>Keeps</dt>
-          <dd>{app.keeps.length ? list(app.keeps) : app.preview === "unavailable" ? "not known until it runs" : "nothing of its own"}</dd>
+          <dt>
+            <Trans comment="Add an app card: the kinds of record the app keeps">Keeps</Trans>
+          </dt>
+          <dd>{app.keeps.length ? list(app.keeps) : app.preview === "unavailable" ? t`not known until it runs` : t`nothing of its own`}</dd>
         </div>
         <div>
-          <dt>Asks for</dt>
-          <dd>{app.asks.length ? list(app.asks) : app.preview === "unavailable" ? "not known until it runs" : "nothing on this device"}</dd>
+          <dt>
+            <Trans comment="Add an app card: what the app asks this device for (camera, location…)">Asks for</Trans>
+          </dt>
+          <dd>{app.asks.length ? list(app.asks) : app.preview === "unavailable" ? t`not known until it runs` : t`nothing on this device`}</dd>
         </div>
         {app.files.length ? (
           <div>
-            <dt>Comes with</dt>
+            <dt>
+              <Trans comment="Add an app card: the files the app ships with">Comes with</Trans>
+            </dt>
             <dd>
-              {app.files.length === 1 ? app.files[0]!.path : `${app.files.length} files`} · {formatSize(shippedBytes)}
+              {fileCount === 1 ? app.files[0]!.path : plural(fileCount, { one: "# file", other: "# files" })} · {size}
             </dd>
           </div>
         ) : null}
         {app.modules.length ? (
           <div>
-            <dt>Code files</dt>
+            <dt>
+              <Trans>Code files</Trans>
+            </dt>
             <dd>{list(app.modules)}</dd>
           </div>
         ) : null}
         {app.libraries.length ? (
           <div>
-            <dt>Libraries</dt>
+            <dt>
+              <Trans>Libraries</Trans>
+            </dt>
             <dd>
               <ul className="k-add-app-libraries">
                 {app.libraries.map((l) => (
@@ -298,9 +360,11 @@ function Card({
         ) : null}
         {app.seedRows && !(app.installed && mode === "replace") ? (
           <div>
-            <dt>Starts with</dt>
+            <dt>
+              <Trans comment="Add an app card: the records it comes with">Starts with</Trans>
+            </dt>
             <dd>
-              {app.seedRows} {app.seedRows === 1 ? "record" : "records"}
+              {plural(app.seedRows, { one: "# record", other: "# records" })}
             </dd>
           </div>
         ) : null}
@@ -308,47 +372,60 @@ function Card({
 
       {fetches ? (
         <p className="k-muted k-add-app-note">
-          {fetches === 1 ? "It is" : "They are"} fetched once, when you add the app, and kept with it: after that the app works without the internet.
+          {plural(fetches, {
+            one: "It is fetched once, when you add the app, and kept with it: after that the app works without the internet.",
+            other: "They are fetched once, when you add the app, and kept with it: after that the app works without the internet.",
+          })}
         </p>
       ) : null}
       {app.preview === "unavailable" ? (
         <p className="k-add-app-note k-add-app-unpreviewed" role="note">
-          This app could not be previewed here, so what it keeps and asks for is not shown yet.
+          <Trans>This app could not be previewed here, so what it keeps and asks for is not shown yet.</Trans>
           {app.previewProblem ? <span className="k-muted"> ({app.previewProblem})</span> : null}
         </p>
       ) : null}
       {app.sealedProblem ? (
         <p className="k-add-app-sealed" role="note">
           <span aria-hidden>⚠</span> {app.sealedProblem}
-          {sealed ? (source === "link" ? " In the sealed box it will not open. Once it is added you can let it run as yours — only do that if you know who made it." : " In the sealed box it will not open: tick “I wrote this” below to run it as yours.") : null}
+          {sealed ? " " : null}
+          {sealed ? (source === "link" ? t`In the sealed box it will not open. Once it is added you can let it run as yours — only do that if you know who made it.` : t`In the sealed box it will not open: tick “I wrote this” below to run it as yours.`) : null}
         </p>
       ) : sealed && app.missing.length ? (
         <div className="k-add-app-sealed k-add-app-missing" role="note">
           <p>
             <span aria-hidden>⚠</span> {describeMissing(app.missing)}{" "}
-            {app.failsToOpenSealed ? "In the sealed box it will not open." : `In the sealed box, the parts of it that use ${app.missing.length === 1 ? "it" : "them"} will not work.`}
+            {app.failsToOpenSealed
+              ? t`In the sealed box it will not open.`
+              : plural(app.missing.length, {
+                  one: "In the sealed box, the parts of it that use it will not work.",
+                  other: "In the sealed box, the parts of it that use them will not work.",
+                })}
           </p>
           {source === "link" ? (
-            <p className="k-muted">Once it is added you can let it run as yours. Only do that if you know who made it.</p>
+            <p className="k-muted">
+              <Trans>Once it is added you can let it run as yours. Only do that if you know who made it.</Trans>
+            </p>
           ) : (
             <button type="button" className="k-add" onClick={() => setMine(true)}>
-              Run it as my own app
+              <Trans>Run it as my own app</Trans>
             </button>
           )}
         </div>
       ) : sealed && app.trialProblem ? (
         <p className="k-add-app-sealed" role="note">
-          <span aria-hidden>⚠</span> It could not be tried in the sealed box: {app.trialProblem}
+          <span aria-hidden>⚠</span> <Trans>It could not be tried in the sealed box: {trialProblem}</Trans>
         </p>
       ) : fetches && sealed ? (
         <p className="k-muted k-add-app-note">
-          Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added.
+          <Trans>Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added.</Trans>
         </p>
       ) : null}
 
       {app.issues.length ? (
         <div className="k-add-app-issues" role="alert">
-          <p>This app has problems and cannot be added:</p>
+          <p>
+            <Trans>This app has problems and cannot be added:</Trans>
+          </p>
           <ul>
             {app.issues.slice(0, 6).map((i) => (
               <li key={i}>{i}</li>
@@ -359,19 +436,29 @@ function Card({
 
       {app.installed ? (
         <fieldset className="k-add-app-choice">
-          <legend>It is already here</legend>
+          <legend>
+            <Trans>It is already here</Trans>
+          </legend>
           <label>
             <input type="radio" name="k-add-app-mode" checked={mode === "replace"} onChange={() => setMode("replace")} />
             <span>
-              <strong>Replace it, keep its data</strong>
-              <span className="k-muted">The old version stays in History. Files you changed are kept.</span>
+              <strong>
+                <Trans>Replace it, keep its data</Trans>
+              </strong>
+              <span className="k-muted">
+                <Trans>The old version stays in History. Files you changed are kept.</Trans>
+              </span>
             </span>
           </label>
           <label>
             <input type="radio" name="k-add-app-mode" checked={mode === "copy"} onChange={() => setMode("copy")} />
             <span>
-              <strong>Add it as a second app</strong>
-              <span className="k-muted">A separate copy, starting empty.</span>
+              <strong>
+                <Trans>Add it as a second app</Trans>
+              </strong>
+              <span className="k-muted">
+                <Trans>A separate copy, starting empty.</Trans>
+              </span>
             </span>
           </label>
         </fieldset>
@@ -379,18 +466,23 @@ function Card({
 
       {source === "link" ? (
         <p className="k-add-app-trust">
-          <span aria-hidden>🛡</span> It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps.
+          <span aria-hidden>🛡</span>{" "}
+          <Trans>It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps.</Trans>
         </p>
       ) : app.installed?.trusted && mode === "replace" ? (
         <p className="k-add-app-trust">
-          <span aria-hidden>✓</span> It runs as yours, as it did before.
+          <span aria-hidden>✓</span> <Trans>It runs as yours, as it did before.</Trans>
         </p>
       ) : (
         <label className="k-add-app-trust k-add-app-mine">
           <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
           <span>
-            <strong>I wrote this. Run it as mine.</strong>
-            <span className="k-muted">Directly, with everything this device lets apps do. Leave it off for an app from someone else: it then runs in the sealed box.</span>
+            <strong>
+              <Trans>I wrote this. Run it as mine.</Trans>
+            </strong>
+            <span className="k-muted">
+              <Trans>Directly, with everything this device lets apps do. Leave it off for an app from someone else: it then runs in the sealed box.</Trans>
+            </span>
           </span>
         </label>
       )}
@@ -400,16 +492,27 @@ function Card({
 
 /** After it was added: why it only works as yours, the button that does that, and what happens otherwise. */
 function RunsAsYours({ done, sealed }: { done: Installed; sealed: SealedAfter }) {
-  const parts = sealed.missing.length === 1 ? "it" : "them";
   return (
     <div className="k-add-app-sealed k-add-app-runs-as-yours" role="alert">
       {sealed.failsToOpen ? (
         <p>
-          <span aria-hidden>⚠</span> <strong>It only works when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and it will not open.
+          <span aria-hidden>⚠</span>{" "}
+          <Trans>
+            <strong>It only works when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and it will not open.
+          </Trans>
         </p>
       ) : (
         <p>
-          <span aria-hidden>⚠</span> <strong>Parts of it only work when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use {parts} will not work.
+          <span aria-hidden>⚠</span>{" "}
+          {sealed.missing.length === 1 ? (
+            <Trans>
+              <strong>Parts of it only work when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use it will not work.
+            </Trans>
+          ) : (
+            <Trans>
+              <strong>Parts of it only work when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use them will not work.
+            </Trans>
+          )}
         </p>
       )}
       <p className="k-muted">{sealed.problem ?? describeMissing(sealed.missing)}</p>

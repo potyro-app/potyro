@@ -16,6 +16,7 @@
 //     `require` is not that: a browser has none, so it loads nothing;
 //   - a library that fetches files of its own beside it while it runs (`new URL("x.wasm",
 //     import.meta.url)`): those are not imports, so no walk can find them ahead of time.
+import { t } from "@lingui/core/macro";
 import { integrityOf, isPinned, libraryLabel, lockEntryFor, matchesLock, moduleFileFor, type AppLock, type PackagedFile } from "@potyro/store";
 import type { EsbuildLike, EsbuildPlugin } from "./app-bundler.js";
 import type { ModuleSource } from "./package-modules.js";
@@ -66,8 +67,9 @@ export const browserGet: HttpGet = async (url) => {
 
 /** Why a library URL cannot be locked as written, or undefined when it can. */
 export function unusableLibraryUrl(url: string): string | undefined {
-  if (!/^https:\/\//.test(url)) return `"${url}" is not an https address, so it cannot be fetched safely.`;
-  if (!isPinned(url)) return `"${url}" does not name an exact version, so it could change under the app. Pin one, like https://esm.sh/chart.js@4.4.1?bundle.`;
+  // Said to the person (Studio's "Not saved: …", the Add an app card), never to a model.
+  if (!/^https:\/\//.test(url)) return t`"${url}" is not an https address, so it cannot be fetched safely.`;
+  if (!isPinned(url)) return t`"${url}" does not name an exact version, so it could change under the app. Pin one, like https://esm.sh/chart.js@4.4.1?bundle.`;
   return undefined;
 }
 
@@ -79,12 +81,16 @@ function plugin(root: string, deps: FetchLibrariesDeps, lock: AppLock, files: Ma
       build.onResolve({ filter: /^https?:\/\// }, (args) => ({ path: args.path, namespace: "net" }));
       build.onResolve({ filter: /.*/, namespace: "net" }, (args) => {
         if (!/^(\/|\.\.?\/)/.test(args.path)) {
-          throw new LibraryFetchError(`${libraryLabel(args.importer)} imports "${args.path}", which is not a web address, so ${label} cannot be kept on this device.`);
+          const importer = libraryLabel(args.importer);
+          const path = args.path;
+          throw new LibraryFetchError(t`${importer} imports "${path}", which is not a web address, so ${label} cannot be kept on this device.`);
         }
         return { path: new URL(args.path, lock[args.importer]?.base ?? args.importer).href, namespace: "net" };
       });
       build.onLoad({ filter: /.*/, namespace: "net" }, async (args) => {
         const url = args.path;
+        const library = libraryLabel(url);
+        const host = new URL(url).host;
         const known = deps.have?.lock[url];
         const kept = known ? await deps.have!.read(known.file) : null;
         let bytes: Uint8Array;
@@ -97,18 +103,20 @@ function plugin(root: string, deps: FetchLibrariesDeps, lock: AppLock, files: Ma
           try {
             res = await deps.get(url);
           } catch (e) {
-            throw new LibraryFetchError(`${libraryLabel(url)} could not be fetched from ${new URL(url).host}: ${e instanceof Error ? e.message : String(e)}`);
+            const why = e instanceof Error ? e.message : String(e);
+            throw new LibraryFetchError(t`${library} could not be fetched from ${host}: ${why}`);
           }
-          if (!res.ok) throw new LibraryFetchError(`${libraryLabel(url)} could not be fetched: ${new URL(url).host} answered ${res.status} for ${url}`);
+          const status = res.status;
+          if (!res.ok) throw new LibraryFetchError(t`${library} could not be fetched: ${host} answered ${status} for ${url}`);
           bytes = await res.bytes();
           base = res.url && res.url !== url ? res.url : undefined;
           const want = deps.pinned?.[url];
           if (want && (await integrityOf(bytes)) !== want.integrity) {
-            throw new LibraryFetchError(`${libraryLabel(url)} from ${new URL(url).host} is not the copy this app was made with, so it was not added.`);
+            throw new LibraryFetchError(t`${library} from ${host} is not the copy this app was made with, so it was not added.`);
           }
         }
         if (BESIDE_ITSELF.test(new TextDecoder().decode(bytes))) {
-          throw new LibraryFetchError(`${libraryLabel(url)} loads files of its own while it runs, so ${label} cannot be kept on this device for use offline.`);
+          throw new LibraryFetchError(t`${library} loads files of its own while it runs, so ${label} cannot be kept on this device for use offline.`);
         }
         const file = await moduleFileFor(bytes);
         lock[url] = await lockEntryFor(file, bytes, base);
@@ -151,10 +159,12 @@ export async function fetchLibraries(urls: string[], deps: FetchLibrariesDeps): 
       const ours = errors?.find((x) => x.pluginName === FETCH_PLUGIN)?.text;
       if (ours) throw new LibraryFetchError(ours);
       const first = errors?.[0]?.text;
-      throw new LibraryFetchError(`${libraryLabel(root)} could not be read as a JavaScript module${first ? `: ${first}` : ""}.`);
+      const library = libraryLabel(root);
+      throw new LibraryFetchError(first ? t`${library} could not be read as a JavaScript module: ${first}.` : t`${library} could not be read as a JavaScript module.`);
     }
     if (UNRESOLVED_IMPORT.test(out)) {
-      throw new LibraryFetchError(`${libraryLabel(root)} decides while it runs what else to load, so it cannot be kept on this device for use offline.`);
+      const library = libraryLabel(root);
+      throw new LibraryFetchError(t`${library} decides while it runs what else to load, so it cannot be kept on this device for use offline.`);
     }
   }
   return { lock, files: [...files].map(([path, data]) => ({ path, data, mime: "text/javascript" })) };
