@@ -50,7 +50,7 @@ export default defineApp({
   id: "places",
   name: { en: "Places", "pt-BR": "Lugares", de: "Orte", es: "Lugares", pl: "Miejsca", it: "Luoghi" },
   icon: "📍",
-  version: "1.2.0",
+  version: "1.2.1",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
@@ -139,7 +139,8 @@ export default defineApp({
         },
       },
       computed: {
-        openNow: (p, ctx) => isOpenNow(p.openingHours as HourRow[], ctx.now()),
+        // A place nobody has put hours on yet has none: not open, rather than a failure.
+        openNow: (p, ctx) => isOpenNow((p.openingHours as HourRow[] | undefined) ?? [], ctx.now()),
       },
       actions: {
         markVisited: {
@@ -206,7 +207,7 @@ export default defineApp({
         filter: (p, ctx) => {
           const { kind, vibe, openOnly } = ctx.params as { kind?: string; vibe?: string[]; openOnly?: boolean };
           if (kind && p.kind !== kind) return false;
-          if (vibe?.length && !vibe.some((v) => p.vibes.includes(v))) return false;
+          if (vibe?.length && !vibe.some((v) => ((p.vibes as string[] | undefined) ?? []).includes(v))) return false;
           if (openOnly && !p.openNow) return false;
           return true;
         },

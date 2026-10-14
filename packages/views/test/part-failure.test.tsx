@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 //
-// A failure stays where it happens (#271): a computed value, a filter or a view that throws fails
-// only that part, says so in plain words where it would have been, and every other part — on the same
-// page and on the others — shows its records.
+// A failure stays where it happens (#271): a filter or a view that throws fails only that part, says
+// so in plain words where it would have been, and every other part — on the same page and on the
+// others — shows its records. A computed value that throws is quieter still: its value is empty where
+// it failed, every record shows, and nothing alerts; it is reported for whoever checks the app.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
@@ -105,12 +106,17 @@ describe("a failure stays in its part", () => {
     stop();
   });
 
-  it("a computed value that throws: the records still show, and the value's part says what went wrong", async () => {
+  it("a computed value that throws: the records still show, the value is empty, and nothing alerts — it is reported", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = await makeRuntime();
+    const heard: AppFailure[] = [];
+    const stop = runtime.onFailure((f) => heard.push(f));
     show(runtime, "items");
     await waitFor(() => expect(screen.getByText("First item")).toBeTruthy());
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("This part of the app hit a problem: “Month” could not be worked out for some records: 'Intl' is not defined"));
+    await waitFor(() => expect(heard.some((f) => f.what === "computed item.month")).toBe(true));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector(".k-part-problem")).toBeNull();
+    stop();
   });
 
   it("a filter that throws: its list says its records could not be listed", async () => {
@@ -142,4 +148,62 @@ describe("a failure stays in its part", () => {
     await waitFor(() => expect(within(notes!).getByText("Buy milk")).toBeTruthy());
     expect(within(notes!).queryByRole("alert")).toBeNull();
   });
+});
+
+// The Places bug: one place with no opening hours made "Open now" throw for that place, and a red
+// box saying so took the map's place. A value that fails for some records is that value, empty, for
+// those records — never the whole view.
+describe("a computed that throws for one record of several", () => {
+  const spots: AppInput = {
+    id: "spots",
+    name: "Spots",
+    version: "1.0.0",
+    schemaVersion: 1,
+    entities: {
+      spot: {
+        label: "Spot",
+        displayField: "name",
+        fields: { name: { type: "text" }, hours: { type: "list", of: { day: { type: "text" } } } },
+        computed: {
+          // Unguarded on purpose: a spot with no hours has `hours` undefined, and this throws for it.
+          days: (s) => `${(s.hours as { day: string }[]).map((h) => h.day).join("+")} days`,
+        },
+      },
+    },
+    pages: [
+      { id: "list", title: "List", view: { type: "list", entity: "spot", display: { primary: "name", secondary: "days" } } },
+      { id: "table", title: "Table", view: { type: "table", entity: "spot", display: { columns: ["name", "days"] } } },
+    ],
+  };
+
+  async function spotsRuntime(): Promise<PotyroRuntime> {
+    const store = new MemoryStore();
+    await store.open("spots");
+    await store.insert("spot", { name: "Cafe A", hours: [{ day: "mon" }] });
+    await store.insert("spot", { name: "Bar B" });
+    await store.insert("spot", { name: "Deli C", hours: [{ day: "tue" }, { day: "wed" }] });
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    const loaded = await createHost().load({ kind: "module", app: defineApp(spots) });
+    return createRuntime({ app: loaded, host: createHost(), store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} } });
+  }
+
+  for (const pageId of ["list", "table"]) {
+    it(`the ${pageId} shows every record, the bad value empty, and no alert`, async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const runtime = await spotsRuntime();
+      const heard: AppFailure[] = [];
+      const stop = runtime.onFailure((f) => heard.push(f));
+      show(runtime, pageId);
+      await waitFor(() => expect(screen.getByText("Deli C")).toBeTruthy());
+      expect(screen.getByText("Cafe A")).toBeTruthy();
+      expect(screen.getByText("Bar B")).toBeTruthy();
+      // The records it worked for have their value; the one it failed for has none.
+      expect(screen.getByText("mon days")).toBeTruthy();
+      expect(screen.getByText("tue+wed days")).toBeTruthy();
+      expect(screen.queryByText(/undefined/)).toBeNull();
+      await waitFor(() => expect(heard.map((f) => f.what)).toContain("computed spot.days"));
+      expect(screen.queryByRole("alert")).toBeNull();
+      stop();
+    });
+  }
 });
