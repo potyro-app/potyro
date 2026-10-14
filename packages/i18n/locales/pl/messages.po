@@ -2189,7 +2189,7 @@ msgstr "Każda wersja <0>{appName}</0> — przejrzyj zmianę albo wróć do niej
 
 #: ../shell/src/identity-panel.tsx
 msgid "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
-msgstr "Na początku każdy nazywa się „Ja”, przez co udostępniona aplikacja jest nieczytelna. Możesz to zmienić w każdej chwili w ⌾ Ty."
+msgstr "Na początku każdy nazywa się „Me”, przez co udostępniona aplikacja jest nieczytelna. Możesz to zmienić w każdej chwili w ⌾ Ty."
 
 #: ../shell/src/people-panel.tsx
 msgid "Everyone who can open “{appName}”."
@@ -3734,7 +3734,7 @@ msgstr "Ludzie"
 
 #: ../shell/src/identity-panel.tsx
 msgid "People you share an app with see you as “Me”."
-msgstr "Osoby, z którymi udostępniasz aplikację, widzą cię jako „Ja”."
+msgstr "Osoby, z którymi udostępniasz aplikację, widzą cię jako „Me”."
 
 #. Button that opens a month grid for a date field; {label} is the field
 #: ../views/src/date-input.tsx

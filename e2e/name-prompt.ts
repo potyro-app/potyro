@@ -13,12 +13,13 @@ import { expect, type Page } from "@playwright/test";
  * does not care about names should exercise it rather than pretending everyone types one.
  */
 export async function answerNamePrompt(page: Page, name?: string): Promise<void> {
-  const dialog = page.locator(".k-dialog", { hasText: "see you as" });
+  // In English, or in Polish for the specs that run a Polish device (#300).
+  const dialog = page.locator(".k-dialog", { hasText: /see you as|mają cię widzieć/ });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
   if (name) {
     await dialog.locator("input").fill(name);
     await dialog.getByRole("button", { name: "OK" }).click();
   } else {
-    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await dialog.getByRole("button", { name: /^(Cancel|Anuluj)$/ }).click();
   }
 }

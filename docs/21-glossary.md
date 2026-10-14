@@ -31,6 +31,9 @@ change it in every message of that language, not only the one you are looking at
 - **Quotation marks** follow the language: German „…“, Polish „…”, the others “…”.
 - **Names stay names**: Potyro, Studio, Ask, OpenRouter, Anthropic, Claude, Chrome, WebGPU,
   IndexedDB, `claude -p`, `defineApp`, `.app.ts`, `lock.json`, `seed.json`.
+- **“Me” stays “Me”.** It is the name a fresh identity is stored and synced with
+  (`DEFAULT_NAME` in packages/identity), so other people see exactly that word; the messages that
+  mention it quote it untranslated.
 - **Model-facing text is not in the catalogs** (#297 keeps it English). The few fragments that come
   from the model or the generator and are shown inside a translated message (`{lost}`, `{loss}`,
   some `{why}`/`{reason}`/`{detail}`) stay English for now; the translations are worded so an
