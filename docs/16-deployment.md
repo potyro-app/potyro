@@ -94,6 +94,41 @@ Three details, each load-bearing:
 `--restart unless-stopped` plus `systemctl is-enabled docker` → `enabled` means it comes back after
 a reboot. The client reconnects on its own when the relay bounces.
 
+### What the relay holds for a shared app's files (#255)
+
+A shared app's files sync **on demand**: every member gets the folder's list at once (small: a path,
+type, size and digest per file), and a file's bytes only when someone on a device opens it. That
+is what the members' devices hold. The **relay** is different: the device that adds a file pushes
+its bytes there, so the relay holds every byte of every file in every shared app — encrypted to
+the space's members (it cannot read them), but stored. What that means for running it:
+
+- **Disk grows with files, not with members.** One 40 MB video in a shared app is ~40 MB on the
+  relay, however many people are in it.
+- **Each shared space has a budget: 200 MB** (`SPACE_BUDGET` in `packages/store/src/jazz-store.ts`;
+  owner, 2026-10-14). It counts every file byte the space ever put on the relay — replaced and
+  deleted ones too, since the relay keeps them (the space's `usage` map, one entry per blob, written
+  once by whoever wrote it, so members merge without double counting). A write that would pass it is
+  refused before a byte is written, in plain words (`SpaceFullError`, from the app's `ctx.files.write`
+  too); the Files tab offers to keep the file on that device only, outside the space, and says that
+  removing files or earlier copies would not make room. The Files tab of a shared app shows the use
+  ("Shared space: 12 MB of 200 MB used"). Bringing an earlier copy back costs nothing — its bytes are
+  already there. Photos (`media` fields) are counted but not refused. A relay with more room can be
+  given a bigger budget per device (`potyro:space-budget` in localStorage, bytes) until it is a
+  setting. Size the relay's disk from it: spaces × 200 MB is the most files can take, next to the
+  records and chat history the backups of #214 and the sizing of #287 already plan for.
+- **Asked before, not refused:** a file over 10 MB going into a shared app is asked about first
+  (`LARGE_FOR_SHARING`, owner 2026-10-14). There is no limit per file, only the space's budget.
+- **Nothing is freed.** cojson keeps history: a deleted file disappears from every member's list,
+  and its bytes stay on the relay. Replacing a file keeps the old bytes as an earlier copy for up to
+  30 days (the last three), and after that the folder lets them go — on the devices; the relay
+  still has them. Budget `--db` for everything ever added, and watch it (`du -sh /var/lib/potyro`).
+- **Backups (#214).** A backup of the relay's database is a backup of every shared file's bytes too,
+  in the same encrypted form; restoring it restores them. A person's own *export* of a shared app is
+  not that: it packs the files whose bytes are on their device and lists the rest by path and size
+  (`missingFiles` in the bundle's manifest), and never fetches them to complete itself.
+- **The app's code never rides here.** Libraries' bytes and an app's own modules (`.modules/`,
+  `.src/`) stay on each device (#281); a synced store refuses to put them in a space.
+
 ## 4. The Apache vhost
 
 `proxy_wstunnel`, `rewrite`, `headers` and `ssl` were already enabled — check yours with

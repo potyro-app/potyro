@@ -8,18 +8,20 @@
 // that is taken gets a free one beside it rather than replacing anything (app-folder.ts).
 //
 // Opened on the same store the app uses, so a file added here is one the app's `ctx.files` reads,
-// and in a shared app it is everyone's.
+// and in a shared app it is everyone's. There (#255) every member sees the whole list, but a file's
+// bytes come to this device only when someone here opens it: such a file says it is not here yet,
+// and opening it is what fetches it. A large file going into a shared app is asked about first.
 
 import { fmt } from "@potyro/i18n";
-import { plural } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import type { FileInfo, FileOrigin } from "potyro";
-import type { Store } from "@potyro/store";
+import { SpaceFullError, type SpaceUsage, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { pickFilesFromInput } from "@potyro/capabilities";
 import { ActionMenu, formatSize, type MenuEntry } from "@potyro/views";
-import { bringIn, listFolder, readFile, removeFile, renameFile, replaceFile, totalSize } from "./app-folder.js";
+import { bringIn, filesHere, largeForSharing, listFolder, readFile, removeFile, renameFile, replaceFile, spaceUsageOf, totalSize } from "./app-folder.js";
 import { FileViewer } from "./file-viewer.js";
 import { shellDialogs } from "./dialog.js";
 
@@ -35,6 +37,32 @@ export interface FilesPanelProps {
   arrived?: readonly string[];
   /** Something above the list, beside the count: the Studio's "Save as a package". */
   extra?: ReactNode;
+  /** The app is shared: its files are everyone's, and their bytes arrive on demand (#255). */
+  shared?: boolean;
+  /**
+   * The shared space has no room for these (#255). Without it, the panel says so; with it, the
+   * caller offers what can be done (keep them on this device only).
+   */
+  onSpaceFull?: (err: SpaceFullError, files: File[]) => Promise<void>;
+  /** Above the list, in place of the count: what this list is, when it is not the app's own folder. */
+  heading?: ReactNode;
+  /** Render nothing at all while there are no files. */
+  hideWhenEmpty?: boolean;
+}
+
+/**
+ * Ask before a large file goes into a shared app (#255). There is no size limit; but there it is
+ * kept, encrypted, on the relay, and anyone in the app can fetch it. True when it may go ahead.
+ */
+export async function confirmLargeForSharing(files: readonly File[], appName: string, shared: boolean): Promise<boolean> {
+  const large = largeForSharing(files, shared);
+  if (!large.length) return true;
+  const names = fmt.list(large.map((f) => f.name));
+  const size = formatSize(totalSize(large));
+  return shellDialogs.confirm(t`Add ${names} to ${appName}?`, {
+    detail: t`It is ${size}. ${appName} is shared, so everyone in it can get the file, and a copy is kept, encrypted, on the relay.`,
+    ok: t({ message: "Add it", comment: "Confirm adding a large file to a shared app" }),
+  });
 }
 
 /** A hue per kind of file, so a folder of them can be scanned by eye; the word is always beside it. */
@@ -66,9 +94,13 @@ function changed(iso: string, now: number, justNow: string): string {
   return fmt.date(iso, { month: "short", day: "numeric" });
 }
 
-export function FilesPanel({ store, appName, scope, caps, arrived, extra }: FilesPanelProps) {
+export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared = false, onSpaceFull, heading, hideWhenEmpty }: FilesPanelProps) {
   const { t } = useLingui();
   const [files, setFiles] = useState<FileInfo[] | null>(null);
+  // Which files' bytes are on this device (#255): asked of the store, never found out by reading.
+  const [here, setHere] = useState<ReadonlyMap<string, boolean>>(new Map());
+  // How much of its budget a shared space has used on the relay (#255).
+  const [usage, setUsage] = useState<SpaceUsage | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const [viewing, setViewing] = useState<FileInfo | null>(null);
@@ -78,7 +110,10 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
 
   const reload = useCallback(async (): Promise<void> => {
     const all = await listFolder(store);
-    setFiles(scope === "shipped" ? all.filter((f) => f.origin === "shipped") : all);
+    const shown = scope === "shipped" ? all.filter((f) => f.origin === "shipped") : all;
+    setFiles(shown);
+    setHere(await filesHere(store, shown));
+    setUsage(await spaceUsageOf(store));
   }, [store, scope]);
 
   useEffect(() => {
@@ -106,10 +141,30 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
 
   const add = async (chosen: File[]): Promise<void> => {
     if (!chosen.length) return;
+    if (!(await confirmLargeForSharing(chosen, appName, shared))) return;
+    const landed: FileInfo[] = [];
+    const full: { at?: { err: SpaceFullError; rest: File[] } } = {};
     await act(async () => {
-      const landed = await bringIn(store, chosen, { origin });
+      // One at a time: when the space fills up part way, what fitted stays and the rest is offered on.
+      for (const [i, file] of chosen.entries()) {
+        try {
+          landed.push(...(await bringIn(store, [file], { origin })));
+        } catch (e) {
+          if (!(e instanceof SpaceFullError)) throw e;
+          full.at = { err: e, rest: chosen.slice(i) };
+          break;
+        }
+      }
       setFresh(new Set(landed.map((f) => f.id)));
     });
+    if (full.at) await spaceFull(full.at.err, full.at.rest);
+  };
+
+  const spaceFull = async (err: SpaceFullError, rest: File[]): Promise<void> => {
+    if (onSpaceFull) return onSpaceFull(err, rest);
+    const used = formatSize(err.used);
+    const budget = formatSize(err.budget);
+    setFailed(t`${appName}’s shared space is full: ${used} of ${budget} is used.`);
   };
 
   const pick = async (multiple: boolean): Promise<File[]> =>
@@ -117,10 +172,11 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
 
   const saveCopy = (f: FileInfo) =>
     act(async () => {
-      const blob = await readFile(store, f.id);
+      // Not here yet: reading would wait on the network. Say so; opening it is how it comes.
+      const blob = here.get(f.id) === false ? null : await readFile(store, f.id);
       if (!blob) {
         const name = f.name;
-        throw new Error(t`${name} is not on this device yet.`);
+        throw new Error(t`${name} is not on this device yet. Open it to get it, then save a copy.`);
       }
       await caps.filesystem.save(f.name, blob);
     });
@@ -135,10 +191,17 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
   const replace = async (f: FileInfo): Promise<void> => {
     const [chosen] = await pick(false);
     if (!chosen) return;
+    const full: { err?: SpaceFullError } = {};
     await act(async () => {
-      await replaceFile(store, f.id, chosen, scope === "shipped" ? { origin: "shipped" } : {});
-      setFresh(new Set([f.id]));
+      try {
+        await replaceFile(store, f.id, chosen, scope === "shipped" ? { origin: "shipped" } : {});
+        setFresh(new Set([f.id]));
+      } catch (e) {
+        if (!(e instanceof SpaceFullError)) throw e;
+        full.err = e;
+      }
     });
+    if (full.err) await spaceFull(full.err, [chosen]);
   };
 
   const remove = async (f: FileInfo): Promise<void> => {
@@ -200,12 +263,14 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
   const count = files?.length ?? 0;
   const size = formatSize(totalSize(files ?? []));
   const summary = plural(count, { one: `# file · ${size}`, other: `# files · ${size}` });
+  const away = (files ?? []).filter((f) => here.get(f.id) === false).length;
   const addButton = (
     <button type="button" className="k-add k-primary-action k-files-add" onClick={() => void pick(true).then(add)}>
       <span aria-hidden>＋</span> <Trans comment="Files: bring files from this device into the app">Add files</Trans>
     </button>
   );
 
+  if (hideWhenEmpty && files !== null && files.length === 0) return null;
   return (
     <section
       className="k-files"
@@ -216,14 +281,19 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      {heading ? <div className="k-files-heading">{heading}</div> : null}
       {files?.length || extra ? (
         <header className="k-files-bar">
-          <p className="k-files-summary">{count ? summary : null}</p>
+          <p className="k-files-summary">
+            {count ? summary : null}
+            {away ? <span className="k-files-summary-away"> · {plural(away, { one: "# not on this device yet", other: "# not on this device yet" })}</span> : null}
+          </p>
           <span className="k-files-bar-spacer" />
           {extra}
           {count ? addButton : null}
         </header>
       ) : null}
+      {usage ? <SpaceMeter usage={usage} /> : null}
       {files === null ? <p className="k-files-summary">{t`Reading the folder…`}</p> : null}
       {failed ? (
         <p className="k-files-error" role="alert">
@@ -251,24 +321,58 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra }: File
       {files?.length ? (
         <ul className="k-files-list">
           {files.map((f) => (
-            <FileRow key={f.id} file={f} showOrigin={scope === "all"} fresh={fresh.has(f.id)} when={changed(f.updated, now, justNow)} onOpen={() => setViewing(f)} menu={menu(f)} />
+            <FileRow key={f.id} file={f} away={here.get(f.id) === false} showOrigin={scope === "all"} shared={shared} fresh={fresh.has(f.id)} when={changed(f.updated, now, justNow)} onOpen={() => setViewing(f)} menu={menu(f)} />
           ))}
         </ul>
       ) : null}
       <p className="k-files-drop" aria-hidden>
         <Trans>Drop to add to {appName}</Trans>
       </p>
-      {viewing ? <FileViewer store={store} file={viewing} onSave={() => void saveCopy(viewing)} onClose={() => setViewing(null)} /> : null}
+      {viewing ? (
+        <FileViewer
+          store={store}
+          file={viewing}
+          onSave={() => void saveCopy(viewing)}
+          onChanged={() => void reload().catch(() => {})}
+          onClose={() => setViewing(null)}
+        />
+      ) : null}
     </section>
   );
 }
 
-function OriginTag({ origin }: { origin: FileOrigin }) {
+/** In a shared app a file someone brought in may be anyone's in it, so it does not say "you". */
+/**
+ * How much of its budget a shared space has used on the relay (#255). Counts every version ever
+ * shared, so it only grows; the bar warms as it fills.
+ */
+function SpaceMeter({ usage }: { usage: SpaceUsage }) {
+  const used = formatSize(usage.used);
+  const budget = formatSize(usage.budget);
+  const share = Math.min(1, usage.budget > 0 ? usage.used / usage.budget : 1);
+  const level = share >= 1 ? "full" : share >= 0.8 ? "high" : undefined;
+  return (
+    <div className="k-files-space" data-level={level}>
+      <span className="k-files-space-bar" aria-hidden>
+        <span style={{ transform: `scaleX(${share})` }} />
+      </span>
+      <span>
+        <Trans comment="Files tab of a shared app: how much of its relay budget is used">
+          Shared space: {used} of {budget} used
+        </Trans>
+      </span>
+    </div>
+  );
+}
+
+function OriginTag({ origin, shared }: { origin: FileOrigin; shared: boolean }) {
   const { t } = useLingui();
   const words: Record<FileOrigin, string> = {
     shipped: t({ message: "came with the app", comment: "Files: a file that was installed with the app" }),
     app: t({ message: "made by the app", comment: "Files: a file the app wrote itself" }),
-    imported: t({ message: "added by you", comment: "Files: a file the person brought in" }),
+    imported: shared
+      ? t({ message: "brought in", comment: "Files, in a shared app: a file one of its people brought in from outside" })
+      : t({ message: "added by you", comment: "Files: a file the person brought in" }),
   };
   return (
     <span className="k-files-origin" data-origin={origin}>
@@ -277,13 +381,25 @@ function OriginTag({ origin }: { origin: FileOrigin }) {
   );
 }
 
-function FileRow({ file, showOrigin, fresh, when, onOpen, menu }: { file: FileInfo; showOrigin: boolean; fresh: boolean; when: string; onOpen: () => void; menu: MenuEntry[] }) {
+interface FileRowProps {
+  file: FileInfo;
+  /** Its bytes are not on this device yet (a shared app, #255). */
+  away: boolean;
+  showOrigin: boolean;
+  shared: boolean;
+  fresh: boolean;
+  when: string;
+  onOpen: () => void;
+  menu: MenuEntry[];
+}
+
+function FileRow({ file, away, showOrigin, shared, fresh, when, onOpen, menu }: FileRowProps) {
   const { t } = useLingui();
   const slash = file.path.lastIndexOf("/");
   const folder = slash > 0 ? file.path.slice(0, slash) : "";
   const name = file.name;
   return (
-    <li className="k-files-row" data-fresh={fresh || undefined}>
+    <li className="k-files-row" data-fresh={fresh || undefined} data-away={away || undefined}>
       <button type="button" className="k-files-open" onClick={onOpen} aria-label={t`Open ${name}`}>
         <span className="k-files-tag" style={{ "--k-hue": hueOf(file) } as CSSProperties} aria-hidden>
           {tagOf(file)}
@@ -291,9 +407,14 @@ function FileRow({ file, showOrigin, fresh, when, onOpen, menu }: { file: FileIn
         <span className="k-files-name">
           <strong>{file.name}</strong>
           {folder ? <span className="k-files-folder">{folder}/</span> : null}
+          {away ? (
+            <span className="k-files-away">
+              <Trans comment="Files: a shared app's file whose bytes have not been fetched to this device">not on this device yet · open it to get it</Trans>
+            </span>
+          ) : null}
         </span>
         <span className="k-files-meta" data-no-origin={showOrigin ? undefined : true}>
-          {showOrigin ? <OriginTag origin={file.origin} /> : null}
+          {showOrigin ? <OriginTag origin={file.origin} shared={shared} /> : null}
           <span className="k-files-size">{formatSize(file.size)}</span>
           <time className="k-files-when" dateTime={file.updated}>
             {when}

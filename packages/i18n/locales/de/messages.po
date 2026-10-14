@@ -277,6 +277,14 @@ msgstr "Dateien von {appName}"
 msgid "{appName} will no longer come with it. Copies already installed keep theirs until they update."
 msgstr "{appName} bringt sie dann nicht mehr mit. Bereits installierte Kopien behalten ihre, bis sie aktualisiert werden."
 
+#: ../shell/src/device-files.tsx
+msgid "{appName}’s shared space is full"
+msgstr "Der geteilte Bereich von {appName} ist voll"
+
+#: ../shell/src/files-panel.tsx
+msgid "{appName}’s shared space is full: {used} of {budget} is used."
+msgstr "Der geteilte Bereich von {appName} ist voll: {used} von {budget} belegt."
+
 #: ../shell/src/ask-review.tsx
 msgid "{approvedN} of {totalN} approved"
 msgstr "{approvedN} von {totalN} angenommen"
@@ -308,6 +316,10 @@ msgstr "{autonym} — {language} (Entwurf)"
 #: ../shell/src/language-picker.tsx
 msgid "{autonym} (draft)"
 msgstr "{autonym} (Entwurf)"
+
+#: ../shell/src/files-panel.tsx
+msgid "{away, plural, one {# not on this device yet} other {# not on this device yet}}"
+msgstr "{away, plural, one {# noch nicht auf diesem Gerät} other {# noch nicht auf diesem Gerät}}"
 
 #. Ask's cost in US cents, e.g. 2.1¢
 #: ../shell/src/ask-spend.ts
@@ -612,9 +624,12 @@ msgid "{name} is {size} KB; files up to {max} KB can be brought in."
 msgstr "{name} ist {size} KB groß; Dateien bis {max} KB können übernommen werden."
 
 #: ../shell/src/file-viewer.tsx
-#: ../shell/src/files-panel.tsx
 msgid "{name} is not on this device yet."
 msgstr "{name} ist noch nicht auf diesem Gerät."
+
+#: ../shell/src/files-panel.tsx
+msgid "{name} is not on this device yet. Open it to get it, then save a copy."
+msgstr "{name} ist noch nicht auf diesem Gerät. Öffne die Datei, um sie zu holen, und speichere dann eine Kopie."
 
 #: ../shell/src/data-page.tsx
 msgid "{name} records and files"
@@ -629,6 +644,10 @@ msgstr "{name}, Version {seq}"
 #: ../views/src/list-input.tsx
 msgid "{name}: more"
 msgstr "{name}: mehr"
+
+#: ../shell/src/main.tsx
+msgid "{notHere, plural, one {Exported {file}. # file is not on this device yet, so it is listed in the export but not inside it.} other {Exported {file}. # files are not on this device yet, so they are listed in the export but not inside it.}}"
+msgstr "{notHere, plural, one {{file} exportiert. # Datei ist noch nicht auf diesem Gerät, daher steht sie im Export nur in der Liste, nicht darin.} other {{file} exportiert. # Dateien sind noch nicht auf diesem Gerät, daher stehen sie im Export nur in der Liste, nicht darin.}}"
 
 #. An unnamed row of a list field: the field's word and the row's number
 #: ../views/src/list-input.tsx
@@ -710,6 +729,10 @@ msgstr "{title}: auswählen"
 #: ../views/src/board.tsx
 msgid "{title}: more"
 msgstr "{title}: mehr"
+
+#: ../shell/src/device-files.tsx
+msgid "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
+msgstr "{used} von {budget} sind belegt, und dafür braucht es noch {needed}. Dateien oder frühere Kopien zu entfernen schafft keinen Platz: Das Relay behält jede jemals geteilte Version. Du kannst sie nur auf diesem Gerät behalten — sie bleibt hier in den Dateien von {appName}, aber die App und die Leute, mit denen du sie teilst, sehen sie nicht."
 
 #: ../shell/src/backup-switch.tsx
 msgid "{waiting, plural, one {# app lives only on this device. If it is lost, so is the app.} other {# apps live only on this device. If it is lost, so are they.}}"
@@ -957,6 +980,10 @@ msgstr "Hinzufügen"
 msgid "Add {count}"
 msgstr "{count} hinzufügen"
 
+#: ../shell/src/files-panel.tsx
+msgid "Add {names} to {appName}?"
+msgstr "{names} zu {appName} hinzufügen?"
+
 #. Ask review button, lower case, may be joined with others: add N records
 #: ../shell/src/ask-review.tsx
 msgid "add {rowsN}"
@@ -1034,6 +1061,11 @@ msgstr "Dateien hinzufügen"
 #: ../views/src/map.tsx
 msgid "Add here: {entityLabel}"
 msgstr "Hier hinzufügen: {entityLabel}"
+
+#. Confirm adding a large file to a shared app
+#: ../shell/src/files-panel.tsx
+msgid "Add it"
+msgstr "Hinzufügen"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -1390,6 +1422,20 @@ msgstr "Startfehler: {why}"
 msgid "box"
 msgstr "Feld"
 
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back"
+msgstr "Zurückholen"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Bring back the copy from {when}?"
+msgstr "Die Kopie vom {when} zurückholen?"
+
+#. Restore an earlier copy of a file
+#: ../shell/src/file-viewer.tsx
+msgid "Bring it back"
+msgstr "Zurückholen"
+
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
 msgid "Bring this into…"
@@ -1398,6 +1444,11 @@ msgstr "Übernehmen in…"
 #: ../views/src/file-input.tsx
 msgid "Bringing it in…"
 msgstr "Wird übernommen…"
+
+#. Files, in a shared app: a file one of its people brought in from outside
+#: ../shell/src/files-panel.tsx
+msgid "brought in"
+msgstr "hinzugefügt"
 
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
@@ -2221,6 +2272,11 @@ msgstr "z. B. fünf hundefreundliche Cafés am Fluss"
 msgid "e.g. Places search"
 msgstr "z. B. Ortssuche"
 
+#. Files viewer: copies of this file that newer writes replaced
+#: ../shell/src/file-viewer.tsx
+msgid "Earlier copies"
+msgstr "Frühere Kopien"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "edit"
@@ -2531,6 +2587,10 @@ msgstr "Aufgegeben"
 #: ../shell/src/ask-verdicts.ts
 msgid "General knowledge"
 msgstr "Allgemeinwissen"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
+msgstr "Wird gerade aus der geteilten App geholt — sie öffnet sich hier, sobald sie da ist, und bleibt danach auf diesem Gerät."
 
 #: ../views/src/media-input.tsx
 msgid "Getting the photo…"
@@ -2850,6 +2910,10 @@ msgstr "Es kommt auf eine öffentliche Liste mit Wünschen, die das Potyro-Team 
 msgid "It has a question"
 msgstr "Es hat eine Frage"
 
+#: ../shell/src/files-panel.tsx
+msgid "It is {size}. {appName} is shared, so everyone in it can get the file, and a copy is kept, encrypted, on the relay."
+msgstr "Sie ist {size} groß. {appName} ist geteilt, daher können alle darin die Datei holen, und eine Kopie wird verschlüsselt auf dem Relay aufbewahrt."
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "It is already here"
 msgstr "Sie ist schon da"
@@ -2959,6 +3023,11 @@ msgstr "Trotzdem behalten? Sie hat Probleme, daher funktionieren Teile davon vie
 msgid "Keep it anyway? This version {loss}."
 msgstr "Trotzdem behalten? Diese Version: {loss}."
 
+#. A shared app's space is full: keep the file outside it, on this device
+#: ../shell/src/device-files.tsx
+msgid "Keep it on this device only"
+msgstr "Nur auf diesem Gerät behalten"
+
 #: ../views/src/checklist.tsx
 msgid "Keep them"
 msgstr "Behalten"
@@ -2971,6 +3040,10 @@ msgstr "Deine Apps auf dem Relay aufbewahren, damit ein neues Gerät, das sich m
 #: ../shell/src/add-app-dialog.tsx
 msgid "Keeps"
 msgstr "Speichert"
+
+#: ../shell/src/device-files.tsx
+msgid "Kept here because {appName}’s shared space was full. The app and the people you share it with do not see these."
+msgstr "Hier behalten, weil der geteilte Bereich von {appName} voll war. Die App und die Leute, mit denen du sie teilst, sehen diese Dateien nicht."
 
 #: ../shell/src/data-table.tsx
 msgid "Kept in storage; this app no longer shows it"
@@ -3557,6 +3630,11 @@ msgstr "erst bekannt, wenn sie läuft"
 msgid "Not now"
 msgstr "Nicht jetzt"
 
+#. Files: a shared app's file whose bytes have not been fetched to this device
+#: ../shell/src/files-panel.tsx
+msgid "not on this device yet · open it to get it"
+msgstr "noch nicht auf diesem Gerät · zum Holen öffnen"
+
 #: ../shell/src/storage-report.tsx
 msgid "not opened yet"
 msgstr "noch nicht geöffnet"
@@ -3804,6 +3882,11 @@ msgstr "Nur http- und https-Links können geladen werden"
 #: ../shell/src/splash.tsx
 msgid "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
 msgstr "Lass sie nur als deine eigene laufen, wenn du weißt, wer sie gemacht hat. Sonst bleibt sie versiegelt und öffnet sich nicht."
+
+#. Files tab of a shared app: files kept outside its shared space
+#: ../shell/src/device-files.tsx
+msgid "Only on this device"
+msgstr "Nur auf diesem Gerät"
 
 #: ../shell/src/ask-material.tsx
 msgid "Only the first {maxChars} characters will be used ({hereChars} here)."
@@ -4544,6 +4627,11 @@ msgstr "Geteilt — Änderungen hier erreichen alle darin"
 msgid "Shared costs with my flatmates"
 msgstr "Geteilte Kosten mit meinen Mitbewohnern"
 
+#. Files tab of a shared app: how much of its relay budget is used
+#: ../shell/src/files-panel.tsx
+msgid "Shared space: {used} of {budget} used"
+msgstr "Geteilter Bereich: {used} von {budget} belegt"
+
 #: ../shell/src/share-page.tsx
 msgid "Shared with Potyro"
 msgstr "Mit Potyro geteilt"
@@ -4968,6 +5056,10 @@ msgstr "Der Doku-Link muss eine https://-Adresse sein."
 msgid "The endpoint must be an https:// address."
 msgstr "Der Endpunkt muss eine https://-Adresse sein."
 
+#: ../shell/src/file-viewer.tsx
+msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
+msgstr "Die Datei, wie sie jetzt ist, wird als frühere Kopie aufbewahrt — du kannst es dir also anders überlegen."
+
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
 msgstr "die Gruppen müssen die Gruppen bleiben, die jetzt da sind"
@@ -5231,6 +5323,10 @@ msgstr "Das löscht die App UND ihre Daten — jeden Eintrag, den du hinzugefüg
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "Dieses Gerät"
+
+#: ../shell/src/file-viewer.tsx
+msgid "This device is offline. It arrives once it is back online."
+msgstr "Dieses Gerät ist offline. Die Datei kommt, sobald es wieder online ist."
 
 #: ../shell/src/model-turn.ts
 msgid "this engine needs its API key — add it in the Studio's Model settings."

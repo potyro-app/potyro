@@ -16,7 +16,10 @@
 // - files — the app's own folder (#252): each entry with its id, and its bytes under the SAME blob
 //   key, so a `file` field still points at it. An entry whose bytes are not on this device (a shared
 //   app fetches them on demand) is reported, not copied: in a store with no peers it could never
-//   arrive, and a file that can never be opened is worse than one listed as missing.
+//   arrive, and a file that can never be opened is worse than one listed as missing. Whether they
+//   are here is ASKED (`blobHere`), never found out by reading: reading starts a fetch, and an export
+//   of a shared app would otherwise pull every member's files through this device (#255). Its
+//   earlier copies come along when their bytes are here, and are left out when they are not.
 //
 // ## It reports rather than pretends
 //
@@ -35,8 +38,8 @@ export interface CopyStoreResult {
   skippedBlobs: Array<{ key: string; reason: string }>;
   /** Files in the app's folder that were copied. */
   files: number;
-  /** Files that could not be, by path, with the reason. */
-  skippedFiles: Array<{ path: string; reason: string }>;
+  /** Files that could not be, by path and size, with the reason. */
+  skippedFiles: Array<{ path: string; size: number; reason: string }>;
 }
 
 /** A `MediaRef`-shaped value: `{ key, mime }` with anything else optional. */
@@ -121,19 +124,29 @@ export async function copyStoreData(
     }
   }
 
+  const here = async (key: string, mime: string): Promise<Blob | null> =>
+    from.blobHere && !(await from.blobHere({ key, mime })) ? null : from.getBlob({ key, mime });
   for (const entry of await from.listFiles()) {
     if (opts.skipFile?.(entry.path)) continue;
-    const blob = await from.getBlob({ key: entry.blob, mime: entry.mime });
+    const blob = await here(entry.blob, entry.mime);
     if (!blob) {
-      result.skippedFiles.push({ path: entry.path, reason: "its bytes are not on this device" });
+      result.skippedFiles.push({ path: entry.path, size: entry.size, reason: "its bytes are not on this device" });
       continue;
     }
     if (!to.putBlobWithKey) {
-      result.skippedFiles.push({ path: entry.path, reason: "target store cannot write a blob under an existing key" });
+      result.skippedFiles.push({ path: entry.path, size: entry.size, reason: "target store cannot write a blob under an existing key" });
       continue;
     }
     await to.putBlobWithKey(entry.blob, blob);
-    await to.setFile(entry);
+    const earlier: NonNullable<typeof entry.earlier> = [];
+    for (const copy of entry.earlier ?? []) {
+      const bytes = await here(copy.blob, copy.mime);
+      if (!bytes) continue;
+      await to.putBlobWithKey(copy.blob, bytes);
+      earlier.push(copy);
+    }
+    const { earlier: _all, ...bare } = entry;
+    await to.setFile(earlier.length ? { ...bare, earlier } : bare);
     result.files++;
   }
 

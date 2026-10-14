@@ -2,7 +2,7 @@
 // person brings in is named, and what replacing, renaming and removing do — over a real store.
 import { beforeEach, describe, expect, it } from "vitest";
 import { MemoryStore, fileSpace, readAppPackage, type Store } from "@potyro/store";
-import { bringIn, freePath, listFolder, readForView, removeFile, renameFile, replaceFile, shippedPackage, viewKind } from "../src/app-folder.js";
+import { bringIn, earlierCopies, filesHere, freePath, largeForSharing, listFolder, readFile, readForView, removeFile, renameFile, replaceFile, restoreCopy, shippedPackage, viewKind, watchArrival } from "../src/app-folder.js";
 
 const file = (name: string, text: string, type = "text/plain"): File => new File([text], name, { type });
 
@@ -97,6 +97,50 @@ describe("viewing a file", () => {
     const entry = await fileSpace(store).find(a!.id ? { id: a!.id } : "a.txt");
     await store.deleteBlob(entry!.blob);
     expect(await readForView(store, a!.id)).toEqual({ kind: "missing" });
+  });
+});
+
+describe("a shared app's files (#255)", () => {
+  it("says which files are on this device, asking the store and never reading them", async () => {
+    const [a] = await bringIn(store, [file("a.txt", "x")]);
+    const asked: string[] = [];
+    const shared = Object.assign(Object.create(store) as Store, {
+      blobHere: async (r: { key: string }) => (asked.push(r.key), false),
+      getBlob: async () => {
+        throw new Error("a list must not fetch");
+      },
+    });
+    expect(await filesHere(shared, [a!])).toEqual(new Map([[a!.id, false]]));
+    expect(asked).toHaveLength(1);
+    expect(await filesHere(store, [a!])).toEqual(new Map([[a!.id, true]]));
+  });
+
+  it("tells when a file's bytes arrive", async () => {
+    const [a] = await bringIn(store, [file("a.txt", "x")]);
+    let fire: (() => void) | null = null;
+    const shared = Object.assign(Object.create(store) as Store, { subscribeBlob: (_r: unknown, cb: () => void) => ((fire = cb), () => (fire = null)) });
+    let arrived = 0;
+    const stop = await watchArrival(shared, a!.id, () => arrived++);
+    fire!();
+    expect(arrived).toBe(1);
+    stop();
+    expect(fire).toBeNull();
+  });
+
+  it("lists earlier copies and brings one back", async () => {
+    const [a] = await bringIn(store, [file("a.txt", "one")]);
+    await replaceFile(store, a!.id, file("a.txt", "two"));
+    const [one] = await earlierCopies(store, a!.id);
+    expect(one!.size).toBe(3);
+    await restoreCopy(store, a!.id, one!);
+    expect(await (await readFile(store, a!.id))!.text()).toBe("one");
+  });
+
+  it("asks before a large file goes into a shared app, and only then", () => {
+    const big = { name: "film.mov", size: 11 * 1024 * 1024 } as File;
+    const small = { name: "a.md", size: 10 * 1024 * 1024 } as File;
+    expect(largeForSharing([small, big], true)).toEqual([big]);
+    expect(largeForSharing([small, big], false)).toEqual([]);
   });
 });
 

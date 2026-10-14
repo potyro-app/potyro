@@ -66,8 +66,12 @@ function joinPath(folder: string | undefined, name: string): string {
  * (#266, #258). Those are checked against a lock before they run; an app that could write them
  * could not change what runs (the check refuses it), but it could break itself, and listing them
  * would show a person's notes app a folder of minified libraries.
+ *
+ * Earlier copies (#255) are the shell's, not the app's: the app sees one file per path.
  */
-function appFolder(space: FileSpace): FileSpace {
+type AppFolder = Pick<FileSpace, "list" | "find" | "read" | "write" | "rename" | "remove">;
+
+function appFolder(space: FileSpace): AppFolder {
   const refuse = (path: string): void => {
     if (isReservedPath(path)) throw new Error(`"${path}" is kept for the app's own code`);
   };

@@ -15,14 +15,21 @@
 // Bytes are written BEFORE the entry that points at them, and the old bytes are dropped AFTER the
 // entry moved off them: an entry pointing at nothing would read as a broken file, while unreferenced
 // bytes are only wasted space.
+//
+// In a shared app (#255) two members can write the same file. The last write wins, at the file level
+// — nothing merges two versions of a text — and what it replaced is kept as an EARLIER COPY, for a
+// while: the last few, from the last month. Two members who each made the same path while apart
+// meet as two entries at one path; the folder shows the newer one, and the other is its earlier
+// copy until the next write folds it in. Earlier copies are the folder's, never the app's: `ctx.files`
+// sees a file as `FileInfo`, without them.
 import type { FileInfo, FileOrigin, FileRef } from "potyro";
-import type { Store, StoredFile } from "./types.js";
+import type { EarlierCopy, Store, StoredFile } from "./types.js";
 import { ulid } from "./ulid.js";
 
 /** A file named by its path, or by the `FileRef` a `file` field holds. */
 export type FileTarget = string | FileRef;
 
-export type FileSpaceErrorCode = "invalid-path" | "no-file" | "taken";
+export type FileSpaceErrorCode = "invalid-path" | "no-file" | "taken" | "space-full";
 
 export class FileSpaceError extends Error {
   constructor(
@@ -31,6 +38,22 @@ export class FileSpaceError extends Error {
   ) {
     super(message);
     this.name = "FileSpaceError";
+  }
+}
+
+/**
+ * A write a shared space has no room for (#255): what it holds on the relay, its budget, and what
+ * the write needed. Nothing was written.
+ */
+export class SpaceFullError extends FileSpaceError {
+  constructor(
+    readonly used: number,
+    readonly budget: number,
+    readonly needed: number,
+  ) {
+    const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    super("space-full", `This app's shared space is full: ${mb(used)} of ${mb(budget)} is used, and this file needs ${mb(needed)}.`);
+    this.name = "SpaceFullError";
   }
 }
 
@@ -124,11 +147,23 @@ export async function digest(bytes: Uint8Array): Promise<string> {
   return `fnv-${a.toString(16).padStart(8, "0")}${b.toString(16).padStart(8, "0")}${bytes.length.toString(16)}`;
 }
 
-/** What the app sees: the entry without the store's blob key. */
+/** What the app sees: the entry without the store's blob key or its earlier copies. */
 export function fileInfo(entry: StoredFile): FileInfo {
-  const { blob: _blob, ...info } = entry;
+  const { blob: _blob, earlier: _earlier, ...info } = entry;
   return info;
 }
+
+/** How many earlier copies of a file are kept, and for how long after they were replaced. */
+export const KEEP_EARLIER = 3;
+export const EARLIER_FOR_MS = 30 * 24 * 3600 * 1000;
+
+/** Of several entries at one path, the one the folder shows: the newest write, then the larger id. */
+function newest(a: StoredFile, b: StoredFile): StoredFile {
+  if (a.updated !== b.updated) return a.updated > b.updated ? a : b;
+  return a.id > b.id ? a : b;
+}
+
+const asEarlier = (f: StoredFile, replaced: string): EarlierCopy => ({ blob: f.blob, hash: f.hash, size: f.size, mime: f.mime, updated: f.updated, replaced });
 
 export interface FileSpace {
   list(folder?: string): Promise<FileInfo[]>;
@@ -139,13 +174,39 @@ export interface FileSpace {
   write(path: string, data: Blob, opts?: { mime?: string; origin?: FileOrigin }): Promise<FileInfo>;
   rename(target: FileTarget, to: string): Promise<FileInfo>;
   remove(target: FileTarget): Promise<void>;
+  /**
+   * Whether the file's bytes are on this device — without fetching them. Always true where nothing
+   * syncs; in a shared app, false until someone here has read the file (#255).
+   */
+  here(target: FileTarget): Promise<boolean>;
+  /** The copies a newer write replaced, newest first (#255). */
+  earlier(target: FileTarget): Promise<EarlierCopy[]>;
+  /** An earlier copy's bytes, or `null` when they are not on this device. */
+  readEarlier(target: FileTarget, copy: EarlierCopy): Promise<Blob | null>;
+  /** Make an earlier copy the file again; what it replaces becomes an earlier copy in turn. */
+  restoreEarlier(target: FileTarget, copy: EarlierCopy): Promise<FileInfo>;
 }
 
 export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSpace {
   const now = () => (opts.now ? opts.now() : new Date()).toISOString();
 
-  const byPath = async (path: string): Promise<StoredFile | null> =>
-    (await store.listFiles()).find((f) => f.path === path) ?? null;
+  /** Every entry at a path: one, normally; more when members made it apart. */
+  const allAt = async (path: string): Promise<StoredFile[]> => (await store.listFiles()).filter((f) => f.path === path);
+  const byPath = async (path: string): Promise<StoredFile | null> => (await allAt(path)).reduce<StoredFile | null>((w, f) => (w ? newest(w, f) : f), null);
+
+  /** Earlier copies to keep, newest first: the last few, none older than the window. Returns the rest too. */
+  const prune = (copies: EarlierCopy[], at: string): { keep: EarlierCopy[]; drop: EarlierCopy[] } => {
+    const sorted = [...copies].sort((a, b) => (a.replaced < b.replaced ? 1 : a.replaced > b.replaced ? -1 : 0));
+    const cutoff = new Date(new Date(at).getTime() - EARLIER_FOR_MS).toISOString();
+    const keep = sorted.filter((c) => c.replaced >= cutoff).slice(0, KEEP_EARLIER);
+    return { keep, drop: sorted.filter((c) => !keep.includes(c)) };
+  };
+
+  /** The entry's earlier copies, with any stray entries at its path read as earlier copies too. */
+  const earlierOf = async (f: StoredFile): Promise<EarlierCopy[]> => {
+    const strays = (await allAt(f.path)).filter((o) => o.id !== f.id).map((o) => asEarlier(o, o.updated));
+    return prune([...(f.earlier ?? []), ...strays], f.updated).keep;
+  };
 
   const find = async (target: FileTarget): Promise<StoredFile | null> => {
     if (typeof target === "string") return byPath(normalisePath(target));
@@ -159,13 +220,16 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
     return f;
   };
 
-  return {
+  const space: FileSpace = {
     async list(folder) {
       const prefix = folderPrefix(folder);
-      return (await store.listFiles())
-        .filter((f) => f.path.startsWith(prefix))
-        .sort((a, b) => a.path.localeCompare(b.path))
-        .map(fileInfo);
+      const shown = new Map<string, StoredFile>();
+      for (const f of await store.listFiles()) {
+        if (!f.path.startsWith(prefix)) continue;
+        const other = shown.get(f.path);
+        shown.set(f.path, other ? newest(other, f) : f);
+      }
+      return [...shown.values()].sort((a, b) => a.path.localeCompare(b.path)).map(fileInfo);
     },
 
     find,
@@ -180,9 +244,19 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
       const bytes = new Uint8Array(await data.arrayBuffer());
       const mime = mimeOf(path, o.mime ?? data.type);
       const hash = await digest(bytes);
-      const existing = await byPath(path);
+      const at = await allAt(path);
+      const existing = at.reduce<StoredFile | null>((w, f) => (w ? newest(w, f) : f), null);
+      // A shared space has a budget on the relay (#255). Checked before a byte is written; replacing a
+      // file does not make room, since the relay keeps what it replaced.
+      const usage = await store.spaceUsage?.();
+      if (usage && usage.used + bytes.byteLength > usage.budget) throw new SpaceFullError(usage.used, usage.budget, bytes.byteLength);
       const ref = await store.putBlob(new Blob([bytes], { type: mime }));
       const stamp = now();
+      // What this write replaces — the file as it was, and any entry a member made here apart — is
+      // kept as earlier copies; past the last few, or the window, its bytes go.
+      const strays = at.filter((f) => f !== existing);
+      const replaced = existing && existing.blob !== ref.key ? [asEarlier(existing, stamp)] : [];
+      const { keep, drop } = prune([...replaced, ...(existing?.earlier ?? []), ...strays.map((f) => asEarlier(f, f.updated))], stamp);
       const entry: StoredFile = {
         id: existing?.id ?? ulid(),
         path,
@@ -194,9 +268,17 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
         created: existing?.created ?? stamp,
         updated: stamp,
         blob: ref.key,
+        ...(keep.length ? { earlier: keep } : {}),
       };
-      await store.setFile(entry);
-      if (existing && existing.blob !== ref.key) await store.deleteBlob(existing.blob);
+      try {
+        await store.setFile(entry);
+      } catch (e) {
+        // Refused (a shared space does not take the app's code): the bytes just written are no one's.
+        await store.deleteBlob(ref.key).catch(() => {});
+        throw e;
+      }
+      for (const f of strays) await store.deleteFile(f.id);
+      for (const c of drop) if (c.blob !== ref.key) await store.deleteBlob(c.blob);
       return fileInfo(entry);
     },
 
@@ -213,10 +295,44 @@ export function fileSpace(store: Store, opts: { now?: () => Date } = {}): FileSp
 
     async remove(target) {
       const f = await mustFind(target);
+      // The file goes, with every copy of it: earlier ones, and entries members made at its path apart.
+      const strays = (await allAt(f.path)).filter((o) => o.id !== f.id);
       await store.deleteFile(f.id);
-      await store.deleteBlob(f.blob);
+      for (const o of strays) await store.deleteFile(o.id);
+      for (const key of new Set([f.blob, ...(f.earlier ?? []).map((c) => c.blob), ...strays.flatMap((o) => [o.blob, ...(o.earlier ?? []).map((c) => c.blob)])])) {
+        await store.deleteBlob(key);
+      }
+    },
+
+    async here(target) {
+      const f = await mustFind(target);
+      return store.blobHere ? store.blobHere({ key: f.blob, mime: f.mime }) : true;
+    },
+
+    async earlier(target) {
+      return earlierOf(await mustFind(target));
+    },
+
+    async readEarlier(target, copy) {
+      await mustFind(target);
+      return store.getBlob({ key: copy.blob, mime: copy.mime });
+    },
+
+    async restoreEarlier(target, copy) {
+      const f = await mustFind(target);
+      // The copy's bytes are already in the space (and on the relay): point the file back at them
+      // rather than write them again, which would cost a shared space the same bytes twice (#255).
+      const stamp = now();
+      const others = (f.earlier ?? []).filter((c) => !(c.blob === copy.blob && c.hash === copy.hash));
+      const { keep, drop } = prune([asEarlier(f, stamp), ...others], stamp);
+      const entry: StoredFile = { ...f, blob: copy.blob, hash: copy.hash, size: copy.size, mime: copy.mime, updated: stamp, ...(keep.length ? { earlier: keep } : {}) };
+      if (!keep.length) delete entry.earlier;
+      await store.setFile(entry);
+      for (const c of drop) if (c.blob !== copy.blob) await store.deleteBlob(c.blob);
+      return fileInfo(entry);
     },
   };
+  return space;
 }
 
 function describe(target: FileTarget): string {
