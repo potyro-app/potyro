@@ -23,7 +23,7 @@ const chip = (page: Page) => page.locator(".k-scope");
 const picker = (page: Page) => page.getByRole("dialog", { name: "Choose" });
 
 async function createTrip(page: Page, city: string): Promise<void> {
-  await picker(page).getByRole("button", { name: /New Trip/ }).click();
+  await picker(page).getByRole("button", { name: /Add: Trip/ }).click();
   const form = page.locator(".k-form");
   await form.getByLabel(/City/).fill(city);
   await form.getByRole("button", { name: "Create" }).click();
@@ -41,7 +41,7 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await createTrip(page, "Berlin");
 
   // A new place belongs to the trip you are in — the relation defaulted to the scope.
-  await page.getByRole("button", { name: /New Place/ }).first().click();
+  await page.getByRole("button", { name: /Add: Place/ }).first().click();
   const form = page.locator(".k-form");
   await form.getByLabel(/Name/).fill("Cozy Bar");
   await form.getByRole("button", { name: "Create" }).click();

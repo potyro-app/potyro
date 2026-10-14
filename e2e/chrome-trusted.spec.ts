@@ -26,7 +26,7 @@ test.describe("phone", () => {
     // The ⋯ menu holds the other quick action, the tools, and the report / trust lines.
     await page.getByRole("button", { name: "More", exact: true }).tap();
     const menu = page.getByRole("menu", { name: "More" });
-    await expect(menu.getByRole("menuitem")).toHaveText([/New Ingredient/, /Ask/, /Studio/, /Edit mode/, /History/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs directly/]);
+    await expect(menu.getByRole("menuitem")).toHaveText([/Add: Ingredient/, /Ask/, /Studio/, /Edit mode/, /History/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs directly/]);
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
 
@@ -40,13 +40,13 @@ test.describe("phone", () => {
     await expect(page.locator(".k-list-row").first()).toContainText(/./);
     await expect(bar.locator(".k-tab-more-active")).toHaveCount(1);
     // On the Ingredients page the floating action is the ingredient's.
-    await expect(page.locator(".k-fab")).toHaveText(/New Ingredient/);
+    await expect(page.locator(".k-fab")).toHaveText(/Add: Ingredient/);
   });
 
   test("the floating action runs the page's quick action; held, it offers the others", async ({ page }) => {
     await openRecipes(page);
     const fab = page.locator(".k-fab");
-    await expect(fab).toHaveText(/New Recipe/);
+    await expect(fab).toHaveText(/Add: Recipe/);
     const box = (await fab.boundingBox())!;
     expect(box.y + box.height).toBeLessThan(812 - 60); // above the tab bar
     expect(box.height).toBeGreaterThanOrEqual(44);
@@ -62,7 +62,7 @@ test.describe("phone", () => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     const dial = page.getByRole("group", { name: "Quick actions" });
     await expect(dial).toBeVisible();
-    await dial.getByRole("button", { name: /New Ingredient/ }).tap();
+    await dial.getByRole("button", { name: /Add: Ingredient/ }).tap();
     await expect(page.getByRole("dialog", { name: "Add: Ingredient" })).toBeVisible();
   });
 
@@ -91,14 +91,14 @@ test.describe("desktop", () => {
     await openRecipes(page);
     const side = page.locator(".k-sidebar");
     await expect(side.locator(".k-sidenav .k-tab")).toHaveCount(8);
-    await expect(side.locator(".k-quickbar .k-quick")).toHaveText([/New Recipe/, /New Ingredient/]);
-    await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/New Recipe/);
+    await expect(side.locator(".k-quickbar .k-quick")).toHaveText([/Add: Recipe/, /Add: Ingredient/]);
+    await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/Add: Recipe/);
     await expect(side.locator(".k-tools .k-tool")).toHaveText([/Ask/, /Studio/, /Edit mode/, /History/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs directly/, /All apps/]);
     await expect(page.locator(".k-topbar")).toHaveCount(0);
     await expect(page.locator(".k-page-title")).toHaveText("Recipes");
     // The primary quick action follows the page.
     await side.getByRole("button", { name: "Ingredients" }).click();
-    await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/New Ingredient/);
+    await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/Add: Ingredient/);
   });
 
   test("an object-grid app lists Home first", async ({ page }) => {

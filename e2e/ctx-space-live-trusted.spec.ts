@@ -104,7 +104,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
   await expect(ana.locator(".k-aggregate-row")).toHaveCount(2, { timeout: 60_000 });
 
   // And a later write still works, i.e. the two sources coexist rather than one replacing the other.
-  await bruno.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await bruno.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await bruno.getByLabel(/title/i).fill("Hello");
   await bruno.getByRole("button", { name: "Create" }).first().click();
   await ana.locator(".k-tab", { hasText: "Notes" }).click();

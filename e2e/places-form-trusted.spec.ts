@@ -122,7 +122,7 @@ test("a relation to an empty entity can create its first record inline", async (
   await trigger.click();
   // What you type becomes the new record's name.
   await page.getByRole("searchbox", { name: /^Search/ }).fill("Park");
-  await page.getByRole("button", { name: /New place type “Park”/ }).click();
+  await page.getByRole("button", { name: /Add: Place Type “Park”/ }).click();
 
   // The nested create is a second sheet over the first (#101), and not a <form> — React would
   // bubble its submit to the outer form even through the portal.

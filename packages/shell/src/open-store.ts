@@ -241,8 +241,6 @@ export function canSync(): boolean {
 
 /** Why sync cannot start here, in the person's language (read at call time, so it follows a switch). */
 export const cannotSyncMessage = (): string => t`Sync needs IndexedDB, which this browser has disabled or blocked.`;
-/** @deprecated The English words, kept until every caller reads `cannotSyncMessage()`. */
-export const CANNOT_SYNC_MESSAGE = "Sync needs IndexedDB, which this browser has disabled or blocked.";
 
 export async function openStore(namespace: string, opts?: OpenStoreOpts): Promise<Store> {
   if (opts?.sync) {

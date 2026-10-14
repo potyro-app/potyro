@@ -54,7 +54,7 @@ async function device(context: BrowserContext): Promise<Page> {
 }
 
 const add = async (page: Page, name: string): Promise<void> => {
-  await page.getByRole("button", { name: /New Spot|Add Spot/i }).first().click();
+  await page.getByRole("button", { name: /Add: Spot|Add Spot/i }).first().click();
   await page.getByLabel(/name/i).fill(name);
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: name })).toBeVisible();

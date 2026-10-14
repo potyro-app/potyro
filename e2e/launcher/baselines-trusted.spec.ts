@@ -89,7 +89,7 @@ for (const width of [375, 1440] as const) {
         await page.goto("/?user=plants");
         await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
         await pinFonts(page);
-        await page.getByRole("button", { name: "New Plant" }).click();
+        await page.getByRole("button", { name: "Add: Plant" }).click();
         await expect(page.locator(".k-form")).toBeVisible();
         // Shoot the form where it lands, not where it is passing through: the sheet slides in, and
         // focusing the first field can leave the body scrolled by a few pixels. Both made the same

@@ -68,7 +68,7 @@ test("navigating to a missing page crashes only the view — the shell and the r
   await expect(page.locator("h1").first()).toHaveText(APP_NAME);
 
   // Create a record so there is a row to trigger the crashing action from.
-  await page.getByRole("button", { name: "New Town" }).click();
+  await page.getByRole("button", { name: "Add: Town" }).click();
   await page.getByLabel("Name").fill("Springfield");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toBeVisible();

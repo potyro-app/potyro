@@ -148,7 +148,7 @@ const storedSource = (page: Page): Promise<string> =>
 
 /** Add a note through the app's own generated form. */
 async function addNote(page: Page, note: { title: string; body: string }): Promise<void> {
-  await page.locator(".k-quickbar").getByRole("button", { name: /New Note/ }).click();
+  await page.locator(".k-quickbar").getByRole("button", { name: /Add: Note/ }).click();
   const modal = page.locator(".k-modal");
   await expect(modal).toBeVisible();
   await modal.getByRole("textbox").nth(0).fill(note.title);

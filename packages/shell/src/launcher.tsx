@@ -26,7 +26,7 @@ import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./ident
 import { LookPanel } from "./look-panel.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
-import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
+import { canSync, cannotSyncMessage } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
@@ -514,7 +514,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   const toggleSync = async (a: UserApp): Promise<void> => {
     const on = !a.sync;
     if (on && !canSync()) {
-      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      await shellDialogs.confirm(cannotSyncMessage());
       return;
     }
     // An app someone else wrote is asked about first (KA-23): sync is what lets its code write into
@@ -555,7 +555,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // fragment never reaches a server, which is what keeps the key off the relay.
   const share = async (a: UserApp): Promise<void> => {
     if (!canSync()) {
-      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      await shellDialogs.confirm(cannotSyncMessage());
       return;
     }
     try {

@@ -28,7 +28,7 @@ async function device(context: BrowserContext, seed = false): Promise<Page> {
 }
 
 const add = async (page: Page, name: string): Promise<void> => {
-  await page.getByRole("button", { name: /New Spot|Add Spot/i }).first().click();
+  await page.getByRole("button", { name: /Add: Spot|Add Spot/i }).first().click();
   await page.getByLabel(/name/i).fill(name);
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: name })).toBeVisible();
@@ -101,7 +101,7 @@ test("the owner removes someone, who then gets nothing new and cannot rejoin wit
   // ---- what Ana writes now never reaches Bo; what Bo writes never reaches Ana ----
   await add(a, "After removal");
   // Bo can no longer write at all, and is told so in words, not in the sync engine's.
-  await b.getByRole("button", { name: /New Spot|Add Spot/i }).first().click();
+  await b.getByRole("button", { name: /Add: Spot|Add Spot/i }).first().click();
   await b.getByLabel(/name/i).fill("Bo was here");
   await b.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(b.locator(".k-form-error")).toContainText("You can't change this app", { timeout: 30_000 });

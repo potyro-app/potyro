@@ -36,7 +36,7 @@ async function device(context: BrowserContext, seed = false): Promise<Page> {
 }
 
 const add = async (page: Page, description: string): Promise<void> => {
-  await page.getByRole("button", { name: /New Expense|Add Expense/i }).first().click();
+  await page.getByRole("button", { name: /Add: Expense|Add Expense/i }).first().click();
   await page.getByLabel(/description/i).fill(description);
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   // Saving opens the record it just made.

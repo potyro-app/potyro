@@ -50,7 +50,7 @@ test("a form opened from the app in the Studio stays on the app's screen, on top
   await expect(screen.locator("h1").first()).toHaveText("My App", { timeout: 60_000 });
 
   // The starter's own quick action, inside the app.
-  await screen.getByRole("button", { name: /New Item/ }).first().click();
+  await screen.getByRole("button", { name: /Add: Item/ }).first().click();
   const sheet = page.locator(".k-sheet").last();
   await expect(sheet).toBeVisible();
   // Inside the app's screen, not portalled over the whole page.

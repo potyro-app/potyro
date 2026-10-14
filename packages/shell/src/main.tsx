@@ -3,6 +3,7 @@
 // dev:sandbox` (mode "sandbox") seeds the examples untrusted, which is what exercises the isolate.
 
 // First, before any module below reads localStorage: the codename-to-product key move (#114).
+import { t } from "@lingui/core/macro";
 import "./rename-migration.js";
 import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
@@ -115,7 +116,8 @@ async function exportApp(
       code,
     });
     await caps.filesystem.save(`${def.id}.potyro.zip`, new Blob([zip as BlobPart], { type: "application/zip" }));
-    toaster.push(`Exported ${def.id}.potyro.zip`);
+    const file = `${def.id}.potyro.zip`;
+    toaster.push(t`Exported ${file}`);
   } finally {
     snapshot.destroy();
   }
@@ -188,16 +190,17 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
     sqlite = bundle.sqlite;
     entities = bundle.manifest.entities ?? [];
   } catch {
-    toaster.push("Not a valid Potyro export bundle.");
+    toaster.push(t`Not a valid Potyro export bundle.`);
     return;
   }
   const target = getUserApp(appId);
   if (!target) {
-    toaster.push(`No app "${appId}" installed to import into.`);
+    toaster.push(t`No app "${appId}" installed to import into.`);
     return;
   }
   if (target.sync) {
-    toaster.push(`"${target.name}" is synced; a data import would overwrite what others share.`);
+    const name = target.name;
+    toaster.push(t`"${name}" is synced; a data import would overwrite what others share.`);
     return;
   }
   sessionStorage.setItem(IMPORT_KEY, JSON.stringify({ sqlite: bytesToBase64(sqlite), entities }));
@@ -268,15 +271,13 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   );
   // Joining IS the consent sync needs (KA-23): the question says what syncing means before anyone
   // answers it, and declining trust still joins — sandboxed, which is the safer half, not a refusal.
-  const trust = await shellDialogs.confirm(`“${invite.name}” was shared with you.`, {
-    detail:
-      "Its data syncs with the people sharing it: what the app writes on this device, they can read. " +
-      (custom
-        ? "Its screens are built with its own code, so it needs to run trusted to display them."
-        : "Apps from other people run sandboxed by default.") +
-      " You can change this later from the app header.",
-    ok: "Join and trust",
-    cancel: "Join, keep sandboxed",
+  const invited = invite.name;
+  const trust = await shellDialogs.confirm(t`“${invited}” was shared with you.`, {
+    detail: custom
+      ? t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header.`
+      : t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header.`,
+    ok: t`Join and trust`,
+    cancel: t`Join, keep sandboxed`,
   });
 
   // Asked after trust and before joining. After, because "do you trust this app?" is the question
@@ -292,7 +293,8 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
     history.replaceState(null, "", `${location.pathname}?user=${encodeURIComponent(id)}`);
     return id;
   } catch (e) {
-    root.textContent = `Could not join: ${e instanceof Error ? e.message : String(e)}`;
+    const why = e instanceof Error ? e.message : String(e);
+    root.textContent = t`Could not join: ${why}`;
     return null;
   }
 }
@@ -305,12 +307,17 @@ async function runMigrationsIfPossible(
 ): Promise<void> {
   try {
     const { ran, from } = await migrateOnLoad(store, definition);
-    if (ran.length) toaster.push(`Updated your data from ${from} to ${definition.version}.`);
+    if (ran.length) {
+      const was = from ?? "";
+      const to = definition.version;
+      toaster.push(t`Updated your data from ${was} to ${to}.`);
+    }
   } catch (e) {
     // A failed migration must not leave the user staring at a blank screen with no explanation.
     // The app still opens; the data is simply not migrated yet.
     console.warn("[potyro] migration failed:", e);
-    toaster.push(`Could not update your data: ${e instanceof Error ? e.message : String(e)}`);
+    const why = e instanceof Error ? e.message : String(e);
+    toaster.push(t`Could not update your data: ${why}`);
   }
 }
 
@@ -363,7 +370,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // local-only rather than failing: that is what the permission means.
   const syncAllowed = !saved.sync || (await syncAllowedFor(saved));
   if (saved.sync && !syncAllowed) {
-    toaster.push(`“${saved.name}” runs on this device only: it has not been allowed to sync.`);
+    const name = saved.name;
+    toaster.push(t`“${name}” runs on this device only: it has not been allowed to sync.`);
   }
 
   // Who this device is (KA-18), before the store: minted on first run with crypto alone — no
@@ -378,9 +386,11 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     rawStore = await openStore(`user:${id}`, { sync: false });
     try {
       await replaceWithBundle(rawStore, pending, id);
-      toaster.push(`Imported data into ${saved.name}.`);
+      const name = saved.name;
+      toaster.push(t`Imported data into ${name}.`);
     } catch (e) {
-      toaster.push(`Could not import that data: ${e instanceof Error ? e.message : String(e)}`);
+      const why = e instanceof Error ? e.message : String(e);
+      toaster.push(t`Could not import that data: ${why}`);
     }
   } else {
     // Seeded when empty, never when joined — the same open the Data panel uses (app-store.ts).
@@ -491,7 +501,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     } catch (e) {
       // A library or module that does not match its lock is not a reason to try the sealed box.
       if (e instanceof ModuleError) return failed(e);
-      toaster.push(`Couldn't run "${saved.name}" trusted; opening safely. ${e instanceof Error ? e.message : ""}`.trim());
+      const name = saved.name;
+      const why = e instanceof Error ? e.message : "";
+      toaster.push((why ? t`Couldn't run "${name}" trusted; opening safely. ${why}` : t`Couldn't run "${name}" trusted; opening safely.`).trim());
     }
   }
   if (provenance === "untrusted") {
@@ -918,7 +930,10 @@ function registerServiceWorker(): void {
 
 boot().catch((err: unknown) => {
   const root = document.getElementById("root");
-  if (root) root.textContent = `Boot error: ${err instanceof Error ? err.message : String(err)}`;
+  if (root) {
+    const why = err instanceof Error ? err.message : String(err);
+    root.textContent = t`Boot error: ${why}`;
+  }
   // eslint-disable-next-line no-console
   console.error(err);
 });

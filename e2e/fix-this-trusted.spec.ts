@@ -152,7 +152,7 @@ async function recordTheCase(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Something's wrong" }).click();
   await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
 
-  await page.getByRole("button", { name: "New City" }).click();
+  await page.getByRole("button", { name: "Add: City" }).click();
   await page.getByLabel("Name").fill("Paris");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toBeVisible();
