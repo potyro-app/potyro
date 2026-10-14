@@ -6,7 +6,7 @@
 // callback — it relies on one channel answered in order — so that property is worth pinning.
 
 import { describe, expect, it } from "vitest";
-import { openWorkerSqlite, type WorkerFactory } from "../src/sqlite-worker-client.js";
+import { isStorageElsewhere, onStorageElsewhere, openWorkerSqlite, type WorkerFactory } from "../src/sqlite-worker-client.js";
 
 /** A worker that records what it was asked, and answers in the order it was asked. */
 function fakeWorker(): { factory: WorkerFactory; sql: string[]; terminated: () => boolean } {
@@ -208,5 +208,49 @@ describe("the storage worker client", () => {
     const { driver } = await openWorkerSqlite("pragma-version", factory);
 
     expect(await driver.getMigrationVersion?.()).toBe(3);
+  });
+
+  // Another tab owns the storage (storage-owner.ts). That must reach the caller as itself — callers
+  // fall back to other storage on any other error, and a fallback here is a second copy of the apps.
+  it("says when another tab has the storage, so nobody falls back to a second copy", async () => {
+    const factory: WorkerFactory = () => {
+      const w = {
+        onmessage: null as ((e: { data: unknown }) => void) | null,
+        postMessage(message: unknown) {
+          const m = message as { id: number };
+          setTimeout(() => w.onmessage?.({ data: { id: m.id, ok: false, error: "Potyro is open in another tab", code: "storage-elsewhere" } }), 0);
+        },
+        terminate() {},
+      };
+      return w;
+    };
+    let told = 0;
+    const stop = onStorageElsewhere(() => told++);
+    const err = await openWorkerSqlite("held-elsewhere", factory).catch((e: unknown) => e);
+    stop();
+    expect(isStorageElsewhere(err)).toBe(true);
+    expect(told).toBe(1);
+  });
+
+  it("fails what is still waiting when another tab takes the storage over", async () => {
+    let worker: { onmessage: ((e: { data: unknown }) => void) | null } | null = null;
+    const factory: WorkerFactory = () => {
+      const w = {
+        onmessage: null as ((e: { data: unknown }) => void) | null,
+        postMessage(message: unknown) {
+          const m = message as { id: number; op: string };
+          // The open is answered; the query after it never is, because the files are handed on.
+          if (m.op === "open") setTimeout(() => w.onmessage?.({ data: { id: m.id, ok: true } }), 0);
+          else setTimeout(() => w.onmessage?.({ data: { event: "lost" } }), 0);
+        },
+        terminate() {},
+      };
+      worker = w;
+      return w;
+    };
+    const { driver } = await openWorkerSqlite("taken-over", factory);
+    expect(worker).not.toBeNull();
+    const err = await driver.query("SELECT 1", []).catch((e: unknown) => e);
+    expect(isStorageElsewhere(err)).toBe(true);
   });
 });

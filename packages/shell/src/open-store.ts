@@ -16,7 +16,7 @@
 // user switched on, it fails loudly and the caller decides.
 
 import { t } from "@lingui/core/macro";
-import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
+import { copyStoreData, createSqliteStore, isStorageElsewhere, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -303,6 +303,10 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       modes.set(namespace, "worker");
       return store;
     } catch (err) {
+      // Another tab has this app's database. `localStorage` here would be a second copy, empty or
+      // stale, that the next open in the right tab would not see: the tab says so instead
+      // (storage-elsewhere.tsx).
+      if (isStorageElsewhere(err)) throw err;
       console.info(`[potyro] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
     }
   }

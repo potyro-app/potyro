@@ -158,6 +158,23 @@ export default defineConfig({
           use: { ...device, baseURL: `http://localhost:${SANDBOX_PORT}` },
         }))
       : []),
+    // One tab owns the storage (storage-owner.ts), in the other two engines: the two-tab errors were
+    // reported from Firefox, and Web Locks, OPFS and sync access handles are each engine's own. OPT-IN
+    // (`POTYRO_STORAGE_BROWSERS=1 pnpm e2e --project=storage-firefox --project=storage-webkit`) for
+    // the reason trusted-firefox is. Playwright's WebKit on Linux has no OPFS at all, so there it
+    // proves the lock and the screen over the fallback storage, and skips what needs a pool.
+    ...(process.env.POTYRO_STORAGE_BROWSERS
+      ? (
+          [
+            ["storage-firefox", devices["Desktop Firefox"]],
+            ["storage-webkit", devices["Desktop Safari"]],
+          ] as const
+        ).map(([name, device]) => ({
+          name,
+          testMatch: /storage-owner-trusted\.spec\.ts/,
+          use: { ...device, baseURL: `http://localhost:${TRUSTED_PORT}` },
+        }))
+      : []),
     ...(process.env.POTYRO_QUICKJS
       ? [
           {

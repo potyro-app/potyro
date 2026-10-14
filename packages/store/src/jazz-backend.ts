@@ -32,6 +32,7 @@ import { LocalNode, getSqliteStorageAsync } from "cojson";
 import { JazzStore } from "./jazz-store.js";
 import { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
+import { isStorageElsewhere } from "./storage-owner.js";
 
 /** Where the ids above are remembered. `localStorage` in the browser; a Map in tests. */
 export interface JazzKeyStore {
@@ -534,7 +535,10 @@ export async function openAccountNodeInBrowser(opts?: {
     if (workersAvailable()) {
       try {
         driver = (await openWorkerSqlite(dbName)).driver;
-      } catch {
+      } catch (err) {
+        // Another tab has the storage: reading a second copy of the account here would be reading
+        // the wrong one. The tab says so in words (onStorageElsewhere); there is nothing to offer.
+        if (isStorageElsewhere(err)) return null;
         driver = undefined;
       }
     }
@@ -632,7 +636,10 @@ export async function openJazzStore(
     try {
       driver = (await openWorkerSqlite(dbName)).driver;
     } catch (err) {
-      // No worker, no OPFS, or another tab holding the pool. Sync matters more than speed.
+      // Another tab owns the storage. Falling back would open a second, stale copy of the device's
+      // database and write to it — the split this refuses (storage-owner.ts).
+      if (isStorageElsewhere(err)) throw err;
+      // No worker, or no OPFS. Sync matters more than speed.
       console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
       driver = undefined;
     }

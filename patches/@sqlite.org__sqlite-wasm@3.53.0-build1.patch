@@ -1,0 +1,58 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 6475875f8a7d5c1eee34d322ea3e3e91a97c7b1e..aa1fba05b33898e4e0ecb44dcae0d3e83e15f571 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -15161,13 +15161,14 @@ async function sqlite3InitModule(moduleArg = {}) {
+ 				@see pauseVfs()
+ 				@see unpauseVfs()
+ 				*/
+-				async removeVfs() {
++				async removeVfs(keepFiles = false) {
+ 					if (!this.#cVfs.pointer || !this.#dhOpaque) return false;
+ 					capi.sqlite3_vfs_unregister(this.#cVfs.pointer);
+ 					this.#cVfs.dispose();
+ 					delete initPromises[this.vfsName];
+ 					try {
+ 						this.releaseAccessHandles();
++						if (keepFiles) return true;
+ 						await this.#dhVfsRoot.removeEntry(OPAQUE_DIR_NAME, { recursive: true });
+ 						this.#dhOpaque = void 0;
+ 						await this.#dhVfsParent.removeEntry(this.#dhVfsRoot.name, { recursive: true });
+@@ -15665,7 +15666,7 @@ async function sqlite3InitModule(moduleArg = {}) {
+ 						thePool.log("VFS initialized.");
+ 						return poolUtil;
+ 					}).catch(async (e) => {
+-						await thePool.removeVfs().catch(() => {});
++						await thePool.removeVfs(true).catch(() => {});
+ 						throw e;
+ 					});
+ 				}).catch((err) => {
+diff --git a/dist/sqlite3-worker1.mjs b/dist/sqlite3-worker1.mjs
+index 4d0ec9e72da08ad6a0daa640a1d3caa6a86f181a..c7613a20797563a176a361a7b9398df4806858cb 100644
+--- a/dist/sqlite3-worker1.mjs
++++ b/dist/sqlite3-worker1.mjs
+@@ -14973,13 +14973,14 @@ async function sqlite3InitModule(moduleArg = {}) {
+ 				@see pauseVfs()
+ 				@see unpauseVfs()
+ 				*/
+-				async removeVfs() {
++				async removeVfs(keepFiles = false) {
+ 					if (!this.#cVfs.pointer || !this.#dhOpaque) return false;
+ 					capi.sqlite3_vfs_unregister(this.#cVfs.pointer);
+ 					this.#cVfs.dispose();
+ 					delete initPromises[this.vfsName];
+ 					try {
+ 						this.releaseAccessHandles();
++						if (keepFiles) return true;
+ 						await this.#dhVfsRoot.removeEntry(OPAQUE_DIR_NAME, { recursive: true });
+ 						this.#dhOpaque = void 0;
+ 						await this.#dhVfsParent.removeEntry(this.#dhVfsRoot.name, { recursive: true });
+@@ -15477,7 +15478,7 @@ async function sqlite3InitModule(moduleArg = {}) {
+ 						thePool.log("VFS initialized.");
+ 						return poolUtil;
+ 					}).catch(async (e) => {
+-						await thePool.removeVfs().catch(() => {});
++						await thePool.removeVfs(true).catch(() => {});
+ 						throw e;
+ 					});
+ 				}).catch((err) => {
