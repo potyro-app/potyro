@@ -10,7 +10,8 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
-import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageElsewhere, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
@@ -829,6 +830,9 @@ async function boot(): Promise<void> {
   // device's, else English. English needs no fetch; another language is one small chunk, from the
   // service worker's cache when offline. The pseudo-language is offered in dev builds only.
   await startI18n({ pseudo: import.meta.env.DEV });
+  // Right after the language, before anything opens storage: if another tab has it, that is said
+  // in words — whether it is known now or only once that tab takes it over later.
+  watchStorageOwner();
   // On Android the OS can say more than the WebView does (a per-app language, say). Not awaited:
   // it only matters when it disagrees, and then the switch is live.
   void systemLanguages()
@@ -951,6 +955,8 @@ function registerServiceWorker(): void {
 }
 
 boot().catch((err: unknown) => {
+  // Not a boot error: the screen saying another tab has the storage is already up.
+  if (isStorageElsewhere(err)) return;
   const root = document.getElementById("root");
   if (root) {
     const why = err instanceof Error ? err.message : String(err);
