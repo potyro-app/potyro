@@ -15,7 +15,7 @@
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { humanizeKey } from "potyro";
+import { fieldLabel } from "./format.js";
 import type { PotyroRuntime } from "@potyro/runtime";
 
 interface Failure {
@@ -29,7 +29,7 @@ export function describePartFailure(failure: Failure, runtime: Pick<PotyroRuntim
   const computed = /^computed ([^.]+)\.(.+)$/.exec(failure.what);
   if (computed) {
     const [, entity, key] = computed;
-    const label = runtime.definition.entities[entity!]?.fields?.[key!]?.label ?? humanizeKey(key!);
+    const label = fieldLabel(runtime, entity!, key!);
     return t`“${label}” could not be worked out for some records: ${message}`;
   }
   if (failure.what.startsWith("page ")) return t`its records could not be listed: ${message}`;

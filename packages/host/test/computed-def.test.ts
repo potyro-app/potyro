@@ -1,0 +1,50 @@
+// A computed written `{ value, label }` (#310) runs the same as a bare function, at both provenances:
+// called on its own, and while resolving rows (where a later computed reads an earlier one). The
+// definition the isolate hands back keeps the label as data, the value as the box's placeholder.
+
+import { describe, expect, it } from "vitest";
+import { newAsyncContext } from "quickjs-emscripten";
+import { defineApp, localize, type AppInput } from "potyro";
+import { MemoryStore } from "@potyro/store";
+import { FakeCapabilities } from "@potyro/capabilities";
+import { createHost, type MakeCtxBase, type UiBridge } from "../src/index.js";
+import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+
+// Plain ES2020: the same text runs in the box.
+const APP = `({
+  id: "dishes", name: "Dishes", version: "1.0.0", schemaVersion: 1, language: "en", languages: ["en", "pl"],
+  entities: { dish: { fields: { kcal: { type: "number" }, servings: { type: "number" } }, computed: {
+    perServing: { label: { en: "Calories per serving", pl: "Kalorie na porcję" }, value: function(r){ return r.kcal / r.servings; } },
+    doubled: function(r){ return r.perServing * 2; }
+  } } },
+  pages: [{ id: "all", title: "All", view: { type: "list", entity: "dish" } }]
+})`;
+
+const newContext = (): Promise<QuickJSAsyncContextLike> => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>;
+
+async function load(kind: "direct" | "isolate") {
+  const store = new MemoryStore();
+  await store.open("dishes");
+  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+  const host = createHost({ loadIsolated: createIsolateLoader({ store, newContext }) });
+  const loaded =
+    kind === "direct"
+      ? await host.load({ kind: "module", app: defineApp(new Function(`return ${APP};`)() as AppInput) })
+      : await host.load({ kind: "bundle", code: `globalThis.__potyroApp = ${APP};`, provenance: "untrusted" });
+  const base: MakeCtxBase = { store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} }, now: new Date("2026-10-14T10:00:00Z") };
+  return { loaded, ctx: host.makeCtx(loaded, base) };
+}
+
+describe("a computed with a label", () => {
+  for (const kind of ["direct", "isolate"] as const) {
+    it(`runs its value, alone and while resolving rows (${kind})`, async () => {
+      const { loaded, ctx } = await load(kind);
+      await ctx.create("dish", { kcal: 900, servings: 3 });
+      const [row] = await ctx.query("dish");
+      expect(row).toMatchObject({ perServing: 300, doubled: 600 });
+      expect(await loaded.callComputed("dish", "perServing", row!, ctx)).toBe(300);
+      expect(localize(loaded.definition, "pl").entities.dish!.computed!.perServing).toMatchObject({ label: "Kalorie na porcję" });
+      loaded.dispose();
+    });
+  }
+});

@@ -3,7 +3,7 @@
 // returns the real React component. No isolate, no marshalling. This is the runner for the
 // user's own apps and for tests.
 
-import { actionRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "potyro";
+import { actionRun, computedRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "potyro";
 import type { Binding, ReminderWhen } from "potyro";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
 
@@ -65,7 +65,7 @@ export class DirectLoadedApp implements LoadedApp {
   }
 
   async callComputed(entity: string, key: string, record: Resolved, ctx: unknown): Promise<Value> {
-    const fn = this.definition.entities[entity]?.computed?.[key];
+    const fn = computedRun(this.definition.entities[entity], key);
     if (!fn) throw new Error(`computed ${entity}.${key} not found`);
     return (await fn(record, ctx as never)) as Value;
   }
