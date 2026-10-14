@@ -49,6 +49,7 @@ import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, 
 import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
+import { isReservedPath } from "./app-lock.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -92,6 +93,10 @@ interface RawBinaryLike {
 interface NodeLike {
   /** Async because a CoValue restored from storage is not in memory until it is loaded. */
   load(id: string): Promise<unknown>;
+  /** The CoValue if it is already in memory — never a fetch (#255). */
+  getLoaded?(id: string): unknown;
+  /** The CoValue's core, to load it from THIS device's storage only (#255). */
+  getCoValue?(id: string): { isAvailable(): boolean; loadFromStorage(done?: (found: boolean) => void): void };
   /** This device+tab's session. Two of them never share a counter key — see `increment`. */
   currentSessionID?: string;
   /** The account signing this node's writes. */
@@ -1174,6 +1179,25 @@ export class JazzStore implements Store {
     return new Blob(parts.chunks as BlobPart[], { type: parts.mimeType || entry.mime });
   }
 
+  /**
+   * Whether a blob's bytes are on this device, asking no one (#255). In memory and complete, or in
+   * this device's storage and complete once loaded from it. `getBlob` is what fetches; this never does,
+   * so a list of a shared app's files can say which are here without pulling every one of them.
+   */
+  async blobHere(r: MediaRef): Promise<boolean> {
+    const entry = (await this.childIfPresent(this.root, ROOT_BLOBS))?.get(r.key) as { base64?: string; stream?: string } | undefined;
+    if (!entry) return false;
+    if (typeof entry.base64 === "string") return true;
+    const id = entry.stream;
+    if (typeof id !== "string") return false;
+    const finished = (): boolean => !!(this.node.getLoaded?.(id) as RawBinaryLike | undefined)?.getBinaryChunks()?.finished;
+    if (finished()) return true;
+    const core = this.node.getCoValue?.(id);
+    if (!core || core.isAvailable()) return false;
+    await new Promise<void>((resolve) => core.loadFromStorage(() => resolve()));
+    return finished();
+  }
+
   /** Fires when a blob's bytes arrive, so a placeholder can become the photo without a reload. */
   subscribeBlob(r: MediaRef, cb: () => void): Unsubscribe {
     let stop: (() => void) | null = null;
@@ -1231,6 +1255,10 @@ export class JazzStore implements Store {
   }
 
   async setFile(entry: StoredFile): Promise<void> {
+    // A shared space holds the app's DATA. Its code (`.modules/`, `.src/`) stays on each device and
+    // travels with the source, checked against the lock (#281): megabytes of library bytes do not
+    // belong in every member's copy, and code written here would reach them without that check.
+    if (isReservedPath(entry.path)) throw new Error(`"${entry.path}" is the app's code, which a shared space does not hold`);
     (await this.child(this.root, ROOT_FILES)).set(entry.id, { ...entry });
     await this.whenDurable?.();
   }
