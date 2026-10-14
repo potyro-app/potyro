@@ -418,13 +418,18 @@ async function accountCode(appId: string, store?: Store): Promise<CarriedCode> {
   return app ? codeToCarry(app, store) : {};
 }
 
-/** Forget an app you deleted, so a new device is not offered it back. */
+/**
+ * Forget an app you deleted, so no device of yours is offered it back.
+ *
+ * Through the open app's node when there is one, else the account's own — an app is deleted from
+ * the launcher, with nothing open, far more often than from inside it.
+ */
 export async function forgetAppOnAccount(appId: string): Promise<boolean> {
-  const handle = lastSyncHandle;
-  if (!handle) return false;
   try {
+    const node = lastSyncHandle?.node ?? (await accountNode());
+    if (!node) return false;
     const { removeAppFromAccount } = await import("@potyro/store");
-    return await removeAppFromAccount(handle.node, appId);
+    return await removeAppFromAccount(node, appId, { waitMs: 8_000 });
   } catch {
     return false;
   }
