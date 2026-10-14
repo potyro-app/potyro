@@ -265,7 +265,8 @@ function mount(root: HTMLElement, node: ReactNode): void {
 // source runs as a real module. A trusted load that fails (e.g. an edited, invalid version) falls
 // back to untrusted so the app still opens. Either way it has its own durable store.
 /** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
-async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
+/** The app joined, null when there was no invite, false when joining failed and said so. */
+async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | false> {
   const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
   // Web: the address bar. Device COLD start: the app was launched by the link, so nothing has
   // listened yet and the URL must be fetched. (Warm starts are handled by the listener below.)
@@ -312,8 +313,10 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
     return id;
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e);
-    root.textContent = t`Could not join: ${why}`;
-    return null;
+    // Through React, on the screen that was joining: emptying the root by hand left React rendering
+    // into a container it no longer owned ("root container was removed without using React").
+    mount(root, <Splash name={invite.name} source={invite.source} verb="Joining" failed={t`Could not join: ${why}`} />);
+    return false;
   }
 }
 
@@ -587,6 +590,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       // Writes still on their way land first — a tick then Home used to close the store under its
       // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
       await composed!.runtime.settle();
+      // From here a read that fails is the app going away, not the app failing.
+      composed!.runtime.close();
       composed!.loaded.dispose();
       await rawStore.close();
     },
@@ -851,6 +856,8 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
+  // Joining failed and the screen says why, with the way back to the apps.
+  if (joined === false) return;
 
   // Apps your ACCOUNT knows about that this device does not (KA-16 follow-up). This is what typing
   // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
