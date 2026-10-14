@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { MediaRef, Resolved } from "potyro";
+import { computedInfo, type EntityDef, type MediaRef, type Resolved } from "potyro";
 import type { DisplayCell } from "./types.js";
 import { formatDateValue, getView, toBadges } from "./format.js";
 import { releaseMediaUrl } from "./media-input.js";
@@ -52,7 +52,8 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
           cell.badges = (display.badges as string[]).flatMap((key) => {
             const f = entity?.fields[key];
             const field = f?.type === "enum" ? { colors: f.colors } : undefined;
-            const labels = f?.type === "enum" || f?.type === "tags" ? f : undefined;
+            // A computed badge (recipes' diet) reads as its own `labels`.
+            const labels = f?.type === "enum" || f?.type === "tags" ? f : f ? undefined : { labels: computedInfo(entity as EntityDef | undefined, key)?.labels };
             return toBadges(row[key]).map((text) => ({ text, field, label: optionLabel(labels, text) }));
           });
         }

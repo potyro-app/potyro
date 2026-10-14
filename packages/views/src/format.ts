@@ -4,6 +4,7 @@ import type { View } from "potyro";
 import { t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
 import { formatDateRelative, type Precision } from "./dates.js";
+import { optionLabel } from "./shown.js";
 
 /**
  * How a date reads where the field is not in hand — a list row, a badge, a table cell (#103).
@@ -59,6 +60,40 @@ export function displayFieldFor(runtime: PotyroRuntime, entity: string): string 
 // Re-exported, not reimplemented — see `humanizeKey` in `potyro` for why. Imported as well as
 // re-exported, because `fieldLabel` below calls it and `export … from` does not bring it into scope.
 export { humanizeKey };
+
+/**
+ * What a key's value says before `formatValue` writes it out: an enum or tags option, or a value of
+ * a computed that declares `labels`, as its words; an object (or any value) of a computed that
+ * declares `format`, as that message over its properties (`{value}` for a scalar). Anything else —
+ * and a message that cannot be said with what the value has — is the value as it is.
+ */
+export function shownValue(runtime: Pick<PotyroRuntime, "definition" | "ctx">, entity: string, key: string, value: unknown): unknown {
+  if (value == null) return value;
+  const def = runtime.definition.entities[entity];
+  const field = def?.fields[key];
+  const labelled = (words: Readonly<Record<string, string>> | undefined): unknown =>
+    Array.isArray(value) ? value.map((x) => optionLabel({ labels: words }, String(x))) : optionLabel({ labels: words }, String(value));
+  if (field) return field.type === "enum" || field.type === "tags" ? labelled(field.labels) : value;
+  const info = computedInfo(def as EntityDef | undefined, key);
+  if (info?.labels && (typeof value === "string" || typeof value === "number" || Array.isArray(value))) return labelled(info.labels);
+  if (!info?.format) return value;
+  try {
+    return runtime.ctx.t(info.format, messageVars(value));
+  } catch {
+    return value;
+  }
+}
+
+/** A value's properties a message can name: text, numbers and dates; the rest is left out. */
+function messageVars(value: unknown): Record<string, string | number | Date> {
+  if (typeof value !== "object" || value instanceof Date || Array.isArray(value)) return { value: value as string | number | Date };
+  const vars: Record<string, string | number | Date> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof v === "string" || typeof v === "number" || v instanceof Date) vars[k] = v;
+    else if (typeof v === "boolean") vars[k] = String(v);
+  }
+  return vars;
+}
 
 /** A readable label for a field/computed key on an entity: the field's label, else the computed's
  *  (#310) — both already in the person's language — else the key, humanised. */

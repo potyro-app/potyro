@@ -1317,12 +1317,14 @@ msgstr "Chiesto di riprovare: {first}"
 msgid "Asks for"
 msgstr "Chiede"
 
+#. Better-wording form: back to choosing the words
 #. Data page: leave the page
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Indietro"
 
@@ -1782,6 +1784,11 @@ msgstr "Chiudi le impostazioni del modello"
 msgid "Close studio"
 msgstr "Chiudi lo Studio"
 
+#. Closes the better-wording form
+#: ../shell/src/suggest-wording.tsx
+msgid "Close the suggestion"
+msgstr "Chiudi il suggerimento"
+
 #. Model settings heading: engines reached over the internet
 #: ../shell/src/engines.ts
 msgid "Cloud"
@@ -2199,6 +2206,7 @@ msgstr "Non inviare la zona della mappa"
 msgid "Don't share"
 msgstr "Non condividere"
 
+#. Better-wording form: finish
 #. Close a list where several can be picked
 #. Closes the model settings
 #. Closes the month grid
@@ -2210,6 +2218,7 @@ msgstr "Non condividere"
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
 #: ../shell/src/inline-edit.tsx
+#: ../shell/src/suggest-wording.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/pick-list.tsx
 msgid "Done"
@@ -2687,6 +2696,11 @@ msgstr "Quanto ragiona"
 msgid "how it was made, as shared by its author"
 msgstr "come è stata fatta, così come l’ha condiviso l’autore"
 
+#. Better-wording form: the box for the person's own wording
+#: ../shell/src/suggest-wording.tsx
+msgid "How should it read?"
+msgstr "Come dovrebbe essere scritto?"
+
 #: ../shell/src/platform-request-card.tsx
 msgid "How your app is put together"
 msgstr "Com’è fatta la tua app"
@@ -2782,6 +2796,12 @@ msgstr "importata"
 #: ../shell/src/main.tsx
 msgid "Imported data into {name}."
 msgstr "Dati importati in {name}."
+
+#. Better-wording form: the same words in English, for comparison
+#. placeholder {0}: step.message.english
+#: ../shell/src/suggest-wording.tsx
+msgid "In English: {0}"
+msgstr "In inglese: {0}"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
@@ -3534,6 +3554,11 @@ msgstr "Non c’è ancora nessun altro. Condividi quest’app e ciò che scrivi 
 msgid "None"
 msgstr "Nessuno"
 
+#. Better-wording form: a search found none of Potyro's words
+#: ../shell/src/suggest-wording.tsx
+msgid "None of Potyro's words match that."
+msgstr "Nessun testo di Potyro corrisponde."
+
 #: ../shell/src/add-app.ts
 msgid "None of these is an app: choose its source (a .ts or .tsx file) or a package zip."
 msgstr "Nessuno di questi è un’app: scegli il suo codice sorgente (un file .ts o .tsx) o un pacchetto zip."
@@ -3728,6 +3753,11 @@ msgstr "Ancora niente. Una volta creata l’app, qui comparirà ogni versione: c
 msgid "notifications"
 msgstr "notifiche"
 
+#. Better-wording form: the words as they read today
+#: ../shell/src/suggest-wording.tsx
+msgid "Now it says:"
+msgstr "Ora c’è scritto:"
+
 #. The tiles of an app's kinds of record
 #: ../shell/src/App.tsx
 msgid "Objects"
@@ -3775,6 +3805,11 @@ msgstr "Solo su questo dispositivo. L’app mantiene il suo nome e il suo aspett
 #: ../shell/src/engines.ts
 msgid "On this machine"
 msgstr "Su questo computer"
+
+#. Better-wording form: above the list of Potyro's words found on the screen
+#: ../shell/src/suggest-wording.tsx
+msgid "On this screen:"
+msgstr "In questa schermata:"
 
 #. Engine name: a model running in this browser
 #: ../shell/src/engines.ts
@@ -3838,6 +3873,11 @@ msgstr "Solo la persona che l’ha aggiunto può modificarlo."
 #: ../shell/src/people-panel.tsx
 msgid "Only the person who created this app can invite or remove people."
 msgstr "Solo la persona che ha creato quest’app può invitare o rimuovere persone."
+
+#. Better-wording form: what is sent
+#: ../shell/src/suggest-wording.tsx
+msgid "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
+msgstr "Al team di Potyro arrivano solo queste parole e la tua proposta — niente su di te o sulle tue app."
 
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"
@@ -4459,10 +4499,12 @@ msgid "seed.json is not valid JSON: {why}"
 msgstr "seed.json non è un JSON valido: {why}"
 
 #. Ask: send the answer to its question
+#. Better-wording form: send the suggestion
 #. Send a chat message
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/platform-request-card.tsx
+#: ../shell/src/suggest-wording.tsx
 msgid "Send"
 msgstr "Invia"
 
@@ -4630,6 +4672,11 @@ msgstr "Qualcuno te ne ha mandata una, o l’hai fatta altrove."
 msgid "something"
 msgstr "qualcosa"
 
+#. Link under the language picker: report a bad translation of Potyro's own words
+#: ../shell/src/suggest-wording.tsx
+msgid "Something reads wrong? Suggest a better wording"
+msgstr "Qualcosa suona male? Suggerisci una formulazione migliore"
+
 #: ../shell/src/view-error-boundary.tsx
 msgid "Something went wrong opening {pageLabel}."
 msgstr "Qualcosa è andato storto aprendo {pageLabel}."
@@ -4742,6 +4789,16 @@ msgstr "Menu dello Studio"
 #: ../views/src/date-input.tsx
 msgid "Su"
 msgstr "Do"
+
+#. Heading of the small form for reporting a bad translation
+#: ../shell/src/suggest-wording.tsx
+msgid "Suggest a better wording"
+msgstr "Suggerisci una formulazione migliore"
+
+#. Better-wording form: start again for other words
+#: ../shell/src/suggest-wording.tsx
+msgid "Suggest another"
+msgstr "Suggerisci un’altra"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -4872,6 +4929,16 @@ msgstr "Testo"
 msgid "Th"
 msgstr "Gi"
 
+#. Better-wording form: the suggestion reached the Potyro team
+#: ../shell/src/suggest-wording.tsx
+msgid "Thank you — it is with the Potyro team."
+msgstr "Grazie — è arrivato al team di Potyro."
+
+#. Better-wording form: could not be sent now; kept and sent later
+#: ../shell/src/suggest-wording.tsx
+msgid "Thank you. It is saved on this device and will be sent when Potyro can reach the team."
+msgstr "Grazie. È salvato su questo dispositivo e verrà inviato quando Potyro potrà raggiungere il team."
+
 #: ../shell/src/App.tsx
 msgid "That change didn't validate, so nothing was saved: {issue}"
 msgstr "Quella modifica non era valida, quindi non è stato salvato nulla: {issue}"
@@ -4879,6 +4946,11 @@ msgstr "Quella modifica non era valida, quindi non è stato salvato nulla: {issu
 #: ../shell/src/app-source.ts
 msgid "that change would have produced source that doesn't parse"
 msgstr "quella modifica avrebbe prodotto codice non leggibile"
+
+#. Better-wording form: the team's inbox refused it
+#: ../shell/src/suggest-wording.tsx
+msgid "That could not be sent."
+msgstr "Non è stato possibile inviarlo."
 
 #: ../shell/src/app-folder.ts
 msgid "That file is no longer in this app"
@@ -5430,6 +5502,16 @@ msgstr "Prima attiva la sincronizzazione per quest’app: per condividere serve 
 msgid "turning text into bytes"
 msgstr "trasformare il testo in byte"
 
+#. Better-wording form: search box for Potyro's own words
+#: ../shell/src/suggest-wording.tsx
+msgid "Type a few of the words"
+msgstr "Scrivi alcune delle parole"
+
+#. Better-wording form: nothing found on the screen; search instead
+#: ../shell/src/suggest-wording.tsx
+msgid "Type a few of the words to find them."
+msgstr "Scrivi alcune delle parole per trovarle."
+
 #: ../views/src/field-input.tsx
 msgid "Type a tag, press Enter"
 msgstr "Scrivi un tag, premi Invio"
@@ -5672,6 +5754,11 @@ msgstr "Quale parte"
 #: ../shell/src/identity-panel.tsx
 msgid "Which relay should this device use?"
 msgstr "Quale relay deve usare questo dispositivo?"
+
+#. Better-wording form: the first step, choosing the words that read wrong
+#: ../shell/src/suggest-wording.tsx
+msgid "Which words read wrong?"
+msgstr "Quali parole suonano male?"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Working on it…"

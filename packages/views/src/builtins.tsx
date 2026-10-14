@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { actionInfo, type Resolved } from "potyro";
 import { PartProblem } from "./part-failure.js";
 import type { BuiltinViewProps } from "./types.js";
-import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey } from "./format.js";
+import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey, shownValue } from "./format.js";
 import { useDisplayCells } from "./cells.js";
 import { useDynamicText } from "./dynamic.js";
 import { FieldValue } from "./field-value.js";
@@ -18,7 +18,6 @@ import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
 import { editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
-import { optionLabel } from "./shown.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -319,13 +318,9 @@ export function TableView(props: BuiltinViewProps) {
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
   const columns = view.display?.columns ?? [];
   const groups = useRowGroups(runtime, pageId, rows, view);
-  // An enum or tags column reads as its options' words (`labels`, #302), not their stored values.
-  const fieldsHere = runtime.definition.entities[view.entity]?.fields ?? {};
-  const cellValue = (key: string, v: unknown): unknown => {
-    const f = fieldsHere[key];
-    if (v == null || (f?.type !== "enum" && f?.type !== "tags")) return v;
-    return Array.isArray(v) ? v.map((x) => optionLabel(f, String(x))) : optionLabel(f, String(v));
-  };
+  // An enum or tags column reads as its options' words (`labels`, #302), not their stored values;
+  // a computed column as its own `labels` or `format`.
+  const cellValue = (key: string, v: unknown): unknown => shownValue(runtime, view.entity, key, v);
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;

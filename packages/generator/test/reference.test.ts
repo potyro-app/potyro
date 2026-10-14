@@ -88,7 +88,12 @@ describe("SYSTEM_PROMPT", () => {
     // the LANGUAGES rules (write in the person's language; add one only when asked, with `translate`;
     // a translation never moves `schemaVersion`). Trimmed first: every new comment is one line, and
     // `Localized` (what views read) left the reference. ~1.2k cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(80_000);
+    //
+    // Raised 80k -> 81k on 2026-10-14 (#254) for how an app USES its folder: a `file` field is a
+    // pointer read with `ctx.files.text`, `null` means not on this device yet, starting data is a
+    // shipped JSON. The API is in the reference already (#252); these ~450 characters are the rules
+    // the reference cannot say, cut to three lines first. ~120 cached tokens.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(81_000);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {
