@@ -347,7 +347,7 @@ function LogSession(props: ViewProps) {
                   {best
                     ? ctx.t(
                         { en: " · best {best}", "pt-BR": " · recorde {best}", de: " · Bestwert {best}", es: " · mejor {best}", pl: " · rekord {best}", it: " · record {best}" },
-                        { best: e.bodyweight ? String(best.reps) : `${best.kg}kg×${best.reps}` },
+                        { best: e.bodyweight ? String(best.reps) : `${ctx.format.number(best.kg ?? 0)}kg×${best.reps}` },
                       )
                     : ""}
                 </span>
@@ -741,7 +741,7 @@ export default defineApp({
     {
       // The live workout screen — bespoke logic, so it's a custom view (full React component).
       id: "train",
-      title: { en: "Train", "pt-BR": "Treinar", de: "Training", es: "Entrenar", pl: "Trening", it: "Allenamento" },
+      title: { en: "Train", "pt-BR": "Treinar", de: "Trainieren", es: "Entrenar", pl: "Trenuj", it: "Allenamento" },
       view: {
         type: "custom",
         entity: "session",
@@ -777,9 +777,9 @@ export default defineApp({
         emptyText: {
           en: "No sessions logged yet. Hit Train to start one.",
           "pt-BR": "Nenhum treino registrado ainda. Toque em Treinar para começar.",
-          de: "Noch keine Trainings eingetragen. Tippe auf Training, um eins zu starten.",
+          de: "Noch keine Trainings eingetragen. Tippe auf Trainieren, um eins zu starten.",
           es: "Aún no hay sesiones. Pulsa Entrenar para empezar una.",
-          pl: "Brak zapisanych treningów. Stuknij Trening, by zacząć.",
+          pl: "Brak zapisanych treningów. Stuknij Trenuj, by zacząć.",
           it: "Ancora nessuna sessione. Tocca Allenamento per iniziarne una.",
         },
       },

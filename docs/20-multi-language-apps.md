@@ -706,3 +706,34 @@ Where the build differs from the design above, and why:
 - **The system prompt's budget** went from 75k to 80k characters, with the note the test asks for,
   after the new comments were cut to one line and `Localized` was kept out of the reference.
 
+
+### 10.1 The examples in six languages (#303)
+
+- **Every example (`examples/`) and every demo app (`apps/`) carries `en`, `pt-BR`, `de`, `es`, `pl`,
+  `it`**, English still its own language. Every language but English is a model's draft, as the
+  shell's are (#297); each app's header comment says so. `examples/test/apps.test.ts` and each demo
+  app's `test/app.test.ts` hold every one to `checkWords` and `wordGaps` over all six, and list the
+  plain strings allowed: units ("kg", "kcal", "$/kg", "bpm"), a dish's name as a placeholder, "Wiki",
+  "Breakout", "2 × 1 l".
+- **Records stay as they are**: the shell's seed (`seed.ts`) and mood-sleep's `seed.json` are sample
+  records, so "Milk" and "Fern" read the same in Polish. A record a function writes is written in
+  the language it was written in: a Breakout game keeps its level's name as played, a piano week log
+  its week's name, a photo-garden picture its English title (the title is also its file name).
+- **Shipped files**: Breakout's `levels.json` is drawn as the game's own HUD, so a level's `name` is a
+  map. Piano's `plan.json` is not translated: it is the plan itself, a document written around
+  English books, videos and sites, shown as written; a plan in another language is a plan file of
+  its own. What `checkLevels` and `validatePlan` say about a broken file stays English too.
+- **Q5 in practice**: a function sees an option's value, so the lines that put an option into words
+  (a place's kind on a pin, a recipe's difficulty, a training day) do it through a small helper with
+  the same words as the field's `labels`. Words a custom view passes to `ctx.ui` go through `ctx.t`
+  rather than as maps, so the completeness check (which reads `ctx.t` maps) sees them.
+- **Hand-made formats went**: `formatMoney` (which throws in the sealed box), `toLocaleDateString`,
+  month-name tables and a hand-written thousands separator became `ctx.format.*`. American English
+  now reads "Jul 20" where the workout chart had "20 Jul".
+- **English changed in three small ways**: plurals that read "1 sets", "1 ingredients", "1 days" are
+  now singular; recipes' "Calories Per100" labels read "Calories per 100 g".
+- **`eval:translate` asks for French**, since every example already carries the six: the harder case
+  of a seventh language, where every map touched must keep all the others. Its rename, one-language
+  and add-field cases run on groceries in all six.
+- **A gap found**: a computed value shown on a page has no label, so it reads as its key in every
+  language ("Calories Per Serving", "Breakdown"). That needs a mechanism: #310.
