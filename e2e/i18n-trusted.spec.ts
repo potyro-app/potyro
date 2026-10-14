@@ -287,7 +287,7 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     await expect(sheet).toBeVisible();
     await settled(sheet);
     // Its fields and their options are the app's words: the form's labels, and the choices it offers.
-    const words = await sheet.locator(".k-form-label, [role=radio], [aria-pressed]").allTextContents();
+    const words = await sheet.locator(".k-form-label, [role=radio], [aria-pressed], .k-chip").allTextContents();
     // "opening hour": a list field's own word for one row, after "Add:".
     expect(await englishIn(sheet, ["Place", "opening hour", ...words.map((w) => w.replace(/[*\s]+$/, "").trim())])).toEqual([]);
     await shot(page, "form-sheet");
