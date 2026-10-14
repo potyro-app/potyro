@@ -29,6 +29,20 @@ describe("naming what is missing", () => {
     expect(missingFeature(new Error("boom"))).toBeUndefined();
   });
 
+  it("in the browser realm (#272), only the page is missing: its built-ins are the browser's", () => {
+    // What QuickJS lacks and a Worker has: never named there, so the card does not warn about it.
+    for (const e of ["'Intl' is not defined", "cannot read property 'DateTimeFormat' of undefined", "'TextEncoder' is not defined", "'URL' is not defined", "setTimeout is not defined", "globalThis.structuredClone is not a function", "'navigator' is not defined"]) {
+      expect(missingFeature(e, "realm")).toBeUndefined();
+      expect(missingFeature(e, "quickjs")).toBeDefined();
+    }
+    // What a Worker lacks too: a page, at load. Named in both.
+    for (const name of ["window", "document", "HTMLElement", "localStorage", "matchMedia"]) {
+      expect(missingFeature(new ReferenceError(`${name} is not defined`), "realm")?.words).toBe(`a full web page (${name})`);
+      expect(missingFeature(new ReferenceError(`${name} is not defined`), "quickjs")?.words).toBe(`a full web page (${name})`);
+    }
+    expect(missingFeatures(["'Intl' is not defined", "document is not defined"], "realm").map((f) => f.name)).toEqual(["document"]);
+  });
+
   it("each feature once, and a sentence a person can read", () => {
     const found = missingFeatures(["'Intl' is not defined", "cannot read property 'Collator' of undefined", "'URL' is not defined", "boom"]);
     expect(found.map((f) => f.name)).toEqual(["Intl", "URL"]);
