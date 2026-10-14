@@ -9,7 +9,8 @@ feels off, and report back (see *Feedback* at the end).
 ```bash
 pnpm i
 pnpm dev            # trusted shell → http://localhost:5173
-pnpm dev:sandbox    # same apps UNTRUSTED in the QuickJS-WASM isolate
+pnpm dev:sandbox    # same apps UNTRUSTED, their logic in the browser realm (#272)
+pnpm dev:sandbox:quickjs   # the same, in the QuickJS-WASM fallback
 ```
 
 Opening `/` shows the **launcher** — one list of your apps, pinned ones first, then by how often
@@ -327,9 +328,11 @@ the sandbox so the app still opens.
 pnpm dev:sandbox
 ```
 
-Every example now runs **untrusted in the isolate**. Look for the **untrusted** badge in the header.
-Everything (lists, computed, filters, calendar, map) should still work — the app's functions run inside
-QuickJS-WASM with mediated capabilities, not directly.
+Every example now runs **untrusted**. Look for the **untrusted** badge in the header. Everything
+(lists, computed, filters, calendar, map) should still work — the app's functions run in the browser
+realm (a Worker inside a sandboxed iframe, `#potyro-realms` in the DOM) with mediated capabilities,
+not directly. `pnpm dev:sandbox:quickjs` (or `localStorage["potyro:sandbox"] = "quickjs"`) runs them in
+the QuickJS-WASM fallback instead (#272).
 
 ---
 

@@ -1,9 +1,12 @@
 # 22 · Browser-realm prototype — shared apps in a sandboxed iframe + Worker (#272)
 
-**Status: prototype, measured 2026-10-14. Nothing in the product changed.** The owner approved a
-prototype on 2026-10-14 (#272); replacing QuickJS and changing CLAUDE.md rule 3 wait for these
-results and the owner's decision. The code is in `docs/spikes/browser-realm/`, typechecked by
-`pnpm typecheck:spikes`, outside every product path.
+**Status: phase 1 shipped (2026-10-14). Shared apps' logic runs in the realm** — the owner approved
+phase 1 after this prototype (#272): logic in the realm, the shell's `frame-src 'none'`, the WebRTC
+removal; custom views stay as they are; the view phase waits for the Android probe (§5). What
+shipped, how it differs from the prototype, how to fall back to QuickJS and what changed for the
+#14 audit are in **§10**. CLAUDE.md rule 3, docs/04, docs/05 and docs/07 are updated. The prototype
+itself stays in `docs/spikes/browser-realm/` (typechecked by `pnpm typecheck:spikes`): it is the
+measurement record, the view half (`mount`) and the Android probe.
 
 ## 0. The answer on one page
 
@@ -313,7 +316,9 @@ desktop Chromium. That is the condition.
 
 **Phases:**
 
-1. **Logic realm behind a flag.** Move `src/` into `packages/host` as `realm/` next to `isolate/`,
+1. **Logic realm behind a flag. ✅ Done 2026-10-14 (§10)** — the realm is the default and QuickJS is
+   behind the flag, the other way round from this sketch, per the owner's phase-1 decision.
+   Move `src/` into `packages/host` as `realm/` next to `isolate/`,
    and add `dev:sandbox --realm`. Make the isolate's tests a runner-agnostic contract suite
    (`isolate-host.test.ts`, `mediate*.test.ts`, `value-gate.test.ts`) and run it against both
    runners in a browser (Vitest browser mode or Playwright). Run the 11 `*-sandbox.spec.ts` specs
@@ -413,3 +418,113 @@ export default defineConfig({
 `REALM_RESULTS=<dir> npx playwright test -c realm.config.ts --project=chromium` writes each
 measurement to `<dir>/<project>.json`. The CPU and PSS checks read `/proc`, so they work on Linux
 only.
+
+## 10. Phase 1, as shipped (2026-10-14)
+
+### 10.1 What runs where
+
+- **`packages/host/src/realm/`** (`@potyro/host/realm`): `createRealmLoader({ spawn, workerSource })`
+  is a `loadIsolated` like `createIsolateLoader`; `frameSpawner()` builds the sandboxed srcdoc iframe
+  (`frame.ts`, its runtime `FRAME_SOURCE` a 25-line plain script, small so the audit can read all of
+  it); `worker-runtime.ts` is bundled to one script by `packages/host/realm-build.mjs`, which the
+  shell's Vite config serves as `virtual:potyro-realm-worker` (`realmWorkerPlugin`, minified in
+  builds: 147 KB, 40 KB gzipped, a lazy chunk loaded only when a shared app opens).
+- **`packages/shell`**: `createSharedAppLoader` (`isolate-bridge.ts`) is what opening a shared app
+  (`main.tsx`) and the Add-an-app test load (`app-trial.ts`) use. `realm-bridge.ts` wires the realm;
+  `sandbox-runner.ts` decides. Verification, the Studio preview and the modify loop's checks stay on
+  QuickJS (`createSandboxLoader`) until phase 2.
+- **One realm per open shared app**, in `#potyro-realms` at the end of `<body>`; closing or switching
+  the app disposes it (the iframe goes, its Worker with it).
+
+### 10.2 Differences from the prototype
+
+- **No app code on the frame's thread.** Views are not mounted in the frame (phase 3), so the frame
+  only deletes the RTC constructors, starts the Worker and hands it the port. It cannot stall the
+  shell, on any engine.
+- **The bundle is evaluated with indirect `eval`** in the Worker, not `importScripts(blob:)`: one path
+  for the browser and the Node tests; the realm CSP allows `'unsafe-eval'` on purpose (§1).
+- **An `up` handshake.** The Worker says it is running before the app loads, so a realm that never
+  comes up is a `RealmStartError` (the box failed), never confused with the app's top level throwing
+  or spinning. The shell then runs that app — and shared apps for the rest of the session — in
+  QuickJS, still sealed (`markRealmUnavailable`). This is the guard for a WebView we have not
+  measured.
+- **A flood guard.** A realm that posts more than 2,000 messages in 50 ms is stopped: a Worker posting
+  heartbeats in a loop would otherwise keep the watchdog fed while starving the shell's thread.
+- **`ctx` members QuickJS could not carry cross as themselves**: `caps.network.fetch` (a `Response`
+  rebuilt from status, headers and bytes), `caps.camera.capture`, `caps.filesystem.pick/save`,
+  `media.put`, `files.bytes`/`files.write` with bytes, `files.import/export`. Each is the mediated
+  ctx's own method. The budget pauses while a consent prompt, a dialog, a sensor or a fetch waits.
+- **`space.invite` is absent** in the realm, as through the isolate (it was a throwing stub).
+- **The missing-feature card** (#271) names only what a Worker lacks — the page (`window`,
+  `document`, …) — and understands WebKit's "Can't find variable: x".
+
+### 10.3 Falling back to QuickJS
+
+| Scope | How |
+|---|---|
+| One device | `localStorage["potyro:sandbox"] = "quickjs"` (and `"realm"`, or removing it, to go back) |
+| A build or a deploy | `VITE_POTYRO_SANDBOX=quickjs pnpm --filter @potyro/shell build:web` |
+| The dev server | `pnpm dev:sandbox:quickjs` |
+| e2e | `POTYRO_QUICKJS=1 pnpm e2e --project=sandbox-quickjs` (every sandbox spec but the realm's own) |
+| Automatically | no DOM or no Worker (the Node tests); a realm that would not start this session |
+
+Removing QuickJS (phase 4) is deleting `isolate/`, `__hostPure`, `quickjs-emscripten`, the flag and
+`createSandboxLoader`, once phase 2 has moved verification to the realm.
+
+### 10.4 The shell's `frame-src 'none'`, verified per target
+
+The spec is `e2e/shell-csp.ts` (a sandboxed srcdoc frame in the shell navigates itself to a probe
+server; nothing may arrive; a control page with no policy shows the same frame does reach it), run in
+Chromium, Firefox and WebKit:
+
+| Target | Policy from | Verified |
+|---|---|---|
+| Dev server (`pnpm dev`, `dev:sandbox`) | header (`server.headers`, `shell/vite.config.ts`) + `<meta>` | `shell-csp-sandbox.spec.ts`, all three engines |
+| Production build, `vite preview` | header (`preview.headers`) + `<meta>` | `shell-csp-prod.spec.ts` (`pnpm test:e2e:prod`), all three engines |
+| Deployed site (Apache) | `Header always set Content-Security-Policy "frame-src 'none'"` (`deploy/apps.vaz.io.conf`) + `<meta>` | a local Apache serving `dist/` with that line copied from the file, all three engines |
+| Capacitor WebView | `<meta>` in `dist/index.html` only (it serves no headers; `cap copy` copies `dist` as it is) | a server that sends no headers at all, all three engines: the `<meta>` alone stops it. Not run on a device here — the Android probe (§5) is the device step. |
+
+The realm loaded and the escape and watchdog specs passed behind each of those servers too.
+
+### 10.5 For the #14 audit: what changed
+
+New attack surface, all of it in `packages/host/src/realm/` and the shell's CSP:
+
+- **The op allow-list and ctx ids** (`OPS` in `protocol.ts`, `answer`/`route` in `realm-host.ts`).
+  Every `ctx` method on the list is now a boundary: its arguments are values from untrusted code,
+  coerced (`String`, `Number`, `instanceof Blob`) and handed to the mediated ctx. ctx ids are issued
+  per app, the most recent 512 kept; anything else is "no such ctx".
+- **The WebRTC removal** (`FRAME_SOURCE`): a deny-list of the RTC constructors, deleted before any
+  other code runs in the frame. Re-check it on every engine release, and for every new API that
+  opens a channel CSP does not govern.
+- **The realm CSP** (`REALM_CSP`): `default-src 'none'`, `connect-src 'none'`, `'unsafe-eval'` and
+  `'wasm-unsafe-eval'` on purpose, `blob:` for the Worker, `webrtc 'block'` (honoured nowhere).
+- **The iframe**: `sandbox="allow-scripts"` only (opaque origin), srcdoc with the runtime inlined
+  (`</script` escaped), `postMessage(…, "*")` at init carrying the two ports — the ports, not the
+  origin, are the trust boundary, and nothing else can reach a sandboxed srcdoc frame.
+- **The shell's `frame-src 'none'`**, in three places that must stay in step (index.html `<meta>`,
+  vite.config.ts headers, the Apache vhost). It forbids every frame that fetches; a future embed (a
+  video, a map) has to name its origin there.
+- **The watchdog**: deadlines that pause for questions, prompts, dialogs and fetches (an app can make
+  its budget pause only by asking something of the person or the world), the 1 s heartbeat, the flood
+  guard, and `RealmStartError`'s automatic fall back to QuickJS (still sealed).
+- **What crosses by structured clone**: Blobs, bytes and Dates in and out; functions never; getters
+  are read during the copy (a record's cycle-trap accessor makes such a reply fail closed).
+- **Not capped**: a Worker's memory (§6.1), and nested Workers from `blob:` (allowed by the CSP,
+  ended with the frame).
+- **Out of scope now**: QuickJS's marshal and bridge, for the realm's apps; they remain for the
+  fallback and for verification until phase 2.
+
+### 10.6 Tests
+
+- **Unit**: the untrusted contract (`untrusted-host.test.ts` and the other host suites listed in
+  docs/09) runs against both runners — the realm's real worker runtime in a Node worker thread
+  (`host/test/runners.ts`; not a sandbox, so containment is asserted in browsers). `realm-host.test.ts`:
+  built-ins, return-then-spin, questions pausing the budget, the flood guard, raw ops, mediated fetch,
+  Blobs, uncloneable values, `RealmStartError`. Shell: `missing-features.test.ts` per runner.
+- **e2e**: `realm-sandbox.spec.ts` (the realm is what runs, a shared app with `Intl`/`URL`/
+  `TextEncoder` works sealed, the card stops warning about built-ins and still names a page),
+  `realm-escape-sandbox.spec.ts` (the escape suite with a probe server and a trusted control; storage
+  not surviving into the next realm; spin and return-then-spin with the shell's own gap measured),
+  `shell-csp-{sandbox,prod}.spec.ts`; and every `*-sandbox.spec.ts` now runs on the realm.
+  `POTYRO_REALM_BROWSERS=1` adds Firefox and WebKit projects for the realm's specs.
