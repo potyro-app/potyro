@@ -22,7 +22,8 @@
 
 import type { Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
-import { isEvent } from "./studio-thread.js";
+import { isEvent, SYSTEM_NOTES } from "./studio-thread.js";
+import type { ConversationEntry } from "@potyro/generator/agent";
 import type { AppVersion } from "./app-history.js";
 
 const NAMESPACE = "studio-chat";
@@ -318,6 +319,31 @@ export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "t
     }
   }
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * What was said BEFORE the current request, oldest first, for the modify loop's recap (#279): the
+ * conversation as it reads (`threadItems`) — so a rollback or a change made outside the Studio is
+ * there where it happened — up to the first message `briefSince` hands over as the request itself.
+ * Only the words the person saw: never a failure's developer detail, never the app, never records.
+ * Lines the shell writes for itself ("example app") are not something anybody said, and are left out.
+ *
+ * `versions` newest-first, as `listVersions` returns them.
+ */
+export function earlierConversation(messages: readonly ChatMessage[], versions: readonly AppVersion[]): ConversationEntry[] {
+  let start = 0;
+  messages.forEach((m, i) => {
+    if (m.kind === "version") start = i + 1;
+  });
+  const current = new Set(messages.slice(start).map((m) => m.id));
+  const items = threadItems(messages, versions);
+  const cut = items.findIndex((i) => current.has(i.id));
+  return (cut < 0 ? items : items.slice(0, cut)).flatMap((i): ConversationEntry[] => {
+    if (i.type === "ask") return [{ kind: "ask", text: i.text, ...(i.point ? { about: i.point.words } : {}) }];
+    if (i.type === "agent") return [{ kind: i.tone, text: i.text }];
+    if (i.type === "version") return [{ kind: "version", text: i.text }];
+    return SYSTEM_NOTES.some((re) => re.test(i.text)) ? [] : [{ kind: "event", text: i.text }];
+  });
 }
 
 // ---- How an app was made, carried with it -----------------------------------------------------

@@ -30,6 +30,11 @@
 //     app and the request, with one line per attempt that was turned back. The steps and candidates
 //     already spent stay spent — the budgets cover the whole loop, not each chain.
 //
+// #279: what was said about EARLIER versions of the app — requests, questions and answers, what was
+// refused, undone or not done — opens the conversation as one deterministic recap, before the app, in
+// the same opening message (so a fresh start and a rollback keep it). Older requests than the recap
+// shows are paged with `read_conversation`, offered only when there are some (conversation.ts).
+//
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
@@ -47,6 +52,7 @@ import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
 import type { TranslationDraft } from "./translate-tool.js";
+import { DEFAULT_RECAP_ROUNDS, buildConversationTool, conversationRecap, recapStartsAt, type ConversationEntry } from "./conversation.js";
 import { describeWordsReport, wordsReport } from "../source-words.js";
 
 export type ModifyLoopOutcome =
@@ -121,6 +127,14 @@ export interface ModifyLoopDeps {
    * badly. Off unless the caller turns it on; the Studio's setting defaults it on.
    */
   escalate?: boolean;
+  /**
+   * What was said about EARLIER versions of the app (#279), oldest first — the Studio's conversation
+   * up to the current request. Chat text only. A recap of it opens the conversation, and
+   * `read_conversation` pages what the recap left out.
+   */
+  conversation?: readonly ConversationEntry[];
+  /** How it reaches the model — for the eval's ablations. Default: a recap of DEFAULT_RECAP_ROUNDS, and the tool. */
+  conversationAccess?: { recapRounds?: number; tool?: boolean };
 }
 
 // Raised from 8 with #262: reading the corpus and fixing what a run reports both take steps, and a
@@ -152,11 +166,33 @@ export function repeatsItself(text: string, previous: string | null): string | n
   return null;
 }
 
-async function firstMessage(deps: ModifyLoopDeps): Promise<string> {
+/** How the earlier conversation reaches the model (#279): the recap's size, and whether the tool is offered. */
+function conversationAccess(deps: ModifyLoopDeps): { rounds: number; tool: boolean } {
+  return { rounds: deps.conversationAccess?.recapRounds ?? DEFAULT_RECAP_ROUNDS, tool: deps.conversationAccess?.tool ?? true };
+}
+
+/** `read_conversation`, when there is something earlier the recap does not show (#279). */
+function conversationTools(deps: ModifyLoopDeps): AgentTool[] {
+  const entries = deps.conversation ?? [];
+  const access = conversationAccess(deps);
+  if (!access.tool || !entries.length) return [];
+  const shownFrom = recapStartsAt(entries, access.rounds);
+  return shownFrom > 1 ? [buildConversationTool(entries, { shownFrom })] : [];
+}
+
+async function firstMessage(deps: ModifyLoopDeps, tool: boolean): Promise<string> {
   const language = { person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) };
-  // Where it was aimed (#284) and in which language to answer (#306), beside the request — both in
+  // What was said about earlier versions (#279), as ONE recap before the app (docs/19 F4): the
+  // current request stays the last of the person's words.
+  const recap = deps.conversation?.length ? conversationRecap(deps.conversation, { rounds: conversationAccess(deps).rounds, tool }) : null;
+  // Where it was aimed (#284) and in which language to answer (#306), beside the request — all in
   // this one opening message, which a fresh start reuses and a rollback keeps.
-  const parts = [buildModifyOpener(), `\`\`\`ts\n${deps.source}\n\`\`\``, buildModifyMessage(deps.instruction, { ...deps.context, language })];
+  const parts = [
+    ...(recap ? [recap] : []),
+    buildModifyOpener(),
+    `\`\`\`ts\n${deps.source}\n\`\`\``,
+    buildModifyMessage(deps.instruction, { ...deps.context, language }),
+  ];
   if (deps.corpus) {
     const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
     if (primed) parts.push(primed);
@@ -174,7 +210,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   const maxCandidates = deps.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
   // The first message of a chain: the app, the request, the corpus passages. A fresh chain (F2)
   // starts from it again, with what was turned back added at the end.
-  const opening = deps.resumeFrom ? (deps.resumeFrom.find((m) => m.role === "user")?.content ?? null) : await firstMessage(deps);
+  const tools = [...deps.tools, ...conversationTools(deps)];
+  const opening = deps.resumeFrom ? (deps.resumeFrom.find((m) => m.role === "user")?.content ?? null) : await firstMessage(deps, tools.length > deps.tools.length);
   let messages: ChatMessage[] = deps.resumeFrom
     ? [...deps.resumeFrom]
     : [
@@ -248,7 +285,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const res = await deps.engine.chat.completions.create({
       ...(deps.model ? { model: deps.model } : {}),
       messages,
-      tools: toolSpecs(deps.tools),
+      tools: toolSpecs(tools),
       tool_choice: "auto",
       temperature: 0.1,
       ...(escalated ? { reasoning: "high" as const } : {}),
@@ -280,7 +317,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         } catch {
           args = {};
         }
-        const result = await runTool(deps.tools, { id: c.id, name: c.function.name, args });
+        const result = await runTool(tools, { id: c.id, name: c.function.name, args });
         if (DISCOVERY.has(result.name)) looked = true;
         if (streak.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
         deps.onStep?.({ kind: "tool", name: result.name, ok: result.ok, detail: result.detail });

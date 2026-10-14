@@ -15,6 +15,7 @@ import {
   type LoopStep,
   type ModifyLoopDeps,
   type ModifyLoopOutcome,
+  type ConversationEntry,
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, loadCorpus, regressionGate, type Language, type ModifyContext } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
@@ -40,6 +41,8 @@ export interface StartModifyOpts {
   modules?: ModuleSource;
   /** The person's language (#301): the model's reply and questions come back in it. English when absent. */
   language?: Language;
+  /** What was said about earlier versions (#279), oldest first: the loop's recap and `read_conversation`. */
+  conversation?: readonly ConversationEntry[];
 }
 
 /** Whether this engine can drive the modify loop at all (a chat engine with a key); else why not. */
@@ -78,6 +81,7 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     context: opts.context,
     source: opts.source,
     ...(opts.language ? { language: opts.language } : {}),
+    ...(opts.conversation?.length ? { conversation: opts.conversation } : {}),
     check,
     run,
     shapeOf: (source) => loadDefinition(source, modules),
