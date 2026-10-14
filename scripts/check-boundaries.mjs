@@ -31,6 +31,13 @@ const rules = [
     note: "i18n depends on no Potyro package; shell, views and (later) host depend on it",
   },
   {
+    // The relay that files requests to the Potyro team runs on the server, alone (#263): it must not
+    // pull any of the app into it, and the Studio imports only its browser-safe payload.
+    pkg: "packages/platform-requests/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "platform-requests depends on no Potyro package; the shell depends on it",
+  },
+  {
     pkg: "examples",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
     note: "app modules reach host power only via ctx; import `potyro` only",

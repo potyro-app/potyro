@@ -63,6 +63,22 @@ describe("the record", () => {
     expect((await chat.appendMessage("notes", { kind: "ask", text: "next" }, at(4))).n).toBe(3);
   });
 
+  // #263: a request to the Potyro team rides on the agent's message, and what came of sending it on
+  // an event — kept, and on screen, so the card is still there after a reload.
+  it("keeps a request to the Potyro team, and what came of sending it", async () => {
+    const platform = { id: "req-1", title: "Scan barcodes", body: "I wanted to scan." };
+    await chat.appendMessage("plants", { kind: "refusal", text: "Potyro can't do this yet.", platform }, at(1));
+    await chat.appendMessage("plants", { kind: "event", text: "Sent.", request: { id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" } }, at(2));
+    const all = await chat.listMessages("plants");
+    expect(all[0]!.platform).toEqual(platform);
+    expect(all[1]!.request).toEqual({ id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" });
+    const items = chat.threadItems(all, []);
+    expect(items[0]).toMatchObject({ type: "agent", platform });
+    expect(items[1]).toMatchObject({ type: "event", request: { id: "req-1", state: "sent" } });
+    // Something malformed that arrived from another device is not read as a request.
+    expect(chat.readChatMessage({ id: "x", chatId: "p", n: 1, text: "t", kind: "refusal", platform: { id: 1 } })?.platform).toBeUndefined();
+  });
+
   it("keeps one chat apart from another", async () => {
     await chat.appendMessage("a", { kind: "ask", text: "one" }, at(1));
     await chat.appendMessage("b", { kind: "ask", text: "two" }, at(2));

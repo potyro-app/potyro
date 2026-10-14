@@ -53,7 +53,8 @@ failed: the validator's words or the error it threw. Your next edits still apply
 SHOWN. Say each thing once — a reply that repeats itself ends the conversation.
 
 THE MARKER MUST BE THE VERY FIRST THING IN YOUR REPLY when you use ASK: or NOT-IN-APP: — that is how
-the loop tells a verdict from a change.
+the loop tells a verdict from a change. (NEEDS-PLATFORM:, when you are offered it, goes first only when
+no part could be done; beside edits it is a line of the prose before the block.)
 
 When you send edits, put your reasoning BEFORE the \`\`\`ts block; that text is shown to the person
 as the explanation of what changed and why. The system prompt's "no prose" rule is for creating an

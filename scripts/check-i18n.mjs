@@ -43,6 +43,10 @@ export const CLEAN = new Set([
   "packages/shell/src/language-picker.tsx",
   "packages/shell/src/backup-switch.tsx",
   "packages/shell/src/storage-report.tsx",
+  // #263: requests to the Potyro team, written clean from the start.
+  "packages/shell/src/platform-request-card.tsx",
+  "packages/shell/src/platform-requests.ts",
+  "packages/shell/src/studio-requests.ts",
 ]);
 
 const ATTRS = new Set([

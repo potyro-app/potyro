@@ -20,6 +20,7 @@
 // source — and never the code itself.
 
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
+import type { ToolSpec } from "./tools.js";
 import { LANGUAGE_NAMES, type Language } from "../language.js";
 import { CODE, FN, readSourceWords } from "../source-words.js";
 
@@ -111,6 +112,11 @@ export interface WriteRequestDeps {
   model?: string;
   /** The conversation so far: the request is written knowing what was tried. */
   messages: readonly ChatMessage[];
+  /**
+   * The loop's tools, declared but switched off: a conversation that holds tool calls needs them
+   * declared, and the engine sends `tool_choice` only beside tools.
+   */
+  tools?: ToolSpec[];
   /** What the model said Potyro would need, with the marker. */
   seed: string;
   language?: Language;
@@ -122,6 +128,7 @@ export async function writePlatformRequest(deps: WriteRequestDeps): Promise<Plat
     const res = await deps.engine.chat.completions.create({
       ...(deps.model ? { model: deps.model } : {}),
       messages: [...deps.messages, { role: "user", content: platformRequestPrompt(deps.seed, deps.language) }],
+      ...(deps.tools?.length ? { tools: deps.tools } : {}),
       tool_choice: "none",
       temperature: 0.1,
     });
@@ -137,6 +144,8 @@ export interface GiveUpDeps {
   messages: readonly ChatMessage[];
   /** What named something Potyro lacks, earlier in the loop. */
   signal: string;
+  /** As `WriteRequestDeps.tools`: declared, switched off. */
+  tools?: ToolSpec[];
   language?: Language;
 }
 
@@ -161,6 +170,7 @@ export async function askAfterGiveUp(deps: GiveUpDeps): Promise<PlatformRequest 
     const res = await deps.engine.chat.completions.create({
       ...(deps.model ? { model: deps.model } : {}),
       messages: [...deps.messages, { role: "user", content: ask }],
+      ...(deps.tools?.length ? { tools: deps.tools } : {}),
       tool_choice: "none",
       temperature: 0.1,
     });

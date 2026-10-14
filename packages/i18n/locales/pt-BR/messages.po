@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: ../shell/src/platform-request-card.tsx
+msgid "(nothing could be read from the app)"
+msgstr ""
+
 #. placeholder {0}: result.failed.length
 #: ../shell/src/backup-switch.tsx
 msgid "{0, plural, one {# app could not be moved: {which}.} other {# apps could not be moved: {which}.}}"
@@ -212,6 +216,14 @@ msgstr ""
 msgid "Could not measure: {failed}"
 msgstr ""
 
+#: ../shell/src/platform-requests.ts
+msgid "Couldn't send “{title}” to the Potyro team yet. It's saved on this device and will be sent later."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Couldn't send it yet. It's saved on this device and will be sent later."
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Create “{typed}”"
 msgstr ""
@@ -294,6 +306,14 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "How your app is put together"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I didn't change the app: what you asked for needs something Potyro can't do yet."
+msgstr ""
+
 #. placeholder {0}: me.id
 #: ../shell/src/identity-panel.tsx
 msgid "Identity <0>{0}</0>"
@@ -301,6 +321,14 @@ msgstr ""
 
 #: ../shell/src/storage-report.tsx
 msgid "IndexedDB, rewritten whole on every save (slow)"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "It goes on a public list of requests the Potyro team reads, without your name. No account needed."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Its lists, fields and pages. None of your entries are in it, and its code is left out — each piece shows as “(a function)”."
 msgstr ""
 
 #: ../shell/src/backup-switch.tsx
@@ -383,6 +411,7 @@ msgid "No relay: synced apps stay on this device."
 msgstr ""
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/platform-request-card.tsx
 msgid "Not now"
 msgstr ""
 
@@ -419,6 +448,12 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
+#. Studio: a card offering to send what the person asked for to the people who make Potyro
+#: ../shell/src/platform-request-card.tsx
+#: ../shell/src/platform-request-card.tsx
+msgid "Potyro can't do this yet"
+msgstr ""
+
 #. Launcher sort: by how often and how lately you open an app
 #: ../shell/src/launcher-order.ts
 msgid "Recent"
@@ -442,8 +477,32 @@ msgstr ""
 msgid "Save one thing"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "See the request"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Send"
+msgstr ""
+
 #: ../shell/src/launcher.tsx
 msgid "Send this link. Whoever opens it joins your app and its data."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Send to the Potyro team"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Sending…"
+msgstr ""
+
+#: ../shell/src/platform-requests.ts
+msgid "Sent to the Potyro team: “{title}”"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Sent to the Potyro team. If they add it, you'll hear about it here."
 msgstr ""
 
 #: ../shell/src/identity-panel.tsx
@@ -550,6 +609,10 @@ msgstr ""
 msgid "The conversation goes. Nothing was made from it yet."
 msgstr ""
 
+#: ../shell/src/platform-requests.ts
+msgid "The Potyro team's inbox didn't accept “{title}”."
+msgstr ""
+
 #: ../shell/src/backup-switch.tsx
 msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
 msgstr ""
@@ -566,6 +629,10 @@ msgstr ""
 msgid "This device"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "This is exactly what will be sent: the request above, and how your app is put together."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "This is my second device"
 msgstr ""
@@ -576,6 +643,10 @@ msgstr ""
 
 #: ../shell/src/app-words.ts
 msgid "Translate into {into}"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Try sending again"
 msgstr ""
 
 #: ../shell/src/launcher.tsx
@@ -617,6 +688,14 @@ msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "What should the people you share with see you as?"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "What will be sent"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "What you asked for, as a request to the people who make Potyro:"
 msgstr ""
 
 #: ../shell/src/launcher-order.ts
