@@ -67,8 +67,8 @@ describe("a repeated reply is rolled back (#278, F1)", () => {
     expect(note.content).toMatch(/different/i);
     expect(note.content).toContain("ASK:");
     expect(note.content).toContain(NOT_IN_APP);
-    // Not offered: it does not exist yet (#263).
-    expect(note.content).not.toContain("NEEDS-PLATFORM");
+    // And, since #263, the platform request.
+    expect(note.content).toContain("NEEDS-PLATFORM:");
     expect(steps.filter((s) => s.kind === "unusable" && s.repeat)).toHaveLength(1);
   });
 

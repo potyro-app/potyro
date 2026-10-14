@@ -7,11 +7,12 @@
 // attempts — but started again from the app and the request, with one line per attempt so the same
 // thing is not sent a third time.
 //
-// The ways out are only the ones the loop can act on today: another approach, `ASK:` and
-// `NOT-IN-APP:`. `NEEDS-PLATFORM:` joins them when #263 builds it, not before.
+// The ways out are the ones the loop can act on: another approach, `ASK:`, `NOT-IN-APP:`, and since
+// #263 `NEEDS-PLATFORM:` — a repeat is one of the places the harness offers it (docs/19 F1, F5).
 
 import type { ToolCallOnMessage } from "../chat-backend.js";
 import { NOT_IN_APP } from "../prompt.js";
+import { NEEDS_PLATFORM } from "./platform-request.js";
 
 const ASK = "ASK:";
 
@@ -55,7 +56,8 @@ export function rollbackNote(r: TurnedBack): string {
     "Sending it again will not work, so it has been taken out of this conversation. Do something different:",
     "- change the app another way, with edits against the app as first shown;",
     `- or, if only the person can tell you what they want, start your reply with "${ASK}" and one short question about what they want, in their words;`,
-    `- or, if this cannot be done inside the app, start your reply with "${NOT_IN_APP}" and say why in one sentence.`,
+    `- or, if this cannot be done inside the app, start your reply with "${NOT_IN_APP}" and say why in one sentence;`,
+    `- or, if it needs something Potyro itself does not offer yet, do what the app can do and add a line "${NEEDS_PLATFORM} <what Potyro would need>" — or reply with only that line if nothing can be done.`,
   ].join("\n");
 }
 

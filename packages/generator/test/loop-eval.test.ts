@@ -105,6 +105,13 @@ describe("the scripted loop engines prove the harness", () => {
     expect(none.read().conversationReads).toBe(0);
   });
 
+  // #263: the platform request's half, proven with no model.
+  it("scripted-loop-platform: a lookup that finds nothing, an edit that names what Potyro lacks, and the request", async () => {
+    const { buildDiscoveryTools } = await import("../src/agent/discovery-tools.js");
+    const out = await runModifyLoop(base({ engine: scriptedLoopEngine("scripted-loop-platform"), tools: buildDiscoveryTools({ check: async () => [], source: SOURCE }) }));
+    expect(out.kind === "source" && out.platformRequest).toEqual({ title: "Read barcodes", body: "The scripted person wanted to scan a barcode." });
+  });
+
   it("a refusing check refuses as the compiler does: by throwing", async () => {
     await expect(refusingCheck(async () => [], "boom")("anything")).rejects.toThrow("boom");
   });
@@ -150,6 +157,11 @@ describe("summarizeLoop", () => {
     const s = summarizeLoop([r(2), r(0), r(1)]);
     expect(s.conversationReads).toBe(3);
     expect(s.readTheConversation).toBe(2);
+  });
+
+  it("counts the cases that asked the Potyro team (#263)", () => {
+    const r = (asked: boolean): LoopRecord => ({ candidates: 1, passedOn: 1, repeats: 0, ended: "source", cause: null, calls: 2, promptTokens: 1, completionTokens: 1, cost: 0, ...(asked ? { platformRequest: true } : {}) });
+    expect(summarizeLoop([r(true), r(false), r(true)]).platformRequests).toBe(2);
   });
 
   it("counts the cases it was given", () => {

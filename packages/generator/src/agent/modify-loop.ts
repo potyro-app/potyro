@@ -35,6 +35,12 @@
 // the same opening message (so a fresh start and a rollback keep it). Older requests than the recap
 // shows are paged with `read_conversation`, offered only when there are some (conversation.ts).
 //
+// #263: when what is asked needs something Potyro itself lacks, the model can say `NEEDS-PLATFORM:`
+// — alone, or beside the part it could do — and one last tools-off call writes the request the
+// Studio offers to send. The loop offers the marker only where it has evidence (a rolled-back repeat;
+// a check, run or lookup naming something Potyro lacks), and after a give-up that followed such
+// evidence it asks once whether that is what stood in the way (platform-request.ts, docs/19 F5/F7).
+//
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
@@ -53,6 +59,7 @@ import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
 import type { TranslationDraft } from "./translate-tool.js";
 import { DEFAULT_RECAP_ROUNDS, buildConversationTool, conversationRecap, recapStartsAt, type ConversationEntry } from "./conversation.js";
+import { NEEDS_PLATFORM, askAfterGiveUp, platformLineIn, platformOffer, platformSignal, writePlatformRequest, type PlatformRequest } from "./platform-request.js";
 import { describeWordsReport, wordsReport } from "../source-words.js";
 
 export type ModifyLoopOutcome =
@@ -64,14 +71,18 @@ export type ModifyLoopOutcome =
       rationale?: string;
       /** The parts of the request the model said it did not do (the ladder's third rung). */
       notDone?: string[];
+      /** What Potyro itself would need for the rest, written for the Potyro team (#263). */
+      platformRequest?: PlatformRequest;
     }
   | { kind: "diagnosis"; text: string }
+  /** Nothing could be done: it needs something Potyro itself lacks (#263). `said` is the model's marker line. */
+  | { kind: "platform"; request: PlatformRequest; said: string }
   | { kind: "question"; text: string; transcript: ChatMessage[] }
   /**
    * It gave up. `reason` is for a developer (the step log, a transcript); `cause` is which way it
    * gave up, so the person can be told in their own words (studio-engine.ts).
    */
-  | { kind: "failed"; reason: string; cause: GiveUp }
+  | { kind: "failed"; reason: string; cause: GiveUp; platformRequest?: PlatformRequest }
   | { kind: "stopped" };
 
 /**
@@ -246,13 +257,36 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   const turnedBack: TurnedBack[] = [];
   /** The next model call thinks hard: the loop just rolled a repeat back or started afresh. */
   let stuck = false;
+  /** What, in a failure, named something Potyro lacks (#263); the marker is offered beside the first. */
+  let platformSeen: string | null = null;
+  let offered = false;
+  /** The offer to append beside a failure that names something Potyro lacks — once in the loop. */
+  const offerFor = (text: string): string => {
+    const signal = platformSignal(text);
+    if (!signal) return "";
+    platformSeen ??= signal;
+    if (offered) return "";
+    offered = true;
+    deps.onStep?.({ kind: "unusable", detail: `offered NEEDS-PLATFORM: ${signal}` });
+    return `\n\n${platformOffer(signal)}`;
+  };
+  const request = (seed: string): Promise<PlatformRequest> =>
+    writePlatformRequest({ engine: deps.engine, ...(deps.model ? { model: deps.model } : {}), messages, seed, ...(deps.language ? { language: deps.language } : {}) });
+  /** An accepted change, with the request when its prose said NEEDS-PLATFORM (#263). */
+  const finish = async (accepted: Accepted, said: string): Promise<Accepted> => {
+    const seed = platformLineIn(said);
+    return seed ? { ...accepted, platformRequest: await request(seed) } : accepted;
+  };
 
-  const gaveUp = (cause: GiveUp, why: string): ModifyLoopOutcome => {
+  const gaveUp = async (cause: GiveUp, why: string): Promise<ModifyLoopOutcome> => {
     if (held) {
       deps.onStep?.({ kind: "candidate", passed: true, n: heldOn, detail: `${why} — keeping the candidate that passed every check but a warning` });
       return held;
     }
-    return { kind: "failed", reason: why, cause };
+    // A give-up after a failure named something Potyro lacks: one last tools-off call asks whether
+    // that is what stood in the way, and writes the request if it is (docs/19 F7).
+    const platformRequest = platformSeen && !deps.signal?.aborted ? await askAfterGiveUp({ engine: deps.engine, model: deps.model, messages, signal: platformSeen, language: deps.language }) : null;
+    return { kind: "failed", reason: why, cause, ...(platformRequest ? { platformRequest } : {}) };
   };
   const budgetLine = (): string =>
     `${failedCandidates} candidate${failedCandidates === 1 ? "" : "s"} failed the check, ${unusableReplies} repl${unusableReplies === 1 ? "y was" : "ies were"} not a change`;
@@ -262,7 +296,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
    * conversation (`rollbackTo`: from there on) and one note goes in their place; the second time,
    * the loop gives up.
    */
-  const repeat = (why: string, back: TurnedBack, rollbackTo: number): ModifyLoopOutcome | null => {
+  const repeat = async (why: string, back: TurnedBack, rollbackTo: number): Promise<ModifyLoopOutcome | null> => {
     repeats += 1;
     if (repeats >= 2) {
       deps.onStep?.({ kind: "unusable", detail: why, repeat: true });
@@ -300,7 +334,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       else toolStreak = { sig, count: 1, at: messages.length, tried: describeToolTurn(calls), answer: "" };
       if (toolStreak.count >= TOOL_REPEAT) {
         const s = toolStreak;
-        const end = repeat(
+        const end = await repeat(
           `the same tool call ${TOOL_REPEAT} times in a row (${s.tried})`,
           { tried: `${s.tried}, ${TOOL_REPEAT} times in a row`, reason: `the same answer each time: ${s.answer || "(nothing)"}` },
           s.at,
@@ -321,7 +355,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         if (DISCOVERY.has(result.name)) looked = true;
         if (streak.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
         deps.onStep?.({ kind: "tool", name: result.name, ok: result.ok, detail: result.detail });
-        messages.push({ role: "tool", tool_call_id: c.id, content: result.detail });
+        // A lookup, check or run that names something Potyro lacks carries the offer (#263).
+        messages.push({ role: "tool", tool_call_id: c.id, content: `${result.detail}${offerFor(result.detail)}` });
         if (deps.signal?.aborted) return { kind: "stopped" };
       }
       continue;
@@ -335,8 +370,9 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       messages.push({ role: "assistant", content: text });
       return { kind: "question", text: head.slice(ASK.length).split(/^```/m)[0]!.trim(), transcript: [...messages] };
     }
-    if (head.startsWith(NOT_IN_APP)) {
-      const verdict = head.slice(NOT_IN_APP.length).split(/^```/m)[0]!.trim();
+    const platform = head.startsWith(NEEDS_PLATFORM);
+    if (head.startsWith(NOT_IN_APP) || platform) {
+      const verdict = head.slice((platform ? NEEDS_PLATFORM : NOT_IN_APP).length).split(/^```/m)[0]!.trim();
       // An uninformed refusal is the failure this loop exists to end: the model assumed an option
       // was missing. Once, it is sent to the tools; a second refusal is accepted as its answer.
       if (!looked && !nudged) {
@@ -346,11 +382,15 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         messages.push({
           role: "user",
           content:
-            "Before answering NOT-IN-APP, use the tools: call `lookup` on the type, option or ctx member you believe is missing, " +
+            `Before answering ${platform ? NEEDS_PLATFORM.slice(0, -1) : "NOT-IN-APP"}, use the tools: call \`lookup\` on the type, option or ctx member you believe is missing, ` +
             "`search_corpus` for how a real app does it (and `check` a candidate if you have one). Then answer again — with edits " +
-            "if they show a way, or with NOT-IN-APP quoting what they returned.",
+            `if they show a way, or with ${platform ? NEEDS_PLATFORM.slice(0, -1) : "NOT-IN-APP"} quoting what they returned.`,
         });
         continue;
+      }
+      if (platform) {
+        messages.push({ role: "assistant", content: text });
+        return { kind: "platform", request: await request(verdict), said: verdict };
       }
       return { kind: "diagnosis", text: verdict };
     }
@@ -359,7 +399,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const repeated = warnedReplies.has(text.trim()) ? null : repeatsItself(text, previousReply);
     if (repeated) {
       const same = previousReply !== null && text.trim() === previousReply.trim();
-      const end = repeat(
+      const end = await repeat(
         repeated,
         { tried: oneLine(text) || "the same edits", reason: same ? previousAnswer || "nothing usable" : "the reply said the same line over and over, with nothing else" },
         same ? previousReplyAt : -1,
@@ -399,7 +439,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     // repeat, whatever words came with it.
     const seenBefore = warned.has(candidate) ? undefined : refused.get(candidate);
     if (seenBefore) {
-      const end = repeat("the candidate is one that was already turned back", seenBefore, -1);
+      const end = await repeat("the candidate is one that was already turned back", seenBefore, -1);
       if (end) return end;
       continue;
     }
@@ -424,7 +464,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       ? `compiles, validates, keeps the app's shape, and runs without breaking anything (${gated.report.ran || "nothing to run"})`
       : "compiles, validates, keeps the app's shape";
     deps.onStep?.({ kind: "candidate", passed: problem === null, n: candidates, detail: problem ?? passed });
-    if (problem === null) return accepted;
+    if (problem === null) return finish(accepted, read.rationale ?? text);
     failedCandidates += 1;
     if (!warning) {
       const back = { tried, reason: oneLine(problem, 240) };
@@ -432,13 +472,15 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       turnedBack.push(back);
       refusedInChain += 1;
     }
+    // A check or run that names something Potyro lacks carries the offer, in this chain or the next (#263).
+    const offer = offerFor(problem);
     if (candidates >= maxCandidates) return gaveUp("candidates", `${candidates} candidate${candidates === 1 ? "" : "s"} failed the check — the candidate budget is spent`);
     if (refusedInChain >= RESTART_AFTER && opening !== null) {
       // F2: a chain with two candidates turned back is not extended. It starts again from the app
       // and the request, with one line per attempt; the steps and candidates already spent stay spent.
       messages = [
         { role: "system", content: deps.system },
-        { role: "user", content: `${opening}\n\n${freshStartNote(turnedBack)}` },
+        { role: "user", content: `${opening}\n\n${freshStartNote(turnedBack)}${offer}` },
       ];
       refusedInChain = 0;
       stuck = true;
@@ -454,7 +496,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       content:
         `${problem}\n\nYour edits were applied to the app as first shown, not to your previous attempt — that change is not in the app. ` +
         "Send the complete set of edits you want against the app as first shown. If you are unsure whether an option exists, `lookup` it; " +
-        "if you are unsure whether a candidate validates, `check` your edits before sending.",
+        `if you are unsure whether a candidate validates, \`check\` your edits before sending.${offer}`,
     });
     previousAnswer = oneLine(problem, 240);
   }
