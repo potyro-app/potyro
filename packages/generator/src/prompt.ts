@@ -207,7 +207,11 @@ LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
   go in \`labels: { todo: { en: "To do", pl: "Do zrobienia" } }\`.
 - Words and languages are not data: a translation moves \`version\` but never \`schemaVersion\`, and
   needs no migration.
-- \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`).
+- \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`). A computed a page
+  shows under a heading — listed in a group, a detail \`sections\` entry or a table's \`columns\` — says
+  what it is called: \`perServing: { label: "Calories per serving", value: (r) => r.kcal / r.servings }\`.
+  Without a label the heading is the key ("Per Serving"), in every language. A computed used only in
+  a binding, a filter or a sort stays a bare function.
 - \`actions\` entries are BARE FUNCTIONS \`(record, ctx) => void | Promise<void>\` — NOT objects. Write
   \`actions: { water: async (plant, ctx) => { await ctx.patch("plant", plant.id, { ... }); } }\`.
   NEVER \`actions: { water: { label: "...", run: ... } }\`. A detail view lists action KEYS:
@@ -341,7 +345,7 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
 - Arrange an entity's fields with \`groups: [{ title, fields: [...] }]\` when it has more than four:
   the form and the detail page show the same titled sections (a group may list computed keys — they
-  show on the detail page). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
+  show on the detail page, headed by the computed's \`label\`). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
   \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
   text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
 - Records with a stage or status (tasks, applications, "want to try / tried") want a \`board\` page:
