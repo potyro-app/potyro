@@ -112,20 +112,19 @@ async function openYou(page: Page): Promise<Locator> {
 test.describe("device language", () => {
   test.use({ locale: "pl-PL" });
 
-  test("a Polish device opens in Polish; an empty catalog reads in English, message by message", async ({ page }) => {
+  test("a Polish device opens in Polish, and the picker says it follows the device", async ({ page }) => {
     await seed(page);
     const home = await openHome(page);
     await expect(page.locator("html")).toHaveAttribute("lang", "pl");
-    // Polish has no translations yet, so every message falls back to English rather than its id.
-    await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", "Find an app");
+    await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", "Znajdź aplikację");
 
     const panel = await openYou(page);
     // Following the device is the choice made, and it says which language that is.
-    const picker = panel.getByRole("combobox", { name: "Language" });
+    const picker = panel.getByRole("combobox", { name: "Język" });
     await expect(picker).toHaveValue("auto");
-    await expect(picker.locator("option:checked")).toHaveText("Match this device (Polski)");
-    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski (draft)");
-    await expect(picker.locator('option[value="de"]')).toHaveText("Deutsch — niemiecki (draft)");
+    await expect(picker.locator("option:checked")).toHaveText("Jak to urządzenie (Polski)");
+    await expect(picker.locator('option[value="pl"]')).toHaveText("Polski (wersja robocza)");
+    await expect(picker.locator('option[value="de"]')).toHaveText("Deutsch — niemiecki (wersja robocza)");
     await expect(picker.locator('option[value="en"]')).toHaveText("English — angielski");
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBeNull();
   });

@@ -39,7 +39,7 @@ const ADD_AFTER: Record<Kind, MessageDescriptor> = {
   audio: msg({ message: "add audio", comment: "After a field's name and a colon, lower case" }),
   any: msg({ message: "add file", comment: "After a field's name and a colon, lower case" }),
 };
-const TAKE: Record<Kind, MessageDescriptor> = { image: msg`Take a photo`, video: msg`Take a video`, audio: msg`Take a audio`, any: msg`Take a file` };
+const TAKE: Record<Kind, MessageDescriptor> = { image: msg`Take a photo`, video: msg`Take a video`, audio: msg`Record audio`, any: msg`Take a file` };
 const REMOVE: Record<Kind, MessageDescriptor> = { image: msg`Remove photo`, video: msg`Remove video`, audio: msg`Remove audio`, any: msg`Remove file` };
 const ACCEPT: Record<Kind, string> = { image: "image/*", video: "video/*", audio: "audio/*", any: "" };
 const GLYPH: Record<Kind, string> = { image: "📷", video: "🎬", audio: "🎙", any: "📎" };
