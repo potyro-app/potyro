@@ -11,12 +11,14 @@
 // of them, opened a panel with nothing in it but a box to ask the agent. Anything beyond words and
 // order belongs to the Studio, and the bar says so.
 
+import { fmt } from "@potyro/i18n";
+import { plural, t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { humanizeKey } from "@potyro/views";
 import { applyEdit, fieldStep, inspect, textSites, type AppShape, type Edit, type TextSite } from "./app-source.js";
 import { appRoots, collectTargets, sameThing, type InlineTarget } from "./inline-targets.js";
 import { editorLanguages } from "./app-source-words.js";
-import { languageName } from "./app-words.js";
 import { pointFromInline, type PointRef } from "./point-target.js";
 
 export interface InlineEditProps {
@@ -77,9 +79,14 @@ function patchText(node: Text, value: string): void {
   node.data = `${lead}${value}${trail}`;
 }
 
-const kindWord = (t: InlineTarget): string => (t.kind === "field" ? "Field name" : t.kind === "page" ? "Page name" : "Text");
+const kindWord = (target: InlineTarget): string =>
+  target.kind === "field" ? t`Field name` : target.kind === "page" ? t`Page name` : t({ message: "Text", comment: "Edit mode: the label above a box for changing a piece of the app's text" });
+/** The popover's name, said whole: a lower-cased `kindWord` would be wrong in German. */
+const changeWhat = (target: InlineTarget): string =>
+  target.kind === "field" ? t`Change field name` : target.kind === "page" ? t`Change page name` : t`Change text`;
 
 export function InlineEdit({ source, where, save, rerun, askStudio, done }: InlineEditProps) {
+  const { t } = useLingui();
   const [model, setModel] = useState<{ sites: TextSite[]; shape: AppShape } | null>(null);
   const [located, setLocated] = useState<Located[]>([]);
   const [open, setOpen] = useState<Located | null>(null);
@@ -172,18 +179,18 @@ export function InlineEdit({ source, where, save, rerun, askStudio, done }: Inli
         </span>
         <span className="k-inline-bar-text">
           {!model
-            ? "Reading this app…"
+            ? t`Reading this app…`
             : model.shape.blocked
-              ? "This app isn't written in a way that can be changed in place."
+              ? t`This app isn't written in a way that can be changed in place.`
               : things
-                ? "Tap highlighted text to change it."
-                : "Nothing on this screen is written as plain text in the app."}
+                ? t`Tap highlighted text to change it.`
+                : t`Nothing on this screen is written as plain text in the app.`}
         </span>
-        <button type="button" className="k-inline-bar-btn" onClick={() => askStudio(`On ${where}: `)}>
-          Ask the Studio
+        <button type="button" className="k-inline-bar-btn" onClick={() => askStudio(t({ message: `On ${where}: `, comment: "Starts the person's message in the Studio box; where is a page of the app" }))}>
+          <Trans>Ask the Studio</Trans>
         </button>
         <button type="button" className="k-inline-bar-btn k-inline-bar-done" onClick={done}>
-          Done
+          <Trans comment="Leave edit mode">Done</Trans>
         </button>
       </div>
       {open && model ? (
@@ -201,7 +208,7 @@ export function InlineEdit({ source, where, save, rerun, askStudio, done }: Inli
             // What the label belongs to goes as a point — the Studio says it on its box, the model
             // reads it with the lines that declare it. Without one, the words carry it as before.
             const point = pointFromInline(open.target);
-            askStudio(point ? "" : `On ${where}, about "${text}": `, point ?? undefined);
+            askStudio(point ? "" : t({ message: `On ${where}, about "${text}": `, comment: "Starts the person's message in the Studio box" }), point ?? undefined);
           }}
         />
       ) : null}
@@ -221,6 +228,7 @@ interface PopoverProps {
 }
 
 function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverProps) {
+  const { t } = useLingui();
   const { target } = at;
   const initial = target.kind === "field" ? target.field.label ?? "" : target.text;
   const [value, setValue] = useState(initial);
@@ -353,7 +361,7 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
       ref={ref}
       className="k-inline-pop"
       role="dialog"
-      aria-label={`Change ${kindWord(target).toLowerCase()}`}
+      aria-label={changeWhat(target)}
       style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
     >
       <form
@@ -370,7 +378,7 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
             return (
               <label key={l} className="k-inline-pop-label">
                 <span>
-                  {kindWord(target)} — {languageName(l, "en")}
+                  {kindWord(target)} — {fmt.language(l)}
                 </span>
                 <input
                   className="k-input"
@@ -381,7 +389,11 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
                   onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) => setValues((v) => ({ ...v, [l]: e.target.value }))}
                 />
-                {stale ? <span className="k-inline-pop-note">May be out of date now.</span> : null}
+                {stale ? (
+                  <span className="k-inline-pop-note">
+                    <Trans>May be out of date now.</Trans>
+                  </span>
+                ) : null}
               </label>
             );
           })
@@ -399,16 +411,18 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
             />
           </label>
         )}
-        {repeats > 1 ? <p className="k-inline-pop-note">This text is written {repeats} times in the app — all of them change.</p> : null}
-        {target.kind === "field" && !target.field.label && !map ? <p className="k-inline-pop-note">Leave it empty to keep the default.</p> : null}
+        {repeats > 1 ? <p className="k-inline-pop-note">{plural(repeats, { one: "This text is written # time in the app — all of them change.", other: "This text is written # times in the app — all of them change." })}</p> : null}
+        {target.kind === "field" && !target.field.label && !map ? <p className="k-inline-pop-note">
+            <Trans>Leave it empty to keep the default.</Trans>
+          </p> : null}
 
         {canMove ? (
           <div className="k-inline-pop-moves">
             <button type="button" className="k-inline-pop-move" disabled={busy || !earlier} onClick={() => void structural(earlier)}>
-              {target.kind === "page" ? "← Earlier" : "↑ Earlier"}
+              {target.kind === "page" ? t`← Earlier` : t`↑ Earlier`}
             </button>
             <button type="button" className="k-inline-pop-move" disabled={busy || !later} onClick={() => void structural(later)}>
-              {target.kind === "page" ? "Later →" : "↓ Later"}
+              {target.kind === "page" ? t`Later →` : t`↓ Later`}
             </button>
             {target.kind === "field" ? (
               <label className="k-inline-pop-hide">
@@ -424,7 +438,7 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
                     });
                   }}
                 />
-                Hide from the form
+                <Trans>Hide from the form</Trans>
               </label>
             ) : null}
           </div>
@@ -433,13 +447,13 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
         {error ? <p className="k-form-error">{error}</p> : null}
         <div className="k-inline-pop-actions">
           <button type="button" className="k-inline-pop-ask" onClick={() => ask(target.text)}>
-            More changes…
+            <Trans>More changes…</Trans>
           </button>
           <button type="button" className="k-add" disabled={busy} onClick={close}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="k-add k-primary-action" disabled={busy}>
-            {busy ? "Saving…" : "Save"}
+            {busy ? t`Saving…` : t`Save`}
           </button>
         </div>
       </form>

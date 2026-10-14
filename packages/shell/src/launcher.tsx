@@ -26,7 +26,7 @@ import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./ident
 import { LookPanel } from "./look-panel.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
-import { canSync, CANNOT_SYNC_MESSAGE } from "./open-store.js";
+import { canSync, cannotSyncMessage } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
 import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
@@ -514,7 +514,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   const toggleSync = async (a: UserApp): Promise<void> => {
     const on = !a.sync;
     if (on && !canSync()) {
-      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      await shellDialogs.confirm(cannotSyncMessage());
       return;
     }
     // An app someone else wrote is asked about first (KA-23): sync is what lets its code write into
@@ -536,7 +536,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       const records = copied.records;
       const moved = plural(records, { one: "Moved # record.", other: "Moved # records." });
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
-      // path exists to avoid. (The warnings are the store's own words; #299 takes them.)
+      // path exists to avoid. (The warnings come translated from `toggleAppSync`.)
       await shellDialogs.confirm(warnings.length ? `${moved} ${warnings.join(" ")}` : `${moved} ${on ? t`Sync is on.` : t`Sync is off.`}`);
       // Only after the outcome is reported. The first time anything syncs is the first time the
       // recovery words are TRUE — before that they restore nothing, because the data has never left
@@ -555,7 +555,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // fragment never reaches a server, which is what keeps the key off the relay.
   const share = async (a: UserApp): Promise<void> => {
     if (!canSync()) {
-      await shellDialogs.confirm(CANNOT_SYNC_MESSAGE);
+      await shellDialogs.confirm(cannotSyncMessage());
       return;
     }
     try {
@@ -586,9 +586,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         const name = a.name;
         const list = `• ${hazards.join("\n• ")}`;
         const go = await shellDialogs.confirm(
-          t`Before you share “${name}” — two people using it at once can lose each other's work:` +
-            `\n\n${list}\n\n` +
-            t`Nothing is wrong with it on your own. Share anyway?`,
+          t`Before you share “${name}” — two people using it at once can lose each other's work:\n\n${list}\n\nNothing is wrong with it on your own. Share anyway?`,
         );
         if (!go) return;
       }

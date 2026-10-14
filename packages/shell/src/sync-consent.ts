@@ -13,6 +13,7 @@
 // blunter prompt and the safe answer first: refusing outright would stop people sharing apps that
 // work, to enforce a declaration most authors have never heard of.
 
+import { t } from "@lingui/core/macro";
 import { shellDialogs } from "./dialog.js";
 import { declaredSync } from "./app-source.js";
 import type { UserApp } from "./user-apps.js";
@@ -54,20 +55,19 @@ export async function askToSync(app: UserApp): Promise<boolean> {
   if (syncConsented(app.id)) return true;
 
   const asked = await declaredSync(app.source);
+  const name = app.name;
   const ok = await shellDialogs.confirm(
-    asked === true ? `“${app.name}” was made by someone else, so it runs in a sandbox.` : `“${app.name}” never asked to sync.`,
+    asked === true ? t`“${name}” was made by someone else, so it runs in a sandbox.` : t`“${name}” never asked to sync.`,
     asked === true
       ? {
-          detail:
-            "Sharing it turns on sync: from then on its own code writes into data that leaves this device, where the people you share with can read it. The app asks for this. Share it?",
-          ok: "Share",
-          cancel: "Not now",
+          detail: t`Sharing it turns on sync: from then on its own code writes into data that leaves this device, where the people you share with can read it. The app asks for this. Share it?`,
+          ok: t({ message: "Share", comment: "Button: share the app (turns sync on)" }),
+          cancel: t`Not now`,
         }
       : {
-          detail:
-            "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway.",
-          ok: "Share anyway",
-          cancel: "Don't share",
+          detail: t`It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway.`,
+          ok: t`Share anyway`,
+          cancel: t`Don't share`,
           destructive: true,
         },
   );

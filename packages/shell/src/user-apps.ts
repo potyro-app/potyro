@@ -9,6 +9,7 @@
 // reviewed and rolled back. That happens inside `saveUserApp` on purpose: it is the only path that
 // writes source, so no caller can quietly skip the audit trail.
 
+import { t } from "@lingui/core/macro";
 import { clearHistory, recordVersion, type VersionOrigin } from "./app-history.js";
 import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
@@ -117,7 +118,7 @@ export async function saveUserApp(
   now: string,
 ): Promise<UserApp> {
   const apps = read();
-  const name = input.name.trim() || "Untitled app";
+  const name = input.name.trim() || t({ message: "Untitled app", comment: "The name an app gets when it was given none" });
   let id = input.id;
   if (!id) {
     const base = slug(name);
@@ -263,10 +264,11 @@ export function freeAppId(name: string): string {
 export async function duplicateUserApp(id: string, now: string): Promise<UserApp | null> {
   const app = read().find((a) => a.id === id);
   if (!app) return null;
-  const name = `${app.name} (copy)`;
+  const original = app.name;
+  const name = t({ message: `${original} (copy)`, comment: "The name of a duplicated app" });
   return saveUserApp(
     // The lock is the code's, not the data's: the copy runs the same libraries (`duplicateApp` copies their files).
-    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, origin: "created", note: `copied from “${app.name}”` },
+    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, origin: "created", note: `copied from “${original}”` /* English on purpose: SYSTEM_NOTES matches it */ },
     now,
   );
 }

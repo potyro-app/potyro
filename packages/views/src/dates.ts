@@ -3,6 +3,7 @@
 // field never shows a time it does not have.
 
 import type { DateTimeField } from "potyro";
+import { fmt } from "@potyro/i18n";
 
 export type Precision = NonNullable<DateTimeField["precision"]>;
 
@@ -31,19 +32,26 @@ export function toDate(v: unknown): Date | null {
   return null;
 }
 
-const SHORT = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-const LONG = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-const TIME = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+// In the active language, read at call time so a language switch reformats (#299). `fmt` caches the
+// formatters per language and options.
+const SHORT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+const LONG: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+const short = (d: Date): string => fmt.date(d, SHORT);
+const long = (d: Date): string => fmt.date(d, LONG);
+const time = (d: Date): string => fmt.date(d, TIME);
 
-/** "today" / "yesterday" / "tomorrow" / "in 3 days" / "3 days ago", or null when it is not near. */
+/** A day either side of today, in words: `Intl.RelativeTimeFormat` with `numeric: "auto"`. */
+const dayWord = (n: number): string => fmt.days(n);
+
+/**
+ * "today" / "yesterday" / "tomorrow" / "in 3 days" / "3 days ago", or null when it is not near —
+ * each language's own words for these (#299).
+ */
 export function relativeDay(d: Date, now = new Date()): string | null {
   const n = daysFromToday(d, now);
-  if (n === 0) return "today";
-  if (n === 1) return "tomorrow";
-  if (n === -1) return "yesterday";
-  if (n > 1 && n <= 6) return `in ${n} days`;
-  if (n < -1 && n >= -6) return `${-n} days ago`;
-  return null;
+  if (n < -6 || n > 6) return null;
+  return dayWord(n);
 }
 
 const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -52,20 +60,20 @@ const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 export function formatDateForInput(d: Date, precision: Precision, now = new Date()): string {
   const rel = relativeDay(d, now);
   const sameYear = d.getFullYear() === now.getFullYear();
-  const day = rel ? `${capital(rel)}, ${SHORT.format(d)}` : sameYear ? `${LONG.format(d).replace(`, ${d.getFullYear()}`, "").replace(` ${d.getFullYear()}`, "")}` : LONG.format(d);
-  return precision === "minute" ? `${day} · ${TIME.format(d)}` : day;
+  const day = rel ? `${capital(rel)}, ${short(d)}` : sameYear ? `${long(d).replace(`, ${d.getFullYear()}`, "").replace(` ${d.getFullYear()}`, "")}` : long(d);
+  return precision === "minute" ? `${day} · ${time(d)}` : day;
 }
 
 /** The value on a record page: absolute, with the time only for a minute field. */
 export function formatDateAbsolute(d: Date, precision: Precision): string {
-  return precision === "minute" ? `${LONG.format(d)}, ${TIME.format(d)}` : LONG.format(d);
+  return precision === "minute" ? `${long(d)}, ${time(d)}` : long(d);
 }
 
 /** The value in a list or a badge: relative when near, else the short absolute form. */
 export function formatDateRelative(d: Date, precision: Precision, now = new Date()): string {
   const rel = relativeDay(d, now);
-  const day = rel ?? (d.getFullYear() === now.getFullYear() ? SHORT.format(d) : LONG.format(d));
-  return precision === "minute" ? `${day} ${TIME.format(d)}` : day;
+  const day = rel ?? (d.getFullYear() === now.getFullYear() ? short(d) : long(d));
+  return precision === "minute" ? `${day} ${time(d)}` : day;
 }
 
 const pad = (n: number): string => String(n).padStart(2, "0");
@@ -79,9 +87,10 @@ export const toIsoTime = (d: Date): string => `${pad(d.getHours())}:${pad(d.getM
 export function parseTypedDay(text: string, now = new Date()): Date | null {
   const t = text.trim().toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ");
   if (!t) return null;
-  if (t === "today") return startOfDay(now);
-  if (t === "tomorrow") return addDays(startOfDay(now), 1);
-  if (t === "yesterday") return addDays(startOfDay(now), -1);
+  // The English words always work; so do the active language's own ("dzisiaj", "morgen").
+  for (const [n, word] of [[0, "today"], [1, "tomorrow"], [-1, "yesterday"]] as const) {
+    if (t === word || t === dayWord(n).toLowerCase()) return addDays(startOfDay(now), n);
+  }
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
   if (m) return valid(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
   m = /^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/.exec(t);

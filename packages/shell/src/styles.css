@@ -2333,9 +2333,15 @@ details.k-form-group > summary:focus-visible {
 }
 .k-form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.4rem;
+}
+/* A button that does not fit beside the others moves to the next line whole, rather than breaking
+   its words: other languages run up to a third longer than English (#299). */
+.k-form-actions > button {
+  white-space: nowrap;
 }
 
 /* tokens-only: start — numbers */

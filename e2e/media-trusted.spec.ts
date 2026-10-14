@@ -21,7 +21,7 @@ test.describe("desktop", () => {
 
   test("a photo field is a tile: add, see it, remove it, and it shows the same on the record", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await expect(form).toBeVisible();
 
@@ -38,7 +38,7 @@ test.describe("desktop", () => {
     await expect(add).toHaveCount(0);
 
     // It can be taken off again.
-    await form.getByRole("button", { name: "Remove photo" }).click();
+    await form.getByRole("button", { name: "Remove: Photo" }).click();
     await expect(form.locator(".k-media-tile")).toHaveCount(0);
     await expect(add).toBeVisible();
 
@@ -60,7 +60,7 @@ test.describe("phone", () => {
 
   test("the tile offers the camera or the library", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: "New Plant" }).tap();
+    await page.getByRole("button", { name: "Add: Plant" }).tap();
     const form = page.locator(".k-form");
     await form.getByRole("button", { name: "Photo: add photo" }).tap();
     // A phone with a camera gets the choice, as a sheet under the thumb.
@@ -112,7 +112,7 @@ test.describe("export carries the photos", () => {
     ]);
 
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: /New Plant|Add Plant/i }).first().click();
+    await page.getByRole("button", { name: /Add: Plant|Add Plant/i }).first().click();
     await page.getByLabel(/name/i).first().fill("Fern");
     await page.locator('input[type="file"]').first().setInputFiles({ name: "fern.png", mimeType: "image/png", buffer: noisy });
     await expect(page.locator(".k-media-thumb, .k-media img, img").first()).toBeVisible({ timeout: 30_000 });

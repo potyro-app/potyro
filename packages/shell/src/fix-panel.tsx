@@ -15,6 +15,7 @@
 // `unverifiedAttempt` below is the ONLY place `lastAttempt` is rendered, and it renders no button.
 
 import { useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { LoopOutcome, LoopStep } from "@potyro/generator/agent";
 
 export interface FixPanelProps {
@@ -35,7 +36,7 @@ function stepLine(step: LoopStep, i: number) {
   if (step.kind === "thinking") {
     return (
       <li key={i} className="k-fix-step" data-kind="thinking">
-        …thinking
+        <Trans comment="Fix agent step: the model is reasoning">…thinking</Trans>
       </li>
     );
   }
@@ -47,16 +48,19 @@ function stepLine(step: LoopStep, i: number) {
     );
   }
   if (step.kind === "candidate") {
+    const detail = step.detail;
     return (
       <li key={i} className="k-fix-step" data-kind="candidate" data-ok={step.passed}>
-        {step.passed ? "✓" : "✗"} candidate {step.passed ? "passed" : "failed"} replay — {step.detail}
+        {step.passed ? "✓" : "✗"}{" "}
+        {step.passed ? <Trans>candidate passed replay — {detail}</Trans> : <Trans>candidate failed replay — {detail}</Trans>}
       </li>
     );
   }
   // "unusable": the model's reply was neither an app, a question, nor a diagnosis marker.
+  const detail = step.detail;
   return (
     <li key={i} className="k-fix-step" data-kind="unusable">
-      ✗ not usable — {step.detail}
+      ✗ <Trans comment="Fix agent step: the model's reply could not be used">not usable — {detail}</Trans>
     </li>
   );
 }
@@ -66,7 +70,9 @@ function stepLine(step: LoopStep, i: number) {
 function unverifiedAttempt(source: string) {
   return (
     <details className="k-fix-lastattempt">
-      <summary>Last thing it tried (did not pass replay — not applied)</summary>
+      <summary>
+        <Trans>Last thing it tried (did not pass replay — not applied)</Trans>
+      </summary>
       <pre>{source}</pre>
     </details>
   );
@@ -81,15 +87,18 @@ function FixOutcome({
   onApply: (source: string) => void;
   onAnswer: (text: string) => void;
 }) {
+  const { t } = useLingui();
   const [reply, setReply] = useState("");
 
   if (outcome.kind === "fix") {
     return (
       <div className="k-fix-outcome k-fix-fix" data-kind="fix">
-        <p className="k-fix-outcome-head">Fix found</p>
+        <p className="k-fix-outcome-head">
+          <Trans>Fix found</Trans>
+        </p>
         <p className="k-fix-rationale">{outcome.rationale}</p>
         <button type="button" className="k-add k-primary-action" onClick={() => onApply(outcome.source)}>
-          Apply
+          <Trans comment="Button: apply the verified fix to the app">Apply</Trans>
         </button>
       </div>
     );
@@ -101,11 +110,13 @@ function FixOutcome({
     // which the person needs stated plainly BEFORE they decide, not buried after they applied it.
     return (
       <div className="k-fix-outcome k-fix-unverified" data-kind="unverified-fix">
-        <p className="k-fix-outcome-head">A suggestion — not verified</p>
+        <p className="k-fix-outcome-head">
+          <Trans>A suggestion — not verified</Trans>
+        </p>
         <p className="k-fix-rationale">{outcome.rationale}</p>
         <p className="k-fix-why">{outcome.why}</p>
         <button type="button" className="k-add" onClick={() => onApply(outcome.source)}>
-          Apply anyway
+          <Trans>Apply anyway</Trans>
         </button>
       </div>
     );
@@ -114,11 +125,13 @@ function FixOutcome({
   if (outcome.kind === "question") {
     return (
       <div className="k-fix-outcome k-fix-question" data-kind="question">
-        <p className="k-fix-outcome-head">It has a question</p>
+        <p className="k-fix-outcome-head">
+          <Trans>It has a question</Trans>
+        </p>
         <p>{outcome.text}</p>
         <textarea
           className="k-input"
-          aria-label="Your answer"
+          aria-label={t`Your answer`}
           rows={3}
           value={reply}
           onChange={(e) => setReply(e.target.value)}
@@ -129,7 +142,7 @@ function FixOutcome({
           disabled={!reply.trim()}
           onClick={() => onAnswer(reply.trim())}
         >
-          Send answer
+          <Trans>Send answer</Trans>
         </button>
       </div>
     );
@@ -142,7 +155,9 @@ function FixOutcome({
     // real answer was "you never wrote down what you expected".
     return (
       <div className="k-fix-outcome k-fix-refused" data-kind="refused" role="note">
-        <p className="k-fix-outcome-head">Nothing to investigate yet</p>
+        <p className="k-fix-outcome-head">
+          <Trans>Nothing to investigate yet</Trans>
+        </p>
         <p>{outcome.text}</p>
       </div>
     );
@@ -152,18 +167,25 @@ function FixOutcome({
     // Deliberately not styled as an error — nothing failed, the fault is just outside the app.
     return (
       <div className="k-fix-outcome k-fix-diagnosis" data-kind="diagnosis" role="note">
-        <p className="k-fix-outcome-head">This one isn&rsquo;t in your app</p>
+        <p className="k-fix-outcome-head">
+          <Trans>This one isn’t in your app</Trans>
+        </p>
         <p>{outcome.text}</p>
       </div>
     );
   }
 
   if (outcome.kind === "no-repro") {
+    const detail = outcome.detail;
     // NOT a failure and NOT a fix — the recorded path currently succeeds against the app as it is.
     return (
       <div className="k-fix-outcome k-fix-norepro" data-kind="no-repro" role="note">
-        <p className="k-fix-outcome-head">Could not reproduce this</p>
-        <p>It replayed clean against the app as it is — {outcome.detail}</p>
+        <p className="k-fix-outcome-head">
+          <Trans>Could not reproduce this</Trans>
+        </p>
+        <p>
+          <Trans>It replayed clean against the app as it is — {detail}</Trans>
+        </p>
       </div>
     );
   }
@@ -172,8 +194,12 @@ function FixOutcome({
     // The person ended it — this must not read as the agent failing.
     return (
       <div className="k-fix-outcome k-fix-stopped" data-kind="stopped" role="note">
-        <p className="k-fix-outcome-head">Stopped</p>
-        <p>You ended this before it finished.</p>
+        <p className="k-fix-outcome-head">
+          <Trans comment="Fix agent outcome: the person stopped it">Stopped</Trans>
+        </p>
+        <p>
+          <Trans>You ended this before it finished.</Trans>
+        </p>
         {outcome.lastAttempt ? unverifiedAttempt(outcome.lastAttempt) : null}
       </div>
     );
@@ -182,7 +208,9 @@ function FixOutcome({
   // "exhausted": it gave up. `reason` carries the real cause.
   return (
     <div className="k-fix-outcome k-fix-exhausted" data-kind="exhausted" role="note">
-      <p className="k-fix-outcome-head">Gave up</p>
+      <p className="k-fix-outcome-head">
+        <Trans comment="Fix agent outcome: it could not find a fix">Gave up</Trans>
+      </p>
       <p>{outcome.reason}</p>
       {outcome.lastAttempt ? unverifiedAttempt(outcome.lastAttempt) : null}
     </div>
@@ -190,24 +218,25 @@ function FixOutcome({
 }
 
 export function FixPanel({ outcome, steps, onApply, onAnswer, onStop, onClose }: FixPanelProps) {
+  const { t } = useLingui();
   const running = outcome === undefined;
 
   return (
-    <div className="k-fix-panel" role="dialog" aria-label="Fix this">
-      <h3>{running ? "Investigating…" : "Investigation finished"}</h3>
+    <div className="k-fix-panel" role="dialog" aria-label={t`Fix this`}>
+      <h3>{running ? t`Investigating…` : t`Investigation finished`}</h3>
 
       <ol className="k-fix-steps">{steps.map((s, i) => stepLine(s, i))}</ol>
 
       {running ? (
         <button type="button" className="k-add" onClick={onStop}>
-          Stop
+          <Trans comment="Button: stop the fix agent">Stop</Trans>
         </button>
       ) : (
         <FixOutcome outcome={outcome} onApply={onApply} onAnswer={onAnswer} />
       )}
 
       <button type="button" className="k-add" onClick={onClose}>
-        Close
+        <Trans comment="Button: close the fix panel">Close</Trans>
       </button>
     </div>
   );

@@ -12,13 +12,17 @@
 // Only the value that is RENDERED is looked at: the branches of `a ? "x" : "y"`, both sides of
 // `"x" + y`, a template literal. A string compared, used as a key or a class name is not text.
 //
-// Two levels, so the extraction can go batch by batch (#299):
-//   - ERROR for the files in CLEAN below — a batch that has been extracted cannot regress;
-//   - WARN for everything else, summarised per file (`--verbose` lists each one).
-// `--strict` makes every finding an error, which is where #299 ends.
+// Every finding is an error, in every file of shell and views (#299 extracted them all, batch by
+// batch; the per-file allow-list it went through is gone with it). A new file is covered the moment
+// it exists.
 //
-// Escape hatch, for proper nouns and code that is not language: `// i18n-ignore` on the line, or
-// on the line before. "Potyro" is allowed everywhere; it is a name.
+// Escape hatch, for proper nouns and code that is not language: `// i18n-ignore — <why>` on the
+// line, or on the line before (in JSX, `{/* i18n-ignore — <why> */}`). Say why: an example address,
+// a name, text a model reads (#297 keeps model-facing text English). "Potyro" is allowed everywhere;
+// it is a name.
+//
+// What this cannot see: a string a function returns or throws that ends up on screen. Those were
+// moved by reading (#299); the pseudo-language e2e (e2e/i18n-trusted.spec.ts) is the net for them.
 //
 // TypeScript's own parser (already a dependency), like the other checks in scripts/: no ESLint in
 // this repo to hang a rule on, and a parser rather than a regex because JSX text cannot be found
@@ -32,22 +36,6 @@ import ts from "typescript";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const ROOTS = ["packages/shell/src", "packages/views/src"];
 
-/** Extracted batches: any finding here fails the check. */
-export const CLEAN = new Set([
-  // #298, batch 1: the launcher and the You panel, and everything drawn inside them.
-  "packages/shell/src/launcher.tsx",
-  "packages/shell/src/launcher-order.ts",
-  "packages/shell/src/launcher-store.ts",
-  "packages/shell/src/draft-strip.tsx",
-  "packages/shell/src/identity-panel.tsx",
-  "packages/shell/src/language-picker.tsx",
-  "packages/shell/src/backup-switch.tsx",
-  "packages/shell/src/storage-report.tsx",
-  // #263: requests to the Potyro team, written clean from the start.
-  "packages/shell/src/platform-request-card.tsx",
-  "packages/shell/src/platform-requests.ts",
-  "packages/shell/src/studio-requests.ts",
-]);
 
 const ATTRS = new Set([
   "aria-label",
@@ -63,7 +51,7 @@ const ATTRS = new Set([
 const PROPS = new Set(["label", "title", "placeholder", "ariaLabel", "detail"]);
 const DIALOG_OPTIONS = new Set(["detail", "ok", "cancel", "label", "title"]);
 const CALLEES = new Set(["toast", "confirm", "prompt", "alert", "share"]);
-const TRANSLATED = new Set(["t", "msg", "defineMessage", "plural", "select", "selectOrdinal"]);
+const TRANSLATED = new Set(["t", "tr", "msg", "defineMessage", "plural", "select", "selectOrdinal"]);
 const TRANS_ELEMENTS = new Set(["Trans", "Plural", "Select", "SelectOrdinal"]);
 const PROPER_NOUNS = /\bPotyro\b/g;
 
@@ -163,37 +151,21 @@ function check(file) {
   return findings;
 }
 
-const args = new Set(process.argv.slice(2));
-const strict = args.has("--strict");
-const verbose = args.has("--verbose");
-
 let errors = 0;
-let warnings = 0;
-const warnedFiles = [];
+let files = 0;
 for (const base of ROOTS) {
   for (const file of walk(join(root, base))) {
+    files++;
     const rel = relative(root, file).split("\\").join("/");
-    const findings = check(file);
-    if (!findings.length) continue;
-    const isError = strict || CLEAN.has(rel);
-    if (isError) {
-      errors += findings.length;
-      for (const f of findings) console.error(`[i18n] ${rel}:${f.line}  ${f.what}: "${f.text}" — put it in a catalog (t\`…\` / <Trans>)`);
-    } else {
-      warnings += findings.length;
-      warnedFiles.push([rel, findings.length]);
-      if (verbose) for (const f of findings) console.warn(`[i18n] warn ${rel}:${f.line}  ${f.what}: "${f.text}"`);
+    for (const f of check(file)) {
+      errors++;
+      console.error(`[i18n] ${rel}:${f.line}  ${f.what}: "${f.text}" — put it in a catalog (t\`…\` / <Trans>)`);
     }
   }
 }
 
-if (warnings) {
-  console.warn(`[i18n] ${warnings} hardcoded string(s) in ${warnedFiles.length} file(s) not yet extracted (warn; #299). --verbose lists them.`);
-  if (!verbose)
-    for (const [rel, n] of warnedFiles.sort((a, b) => b[1] - a[1]).slice(0, 10)) console.warn(`[i18n]   ${String(n).padStart(4)}  ${rel}`);
-}
 if (errors) {
-  console.error(`\n[i18n] ${errors} hardcoded string(s) in extracted files.`);
+  console.error(`\n[i18n] ${errors} hardcoded string(s).`);
   process.exit(1);
 }
-console.log(`[i18n] OK — ${CLEAN.size} extracted file(s) clean`);
+console.log(`[i18n] OK — ${files} file(s) in shell and views, no hardcoded words`);

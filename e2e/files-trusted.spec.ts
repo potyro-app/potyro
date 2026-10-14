@@ -71,7 +71,7 @@ for (const trusted of [true, false]) {
   test(`a file brought in through a file field is named, readable, and still both after a reload — ${how}`, async ({ page }) => {
     await install(page, trusted);
 
-    await page.getByRole("button", { name: "New Note" }).first().click();
+    await page.getByRole("button", { name: "Add: Note" }).first().click();
     const form = page.getByRole("dialog");
     await form.getByRole("textbox", { name: "Title" }).fill("Groceries");
     await form.getByRole("button", { name: /Doc: choose a file/i }).click();
@@ -100,7 +100,7 @@ for (const trusted of [true, false]) {
   test(`a file an action writes is linked, survives a reload, and saves a copy outside — ${how}`, async ({ page }) => {
     await install(page, trusted);
 
-    await page.getByRole("button", { name: "New Note" }).first().click();
+    await page.getByRole("button", { name: "Add: Note" }).first().click();
     const form = page.getByRole("dialog");
     await form.getByRole("textbox", { name: "Title" }).fill("Trip");
     await form.getByRole("button", { name: /^(Create|Save)/ }).click();

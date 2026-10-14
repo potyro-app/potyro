@@ -15,6 +15,9 @@
 // Everything here runs the person's own app trusted (CLAUDE.md rule 3); studio-preview.tsx builds it.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import { replayCase, type Case, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import { ActionMenu, type MenuEntry } from "@potyro/views";
 import { hasBuiltInAI } from "@potyro/generator/backends";
@@ -128,6 +131,7 @@ export interface StudioProps {
 }
 
 export function Studio({ onClose, initialDescription, initialAppId, initialDraftId, initialPoint }: StudioProps) {
+  const { t } = useLingui();
   const opened = initialAppId ? getUserApp(initialAppId) : undefined;
   // The conversation's id is the app's once there is one, a draft's until then. A ref as well as
   // state: a turn runs across awaits, and the draft becomes an app in the middle of one.
@@ -176,7 +180,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const busy = working !== null;
   const savedName = appId ? getUserApp(appId)?.name : undefined;
   // The name the person reads (#302): their own for it, or the source's in their language.
-  const appName = preview ? shownName(savedName, preview.composed.runtime.core.app.definition, languagePrefs()) : (savedName ?? "Your app");
+  const appName = preview ? shownName(savedName, preview.composed.runtime.core.app.definition, languagePrefs()) : (savedName ?? t`Your app`);
   const hasApp = appId !== null;
 
   /** Read the conversation back: its messages, and every version it does not already tell. */
@@ -198,7 +202,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     try {
       await appendMessage(chatRef.current, message, new Date().toISOString());
     } catch (e) {
-      setProblem(`This conversation could not be saved: ${e instanceof Error ? e.message : String(e)}`);
+      const reason = e instanceof Error ? e.message : String(e);
+      setProblem(t`This conversation could not be saved: ${reason}`);
     }
     await refresh();
     void follow();
@@ -259,7 +264,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
     // the source's name in its own language around it (#302).
     const defined = built ? ownName(built.composed.runtime.core.app.definition) : undefined;
-    const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || "Untitled app";
+    const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || t`Untitled app`;
     // A library's bytes are in the app's folder before its record names them, so no open finds one missing.
     if (existing && libraries?.files.length) await keepLibraryFiles(existing, libraries.files);
     const record = await saveUserApp(
@@ -280,7 +285,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setSource(next);
     setDraftSource(next);
     setHeld(null);
-    await say({ kind: "version", text: summary || (existing ? "Changed." : `Made “${name}”.`), seq, name, ...extra });
+    await say({ kind: "version", text: summary || (existing ? t`Changed.` : t`Made “${name}”.`), seq, name, ...extra });
     if (wide) setPreviewOpen(true);
   };
 
@@ -292,27 +297,36 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const librariesFor = async (src: string): Promise<StudioLibraries | null | string> => {
     const have = await modulesOf(appRef.current ?? undefined);
     const { lines, issues } = await librariesToFetch(src, have);
-    if (issues.length) return `Not saved: ${issues[0]}`;
+    if (issues.length) {
+      const issue = issues[0]!;
+      return t`Not saved: ${issue}`;
+    }
     if (lines.length) {
-      const go = await shellDialogs.confirm(lines.length === 1 ? "Fetch the library this version uses?" : "Fetch the libraries this version uses?", {
-        detail: `${lines.map((l) => describeLibrary(l)).join("\n")}\n\nOnce, now, and kept with the app: after that it works without the internet.`,
-        ok: "Fetch",
+      const what = lines.map((l) => describeLibrary(l)).join("\n");
+      const go = await shellDialogs.confirm(plural(lines.length, { one: "Fetch the library this version uses?", other: "Fetch the libraries this version uses?" }), {
+        detail: t`${what}\n\nOnce, now, and kept with the app: after that it works without the internet.`,
+        ok: t({ message: "Fetch", comment: "Button: download the libraries a version uses" }),
       });
-      if (!go) return `Not saved: it uses ${lines.map((l) => l.label).join(", ")}, which ${lines.length === 1 ? "was" : "were"} not fetched.`;
+      if (!go) {
+        const names = fmt.list(lines.map((l) => l.label));
+        return plural(lines.length, { one: `Not saved: it uses ${names}, which was not fetched.`, other: `Not saved: it uses ${names}, which were not fetched.` });
+      }
     }
     try {
       const libraries = await prepareStudioLibraries(src, have);
       const fetched = libraries?.fetched.map((l) => describeLibrary(l, { done: true })) ?? [];
-      if (fetched.length) await say({ kind: "event", text: `${fetched.join("; ").replace(/^f/, "F")}.` });
+      // The lines are describeLibrary's, in the person's language; the first letter goes up in any script.
+      if (fetched.length) await say({ kind: "event", text: `${fetched.join("; ").replace(/^\p{Ll}/u, (c) => c.toUpperCase())}.` });
       return libraries;
     } catch (e) {
-      return `Not saved: ${e instanceof Error ? e.message : String(e)}`;
+      const reason = e instanceof Error ? e.message : String(e);
+      return t`Not saved: ${reason}`;
     }
   };
 
   /** A source arrived: check it, repair it once if its structure is wrong, then keep it or hold it. */
   const land = async (next: string, summary: string, note: string, loss: string | null, extra: Pick<NewMessage, "platform"> = {}): Promise<void> => {
-    setWorking("Checking it…");
+    setWorking(t`Checking it…`);
     let src = next;
     let said = summary;
     let lost = loss;
@@ -337,11 +351,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (issues.length || lost) {
       setHeld({ source: src, summary: said, note, issues, loss: lost, libraries });
       setPreview(built ?? preview);
+      const problems = issues.join("\n- ");
       await say({
         kind: "failure",
         text: lost
-          ? `This change rewrote your app rather than editing it — it ${lost}. Nothing was saved; try a smaller, more specific change.`
-          : `What came back has problems, so it was not saved:\n- ${issues.join("\n- ")}`,
+          ? t`This change rewrote your app rather than editing it — it ${lost}. Nothing was saved; try a smaller, more specific change.`
+          : t`What came back has problems, so it was not saved:\n- ${problems}`,
         ...extra,
       });
       return;
@@ -401,7 +416,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       const fixed = await (await engine()).repair(held.source, held.issues);
       await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss);
     } catch (e) {
-      await say({ kind: "failure", text: `Could not fix it: ${e instanceof Error ? e.message : String(e)}` });
+      const reason = e instanceof Error ? e.message : String(e);
+      await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
     } finally {
       setWorking(null);
     }
@@ -410,12 +426,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const keepHeld = async (): Promise<void> => {
     if (!held) return;
     const h = held;
+    const loss = h.loss;
     const go = await shellDialogs.confirm(
-      h.loss ? `Keep it anyway? This version ${h.loss}.` : "Keep it anyway? It has problems, so parts of it may not work.",
-      { detail: "You can go back to the version before from History.", ok: "Keep it" },
+      loss ? t`Keep it anyway? This version ${loss}.` : t`Keep it anyway? It has problems, so parts of it may not work.`,
+      { detail: t`You can go back to the version before from History.`, ok: t`Keep it` },
     );
     if (!go) return;
-    await keep(h.source, preview, `${h.summary} Kept with problems.`.trim(), h.note, undefined, h.libraries);
+    const kept = t`Kept with problems.`;
+    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */
@@ -425,8 +443,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const version = (await listVersions(id)).find((v) => v.seq === seq);
     const app = getUserApp(id);
     if (!version || !app) return;
-    if (!(await shellDialogs.confirm(`Go back to version ${seq}?`, { detail: "The versions after it stay in History.", ok: "Go back" }))) return;
-    await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note: `went back to version ${seq}` }, new Date().toISOString());
+    if (!(await shellDialogs.confirm(t`Go back to version ${seq}?`, { detail: t`The versions after it stay in History.`, ok: t`Go back` }))) return;
+    // The note is what History and the conversation show for this version; nothing parses it.
+    const note = `went back to version ${seq}`; // stored in English; shownNote (version-notes.ts) translates it where it is read
+    await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note }, new Date().toISOString());
     await afterRestore(version.source);
   };
 
@@ -459,7 +479,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
     setToolsBusy(false);
     if (built) setPreview(built);
-    setToolsError(issues.length ? `Invalid app structure:\n- ${issues.join("\n- ")}` : null);
+    const problems = issues.join("\n- ");
+    setToolsError(issues.length ? t`Invalid app structure:\n- ${problems}` : null);
     if (!issues.length && built) {
       setTools(null);
       setPreviewOpen(true);
@@ -476,12 +497,21 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
     setToolsBusy(false);
     if (issues.length) {
-      setToolsError(`Invalid app structure:\n- ${issues.join("\n- ")}`);
+      const problems = issues.join("\n- ");
+      setToolsError(t`Invalid app structure:\n- ${problems}`);
       // Confirm rather than block: an author may still want to park work in progress.
-      if (!(await shellDialogs.confirm(`This app has structure problems:\n\n${issues.join("\n")}\n\nSave anyway?`))) return;
+      const listed = issues.join("\n");
+      if (!(await shellDialogs.confirm(t`This app has structure problems:\n\n${listed}\n\nSave anyway?`))) return;
     }
     setToolsError(null);
-    await keep(draftSource, built, "Changed by hand, in the code.", "edited the code by hand", "edited", libraries);
+    await keep(
+      draftSource,
+      built,
+      t`Changed by hand, in the code.`,
+      t({ message: "edited the code by hand", comment: "A version's note in History, lower case" }),
+      "edited",
+      libraries,
+    );
   };
 
   const replay = async (c: Case): Promise<void> => {
@@ -505,7 +535,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   const deleteDraft = async (): Promise<void> => {
-    if (!(await shellDialogs.confirm("Delete this conversation?", { detail: "Nothing was made from it yet, so there is no app to keep.", ok: "Delete", destructive: true }))) return;
+    if (!(await shellDialogs.confirm(t`Delete this conversation?`, { detail: t`Nothing was made from it yet, so there is no app to keep.`, ok: t`Delete`, destructive: true }))) return;
     await clearChat(chatRef.current);
     startOver();
   };
@@ -516,7 +546,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const rename = async (): Promise<void> => {
     const app = appRef.current ? getUserApp(appRef.current) : undefined;
     if (!app) return;
-    const next = await shellDialogs.prompt("Rename app", { default: app.name });
+    const next = await shellDialogs.prompt(t`Rename app`, { default: app.name });
     if (!next?.trim()) return;
     renameUserApp(app.id, next, new Date().toISOString());
     renamed((n) => n + 1);
@@ -544,20 +574,26 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   const menu: MenuEntry[] = [
-    { key: "code", label: hasApp ? "See the code" : "Write the code yourself", icon: "⌘", onSelect: () => setTools("source") },
-    { key: "history", label: "History", icon: "⟲", hint: cases.length ? `${cases.length} reported` : undefined, onSelect: () => setTools("history") },
-    { key: "model", label: "Model settings", icon: "⚙", hint: label, onSelect: () => setSettingsOpen(true) },
+    { key: "code", label: hasApp ? t`See the code` : t`Write the code yourself`, icon: "⌘", onSelect: () => setTools("source") },
+    {
+      key: "history",
+      label: t`History`,
+      icon: "⟲",
+      hint: cases.length ? plural(cases.length, { one: "# reported", other: "# reported" }) : undefined,
+      onSelect: () => setTools("history"),
+    },
+    { key: "model", label: t`Model settings`, icon: "⚙", hint: label, onSelect: () => setSettingsOpen(true) },
     ...(hasApp
       ? ([
           "separator",
-          { key: "rename", label: "Rename", icon: "✎", onSelect: () => void rename() },
-          { key: "duplicate", label: "Duplicate", icon: "⧉", hint: "the app, not its data", onSelect: () => void duplicate(), disabled: busy },
+          { key: "rename", label: t`Rename`, icon: "✎", onSelect: () => void rename() },
+          { key: "duplicate", label: t`Duplicate`, icon: "⧉", hint: t`the app, not its data`, onSelect: () => void duplicate(), disabled: busy },
         ] as MenuEntry[])
       : []),
     "separator",
-    { key: "new", label: "Start a new app", icon: "＋", onSelect: startOver, disabled: busy },
-    ...(hasApp ? [{ key: "delete", label: `Delete ${appName}`, danger: true, onSelect: () => void remove() } as const] : []),
-    ...(!hasApp && items.length ? [{ key: "delete", label: "Delete this conversation", danger: true, onSelect: () => void deleteDraft() } as const] : []),
+    { key: "new", label: t`Start a new app`, icon: "＋", onSelect: startOver, disabled: busy },
+    ...(hasApp ? [{ key: "delete", label: t`Delete ${appName}`, danger: true, onSelect: () => void remove() } as const] : []),
+    ...(!hasApp && items.length ? [{ key: "delete", label: t`Delete this conversation`, danger: true, onSelect: () => void deleteDraft() } as const] : []),
   ];
 
   const canOpen = preview !== null && (hasApp || held !== null);
@@ -584,22 +620,24 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   return (
-    <div className="k-studio" role="dialog" aria-label="App studio" data-preview={showPreview || undefined}>
+    <div className="k-studio" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined}>
       <div className="k-studio-chat">
         <header className="k-studio-bar">
-          <button type="button" className="k-studio-close" aria-label="Close studio" onClick={onClose}>
+          <button type="button" className="k-studio-close" aria-label={t`Close studio`} onClick={onClose}>
             ✕
           </button>
           <div className="k-studio-title">
-            <span className="k-studio-eyebrow">Studio</span>
-            <strong className="k-studio-name">{hasApp ? appName : "New app"}</strong>
+            <span className="k-studio-eyebrow">
+              <Trans comment="The Studio's name, above the app's: where apps are made by talking">Studio</Trans>
+            </span>
+            <strong className="k-studio-name">{hasApp ? appName : t`New app`}</strong>
           </div>
           {canOpen && !showPreview ? (
             <button type="button" className="k-studio-open" onClick={() => setPreviewOpen(true)}>
-              Preview <span aria-hidden>▸</span>
+              <Trans comment="Studio bar: open the app being made">Preview</Trans> <span aria-hidden>▸</span>
             </button>
           ) : null}
-          <ActionMenu label="Studio menu" entries={menu} buttonClassName="k-studio-more" />
+          <ActionMenu label={t`Studio menu`} entries={menu} buttonClassName="k-studio-more" />
         </header>
 
         <div className="k-studio-scroll" ref={scrollRef}>
@@ -608,7 +646,15 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               items={items}
               app={appId ? { id: appId, name: appName } : null}
               working={working}
-              held={held ? { name: appName, why: held.loss ? "Rewrote the app instead of editing it." : `${held.issues.length} problem${held.issues.length === 1 ? "" : "s"} with it.`, canFix: held.issues.length > 0 && ready } : null}
+              held={
+                held
+                  ? {
+                      name: appName,
+                      why: held.loss ? t`Rewrote the app instead of editing it.` : plural(held.issues.length, { one: "# problem with it.", other: "# problems with it." }),
+                      canFix: held.issues.length > 0 && ready,
+                    }
+                  : null
+              }
               onOpen={() => setPreviewOpen(true)}
               onGoBack={(seq) => void goBack(seq)}
               onFix={() => void fixHeld()}
@@ -626,10 +672,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           <div className="k-composer-box" data-pointed={point ? true : undefined}>
             {point ? (
               <div className="k-composer-point">
-                <span className="k-point-chip" title={`About ${point.words}`}>
+                <span className="k-point-chip" title={t({ message: `About ${point.label}`, comment: "The part of the app a message is about" })}>
                   <PointGlyph />
                   <span className="k-point-chip-label">{point.label}</span>
-                  <button type="button" className="k-point-chip-x" aria-label={`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
+                  <button type="button" className="k-point-chip-x" aria-label={t`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
                     ✕
                   </button>
                 </span>
@@ -639,8 +685,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               ref={inputRef}
               id="k-studio-desc"
               className="k-composer-input"
-              aria-label="Describe the app"
-              placeholder={point ? "What should be different about it?" : hasApp ? "Ask for a change…" : "Describe the app you want…"}
+              aria-label={t`Describe the app`}
+              placeholder={point ? t`What should be different about it?` : hasApp ? t`Ask for a change…` : t`Describe the app you want…`}
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -655,8 +701,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
             <button
               type="button"
               className="k-composer-send"
-              aria-label={hasApp ? "Modify the app" : "Create the app"}
-              title={ready ? `Send to ${label}` : `${label} needs an API key — open Model settings`}
+              aria-label={hasApp ? t`Modify the app` : t`Create the app`}
+              title={ready ? t`Send to ${label}` : t`${label} needs an API key — open Model settings`}
               disabled={!description.trim() || busy || !ready}
               onClick={() => void send()}
             >
@@ -664,13 +710,17 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
             </button>
           </div>
           <div className="k-composer-meta">
-            <button type="button" className="k-composer-engine" aria-label="Model settings" title="Choose which model writes and edits your app" onClick={() => setSettingsOpen(true)}>
+            <button type="button" className="k-composer-engine" aria-label={t`Model settings`} title={t`Choose which model writes and edits your app`} onClick={() => setSettingsOpen(true)}>
               ⚙ {label}
             </button>
-            {!ready ? <span className="k-composer-warn">needs an API key</span> : null}
+            {!ready ? (
+              <span className="k-composer-warn">
+                <Trans>needs an API key</Trans>
+              </span>
+            ) : null}
             {canOpen && hasApp ? (
-              <button type="button" className="k-composer-point-btn" aria-pressed={pointing} title="Tap a part of the app to talk about it" onClick={startPointing}>
-                <PointGlyph /> Point at the app
+              <button type="button" className="k-composer-point-btn" aria-pressed={pointing} title={t`Tap a part of the app to talk about it`} onClick={startPointing}>
+                <PointGlyph /> <Trans>Point at the app</Trans>
               </button>
             ) : null}
           </div>

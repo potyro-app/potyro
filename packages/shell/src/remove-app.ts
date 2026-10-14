@@ -5,6 +5,7 @@
 // is simply deleted!"). Two call sites, one of them silent, is exactly the shape a shared helper
 // exists to prevent, so the question lives here and both paths call it.
 
+import { t } from "@lingui/core/macro";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, type UserApp } from "./user-apps.js";
 
@@ -17,13 +18,14 @@ import { removeUserApp, type UserApp } from "./user-apps.js";
  * be undone", which reads as "you will lose the data" and is the one thing that does not happen.
  */
 export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sync">): Promise<boolean> {
+  const name = app.name;
   const ok = await shellDialogs.confirm(
-    app.sync ? `Leave “${app.name}”?` : `Delete “${app.name}” and everything in it?`,
+    app.sync ? t`Leave “${name}”?` : t`Delete “${name}” and everything in it?`,
     {
       detail: app.sync
-        ? "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
-        : "This deletes the app AND its data — every record you have added to it. It cannot be undone.",
-      ok: app.sync ? "Leave" : "Delete",
+        ? t`This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them.`
+        : t`This deletes the app AND its data — every record you have added to it. It cannot be undone.`,
+      ok: app.sync ? t({ message: "Leave", comment: "Button: leave a shared app" }) : t`Delete`,
       destructive: true,
     },
   );

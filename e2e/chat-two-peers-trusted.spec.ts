@@ -87,7 +87,7 @@ const renameSelf = async (page: Page, name: string): Promise<void> => {
  * saving lands on the record rather than on the list it was added from.
  */
 const add = async (page: Page, title: string): Promise<void> => {
-  await page.getByRole("button", { name: /New Item|Add Item/i }).first().click();
+  await page.getByRole("button", { name: /Add: Item|Add Item/i }).first().click();
   await page.getByLabel(/title/i).fill(title);
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await openList(page);

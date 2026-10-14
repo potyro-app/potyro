@@ -10,6 +10,7 @@
 // and a bar that says something is happening. The tile is the same identity the user just tapped,
 // which is what makes this feel like the app opening rather than a screen in between.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
 import { appKey, getEntry } from "./launcher-store.js";
 import { navigateTo } from "./router.js";
@@ -49,6 +50,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
   // colour someone picked (#83) — so the splash matches the tile that was tapped, not the app's
   // own idea of itself.
+  const { t } = useLingui();
   const entry = id ? getEntry(appKey("user", id)) : undefined;
   const identity = tileIdentity({
     key: id ? appKey("user", id) : `user:${name}`,
@@ -67,19 +69,25 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
         <p className="k-splash-name">{entry?.displayName ?? name}</p>
         {failed ? (
           <>
-            <p className="k-splash-verb">It could not open.</p>
+            <p className="k-splash-verb">
+              <Trans>It could not open.</Trans>
+            </p>
             <p className="k-splash-why">{failed}</p>
-            {promote ? <p className="k-splash-why k-splash-advice">Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open.</p> : null}
+            {promote ? (
+              <p className="k-splash-why k-splash-advice">
+                <Trans>Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open.</Trans>
+              </p>
+            ) : null}
             <div className="k-splash-actions">
               {promote ? <PromoteButton app={promote} primary /> : null}
               <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
-                Back to my apps
+                <Trans>Back to my apps</Trans>
               </button>
             </div>
           </>
         ) : (
           <>
-            <p className="k-splash-verb">{verb}…</p>
+            <p className="k-splash-verb">{verb === "Joining" ? t`Joining…` : t`Opening…`}</p>
             {/* Indeterminate on purpose: nothing here knows how far along it is, and a bar that
                 pretends to would be lying at a moment the person is already waiting. */}
             <span className="k-splash-bar" aria-hidden />

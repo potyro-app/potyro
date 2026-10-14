@@ -2,6 +2,8 @@
 // active view, an add-recipe panel, and toasts. Renders whatever app the composition root
 // loaded (trusted or sandboxed) — the UI is app-agnostic.
 
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { DatabaseIcon } from "./data-icon.js";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
@@ -159,11 +161,14 @@ interface AppProps {
 }
 
 export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
+  const { t } = useLingui();
   const def = runtime.definition;
   // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
   const appLabel = shownName(name, runtime.core.app.definition, [runtime.language.current ?? "", ...languagePrefs()]);
   // The app lacks the person's language: one quiet line in its menu, never a banner (#302).
   const langNote = languageNote(runtime.core.app.definition, languagePrefs());
+  const intoName = langNote?.into.name ?? "";
+  const intoTag = langNote?.into.tag ?? "";
   const locked = useAppLock(lock);
   // Page titles may be functions of ctx (#133: "Places in Berlin"); resolved through the runtime.
   const titles = usePageTitles(runtime);
@@ -269,7 +274,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     const NEW = { __new: true as const };
     const rows = await runtime.ctx.query(scopeDef.entity);
     const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>([...rows, NEW], {
-      label: (r) => ("__new" in r ? `＋ New ${scopeEntity?.label ?? scopeDef.entity}` : scopeName(r)),
+      label: (r) => ("__new" in r ? `＋ ${addLabel(scopeEntity?.label ?? scopeDef.entity)}` : scopeName(r)),
     });
     if (!picked || Array.isArray(picked)) return;
     if ("__new" in picked) {
@@ -519,7 +524,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     // because of exactly this). Saving it would leave a case that reports success with nothing
     // ever having been recorded, which is worse than not saving at all.
     if (!hasRecordedActivity(c)) {
-      toaster.push("Nothing was recorded — navigate the app or run an action before stopping.");
+      toaster.push(t`Nothing was recorded — navigate the app or run an action before stopping.`);
       return;
     }
     await saveCase(c);
@@ -538,12 +543,14 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     setEditor({ entity, initial, openAfter: false });
 
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
+  const addLabel = (noun: string): string => t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" });
 
-  // Quick actions: the app's declared triggers, else an auto "New <Entity>" per top-level object.
+  // Quick actions: the app's declared triggers, else an auto "Add: <Entity>" per top-level object —
+  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3).
   const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions ?? [];
   const quickActions: QuickActionDef[] = declaredQuick.length
     ? declaredQuick
-    : baseEntities.map((e) => ({ id: `new-${e}`, label: `New ${entityLabel(e)}`, entity: e, mode: "auto", open: true }));
+    : baseEntities.map((e) => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }));
 
   // Which enum field a quick action picks inline (the "menu" style): explicit menu → the first enum;
   // auto → a lone enum with no OTHER required fields ("select the type"); form → none.
@@ -723,7 +730,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    */
   const saveAdjusted = async (next: string, note: string): Promise<string | null> => {
     const app = appId ? getUserApp(appId) : undefined;
-    if (!appId || !app) return "This app isn't saved on this device, so it can't be changed here.";
+    if (!appId || !app) return t`This app isn't saved on this device, so it can't be changed here.`;
     try {
       // Its libraries stand in (#266): this checks the structure of the change, and a library that
       // needs a full web page cannot start in the sealed box the check runs in. Opening the app still
@@ -731,7 +738,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       const issues = await buildAndValidate(next, withLibrariesStoodIn(await modulesOf(appId)));
       // A change that doesn't validate is a bug in the editor, not something to hand to a model to
       // repair. Discard it and say so rather than saving a broken app.
-      if (issues.length) return `That change didn't validate, so nothing was saved: ${issues[0]}`;
+      if (issues.length) {
+        const issue = issues[0];
+        return t`That change didn't validate, so nothing was saved: ${issue}`;
+      }
       await saveUserApp({ id: appId, name: app.name, source: next, origin: "adjusted", note }, new Date().toISOString());
       setEditSource(next);
       setEditChanged(true);
@@ -748,7 +758,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     openStudio();
   };
 
-  const currentPageLabel = pageId === HOME ? "the object grid (home)" : `the "${titles[pageId] ?? pageId}" page`;
+  const shownTitle = titles[pageId] ?? pageId;
+  // Said to the person (the error boundary, the start of a Studio message from edit mode).
+  const currentPageLabel = pageId === HOME ? t`the object grid (home)` : t`the "${shownTitle}" page`;
 
   // Promote/demote trust. Promotion runs the app DIRECTLY (not in the isolate) — a deliberate,
   // prompted decision (CLAUDE.md rule 3). Only for your own saved apps.
@@ -789,7 +801,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     return (p as { icon?: string }).icon || (v.entity && def.entities[v.entity]?.icon) || viewGlyph[v.type ?? ""] || "◇";
   };
   const chromePages: ChromePage[] = [
-    ...(navMode === "grid" ? [{ id: HOME, title: "Home", icon: "⊞", active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
+    ...(navMode === "grid" ? [{ id: HOME, title: t({ message: "Home", comment: "The page that shows an app's kinds of record as tiles" }), icon: "⊞", active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
     ...visiblePages.map((p) => ({ id: p.id, title: titles[p.id] ?? p.id, icon: pageIcon(p), active: p.id === pageId, onOpen: () => navigate(p.id) })),
   ];
   const currentPage = def.pages.find((p) => p.id === pageId);
@@ -827,36 +839,37 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   };
   const chromeTools: ChromeTool[] = [
     ...(currentPage?.fullscreen && !fullscreen
-      ? [{ key: "fullscreen", label: "Full screen", icon: "⛶", onSelect: () => setLeftFullscreen(null) }]
+      ? [{ key: "fullscreen", label: t`Full screen`, icon: "⛶", onSelect: () => setLeftFullscreen(null) }]
       : []),
-    ...(askOn ? [{ key: "ask", label: "Ask", icon: "✧", hint: "add with AI", onSelect: () => setAskOpen(true) }] : []),
+    ...(askOn ? [{ key: "ask", label: t({ message: "Ask", comment: "The feature that adds records with AI" }), icon: "✧", hint: t`add with AI`, onSelect: () => setAskOpen(true) }] : []),
     // The Studio needs no model: its source editor and History are how a broken app gets repaired
     // on a build with no engine at all.
-    ...(generator ? [{ key: "studio", label: "Studio", icon: "✦", hint: "change this app", onSelect: () => {
+    ...(generator ? [{ key: "studio", label: "Studio" /* i18n-ignore — a name */, icon: "✦", hint: t`change this app`, onSelect: () => {
             setStudioPrefill(undefined);
             setStudioPoint(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
             openStudio();
           } }] : []),
-    ...(canEdit ? [{ key: "edit-mode", label: "Edit mode", icon: "✎", active: editMode, onSelect: () => (editMode ? finishEditing() : setEditMode(true)) }] : []),
-    ...(canEdit ? [{ key: "history", label: "History", icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
+    ...(canEdit ? [{ key: "edit-mode", label: t`Edit mode`, icon: "✎", active: editMode, onSelect: () => (editMode ? finishEditing() : setEditMode(true)) }] : []),
+    ...(canEdit ? [{ key: "history", label: t`History`, icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
     // What other people changed. In the menu with the rest of the shell's own tools rather than a
     // button in the top bar: it is read occasionally, the chat is read constantly, and on a phone
     // the two of them together left no room for the app's own name.
     ...(activity
-      ? [{ key: "changes", label: "Changes", icon: "✻", hint: activity.length ? `${activity.length} new` : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
+      ? [{ key: "changes", label: t({ message: "Changes", comment: "What other people changed in a shared app" }), icon: "✻", hint: activity.length ? plural(activity.length, { one: "# new", other: "# new" }) : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
-    ...(sync && appId ? [{ key: "people", label: "People", icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
-    ...(onData ? [{ key: "data", label: "Data", icon: <DatabaseIcon />, hint: "every record", onSelect: onData }] : []),
-    ...(onImport ? [{ key: "import", label: "Import", icon: "⇣", onSelect: onImport }] : []),
-    ...(onExport ? [{ key: "export", label: "Export", icon: "⇡", onSelect: onExport }] : []),
+    ...(sync && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
+    ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
+    ...(onExport ? [{ key: "export", label: t`Export`, icon: "⇡", onSelect: onExport }] : []),
     // "This app is in English." Where it can be changed, the line offers the translation, which the
     // Studio makes (docs/20 §3.3); elsewhere it only says so.
     ...(langNote
       ? [
+          // (the person's own request, so in their language; the tag says exactly which)
           canEdit
-            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(`Translate this app into ${langNote.into.name} (${langNote.into.tag}).`) }
+            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(t`Translate this app into ${intoName} (${intoTag}).`) }
             : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
         ]
       : []),
@@ -864,10 +877,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const chromeReport: ChromeTool[] = appId
     ? recording
       ? [
-          { key: "stop-recording", label: "Stop recording", icon: "■", onSelect: () => void onStopRecording() },
-          { key: "add-note", label: "Add a note", icon: "✎", onSelect: () => setNoting(true) },
+          { key: "stop-recording", label: t`Stop recording`, icon: "■", onSelect: () => void onStopRecording() },
+          { key: "add-note", label: t`Add a note`, icon: "✎", onSelect: () => setNoting(true) },
         ]
-      : [{ key: "report", label: "Something's wrong", icon: "⚑", onSelect: startRecording }]
+      : [{ key: "report", label: t`Something's wrong`, icon: "⚑", onSelect: startRecording }]
     : [];
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
@@ -883,13 +896,16 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
-        label: provenance === "trusted" ? "Runs directly" : "Runs in a sandbox",
+        label: provenance === "trusted" ? t`Runs directly` : t`Runs in a sandbox`,
         icon: "🛡",
-        hint: provenance === "trusted" ? "review" : "allow direct",
+        hint: provenance === "trusted" ? t({ message: "review", comment: "Trust menu hint: look at how a trusted app runs" }) : t`allow direct`,
         className: `k-prov-btn k-prov-${provenance}`,
         onSelect: () => setTrustPrompt(true),
       }
     : undefined;
+
+  const scopedName = scoped ? scopeName(scoped) : "";
+  const engineName = engineLabel(engineCfg);
 
   return (
     <div
@@ -922,12 +938,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
               type="button"
               className="k-scope"
               data-empty={!scoped || undefined}
-              aria-label={`${scopeLabel}: ${scoped ? scopeName(scoped) : "none chosen"} — change`}
-              title={`Which ${scopeLabel.toLowerCase()} the app is showing`}
+              aria-label={scoped ? t({ message: `${scopeLabel}: ${scopedName} — change`, comment: "The scope picker: which one the app shows, e.g. which trip" }) : t({ message: `${scopeLabel}: none chosen — change`, comment: "The scope picker, nothing chosen yet" })}
+              title={t({ message: `${scopeLabel}: which one the app is showing`, comment: "The scope picker; scopeLabel is the app's word, e.g. Trip (docs/20 Q3: it goes first)" })}
               onClick={() => void pickScope()}
             >
               <span className="k-scope-label">{scopeLabel}</span>
-              {scoped ? scopeName(scoped) : `Choose…`} ▾
+              {scoped ? scopedName : t`Choose…`} ▾
             </button>
           ) : null
         }
@@ -941,11 +957,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
               <button
                 type="button"
                 className="k-prov k-prov-untrusted"
-                aria-label="Runs in a sandbox: review"
-                title="Runs in a sandbox. Tap to let it run as yours."
+                aria-label={t`Runs in a sandbox: review`}
+                title={t`Runs in a sandbox. Tap to let it run as yours.`}
                 onClick={() => setTrustPrompt(true)}
               >
-                🛡 sandbox
+                🛡 <Trans comment="A small mark in the header of an app that runs sealed">sandbox</Trans>
               </button>
             ) : null}
             <SyncStatus sync={sync} />
@@ -967,11 +983,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
                 ref={chatBtnRef}
                 type="button"
                 className="k-add k-chat-btn"
-                aria-label={roomUnread ? `Chat — ${roomUnread} unread` : "Chat"}
+                aria-label={roomUnread ? plural(roomUnread, { one: "Chat — # unread", other: "Chat — # unread" }) : t({ message: "Chat", comment: "The button that opens a shared app's chat" })}
                 data-unread={roomUnread || undefined}
                 onClick={() => setChatOpen(true)}
               >
-                💬 Chat
+                💬 <Trans comment="The button that opens a shared app's chat">Chat</Trans>
                 {roomUnread ? <span className="k-activity-count">{roomUnread}</span> : null}
               </button>
               {peekMessage ? (
@@ -1002,7 +1018,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {locked ? <LockBanner state={locked} /> : null}
       {pageId === HOME ? (
         <main className="k-main">
-          <div className="k-objgrid" aria-label="Objects">
+          <div className="k-objgrid" aria-label={t({ message: "Objects", comment: "The tiles of an app's kinds of record" })}>
             {baseEntities.map((e) => {
               const lp = visiblePages.find((p) => (p.view as { entity?: string }).entity === e);
               if (!lp) return null;
@@ -1176,18 +1192,24 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {noting ? (
         <div className="k-modal-scrim" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
           <div className="k-modal k-case-note" onClick={(e) => e.stopPropagation()}>
-            <h3>What did you expect?</h3>
+            <h3>
+              <Trans>What did you expect?</Trans>
+            </h3>
             <textarea
               className="k-input"
-              aria-label="What did you expect?"
+              aria-label={t`What did you expect?`}
               rows={3}
               autoFocus
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
             />
             <div className="k-form-actions">
-              <button type="button" className="k-add" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>Cancel</button>
-              <button type="button" className="k-add k-primary-action" onClick={saveNote}>Save note</button>
+              <button type="button" className="k-add" onClick={() => { stopAfterNote.current = false; setNoting(false); }}>
+                <Trans>Cancel</Trans>
+              </button>
+              <button type="button" className="k-add k-primary-action" onClick={saveNote}>
+                <Trans>Save note</Trans>
+              </button>
             </div>
           </div>
         </div>
@@ -1200,14 +1222,13 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
             <div className="k-fix-entry">
               {canInvestigate(engineCfg.engine) ? (
                 <button type="button" className="k-add k-primary-action" disabled={fixOpen} onClick={openFix}>
-                  Fix this
+                  <Trans>Fix this</Trans>
                 </button>
               ) : (
                 // The friendlier half of the same fact `startFix` itself refuses on: a dead button
                 // would say nothing about WHY, and this is the reason before you've spent a click.
                 <p className="k-muted k-fix-entry-reason">
-                  {engineLabel(engineCfg)} can&rsquo;t investigate this step by step — pick a cloud
-                  engine, like OpenRouter, in the Studio&rsquo;s Model settings to use Fix this.
+                  {t`${engineName} can’t investigate this step by step — pick a cloud engine, like OpenRouter, in the Studio’s Model settings to use Fix this.`}
                 </p>
               )}
             </div>

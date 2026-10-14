@@ -9,6 +9,8 @@
 // focus it and use the arrow keys — and on a phone a card can be swiped aside to reveal Remove. The
 // button that adds one says what it adds.
 
+import { fmt } from "@potyro/i18n";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { ShownField as Field, ShownListField as ListField } from "./shown.js";
@@ -46,6 +48,9 @@ export function ListInput({ runtime, field, value, onChange, label }: ListInputP
   const subEntries = Object.entries(field.of) as [string, Field][];
   const [head, ...restFields] = subEntries;
   const ordered = field.ordered === true;
+  const { t } = useLingui();
+  // The field's own word, made singular in English only (singular() knows nothing else); it is shown
+  // after "Add:" (docs/20 Q3), so no other language has to agree with it.
   const noun = singular(label ?? field.label ?? "row");
   const phone = usePhone();
   // A row has no id of its own, so its position is its identity while it is on screen. That is
@@ -61,7 +66,8 @@ export function ListInput({ runtime, field, value, onChange, label }: ListInputP
   };
   const rowName = (i: number): string => {
     const first = head ? rows[Number(i)]?.[head[0]] : undefined;
-    return first ? String(first) : `${noun} ${Number(i) + 1}`;
+    const n = fmt.number(Number(i) + 1);
+    return first ? String(first) : t({ message: `${noun} ${n}`, comment: "An unnamed row of a list field: the field's word and the row's number" });
   };
 
   const reorder = useReorder({
@@ -96,7 +102,7 @@ export function ListInput({ runtime, field, value, onChange, label }: ListInputP
         />
       ))}
       <button type="button" className="k-add k-row-add" onClick={addRow}>
-        ＋ Add {noun}
+        ＋ {t({ message: `Add: ${noun}`, comment: "Add a row to a list field; noun is the field's word for one" })}
       </button>
       <span className="k-visually-hidden" aria-live="polite">
         {reorder.announcement}
@@ -136,7 +142,10 @@ function RowCard({
   onRemove: () => void;
   reorderProps: ReturnType<ReturnType<typeof useReorder>["item"]>;
 }) {
+  const { t } = useLingui();
   const swipe = useSwipeAway(phone);
+  const position = fmt.number(index + 1);
+  const count = fmt.number(total);
   // A freshly added row puts the caret in its first box, so you can start typing where you tapped.
   //
   // ONCE, and this is the whole reason for the flag: React calls an inline ref callback on every
@@ -159,8 +168,8 @@ function RowCard({
   return (
     <div className="k-row-swipe" {...swipe.container}>
       {swipe.offset ? (
-        <button type="button" className="k-row-swipe-remove" aria-label={`Remove ${name}`} onClick={onRemove}>
-          Remove
+        <button type="button" className="k-row-swipe-remove" aria-label={t`Remove ${name}`} onClick={onRemove}>
+          <Trans>Remove</Trans>
         </button>
       ) : null}
       <div className="k-row-card" {...reorderProps} style={{ ...reorderProps.style, ...swipe.style }}>
@@ -168,14 +177,14 @@ function RowCard({
           <button
             type="button"
             className="k-row-grip"
-            aria-label={`Reorder ${name}, ${index + 1} of ${total}. Use the arrow keys.`}
-            title="Drag to reorder"
+            aria-label={t`Reorder ${name}, ${position} of ${count}. Use the arrow keys.`}
+            title={t`Drag to reorder`}
           >
             ⠿
           </button>
         ) : (
           <span className="k-row-n" aria-hidden>
-            {index + 1}
+            {position}
           </span>
         )}
         <div className="k-row-body" ref={focusFirst}>
@@ -192,9 +201,9 @@ function RowCard({
         </div>
         <span className="k-row-menu-host">
           <ActionMenu
-            label={`${name}: more`}
+            label={t({ message: `${name}: more`, comment: "The menu button of a card or row; title is its name" })}
             buttonClassName="k-row-menu"
-            entries={[{ key: "remove", label: `Remove ${noun}`, icon: "🗑", danger: true, onSelect: onRemove }]}
+            entries={[{ key: "remove", label: t({ message: `Remove: ${noun}`, comment: "Remove this row of a list field; noun is the field's word for one" }), icon: "🗑", danger: true, onSelect: onRemove }]}
           />
         </span>
       </div>

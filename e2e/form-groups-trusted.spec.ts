@@ -44,7 +44,7 @@ test.describe("desktop", () => {
 
     // The form: the same four groups, the computed-only fields skipped, Steps folded.
     await page.getByRole("button", { name: /Recipes/ }).click();
-    await page.locator(".k-quickbar").getByRole("button", { name: /New Recipe/ }).click();
+    await page.locator(".k-quickbar").getByRole("button", { name: /Add: Recipe/ }).click();
     const form = page.locator(".k-modal .k-form");
     await expect(form).toBeVisible();
     await expect(form.locator(".k-form-group-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
@@ -69,7 +69,7 @@ test.describe("desktop", () => {
 
   test("Plants: two half-width fields share a row", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
     const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
@@ -87,7 +87,7 @@ test.describe("phone", () => {
 
   test("Plants: the half-width fields stack", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
     const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });

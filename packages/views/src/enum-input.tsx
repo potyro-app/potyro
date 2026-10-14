@@ -7,6 +7,7 @@
 // gave.
 
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { enumSwatch, wantsSegmented } from "./enum.js";
 import { optionLabel, type ShownEnumField as EnumField } from "./shown.js";
 import { PickList } from "./pick-list.js";
@@ -81,6 +82,7 @@ function EnumSegments({ field, current, onChange, label }: { field: EnumField; c
 
 /** Six or more options: a button showing the choice, and a searchable list behind it. */
 function EnumPicker({ field, current, onChange, label }: { field: EnumField; current: string | null; onChange: (v: string | null) => void; label?: string }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   return (
@@ -91,17 +93,17 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
         className="k-enum-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={label ? (current ? `${label}: ${optionLabel(field, current)}` : `${label}: choose`) : undefined}
+        aria-label={label ? (current ? `${label}: ${optionLabel(field, current)}` : t({ message: `${label}: choose`, comment: "A choice field with nothing chosen yet; {label} is the field" })) : undefined}
         onClick={() => setOpen(true)}
       >
-        {current ? <EnumPill field={field} value={current} /> : <span className="k-enum-empty">Choose…</span>}
+        {current ? <EnumPill field={field} value={current} /> : <span className="k-enum-empty"><Trans>Choose…</Trans></span>}
         <span className="k-enum-caret" aria-hidden>
           ▾
         </span>
       </button>
       {open ? (
         <PickList
-          title={label ?? "Choose"}
+          title={label ?? t`Choose`}
           items={field.options.map((o) => ({ id: o, label: optionLabel(field, o), swatch: enumSwatch(field, o) }))}
           selected={new Set(current ? [current] : [])}
           anchor={btnRef}

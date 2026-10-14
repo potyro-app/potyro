@@ -9,15 +9,19 @@ import { FieldValue, RecordForm, displayFieldFor, fieldLabel, formatDateRelative
 import type { Resolved } from "potyro";
 import type { DataSession } from "./data-runtime.js";
 import { shellDialogs } from "./dialog.js";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 
 export function Count({ session, entity }: { session: DataSession; entity: string }) {
   const { rows, loading } = session.runtime.useQuery(entity);
-  return <span className="k-data-count">{loading ? "" : rows.length}</span>;
+  return <span className="k-data-count">{loading ? "" : fmt.number(rows.length)}</span>;
 }
 
 const SYSTEM = new Set(["id", "createdAt", "updatedAt", "createdBy"]);
 
 export function Table({ session, entity, fields, opaque }: { session: DataSession; entity: string; fields: string[]; opaque: string[] }) {
+  const { t } = useLingui();
   const { runtime } = session;
   const { rows, loading } = runtime.useQuery(entity);
   const [query, setQuery] = useState("");
@@ -35,23 +39,28 @@ export function Table({ session, entity, fields, opaque }: { session: DataSessio
   const shown = useMemo(() => (query.trim() ? rows.filter((r) => matches(r, query)) : rows), [rows, query]);
   const sorted = useMemo(() => [...shown].sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? ""))), [shown]);
   const [drawn, more, sentinel, scroller] = useDrawnRows(sorted.length, query);
+  const shownCount = fmt.number(shown.length);
+  const totalCount = fmt.number(rows.length);
+  const rowName = (row: Resolved): string => String(row[title] ?? row.id);
 
   const remove = async (row: Resolved): Promise<void> => {
-    const name = String(row[title] ?? "this record");
-    const ok = await shellDialogs.confirm(`Delete “${name}”?`, { detail: "It is removed from the app too, and can’t be brought back.", ok: "Delete", destructive: true });
+    const name = String(row[title] ?? t`this record`);
+    const ok = await shellDialogs.confirm(t`Delete “${name}”?`, { detail: t`It is removed from the app too, and can’t be brought back.`, ok: t`Delete`, destructive: true });
     if (ok) await runtime.remove(entity, row.id);
   };
 
   return (
     <section className="k-data-table-wrap" aria-busy={loading}>
       <div className="k-data-toolbar">
-        <input className="k-input k-data-search" type="search" placeholder="Find in these records" aria-label="Find in these records" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="k-input k-data-search" type="search" placeholder={t`Find in these records`} aria-label={t`Find in these records`} value={query} onChange={(e) => setQuery(e.target.value)} />
         {!loading && rows.length ? (
-          <span className="k-muted k-data-shown">{shown.length === rows.length ? `${rows.length} ${rows.length === 1 ? "record" : "records"}` : `${shown.length} of ${rows.length}`}</span>
+          <span className="k-muted k-data-shown">{shown.length === rows.length
+              ? plural(rows.length, { one: "# record", other: "# records" })
+              : t({ message: `${shownCount} of ${totalCount}`, comment: "Data table: records matching the search, of all records" })}</span>
         ) : null}
       </div>
       {!loading && sorted.length === 0 ? (
-        <p className="k-muted k-data-note">{rows.length ? "Nothing matches." : "No records yet."}</p>
+        <p className="k-muted k-data-note">{rows.length ? t`Nothing matches.` : t`No records yet.`}</p>
       ) : (
         <div className="k-data-scroll" ref={scroller}>
           <table className="k-data-table">
@@ -61,14 +70,18 @@ export function Table({ session, entity, fields, opaque }: { session: DataSessio
                   <th key={f} scope="col">{fieldLabel(runtime, entity, f)}</th>
                 ))}
                 {extra.map((f) => (
-                  <th key={f} scope="col" className="k-data-raw" title="Kept in storage; this app no longer shows it">{f}</th>
+                  <th key={f} scope="col" className="k-data-raw" title={t`Kept in storage; this app no longer shows it`}>{f}</th>
                 ))}
-                <th scope="col">Changed</th>
-                <th scope="col"><span className="k-visually-hidden">Actions</span></th>
+                <th scope="col">
+                  <Trans comment="Data table column: when the record was last changed">Changed</Trans>
+                </th>
+                <th scope="col"><span className="k-visually-hidden"><Trans>Actions</Trans></span></th>
               </tr>
             </thead>
             <tbody>
-              {sorted.slice(0, drawn).map((row) => (
+              {sorted.slice(0, drawn).map((row) => {
+                const record = rowName(row);
+                return (
                 <tr key={row.id} onClick={() => setEditing(row.id)}>
                   {fields.map((f) => (
                     <td key={f}><FieldValue runtime={runtime} entity={entity} fieldKey={f} value={row[f]} /></td>
@@ -78,16 +91,21 @@ export function Table({ session, entity, fields, opaque }: { session: DataSessio
                   ))}
                   <td className="k-muted k-data-when">{row.updatedAt ? formatDateRelative(new Date(String(row.updatedAt)), "minute") : "–"}</td>
                   <td className="k-data-actions">
-                    <button type="button" className="k-add" aria-label={`Edit ${String(row[title] ?? row.id)}`} onClick={(e) => (e.stopPropagation(), setEditing(row.id))}>Edit</button>
-                    <button type="button" className="k-add k-danger" aria-label={`Delete ${String(row[title] ?? row.id)}`} onClick={(e) => (e.stopPropagation(), void remove(row))}>Delete</button>
+                    <button type="button" className="k-add" aria-label={t`Edit ${record}`} onClick={(e) => (e.stopPropagation(), setEditing(row.id))}>
+                      <Trans comment="Data table: edit this record">Edit</Trans>
+                    </button>
+                    <button type="button" className="k-add k-danger" aria-label={t`Delete ${record}`} onClick={(e) => (e.stopPropagation(), void remove(row))}>
+                      <Trans comment="Data table: delete this record">Delete</Trans>
+                    </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {drawn < sorted.length ? (
                 <tr className="k-data-more" ref={sentinel}>
                   <td colSpan={fields.length + extra.length + 2}>
                     <button type="button" className="k-add" onClick={more}>
-                      Show more ({sorted.length - drawn} left)
+                      {plural(sorted.length - drawn, { one: "Show more (# left)", other: "Show more (# left)" })}
                     </button>
                   </td>
                 </tr>

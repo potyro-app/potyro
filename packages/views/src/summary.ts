@@ -10,6 +10,8 @@
 // Kept separate from the component so the arithmetic is testable without rendering, and so a
 // `value` function throwing can be contained here rather than taking the page down with it.
 
+import { t } from "@lingui/core/macro";
+import { fmt } from "@potyro/i18n";
 import type { Ctx, Resolved } from "potyro";
 import type { ShownSummaryValue as SummaryValue } from "./shown.js";
 
@@ -46,11 +48,13 @@ export function formatFigure(v: unknown, unit?: string): string {
   if (typeof v === "string") return v;
   if (typeof v === "number") {
     if (!Number.isFinite(v)) return "–";
-    const rounded = Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100);
+    // The active language's digits and decimal mark, to at most two places; no grouping, as before.
+    const rounded = fmt.number(v, { useGrouping: false, maximumFractionDigits: 2 });
+    // The unit is the app's own word, after the number.
     return unit ? `${rounded} ${unit}` : rounded;
   }
-  if (v instanceof Date) return v.toLocaleDateString();
-  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (v instanceof Date) return fmt.date(v, { year: "numeric", month: "numeric", day: "numeric" });
+  if (typeof v === "boolean") return v ? t`Yes` : t`No`;
   return String(v);
 }
 

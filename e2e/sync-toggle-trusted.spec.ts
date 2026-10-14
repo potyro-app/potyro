@@ -80,7 +80,7 @@ test("sync can be turned on, and the app's data comes with it", async ({ page })
   await expect(page.locator("h1").first()).toHaveText("Sync Target", { timeout: 30_000 });
 
   // A record written by the LOCAL store — this is what the migration has to carry across.
-  await page.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await page.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await page.getByLabel(/title/i).fill("Before sync");
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: "Before sync" })).toBeVisible();
@@ -125,7 +125,7 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
   await page.goto("/?user=sync-target");
   // Same guard: this note has to be WRITTEN to the CRDT store for the reload below to mean anything.
   await expect(page.locator(".k-sync-status")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await page.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await page.getByLabel(/title/i).fill("Written to the CRDT store");
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: "Written to the CRDT store" })).toBeVisible();
@@ -175,7 +175,7 @@ test("a SECOND app can be synced on the same device, with no relay", async ({ pa
   // sign would be the quiet version of this failure.
   await page.goto("/?user=sync-second");
   await expect(page.locator(".k-sync-status")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+  await page.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
   await page.getByLabel(/title/i).fill("Second app writes");
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: "Second app writes" })).toBeVisible();

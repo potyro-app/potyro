@@ -116,8 +116,9 @@ function timeoutVerdict(): Promise<{ passed: boolean; detail: string }> {
     setTimeout(() => {
       resolve({
         passed: false,
-        detail:
-          `verification timed out after ${VERIFY_WALL_CLOCK_MS}ms — the candidate was still running ` +
+        // The verdict goes to the model (#297: model-facing text stays English).
+        detail: // i18n-ignore
+          `verification timed out after ${VERIFY_WALL_CLOCK_MS}ms — the candidate was still running ` + // i18n-ignore
           "(possibly waiting on something, like a UI prompt, that verification can never answer)",
       });
     }, VERIFY_WALL_CLOCK_MS);
@@ -151,6 +152,7 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
   } catch (e) {
     // A candidate that does not compile is a failed verdict, not an exception — the loop has to be
     // able to hand this back to the model as something to fix.
+    // i18n-ignore — handed back to the model (#297: model-facing text stays English)
     return { passed: false, detail: `could not compile the candidate: ${e instanceof Error ? e.message : String(e)}` };
   }
 
@@ -210,6 +212,7 @@ async function runVerification(deps: VerifyCandidateDeps): Promise<{ passed: boo
     const detail = [...swaps.map((s) => `NOTE: ${s}`), ...(stoodIn ? [`NOTE: ${stoodIn}`] : []), ...lines].join("\n");
     return { passed: replayPassed(report), detail };
   } catch (e) {
+    // i18n-ignore — handed back to the model (#297: model-facing text stays English)
     return { passed: false, detail: `the candidate could not run: ${e instanceof Error ? e.message : String(e)}` };
   } finally {
     // `verifyCandidate` is designed to be called in a loop (up to 8 candidates per reported bug) —

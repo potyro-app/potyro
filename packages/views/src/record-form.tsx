@@ -9,6 +9,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { ShownField as Field } from "./shown.js";
 import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { FieldInput } from "./field-input.js";
 import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
@@ -268,6 +269,7 @@ function FieldRow({
 }
 
 export function RecordForm({ runtime, entity, recordId, initial, onDone, onCancel, nested }: RecordFormProps) {
+  const { t } = useLingui();
   const isEdit = Boolean(recordId);
   const { record, loading } = runtime.useRecord(entity, recordId ?? "");
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
@@ -293,19 +295,26 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
   }, [form, isEdit, loading, record, runtime, entity, initial]);
 
   const def = runtime.definition.entities[entity];
-  const title = isEdit ? `Edit ${def?.label ?? entity}` : `New ${def?.label ?? entity}`;
+  // "Add: Recipe", not "New recipe": the shell cannot know the gender of an app's noun, and "new"
+  // agrees with it in pl/de/es/it/pt (docs/20 Q3).
+  const noun = def?.label ?? entity;
+  const title = isEdit
+    ? t({ message: `Edit: ${noun}`, comment: "Form title for changing a record; {noun} is the app's own name for the kind of record" })
+    : t({ message: `Add: ${noun}`, comment: "Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement" });
   const dirty = form !== null && JSON.stringify(form) !== opened.current;
 
   // Closing a form with edits in it asks once — Escape, the scrim, a swipe, Close and Cancel alike.
   const requestClose = async (): Promise<void> => {
-    if (dirty && !(await runtime.ctx.ui.confirm("Discard your changes?"))) return;
+    if (dirty && !(await runtime.ctx.ui.confirm(t`Discard your changes?`))) return;
     onCancel();
   };
 
   if (!form) {
     return (
       <FormSheet title={title} onClose={onCancel} stacked={nested} ready={false}>
-        <p className="k-loading">Loading…</p>
+        <p className="k-loading">
+          <Trans>Loading…</Trans>
+        </p>
       </FormSheet>
     );
   }
@@ -323,7 +332,8 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     const missing: Record<string, string> = {};
     for (const group of groups) {
       for (const key of group.fields) {
-        if ((fields[key] as Hints | undefined)?.required && isEmpty(form[key])) missing[key] = "Required";
+        if ((fields[key] as Hints | undefined)?.required && isEmpty(form[key]))
+          missing[key] = t({ message: "Required", comment: "Under a form field that was left empty but must be filled" });
       }
     }
     const firstMissing = Object.keys(missing)[0];
@@ -394,21 +404,21 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       <Root className={`k-form${nested ? " k-form-nested" : ""}`} {...rootProps}>
         <header className="k-form-head">
           <h3>{title}</h3>
-          <button type="button" className="k-form-close" aria-label="Close" onClick={() => void requestClose()}>
+          <button type="button" className="k-form-close" aria-label={t`Close`} onClick={() => void requestClose()}>
             ✕
           </button>
         </header>
         <div className="k-form-body">
           {saveError ? (
             <p className="k-form-error" role="alert">
-              Couldn't save: {saveError}
+              <Trans>Couldn't save: {saveError}</Trans>
             </p>
           ) : null}
           {groups.map(renderGroup)}
         </div>
         <footer className="k-form-actions">
           <button type="button" className="k-add" onClick={() => void requestClose()}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button
             type={nested ? "button" : "submit"}
@@ -416,7 +426,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
             disabled={saving}
             onClick={nested ? () => void submit() : undefined}
           >
-            {saving ? "Saving…" : isEdit ? "Save changes" : "Create"}
+            {saving ? t`Saving…` : isEdit ? t`Save changes` : t({ message: "Create", comment: "Form button that saves a new record" })}
           </button>
         </footer>
       </Root>
@@ -441,6 +451,7 @@ export interface ValuesFormProps {
  * is the raw values (a relation's id, a number as a number).
  */
 export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, onCancel }: ValuesFormProps) {
+  const { t } = useLingui();
   // A ui.form's fields are plain data from the action, never functions: their defaults are values.
   const [form, setForm] = useState<Record<string, unknown>>(() => {
     const out: Record<string, unknown> = {};
@@ -456,7 +467,7 @@ export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, 
   const dirty = JSON.stringify(form) !== opened.current;
 
   const requestClose = async (): Promise<void> => {
-    if (dirty && !(await runtime.ctx.ui.confirm("Discard what you entered?", { ok: "Discard", destructive: true }))) return;
+    if (dirty && !(await runtime.ctx.ui.confirm(t`Discard what you entered?`, { ok: t`Discard`, destructive: true }))) return;
     onCancel();
   };
   const set = (key: string, v: unknown): void => {
@@ -467,7 +478,8 @@ export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, 
   const send = (e?: React.FormEvent): void => {
     e?.preventDefault();
     const missing: Record<string, string> = {};
-    for (const key of keys) if ((fields[key] as Hints).required && isEmpty(form[key])) missing[key] = "Required";
+    for (const key of keys) if ((fields[key] as Hints).required && isEmpty(form[key]))
+        missing[key] = t({ message: "Required", comment: "Under a form field that was left empty but must be filled" });
     const first = Object.keys(missing)[0];
     if (first) {
       setErrors(missing);
@@ -482,7 +494,7 @@ export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, 
       <form className="k-form" onSubmit={send} noValidate>
         <header className="k-form-head">
           <h3>{title}</h3>
-          <button type="button" className="k-form-close" aria-label="Close" onClick={() => void requestClose()}>
+          <button type="button" className="k-form-close" aria-label={t`Close`} onClick={() => void requestClose()}>
             ✕
           </button>
         </header>
@@ -506,10 +518,10 @@ export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, 
         </div>
         <footer className="k-form-actions">
           <button type="button" className="k-add" onClick={() => void requestClose()}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="k-add k-primary-action">
-            {submit ?? "OK"}
+            {submit ?? t`OK`}
           </button>
         </footer>
       </form>

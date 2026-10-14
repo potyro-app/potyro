@@ -2,6 +2,9 @@
 // sources it was checked against, and the approve / reject control. The card and the table only
 // arrange these differently.
 
+import { fmt } from "@potyro/i18n";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { formatMoney, humanizeKey, type AppDefinition as SourceDefinition, type Field as SourceField, type Localized } from "potyro";
 /** The definition as the person reads it — `runtime.definition`, localized (#302). */
 type AppDefinition = Localized<SourceDefinition>;
@@ -34,7 +37,8 @@ export function showValue(field: Field, value: unknown, names: LinkNames): strin
   switch (field.type) {
     case "geo": {
       const g = value as { lat: number; lng: number; label?: string };
-      return g.label ? `📍 ${g.label}` : `📍 ${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`;
+      const four = { minimumFractionDigits: 4, maximumFractionDigits: 4 };
+      return g.label ? `📍 ${g.label}` : `📍 ${fmt.number(g.lat, four)}, ${fmt.number(g.lng, four)}`;
     }
     case "relation": {
       const list = Array.isArray(value) ? value : [value];
@@ -55,15 +59,15 @@ export function showValue(field: Field, value: unknown, names: LinkNames): strin
     case "tags":
       return Array.isArray(value) ? value.join(", ") : null;
     case "boolean":
-      return value ? "Yes" : "No";
+      return value ? t`Yes` : t`No`;
     case "number":
-      return `${String(value)}${field.unit ? ` ${field.unit}` : ""}`;
+      return `${typeof value === "number" ? fmt.number(value) : String(value)}${field.unit ? ` ${field.unit}` : ""}`;
     case "money":
       return typeof value === "number" ? formatMoney(value, field.currency) : String(value);
     case "datetime": {
       const d = new Date(String(value));
       if (Number.isNaN(d.getTime())) return String(value);
-      return field.precision === "minute" ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+      return field.precision === "minute" ? fmt.date(d, { dateStyle: "medium", timeStyle: "short" }) : fmt.date(d, { dateStyle: "medium" });
     }
     case "duration":
       return `${String(value)} ${field.unit ?? "ms"}`;
@@ -96,6 +100,7 @@ export function ValueCell({
   onKeep: () => void;
   names: LinkNames;
 }) {
+  const { t } = useLingui();
   const shown = showValue(field, value, names);
   const dropped = issue?.kind === "contradicted" && !kept;
   return (
@@ -103,11 +108,11 @@ export function ValueCell({
       <span className="k-ask-value-text">{shown ?? "—"}</span>
       {issue ? (
         <span className="k-ask-value-why">
-          {issue.kind === "contradicted" ? "Disputed: " : "Not in its sources: "}
+          {issue.kind === "contradicted" ? t`Disputed:` : t`Not in its sources:`}{" "}
           {issue.why}
           {issue.kind === "contradicted" ? (
             <button type="button" className="k-ask-keep" aria-pressed={kept} onClick={onKeep}>
-              {kept ? "Leave it out" : "Keep anyway"}
+              {kept ? t`Leave it out` : t`Keep anyway`}
             </button>
           ) : null}
         </span>
@@ -117,15 +122,16 @@ export function ValueCell({
 }
 
 export function Sources({ row }: { row: ReviewRow }) {
+  const { t } = useLingui();
   const sources = row.trust?.sources ?? [];
   if (!sources.length) return null;
   return (
-    <ul className="k-ask-sources-list" aria-label="Where this was found">
+    <ul className="k-ask-sources-list" aria-label={t`Where this was found`}>
       {sources.map((s) => (
         <li key={s.url}>
           {/* What the person gave (their request, a paste) has no page to open: it is named instead. */}
           {s.url.startsWith("potyro:") ? (
-            <span className="k-ask-source-own">{s.via ?? "you"}</span>
+            <span className="k-ask-source-own">{s.via ?? t({ message: "you", comment: "Ask review: a value came from what the person typed or pasted" })}</span>
           ) : (
             <a href={s.url} target="_blank" rel="noreferrer noopener">
               {s.host}
@@ -149,12 +155,13 @@ export function TrustBadge({ row }: { row: ReviewRow }) {
 
 /** Approve / reject: two buttons, one pressed. */
 export function Decision({ approved, onChange, name }: { approved: boolean; onChange: (approved: boolean) => void; name: string }) {
+  const { t } = useLingui();
   return (
-    <span className="k-ask-decision" role="group" aria-label={`Keep ${name}?`}>
-      <button type="button" className="k-ask-approve" aria-pressed={approved} aria-label={`Approve ${name}`} title="Approve" onClick={() => onChange(true)}>
+    <span className="k-ask-decision" role="group" aria-label={t`Keep ${name}?`}>
+      <button type="button" className="k-ask-approve" aria-pressed={approved} aria-label={t`Approve ${name}`} title={t`Approve`} onClick={() => onChange(true)}>
         ✓
       </button>
-      <button type="button" className="k-ask-reject" aria-pressed={!approved} aria-label={`Reject ${name}`} title="Reject" onClick={() => onChange(false)}>
+      <button type="button" className="k-ask-reject" aria-pressed={!approved} aria-label={t`Reject ${name}`} title={t`Reject`} onClick={() => onChange(false)}>
         ✕
       </button>
     </span>

@@ -304,6 +304,7 @@ export function makeSourceFetcher(deps: SourceFetcherDeps): SourceFetch {
 
   return async (req) => {
     const src = deps.sources.find((s) => s.ask.id === req.source);
+    // i18n-ignore — a tool result the model reads (#297: English)
     if (!src) return { ok: false, detail: `No source "${req.source}".` };
     const url = await target(src, req);
     if (typeof url === "string") return { ok: false, detail: url };
@@ -311,6 +312,7 @@ export function makeSourceFetcher(deps: SourceFetcherDeps): SourceFetch {
 
     const headers = new Headers({ Accept: req.kind === "docs" ? "text/html, text/plain, */*" : "application/json, text/*;q=0.9, */*;q=0.5" });
     const key = req.kind === "data" && src.auth ? await deps.keys.get(src.keyId) : null;
+    // i18n-ignore — a tool result the model reads (#297: English)
     if (req.kind === "data" && src.auth && !key) return { ok: false, detail: `${src.ask.label} needs a key, and none is saved.` };
     if (key && src.auth && "header" in src.auth) headers.set(src.auth.header, `${src.auth.prefix ?? ""}${key}`);
     if (key && src.auth && "query" in src.auth) url.searchParams.set(src.auth.query, key);

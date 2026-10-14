@@ -9,6 +9,8 @@
 // value and never learns there is a React tree involved.
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 
 export interface PickRequest {
   items: readonly unknown[];
@@ -52,6 +54,7 @@ export class PickerHost {
 }
 
 export function Picker({ host }: { host: PickerHost }) {
+  const { t } = useLingui();
   const request = useSyncExternalStore(host.subscribe, host.get, host.get);
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<Set<number>>(new Set());
@@ -74,6 +77,7 @@ export function Picker({ host }: { host: PickerHost }) {
   }, [request, query]);
 
   if (!request) return null;
+  const count = fmt.number(chosen.size);
 
   const cancel = (): void => request.settle(null);
   const commit = (): void =>
@@ -99,13 +103,13 @@ export function Picker({ host }: { host: PickerHost }) {
         if (e.key === "Escape") cancel();
       }}
     >
-      <div className="k-modal k-picker" role="dialog" aria-label="Choose" onClick={(e) => e.stopPropagation()}>
+      <div className="k-modal k-picker" role="dialog" aria-label={t({ message: "Choose", comment: "A list an app asks you to pick from" })} onClick={(e) => e.stopPropagation()}>
         <input
           ref={searchRef}
           className="k-input"
           type="search"
-          placeholder="Search…"
-          aria-label="Filter the list"
+          placeholder={t`Search…`}
+          aria-label={t`Filter the list`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -117,7 +121,9 @@ export function Picker({ host }: { host: PickerHost }) {
 
         <ul className="k-picker-list">
           {rows.length === 0 ? (
-            <li className="k-muted k-picker-empty">Nothing matches “{query}”.</li>
+            <li className="k-muted k-picker-empty">
+              <Trans>Nothing matches “{query}”.</Trans>
+            </li>
           ) : (
             rows.map((r) => (
               <li key={r.index}>
@@ -136,10 +142,12 @@ export function Picker({ host }: { host: PickerHost }) {
         </ul>
 
         <div className="k-form-actions">
-          <button type="button" className="k-add" onClick={cancel}>Cancel</button>
+          <button type="button" className="k-add" onClick={cancel}>
+            <Trans>Cancel</Trans>
+          </button>
           {request.multi ? (
             <button type="button" className="k-add k-primary-action" onClick={commit}>
-              Add {chosen.size || ""}
+              {chosen.size ? t({ message: `Add ${count}`, comment: "Picker: add the chosen items; the number is how many" }) : t({ message: "Add", comment: "Picker: add the chosen items" })}
             </button>
           ) : null}
         </div>

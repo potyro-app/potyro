@@ -11,6 +11,9 @@
 // declare it. The app itself is already in the conversation, once (the modify loop's rule), so this
 // is a slice of it with its line numbers, never a second copy.
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, t } from "@lingui/core/macro";
+import { i18n } from "@potyro/i18n";
 import { basePageId, isWordsMap, plainWords, type AppDefinition, type View, type Words } from "potyro";
 import { humanizeKey } from "@potyro/views";
 import type { ModifyContext } from "@potyro/generator/backends";
@@ -36,12 +39,49 @@ export interface Pointed {
 type Def = Pick<AppDefinition, "pages" | "entities">;
 
 // ---- Words ------------------------------------------------------------------------------------
+//
+// Two sets: `words` is what the MODEL is told, and stays English like everything sent to a model
+// (#297); `label` is the chip the person reads, in their language (#299). The chip's words are
+// built around the app's names ("“Nights” · list"), never agreeing with them (docs/20 Q3).
 
+/** What each kind of view is called on the chip. */
+const VIEW_LABELS: Record<View["type"], MessageDescriptor> = {
+  list: msg({ message: "list", comment: "Point chip: a kind of view, lower case" }),
+  gallery: msg({ message: "gallery", comment: "Point chip: a kind of view, lower case" }),
+  table: msg({ message: "table", comment: "Point chip: a kind of view, lower case" }),
+  detail: msg({ message: "detail view", comment: "Point chip: a kind of view, lower case" }),
+  calendar: msg({ message: "calendar", comment: "Point chip: a kind of view, lower case" }),
+  map: msg({ message: "map", comment: "Point chip: a kind of view, lower case" }),
+  steps: msg({ message: "steps", comment: "Point chip: a kind of view, lower case" }),
+  checklist: msg({ message: "checklist", comment: "Point chip: a kind of view, lower case" }),
+  board: msg({ message: "board", comment: "Point chip: a kind of view, lower case" }),
+  timeline: msg({ message: "timeline", comment: "Point chip: a kind of view, lower case" }),
+  stats: msg({ message: "figures", comment: "Point chip: a kind of view, lower case" }),
+  chart: msg({ message: "chart", comment: "Point chip: a kind of view, lower case" }),
+  aggregate: msg({ message: "summary", comment: "Point chip: a kind of view, lower case" }),
+  custom: msg({ message: "custom view", comment: "Point chip: a kind of view, lower case" }),
+};
+/** What each kind of thing inside a custom view is called on the chip (the keys are `NAMEABLE`'s). */
+const TAG_LABELS: Record<string, MessageDescriptor> = {
+  button: msg({ message: "button", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  link: msg({ message: "link", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  heading: msg({ message: "heading", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  box: msg({ message: "box", comment: "Point chip: a text box or other input inside an app's screen, lower case" }),
+  picture: msg({ message: "picture", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  label: msg({ message: "label", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  row: msg({ message: "row", comment: "Point chip: a thing inside an app's screen, lower case" }),
+  text: msg({ message: "text", comment: "Point chip: a thing inside an app's screen, lower case" }),
+};
+const viewLabel = (view: View | undefined): string => (view ? i18n._(VIEW_LABELS[view.type]) : t({ message: "view", comment: "Point chip: a part of a page, lower case" }));
+const tagLabel = (tag: string): string => (TAG_LABELS[tag] ? i18n._(TAG_LABELS[tag]!) : tag);
+
+
+/** What each kind of view is called to the MODEL (English, #297). */
 const VIEW_WORDS: Record<View["type"], string> = {
   list: "list",
   gallery: "gallery",
   table: "table",
-  detail: "detail view",
+  detail: "detail view", // i18n-ignore — the model is told this (VIEW_WORDS stays English); the chip uses VIEW_LABELS
   calendar: "calendar",
   map: "map",
   steps: "steps",
@@ -84,10 +124,16 @@ function describeView(def: Def, part: string): { label: string; words: string; w
   const { page, index, view, title } = viewAt(def, part);
   const word = view ? VIEW_WORDS[view.type] : "view";
   const on = `the "${pageTitle(def, page)}" page`;
-  if (index === null) return { label: `${cap(word)} · ${pageTitle(def, page)}`, words: `the ${word} on ${on}`, within: `in the ${word} on ${on}` };
-  if (title) return { label: `“${title}” ${word}`, words: `the "${title}" ${word} on ${on}`, within: `in the "${title}" part of ${on}` };
+  const kind = cap(viewLabel(view));
+  const pageName = pageTitle(def, page);
+  const onPage = t({ message: `${kind} · ${pageName}`, comment: "Point chip: a kind of view, and the page it is on" });
+  if (index === null) return { label: onPage, words: `the ${word} on ${on}`, within: `in the ${word} on ${on}` };
+  if (title) {
+    const what = viewLabel(view);
+    return { label: t({ message: `“${title}” ${what}`, comment: "Point chip: a view's title, then what kind of view it is" }), words: `the "${title}" ${word} on ${on}`, within: `in the "${title}" part of ${on}` };
+  }
   return {
-    label: `${cap(word)} · ${pageTitle(def, page)}`,
+    label: onPage,
     words: `the ${ordinal(index)} part of ${on} (${article(word)})`,
     within: `in the ${ordinal(index)} part of ${on}`,
   };
@@ -97,8 +143,8 @@ const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function describePoint(ref: PointRef, def: Def): Pointed {
   if (ref.kind === "page") {
-    const t = pageTitle(def, ref.page);
-    return { ref, label: `“${t}” page`, words: `the "${t}" page` };
+    const title = pageTitle(def, ref.page);
+    return { ref, label: t({ message: `“${title}” page`, comment: "Point chip: a page of the app, by its title" }), words: `the "${title}" page` };
   }
   if (ref.kind === "view") {
     const { label, words } = describeView(def, ref.part);
@@ -110,10 +156,12 @@ export function describePoint(ref: PointRef, def: Def): Pointed {
     const name = said(field?.label) ?? humanizeKey(ref.field);
     const of = said(entity?.label) ?? humanizeKey(ref.entity);
     const where = ref.part ? `, as shown ${describeView(def, ref.part).within}` : "";
-    return { ref, label: `“${name}” field`, words: `the "${name}" field of ${of}${where}` };
+    return { ref, label: t({ message: `“${name}” field`, comment: "Point chip: a field of a form, by its label" }), words: `the "${name}" field of ${of}${where}` };
   }
   const thing = ref.text ? `the "${ref.text}" ${ref.tag}` : `${article(ref.tag)}`;
-  const label = ref.text ? `“${ref.text}” ${ref.tag}` : cap(ref.tag);
+  const text = ref.text;
+  const tag = tagLabel(ref.tag);
+  const label = text ? t({ message: `“${text}” ${tag}`, comment: "Point chip: the text on a thing in the app's screen, then what kind of thing it is" }) : cap(tag);
   return { ref, label, words: `${thing} ${describeView(def, ref.part).within}` };
 }
 

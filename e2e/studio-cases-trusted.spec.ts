@@ -110,7 +110,7 @@ test("a case recorded against a saved app shows up in Studio history and its rep
 
   // Create a record — the auto quick action opens the create form, and finishing it navigates to
   // the record's detail page. That navigation is what the recorder captures as an "open" step.
-  await page.getByRole("button", { name: "New Item" }).click();
+  await page.getByRole("button", { name: "Add: Item" }).click();
   await page.getByLabel("Title").fill("Widget");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-detail")).toBeVisible();

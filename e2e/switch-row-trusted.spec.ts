@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 async function openNewPlant(page: import("@playwright/test").Page): Promise<import("@playwright/test").Locator> {
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-  await page.getByRole("button", { name: "New Plant" }).click();
+  await page.getByRole("button", { name: "Add: Plant" }).click();
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
   return form;

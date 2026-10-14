@@ -20,6 +20,7 @@
 // a rollback, an app arriving from someone — has no message, and `threadItems` folds those in from
 // history where they happened in time, so the thread never pretends they did not.
 
+import { t } from "@lingui/core/macro";
 import type { Store } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { isEvent, SYSTEM_NOTES } from "./studio-thread.js";
@@ -193,7 +194,7 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
   const stored = readChatMessage(written as Record<string, unknown>);
-  if (!stored) throw new Error("the conversation could not be saved");
+  if (!stored) throw new Error(t`the conversation could not be saved`);
   return stored;
 }
 
@@ -426,5 +427,6 @@ export function parseChatRecord(raw: unknown): ChatRecord | null {
 export async function importChat(appId: string, record: ChatRecord, now: string): Promise<void> {
   await clearChat(appId);
   for (const m of record.messages) await appendMessage(appId, m, m.at);
+  // English in the record, like a version note; `shownNote` says it in the reader's language.
   await appendMessage(appId, { kind: "event", text: "how it was made, as shared by its author" }, now);
 }

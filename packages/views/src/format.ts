@@ -1,6 +1,8 @@
 import { resolveView, humanizeKey } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { View } from "potyro";
+import { t } from "@lingui/core/macro";
+import { fmt } from "@potyro/i18n";
 import { formatDateRelative, type Precision } from "./dates.js";
 
 /**
@@ -21,8 +23,10 @@ export function formatDateValue(d: Date): string {
 export function formatValue(v: unknown): string {
   if (v == null) return "–";
   if (v instanceof Date) return formatDateValue(v);
-  if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(1);
-  if (typeof v === "boolean") return v ? "Yes" : "No";
+  // In the active language's digits and decimal mark; no grouping, as before.
+  if (typeof v === "number")
+    return Number.isInteger(v) ? fmt.number(v, { useGrouping: false }) : fmt.number(v, { useGrouping: false, minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (typeof v === "boolean") return v ? t`Yes` : t`No`;
   if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? "•" : String(x))).join(", ");
   if (typeof v === "object") return "…";
   return String(v);

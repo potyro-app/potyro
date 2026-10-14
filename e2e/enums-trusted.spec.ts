@@ -26,7 +26,7 @@ test.describe("desktop", () => {
 
   test("three options are a row of buttons; the colour follows the value everywhere", async ({ page }) => {
     await openApp(page, "recipes", "Recipes");
-    await page.getByRole("button", { name: /New Ingredient/ }).click();
+    await page.getByRole("button", { name: /Add: Ingredient/ }).click();
     const form = page.locator(".k-form");
     await expect(form).toBeVisible();
     // Not a select — the whole form has none.
@@ -60,7 +60,7 @@ test.describe("desktop", () => {
   test("six options open a searchable list in a popover", async ({ page }) => {
     await openApp(page, "places", "Places");
     await goToAllPlaces(page);
-    await page.getByRole("button", { name: /New Place/ }).click();
+    await page.getByRole("button", { name: /Add: Place/ }).click();
     const form = page.locator(".k-form");
     await expect(form.locator("select")).toHaveCount(0);
 
@@ -77,7 +77,7 @@ test.describe("desktop", () => {
 
   test("a tags field with no options takes a typed tag", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    await page.getByRole("button", { name: "New Plant" }).click();
+    await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     const tags = form.locator(".k-tags input");
     await expect(tags).toHaveAttribute("placeholder", "Type a tag, press Enter");
@@ -97,7 +97,7 @@ test.describe("phone", () => {
   test("the long list is a bottom sheet", async ({ page }) => {
     await openApp(page, "places", "Places");
     await goToAllPlaces(page);
-    await page.getByRole("button", { name: /New Place/ }).tap();
+    await page.getByRole("button", { name: /Add: Place/ }).tap();
     const form = page.locator(".k-form");
     await form.getByRole("button", { name: "Kind: choose" }).tap();
     const sheet = page.getByRole("dialog", { name: "Kind" });

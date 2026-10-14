@@ -53,7 +53,7 @@ const SCREENS: Array<[string, string, (page: Page) => Promise<void>]> = [
     "/?app=recipes",
     async (page) => {
       await expect(page.locator(".k-topbar")).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("button", { name: /New Recipe/ }).first().tap();
+      await page.getByRole("button", { name: /Add: Recipe/ }).first().tap();
       await expect(page.getByRole("dialog")).toBeVisible();
     },
   ],

@@ -9,6 +9,9 @@
 // rest answering on hover, tap or the arrow keys; a visually hidden table with the same numbers for
 // a screen reader. The series colour is a token validated against both themes' surfaces.
 
+import { fmt } from "@potyro/i18n";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ChartPoint, Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
@@ -39,13 +42,14 @@ export function niceMax(max: number, integers = false): { top: number; step: num
   return { top: max, step: max };
 }
 
-const fmt = (v: number): string => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+const num = (v: number): string => fmt.number(v, { maximumFractionDigits: 2 });
 
 export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
+  const { t } = useLingui();
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const title = useDynamicText(runtime, pageId, "title", "view", "");
   const subtitle = useDynamicText(runtime, pageId, "subtitle", "view", "");
-  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing to chart yet.");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing to chart yet.`);
   const phone = usePhone();
 
   const [points, setPoints] = useState<ChartPoint[] | null>(null);
@@ -91,13 +95,13 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
     </figcaption>
   );
 
-  if (loading || points === null) return <p className="k-muted">Loading…</p>;
+  if (loading || points === null) return <p className="k-muted">{t`Loading…`}</p>;
   if (error || points.length === 0) {
     return (
       <figure className="k-chart">
         {head}
         <p className={error ? "k-aggregate-error" : "k-muted"} role={error ? "status" : undefined}>
-          {error ? `This chart could not be worked out: ${error}` : emptyText}
+          {error ? t`This chart could not be worked out: ${error}` : emptyText}
         </p>
       </figure>
     );
@@ -107,7 +111,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
   const { top, step } = niceMax(Math.max(...points.map((p) => p.value)), points.every((p) => Number.isInteger(p.value)));
   const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
   const H = phone ? 190 : 220;
-  const padL = Math.max(...ticks.map((t) => fmt(t).length)) * 7 + 10;
+  const padL = Math.max(...ticks.map((t) => num(t).length)) * 7 + 10;
   const padR = 6;
   const padT = 20;
   const padB = 24;
@@ -140,6 +144,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
   };
 
   const tip = active !== null ? points[active] : undefined;
+  const chartName = title || t({ message: "Chart", comment: "A bar chart with no title of its own" });
   const tipLeft = active !== null ? Math.min(Math.max(cx(active), 70), width - 70) : 0;
 
   return (
@@ -150,7 +155,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
         className="k-chart-plot"
         tabIndex={0}
         role="img"
-        aria-label={`${title || "Chart"}: ${n} bars. The values are in the table that follows.`}
+        aria-label={plural(n, { one: `${chartName}: # bar. The values are in the table that follows.`, other: `${chartName}: # bars. The values are in the table that follows.` })}
         onKeyDown={onKey}
         onBlur={() => setActive(null)}
         onPointerLeave={(e) => {
@@ -162,7 +167,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
             <g key={t}>
               <line className="k-chart-grid" x1={padL} x2={width - padR} y1={y(t)} y2={y(t)} />
               <text className="k-chart-tick" x={padL - 6} y={y(t)} textAnchor="end" dominantBaseline="middle">
-                {fmt(t)}
+                {num(t)}
               </text>
             </g>
           ))}
@@ -190,12 +195,12 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
             </g>
           ))}
           <text className="k-chart-latest" x={cx(n - 1)} y={y(points[n - 1]!.value) - 6} textAnchor="middle">
-            {fmt(points[n - 1]!.value)}
+            {num(points[n - 1]!.value)}
           </text>
         </svg>
         {tip ? (
           <div className="k-chart-tip" style={{ left: tipLeft, top: y(tip.value) - 10 }}>
-            {tip.label} · <b>{tip.text ?? fmt(tip.value)}</b>
+            {tip.label} · <b>{tip.text ?? num(tip.value)}</b>
           </div>
         ) : null}
       </div>
@@ -203,15 +208,19 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
         {title ? <caption>{title}</caption> : null}
         <thead>
           <tr>
-            <th scope="col">Label</th>
-            <th scope="col">Value</th>
+            <th scope="col">
+              <Trans comment="Chart data table: the bar's label">Label</Trans>
+            </th>
+            <th scope="col">
+              <Trans comment="Chart data table: the bar's value">Value</Trans>
+            </th>
           </tr>
         </thead>
         <tbody>
           {points.map((p, i) => (
             <tr key={i}>
               <th scope="row">{p.label}</th>
-              <td>{p.text ?? fmt(p.value)}</td>
+              <td>{p.text ?? num(p.value)}</td>
             </tr>
           ))}
         </tbody>

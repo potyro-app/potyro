@@ -9,6 +9,7 @@
 // nothing opens any more. Nothing is deleted from the old store either — a migration that turns
 // out to be wrong must be reversible by flipping back.
 
+import { plural } from "@lingui/core/macro";
 import { copyStoreData, isReservedPath, type CopyStoreResult } from "@potyro/store";
 import { openStore } from "./open-store.js";
 import { setUserAppSync } from "./user-apps.js";
@@ -43,8 +44,12 @@ export async function toggleAppSync(
 
   const warnings: string[] = [];
   if (copied.skippedBlobs.length) {
+    const reason = copied.skippedBlobs[0]!.reason;
     warnings.push(
-      `${copied.skippedBlobs.length} media file(s) could not be moved: ${copied.skippedBlobs[0]!.reason}.`,
+      plural(copied.skippedBlobs.length, {
+        one: `# media file could not be moved: ${reason}.`,
+        other: `# media files could not be moved: ${reason}.`,
+      }),
     );
   }
 

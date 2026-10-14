@@ -79,7 +79,7 @@ describe("one related record", () => {
     render(<FieldInput runtime={runtime} field={one} value={null} onChange={onChange} label="Main" />);
     fireEvent.click(await screen.findByRole("button", { name: "Main: choose" }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Search Main" }), { target: { value: "Saffron" } });
-    fireEvent.click(screen.getByRole("button", { name: /New ingredient “Saffron”/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add: Ingredient “Saffron”/ }));
 
     // A second sheet, starting with the name already in it.
     const name = (await screen.findByRole("textbox", { name: /Name/ })) as HTMLInputElement;
@@ -94,9 +94,9 @@ describe("one related record", () => {
     const { runtime } = await makeRuntime([]);
     render(<FieldInput runtime={runtime} field={one} value={null} onChange={() => {}} label="Main" />);
     const trigger = await screen.findByRole("button", { name: "Main: choose" });
-    expect(trigger.textContent).toContain("No ingredient yet");
+    expect(trigger.textContent).toContain("Ingredient: none yet");
     fireEvent.click(trigger);
-    expect(screen.getByRole("button", { name: /New ingredient/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Add: Ingredient/ })).toBeTruthy();
   });
 });
 

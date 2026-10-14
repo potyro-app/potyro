@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 // The launcher's own state (#78, #77, #81, #94). The sync, share and identity machinery behind the
 // tiles is mocked: this is about what the list shows and how a tile's actions are reached.
 vi.mock("../src/identity-panel.js", () => ({ IdentityPanel: () => null, askNameIfUnnamed: async () => {}, offerBackupOnFirstSync: async () => {} }));
-vi.mock("../src/open-store.js", () => ({ canSync: () => true, CANNOT_SYNC_MESSAGE: "no" }));
+vi.mock("../src/open-store.js", () => ({ canSync: () => true, cannotSyncMessage: () => "no" }));
 vi.mock("../src/check-concurrency.js", () => ({ checkConcurrency: async () => ({}), describeHazards: () => [] }));
 vi.mock("../src/share-sync.js", () => ({ createShareLink: async () => "link" }));
 vi.mock("../src/toggle-sync.js", () => ({ toggleAppSync: async () => ({ copied: { records: 0 }, warnings: [] }) }));

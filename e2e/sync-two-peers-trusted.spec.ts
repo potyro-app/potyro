@@ -62,7 +62,7 @@ async function device(context: BrowserContext, opts?: { app?: boolean }): Promis
 }
 
 const add = async (page: Page, title: string): Promise<void> => {
-  await page.getByRole("button", { name: /New Todo|Add Todo/i }).first().click();
+  await page.getByRole("button", { name: /Add: Todo|Add Todo/i }).first().click();
   await page.getByLabel(/title/i).fill(title);
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible();

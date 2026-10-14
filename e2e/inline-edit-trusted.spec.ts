@@ -88,7 +88,7 @@ async function openKit(page: Page): Promise<void> {
 
 /** A table shows its header only once it has a row. */
 async function addItem(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name: /New Item/ }).first().click();
+  await page.getByRole("button", { name: /Add: Item/ }).first().click();
   const form = page.locator(".k-modal");
   await form.getByLabel("Name").fill(name);
   await form.getByRole("button", { name: /Save|Add|Create/ }).first().click();
@@ -228,7 +228,7 @@ test("hiding a field takes it out of the form", async ({ page }) => {
   await awaitRerun(page, () => page.getByRole("dialog", { name: "Change field name" }).getByLabel("Hide from the form").check());
   await expect.poll(() => storedSource(page)).toContain("hidden: true");
   await page.locator(".k-inline-bar").getByRole("button", { name: "Done" }).click();
-  await page.getByRole("button", { name: /New Item/ }).first().click();
+  await page.getByRole("button", { name: /Add: Item/ }).first().click();
   await expect(page.locator(".k-modal .k-form-label", { hasText: "Name" })).toBeVisible();
   await expect(page.locator(".k-modal .k-form-label", { hasText: "Quantity" })).toHaveCount(0);
 });
