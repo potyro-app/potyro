@@ -332,9 +332,13 @@ async function loopModify(
       appendFileSync(join(outDir, `${c.id}.steps.log`), `--- ${new Date().toISOString()} ${line}\n`);
     },
   });
+  // A request to the Potyro team (#263) is written out beside the case, to be read.
+  const platformRequest = out.kind === "platform" ? out.request : out.kind === "source" || out.kind === "failed" ? out.platformRequest : undefined;
+  if (platformRequest) writeFileSync(join(outDir, `${c.id}.platform-request.md`), `# ${platformRequest.title}\n\n${platformRequest.body}\n`);
   record({
     ...tracer.read(),
     ended: out.kind,
+    ...(platformRequest ? { platformRequest: true } : {}),
     cause: out.kind === "failed" ? out.cause : null,
     calls: meter.calls,
     promptTokens: meter.promptTokens,
@@ -347,6 +351,8 @@ async function loopModify(
     return { kind: "source", source: out.source, via: out.via, applied: out.applied, loss: null, trace, ...(out.rationale ? { rationale: out.rationale } : {}), ...(out.notDone ? { notDone: out.notDone } : {}) };
   }
   if (out.kind === "diagnosis") return { kind: "diagnosis", text: out.text, trace };
+  // Nothing done, only a request: for scoring, a refusal of the whole (a platform case wants the doable part too).
+  if (out.kind === "platform") return { kind: "diagnosis", text: `${out.said}\n${out.request.title}: ${out.request.body}`, trace };
   return { kind: "failed", reason: out.kind === "question" ? `asked: ${out.text}` : out.kind === "stopped" ? "stopped: the case's time limit" : out.reason, trace };
 }
 
@@ -689,6 +695,7 @@ async function main(): Promise<void> {
       ? [
           `  gave up, by cause:        repeated ${ls.gaveUp.repeated} · candidates ${ls.gaveUp.candidates} · steps ${ls.gaveUp.steps} · engine ${ls.gaveUp.engine}${ls.asked ? ` · asked the person ${ls.asked}` : ""}`,
           `  repeats seen:             ${ls.repeatsSeen}   fresh starts: ${ls.restarts}`,
+          `  asked the Potyro team:    ${ls.platformRequests}/${ls.cases}${summary.byClass.platform?.n ? ` (platform cases: ${outcomes.filter((o) => o.class === "platform" && o.loop?.platformRequest).length}/${summary.byClass.platform.n})` : ""}   ← NEEDS-PLATFORM (#263)`,
           `  passed on candidate:      1st ${ls.passedOn["1"]} · 2nd ${ls.passedOn["2"]} · 3rd ${ls.passedOn["3"]} · 4th+ ${ls.passedOn["4+"]}`,
           `  model calls:              ${ls.calls} (${(ls.calls / Math.max(1, ls.cases)).toFixed(1)} a case)`,
           `  tokens:                   ${ls.promptTokens} in + ${ls.completionTokens} out (${Math.round(ls.tokensPerCase)} a case)`,
