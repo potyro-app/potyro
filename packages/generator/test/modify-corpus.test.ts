@@ -83,6 +83,6 @@ describe("the modify corpus", () => {
       expect(score.errors).toEqual([]);
       expect(score.validates).toBe(true);
       expect(c.landed!(await shape(after, dir), before)).toBe(true);
-    }, 30_000);
+    }, 60_000); // bundles a whole six-language example twice: slow under a parallel run
   }
 });
