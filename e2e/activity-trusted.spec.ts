@@ -74,7 +74,7 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   await ana.goto("/?user=shoplist");
   await expect(ana.locator("h1").first()).toHaveText("Shoplist", { timeout: 30_000 });
 
-  await ana.getByRole("button", { name: /New Item|Add Item/i }).first().click();
+  await ana.getByRole("button", { name: /Add: Item|Add Item/i }).first().click();
   await ana.getByLabel(/name/i).fill("Milk");
   await ana.getByLabel(/quantity/i).fill("2");
   await ana.getByRole("button", { name: /^(Save|Create)$/i }).first().click();

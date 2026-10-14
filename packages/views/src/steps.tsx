@@ -9,6 +9,8 @@
 // progress is PERSISTED (walk away mid-recipe and come back to it), and `onFinish` fires once when
 // the last step is ticked rather than behind a button you might not press.
 
+import { fmt } from "@potyro/i18n";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
@@ -43,6 +45,7 @@ function stepText(step: Resolved, binding: StepsViewDef["text"]): string {
 }
 
 export function StepsView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params } = props;
   const view = getView(runtime, pageId) as unknown as StepsViewDef;
   const id = String((view.param && params[view.param]) ?? params.id ?? "");
@@ -74,11 +77,13 @@ export function StepsView(props: BuiltinViewProps) {
     };
   }, [runtime, storageKey]);
 
-  if (loading || done === null) return <p className="k-loading">Loading…</p>;
-  if (!record) return <p className="k-empty">Not found.</p>;
+  if (loading || done === null) return <p className="k-loading">{t`Loading…`}</p>;
+  if (!record) return <p className="k-empty">{t`Not found.`}</p>;
 
   const steps: Resolved[] = Array.isArray(record[view.list]) ? (record[view.list] as Resolved[]) : [];
   const complete = steps.length > 0 && done.size === steps.length;
+  const doneCount = fmt.number(done.size);
+  const stepCount = fmt.number(steps.length);
 
   const toggle = (index: number): void => {
     const next = new Set(done);
@@ -111,20 +116,20 @@ export function StepsView(props: BuiltinViewProps) {
   };
 
   return (
-    <section className="k-steps" aria-label="Steps">
+    <section className="k-steps" aria-label={t({ message: "Steps", comment: "A recipe's or a routine's steps, ticked off one by one" })}>
       <header className="k-steps-head">
         <p className="k-steps-progress" role="status">
-          {done.size} of {steps.length} done
+          {t`${doneCount} of ${stepCount} done`}
         </p>
         {done.size > 0 ? (
           <button type="button" className="k-add" onClick={reset}>
-            Start over
+            <Trans>Start over</Trans>
           </button>
         ) : null}
       </header>
 
       {steps.length === 0 ? (
-        <p className="k-empty">No steps yet.</p>
+        <p className="k-empty">{t`No steps yet.`}</p>
       ) : (
         <ol className="k-steps-list">
           {steps.map((step, i) => (
@@ -138,7 +143,7 @@ export function StepsView(props: BuiltinViewProps) {
         </ol>
       )}
 
-      {complete ? <p className="k-steps-done">All done.</p> : null}
+      {complete ? <p className="k-steps-done">{t`All done.`}</p> : null}
     </section>
   );
 }

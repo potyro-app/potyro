@@ -104,10 +104,10 @@ test("Ask changes records the person names, showing each value now and after", a
   await expect(squat.getByRole("checkbox")).toHaveCount(2);
   // Told apart by what the change would replace.
   await expect(squat.locator(".k-ask-target")).toHaveText(["Squat · Sets 5", "Squat · Sets 4"]);
-  await expect(squat.locator(".k-ask-held")).toContainText("More than one exercise is called “squat”");
+  await expect(squat.locator(".k-ask-held")).toContainText("Exercise: more than one is called “squat”");
 
-  // None: said plainly, and nothing to approve.
-  await expect(card("deadlift").locator(".k-ask-held")).toHaveText("No exercise called “deadlift”.");
+  // None: said plainly, and nothing to approve. Built around the app's noun, not agreeing with it (docs/20 Q3).
+  await expect(card("deadlift").locator(".k-ask-held")).toHaveText("Exercise: nothing called “deadlift”.");
 
   await expect(dialog.getByRole("button", { name: "Change 1" })).toBeVisible();
   // Picking one of the two squats approves that change.

@@ -15,6 +15,7 @@
 // degrade that way, because LocalStore has no CRDT: rather than silently drop the guarantee the
 // user switched on, it fails loudly and the caller decides.
 
+import { t } from "@lingui/core/macro";
 import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
 /**
@@ -150,7 +151,7 @@ export async function republishName(name: string): Promise<void> {
  */
 export async function removeMember(accountId: string): Promise<{ invitesRevoked: number }> {
   const handle = lastSyncHandle;
-  if (!handle) throw new Error("This app is not shared.");
+  if (!handle) throw new Error(t`This app is not shared.`);
   const { removeSpaceMember } = await import("@potyro/store");
   const result = removeSpaceMember(handle, accountId);
   await handle.whenDurable();
@@ -238,7 +239,8 @@ export function canSync(): boolean {
   return typeof indexedDB !== "undefined";
 }
 
-export const CANNOT_SYNC_MESSAGE = "Sync needs IndexedDB, which this browser has disabled or blocked.";
+/** Why sync cannot start here, in the person's language (read at call time, so it follows a switch). */
+export const cannotSyncMessage = (): string => t`Sync needs IndexedDB, which this browser has disabled or blocked.`;
 
 export async function openStore(namespace: string, opts?: OpenStoreOpts): Promise<Store> {
   if (opts?.sync) {

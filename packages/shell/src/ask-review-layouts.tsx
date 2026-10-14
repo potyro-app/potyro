@@ -2,6 +2,8 @@
 // says and where it was found; or a table per kind of record, every field a column, for comparing
 // many at once. Both show the same things and take the same decisions.
 
+import { plural, t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import type { AppDefinition as SourceDefinition, Localized } from "potyro";
 /** The definition as the person reads it — `runtime.definition`, localized (#302). */
@@ -38,7 +40,16 @@ function Notes({ row }: { row: ReviewRow }) {
   );
 }
 
+/** "All details and sources · 2 to check": each case whole, for translators. */
+function moreLabel(sources: boolean, flagged: number): string {
+  if (!flagged) return sources ? t`All details and sources` : t`All details`;
+  return sources
+    ? plural(flagged, { one: "All details and sources · # to check", other: "All details and sources · # to check" })
+    : plural(flagged, { one: "All details · # to check", other: "All details · # to check" });
+}
+
 export function RowCard({ def, row, state, names, onDecide, onKeep }: RowProps) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const title = titleOf(def, row);
   const by = def.entities[row.entity]?.displayField;
@@ -62,7 +73,7 @@ export function RowCard({ def, row, state, names, onDecide, onKeep }: RowProps) 
       {summary ? <p className="k-ask-card-summary">{summary}</p> : null}
       <Notes row={row} />
       <button type="button" className="k-ask-more" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? "Hide details" : `All details${row.trust?.sources.length ? " and sources" : ""}${flagged ? ` · ${flagged} to check` : ""}`}
+        {open ? t`Hide details` : moreLabel(Boolean(row.trust?.sources.length), flagged)}
       </button>
       {open ? (
         <div className="k-ask-card-body">
@@ -101,6 +112,7 @@ export function EntityTable({
   onDecide: (row: ReviewRow, approved: boolean) => void;
   onKeep: (row: ReviewRow, field: string) => void;
 }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState<string | null>(null);
   const e = def.entities[entity];
   const columns = Object.entries(e?.fields ?? {}).filter(([k, f]) => !f.hidden && rows.some((r) => r.values[k] != null || r.trust?.fieldIssues?.[k]));
@@ -110,9 +122,13 @@ export function EntityTable({
         <thead>
           <tr>
             <th scope="col">
-              <span className="k-sr">Decision</span>
+              <span className="k-sr">
+                <Trans comment="Ask review table: the approve/reject column">Decision</Trans>
+              </span>
             </th>
-            <th scope="col">Confirmed</th>
+            <th scope="col">
+              <Trans comment="Ask review table: how far the sources confirm the record">Confirmed</Trans>
+            </th>
             {columns.map(([k, f]) => (
               <th key={k} scope="col">
                 {fieldLabel(k, f)}
@@ -130,7 +146,7 @@ export function EntityTable({
                   <Decision approved={state.approved} onChange={(a) => onDecide(row, a)} name={title} />
                 </td>
                 <td>
-                  <button type="button" className="k-ask-badge-btn" aria-expanded={open === row.ref} title="Sources and notes" onClick={() => setOpen((o) => (o === row.ref ? null : row.ref))}>
+                  <button type="button" className="k-ask-badge-btn" aria-expanded={open === row.ref} title={t`Sources and notes`} onClick={() => setOpen((o) => (o === row.ref ? null : row.ref))}>
                     <TrustBadge row={row} />
                   </button>
                 </td>

@@ -10,6 +10,9 @@
 // Adding is never silent: a tile that is being added says so, and one that failed says that too and
 // offers to try again, rather than leaving an empty field and no reason.
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { MediaField, MediaRef } from "potyro";
@@ -27,7 +30,17 @@ export interface MediaInputProps {
 
 type Kind = "image" | "video" | "audio" | "any";
 
-const WORD: Record<Kind, string> = { image: "photo", video: "video", audio: "audio", any: "file" };
+// Each kind's words whole, never "Add " + a word: the word's form changes with the verb in many languages.
+const ADD: Record<Kind, MessageDescriptor> = { image: msg`Add photo`, video: msg`Add video`, audio: msg`Add audio`, any: msg`Add file` };
+/** After a field's name and a colon: "Photo: add photo". */
+const ADD_AFTER: Record<Kind, MessageDescriptor> = {
+  image: msg({ message: "add photo", comment: "After a field's name and a colon, lower case" }),
+  video: msg({ message: "add video", comment: "After a field's name and a colon, lower case" }),
+  audio: msg({ message: "add audio", comment: "After a field's name and a colon, lower case" }),
+  any: msg({ message: "add file", comment: "After a field's name and a colon, lower case" }),
+};
+const TAKE: Record<Kind, MessageDescriptor> = { image: msg`Take a photo`, video: msg`Take a video`, audio: msg`Take a audio`, any: msg`Take a file` };
+const REMOVE: Record<Kind, MessageDescriptor> = { image: msg`Remove photo`, video: msg`Remove video`, audio: msg`Remove audio`, any: msg`Remove file` };
 const ACCEPT: Record<Kind, string> = { image: "image/*", video: "video/*", audio: "audio/*", any: "" };
 const GLYPH: Record<Kind, string> = { image: "📷", video: "🎬", audio: "🎙", any: "📎" };
 
@@ -38,6 +51,7 @@ export const mediaList = (value: MediaRef | MediaRef[] | null | undefined): Medi
   Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
 
 export function MediaInput({ runtime, field, value, onChange, label }: MediaInputProps) {
+  const { t } = useLingui();
   const kind = mediaKind(field);
   const many = field.multiple === true;
   const refs = mediaList(value);
@@ -81,11 +95,13 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
   // On a phone the two sources are different acts, so they are two entries. On a desktop "camera"
   // means the same file dialog, so there is nothing to choose between.
   const sources: MenuEntry[] = [
-    { key: "camera", label: `Take a ${WORD[kind]}`, icon: "📷", onSelect: () => capture("camera") },
-    { key: "library", label: "Choose from library", icon: "🖼", onSelect: () => capture("library") },
+    { key: "camera", label: t(TAKE[kind]), icon: "📷", onSelect: () => capture("camera") },
+    { key: "library", label: t`Choose from library`, icon: "🖼", onSelect: () => capture("library") },
   ];
 
-  const addLabel = refs.length && many ? "Add" : `Add ${WORD[kind]}`;
+  const addLabel = refs.length && many ? t({ message: "Add", comment: "Add one more photo or file to a field that holds several" }) : t(ADD[kind]);
+  const addAfter = refs.length && many ? t({ message: "add", comment: "After a field's name and a colon, lower case: add one more" }) : t(ADD_AFTER[kind]);
+  const fieldAdd = label ? t({ message: `${label}: ${addAfter}`, comment: "A media field's add button: the field's name, then what it does" }) : undefined;
   const glyphAndWord = (
     <>
       <span className="k-media-add-glyph" aria-hidden>
@@ -97,14 +113,14 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
   const addTile =
     phone && camera ? (
       <ActionMenu
-        label={label ? `${label}: ${addLabel.toLowerCase()}` : addLabel}
+        label={fieldAdd ?? addLabel}
         entries={sources}
         title={label ?? addLabel}
         buttonClassName="k-media-add"
         trigger={glyphAndWord}
       />
     ) : (
-      <button type="button" className="k-media-add" aria-label={label ? `${label}: ${addLabel.toLowerCase()}` : undefined} onClick={openFiles}>
+      <button type="button" className="k-media-add" aria-label={fieldAdd} onClick={openFiles}>
         {glyphAndWord}
       </button>
     );
@@ -132,22 +148,28 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
           runtime={runtime}
           mediaRef={ref}
           onRemove={() => write(refs.filter((_, n) => n !== i))}
-          removeLabel={label ? `Remove ${label.toLowerCase()}` : `Remove ${WORD[kind]}`}
+          removeLabel={label ? t({ message: `Remove: ${label}`, comment: "Remove the media in a field; label is the field's name" }) : t(REMOVE[kind])}
         />
       ))}
       {adding ? (
         <div className="k-media-tile k-media-adding" role="status">
-          <span className="k-media-adding-text">Adding…</span>
+          <span className="k-media-adding-text">
+            <Trans>Adding…</Trans>
+          </span>
           <span className="k-media-bar" aria-hidden />
         </div>
       ) : null}
       {many || refs.length === 0 ? addTile : null}
-      {over ? <p className="k-media-drop">Drop to add it</p> : null}
+      {over ? (
+        <p className="k-media-drop">
+          <Trans>Drop to add it</Trans>
+        </p>
+      ) : null}
       {failed ? (
         <p className="k-media-failed" role="alert">
-          Couldn’t add it: {failed}{" "}
+          <Trans>Couldn’t add it: {failed}</Trans>{" "}
           <button type="button" className="k-media-retry" onClick={openFiles}>
-            Try again
+            <Trans>Try again</Trans>
           </button>
         </p>
       ) : null}
@@ -180,6 +202,7 @@ export function MediaTile({
   onRemove?: () => void;
   removeLabel?: string;
 }) {
+  const { t } = useLingui();
   const { url, state } = useMedia(runtime, mediaRef);
   const retry = useMediaRetry(runtime, mediaRef);
   const mime = mediaRef.mime ?? "";
@@ -196,13 +219,15 @@ export function MediaTile({
       {pending === "waiting" ? (
         <span className="k-media-pending" data-state="waiting" role="status">
           <span aria-hidden>🖼</span>
-          <span>Getting the {isVideo ? "video" : "photo"}…</span>
+          <span>{isVideo ? t`Getting the video…` : t`Getting the photo…`}</span>
         </span>
       ) : null}
       {pending === "absent" ? (
         <button type="button" className="k-media-pending" data-state="absent" onClick={retry}>
           <span aria-hidden>⇣</span>
-          <span>Not downloaded — tap to get it</span>
+          <span>
+            <Trans>Not downloaded — tap to get it</Trans>
+          </span>
         </button>
       ) : null}
       {!isImage && !isVideo ? (
@@ -216,7 +241,7 @@ export function MediaTile({
         </span>
       ) : null}
       {onRemove ? (
-        <button type="button" className="k-media-x" aria-label={removeLabel ?? "Remove"} onClick={onRemove}>
+        <button type="button" className="k-media-x" aria-label={removeLabel ?? t`Remove`} onClick={onRemove}>
           ✕
         </button>
       ) : null}

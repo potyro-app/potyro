@@ -13,11 +13,10 @@
 // checks an app off-screen (the Studio) hears it as well.
 
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 import { humanizeKey } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
-
-/** The heading every part's failure starts with. */
-export const PART_PROBLEM = "This part of the app hit a problem";
 
 interface Failure {
   what: string;
@@ -26,21 +25,24 @@ interface Failure {
 
 /** What failed, in words: the computed value by its name, a page's records, a view. */
 export function describePartFailure(failure: Failure, runtime: Pick<PotyroRuntime, "definition">): string {
+  const message = failure.message;
   const computed = /^computed ([^.]+)\.(.+)$/.exec(failure.what);
   if (computed) {
     const [, entity, key] = computed;
     const label = runtime.definition.entities[entity!]?.fields?.[key!]?.label ?? humanizeKey(key!);
-    return `“${label}” could not be worked out for some records: ${failure.message}`;
+    return t`“${label}” could not be worked out for some records: ${message}`;
   }
-  if (failure.what.startsWith("page ")) return `its records could not be listed: ${failure.message}`;
-  return `it could not be shown: ${failure.message}`;
+  if (failure.what.startsWith("page ")) return t`its records could not be listed: ${message}`;
+  return t`it could not be shown: ${message}`;
 }
 
 export function PartProblem({ text }: { text: string }) {
   return (
     <div className="k-part-problem" role="alert">
       <p>
-        <strong>{PART_PROBLEM}:</strong> {text}
+        <Trans comment="A part of an app failed; {text} says what, e.g. 'it could not be shown: …'">
+          <strong>This part of the app hit a problem:</strong> {text}
+        </Trans>
       </p>
     </div>
   );

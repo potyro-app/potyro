@@ -21,7 +21,7 @@ test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
   test("Plants: the interval says days, steps by 44px buttons, and asks for the numeric keyboard", async ({ page }) => {
-    const form = await openForm(page, "plants", "Plants", "New Plant");
+    const form = await openForm(page, "plants", "Plants", "Add: Plant");
     const interval = form.getByRole("spinbutton", { name: "Watering Interval Days" });
     await expect(interval).toHaveValue("7");
     await expect(interval).toHaveAttribute("inputmode", "numeric");
@@ -60,7 +60,7 @@ test.describe("desktop", () => {
     await sets.fill("1");
     await expect(wrap.getByRole("button", { name: /Decrease/ })).toBeDisabled();
 
-    const place = await openForm(page, "places", "Places", "New Place", "All places");
+    const place = await openForm(page, "places", "Places", "Add: Place", "All places");
     const rating = place.getByRole("spinbutton", { name: "Rating" });
     await expect(rating).toHaveAttribute("inputmode", "decimal");
     const rwrap = place.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Rating" }) });

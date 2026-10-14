@@ -24,6 +24,9 @@
 // says where. So it is added ungrouped and the view asks — "Tap the aisle for Milk" — rather than
 // guessing, or making the person open a form to answer a question one tap can.
 
+import { fmt } from "@potyro/i18n";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
@@ -167,12 +170,13 @@ function InlineText({ value, label, onSave, onCancel }: { value: string; label: 
 }
 
 export function ChecklistView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, navigate } = props;
   const view = getView(runtime, pageId) as unknown as ChecklistDef;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const texts = useRowTexts(runtime, pageId, rows, view);
   const rowGroups = useRowGroups(runtime, pageId, rows, view);
-  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing to do.");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing to do.`);
   const entityDef = runtime.definition.entities[view.entity];
   const field = entityDef?.fields[view.done];
 
@@ -273,7 +277,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     try {
       await runtime.patch(view.entity, id, { [view.done]: next });
     } catch (e) {
-      fail(e, "Could not save that");
+      fail(e, t`Could not save that`);
       // It did not happen, so the row must stop claiming it did.
       setJustTicked((t) => {
         const m = new Map(t);
@@ -303,7 +307,7 @@ export function ChecklistView(props: BuiltinViewProps) {
       // worse than the failure itself. Only into an empty box: anything already typed there is the
       // next item, and belongs to the person, not to this failure.
       setDraft((d) => (d ? d : text));
-      fail(e, "Could not add that");
+      fail(e, t`Could not add that`);
     }
   };
 
@@ -399,9 +403,9 @@ export function ChecklistView(props: BuiltinViewProps) {
   const rowFor = (key: string): Resolved | undefined => rows.find((r) => rowKey(r) === key);
 
   const nameOf = (key: string): string => {
-    if (key.startsWith("g:")) return sectionFor(key)?.label || "the top";
+    if (key.startsWith("g:")) return sectionFor(key)?.label || t({ message: "the top", comment: "Read aloud after a move: the item went to the top of the list" });
     const row = rowFor(key);
-    return row ? (texts?.[rows.indexOf(row)]?.text ?? "this item") : "this item";
+    return row ? (texts?.[rows.indexOf(row)]?.text ?? t`this item`) : t`this item`;
   };
 
   /** Write `reorder` down a group's rows, touching only the ones whose number actually changes. */
@@ -430,7 +434,7 @@ export function ChecklistView(props: BuiltinViewProps) {
       }
       await renumber(next);
     } catch (e) {
-      fail(e, "Could not move that");
+      fail(e, t`Could not move that`);
     }
   };
 
@@ -453,7 +457,7 @@ export function ChecklistView(props: BuiltinViewProps) {
         await runtime.patch(groupEntity!, String(record.id), { [view.groupOrder]: i });
       }
     } catch (e) {
-      fail(e, "Could not move that");
+      fail(e, t`Could not move that`);
     }
   };
 
@@ -475,7 +479,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     try {
       await runtime.patch(groupEntity!, String(record.id), { [groupLabelField]: text });
     } catch (e) {
-      fail(e, "Could not rename that");
+      fail(e, t`Could not rename that`);
     }
   };
 
@@ -488,9 +492,10 @@ export function ChecklistView(props: BuiltinViewProps) {
     if (!section.record || !groupEntity) return;
     const ui = runtime.ctx.ui;
     const count = section.rows.length;
-    const ok = await ui.confirm(`Delete “${section.label}”?`, {
-      detail: count ? `${count} ${count === 1 ? "item is" : "items are"} in it.` : undefined,
-      ok: "Delete",
+    const groupName = section.label;
+    const ok = await ui.confirm(t`Delete “${groupName}”?`, {
+      detail: count ? plural(count, { one: "# item is in it.", other: "# items are in it." }) : undefined,
+      ok: t`Delete`,
       destructive: true,
     });
     if (!ok) return;
@@ -500,12 +505,15 @@ export function ChecklistView(props: BuiltinViewProps) {
     const above = withRecords[at - 1] ?? withRecords[at + 1];
     try {
       if (count) {
-        const alsoItems = await ui.confirm(`Delete its ${count === 1 ? "item" : `${count} items`} too?`, {
+        const aboveName = above?.label ?? "";
+        // The app's word for a group goes first, as a label (docs/20 Q3): "with no aisle" would have to agree with it.
+        const kind = runtime.definition.entities[groupEntity]?.label ?? t`Group`;
+        const alsoItems = await ui.confirm(plural(count, { one: "Delete its item too?", other: "Delete its # items too?" }), {
           detail: above
-            ? `Otherwise ${count === 1 ? "it moves" : "they move"} to “${above.label}”.`
-            : `Otherwise ${count === 1 ? "it stays" : "they stay"} on the list with no ${(runtime.definition.entities[groupEntity]?.label ?? "group").toLowerCase()}.`,
-          ok: "Delete them",
-          cancel: above ? `Move to “${above.label}”` : "Keep them",
+            ? plural(count, { one: `Otherwise it moves to “${aboveName}”.`, other: `Otherwise they move to “${aboveName}”.` })
+            : plural(count, { one: `Otherwise it stays on the list (${kind}: none).`, other: `Otherwise they stay on the list (${kind}: none).` }),
+          ok: t`Delete them`,
+          cancel: above ? t`Move to “${aboveName}”` : t`Keep them`,
           destructive: true,
         });
         for (const row of section.rows) {
@@ -515,7 +523,7 @@ export function ChecklistView(props: BuiltinViewProps) {
       }
       await runtime.remove(groupEntity, String(section.record.id));
     } catch (e) {
-      fail(e, "Could not delete that");
+      fail(e, t`Could not delete that`);
     }
   };
 
@@ -530,7 +538,7 @@ export function ChecklistView(props: BuiltinViewProps) {
         ...(view.groupOrder ? { [view.groupOrder]: order } : {}),
       });
     } catch (e) {
-      fail(e, "Could not add that");
+      fail(e, t`Could not add that`);
     }
   };
 
@@ -542,7 +550,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     try {
       await runtime.patch(view.entity, item.id, { [groupField]: groupValue(section.key) });
     } catch (e) {
-      fail(e, "Could not move that");
+      fail(e, t`Could not move that`);
     }
   };
 
@@ -551,18 +559,24 @@ export function ChecklistView(props: BuiltinViewProps) {
     try {
       await runtime.patch(view.entity, String(row.id), { [textField]: text });
     } catch (e) {
-      fail(e, "Could not rename that");
+      fail(e, t`Could not rename that`);
     }
   };
 
-  if (loading || texts === null || rowGroups === null) return <p className="k-loading">Loading…</p>;
+  if (loading || texts === null || rowGroups === null)
+    return (
+      <p className="k-loading">
+        <Trans>Loading…</Trans>
+      </p>
+    );
 
   // ---- render ------------------------------------------------------------------------------
 
   const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "" };
 
   const renderRow = (r: Resolved) => {
-    const t = textOf(r);
+    const rt = textOf(r);
+    const name = rt.text;
     const ticked = isDone(r);
     const id = String(r.id);
     const key = rowKey(r);
@@ -577,7 +591,7 @@ export function ChecklistView(props: BuiltinViewProps) {
         data-landed={landed.has(id) || undefined}
         {...drag}
       >
-        <button type="button" role="checkbox" aria-checked={ticked} aria-label={t.text} className="k-check" onClick={() => void toggle(r)}>
+        <button type="button" role="checkbox" aria-checked={ticked} aria-label={rt.text} className="k-check" onClick={() => void toggle(r)}>
           <span className="k-check-mark" aria-hidden />
         </button>
         {canDragRows && !editing ? (
@@ -591,26 +605,26 @@ export function ChecklistView(props: BuiltinViewProps) {
           // here, and everywhere else on the row still scrolls.
           // The dots are drawn by CSS, not written here: a glyph in the markup joins the row's text,
           // where it would be read out with the item's name and counted as part of a heading.
-          <span className="k-check-grip" aria-hidden="true" title="Drag to reorder" />
+          <span className="k-check-grip" aria-hidden="true" title={t`Drag to reorder`} />
         ) : null}
         {editing ? (
-          <InlineText value={t.text} label={`Rename ${t.text}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
+          <InlineText value={rt.text} label={t`Rename ${name}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
         ) : view.editText ? (
-          <button type="button" className="k-check-text k-check-rename" onClick={() => setEditingRow(id)} aria-label={`Rename ${t.text}`}>
-            <span className="k-check-label">{t.text}</span>
-            {t.detail ? <span className="k-check-detail">{t.detail}</span> : null}
+          <button type="button" className="k-check-text k-check-rename" onClick={() => setEditingRow(id)} aria-label={t`Rename ${name}`}>
+            <span className="k-check-label">{rt.text}</span>
+            {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </button>
         ) : (
           <span className="k-check-text">
-            <span className="k-check-label">{t.text}</span>
-            {t.detail ? <span className="k-check-detail">{t.detail}</span> : null}
+            <span className="k-check-label">{rt.text}</span>
+            {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </span>
         )}
         {/* Extra actions only: a red Delete on every row of a shopping list is noise — removing an
             item is what its detail page (the chevron) is for. */}
-        <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={id} label={t.text || "this item"} />
+        <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={id} label={rt.text || t`this item`} />
         {view.onOpen ? (
-          <button type="button" className="k-check-open" aria-label={`Open ${t.text}`} onClick={() => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, r))}>
+          <button type="button" className="k-check-open" aria-label={t`Open ${name}`} onClick={() => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, r))}>
             ›
           </button>
         ) : null}
@@ -621,21 +635,23 @@ export function ChecklistView(props: BuiltinViewProps) {
   const renderHeading = (s: Section) => {
     const key = groupKey(s.key);
     const editing = editingGroup === s.key;
+    const heading = s.label;
+    const pendingName = pending?.text ?? "";
     const drag = canDragGroups && s.record && !editing ? reorder.item(key) : { "data-key": key };
     if (s.key === "" && !s.label) return null;
     return (
       <h3 className="k-check-heading" data-target={pending ? true : undefined} {...drag}>
         {canDragGroups && s.record && !editing ? (
           // The same reason as a row's grip: the heading is part of what a finger scrolls past.
-          <span className="k-check-heading-grip" aria-hidden="true" title="Drag to reorder" />
+          <span className="k-check-heading-grip" aria-hidden="true" title={t`Drag to reorder`} />
         ) : null}
         {editing && s.record ? (
           <>
-            <InlineText value={s.label} label={`Rename ${s.label}`} onSave={(text) => void renameGroup(s.record!, text)} onCancel={() => setEditingGroup(null)} />
+            <InlineText value={s.label} label={t`Rename ${heading}`} onSave={(text) => void renameGroup(s.record!, text)} onCancel={() => setEditingGroup(null)} />
             {/* Pressing Delete must not first blur the input, because closing the rename would take
                 this button off the screen before the tap that is already on it lands. */}
             <button type="button" className="k-check-del k-danger" onMouseDown={(e) => e.preventDefault()} onClick={() => void deleteGroup(s)}>
-              Delete
+              <Trans>Delete</Trans>
             </button>
           </>
         ) : pending || (managed && s.record) ? (
@@ -643,7 +659,7 @@ export function ChecklistView(props: BuiltinViewProps) {
             type="button"
             className="k-check-heading-name"
             onClick={() => (pending ? void assignPending(s) : setEditingGroup(s.key))}
-            aria-label={pending ? `Put ${pending.text} in ${s.label}` : `Rename ${s.label}`}
+            aria-label={pending ? t`Put ${pendingName} in ${heading}` : t`Rename ${heading}`}
           >
             {s.label}
           </button>
@@ -655,11 +671,16 @@ export function ChecklistView(props: BuiltinViewProps) {
   };
 
   const anyVisible = sections.some((s) => visible(s.rows).length > 0);
+  const doneCount = fmt.number(doneRows.length);
+  const pendingKind = (groupEntity ? runtime.definition.entities[groupEntity]?.label : undefined) ?? t`Group`;
+  const pendingText = pending?.text ?? "";
 
   return (
     <div className="k-checklist">
       {rows.length === 0 && !managed ? <p className="k-empty" data-k-wording>{emptyText}</p> : null}
-      {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">All done.</p> : null}
+      {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">
+          <Trans>All done.</Trans>
+        </p> : null}
       {sections.map((s) => (
         <section key={s.key || "—"} className="k-check-section" aria-label={s.label || undefined}>
           {renderHeading(s)}
@@ -669,24 +690,24 @@ export function ChecklistView(props: BuiltinViewProps) {
       {managed ? (
         <div className="k-check-newgroup">
           {newGroup ? (
-            <InlineText value="" label="New group name" onSave={(text) => void addGroup(text)} onCancel={() => setNewGroup(false)} />
+            <InlineText value="" label={t`New group name`} onSave={(text) => void addGroup(text)} onCancel={() => setNewGroup(false)} />
           ) : (
             <button type="button" className="k-add" onClick={() => setNewGroup(true)}>
-              + {groupEntity ? (runtime.definition.entities[groupEntity]?.label ?? "Group") : "Group"}
+              + {groupEntity ? (runtime.definition.entities[groupEntity]?.label ?? t`Group`) : t`Group`}
             </button>
           )}
         </div>
       ) : null}
       {doneRows.length ? (
         <details className="k-check-done">
-          <summary className="k-check-heading">Done ({doneRows.length})</summary>
+          <summary className="k-check-heading">{t({ message: `Done (${doneCount})`, comment: "Checklist: the folded section of ticked items, and how many" })}</summary>
           <ul className="k-check-list">{doneRows.map(renderRow)}</ul>
         </details>
       ) : null}
       {pending ? (
         <p className="k-check-hint" role="status">
-          Tap the {groupEntity ? (runtime.definition.entities[groupEntity]?.label ?? "group").toLowerCase() : "group"} for “{pending.text}”
-          <button type="button" className="k-check-hint-close" aria-label="Leave it without one" onClick={() => setPending(null)}>
+          {t({ message: `${pendingKind}: tap the one for “${pendingText}”`, comment: "Checklist: pick a group for the item; the app's word for a group comes first (no agreement with it)" })}
+          <button type="button" className="k-check-hint-close" aria-label={t`Leave it without one`} onClick={() => setPending(null)}>
             ✕
           </button>
         </p>
@@ -703,15 +724,15 @@ export function ChecklistView(props: BuiltinViewProps) {
             ref={input}
             className="k-input"
             type="text"
-            aria-label="Add an item"
-            placeholder="Add an item…"
+            aria-label={t`Add an item`}
+            placeholder={t`Add an item…`}
             enterKeyHint="done"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onDraftKey}
           />
           <button type="submit" className="k-add k-primary-action" disabled={adding || !draft.trim()}>
-            Add
+            <Trans comment="Checklist: add the typed item">Add</Trans>
           </button>
         </form>
       ) : null}

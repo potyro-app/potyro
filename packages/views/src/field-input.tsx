@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import type { FileRef, Geo, MediaRef } from "potyro";
 import { optionLabel, type ShownField as Field } from "./shown.js";
 import type { PotyroRuntime } from "@potyro/runtime";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 import { MAP_STYLE } from "./map.js";
 import { Switch } from "./switch.js";
 import { DurationInput, NumberInput } from "./number-input.js";
@@ -129,6 +131,7 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
 }
 
 function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: unknown) => void }) {
+  const { t } = useLingui();
   const [draft, setDraft] = useState("");
   const add = (raw: string): void => {
     const tag = raw.trim();
@@ -140,10 +143,10 @@ function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: un
     <div className="k-tags">
       {selected.length ? (
         <div className="k-chips">
-          {selected.map((t) => (
-            <span key={t} className="k-chip k-tag" data-on="true">
-              {t}
-              <button type="button" className="k-tag-x" aria-label={`Remove ${t}`} onClick={() => onChange(selected.filter((x) => x !== t))}>
+          {selected.map((tag) => (
+            <span key={tag} className="k-chip k-tag" data-on="true">
+              {tag}
+              <button type="button" className="k-tag-x" aria-label={t`Remove ${tag}`} onClick={() => onChange(selected.filter((x) => x !== tag))}>
                 ✕
               </button>
             </span>
@@ -153,7 +156,7 @@ function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: un
       <input
         className="k-input"
         type="text"
-        placeholder="Type a tag, press Enter"
+        placeholder={t`Type a tag, press Enter`}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => add(draft)}
@@ -175,6 +178,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<{ remove?: () => void; setCenter?: (c: [number, number]) => void } | null>(null);
   const markerRef = useRef<{ setLngLat: (c: [number, number]) => void; remove: () => void } | null>(null);
+  const { t } = useLingui();
   const latest = useRef(onChange);
   latest.current = onChange;
 
@@ -240,10 +244,14 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     mapRef.current?.setCenter?.([value.lng, value.lat]);
   }, [value.lat, value.lng]);
 
-  return <div ref={ref} className="k-geo-map" aria-label="Pick a point on the map" />;
+  return <div ref={ref} className="k-geo-map" aria-label={t`Pick a point on the map`} />;
 }
 
+/** A coordinate as the language writes a number, always to five places (about a metre). */
+const coord = (n: number): string => fmt.number(n, { minimumFractionDigits: 5, maximumFractionDigits: 5 });
+
 function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value: Geo | null; onChange: (v: unknown) => void }) {
+  const { t } = useLingui();
   const g: Geo = value ?? { lat: 0, lng: 0 };
   const set = (patch: Partial<Geo>) => onChange({ ...g, ...patch });
   const geo = runtime.ctx.caps.geo;
@@ -279,33 +287,37 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
       />
       {tilesFailed ? (
         <p className="k-form-error">
-          Map unavailable here — the browser could not open a second map (or the tile host is
-          blocked). Place the point on the main map instead, or use the coordinates below.
+          <Trans>
+            Map unavailable here — the browser could not open a second map (or the tile host is
+            blocked). Place the point on the main map instead, or use the coordinates below.
+          </Trans>
         </p>
       ) : null}
       <div className="k-geo-actions">
         <button type="button" className="k-add" disabled={busy || !geo} onClick={useMyLocation}>
-          {busy ? "Locating…" : "📍 Use my location"}
+          {busy ? t`Locating…` : t`📍 Use my location`}
         </button>
         <span className="k-muted">
-          {placed ? `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}` : "Tap the map to place a point"}
+          {placed ? `${coord(g.lat)}, ${coord(g.lng)}` : t`Tap the map to place a point`}
         </span>
         <button type="button" className="k-add" onClick={() => setShowCoords((v) => !v)}>
-          {showCoords ? "Hide coordinates" : "Enter coordinates"}
+          {showCoords ? t`Hide coordinates` : t`Enter coordinates`}
         </button>
       </div>
       <label className="k-geo-label">
-        <span className="k-form-label">Label</span>
+        <span className="k-form-label">
+          <Trans comment="A place's name, typed beside its point on the map">Label</Trans>
+        </span>
         <input className="k-input" type="text" value={g.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
       </label>
       {showCoords ? (
         <div className="k-geo-coords">
           <label>
-            lat
+            <Trans comment="Latitude, as short as your language writes it">lat</Trans>
             <input className="k-input" type="number" step="any" value={g.lat} onChange={(e) => set({ lat: Number(e.target.value) })} />
           </label>
           <label>
-            lng
+            <Trans comment="Longitude, as short as your language writes it">lng</Trans>
             <input className="k-input" type="number" step="any" value={g.lng} onChange={(e) => set({ lng: Number(e.target.value) })} />
           </label>
         </div>

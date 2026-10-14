@@ -5,16 +5,18 @@
 // the relay socket directly, so it reports the transport rather than a guess.
 
 import { useEffect, useState } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { syncRelayUrl } from "./open-store.js";
 
 type State = "off" | "local" | "connecting" | "synced" | "offline";
 
-const LABEL: Record<State, string> = {
-  off: "",
-  local: "Sync on · no relay",
-  connecting: "Connecting…",
-  synced: "Synced",
-  offline: "Offline · changes saved here",
+const LABEL: Record<Exclude<State, "off">, MessageDescriptor> = {
+  local: msg`Sync on · no relay`,
+  connecting: msg`Connecting…`,
+  synced: msg({ message: "Synced", comment: "Header status: this app's data reaches the relay" }),
+  offline: msg`Offline · changes saved here`,
 };
 
 /**
@@ -25,6 +27,7 @@ const LABEL: Record<State, string> = {
  * A probe can only be honest about what it observed.
  */
 export function SyncStatus({ sync }: { sync?: boolean }) {
+  const { t } = useLingui();
   const [state, setState] = useState<State>(sync ? "connecting" : "off");
 
   useEffect(() => {
@@ -59,15 +62,16 @@ export function SyncStatus({ sync }: { sync?: boolean }) {
   }, [sync]);
 
   if (state === "off") return null;
+  const label = t(LABEL[state]);
   return (
-    <span className="k-sync-status" data-state={state} title={LABEL[state]} aria-live="polite">
+    <span className="k-sync-status" data-state={state} title={label} aria-live="polite">
       <span className="k-sync-icon" aria-hidden>
         {state === "synced" ? "⇄" : state === "connecting" ? "◌" : "⇄̸"}
       </span>
       {/* Its own element so a phone's top bar can show the icon alone and keep the words for a
           screen reader and the tooltip: "Offline · changes saved here" beside an app's name and the
           menu is wider than a phone. */}
-      <span className="k-sync-label">{LABEL[state]}</span>
+      <span className="k-sync-label">{label}</span>
     </span>
   );
 }

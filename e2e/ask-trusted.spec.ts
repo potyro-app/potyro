@@ -95,7 +95,7 @@ test("Ask proposes records in the app's shape, sends no records, and adds only w
   await expect(page.locator("h1").first()).toHaveText(APP_NAME);
 
   // A record the person already has — the model must never see it.
-  await page.getByRole("button", { name: "New Place" }).click();
+  await page.getByRole("button", { name: "Add: Place" }).click();
   await page.getByLabel("Name").fill(ALREADY_HAVE);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toHaveCount(1);

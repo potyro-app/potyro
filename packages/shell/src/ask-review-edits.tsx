@@ -3,6 +3,7 @@
 // sources dispute is left out unless the person keeps it, as for a new record. When the name matched
 // more than one record, or none exactly, the person ticks the ones they meant.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { AppDefinition as SourceDefinition, Localized } from "potyro";
 /** The definition as the person reads it — `runtime.definition`, localized (#302). */
 type AppDefinition = Localized<SourceDefinition>;
@@ -33,9 +34,11 @@ export function EditCard({
   onKeep: (field: string) => void;
   onTick: (id: string) => void;
 }) {
+  const { t } = useLingui();
   const fields = def.entities[edit.entity]?.fields ?? {};
-  const chosen = edit.targets.filter((t) => state.ticked.has(t.id));
-  const title = chosen.length ? chosen.map((t) => t.name).join(", ") : edit.match;
+  const chosen = edit.targets.filter((target) => state.ticked.has(target.id));
+  const kind = def.entities[edit.entity]?.label ?? edit.entity;
+  const title = chosen.length ? chosen.map((target) => target.name).join(", ") : edit.match;
   // What it holds now, from the one record being changed; with several, each may differ, so none is shown.
   const before = chosen.length === 1 ? chosen[0]!.before : edit.targets.length === 1 ? edit.targets[0]!.before : null;
   const row = editAsReviewRow(edit);
@@ -56,7 +59,7 @@ export function EditCard({
         <span className="k-ask-card-title">{title}</span>
         {!edit.targets.length ? null : edit.trust?.status === "general" ? (
           <span className="k-ask-badge" data-tone="neutral">
-            Change
+            <Trans comment="Ask review: a badge on a proposed change to a record">Change</Trans>
           </span>
         ) : (
           <TrustBadge row={row} />
@@ -64,7 +67,7 @@ export function EditCard({
       </div>
       {!state.approved && state.reason ? <p className="k-ask-held">{state.reason}</p> : null}
       {pick ? (
-        <ul className="k-ask-targets" aria-label={`Which ${def.entities[edit.entity]?.label?.toLowerCase() ?? edit.entity}`}>
+        <ul className="k-ask-targets" aria-label={t({ message: `${kind}: which ones`, comment: "Ask review: pick which of your records a change is for; kind is the app's name for them" })}>
           {edit.targets.map((t) => (
             <li key={t.id} className="k-ask-target" data-ticked={state.ticked.has(t.id) || undefined}>
               <label>
@@ -91,7 +94,7 @@ export function EditCard({
                 {before ? (
                   <>
                     <span className="k-ask-before">{was ?? "—"}</span>
-                    <span className="k-ask-arrow" aria-label="becomes">
+                    <span className="k-ask-arrow" aria-label={t({ message: "becomes", comment: "Ask review: an old value → its new value" })}>
                       →
                     </span>
                   </>

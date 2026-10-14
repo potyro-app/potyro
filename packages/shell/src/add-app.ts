@@ -15,6 +15,8 @@
 // be marked "I wrote this, run it as mine" on the card; a link may not, it can be promoted later.
 // The same app already installed: Replace is the default, through the ordinary update path, so
 // History keeps the old version and the data check runs on the next open.
+import { capabilityWords } from "./capability-words.js";
+import { t } from "@lingui/core/macro";
 import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
@@ -41,21 +43,21 @@ const bytesOf = async (f: Blob): Promise<Uint8Array> => new Uint8Array(await f.a
  * `seed.json` among them is the seed.
  */
 export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
-  if (!files.length) throw new Error("No file was chosen");
+  if (!files.length) throw new Error(t`No file was chosen`);
   if (files.length === 1) {
     const bytes = await bytesOf(files[0]!);
     if (isZip(bytes)) return readAppPackage(bytes);
   }
   const zips = files.filter((f) => /\.zip$/i.test(f.name));
-  if (zips.length) throw new Error("Choose a package zip on its own, or the app's source with the files it uses");
+  if (zips.length) throw new Error(t`Choose a package zip on its own, or the app's source with the files it uses`);
   const apps = files.filter((f) => APP_SOURCE_RE.test(f.name));
   const scripts = files.filter((f) => SOURCE_RE.test(f.name));
   const source = apps.length === 1 ? apps[0] : apps.length === 0 && scripts.length === 1 ? scripts[0] : undefined;
   if (!source) {
     throw new Error(
       apps.length > 1 || scripts.length > 1
-        ? "More than one of these could be the app. Name the app's own file *.app.ts or *.app.tsx."
-        : "None of these is an app: choose its source (a .ts or .tsx file) or a package zip.",
+        ? t`More than one of these could be the app. Name the app's own file *.app.ts or *.app.tsx.`
+        : t`None of these is an app: choose its source (a .ts or .tsx file) or a package zip.`,
     );
   }
   const modules: PackagedFile[] = [];
@@ -67,7 +69,8 @@ export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
     try {
       seed = JSON.parse(await seedFile.text());
     } catch (e) {
-      throw new Error(`seed.json is not valid JSON: ${e instanceof Error ? e.message : String(e)}`);
+      const why = e instanceof Error ? e.message : String(e);
+      throw new Error(t`seed.json is not valid JSON: ${why}`);
     }
   }
   const shipped: PackagedFile[] = [];
@@ -82,29 +85,37 @@ export async function gatherFromFiles(files: File[]): Promise<AppPackage> {
  * the native app's HTTP stack is tried, which has no CORS but returns text — enough for a source,
  * not for a zip, and a zip that arrives as text is said to be one rather than misread.
  */
+/** The errors that are the link's own answer, so a second attempt does not replace them with a vaguer one. */
+const answeredErrors = new WeakSet<Error>();
+function linkAnswered(status: number): Error {
+  const e = new Error(t`The link answered ${status}`);
+  answeredErrors.add(e);
+  return e;
+}
+
 export async function gatherFromLink(url: string): Promise<AppPackage> {
   let parsed: URL;
   try {
     parsed = new URL(url.trim());
   } catch {
-    throw new Error("That is not a link");
+    throw new Error(t`That is not a link`);
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Only http and https links can be fetched");
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error(t`Only http and https links can be fetched`);
   let bytes: Uint8Array;
   try {
     const res = await globalThis.fetch(parsed.href, { redirect: "follow" });
-    if (!res.ok) throw new Error(`The link answered ${res.status}`);
+    if (!res.ok) throw linkAnswered(res.status);
     bytes = new Uint8Array(await res.arrayBuffer());
   } catch (first) {
     let text: string;
     try {
       const res = await sourceHttp(parsed.href, { method: "GET" });
-      if (!res.ok) throw new Error(`The link answered ${res.status}`);
+      if (!res.ok) throw linkAnswered(res.status);
       text = await res.text();
     } catch {
-      throw first instanceof Error && /answered/.test(first.message) ? first : new Error("The link could not be fetched from here");
+      throw first instanceof Error && answeredErrors.has(first) ? first : new Error(t`The link could not be fetched from here`);
     }
-    if (text.startsWith("PK")) throw new Error("This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file.");
+    if (text.startsWith("PK")) throw new Error(t`This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file.`);
     return sourcePackage(text, parsed.pathname.split("/").pop() || "app.tsx");
   }
   if (isZip(bytes)) return readAppPackage(bytes);
@@ -112,7 +123,7 @@ export async function gatherFromLink(url: string): Promise<AppPackage> {
 }
 
 export function gatherFromPaste(text: string): AppPackage {
-  if (!text.trim()) throw new Error("Paste the app's source first");
+  if (!text.trim()) throw new Error(t`Paste the app's source first`);
   return sourcePackage(text);
 }
 
@@ -160,16 +171,6 @@ export interface Inspected {
   trialProblem?: string;
 }
 
-const CAP_WORDS: Record<string, string> = {
-  camera: "camera",
-  notifications: "notifications",
-  geo: "location",
-  geolocation: "location",
-  filesystem: "files outside the app",
-  network: "the internet",
-  haptics: "vibration",
-  sync: "sharing",
-};
 
 interface AppFacts {
   id?: string;
@@ -182,7 +183,7 @@ interface AppFacts {
 const asksOf = (permissions: Record<string, unknown> | undefined): string[] =>
   Object.entries(permissions ?? {})
     .filter(([, v]) => v)
-    .map(([k]) => CAP_WORDS[k] ?? k);
+    .map(([k]) => capabilityWords(k));
 
 /**
  * The id and name of an app that could not be read at all, from its text: enough for a card that says
@@ -230,12 +231,20 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
   const loaded = trial?.definition as AppFacts | undefined;
   const facts: AppFacts = (declared as AppFacts | undefined) ?? read ?? sketchOf(pkg.source);
   if (!facts.id) {
-    throw new Error(trial?.unreadable ? `This app could not be read: ${trial.unreadable}` : "This source does not define an app (no `defineApp` with an id)");
+    const unreadable = trial?.unreadable;
+    throw new Error(unreadable ? t`This app could not be read: ${unreadable}` : t`This source does not define an app (no \`defineApp\` with an id)`);
   }
   const preview: Inspected["preview"] = declared ? "declared" : read ? "read" : "unavailable";
   const issues = [...libs.issues, ...(declared ? validateDefinition(declared) : (trial?.issues ?? []))];
-  if (trial?.unreadable) issues.push(`It could not be read: ${trial.unreadable}`);
-  if (declared && loaded?.id && loaded.id !== declared.id) issues.push(`Its description says it is “${declared.id}”, and its code says “${loaded.id}”, so it was not added.`);
+  if (trial?.unreadable) {
+    const unreadable = trial.unreadable;
+    issues.push(t`It could not be read: ${unreadable}`);
+  }
+  if (declared && loaded?.id && loaded.id !== declared.id) {
+    const said = declared.id;
+    const code = loaded.id;
+    issues.push(t`Its description says it is “${said}”, and its code says “${code}”, so it was not added.`);
+  }
   // What it really asks for, once it loaded, joins what it says it asks for: the card never shows less.
   const asks = [...asksOf(facts.permissions), ...asksOf(loaded?.permissions)];
   return {
@@ -338,7 +347,10 @@ export interface Installed {
 }
 
 export async function installPackage(pkg: AppPackage, inspected: Inspected, opts: InstallOptions): Promise<Installed> {
-  if (inspected.issues.length) throw new Error(`This app has problems and was not added:\n${inspected.issues.join("\n")}`);
+  if (inspected.issues.length) {
+    const problems = inspected.issues.join("\n");
+    throw new Error(t`This app has problems and was not added:\n${problems}`);
+  }
   const now = opts.now ?? new Date().toISOString();
   const existing = inspected.installed;
   const update = !!existing && opts.mode === "replace";

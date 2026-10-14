@@ -1,6 +1,8 @@
 // Built-in views for M1: list, gallery, table, detail. calendar/map/steps get a placeholder
 // (M2/M3). Each consumes the runtime only.
 
+import { t as tr } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { actionInfo, type Resolved } from "potyro";
 import { PartProblem } from "./part-failure.js";
@@ -38,9 +40,10 @@ export function mapOnOpen(onOpen: { page: string; param?: Record<string, string>
  * of an app uses when it fails (#271). ViewHost leaves these views to say it themselves.
  */
 function LoadError({ message }: { message: string }) {
+  const { t } = useLingui();
   return (
     <div className="k-load-error">
-      <PartProblem text={`its records could not be listed: ${message}`} />
+      <PartProblem text={t`its records could not be listed: ${message}`} />
     </div>
   );
 }
@@ -49,13 +52,13 @@ export function useDeleteRecord(runtime: BuiltinViewProps["runtime"], entity: st
   // Resolves to whether the record is gone: a caller that leaves the page afterwards must not
   // leave it on "no" — declining used to send you back to the list as if you had deleted.
   return async (id, label) => {
-    const ok = await runtime.ctx.ui.confirm(`Delete ${label}?`, { detail: "This can't be undone.", ok: "Delete", destructive: true });
+    const ok = await runtime.ctx.ui.confirm(tr`Delete ${label}?`, { detail: tr`This can't be undone.`, ok: tr`Delete`, destructive: true });
     if (!ok) return false;
     try {
       await runtime.remove(entity, id);
       return true;
     } catch (e) {
-      runtime.ctx.ui.toast(e instanceof Error ? e.message : "Could not delete that record");
+      runtime.ctx.ui.toast(e instanceof Error ? e.message : tr`Could not delete that record`);
       return false;
     }
   };
@@ -81,6 +84,7 @@ export function RowActions({
   /** Set when this row is someone else's to change (`editableBy: "creator"`): Edit and Delete explain instead. */
   locked?: string | null;
 }) {
+  const { t } = useLingui();
   const explain = (): void => runtime.ctx.ui.toast(locked!);
   if (!actions?.length && !onEdit && !onDelete) return null;
   return (
@@ -97,19 +101,19 @@ export function RowActions({
         </button>
       ))}
       {onEdit ? (
-        <button type="button" className="k-action" aria-label="Edit" aria-disabled={locked ? true : undefined} onClick={() => (locked ? explain() : onEdit(entity, id))}>
-          Edit
+        <button type="button" className="k-action" aria-label={t`Edit`} aria-disabled={locked ? true : undefined} onClick={() => (locked ? explain() : onEdit(entity, id))}>
+          <Trans>Edit</Trans>
         </button>
       ) : null}
       {onDelete ? (
         <button
           type="button"
           className="k-action k-action-danger"
-          aria-label={`Delete ${label}`}
+          aria-label={t`Delete ${label}`}
           aria-disabled={locked ? true : undefined}
           onClick={() => (locked ? explain() : void onDelete())}
         >
-          Delete
+          <Trans>Delete</Trans>
         </button>
       ) : null}
     </span>
@@ -117,6 +121,7 @@ export function RowActions({
 }
 
 export function ListView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
@@ -132,7 +137,7 @@ export function ListView(props: BuiltinViewProps) {
   // Amounts down the right, and what they come to (KA-26). A list of money nobody can add up is not
   // what anyone came to a ledger for, so the total is the default rather than something to wire.
   const money = moneyColumn(runtime, view.entity, view.money);
-  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
   const groups = useRowGroups(runtime, pageId, rows, view);
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
@@ -144,7 +149,7 @@ export function ListView(props: BuiltinViewProps) {
     : undefined;
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">Loading…</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
   if (!rows.length) {
     return (
       <p className="k-empty" data-k-wording>
@@ -193,8 +198,8 @@ export function ListView(props: BuiltinViewProps) {
               entity={view.entity}
               actions={view.rowActions}
               id={String(row.id)}
-              onDelete={hasDetail ? undefined : async () => void (await remove(String(row.id), String(cell.primary ?? "this record")))}
-              label={String(cell.primary ?? "this record")}
+              onDelete={hasDetail ? undefined : async () => void (await remove(String(row.id), String(cell.primary ?? t`this record`)))}
+              label={String(cell.primary ?? t`this record`)}
               locked={editLockFor(runtime, view.entity, row)}
             />
             {openRow ? (
@@ -260,11 +265,12 @@ function Grouped({
 }
 
 export function GalleryView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as { entity: string; onOpen?: { page: string; param?: Record<string, string> }; group?: unknown; collapsible?: boolean };
-  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", "Nothing here yet.");
+  const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
   const groups = useRowGroups(runtime, pageId, rows, view);
 
   const openCard = view.onOpen
@@ -274,7 +280,7 @@ export function GalleryView(props: BuiltinViewProps) {
     : undefined;
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">Loading…</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
   if (!rows.length) {
     return (
       <p className="k-empty" data-k-wording>
@@ -307,6 +313,7 @@ export function GalleryView(props: BuiltinViewProps) {
 }
 
 export function TableView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, onEdit } = props;
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
@@ -321,8 +328,8 @@ export function TableView(props: BuiltinViewProps) {
   };
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">Loading…</p>;
-  if (!rows.length) return <p className="k-empty">No matching rows.</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
+  if (!rows.length) return <p className="k-empty">{t`No matching rows.`}</p>;
 
   const renderTable = (list: Resolved[]) => (
     // The table scrolls INSIDE this, so a table wider than the phone does not make the PAGE wider
@@ -341,7 +348,7 @@ export function TableView(props: BuiltinViewProps) {
                 {fieldLabel(runtime, view.entity, c)}
               </th>
             ))}
-            {onEdit ? <th aria-label="Edit" /> : null}
+            {onEdit ? <th aria-label={t`Edit`} /> : null}
           </tr>
         </thead>
         <tbody>
@@ -354,7 +361,7 @@ export function TableView(props: BuiltinViewProps) {
               ))}
               {onEdit ? (
                 <td>
-                  <button type="button" className="k-action" onClick={(e) => { e.stopPropagation(); onEdit(view.entity, String(row.id)); }}>Edit</button>
+                  <button type="button" className="k-action" onClick={(e) => { e.stopPropagation(); onEdit(view.entity, String(row.id)); }}>{t`Edit`}</button>
                 </td>
               ) : null}
             </tr>
@@ -367,6 +374,7 @@ export function TableView(props: BuiltinViewProps) {
 }
 
 export function DetailView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit } = props;
   const view = getView(runtime, pageId) as {
     entity: string;
@@ -388,10 +396,10 @@ export function DetailView(props: BuiltinViewProps) {
         (p.view as { entity?: string }).entity === view.entity,
     ) ?? runtime.definition.pages[0];
 
-  if (loading) return <p className="k-loading">Loading…</p>;
-  if (!record) return <p className="k-empty">Not found.</p>;
+  if (loading) return <p className="k-loading">{t`Loading…`}</p>;
+  if (!record) return <p className="k-empty">{t`Not found.`}</p>;
 
-  const label = String(record[displayFieldFor(runtime, view.entity)] ?? "this record");
+  const label = String(record[displayFieldFor(runtime, view.entity)] ?? t`this record`);
   const locked = editLockFor(runtime, view.entity, record);
   const explain = (): void => runtime.ctx.ui.toast(locked!);
   const onDelete = async (): Promise<void> => {
@@ -462,23 +470,23 @@ export function DetailView(props: BuiltinViewProps) {
             aria-disabled={locked ? true : undefined}
             onClick={() => (locked ? explain() : onEdit(view.entity, id))}
           >
-            Edit
+            <Trans>Edit</Trans>
           </button>
         ) : null}
         {locked ? (
           // Edit and Delete are all this menu holds; someone else's record offers neither, so the
           // menu is inactive rather than a list of things that would each refuse.
-          <button type="button" className="k-menu-btn" aria-label="More actions" aria-disabled onClick={explain}>
+          <button type="button" className="k-menu-btn" aria-label={t`More actions`} aria-disabled onClick={explain}>
             ⋯
           </button>
         ) : (
         <ActionMenu
-          label="More actions"
+          label={t`More actions`}
           title={label}
           entries={[
-            ...((view.actions ?? []).length && onEdit ? [{ key: "edit", label: "Edit", icon: "✎", onSelect: () => onEdit(view.entity, id) } as MenuEntry] : []),
+            ...((view.actions ?? []).length && onEdit ? [{ key: "edit", label: t`Edit`, icon: "✎", onSelect: () => onEdit(view.entity, id) } as MenuEntry] : []),
             ...(((view.actions ?? []).length && onEdit) ? ["separator" as const] : []),
-            { key: "delete", label: "Delete", icon: "🗑", danger: true, onSelect: () => void onDelete() },
+            { key: "delete", label: t`Delete`, icon: "🗑", danger: true, onSelect: () => void onDelete() },
           ]}
         />
         )}

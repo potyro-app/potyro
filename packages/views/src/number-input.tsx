@@ -6,6 +6,7 @@
 // appears when the field is stepped, integer or small-ranged; `inputmode` picks the phone's
 // numeric or decimal keyboard; a duration in hours or minutes is entered as `h : min`.
 
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { ShownDurationField as DurationField, ShownNumberField as NumberField } from "./shown.js";
 
@@ -67,6 +68,7 @@ export interface NumberInputProps {
 }
 
 export function NumberInput({ field, value, onChange, label }: NumberInputProps) {
+  const { t } = useLingui();
   const num = field.type === "number" ? field : ({ type: "number", min: 0 } as NumberField);
   const integer = field.type === "number" ? Boolean(field.integer) : field.unit !== undefined && field.unit !== "h";
   const stepper = field.type === "number" ? wantsStepper(num) : false;
@@ -80,7 +82,7 @@ export function NumberInput({ field, value, onChange, label }: NumberInputProps)
   return (
     <span className="k-number" data-stepper={stepper}>
       {stepper ? (
-        <button type="button" className="k-number-step" aria-label={`Decrease${label ? ` ${label}` : ""}`} disabled={atMin} onClick={down} {...holdDown}>
+        <button type="button" className="k-number-step" aria-label={label ? t`Decrease ${label}` : t`Decrease`} disabled={atMin} onClick={down} {...holdDown}>
           −
         </button>
       ) : null}
@@ -104,7 +106,7 @@ export function NumberInput({ field, value, onChange, label }: NumberInputProps)
         ) : null}
       </span>
       {stepper ? (
-        <button type="button" className="k-number-step" aria-label={`Increase${label ? ` ${label}` : ""}`} disabled={atMax} onClick={up} {...holdUp}>
+        <button type="button" className="k-number-step" aria-label={label ? t`Increase ${label}` : t`Increase`} disabled={atMax} onClick={up} {...holdUp}>
           +
         </button>
       ) : null}
@@ -114,6 +116,7 @@ export function NumberInput({ field, value, onChange, label }: NumberInputProps)
 
 /** A duration in hours or minutes, entered as `h : min` and stored in the field's unit. */
 export function DurationInput({ field, value, onChange, label }: { field: DurationField; value: unknown; onChange: (v: number | null) => void; label?: string }) {
+  const { t } = useLingui();
   const total = typeof value === "number" && Number.isFinite(value) ? value : null;
   const inMinutes = field.unit === "h" ? (total === null ? null : Math.round(total * 60)) : total;
   const hours = inMinutes === null ? "" : String(Math.floor(inMinutes / 60));
@@ -126,13 +129,17 @@ export function DurationInput({ field, value, onChange, label }: { field: Durati
   return (
     <span className="k-number k-duration" role="group" aria-label={label}>
       <span className="k-number-field">
-        <input className="k-input k-number-input" type="number" inputMode="numeric" min={0} aria-label={`${label ? `${label} ` : ""}hours`} value={hours} onChange={(e) => emit(e.target.value, minutes)} />
-        <span className="k-number-unit" aria-hidden>h</span>
+        <input className="k-input k-number-input" type="number" inputMode="numeric" min={0} aria-label={label ? t`${label} hours` : t`hours`} value={hours} onChange={(e) => emit(e.target.value, minutes)} />
+        <span className="k-number-unit" aria-hidden>
+          {t({ message: "h", comment: "Short for hours, beside a duration's hours box" })}
+        </span>
       </span>
       <span className="k-duration-colon" aria-hidden>:</span>
       <span className="k-number-field">
-        <input className="k-input k-number-input" type="number" inputMode="numeric" min={0} max={59} aria-label={`${label ? `${label} ` : ""}minutes`} value={minutes} onChange={(e) => emit(hours, e.target.value)} />
-        <span className="k-number-unit" aria-hidden>min</span>
+        <input className="k-input k-number-input" type="number" inputMode="numeric" min={0} max={59} aria-label={label ? t`${label} minutes` : t`minutes`} value={minutes} onChange={(e) => emit(hours, e.target.value)} />
+        <span className="k-number-unit" aria-hidden>
+          {t({ message: "min", comment: "Short for minutes, beside a duration's minutes box" })}
+        </span>
       </span>
     </span>
   );

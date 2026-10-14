@@ -5,8 +5,9 @@
 // "something went wrong somewhere". Which model answers is the engine the person chose; every path
 // goes through the same contract, so changing engine changes the model and nothing else.
 
+import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
-import { t } from "@lingui/core/macro";
+import { fmt } from "@potyro/i18n";
 import type { ConversationEntry, GiveUp, PlatformRequest } from "@potyro/generator/agent";
 import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
@@ -40,24 +41,28 @@ export type Outcome =
  * happened and what to try; the loop's words are kept as `detail`, shown folded away under it.
  */
 export function notChanged(result: { kind: "failed"; reason: string; cause?: GiveUp } | { kind: "stopped" } | { kind: "error"; error: unknown }): Extract<Outcome, { kind: "failed" }> {
-  if (result.kind === "stopped") return { kind: "failed", text: "Stopped. Nothing was changed." };
+  if (result.kind === "stopped") return { kind: "failed", text: t`Stopped. Nothing was changed.` };
   if (result.kind === "error") {
     const detail = result.error instanceof Error ? result.error.message : String(result.error);
-    return { kind: "failed", text: "I couldn't make this change: something went wrong while working on it. Try again in a moment.", detail };
+    return { kind: "failed", text: t`I couldn't make this change: something went wrong while working on it. Try again in a moment.`, detail };
   }
-  const text = {
-    candidates: "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way.",
-    repeated: "I couldn't make this change: I kept coming back to the same answer without finding one that works. Try saying it another way, or ask for a smaller step.",
-    steps: "I couldn't make this change: I ran out of tries before finding a version that works. Try asking for a smaller step.",
-    engine: "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key.",
-    // The one-turn guard (`guardedModify`): what came back could not be applied to the app.
-    none: "I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way.",
-  }[result.cause ?? "none"];
+  const cause = result.cause ?? "none";
+  const text =
+    cause === "candidates"
+      ? t`I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way.`
+      : cause === "repeated"
+        ? t`I couldn't make this change: I kept coming back to the same answer without finding one that works. Try saying it another way, or ask for a smaller step.`
+        : cause === "steps"
+          ? t`I couldn't make this change: I ran out of tries before finding a version that works. Try asking for a smaller step.`
+          : cause === "engine"
+            ? t`I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key.`
+            : // The one-turn guard (`guardedModify`): what came back could not be applied to the app.
+              t`I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way.`;
   return { kind: "failed", text, detail: result.reason };
 }
 
 /** A request that is not the app's to change — an answer, said as one. */
-const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ kind: "refusal", text: `I didn't change the app: this isn't something it can change. ${text}` });
+const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ kind: "refusal", text: t`I didn't change the app: this isn't something it can change. ${text}` });
 
 export interface StudioEngine {
   create(brief: string): Promise<Outcome>;
@@ -70,7 +75,11 @@ export interface StudioEngine {
   repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
 }
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
+/** What a turn that changed the app says it did. */
+const appliedEdits = (n: number): string => plural(n, { one: "Applied # edit.", other: "Applied # edits." });
+
+/** Seconds on the heartbeat, in the person's language ("12s"). */
+const seconds = (n: number): string => fmt.number(n, { style: "unit", unit: "second", unitDisplay: "narrow" });
 
 /** A turn that came back as a question — thrown past the edit guard, caught as an outcome. */
 class Asked extends Error {
@@ -113,12 +122,11 @@ export function studioEngine(
    * clock that is indistinguishable from a hang, so in-browser engines get a heartbeat; `claude -p`
    * reports its own seconds.
    */
-  const ticking = async <T,>(verb: string, work: () => Promise<T>): Promise<T> => {
+  const ticking = async <T,>(line: (elapsed: string) => string, work: () => Promise<T>): Promise<T> => {
     if (isCli) return work();
-    const text = `${verb} via ${label}`;
     const started = Date.now();
-    progress(`${text}… 0s`);
-    const timer = setInterval(() => progress(`${text}… ${Math.round((Date.now() - started) / 1000)}s`), 1000);
+    progress(line(seconds(0)));
+    const timer = setInterval(() => progress(line(seconds(Math.round((Date.now() - started) / 1000)))), 1000);
     try {
       return await work();
     } finally {
@@ -141,7 +149,10 @@ export function studioEngine(
       ctx: { ...ctx, ...languageOf(source) },
       onProgress: (text, secs) => {
         if (secs === undefined) progress(text);
-        else if (isCli) progress(`Changing it via ${label}… ${secs}s`);
+        else if (isCli) {
+          const elapsed = seconds(secs);
+          progress(t`Changing it via ${label}… ${elapsed}`);
+        }
       },
     });
     const question = askedIn(reply);
@@ -152,17 +163,25 @@ export function studioEngine(
   /** Which language to answer in, and which the app's words are in (read off the source until #302 declares it). */
   const languageOf = (source: string): ModifyContext => ({ language: { person: language, app: appLanguage(source) } });
 
-  const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string =>
-    notDone?.length ? `${applied} Not done yet: ${notDone.join("; ")}` : applied;
+  // Said to the person only: nothing parses this line (the model's own `Not done:` is read from its reply).
+  const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string => {
+    if (!notDone?.length) return applied;
+    const parts = notDone.join("; ");
+    return t`${applied} Not done yet: ${parts}`;
+  };
 
   const create = async (brief: string): Promise<Outcome> => {
     try {
-      const reply = await ticking("Making it", async () => {
+      const reply = await ticking((elapsed) => t`Making it via ${label}… ${elapsed}`, async () => {
         if (isCli) {
           // `system` travels separately so the dev endpoint passes it as the system prompt, replacing
           // Claude Code's own — the same setup the eval harness measures.
           return extractSource(
-            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief, language }), onProgress: (secs) => progress(`Making it via ${label}… ${secs}s`) }),
+            await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief, language }), onProgress: (secs) => {
+                const elapsed = seconds(secs);
+                progress(t`Making it via ${label}… ${elapsed}`);
+              },
+            }),
           );
         }
         return (await backendFor(engine, progress)).generate({ id: "studio", description: brief, language });
@@ -171,10 +190,11 @@ export function studioEngine(
       if (question) return { kind: "question", text: question };
       // A reply that is not an app says so here; passed to the bundler, prose reads as a syntax
       // error in the middle of an English sentence.
-      if (!looksLikeApp(reply)) return { kind: "failed", text: "The model answered with an explanation instead of an app. Try again, or say it another way." };
+      if (!looksLikeApp(reply)) return { kind: "failed", text: t`The model answered with an explanation instead of an app. Try again, or say it another way.` };
       return { kind: "source", source: reply, summary: "" };
     } catch (e) {
-      return { kind: "failed", text: `Could not make it: ${e instanceof Error ? e.message : String(e)}` };
+      const reason = e instanceof Error ? e.message : String(e);
+      return { kind: "failed", text: t`Could not make it: ${reason}` };
     }
   };
 
@@ -194,10 +214,12 @@ export function studioEngine(
           language,
           ...(earlier?.length ? { conversation: earlier } : {}),
           onStep: (step) => {
-            if (step.kind === "thinking") progress(`Thinking via ${label}…`);
-            else if (step.kind === "tool") progress(`${step.name}: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
-            else if (step.kind === "candidate") progress(step.passed ? "A change passed the check." : `A change was turned back: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
-            else progress(`Asked to try again: ${step.detail.split("\n")[0]!.slice(0, 80)}`);
+            if (step.kind === "thinking") return progress(t`Thinking via ${label}…`);
+            // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
+            const first = step.detail.split("\n")[0]!.slice(0, 80);
+            if (step.kind === "tool") progress(`${step.name}: ${first}`);
+            else if (step.kind === "candidate") progress(step.passed ? t`A change passed the check.` : t`A change was turned back: ${first}`);
+            else progress(t`Asked to try again: ${first}`);
           },
         });
         if (result.kind === "diagnosis") return notTheApps(result.text);
@@ -207,7 +229,7 @@ export function studioEngine(
         }
         if (result.kind === "failed") return { ...notChanged(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
         if (result.kind === "stopped") return notChanged(result);
-        const applied = result.via === "edits" ? `Applied ${plural(result.applied, "edit")}.` : "The model sent the whole file back instead of edits.";
+        const applied = result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits.`;
         return {
           kind: "source",
           source: result.source,
@@ -216,7 +238,7 @@ export function studioEngine(
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         };
       }
-      const result = await ticking("Changing it", () =>
+      const result = await ticking((elapsed) => t`Changing it via ${label}… ${elapsed}`, () =>
         guardedModify({
           attempt: (instr) => attempt(source, instr, context),
           shapeOf: async (src) => {
@@ -233,7 +255,7 @@ export function studioEngine(
       if (result.kind === "diagnosis") return notTheApps(result.text);
       if (result.kind === "failed") return notChanged(result);
       const applied =
-        result.via === "edits" ? `Applied ${plural(result.applied, "edit")}.` : "The model sent the whole file back instead of edits. Check that nothing else changed.";
+        result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits. Check that nothing else changed.`;
       const summary = describeNotDone(applied, result.notDone);
       if (result.loss !== null) return { kind: "loss", source: result.source, summary, loss: result.loss };
       return { kind: "source", source: result.source, summary, notDone: result.notDone };
@@ -244,7 +266,7 @@ export function studioEngine(
   };
 
   const repair = (source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }> =>
-    ticking("Fixing it", async () => {
+    ticking((elapsed) => t`Fixing it via ${label}… ${elapsed}`, async () => {
       const result = await guardedModify({
         attempt: (instr) => attempt(source, instr),
         shapeOf: (src) => shapeOrEmpty(src, modules),
@@ -252,9 +274,18 @@ export function studioEngine(
         instruction: buildRepairInstruction(issues),
         source,
       });
-      if (result.kind === "diagnosis") throw new Error(`the repair was declined: ${result.text}`);
-      if (result.kind === "failed") throw new Error(`the repair could not be applied: ${result.reason}`);
-      return { source: result.source, summary: `Repaired with ${result.via === "edits" ? plural(result.applied, "edit") : "the whole file"}.`, loss: result.loss };
+      // These reach the conversation after "Could not fix it:".
+      if (result.kind === "diagnosis") {
+        const why = result.text;
+        throw new Error(t`the repair was declined: ${why}`);
+      }
+      if (result.kind === "failed") {
+        const why = result.reason;
+        throw new Error(t`the repair could not be applied: ${why}`);
+      }
+      const summary =
+        result.via === "edits" ? plural(result.applied, { one: "Repaired with # edit.", other: "Repaired with # edits." }) : t`Repaired with the whole file.`;
+      return { source: result.source, summary, loss: result.loss };
     });
 
   return { create, modify, repair };

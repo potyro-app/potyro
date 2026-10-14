@@ -82,7 +82,7 @@ describe("choosing a file", () => {
     rerender(<FieldInput runtime={runtime} field={photo} value={ref} onChange={onChange} label="Photo" />);
     // One photo: the add tile gives way to the photo itself.
     expect(screen.queryByRole("button", { name: "Photo: add photo" })).toBeNull();
-    const remove = screen.getByRole("button", { name: "Remove photo" });
+    const remove = screen.getByRole("button", { name: "Remove: Photo" });
     fireEvent.click(remove);
     expect(onChange).toHaveBeenLastCalledWith(null);
   });

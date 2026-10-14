@@ -64,7 +64,7 @@ test("photos in a local-only app outlive a reload, and do not fill localStorage"
 
   const photo = { name: "shot.png", mimeType: "image/png", buffer: bigPng() };
   for (const name of ["First", "Second", "Third"]) {
-    await page.getByRole("button", { name: /New Shot|Add Shot/i }).first().click();
+    await page.getByRole("button", { name: /Add: Shot|Add Shot/i }).first().click();
     await page.getByLabel(/name/i).first().fill(name);
     await page.locator('input[type="file"]').first().setInputFiles(photo);
     // The picked file is read and scaled before it can be saved.

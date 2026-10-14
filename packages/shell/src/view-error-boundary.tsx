@@ -11,6 +11,7 @@
 // component is the only way to catch a render error from children, so this is one on purpose.
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Trans } from "@lingui/react/macro";
 
 interface ViewErrorBoundaryProps {
   /** What was being shown when it broke, in words — surfaced in the fallback so the person (and
@@ -43,15 +44,24 @@ export class ViewErrorBoundary extends Component<ViewErrorBoundaryProps, ViewErr
   override render(): ReactNode {
     const { error } = this.state;
     if (!error) return this.props.children;
-    return (
-      <div className="k-view-crash" role="alert">
-        <p className="k-view-crash-head">This page couldn&rsquo;t be shown</p>
-        <p className="k-muted">Something went wrong opening {this.props.pageLabel}.</p>
-        <p className="k-view-crash-detail">{error.message}</p>
-        <button type="button" className="k-add k-primary-action" onClick={this.props.onRecover}>
-          Back to a working page
-        </button>
-      </div>
-    );
+    return <CrashFallback pageLabel={this.props.pageLabel} message={error.message} onRecover={this.props.onRecover} />;
   }
+}
+
+/** The fallback, as a function component so its words follow a language switch. */
+function CrashFallback({ pageLabel, message, onRecover }: { pageLabel: string; message: string; onRecover: () => void }) {
+  return (
+    <div className="k-view-crash" role="alert">
+      <p className="k-view-crash-head">
+        <Trans>This page couldn’t be shown</Trans>
+      </p>
+      <p className="k-muted">
+        <Trans>Something went wrong opening {pageLabel}.</Trans>
+      </p>
+      <p className="k-view-crash-detail">{message}</p>
+      <button type="button" className="k-add k-primary-action" onClick={onRecover}>
+        <Trans>Back to a working page</Trans>
+      </button>
+    </div>
+  );
 }

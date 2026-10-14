@@ -5,6 +5,8 @@
 // The card is told before anything is fetched: "fetches chart.js 4.4.1 from esm.sh". The fetch is
 // the person's to allow, and happens when they add the app; a package that already carries the bytes
 // fetches nothing. Either way every byte is checked against the lock before it is kept.
+import { fmt } from "@potyro/i18n";
+import { t } from "@lingui/core/macro";
 import {
   libraryHost,
   libraryLabel,
@@ -86,8 +88,13 @@ export async function carriedCodeIssues(pkg: Pick<AppPackage, "lock" | "files" |
   for (const [key, entry] of Object.entries(pkg.lock ?? {})) {
     const bytes = carried.get(entry.file);
     if (!bytes || (await matchesLock(entry, bytes))) continue;
-    const what = key.startsWith("src/") ? `Its file ${key.slice("src/".length)}` : libraryLabel(key);
-    issues.add(`${what} is not the copy this app was saved with, so it was not added.`);
+    const file = key.slice("src/".length);
+    const library = libraryLabel(key);
+    issues.add(
+      key.startsWith("src/")
+        ? t`Its file ${file} is not the copy this app was saved with, so it was not added.`
+        : t`${library} is not the copy this app was saved with, so it was not added.`,
+    );
   }
   return [...issues];
 }
@@ -151,9 +158,16 @@ export async function prepareCode(pkg: AppPackage, deps: PackageDeps = {}): Prom
 
 /** "190 KB": the size a person reads on the card. */
 export function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024) {
+    const n = fmt.number(bytes);
+    return t({ message: `${n} B`, comment: "A size in bytes" });
+  }
+  if (bytes < 1024 * 1024) {
+    const n = fmt.number(Math.round(bytes / 1024));
+    return t({ message: `${n} KB`, comment: "A size in kilobytes" });
+  }
+  const n = fmt.number(bytes / (1024 * 1024), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return t({ message: `${n} MB`, comment: "A size in megabytes" });
 }
 
 /**
@@ -161,8 +175,19 @@ export function formatSize(bytes: number): string {
  * esm.sh" before the fetch, "chart.js 4.4.1, 190 KB, came with the app" when nothing is fetched.
  */
 export function describeLibrary(line: Pick<LibraryLine, "label" | "host" | "here" | "size">, opts: { done?: boolean } = {}): string {
-  const what = line.size !== undefined ? `${line.label}, ${formatSize(line.size)},` : line.label;
-  return line.here ? `${what} came with the app` : `${opts.done ? "fetched" : "fetches"} ${what} from ${line.host}`;
+  const label = line.label;
+  const host = line.host;
+  if (line.size !== undefined) {
+    const size = formatSize(line.size);
+    if (line.here) return t({ message: `${label}, ${size}, came with the app`, comment: "A library the app uses: name and version, its size" });
+    return opts.done
+      ? t({ message: `fetched ${label}, ${size}, from ${host}`, comment: "A library the app uses: name and version, its size, the site it came from" })
+      : t({ message: `fetches ${label}, ${size}, from ${host}`, comment: "A library the app uses: name and version, its size, the site it comes from" });
+  }
+  if (line.here) return t({ message: `${label} came with the app`, comment: "A library the app uses: name and version" });
+  return opts.done
+    ? t({ message: `fetched ${label} from ${host}`, comment: "A library the app uses: name and version, the site it came from" })
+    : t({ message: `fetches ${label} from ${host}`, comment: "A library the app uses: name and version, the site it comes from" });
 }
 
 /** Each library in a lock as "name" → "version", from every file of it the lock holds. */

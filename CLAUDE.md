@@ -106,8 +106,8 @@ pnpm --filter @potyro/generator gen:corpus
 
 # Potyro's own words are in catalogs (#297): user-facing text in shell/views goes through
 # t`…` / <Trans> (Lingui macros), then the catalogs are regenerated — packages/i18n's
-# test/catalog.test.ts fails while they are stale. lint:i18n errors on raw text in extracted files
-# (CLEAN in scripts/check-i18n.mjs) and warns elsewhere; dev offers a pseudo-language under You.
+# test/catalog.test.ts fails while they are stale. lint:i18n errors on raw text anywhere in shell
+# and views (#299); dev offers a pseudo-language under You. Model-facing text stays English.
 pnpm i18n:extract
 pnpm lint:i18n
 

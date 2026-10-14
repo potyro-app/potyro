@@ -4,6 +4,8 @@
 // isolate. The view's JS `filter` is applied by the runtime query, so markers reflect current
 // params. Online tiles first; offline tiles are a later milestone (M5).
 
+import { t as tr } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { MapCamera, Resolved } from "potyro";
@@ -193,6 +195,7 @@ async function resolveCamera(runtime: BuiltinViewProps["runtime"], pageId: strin
 }
 
 export function MapView(props: BuiltinViewProps) {
+  const { t } = useLingui();
   const { runtime, pageId, params, onCreate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   const markers = useMapMarkers(runtime, pageId, rows);
@@ -396,10 +399,10 @@ export function MapView(props: BuiltinViewProps) {
         const actions: { label: string; primary?: boolean; run: () => void }[] = [];
         // The whole record, over the map. Leaving the page to read a record's own page means losing
         // the framing you navigated to — and on a map that framing is half of what you were doing.
-        if (detailPageRef.current) actions.push({ label: "Details", primary: true, run: () => setOpenId(mk.id) });
+        if (detailPageRef.current) actions.push({ label: tr({ message: "Details", comment: "Map pin: show the place's record over the map" }), primary: true, run: () => setOpenId(mk.id) });
         else if (onOpen) {
           actions.push({
-            label: "Open",
+            label: tr({ message: "Open", comment: "Map pin: open the place's page" }),
             primary: true,
             run: () => {
               const row = rowsRef.current.find((r) => String(r.id) === mk.id);
@@ -411,7 +414,7 @@ export function MapView(props: BuiltinViewProps) {
             },
           });
         }
-        if (onEditRef.current) actions.push({ label: "Edit", run: () => onEditRef.current?.(entityRef.current, mk.id) });
+        if (onEditRef.current) actions.push({ label: tr`Edit`, run: () => onEditRef.current?.(entityRef.current, mk.id) });
         marker.getElement().style.cursor = "pointer";
         marker.setPopup(new maplibre.Popup({ offset: 24, closeButton: false }).setDOMContent(
           popupContent(mk.title, cellsRef.current[index], actions),
@@ -527,7 +530,7 @@ export function MapView(props: BuiltinViewProps) {
       moveTo([pos.lng, pos.lat], Math.max(map.getZoom?.() ?? 0, 15));
     } catch {
       // Denied, or the device cannot say. The map is still a map.
-      runtime.ctx.ui.toast("Could not get your location.");
+      runtime.ctx.ui.toast(tr`Could not get your location.`);
     } finally {
       setLocating(false);
     }
@@ -537,14 +540,14 @@ export function MapView(props: BuiltinViewProps) {
     // The map comes first and its chrome sits ON it. A map is the page — the way it is in every map
     // app on a phone — and a bar above it is a bar taking a bite out of the thing you came to see.
     <div className="k-map" data-placing={placing || undefined}>
-      <div ref={containerRef} className="k-map-canvas" role="application" aria-label="Map" />
-      {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">No places to show.</p> : null}
+      <div ref={containerRef} className="k-map-canvas" role="application" aria-label={t({ message: "Map", comment: "The map view, read aloud" })} />
+      {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">{t`No places to show.`}</p> : null}
       {canLocate ? (
         <button
           type="button"
           className="k-map-locate"
           data-stacked={canPlace || undefined}
-          aria-label="Centre the map on my location"
+          aria-label={t`Centre the map on my location`}
           aria-busy={locating || undefined}
           disabled={locating}
           onClick={() => void centreOnMe()}
@@ -556,10 +559,10 @@ export function MapView(props: BuiltinViewProps) {
         placing ? (
           <div className="k-map-bar">
             <span className="k-map-hint" role="status">
-              Tap the map to place the {entityLabel.toLowerCase()}.
+              {t({ message: `${entityLabel}: tap the map to place it.`, comment: "Map: placing a new record; entityLabel is the app's word for it" })}
             </span>
             <button type="button" className="k-add" onClick={() => setPlacing(false)}>
-              Cancel
+              <Trans>Cancel</Trans>
             </button>
           </div>
         ) : (
@@ -567,14 +570,14 @@ export function MapView(props: BuiltinViewProps) {
             <span className="k-fab-plus" aria-hidden>
               ＋
             </span>
-            Add {entityLabel.toLowerCase()} here
+            {t({ message: `Add here: ${entityLabel}`, comment: "Map: add a new record at a point; entityLabel is the app's word for it" })}
           </button>
         )
       ) : null}
       {openId && detailPage ? (
         <div className="k-map-sheet-scrim" onClick={() => setOpenId(null)}>
           <section className="k-map-sheet" role="dialog" aria-label={entityLabel} onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="k-map-sheet-close" aria-label="Close" onClick={() => setOpenId(null)}>
+            <button type="button" className="k-map-sheet-close" aria-label={t`Close`} onClick={() => setOpenId(null)}>
               ✕
             </button>
             {/* The app's OWN record page, with whatever it declares on it — sections, photos,

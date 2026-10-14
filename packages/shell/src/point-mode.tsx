@@ -10,6 +10,7 @@
 // a finger has no hover, so a tap chooses and the outline shows what was chosen — and a drag scrolls
 // the app, so a long page can still be pointed at all the way down. A wheel scrolls it too.
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { AppDefinition } from "potyro";
 import { boxOf, currentPageIn, describePoint, elementFor, pointsAt, type Pointed } from "./point-target.js";
@@ -59,6 +60,7 @@ function tagPlace(box: Box): "edge" | "above" | "below" | "inside" {
 }
 
 export function PointMode({ screen, def, onPick, onCancel }: PointModeProps) {
+  const { t } = useLingui();
   const layer = useRef<HTMLDivElement>(null);
   const tray = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<Found | null>(null);
@@ -192,9 +194,11 @@ export function PointMode({ screen, def, onPick, onCancel }: PointModeProps) {
       ) : null}
 
       {chosen ? (
-        <div ref={tray} className="k-point-tray" data-top={trayTop || undefined} role="group" aria-label="What you are pointing at">
-          <p className="k-point-tray-head">Pointing at</p>
-          <div className="k-point-levels" role="radiogroup" aria-label="Which part">
+        <div ref={tray} className="k-point-tray" data-top={trayTop || undefined} role="group" aria-label={t`What you are pointing at`}>
+          <p className="k-point-tray-head">
+            <Trans>Pointing at</Trans>
+          </p>
+          <div className="k-point-levels" role="radiogroup" aria-label={t`Which part`}>
             {levels.map((l, i) => (
               <button
                 key={i}
@@ -210,10 +214,10 @@ export function PointMode({ screen, def, onPick, onCancel }: PointModeProps) {
           </div>
           <div className="k-point-actions">
             <button type="button" className="k-point-again" onClick={() => setChosen(null)}>
-              Point again
+              <Trans>Point again</Trans>
             </button>
             <button type="button" className="k-point-ask" onClick={() => onPick(levels[chosen.at]!)}>
-              Ask about this <span aria-hidden>→</span>
+              <Trans>Ask about this</Trans> <span aria-hidden>→</span>
             </button>
           </div>
         </div>

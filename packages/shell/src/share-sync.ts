@@ -20,6 +20,7 @@
 // `trusted: false` and runs in the isolate. Being invited to someone's DATA says nothing about
 // whether their CODE should run with ambient authority — those are two different axes.
 
+import { t } from "@lingui/core/macro";
 import { createSpaceInvite, joinSpace, openJazzStore } from "@potyro/store";
 import { syncRelayUrl } from "./open-store.js";
 import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
@@ -42,6 +43,9 @@ interface InvitePayload {
   source?: string;
 }
 
+/** A joined app's name when the person already has one by that name: it says where it came from. */
+const sharedName = (name: string): string => t({ message: `${name} (shared)`, comment: "The name of an app someone shared with you, when you already have one with that name" });
+
 const encode = (p: InvitePayload): string => btoa(encodeURIComponent(JSON.stringify(p)));
 const decode = (raw: string): InvitePayload => JSON.parse(decodeURIComponent(atob(raw))) as InvitePayload;
 
@@ -50,7 +54,7 @@ const decode = (raw: string): InvitePayload => JSON.parse(decodeURIComponent(ato
 export async function createShareLink(appId: string, role: "writer" | "reader" = "writer"): Promise<string> {
   const app = getUserApp(appId);
   if (!app) throw new Error("app not found");
-  if (!app.sync) throw new Error("Turn sync on for this app first — sharing needs a space to invite into.");
+  if (!app.sync) throw new Error(t`Turn sync on for this app first — sharing needs a space to invite into.`);
 
   const { identityAccount, peekIdentity } = await import("@potyro/identity");
   // `identityAccount()` first, THEN the name: it is what mints the identity on a device that has
@@ -157,9 +161,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   const published = await readPublishedApp(joined.store);
   const source = published?.source ?? payload.source;
   if (!source) {
-    throw new Error(
-      "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link.",
-    );
+    throw new Error(t`This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link.`);
   }
 
   // Its own modules, checked against the lock that came with them (#281). Its libraries are fetched
@@ -183,7 +185,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
       id: appId,
       // Two apps called "Split" in one launcher is a puzzle every time it is opened. The one that
       // arrived says where it came from.
-      name: appId === payload.appId ? (published?.name ?? payload.name) : `${published?.name ?? payload.name} (shared)`,
+      name: appId === payload.appId ? (published?.name ?? payload.name) : sharedName(published?.name ?? payload.name),
       source,
       trusted: false, // arrived from someone else — runs in the isolate (rule 3)
       // Both written HERE rather than in a call afterwards: `saveUserApp` records a version, which

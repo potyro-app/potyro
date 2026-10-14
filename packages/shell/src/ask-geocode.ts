@@ -12,6 +12,7 @@
 // What leaves the device: the addresses the model proposed — never the person's records. Only when
 // the person has web search on. One request a second, as the geocoder's usage policy asks.
 
+import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import type { ReviewRow } from "./ask-apply.js";
 import type { SourceHttp } from "./ask-sources.js";
@@ -81,7 +82,10 @@ export async function placeByAddress(
     const guess = out[i]!.values[key] as Geo;
     const found = await lookUp(opts.http, guess.label!, opts.area ?? guess);
     if (found && km(found, guess) <= AGREE_KM) out[i]!.values[key] = { ...guess, lat: found.lat, lng: found.lng };
-    else out[i]!.notes.push(`Location approximate: “${guess.label}” could not be confirmed on the map.`);
+    else {
+      const address = guess.label!;
+      out[i]!.notes.push(t`Location approximate: “${address}” could not be confirmed on the map.`);
+    }
   }
   return out;
 }

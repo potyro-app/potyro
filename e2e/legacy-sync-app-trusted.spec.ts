@@ -68,7 +68,7 @@ test("a synced app created before the database rename still opens", async ({ pag
 
   await page.goto("/?user=legacy-app");
   await expect(page.locator(".k-sync-status")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: /New Place|Add Place/i }).first().click();
+  await page.getByRole("button", { name: /Add: Place|Add Place/i }).first().click();
   await page.getByLabel(/name/i).fill("Rua Augusta");
   await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
   await expect(page.locator(".k-list-row", { hasText: "Rua Augusta" })).toBeVisible();

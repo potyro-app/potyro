@@ -28,8 +28,8 @@ test("a place takes its position from the device's own location, and a real phot
   // form opened by tapping the map arrives with the point already filled, which would prove nothing.
   // The list page still adds with a button, and opens the geo field empty.
   await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
-  await page.getByRole("button", { name: /New Place/i }).first().click();
-  const form = page.getByRole("dialog", { name: "New Place" });
+  await page.getByRole("button", { name: /Add: Place/i }).first().click();
+  const form = page.getByRole("dialog", { name: "Add: Place" });
   await expect(form).toBeVisible({ timeout: 30_000 });
   await form.getByRole("textbox", { name: "Name" }).fill("Miradouro");
 
@@ -67,8 +67,8 @@ test("a plant with no watering yet is shown as due, even though the web cannot s
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
 
-  await page.getByRole("button", { name: /New Plant/i }).first().click();
-  const form = page.getByRole("dialog", { name: "New Plant" });
+  await page.getByRole("button", { name: /Add: Plant/i }).first().click();
+  const form = page.getByRole("dialog", { name: "Add: Plant" });
   await expect(form).toBeVisible({ timeout: 30_000 });
   await form.getByRole("textbox", { name: "Name" }).fill("Fern");
   await form.getByRole("button", { name: /^(Save|Create)$/i }).first().click();

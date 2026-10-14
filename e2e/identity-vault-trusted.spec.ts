@@ -217,7 +217,7 @@ test("a browser from before the rename opens its synced and local apps, with the
   );
   const page = await ctx.newPage();
   const add = async (title: string) => {
-    await page.getByRole("button", { name: /New Note|Add Note/i }).first().click();
+    await page.getByRole("button", { name: /Add: Note|Add Note/i }).first().click();
     await page.getByLabel(/title/i).fill(title);
     await page.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
     await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible();

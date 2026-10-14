@@ -8,6 +8,9 @@
 
 import { useEffect, useState } from "react";
 import { personHue, personInitials } from "@potyro/runtime";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { shellDialogs } from "./dialog.js";
 
 type Role = "admin" | "writer" | "reader";
@@ -17,13 +20,14 @@ interface Member {
   role: Role;
 }
 
-const ROLE_WORDS: Record<Role, string> = {
-  admin: "Owner · can invite and remove people",
-  writer: "Can edit",
-  reader: "Can view",
+const ROLE_WORDS: Record<Role, MessageDescriptor> = {
+  admin: msg`Owner · can invite and remove people`,
+  writer: msg({ message: "Can edit", comment: "People panel: a person's role in a shared app" }),
+  reader: msg({ message: "Can view", comment: "People panel: a person's role in a shared app" }),
 };
 
 export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: string; appName: string; meId?: string; onClose: () => void; toast: (msg: string) => void }) {
+  const { t } = useLingui();
   const [members, setMembers] = useState<Member[] | null>(null);
   const [myRole, setMyRole] = useState<Role>("reader");
   const [inviting, setInviting] = useState(false);
@@ -54,11 +58,10 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
 
   const remove = async (m: Member): Promise<void> => {
     const first = m.name.split(/\s+/)[0] ?? m.name;
-    const ok = await shellDialogs.confirm(`Remove ${m.name}?`, {
-      detail:
-        `${first} can no longer open or change “${appName}”, and won’t receive anything new. What’s already on ${first}’s devices stays there. ` +
-        "Links you shared before stop working — share again to invite someone new.",
-      ok: "Remove",
+    const name = m.name;
+    const ok = await shellDialogs.confirm(t`Remove ${name}?`, {
+      detail: t`${first} can no longer open or change “${appName}”, and won’t receive anything new. What’s already on ${first}’s devices stays there. Links you shared before stop working — share again to invite someone new.`,
+      ok: t({ message: "Remove", comment: "Button: remove a person from a shared app" }),
       destructive: true,
     });
     if (!ok) return;
@@ -68,7 +71,7 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
       await removeMember(m.id);
       const space = await currentSpace();
       if (space) setMembers(space.members);
-      toast(`Removed ${m.name}`);
+      toast(t`Removed ${name}`);
     } catch (e) {
       await shellDialogs.confirm(e instanceof Error ? e.message : String(e));
     } finally {
@@ -83,7 +86,7 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
       const link = await createShareLink(appId, role);
       setInviting(false);
       await shellDialogs.share(
-        role === "writer" ? "Send this link. Whoever opens it joins your app and can change it." : "Send this link. Whoever opens it can see your app, but not change it.",
+        role === "writer" ? t`Send this link. Whoever opens it joins your app and can change it.` : t`Send this link. Whoever opens it can see your app, but not change it.`,
         link,
       );
     } catch (e) {
@@ -95,15 +98,21 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
 
   return (
     <div className="k-modal-scrim" onClick={onClose}>
-      <div className="k-modal k-people" role="dialog" aria-modal="true" aria-label="People" onClick={(e) => e.stopPropagation()}>
+      <div className="k-modal k-people" role="dialog" aria-modal="true" aria-label={t`People`} onClick={(e) => e.stopPropagation()}>
         <header className="k-people-head">
-          <h2>People</h2>
-          <button type="button" className="k-add" aria-label="Close" onClick={onClose}>
+          <h2>
+            <Trans>People</Trans>
+          </h2>
+          <button type="button" className="k-add" aria-label={t`Close`} onClick={onClose}>
             ✕
           </button>
         </header>
-        <p className="k-muted">Everyone who can open “{appName}”.</p>
-        {members === null ? <p className="k-loading">Loading…</p> : null}
+        <p className="k-muted">
+          <Trans>Everyone who can open “{appName}”.</Trans>
+        </p>
+        {members === null ? <p className="k-loading">
+            <Trans>Loading…</Trans>
+          </p> : null}
         <ul className="k-people-list">
           {(members ?? []).map((m) => (
             <li key={m.id} className="k-people-row">
@@ -113,13 +122,13 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
               <span className="k-people-who">
                 <b>
                   {m.name}
-                  {m.id === meId ? " (you)" : ""}
+                  {m.id === meId ? t({ message: " (you)", comment: "People panel: after your own name in the list" }) : ""}
                 </b>
-                <span className="k-muted">{ROLE_WORDS[m.role]}</span>
+                <span className="k-muted">{t(ROLE_WORDS[m.role])}</span>
               </span>
               {isOwner && m.id !== meId && m.role !== "admin" ? (
                 <button type="button" className="k-add k-people-remove" disabled={busy} onClick={() => void remove(m)}>
-                  Remove
+                  <Trans comment="Button: remove a person from a shared app">Remove</Trans>
                 </button>
               ) : null}
             </li>
@@ -127,24 +136,32 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
         </ul>
         {isOwner ? (
           inviting ? (
-            <div className="k-people-invite" role="group" aria-label="Invite someone">
-              <span className="k-muted">What can they do?</span>
+            <div className="k-people-invite" role="group" aria-label={t`Invite someone`}>
+              <span className="k-muted">
+                <Trans>What can they do?</Trans>
+              </span>
               <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void invite("writer")}>
-                Can edit
+                <Trans comment="People panel: invite someone who can change the app">Can edit</Trans>
               </button>
               <button type="button" className="k-add" disabled={busy} onClick={() => void invite("reader")}>
-                Can view
+                <Trans comment="People panel: invite someone who can only look">Can view</Trans>
               </button>
             </div>
           ) : (
             <button type="button" className="k-add k-primary-action k-people-invite-btn" disabled={busy} onClick={() => setInviting(true)}>
-              ＋ Invite someone
+              ＋ <Trans>Invite someone</Trans>
             </button>
           )
         ) : members ? (
-          <p className="k-muted">Only {owner?.name ?? "the person who created this app"}, who created this app, can invite or remove people.</p>
+          <p className="k-muted">
+            {owner ? <OnlyOwner name={owner.name} /> : <Trans>Only the person who created this app, who created this app, can invite or remove people.</Trans>}
+          </p>
         ) : null}
       </div>
     </div>
   );
+}
+
+function OnlyOwner({ name }: { name: string }) {
+  return <Trans>Only {name}, who created this app, can invite or remove people.</Trans>;
 }
