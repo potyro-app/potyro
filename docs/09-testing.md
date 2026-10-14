@@ -1,22 +1,31 @@
 # 09 · Testing Strategy
 
 Tests are per-WP and ship in the same PR as the code. Two things need special discipline: the
-**host isolate** (untrusted code must not escape its sandbox or exceed limits) and the
+**sealed box** (untrusted code must not escape its sandbox or exceed limits) and the
 **capability implementations** (web vs native must behave identically).
 
 ## Layers
 
 - **Unit** (Vitest, every package): pure logic — parser, evaluator, validator, query planner,
   migration ops, Store CRUD against `MemoryStore`.
-- **Host / isolate tests** (`host`): (a) **DirectHost** calls functions in-process and returns
-  correct values; (b) **IsolateHost** runs untrusted bundles in QuickJS-WASM and an adversarial
-  fixture that tries to reach `fetch`/`globalThis`/filesystem/another app's data **fails closed**;
-  (c) memory ceiling and timeout abort a runaway app; (d) `makeCtx` mediation: an ungranted cap
-  is absent, a granted one is the scoped wrapper; (e) marshalling round-trips records/params/values.
+- **Host tests** (`host`): (a) **DirectHost** calls functions in-process and returns correct
+  values; (b) the **untrusted contract** (`untrusted-host.test.ts`, `scope-ctx`, `value-gate`,
+  `files-ctx`, `words-parity`, `isolate-view-controls`, `computed-def`) runs against **both** sealed
+  runners while both exist (`test/runners.ts`): the browser realm — its worker runtime in a Node
+  worker thread, the host side the product's — and QuickJS-WASM; (c) a deadline and the realm's
+  heartbeat abort a runaway app, and the thread is really gone (`realm-host.test.ts`, with the op
+  allow-list, the flood guard and mediated fetch); (d) `makeCtx` mediation: an ungranted cap is
+  absent, a granted one is the scoped wrapper; (e) values round-trip. Containment is a browser
+  property, so it is asserted in a browser: an adversarial app that tries to reach the network, the
+  shell's storage or another identity **fails closed** (`e2e/realm-escape-sandbox.spec.ts`, counted
+  at a probe server, with a trusted control), and the shell's `frame-src 'none'` is checked where it
+  is served (`e2e/shell-csp-*.spec.ts`). QuickJS's own containment test stays in the contract suite.
 - **Integration** (`runtime`): load each `examples/*.app.ts` (via DirectHost), run
   representative JS-filter queries and actions against `MemoryStore` + `FakeCapabilities`,
   assert resolved relations, memoized computed values, and reminder scheduling. Run at least one
-  example a second time via **IsolateHost** to prove parity between trusted and untrusted execution.
+  example a second time sealed to prove parity between trusted and untrusted execution; the
+  `*-sandbox.spec.ts` e2e specs run every example untrusted in the realm (`POTYRO_QUICKJS=1` runs
+  them on the QuickJS fallback, `POTYRO_REALM_BROWSERS=1` the realm's own specs in Firefox and WebKit).
 - **View tests** (`views`): render each view against a fixture runtime; assert bindings and,
   for `steps`, the transient done-state behavior.
 - **Conformance suite** (`pnpm conformance`): the same behavioural spec run against **both**
@@ -34,7 +43,7 @@ Tests are per-WP and ship in the same PR as the code. Two things need special di
 
 ## Must-pass invariants (encode as tests)
 
-1. **Untrusted code is contained:** an adversarial app run via IsolateHost cannot reach network,
+1. **Untrusted code is contained:** an adversarial app run sealed cannot reach network,
    filesystem, globals, or another app's store; ungranted caps are absent; limits abort runaways.
    (Trusted apps intentionally have full authority — not a failure.)
 2. **Every example type-checks (tsc) and validates** (schema Zod over declarative parts) on CI.

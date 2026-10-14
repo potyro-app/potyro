@@ -10,9 +10,8 @@ import { MemoryStore, type FieldEdit } from "@potyro/store";
 import { defineApp } from "potyro";
 import type { NavBridge, UiBridge } from "@potyro/host";
 import { FakeCapabilities } from "@potyro/capabilities";
-import { newAsyncContext } from "quickjs-emscripten";
 import { createHost, type MakeCtxBase } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { RUNNERS } from "./runners.js";
 
 const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
 const nav: NavBridge = { navigate: () => {} };
@@ -110,7 +109,8 @@ describe("reading a value that does not fit", () => {
   });
 });
 
-// The same, from inside the isolate: the path an app shared with you takes.
+// The same, from inside the sealed box (the realm, and the QuickJS fallback): the path an app shared
+// with you takes.
 const BUNDLE = `
 globalThis.__potyroApp = {
   id: "trip", name: "Trip", version: "1.0.0", schemaVersion: 1,
@@ -124,12 +124,12 @@ globalThis.__potyroApp = {
 };
 `;
 
-describe("across the isolate", () => {
+describe.each(RUNNERS)("across the sealed box ($name)", (runner) => {
   async function isolated() {
     const store = new MemoryStore();
     await store.open("trip");
     const toasts: string[] = [];
-    const loadIsolated = createIsolateLoader({ store, newContext: () => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike> });
+    const loadIsolated = await runner.loader(store);
     const host = createHost({ loadIsolated });
     const loaded = await host.load({ kind: "bundle", code: BUNDLE, provenance: "untrusted" });
     const ctx = host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui: { ...ui, toast: (m) => void toasts.push(m) }, nav, params: {}, me: ana } as MakeCtxBase);

@@ -2,9 +2,11 @@
   "name": "@potyro/host",
   "version": "0.0.0",
   "type": "module",
-  "description": "Loading, execution & trust (WP2): DirectHost runner + makeCtx + capability mediation. IsolateHost (QuickJS-WASM) lands after DirectHost.",
+  "description": "Loading, execution & trust (WP2): DirectHost runner, makeCtx + capability mediation, and the untrusted runners — the browser realm (./realm) and the QuickJS-WASM isolate (./isolate, the fallback).",
   "exports": {
     ".": "./src/index.ts",
+    "./realm": "./src/realm/index.ts",
+    "./realm-build.mjs": "./realm-build.mjs",
     "./isolate": "./src/isolate/index.ts"
   },
   "types": "./src/index.ts",
@@ -19,5 +21,8 @@
     "intl-messageformat": "^10.7.18",
     "potyro": "workspace:*",
     "quickjs-emscripten": "^0.31.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
   }
 }
