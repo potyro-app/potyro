@@ -12,6 +12,9 @@
 // drafts and fixes them from feedback (#297), and someone choosing one should know why a sentence
 // reads oddly.
 //
+// Under it, "Something reads wrong? Suggest a better wording" (#300, suggest-wording.tsx): how the
+// drafts get better.
+//
 // Switching is live: the chunk loads (from the service worker's cache when offline) and every
 // screen reading `useLingui` re-renders. Nothing reloads.
 
@@ -28,6 +31,7 @@ import {
   setLocale,
   useLocale,
 } from "@potyro/i18n";
+import { SuggestWording } from "./suggest-wording.js";
 
 /** The select's id, for the visible "Language" label in the You panel. */
 export const LANGUAGE_SELECT_ID = "k-lang-select";
@@ -114,6 +118,7 @@ export function LanguagePicker() {
           <Trans>A draft translation was written by a model and may read oddly in places. It is being improved.</Trans>
         </p>
       ) : null}
+      <SuggestWording />
     </div>
   );
 }

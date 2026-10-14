@@ -73,6 +73,15 @@ describe("translate", () => {
     expect(out.detail).toContain('- entities.item.computed.total.label: "Total"');
   });
 
+  it("lists a computed's value words — labels and format — as slots to translate", async () => {
+    const source = SOURCE.replace("computed: { line: (r) => `Buy ${r.name}` },", 'computed: { kind: { labels: { big: "big" }, format: "{value} items", value: (r) => "big" } },');
+    expect(source).not.toBe(SOURCE);
+    const tools = buildDiscoveryTools({ check: async () => [], source, draft: createDraft(source) });
+    const out = await runTool(tools, { id: "1", name: "translate", args: { language: "de" } });
+    expect(out.detail).toContain('- entities.item.computed.kind.labels.big: "big"');
+    expect(out.detail).toContain('- entities.item.computed.kind.format: "{value} items"');
+  });
+
   it("splices the words in, and the loop's edits then apply to the translated app", async () => {
     const { engine, seen } = scripted([
       { content: "", tool_calls: [call("t1", { language: "de" })] },

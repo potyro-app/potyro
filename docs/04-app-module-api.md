@@ -41,6 +41,17 @@ humanised ("Calories Per Serving"), only when there is none. Both spellings run 
 provenances; `computedInfo` / `computedRun` (from `potyro`) read either, as `actionInfo` does for
 actions. Additive and optional: no app bumps `schemaVersion` for it.
 
+Its **value** reads in the person's language too, through two more optional words slots on the object
+form. **`labels`**, keyed by value, is for a computed that returns one of a few keys (recipes' `diet`:
+`"vegan"`, shown as a badge): the views show `labels[value] ?? value` wherever the value is written
+out — a detail row, a table cell, a badge, a group heading — exactly as for an enum field, and app
+functions still see the key. **`format`** is for a computed that returns an object (workout's
+`lastBest`, `{ kg, reps }`, which a custom view prefills from): an ICU message, the kind `ctx.t`
+takes, over the object's text, number and date properties (`{value}` for a scalar), formatted by the
+host for the person: `"{kg, plural, =0 {{reps} reps} other {{kg, number} kg × {reps}}}"`. A message
+that cannot be said with what the value has shows the value as before. Wording a message cannot
+express is a `value` that returns the words itself (`ctx.t`, `ctx.format`).
+
 ```ts
 computed: {
   calories: (r) => r.ingredients.reduce(…),                       // used only by other logic
@@ -189,7 +200,8 @@ version) is not bumped.
 Every declarative slot a person reads takes **`Words`**: a string, the same in every language, or a
 map, `{ en: "Quantity", pl: "Ilość" }`. That is entity and field labels, help, placeholders and
 units, page, group, section and layout titles, empty texts, chart and aggregate titles, button,
-action, summary, stat, chip and quick-action labels, a computed's `label` (#310), the scope's label
+action, summary, stat, chip and quick-action labels, a computed's `label` (#310), `labels` and
+`format`, the scope's label
 and the app's `name`. An
 `enum` or `tags` field gains **`labels`**, keyed by option: the option is what records store and
 never changes by language; only its words do. The list exists once, in the Zod schema (`zWords` at

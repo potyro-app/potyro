@@ -271,7 +271,9 @@ map is resolved the same way. Every ctx it builds carries `language` and `format
 declares no language is shown as written. The only view-side addition is option `labels`: an enum or
 tags value reads as `labels[option] ?? option` on boards, pills, buttons, chips and headings. And a
 key's heading (`fieldLabel`: a detail row, a table column) is the field's `label`, else the computed's
-`label` (#310), else the key humanised.
+`label` (#310), else the key humanised. A key's value (`shownValue`: a detail row, a table cell, a
+badge, a group heading) is an option's `labels` entry, a computed's `labels` entry, or a computed's
+`format` message formatted with `runtime.ctx.t` over the value's properties — else the value.
 
 ## View contract (packages/views)
 
