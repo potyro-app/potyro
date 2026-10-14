@@ -124,6 +124,17 @@ async function escapes(ctx: Ctx): Promise<Report> {
   return r;
 }
 
+async function cacheTry(write?: string): Promise<string> {
+  try {
+    const c = await (globalThis as unknown as { caches: CacheStorage }).caches.open("potyro-channel");
+    if (write) await c.put("https://potyro.invalid/k", new Response(write));
+    const hit = await c.match("https://potyro.invalid/k");
+    return `caches: ${hit ? await hit.text() : "nothing there"}`;
+  } catch (e) {
+    return `caches: blocked (${e instanceof Error ? e.name : String(e)})`;
+  }
+}
+
 export default defineApp({
   id: "realm-escape",
   name: "Escape attempts",
@@ -141,6 +152,10 @@ export default defineApp({
         // Returns at once, then spins: only the heartbeat can see this one.
         { label: "Return then spin", run: (ctx) => { setTimeout(() => { for (;;) { /* forever */ } }, 50); ctx.ui.toast("returned"); } },
         { label: "Still here?", run: (ctx) => ctx.ui.toast(`still here: ${new Intl.NumberFormat("de-DE").format(1234.5)}`) },
+        // WebKit gives an opaque-origin Worker a working `caches`. It must not survive into the next
+        // realm, or it would be a channel from one app (or one run) to the next.
+        { label: "Cache write", run: async (ctx) => ctx.ui.toast(await cacheTry(String(Date.now()))) },
+        { label: "Cache read", run: async (ctx) => ctx.ui.toast(await cacheTry()) },
       ],
       view: { type: "list", entity: "note", display: { primary: "text" } },
     },

@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // M1 e2e smoke (issue #15): verifies the recipes DoD in a real browser — both the TRUSTED path
-// (`pnpm dev`) and the SANDBOX path (`pnpm dev:sandbox`, same app untrusted in the QuickJS-WASM
-// isolate). Two Vite dev servers run on distinct ports; each project targets one via baseURL.
+// (`pnpm dev`) and the SANDBOX path (`pnpm dev:sandbox`, same app untrusted, its logic in the browser
+// realm, #272). Two Vite dev servers run on distinct ports; each project targets one via baseURL.
 //
 // Requires Node 20+ (Playwright constraint). In CI run under Node 20/22; locally the servers can be
 // launched by Playwright's webServer below.
@@ -13,6 +13,8 @@ const SANDBOX_PORT = 4189;
 // the relay default, the generator endpoint and the service worker all behave differently there.
 // KA-28 exists because a production build had no relay and nobody had ever run one.
 const PROD_PORT = 4190;
+/** `pnpm dev:sandbox:quickjs`: shared apps in the QuickJS fallback, for `POTYRO_QUICKJS=1` (#272). */
+const QUICKJS_PORT = 4191;
 const shellVite = (extra: string, port: number) =>
   `pnpm --filter @potyro/shell exec vite ${extra} --port ${port} --strictPort`;
 
@@ -77,6 +79,18 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    // The QuickJS fallback (#272), only when asked for: `POTYRO_QUICKJS=1 pnpm e2e --project=sandbox-quickjs`
+    // runs every sandbox spec with shared apps in QuickJS, while it is still the flag's other side.
+    ...(process.env.POTYRO_QUICKJS
+      ? [
+          {
+            command: shellVite("--mode sandbox-quickjs", QUICKJS_PORT),
+            url: `http://localhost:${QUICKJS_PORT}`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+          },
+        ]
+      : []),
     // Only when asked for (`pnpm test:e2e:prod`). Playwright starts every `webServer` on every run
     // regardless of the project selected, so leaving this in unconditionally made each ordinary run
     // pay for a full production build — and the CPU it stole made the parallel suite flaky.
@@ -128,6 +142,33 @@ export default defineConfig({
       testMatch: /.*sandbox\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}` },
     },
+    // The browser realm's own specs in Firefox and WebKit (#272): its containment, its watchdog and the
+    // shell's frame-src are properties of each engine, measured in all three (docs/22). OPT-IN
+    // (`POTYRO_REALM_BROWSERS=1 pnpm e2e --project=sandbox-firefox --project=sandbox-webkit`) for the
+    // reason trusted-firefox is: the rest of the sandbox suite has never run on these engines.
+    ...(process.env.POTYRO_REALM_BROWSERS
+      ? (
+          [
+            ["sandbox-firefox", devices["Desktop Firefox"]],
+            ["sandbox-webkit", devices["Desktop Safari"]],
+          ] as const
+        ).map(([name, device]) => ({
+          name,
+          testMatch: /(realm|realm-escape|shell-csp)-sandbox\.spec\.ts/,
+          use: { ...device, baseURL: `http://localhost:${SANDBOX_PORT}` },
+        }))
+      : []),
+    ...(process.env.POTYRO_QUICKJS
+      ? [
+          {
+            name: "sandbox-quickjs",
+            // The realm's own specs assert the realm; every other sandbox spec is the shared contract.
+            testMatch: /.*sandbox\.spec\.ts/,
+            testIgnore: /(realm|realm-escape)-sandbox\.spec\.ts/,
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${QUICKJS_PORT}` },
+          },
+        ]
+      : []),
     // Claims that are only true of a DEPLOYED build. Kept a separate project so the ordinary suite
     // does not pay for a production build on every run.
     //

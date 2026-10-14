@@ -87,7 +87,8 @@ const messageOf = (e: unknown): string => (e instanceof Error ? `${e.name}: ${e.
  */
 export function missingFeature(error: unknown, runner: SandboxRunner = sandboxRunner()): MissingFeature | undefined {
   const text = messageOf(error);
-  const notDefined = /'?([A-Za-z_$][\w$]*)'? is not defined/.exec(text);
+  // V8 and SpiderMonkey say "x is not defined"; WebKit — Safari, and so the realm on an iPhone — "Can't find variable: x".
+  const notDefined = /'?([A-Za-z_$][\w$]*)'? is not defined/.exec(text) ?? /Can't find variable: ([A-Za-z_$][\w$]*)/.exec(text);
   if (notDefined) {
     const found = feature(notDefined[1]!, runner);
     if (found) return found;
