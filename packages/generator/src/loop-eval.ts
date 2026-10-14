@@ -89,10 +89,12 @@ export interface StepTrace {
   repeats: number;
   /** Fresh chains started after two candidates were turned back (#278). */
   restarts?: number;
+  /** Calls to `read_conversation`: older requests the model chose to read (#279). */
+  conversationReads?: number;
 }
 
 export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepTrace } {
-  const t: StepTrace = { candidates: 0, passedOn: null, repeats: 0, restarts: 0 };
+  const t: StepTrace = { candidates: 0, passedOn: null, repeats: 0, restarts: 0, conversationReads: 0 };
   return {
     onStep: (s) => {
       if (s.kind === "candidate") {
@@ -101,6 +103,7 @@ export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepT
       }
       if (s.kind === "unusable" && s.repeat) t.repeats += 1;
       if (s.kind === "unusable" && s.restart) t.restarts = (t.restarts ?? 0) + 1;
+      if (s.kind === "tool" && s.name === "read_conversation") t.conversationReads = (t.conversationReads ?? 0) + 1;
     },
     read: () => ({ ...t }),
   };
@@ -109,6 +112,8 @@ export function stepTracer(): { onStep: (s: LoopStep) => void; read: () => StepT
 /** One case, as the loop ended it. */
 export interface LoopRecord extends StepTrace {
   ended: ModifyLoopOutcome["kind"];
+  /** The loop ended with a request to the Potyro team (#263): alone, beside a change, or after a give-up. */
+  platformRequest?: boolean;
   cause: GiveUp | null;
   calls: number;
   promptTokens: number;
@@ -132,6 +137,11 @@ export interface LoopSummary {
   tokensPerCase: number;
   repeatsSeen: number;
   restarts: number;
+  /** Cases that ended with a request to the Potyro team (#263). */
+  platformRequests: number;
+  /** Calls to `read_conversation` in all, and the cases that made at least one (#279). */
+  conversationReads: number;
+  readTheConversation: number;
   /** Results that passed, by the candidate they passed on. */
   passedOn: { "1": number; "2": number; "3": number; "4+": number };
 }
@@ -147,7 +157,13 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
   let asked = 0;
   let unpriced = 0;
   let restarts = 0;
+  let conversationReads = 0;
+  let readTheConversation = 0;
+  let platformRequests = 0;
   for (const r of records) {
+    if (r.platformRequest) platformRequests += 1;
+    conversationReads += r.conversationReads ?? 0;
+    if (r.conversationReads) readTheConversation += 1;
     if (r.ended === "failed" && r.cause) gaveUp[r.cause] += 1;
     if (r.ended === "question") asked += 1;
     calls += r.calls;
@@ -173,6 +189,9 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
     tokensPerCase: n ? (promptTokens + completionTokens) / n : 0,
     repeatsSeen,
     restarts,
+    conversationReads,
+    readTheConversation,
+    platformRequests,
     passedOn,
   };
 }
@@ -191,7 +210,7 @@ export function summarizeLoop(records: readonly LoopRecord[]): LoopSummary {
  * Usage is reported from the text's length (4 characters a token) at DeepSeek V4 Flash's list price,
  * so the token and cost columns have something to add up; they are not a model's numbers.
  */
-export type ScriptedLoopKind = "scripted-loop" | "scripted-loop-tools" | "scripted-loop-language";
+export type ScriptedLoopKind = "scripted-loop" | "scripted-loop-tools" | "scripted-loop-language" | "scripted-loop-conversation" | "scripted-loop-platform";
 
 /**
  * `scripted-loop-language` (#301): one `lookup`, then an edit that renames the app, with the new
@@ -199,7 +218,18 @@ export type ScriptedLoopKind = "scripted-loop" | "scripted-loop-tools" | "script
  * line, so a run where the line never reached the model writes English and the language columns say
  * so. With `--language pl` every case must report its new label and its reply in Polish.
  */
-export const SCRIPTED_LOOP_KINDS: readonly ScriptedLoopKind[] = ["scripted-loop", "scripted-loop-tools", "scripted-loop-language"];
+/**
+ * `scripted-loop-conversation` (#279): `read_conversation` first when the loop offers it (a recap
+ * that left requests out), `lookup` otherwise, then the same edit as `scripted-loop`. With
+ * `--conversation both` the conversation cases whose history is longer than the recap must report a
+ * read; with `--conversation recap` or `none`, none may.
+ */
+/**
+ * `scripted-loop-platform` (#263): `lookup` of a name nothing declares (so the loop offers the
+ * marker), then the usual edit with a `NEEDS-PLATFORM:` line, then the request when the tools-off
+ * call asks for it. Every case must report a request to the Potyro team.
+ */
+export const SCRIPTED_LOOP_KINDS: readonly ScriptedLoopKind[] = ["scripted-loop", "scripted-loop-tools", "scripted-loop-language", "scripted-loop-conversation", "scripted-loop-platform"];
 
 const SCRIPTED_EDIT = "Marking the app.\n```ts\n<<<<<<< SEARCH\nexport default defineApp({\n=======\n// edited by the eval\nexport default defineApp({\n>>>>>>> REPLACE\n```\n";
 
@@ -231,9 +261,16 @@ export function scriptedLoopEngine(kind: ScriptedLoopKind): ChatEngine {
           const lookup = kind === "scripted-loop-tools" || n === 1;
           const first = req.messages.find((m) => m.role === "user")?.content ?? "";
           const edit = kind === "scripted-loop-language" ? scriptedLanguageEdit(first) : SCRIPTED_EDIT;
-          const message = lookup
-            ? { content: "", tool_calls: [{ id: `t${n}`, type: "function" as const, function: { name: "lookup", arguments: JSON.stringify({ query: kind === "scripted-loop-tools" ? `step ${n}` : "defineApp" }) } }] }
-            : { content: edit };
+          const reads = kind === "scripted-loop-conversation" && (req.tools ?? []).some((t) => t.function.name === "read_conversation");
+          const query = kind === "scripted-loop-tools" ? `step ${n}` : kind === "scripted-loop-platform" ? "barcodeScanner" : "defineApp";
+          const tool = reads ? { name: "read_conversation", arguments: "{}" } : { name: "lookup", arguments: JSON.stringify({ query }) };
+          const platform = kind === "scripted-loop-platform";
+          const message =
+            platform && req.tool_choice === "none"
+              ? { content: "TITLE: Read barcodes\nThe scripted person wanted to scan a barcode." }
+              : lookup
+                ? { content: "", tool_calls: [{ id: `t${n}`, type: "function" as const, function: tool }] }
+                : { content: platform ? SCRIPTED_EDIT.replace("Marking the app.", "Marking the app.\nNEEDS-PLATFORM: reading barcodes") : edit };
           const promptTokens = Math.ceil(req.messages.reduce((k, m) => k + m.content.length, 0) / 4);
           const completionTokens = Math.ceil((message.content.length || 40) / 4);
           return { choices: [{ message }], usage: { promptTokens, completionTokens, cost: (promptTokens * 0.14 + completionTokens * 0.28) / 1e6 } };

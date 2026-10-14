@@ -21,6 +21,8 @@
 //   discovery-tools.ts -> ../reference.generated.js (a string), ../prompt.js (the examples), potyro
 //                       (VIEW_FIELDS), and `import type` from tools.ts
 //   modify-system-prompt.ts -> ../prompt.js (SYSTEM_PROMPT)
+//   conversation.ts  -> `import type` from tools.ts — the earlier conversation's recap and tool (#279)
+//   platform-request.ts -> ../language.js, ../source-words.js (above) — requests to the Potyro team (#263)
 //   ask.ts           -> potyro (fieldValueProblem, humanizeKey), tools.ts, and `import type` from
 //                       ../chat-backend.js — Ask (#213)
 //   translate-tool.ts -> ../source-words.js -> potyro, and @babel/parser + magic-string by dynamic
@@ -36,6 +38,8 @@ export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
 export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
+export { conversationRecap, conversationRounds, buildConversationTool, DEFAULT_RECAP_ROUNDS, type ConversationEntry, type ConversationKind } from "./conversation.js";
+export { NEEDS_PLATFORM, appStructure, platformSignal, type PlatformRequest } from "./platform-request.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";
 export { buildDiscoveryTools, lookupReference, type DiscoveryDeps } from "./discovery-tools.js";
 export { buildTranslateTool, createDraft, type TranslationDraft, type TranslateToolDeps } from "./translate-tool.js";

@@ -1,0 +1,18 @@
+{
+  "name": "@potyro/platform-requests",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Requests to the Potyro team for what Potyro itself lacks (#263): the payload the Studio sends (browser-safe), and the small server-side relay that files them as GitHub issues in fuzue/potyro, labelled platform-request, rate-limited per device, size-capped and grouped by duplicates. Depends on no Potyro package. Deployment: docs/16.",
+  "exports": {
+    ".": "./src/request.ts",
+    "./relay": "./src/relay.ts"
+  },
+  "types": "./src/request.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --experimental-strip-types src/server.ts"
+  }
+}

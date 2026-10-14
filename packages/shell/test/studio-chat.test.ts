@@ -63,6 +63,22 @@ describe("the record", () => {
     expect((await chat.appendMessage("notes", { kind: "ask", text: "next" }, at(4))).n).toBe(3);
   });
 
+  // #263: a request to the Potyro team rides on the agent's message, and what came of sending it on
+  // an event — kept, and on screen, so the card is still there after a reload.
+  it("keeps a request to the Potyro team, and what came of sending it", async () => {
+    const platform = { id: "req-1", title: "Scan barcodes", body: "I wanted to scan." };
+    await chat.appendMessage("plants", { kind: "refusal", text: "Potyro can't do this yet.", platform }, at(1));
+    await chat.appendMessage("plants", { kind: "event", text: "Sent.", request: { id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" } }, at(2));
+    const all = await chat.listMessages("plants");
+    expect(all[0]!.platform).toEqual(platform);
+    expect(all[1]!.request).toEqual({ id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" });
+    const items = chat.threadItems(all, []);
+    expect(items[0]).toMatchObject({ type: "agent", platform });
+    expect(items[1]).toMatchObject({ type: "event", request: { id: "req-1", state: "sent" } });
+    // Something malformed that arrived from another device is not read as a request.
+    expect(chat.readChatMessage({ id: "x", chatId: "p", n: 1, text: "t", kind: "refusal", platform: { id: 1 } })?.platform).toBeUndefined();
+  });
+
   it("keeps one chat apart from another", async () => {
     await chat.appendMessage("a", { kind: "ask", text: "one" }, at(1));
     await chat.appendMessage("b", { kind: "ask", text: "two" }, at(2));
@@ -172,6 +188,40 @@ describe("what the agent is told", () => {
       { kind: "ask", text: "a fixed list: work, home" },
     ]);
     expect(brief).toBe("add tags\n\nYou asked: Free text or a fixed list?\nThe answer: a fixed list: work, home");
+  });
+
+  // #279: what was said BEFORE the current request, for the loop's recap — the conversation as it
+  // reads, versions made outside the Studio and rollbacks included, and nothing of the current one.
+  it("what came before the current request: earlier requests, answers, refusals and rollbacks", () => {
+    const messages = [
+      { id: "m1", chatId: "a", n: 1, at: at(1), kind: "ask" as const, text: "a notes app" },
+      { id: "m2", chatId: "a", n: 2, at: at(2), kind: "version" as const, text: "Created it.", seq: 1 },
+      { id: "m3", chatId: "a", n: 3, at: at(3), kind: "ask" as const, text: "text me my notes", point: { label: "list", words: "the Notes list" } },
+      { id: "m4", chatId: "a", n: 4, at: at(4), kind: "refusal" as const, text: "It can't send texts.", detail: "NOT-IN-APP: no sms" },
+      { id: "m5", chatId: "a", n: 5, at: at(5), kind: "ask" as const, text: "add tags" },
+      { id: "m6", chatId: "a", n: 6, at: at(6), kind: "version" as const, text: "Added tags.", seq: 2 },
+      { id: "m7", chatId: "a", n: 7, at: at(8), kind: "ask" as const, text: "make tags a fixed list" },
+      { id: "m8", chatId: "a", n: 8, at: at(9), kind: "question" as const, text: "Which tags?" },
+      { id: "m9", chatId: "a", n: 9, at: at(10), kind: "ask" as const, text: "work, home" },
+    ];
+    const v = (seq: number, extra: Partial<AppVersion>): AppVersion => ({ id: `v${seq}`, appId: "a", seq, source: `s${seq}`, createdAt: at(seq), origin: "edited", ...extra });
+    const versions = [v(3, { origin: "restored", note: "went back to version 1", createdAt: at(7) }), v(2, { note: "add tags" }), v(1, { origin: "created", note: "a notes app" })];
+    const earlier = chat.earlierConversation(messages, versions);
+    expect(earlier).toEqual([
+      { kind: "ask", text: "a notes app" },
+      { kind: "version", text: "Created it." },
+      { kind: "ask", text: "text me my notes", about: "the Notes list" },
+      { kind: "refusal", text: "It can't send texts." },
+      { kind: "ask", text: "add tags" },
+      { kind: "version", text: "Added tags." },
+      { kind: "event", text: "went back to version 1" },
+    ]);
+    // The developer's detail never goes: only what the person saw.
+    expect(JSON.stringify(earlier)).not.toContain("NOT-IN-APP");
+  });
+
+  it("nothing before a first request", () => {
+    expect(chat.earlierConversation([{ id: "m1", chatId: "a", n: 1, at: at(1), kind: "ask", text: "a notes app" }], [])).toEqual([]);
   });
 
   it("a single request is passed as it was typed", () => {

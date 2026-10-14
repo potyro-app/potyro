@@ -5962,6 +5962,81 @@ body:has(.k-tabbar) .k-toasts {
   margin-top: var(--space-3);
 }
 
+/* tokens-only: start — a request to the Potyro team (#263) */
+/* Under the agent's answer: what the person asked for, as a request to the people who make Potyro.
+   A dashed edge like a held card — it is something waiting on a decision — but in the ink, not the
+   warning colour: nothing went wrong. */
+.k-ask-card {
+  width: min(30rem, 100%);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-sizing: border-box;
+}
+.k-ask-card[data-sent="sent"] {
+  border-style: solid;
+}
+.k-ask-card-head {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 650;
+}
+.k-ask-card-lede,
+.k-ask-card-note,
+.k-ask-card-state {
+  margin: var(--space-1) 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.k-ask-card-request {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--line);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+.k-ask-card-request > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.k-ask-card-title {
+  font-weight: 600;
+}
+.k-ask-card-request > p + p {
+  margin-top: var(--space-1);
+}
+.k-ask-card-structure {
+  margin-top: var(--space-2);
+  font-size: 0.85rem;
+}
+.k-ask-card-structure > summary {
+  cursor: pointer;
+  width: fit-content;
+  border-radius: var(--radius-sm);
+}
+.k-ask-card-structure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-ask-card-structure > p {
+  margin: var(--space-1) 0;
+  color: var(--ink-soft);
+}
+.k-ask-card-structure > pre {
+  max-height: 16rem;
+  margin: 0;
+  padding: var(--space-2);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  user-select: text;
+}
+/* tokens-only: end */
+
 /* The box at the bottom: one rounded field with its send button inside it, and the model named
    under it — a request is never anonymous. */
 .k-composer {
@@ -8596,115 +8671,74 @@ body:has(.k-tabbar) .k-toasts {
 }
 
 /* tokens-only: start — language picker */
-/* You → Language (#298). The same paper cards as the device paths above, small enough that the six
-   languages sit two or three to a row; "Match this device" spans the row on top, because it is the
-   default and the way back. Each language is named in itself in the display face — a name, not a
-   label — with its name in the current language underneath. "draft" is a dashed tag: a draft is
-   unfinished, not wrong, so nothing about it looks like an error. */
-.k-lang-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
-  gap: 0.45rem;
+/* You → Language (#298). One native select: the platform's own picker on a phone, a list on a
+   desktop. Drawn as a paper field like the device paths above, the chosen language in the display
+   face because it is a name, not a value; the chevron is the house's hairline, not the browser's.
+   The heading above is its label. */
+.k-identity h3 label {
+  cursor: pointer;
 }
-.k-lang-option {
+.k-lang-field {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.1rem;
-  min-height: 3.4rem;
-  padding: 0.55rem 1.9rem 0.55rem 0.8rem;
+  max-width: 26rem;
+}
+.k-lang-field::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0.95rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: -0.32rem;
+  border-right: 1.5px solid var(--ink-soft);
+  border-bottom: 1.5px solid var(--ink-soft);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.k-lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.55rem 2.4rem 0.55rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
-  font: inherit;
-  text-align: left;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition:
     border-color var(--dur-fast) var(--ease),
-    background-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    box-shadow var(--dur-fast) var(--ease);
 }
-.k-lang-option[data-auto],
-.k-lang-option[data-dev] {
-  grid-column: 1 / -1;
-  background: var(--surface-sunken);
+/* The open list is the platform's; give it the UI face so its rows read as plain choices. */
+.k-lang-select option {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  background: var(--surface);
+  color: var(--ink);
 }
-/* The pseudo-language is a developer's tool, and looks like one: last, and drawn in pencil. */
-.k-lang-option[data-dev] {
-  border-style: dashed;
-  min-height: 0;
-}
-.k-lang-option:hover {
+.k-lang-select:hover {
   border-color: var(--accent-line);
 }
-.k-lang-option:active {
-  transform: scale(0.985);
-}
-.k-lang-option:focus-visible {
+.k-lang-select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-.k-lang-option[data-on] {
   border-color: var(--accent);
-  background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-/* The chosen one carries a filled mark in the corner, so the choice reads without colour too. */
-.k-lang-option::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 0.7rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  margin-top: -0.35rem;
-  border: 1.5px solid var(--line);
-  border-radius: 999px;
-}
-.k-lang-option[data-on]::after {
-  border-color: var(--ink);
-  background: var(--ink);
-  box-shadow: inset 0 0 0 2px var(--accent-tint);
-}
-.k-lang-name {
-  font-family: var(--font-display);
-  font-size: 1.02rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-.k-lang-detail {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  line-height: 1.25;
-}
-.k-lang-draft {
-  display: inline-block;
-  margin-left: 0.15rem;
-  padding: 0 0.4rem;
-  border: 1px dashed var(--ink-soft);
-  font-family: var(--font-ui);
-  border-radius: 999px;
-  color: var(--ink-soft);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  line-height: 1.5;
-  text-transform: uppercase;
-  vertical-align: 0.15em;
 }
 .k-lang-note {
   margin: 0.55rem 0 0;
   font-size: 0.85rem;
 }
 @media (prefers-reduced-motion: reduce) {
-  .k-lang-option {
+  .k-lang-select {
     transition: none;
-  }
-  .k-lang-option:active {
-    transform: none;
   }
 }
 /* tokens-only: end — language picker */

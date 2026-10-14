@@ -272,6 +272,107 @@ a piece of work, not a flag: an API key held server-side, plus auth and rate lim
 or it is your bill and anyone's to spend. `ClaudeBackend` in `packages/generator` is the client half;
 the server half does not exist yet.
 
+## Requests to the Potyro team (#263) — NOT deployed yet
+
+When the Studio's agent finds that what someone asked for needs something Potyro itself lacks, it
+writes a request in their words and the Studio offers to send it. People have no GitHub account, so
+a small relay files it as an issue in `fuzue/potyro`, labelled `platform-request`
+(`packages/platform-requests`). **Until the relay below is running, nothing is lost:** the Studio
+says "couldn't send, saved to send later", keeps the request on the device, and sends it the next
+time the Studio opens and `/requests/` answers.
+
+What it accepts and does, so you know what you are putting on the internet:
+
+| | |
+|---|---|
+| Route | `POST /platform-requests` (and `GET /health`). Nothing else. |
+| What is in a request | The request's title and body in the person's words, the app's **structure** (its declaration as data, every function and piece of code shown as a marker — never its records), the app's name, the language, a request id and a random device id. |
+| Size | 64 KiB a request, checked before parsing; per-part caps after (`LIMITS` in `src/request.ts`). Too long is refused, never cut. |
+| Rate limit | 5 a day per device id **and** 20 a day per address (the first `X-Forwarded-For` entry, which Apache sets), in memory. |
+| Duplicates | A title that normalises to an open `platform-request` issue's (case, accents, punctuation, filler words, plurals and word order ignored) becomes a **comment** on that issue rather than a new one. |
+| Retries | The same request id again gets the first answer back; it is filed once. |
+| On the issue | The words quoted, marked as untrusted text, and the structure folded away. Never the device id or the address. |
+
+The issues are public. The review card in the Studio says so before anyone sends one.
+
+### 1. A token that can do one thing
+
+A **fine-grained** personal access token (GitHub → Settings → Developer settings → Fine-grained
+tokens): resource owner `fuzue`, **only** the repository `fuzue/potyro`, repository permission
+**Issues: Read and write**, nothing else; an expiry you will notice. Then, once, the label:
+
+```bash
+gh label create platform-request -R fuzue/potyro --color 5319e7 \
+  --description "Asked for from the Studio: something Potyro itself does not offer yet (#263, #288)"
+```
+
+On the server, out of the repository and readable by root only:
+
+```bash
+sudo mkdir -p /etc/potyro && sudo install -m 600 /dev/null /etc/potyro/requests.env
+sudoedit /etc/potyro/requests.env
+#   GITHUB_TOKEN=github_pat_…
+#   POTYRO_REQUESTS_REPO=fuzue/potyro
+#   HOST=0.0.0.0          # inside the container; published to loopback only, below
+#   PORT=4202
+```
+
+### 2. Run it
+
+Node 22 runs the TypeScript as it is (`--experimental-strip-types`); the package has no
+dependencies, so there is nothing to install. The same container shape as the relay:
+
+```bash
+# from a checkout of the commit you are deploying
+rsync -az --delete packages/platform-requests/ e@vaz.io:/opt/potyro-requests/
+
+docker run -d --name potyro-requests --restart unless-stopped \
+  -p 127.0.0.1:4202:4202 \
+  --env-file /etc/potyro/requests.env \
+  -v /opt/potyro-requests:/app:ro -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-requests     # "[platform-requests] filing into fuzue/potyro, listening on 0.0.0.0:4202"
+```
+
+Without `GITHUB_TOKEN` it refuses to start. `-p 127.0.0.1:…` keeps it reachable only through Apache,
+for the same reason as the sync relay.
+
+### 3. Put it behind the site's gate
+
+In the vhost (`deploy/apps.vaz.io.conf`), next to the `/sync` rules and **before** the SPA rule — or
+`/requests/…` is answered with `index.html`, which the Studio reads as "not reachable" and keeps
+saving:
+
+```apache
+    # Requests to the Potyro team (#263): the relay files them as GitHub issues.
+    RewriteRule ^/requests/(.*)$ http://127.0.0.1:4202/$1 [P,L]
+```
+
+Same origin, so the basic-auth gate covers it and the browser needs no CORS. Then
+`sudo apache2ctl configtest` and `sudo systemctl reload apache2`, as in §6, and copy the new vhost
+into `deploy/` so the repository says what runs.
+
+### 4. Check it
+
+```bash
+curl -su USER:PASS https://apps.vaz.io/requests/health                       # {"ok":true}
+curl -su USER:PASS -X POST https://apps.vaz.io/requests/platform-requests \
+  -H 'content-type: application/json' -d '{}'                                 # 400 {"ok":false,…}
+```
+
+Then send one from the Studio for real (ask a change that needs, say, a barcode scanner), look at the
+issue it opens, and close it. A request saved earlier on a device goes the next time that device
+opens the Studio.
+
+**The Android app** is not on this origin: build it with `VITE_POTYRO_REQUESTS=https://apps.vaz.io/requests`
+— and note that the basic-auth gate then stands in its way, so it keeps saving until the gate is
+lifted or the route is exempted from it (with the rate limit as its only guard).
+
+**Updating it:** rsync the package again and `docker restart potyro-requests`. Its rate limits and
+its index of open issues are in memory; a restart forgets them, and the index is read again from
+GitHub on the next request.
+
 ## What this does NOT protect
 
 Be straight with anyone you invite:

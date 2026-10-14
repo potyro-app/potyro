@@ -109,6 +109,10 @@ msgstr ""
 msgid "\"{url}\" is not an https address, so it cannot be fetched safely."
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "(nothing could be read from the app)"
+msgstr ""
+
 #. placeholder {0}: lines.length
 #: ../shell/src/open-libraries.ts
 msgid "{0, plural, one {“{name}” can’t open until it has {what}. Open it again to fetch it.} other {“{name}” can’t open until it has {what}. Open it again to fetch them.}}"
@@ -263,6 +267,21 @@ msgstr ""
 #. A version's note in History: what a collaborator asked for, and that it came from them
 #: ../shell/src/version-notes.ts
 msgid "{asked} — from a collaborator"
+msgstr ""
+
+#. A language in the picker: its own name, then its name in the current language
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} — {language}"
+msgstr ""
+
+#. A language in the picker: its own name, its name in the current language, and that its translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} — {language} (draft)"
+msgstr ""
+
+#. A language in the picker, named in itself, whose translation is an unreviewed model draft
+#: ../shell/src/language-picker.tsx
+msgid "{autonym} (draft)"
 msgstr ""
 
 #. Ask's cost in US cents, e.g. 2.1¢
@@ -540,11 +559,6 @@ msgstr ""
 #: ../shell/src/package-libraries.ts
 #: ../views/src/file-input.tsx
 msgid "{n} MB"
-msgstr ""
-
-#. A language in the picker whose translation is an unreviewed model draft
-#: ../shell/src/language-picker.tsx
-msgid "{name} (draft)"
 msgstr ""
 
 #. The name of an app someone shared with you, when you already have one with that name
@@ -1833,6 +1847,14 @@ msgstr ""
 msgid "Couldn't save: {saveError}"
 msgstr ""
 
+#: ../shell/src/platform-requests.ts
+msgid "Couldn't send “{title}” to the Potyro team yet. It's saved on this device and will be sent later."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Couldn't send it yet. It's saved on this device and will be sent later."
+msgstr ""
+
 #. Form button that saves a new record
 #: ../views/src/record-form.tsx
 msgid "Create"
@@ -2066,11 +2088,6 @@ msgstr ""
 #. Checklist: the folded section of ticked items, and how many
 #: ../views/src/checklist.tsx
 msgid "Done ({doneCount})"
-msgstr ""
-
-#. Tag beside a language in the picker: its translation is an unreviewed model draft
-#: ../shell/src/language-picker.tsx
-msgid "draft"
 msgstr ""
 
 #: ../views/src/checklist.tsx
@@ -2492,6 +2509,10 @@ msgstr ""
 msgid "how it was made, as shared by its author"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "How your app is put together"
+msgstr ""
+
 #. placeholder {0}: hueNumber(h)
 #: ../shell/src/tile-editor.tsx
 msgid "Hue {0}"
@@ -2523,6 +2544,10 @@ msgstr ""
 
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: this isn't something it can change. {text}"
+msgstr ""
+
+#: ../shell/src/studio-engine.ts
+msgid "I didn't change the app: what you asked for needs something Potyro can't do yet."
 msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
@@ -2645,6 +2670,10 @@ msgstr ""
 msgid "It couldn’t make this fit"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "It goes on a public list of requests the Potyro team reads, without your name. No account needed."
+msgstr ""
+
 #: ../shell/src/fix-panel.tsx
 msgid "It has a question"
 msgstr ""
@@ -2699,6 +2728,10 @@ msgstr ""
 
 #: ../shell/src/package-libraries.ts
 msgid "Its file {file} is not the copy this app was saved with, so it was not added."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Its lists, fields and pages. None of your entries are in it, and its code is left out — each piece shows as “(a function)”."
 msgstr ""
 
 #: ../views/src/builtins.tsx
@@ -2996,8 +3029,9 @@ msgstr ""
 msgid "Map unavailable here — the browser could not open a second map (or the tile host is blocked). Place the point on the main map instead, or use the coordinates below."
 msgstr ""
 
+#. First choice in the language picker: follow the device; the language it is set to, in its own name
 #: ../shell/src/language-picker.tsx
-msgid "Match this device"
+msgid "Match this device ({deviceName})"
 msgstr ""
 
 #: ../shell/src/inline-edit.tsx
@@ -3321,6 +3355,7 @@ msgstr ""
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
+#: ../shell/src/platform-request-card.tsx
 #: ../shell/src/restore-apps.tsx
 #: ../shell/src/sync-consent.ts
 #: ../shell/src/version-gate.ts
@@ -3739,6 +3774,12 @@ msgstr ""
 msgid "Pointing at"
 msgstr ""
 
+#. Studio: a card offering to send what the person asked for to the people who make Potyro
+#: ../shell/src/platform-request-card.tsx
+#: ../shell/src/platform-request-card.tsx
+msgid "Potyro can't do this yet"
+msgstr ""
+
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr ""
@@ -4146,6 +4187,10 @@ msgstr ""
 msgid "See the code"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "See the request"
+msgstr ""
+
 #: ../shell/src/add-app.ts
 msgid "seed.json is not valid JSON: {why}"
 msgstr ""
@@ -4154,6 +4199,7 @@ msgstr ""
 #. Send a chat message
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/chat-panel.tsx
+#: ../shell/src/platform-request-card.tsx
 msgid "Send"
 msgstr ""
 
@@ -4177,8 +4223,24 @@ msgstr ""
 msgid "Send to {label}"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "Send to the Potyro team"
+msgstr ""
+
 #: ../shell/src/ask-panel.tsx
 msgid "Send your {sourceLabel} key to {host}?"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Sending…"
+msgstr ""
+
+#: ../shell/src/platform-requests.ts
+msgid "Sent to the Potyro team: “{title}”"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Sent to the Potyro team. If they add it, you'll hear about it here."
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx
@@ -4675,6 +4737,10 @@ msgstr ""
 msgid "the only version kept — nothing to compare against"
 msgstr ""
 
+#: ../shell/src/platform-requests.ts
+msgid "The Potyro team's inbox didn't accept “{title}”."
+msgstr ""
+
 #: ../shell/src/studio-engine.ts
 msgid "the repair could not be applied: {why}"
 msgstr ""
@@ -4881,6 +4947,10 @@ msgstr ""
 msgid "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "This is exactly what will be sent: the request above, and how your app is put together."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "This is my second device"
 msgstr ""
@@ -5015,6 +5085,10 @@ msgstr ""
 
 #: ../views/src/media-input.tsx
 msgid "Try again"
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "Try sending again"
 msgstr ""
 
 #: ../shell/src/studio-thread-view.tsx
@@ -5243,6 +5317,10 @@ msgstr ""
 msgid "What to add"
 msgstr ""
 
+#: ../shell/src/platform-request-card.tsx
+msgid "What will be sent"
+msgstr ""
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "What would you like to make?"
 msgstr ""
@@ -5253,6 +5331,10 @@ msgstr ""
 
 #: ../shell/src/ask-panel.tsx
 msgid "What you asked for may go there; nothing already in the app does."
+msgstr ""
+
+#: ../shell/src/platform-request-card.tsx
+msgid "What you asked for, as a request to the people who make Potyro:"
 msgstr ""
 
 #: ../shell/src/launcher-order.ts
