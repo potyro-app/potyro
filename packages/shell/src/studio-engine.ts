@@ -13,6 +13,7 @@ import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, e
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
+import { createLoopRefusal, startCreate } from "./start-create.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import type { ModuleSource } from "./package-modules.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
@@ -58,6 +59,23 @@ export function notChanged(result: { kind: "failed"; reason: string; cause?: Giv
             ? t`I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key.`
             : // The one-turn guard (`guardedModify`): what came back could not be applied to the app.
               t`I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way.`;
+  return { kind: "failed", text, detail: result.reason };
+}
+
+/**
+ * A new app that could not be made, as the person reads it (#262 phase 3) — `notChanged`'s words for
+ * a create. The loop's own reason stays as `detail`, folded away under the card.
+ */
+export function notMade(result: { kind: "failed"; reason: string; cause: GiveUp } | { kind: "stopped" }): Extract<Outcome, { kind: "failed" }> {
+  if (result.kind === "stopped") return { kind: "failed", text: t`Stopped. Nothing was changed.` };
+  const text =
+    result.cause === "candidates"
+      ? t`I couldn't make this app: every version I tried failed the app's own checks. Try describing a smaller app, or say it another way.`
+      : result.cause === "repeated"
+        ? t`I couldn't make this app: I kept coming back to the same answer without finding one that works. Try saying it another way.`
+        : result.cause === "engine"
+          ? notChanged(result).text
+          : t`I couldn't make this app: I ran out of tries before finding a version that works. Try describing a smaller app.`;
   return { kind: "failed", text, detail: result.reason };
 }
 
@@ -171,6 +189,46 @@ export function studioEngine(
   };
 
   const create = async (brief: string): Promise<Outcome> => {
+    // A chat engine drives the create LOOP (#262 phase 3): the corpus in the first message, tools,
+    // and every candidate checked and run — up to two independent first drafts, the better kept.
+    // Other engines keep the one call below.
+    if (!createLoopRefusal(engine)) {
+      try {
+        // A first draft is one long call that says nothing until it is done, so the heartbeat runs
+        // while the model writes; what the loop does in between (a tool, a check) is said instead.
+        let doing: ((elapsed: string) => string) | null = null;
+        const result = await ticking(
+          (elapsed) => doing?.(elapsed) ?? t`Making it via ${label}… ${elapsed}`,
+          () =>
+            startCreate({
+              brief,
+              engine,
+              language,
+              onStep: (step) => {
+                if (step.kind === "thinking") {
+                  doing = null;
+                  return;
+                }
+                // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
+                const first = step.detail.split("\n")[0]!.slice(0, 80);
+                const line = step.kind === "tool" ? `${step.name}: ${first}` : step.kind === "candidate" && step.passed ? t`Checking it…` : t`Asked to try again: ${first}`;
+                doing = () => line;
+                progress(line);
+              },
+            }),
+        );
+        if (result.kind === "question") return { kind: "question", text: result.text };
+        if (result.kind === "platform") {
+          return { kind: "platform", text: t`I didn't make the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
+        }
+        if (result.kind === "failed") return { ...notMade(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
+        if (result.kind === "stopped") return notMade(result);
+        return { kind: "source", source: result.source, summary: "", ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        return { kind: "failed", text: t`Could not make it: ${reason}` };
+      }
+    }
     try {
       const reply = await ticking((elapsed) => t`Making it via ${label}… ${elapsed}`, async () => {
         if (isCli) {
