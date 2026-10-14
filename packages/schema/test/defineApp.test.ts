@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineApp, ValidationError, type AppDefinition } from "../src/index.js";
+import { defineApp, ValidationError, type AppDefinition, type Computed } from "../src/index.js";
 
 const minimal: AppDefinition = {
   id: "todo",
@@ -54,7 +54,7 @@ describe("defineApp — valid definitions", () => {
 
   it("preserves computed/binding function identity (does not wrap or strip)", () => {
     const app = defineApp(minimal);
-    const computed = app.entities.task.computed?.label;
+    const computed = app.entities.task.computed?.label as Computed | undefined; // written as a bare function
     expect(computed?.({ id: "x", createdAt: "", updatedAt: "", done: true, title: "hi" } as never, {} as never)).toBe(
       "✓ hi",
     );

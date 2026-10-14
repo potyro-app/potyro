@@ -1227,6 +1227,7 @@ msgid "Asked for, but not this app’s to fix"
 msgstr "Asked for, but not this app’s to fix"
 
 #: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
 msgid "Asked to try again: {first}"
 msgstr "Asked to try again: {first}"
 
@@ -1544,6 +1545,7 @@ msgstr "Check it"
 msgid "Check storage speed"
 msgstr "Check storage speed"
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio.tsx
 msgid "Checking it…"
 msgstr "Checking it…"
@@ -1795,6 +1797,7 @@ msgstr "Could not import that data: {why}"
 msgid "Could not join: {why}"
 msgstr "Could not join: {why}"
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Could not make it: {reason}"
 msgstr "Could not make it: {reason}"
@@ -2527,6 +2530,18 @@ msgid "Hue {0}"
 msgstr "Hue {0}"
 
 #: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: every version I tried failed the app's own checks. Try describing a smaller app, or say it another way."
+msgstr "I couldn't make this app: every version I tried failed the app's own checks. Try describing a smaller app, or say it another way."
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: I kept coming back to the same answer without finding one that works. Try saying it another way."
+msgstr "I couldn't make this app: I kept coming back to the same answer without finding one that works. Try saying it another way."
+
+#: ../shell/src/studio-engine.ts
+msgid "I couldn't make this app: I ran out of tries before finding a version that works. Try describing a smaller app."
+msgstr "I couldn't make this app: I ran out of tries before finding a version that works. Try describing a smaller app."
+
+#: ../shell/src/studio-engine.ts
 msgid "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way."
 msgstr "I couldn't make this change: every version I tried failed the app's own checks. Try asking for a smaller step, or say it another way."
 
@@ -2557,6 +2572,10 @@ msgstr "I didn't change the app: this isn't something it can change. {text}"
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: what you asked for needs something Potyro can't do yet."
 msgstr "I didn't change the app: what you asked for needs something Potyro can't do yet."
+
+#: ../shell/src/studio-engine.ts
+msgid "I didn't make the app: what you asked for needs something Potyro can't do yet."
+msgstr "I didn't make the app: what you asked for needs something Potyro can't do yet."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
@@ -4463,6 +4482,7 @@ msgid "Stopped"
 msgstr "Stopped"
 
 #: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-engine.ts
 msgid "Stopped. Nothing was changed."
 msgstr "Stopped. Nothing was changed."
 
@@ -4808,6 +4828,7 @@ msgstr "Think hard when stuck"
 msgid "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
 msgstr "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
 
+#: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Thinking via {label}…"
 msgstr "Thinking via {label}…"

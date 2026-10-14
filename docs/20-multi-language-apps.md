@@ -737,3 +737,11 @@ Where the build differs from the design above, and why:
   and add-field cases run on groceries in all six.
 - **A gap found**: a computed value shown on a page has no label, so it reads as its key in every
   language ("Calories Per Serving", "Breakdown"). That needs a mechanism: #310.
+- **#310 built it**: a computed may be `{ value, label }`, the bare function still accepted. `label`
+  is a `zWords` slot, so `checkWords`, `localize`, `wordGaps` and `translate` see it with no code of
+  their own; the views' `fieldLabel` reads it after a field's label. Every example's computed that a
+  page heads (recipes' "Nutrition & cost" group and High protein columns, split's breakdown,
+  workout's session overview and rolling best) carries it in the six languages, and
+  `examples/test/apps.test.ts` fails on one that does not. Still open from the issue: an enum-like
+  computed shown as a badge (recipes' `diet`) has no option `labels`, and a computed returning an
+  object (`lastBest`) shows raw.

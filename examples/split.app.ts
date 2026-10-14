@@ -247,10 +247,13 @@ export default defineApp({
       ],
       computed: {
         /** "You 12,50 · Ana 12,50" — the arithmetic, spelled out, on the expense itself. */
-        breakdown: (expense: Resolved, ctx: Ctx) =>
-          sharesOf(expense, ctx)
-            .map((s) => `${nameOf(s.id, ctx)} ${money(s.owes, ctx)}`)
-            .join(" · ") || ctx.t({ en: "Nobody yet", "pt-BR": "Ninguém ainda", de: "Noch niemand", es: "Nadie todavía", pl: "Jeszcze nikt", it: "Ancora nessuno" }),
+        breakdown: {
+          label: { en: "Breakdown", "pt-BR": "Divisão", de: "Aufteilung", es: "Desglose", pl: "Podział", it: "Ripartizione" },
+          value: (expense: Resolved, ctx: Ctx) =>
+            sharesOf(expense, ctx)
+              .map((s) => `${nameOf(s.id, ctx)} ${money(s.owes, ctx)}`)
+              .join(" · ") || ctx.t({ en: "Nobody yet", "pt-BR": "Ninguém ainda", de: "Noch niemand", es: "Nadie todavía", pl: "Jeszcze nikt", it: "Ancora nessuno" }),
+        },
         yourShare: (expense: Resolved, ctx: Ctx) => money(sharesOf(expense, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0, ctx),
       },
     },
