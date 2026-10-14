@@ -17,12 +17,14 @@
 // History keeps the old version and the data check runs on the next open.
 import { capabilityWords } from "./capability-words.js";
 import { t } from "@lingui/core/macro";
+import { pickLanguage, word, type Words } from "potyro";
+import { languagePrefs } from "./locale.js";
 import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
 import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
-import { freeAppId, getUserApp, saveUserApp, type UserApp } from "./user-apps.js";
+import { freeAppId, getUserApp, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { sourceHttp } from "./ask-sources.js";
@@ -174,10 +176,20 @@ export interface Inspected {
 
 interface AppFacts {
   id?: string;
-  name?: string;
+  /** Words (#302): a string, or a map by language for an app in several. */
+  name?: Words;
   icon?: string;
-  entities?: Record<string, { label?: string } | undefined>;
+  entities?: Record<string, { label?: Words } | undefined>;
   permissions?: Record<string, unknown>;
+  language?: string;
+  languages?: string[];
+}
+
+/** An app's own words, in the language the person will see it in: the card must never show `{ en, pl }`. */
+function shownIn(facts: AppFacts): (w: Words | undefined) => string | undefined {
+  const app = { language: facts.language, languages: facts.languages };
+  const language = pickLanguage(languagePrefs(), app);
+  return (w) => (w == null ? undefined : word(w, language, app));
 }
 
 const asksOf = (permissions: Record<string, unknown> | undefined): string[] =>
@@ -247,11 +259,12 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
   }
   // What it really asks for, once it loaded, joins what it says it asks for: the card never shows less.
   const asks = [...asksOf(facts.permissions), ...asksOf(loaded?.permissions)];
+  const say = shownIn(facts);
   return {
     id: facts.id,
-    name: facts.name ?? facts.id,
+    name: say(facts.name) || facts.id,
     icon: facts.icon,
-    keeps: Object.entries(facts.entities ?? {}).map(([k, e]) => e?.label ?? k),
+    keeps: Object.entries(facts.entities ?? {}).map(([k, e]) => say(e?.label) || k),
     entityIds: Object.keys(facts.entities ?? {}),
     asks: [...new Set(asks)],
     issues,
@@ -381,20 +394,45 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     now,
   );
   const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => openAppStore(a, o));
-  const synced = await syncAllowedFor(app);
-  const store = await open(app, { sync: synced });
-  // An app whose data syncs keeps its code on this device, never in its space (#281): a library's
-  // bytes are megabytes, and every device fetches its own copy from where the lock says.
-  const shipped = await applyShippedFiles(store, synced ? code.files.filter((f) => !isReservedPath(f.path)) : code.files, { update });
-  if (synced) await keepCode(app.id, code.files.filter((f) => isReservedPath(f.path)));
-  // What a person reads afterwards is about THEIR files, not the app's code.
   const theirs = (paths: string[]) => paths.filter((p) => !isReservedPath(p));
-  const files: ShippedResult = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };
-  const seeded = update ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
+  let files: ShippedResult;
+  let seeded: number;
+  try {
+    const synced = await syncAllowedFor(app);
+    const store = await open(app, { sync: synced });
+    // An app whose data syncs keeps its code on this device, never in its space (#281): a library's
+    // bytes are megabytes, and every device fetches its own copy from where the lock says.
+    const shipped = await applyShippedFiles(store, synced ? code.files.filter((f) => !isReservedPath(f.path)) : code.files, { update });
+    if (synced) await keepCode(app.id, code.files.filter((f) => isReservedPath(f.path)));
+    // Read back, not assumed: an app is only added once every file it shipped with is in its folder.
+    await assertShipped(store, code.files.filter((f) => !synced || !isReservedPath(f.path)).map((f) => f.path));
+    // What a person reads afterwards is about THEIR files, not the app's code.
+    files = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };
+    seeded = update ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
+  } catch (e) {
+    // Never a "working" app without its files. A new app is taken away again, so trying again is a
+    // first install; an update keeps the app it was, and trying again writes the files again.
+    if (!update) await removeUserApp(app.id);
+    const why = e instanceof Error ? e.message : String(e);
+    const name = app.name;
+    throw new Error(update ? t`“${name}” was not fully updated: its files could not be saved. ${why}` : t`“${name}” was not added: its files could not be saved. ${why}`);
+  }
+  setUserAppShipped(app.id, theirs(code.files.map((f) => f.path)));
   // How it was made, when its author chose to send that too (#261). Only on a first install: an
   // update must not overwrite the conversation the person has had with it since. Anything that is
   // not a conversation is ignored rather than refusing the app.
   const chat = pkg.chat === undefined || update ? null : parseChatRecord(pkg.chat);
   if (chat) await importChat(app.id, chat, now);
-  return { app, updated: update, files, seeded, sealedProblem, ...(missing.length ? { missing } : {}) };
+  return { app: getUserApp(app.id) ?? app, updated: update, files, seeded, sealedProblem, ...(missing.length ? { missing } : {}) };
+}
+
+/** Every one of these paths is in the store's file space, or this says which are not. */
+async function assertShipped(store: Store, paths: readonly string[]): Promise<void> {
+  const space = fileSpace(store);
+  const absent: string[] = [];
+  for (const path of paths) if (!(await space.find(path))) absent.push(path);
+  if (absent.length) {
+    const list = absent.join(", ");
+    throw new Error(t`These files did not land in its folder: ${list}.`);
+  }
 }

@@ -301,8 +301,14 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       await store.open(namespace);
       await adoptLocalStorageData(store, namespace);
       modes.set(namespace, "worker");
+      rememberHome(namespace);
       return store;
     } catch (err) {
+      // A database that is THERE but cannot be opened right now is not a reason to open another one.
+      // The fallbacks below are a different store: an app opened on one would find none of its
+      // records or files ("No file levels.json in this app"), and what it wrote there would be
+      // stranded when the real one opened again.
+      if (!mayFallBack(namespace, err)) throw new StoreBusyError(namespace, err);
       console.info(`[potyro] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
     }
   }
@@ -319,6 +325,52 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     modes.set(namespace, "local-storage");
     return store;
   }
+}
+
+/**
+ * An app's database exists on this device but could not be opened: most often it is open in another
+ * Potyro tab or window, which holds the storage's access handles. Opening a different store in its
+ * place would show the app without its records and its files, so this is said instead, and trying
+ * again once the other tab is closed opens the real one.
+ */
+export class StoreBusyError extends Error {
+  override name = "StoreBusyError";
+  constructor(
+    readonly namespace: string,
+    override readonly cause: unknown,
+  ) {
+    super(t`This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again.`);
+  }
+}
+
+/** The browser's words for storage that someone else holds right now. */
+const BUSY = /NoModificationAllowed|Access Handles? cannot be created|another open Access Handle|is locked|database is locked|SQLITE_BUSY/i;
+
+/** Where a namespace's database lives once it has been opened in the storage worker on this device. */
+const homeKey = (namespace: string) => `potyro:store-home:${namespace}`;
+
+function rememberHome(namespace: string): void {
+  try {
+    globalThis.localStorage?.setItem(homeKey(namespace), "worker");
+  } catch {
+    // storage blocked: the error text is still read below
+  }
+}
+
+/**
+ * Whether a failed worker open may fall back to a store of another kind. Only where this device never
+ * had the database in the worker AND the failure is not the database being held by someone else —
+ * a browser without the storage the worker needs (Firefox's private windows), not a busy one.
+ */
+export function mayFallBack(namespace: string, err: unknown): boolean {
+  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  if (BUSY.test(text)) return false;
+  try {
+    if (globalThis.localStorage?.getItem(homeKey(namespace)) === "worker") return false;
+  } catch {
+    // storage blocked: nothing remembered, so nothing to protect
+  }
+  return true;
 }
 
 /**
