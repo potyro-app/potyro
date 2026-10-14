@@ -109,14 +109,14 @@ export interface LoadedApp {
   definition: AppDefinition;               // the declarative parts (entities/pages/…)
   provenance: Provenance;
   permissions: PermissionManifest;
-  // invoke app-provided functions, in the correct runner (direct or isolate):
+  // invoke app-provided functions, in the correct runner (direct, or sealed: the realm / the isolate):
   callComputed(entity: string, key: string, record: Resolved, ctx: Ctx): Promise<Value>;
   callAction(entity: string, key: string, record: Resolved, ctx: Ctx, input?: unknown): Promise<void>;
   callFilter(viewId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
   // Page summary aggregates (docs/03 `Page.summary`). The only call taking the whole row set:
   // `computed` is per-record, so a figure over the WHOLE set cannot be a per-record binding.
-  // It is a host call because for an untrusted app the function never leaves the isolate —
+  // It is a host call because for an untrusted app the function never leaves the sealed box —
   // the extracted definition carries the `__potyro_fn__` sentinel where the function was.
   callSummary(pageId: string, index: number, rows: Resolved[], ctx: Ctx): Promise<Value>;
   // A function inside a page's view, over its rows, named by path (#109): "series" of a chart,
@@ -143,16 +143,34 @@ export interface Host {
 Runner behavior:
 - **trusted** → module is imported directly; `call*` invoke the real functions; `customView`
   returns the real React component; `ctx.caps` are unmediated.
-- **untrusted** → module bundle runs in a QuickJS-WASM isolate; `call*` marshal
-  record+params in and a serialized value out under memory/time limits; `ctx.caps` are the
-  mediated wrappers for granted permissions only.
+- **untrusted** → the module bundle runs in a **browser realm** (#272, docs/22, docs/07): a Worker
+  inside an opaque-origin sandboxed iframe, `@potyro/host/realm`'s `createRealmLoader`, plugged in
+  as `loadIsolated` exactly where the isolate was. `call*` post the record, the params and the plain
+  half of `ctx` (`CtxBase`) into the Worker, where the app's own function runs with a `ctx` proxy,
+  and a structured-clone value comes back. Every `ctx` member that reaches the store, a capability,
+  the person or the shell is an op on the app's MessagePort; the host checks it against `OPS` and
+  the ctx ids it issued and then calls that method on the `ctx` `buildCtx` made — so `mediateCaps`,
+  the values gate and authorship are the trusted path's own, never a copy. `ctx.caps` are the
+  mediated wrappers for granted permissions only; with the realm, `network.fetch`, `camera`,
+  `filesystem`, `media.put` and `files.bytes` cross as themselves (Blobs, bytes, a `Response`),
+  which the isolate could not carry. The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
+  fallback behind a flag (docs/07) and still runs verification until docs/22 phase 2.
+- **Hard limits (realm).** A per-call deadline (1 s, paused while a question, a dialog, a consent
+  prompt or a fetch waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
+  flood guard (more than 2,000 messages in 50 ms). A stop tears the realm down and rejects what was
+  waiting with the reason; the next call starts a fresh realm. There is no per-Worker memory cap
+  (QuickJS's did not hold either, docs/22 §6.1); what crosses `ctx` is what is capped
+  (`FORMAT_LIMITS`). A realm that cannot start at all is a `RealmStartError`, and the shell falls
+  back to QuickJS for that session.
 
 **Words and formats (#302).** `ctx.locale`, `ctx.t` and `ctx.format` are built from one module,
 `packages/host/src/format.ts` — `Intl` with cached formatters, and `intl-messageformat` for ICU
 messages, which interprets a message rather than compiling it to code and is loaded lazily, before
-`load` returns. The isolate has no `Intl`: each call's payload carries the language, so `ctx.locale`
-and `ctx.t(words)` are answered inside the box, and `ctx.t(words, vars)` and `ctx.format.*` reach the
-host through a second VM function beside `__hostSync`:
+`load` returns. The realm bundles the same `format.ts` and formats with the browser's own `Intl`, in
+the language and locale each call's `CtxBase` carries — no round trip. The QuickJS isolate has no
+`Intl`: each call's payload carries the language, so `ctx.locale` and `ctx.t(words)` are answered
+inside the box, and `ctx.t(words, vars)` and `ctx.format.*` reach the host through a second VM
+function beside `__hostSync` (QuickJS only; it goes when the isolate does):
 
 ```ts
 __hostPure(requestJson: string): string   // synchronous; "+" and the text, or "!" and why
@@ -169,7 +187,9 @@ ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`).
 Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
 surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app
 falls back to its built-in views. This keeps the untrusted path to value-returning functions, which
-the isolate marshals safely.
+cross the realm's port (or the isolate's bridge) safely. The realm's frame could host views, but
+only desktop Chromium keeps the shell alive when a view in it spins (docs/22 §4.2), so views of
+shared apps stay off until the Android probe decides phase 3.
 
 **That policy used to make shared apps useless, and no longer does (KA-24).** A shared app's main
 screen is typically an *aggregate* — "who owes whom", "what's still to buy" — and `computed` is
@@ -179,7 +199,7 @@ remedy was promoting a stranger's code to ambient authority: the capitulation th
 prevent.
 
 The **`aggregate` view type** closes that. Its `rows(rows, ctx)` fold is ordinary TypeScript — the
-arithmetic is not restricted in any way — but it RETURNS DATA, so it crosses the isolate bridge
+arithmetic is not restricted in any way — but it RETURNS DATA, so it crosses into the sealed box
 exactly as `computed`/`filter`/`sort`/`binding`/`summary` already do, and the screen renders
 identically at both provenances. Only the *rendering* is declarative, never the thinking.
 

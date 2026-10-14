@@ -70,7 +70,7 @@ interface Ctx {
   // not fit (`FieldValueError`, e.g. "Amount must be a number."); a patch holds values it leaves
   // unchanged only to their shape, so an old record stays saveable after its enum options change.
   // Reads never return a value that does not fit: the record carries the last value that did (from
-  // the history, on a synced store) or nothing. Same on the direct ctx and across the isolate.
+  // the history, on a synced store) or nothing. Same on the direct ctx and in the sealed box.
   // A `member` value in a shared app must name someone in the app when set, and someone who has ever
   // been in it when read (a ledger naming a person who left stays readable).
 
@@ -178,7 +178,7 @@ what a trusted one does, with no permission prompt — none of them reach outsid
   the same way. The answer is the raw values: a relation's id, a number as a number.
 - **Progress.** `update(fraction, detail?)` moves the bar (`detail` replaces the percentage, e.g. "24 of
   40"); `done()` removes it. It is announced as a progress bar.
-- **Untrusted apps.** A question does not hold the isolate: while a form is open the page keeps
+- **Untrusted apps.** A question does not hold the sealed box: while a form is open the page keeps
   rendering, and the call's time budget pauses until it is answered.
 
 These are new optional members: no existing app changes, so `schemaVersion` (the app's own data
@@ -230,18 +230,21 @@ present. Its `caps` members are:
 
 `ctx.files` is not a cap. The folder belongs to the app and nothing else sees into it, so reading
 and writing it needs no permission. `import` and `export` open the system's file dialog, where the
-person chooses every file; that choice is the consent, so they work the same in the sealed box. The
-isolate carries bytes across its JSON bridge as base64.
+person chooses every file; that choice is the consent, so they work the same in the sealed box. Bytes
+cross the browser realm as themselves (a `Uint8Array`, a `Blob`); the QuickJS fallback carries them
+across its JSON bridge as base64.
 
 This is the entire safety model. The language is full JS; `caps` is where power is governed.
 
-`ctx.locale`, `ctx.t` and `ctx.format` are not caps either. In the sealed box, which has no `Intl`,
+`ctx.locale`, `ctx.t` and `ctx.format` are not caps either. A shared app's logic runs in a browser
+realm (#272, docs/07): a Worker with the browser's own `Intl`, where the host's `format.ts` is bundled
+in, so `ctx.t` and `ctx.format` answer there, in the locale the host chose, with no round trip — and
+so does the app's own `Intl`, `URL` or `TextEncoder`. In the QuickJS fallback, which has no `Intl`,
 `ctx.locale` and `ctx.t(words)` without `vars` are answered inside the box; `ctx.t(words, vars)` and
 `ctx.format.*` go to the host through one synchronous, authority-free call, `__hostPure`: it formats
 the arguments it is handed — no store, no cap, no person — with an allow-listed set of options, size
 limits, and the host's locale, never the app's. The same code formats for a trusted app, so a date
-reads identically at both provenances (a parity test holds it). About 40 µs a call in the box on a
-desktop, ~2.5 µs directly.
+reads identically at every provenance (a parity test holds it, against both sealed runners).
 
 ## `ViewProps` (what a custom view receives)
 
