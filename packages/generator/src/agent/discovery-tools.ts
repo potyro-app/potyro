@@ -31,13 +31,51 @@ interface Declaration {
   text: string;
 }
 
-// A top-level declaration: an optional doc comment, then `export interface X { … }` closed by a
-// brace at column 0 (nested object types are indented), or `export type X = …;`.
-const DECLARATION = /(\/\*\*[\s\S]*?\*\/\n)?export (?:interface|type) (\w+)\b[^\n]*(?:\n[\s\S]*?\n\}|[^;]*;)/g;
+const START = /^export (?:interface|type) (\w+)\b/;
 
+/** Brackets opened minus closed on a line, strings and comments not counted. */
+function depthOf(line: string): number {
+  let d = 0;
+  for (const c of line.replace(/\/\/.*$/, "").replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, "")) {
+    if (c === "{" || c === "(" || c === "[") d += 1;
+    else if (c === "}" || c === ")" || c === "]") d -= 1;
+  }
+  return d;
+}
+
+/**
+ * Every top-level declaration, line by line: the doc comment right above it (if any), then
+ * `export interface X { … }` up to its closing brace at column 0, or `export type X = …` up to the
+ * line where its brackets close and it ends with `;`. A regex used to do this and, on a one-line
+ * `export type X = A | B;` or a doc comment not followed by a declaration, ran on and swallowed the
+ * declarations after it — `lookup("Reminder")` answered "it does not exist" (#262 phase 3).
+ */
 function declarations(reference: string): Declaration[] {
+  const lines = reference.split("\n");
   const out: Declaration[] = [];
-  for (const m of reference.matchAll(DECLARATION)) out.push({ name: m[2]!, text: m[0] });
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = START.exec(lines[i]!);
+    if (!m) continue;
+    let from = i;
+    if (i > 0 && lines[i - 1]!.trimEnd().endsWith("*/")) {
+      let j = i - 1;
+      while (j > 0 && !lines[j]!.trimStart().startsWith("/**")) j -= 1;
+      if (lines[j]!.trimStart().startsWith("/**")) from = j;
+    }
+    let end = i;
+    if (/^export interface/.test(lines[i]!)) {
+      while (end < lines.length - 1 && !/^\}/.test(lines[end]!) && !(end === i && /\}\s*$/.test(lines[i]!) && depthOf(lines[i]!) === 0)) end += 1;
+    } else {
+      let depth = 0;
+      for (; end < lines.length; end += 1) {
+        depth += depthOf(lines[end]!);
+        if (depth <= 0 && /;\s*(\/\/.*)?$/.test(lines[end]!)) break;
+        if (end > i && START.test(lines[end + 1] ?? "")) break;
+      }
+    }
+    out.push({ name: m[1]!, text: lines.slice(from, end + 1).join("\n") });
+    i = end;
+  }
   return out;
 }
 
