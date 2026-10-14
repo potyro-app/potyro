@@ -594,6 +594,16 @@ export default defineApp({
         lastBest: {
           // The same words as the section it is the only row of, so the row's own heading is hidden.
           label: { en: "Rolling best", "pt-BR": "Melhor recente", de: "Aktueller Bestwert", es: "Mejor reciente", pl: "Ostatni rekord", it: "Record recente" },
+          // The best set is an object (the session view prefills from it), so the detail page says it
+          // through a message over its kg and reps; a bodyweight set has no weight (0).
+          format: {
+            en: "{kg, plural, =0 {{reps} reps} other {{kg, number} kg × {reps}}}",
+            "pt-BR": "{kg, plural, =0 {{reps} reps} other {{kg, number} kg × {reps}}}",
+            de: "{kg, plural, =0 {{reps} Wdh.} other {{kg, number} kg × {reps}}}",
+            es: "{kg, plural, =0 {{reps} reps} other {{kg, number} kg × {reps}}}",
+            pl: "{kg, plural, =0 {{reps} powt.} other {{kg, number} kg × {reps}}}",
+            it: "{kg, plural, =0 {{reps} rip.} other {{kg, number} kg × {reps}}}",
+          },
           value: async (e, ctx) => {
             const sessions = await ctx.query("session", {
               filter: (s: any) => s.day === e.day,
