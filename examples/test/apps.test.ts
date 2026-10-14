@@ -49,6 +49,17 @@ describe("every example speaks the six languages (#303)", () => {
       expect(unlabelled).toEqual([]);
     });
 
+    it(`${name}'s computed badges say what their values read as (labels)`, () => {
+      // A badge shows a value as a word, so a computed one needs the words, as an enum option does.
+      const views = app.pages.flatMap((p) => [p.view, ...(p.layout?.items ?? []).map((i) => i.view)]) as unknown as Array<Record<string, unknown>>;
+      const bare = views.flatMap((v) =>
+        (((v.display as { badges?: string[] } | undefined)?.badges ?? []) as string[])
+          .filter((k) => app.entities[String(v.entity)]?.computed?.[k] !== undefined && !computedInfo(app.entities[String(v.entity)], k)?.labels)
+          .map((k) => `${String(v.entity)}.${k}`),
+      );
+      expect(bare).toEqual([]);
+    });
+
     it(`${name} is written in English and carries all six, with no map missing one`, () => {
       expect(app.language).toBe("en");
       expect(app.languages).toEqual(SIX);
@@ -80,6 +91,11 @@ describe("workout fixture exercises nested lists + async computed", () => {
     const entries = workout.entities.session.fields.entries as { type: string; of: Record<string, { type: string }> };
     expect(entries.type).toBe("list");
     expect(entries.of.sets.type).toBe("list"); // a list field inside a list row
+  });
+
+  it("names a recipe's diet in words for every value it returns", () => {
+    const labels = computedInfo(recipes.entities.recipe, "diet")?.labels;
+    expect(Object.keys(labels ?? {}).sort()).toEqual(["animal-based", "unknown", "vegan", "vegetarian"]);
   });
 
   it("has an async computed that reads history", () => {
