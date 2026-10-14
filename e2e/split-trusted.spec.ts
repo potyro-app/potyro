@@ -96,8 +96,8 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   await ana.getByLabel("Description").fill("Dinner");
   await ana.getByLabel(/^Amount/).fill("100");
   await ana.getByRole("radio", { name: "shares" }).click();
-  await ana.getByRole("button", { name: /Add by share/ }).click();
-  await ana.getByRole("button", { name: /Add by share/ }).click();
+  await ana.getByRole("button", { name: /Add: by share/i }).click();
+  await ana.getByRole("button", { name: /Add: by share/i }).click();
   const rows = ana.locator(".k-row-card");
   await expect(rows).toHaveCount(2);
   // Ana takes two shares of the bill, Bo one: €66.67 and €33.33, adding up to exactly €100.
