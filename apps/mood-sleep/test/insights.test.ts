@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { IntlMessageFormat } from "intl-messageformat";
+import { word, type Ctx } from "potyro";
 import {
   addDays,
   dailySeries,
@@ -15,7 +17,27 @@ import {
   toNights,
   trend,
   type CheckinRow,
+  type Say,
 } from "../insights.js";
+
+/** `ctx.t` and `ctx.format` in one language, as the host gives them to a trusted app. */
+function sayIn(language: string): Say {
+  const app = { language: "en", languages: ["en", "pt-BR", "de", "es", "pl", "it"] };
+  return {
+    t: (w, vars) => {
+      const s = word(w, language, app);
+      if (!vars) return s;
+      const out = new IntlMessageFormat(s, language).format(vars);
+      return Array.isArray(out) ? out.join("") : String(out);
+    },
+    format: {
+      locale: language,
+      number: (n, o) => new Intl.NumberFormat(language, o).format(n),
+      date: (d, o) => new Intl.DateTimeFormat(language, o).format(new Date(d)),
+    } as Ctx["format"],
+  };
+}
+const en = sayIn("en");
 
 const seed = JSON.parse(readFileSync(new URL("../seed.json", import.meta.url), "utf8")) as { checkin: CheckinRow[] };
 const nights = toNights(seed.checkin);
@@ -75,13 +97,13 @@ describe("the 30-day window", () => {
 
 describe("what it says", () => {
   it("compares long and short nights in the seed", () => {
-    const i = sleepInsight(nights)!;
+    const i = sleepInsight(nights, en)!;
     expect(insightText(i)).toBe("On nights of 7 hours or more your mood averages 4.3. Under 6 hours, it's 2.4.");
     expect(i.strength).toBeCloseTo(1.9 / 4, 5);
   });
 
   it("leads with the strongest finding", () => {
-    const said = insights(nights);
+    const said = insights(nights, en);
     expect(said[0]!.kind).toBe("sleep");
     expect(said.length).toBeGreaterThan(1);
   });
@@ -89,25 +111,37 @@ describe("what it says", () => {
   it("finds the tag that moves things most, with enough nights on both sides", () => {
     const rows: CheckinRow[] = [];
     for (let i = 0; i < 8; i++) rows.push({ date: addDays("2026-10-01", i), hours: 7, mood: i % 2 ? 5 : 2, tags: i % 2 ? ["exercise"] : [] });
-    expect(insightText(tagInsight(toNights(rows))!)).toBe("On days you exercise your mood averages 5, against 2 without.");
+    expect(insightText(tagInsight(toNights(rows), en)!)).toBe("On days you exercise your mood averages 5, against 2 without.");
   });
 
   it("reports a sleep gap when the tag changes sleep more than mood", () => {
     const rows: CheckinRow[] = [];
     for (let i = 0; i < 8; i++) rows.push({ date: addDays("2026-10-01", i), hours: i % 2 ? 5 : 8, mood: 3, tags: i % 2 ? ["alcohol"] : [] });
-    expect(insightText(tagInsight(toNights(rows))!)).toBe("After a drink you sleep 5h on average, against 8h without.");
+    expect(insightText(tagInsight(toNights(rows), en)!)).toBe("After a drink you sleep 5h on average, against 8h without.");
   });
 
   it("says sleep is not what moves mood when the two groups are alike", () => {
     const rows: CheckinRow[] = [];
     for (let i = 0; i < 6; i++) rows.push({ date: addDays("2026-10-01", i), hours: i < 3 ? 8 : 5, mood: 3 });
-    expect(insightText(sleepInsight(toNights(rows))!)).toMatch(/stays close to 3\. Sleep is not what moves it/);
+    expect(insightText(sleepInsight(toNights(rows), en)!)).toMatch(/stays close to 3\. Sleep is not what moves it/);
   });
 
   it("asks for more nights rather than inventing a pattern", () => {
-    expect(insightText(insights([])[0]!)).toMatch(/Log how you slept tonight/);
+    expect(insightText(insights([], en)[0]!)).toMatch(/Log how you slept tonight/);
     const few = toNights([{ date: "2026-10-01", hours: 7, mood: 4 }, { date: "2026-10-02", hours: 5, mood: 2 }]);
-    expect(insightText(insights(few)[0]!)).toBe("2 check-ins so far. A few more nights — about 4 — and a pattern starts to show.");
+    expect(insightText(insights(few, en)[0]!)).toBe("2 check-ins so far. A few more nights — about 4 — and a pattern starts to show.");
+  });
+
+  it("says it in Polish, numbers where Polish puts them and written the Polish way (#303)", () => {
+    const pl = sayIn("pl");
+    const i = sleepInsight(nights, pl)!;
+    expect(insightText(i)).toBe("Po nocach, w które śpisz 7 godzin lub dłużej, twój nastrój wynosi średnio 4,3. Poniżej 6 godzin — 2,4.");
+    // The coloured numbers are still the numbers, whatever the word order.
+    expect(i.parts.filter((p) => typeof p !== "string").map((p) => (p as { value: string }).value)).toEqual(["7 godzin", "4,3", "6 godzin", "2,4"]);
+    const few = toNights([{ date: "2026-10-01", hours: 7, mood: 4 }, { date: "2026-10-02", hours: 5, mood: 2 }]);
+    expect(insightText(insights(few, pl)[0]!)).toBe("Na razie 2 wpisy. Jeszcze kilka nocy — około 4 — i zacznie się rysować wzór.");
+    const five = toNights(Array.from({ length: 5 }, (_, d) => ({ date: addDays("2026-10-01", d), hours: 7, mood: 4 })));
+    expect(insightText(insights(five, pl)[0]!)).toMatch(/^Na razie 5 wpisów\./);
   });
 });
 

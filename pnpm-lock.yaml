@@ -48,6 +48,9 @@ importers:
       chart.js:
         specifier: 4.5.1
         version: 4.5.1
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
 
   apps/photo-garden:
     dependencies:
