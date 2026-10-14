@@ -16,6 +16,7 @@ import { tileIdentity } from "./tile-identity.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { navigateTo } from "./router.js";
 import { totalSize } from "./app-folder.js";
+import { confirmLargeForSharing } from "./files-panel.js";
 
 type Arrival = { kind: "app"; files: File[] } | { kind: "files"; files: File[] };
 
@@ -128,6 +129,7 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
   }, [installed, fits, here]);
 
   const choose = async (app: InstalledApp): Promise<void> => {
+    if (!(await confirmLargeForSharing(files, app.name, app.sync === true))) return;
     setBusy(app.id);
     setFailed(null);
     try {
