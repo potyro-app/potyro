@@ -56,6 +56,11 @@ export interface PotyroRuntime extends Runtime {
    */
   settle(): Promise<void>;
   /**
+   * The app is being put away. Reads that fail from here on fail because of that (its realm or its
+   * store going), and are not reported as the app's failures.
+   */
+  close(): void;
+  /**
    * Hear this app's contained failures (#271): a computed value, a filter, an action or a view that
    * threw and was kept to that part. `what` names the part in the app's own terms — `computed
    * meal.kcal`, `page today`, `view today#1`, `action meal.log`. Returns the unsubscribe.
@@ -103,6 +108,7 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
     watchMedia: (ref, cb) => deps.store.subscribeBlob?.(ref, cb) ?? (() => {}),
     registerViewControl: (pageId, handle) => core.registerViewControl(pageId, handle),
     settle: () => core.settle(),
+    close: () => core.close(),
     async runPageAction(pageId, index, params) {
       // The same catch `runAction` needs, for the same reason: a button fires this from a click
       // handler, so an escaping rejection would be invisible to the person who pressed it.

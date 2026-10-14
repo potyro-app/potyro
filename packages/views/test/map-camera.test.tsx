@@ -94,7 +94,8 @@ vi.mock("maplibre-gl", async () => {
       return this;
     }
   }
-  return { Map: FakeMap, Marker: FakeMarker, Popup: FakePopup, LngLatBounds: FakeBounds };
+  // `loadMapLibre` points the library at its built worker before anything else.
+  return { Map: FakeMap, Marker: FakeMarker, Popup: FakePopup, LngLatBounds: FakeBounds, setWorkerUrl: () => {} };
 });
 
 const { MapView } = await import("../src/map.js");
