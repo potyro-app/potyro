@@ -58,7 +58,7 @@ describe("prepareReview with edits", () => {
   it("says plainly when nothing has that name", () => {
     const edit = prepareReview(DEF, proposal([{ ref: "edit:1", entity: "exercise", match: "Deadlift", set: { sets: 3 } }]), EXISTING).edits[0]!;
     expect(edit.targets).toEqual([]);
-    expect(edit.notes.join(" ")).toMatch(/No .*“Deadlift”/);
+    expect(edit.notes.join(" ")).toMatch(/: nothing called “Deadlift”/);
   });
 
   it("resolves links in what it sets: a record by name, or a row of the same proposal", () => {

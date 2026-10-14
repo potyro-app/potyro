@@ -42,7 +42,7 @@ const long = (d: Date): string => fmt.date(d, LONG);
 const time = (d: Date): string => fmt.date(d, TIME);
 
 /** A day either side of today, in words: `Intl.RelativeTimeFormat` with `numeric: "auto"`. */
-const dayWord = (n: number): string => fmt.relative(n * DAY, 0);
+const dayWord = (n: number): string => fmt.days(n);
 
 /**
  * "today" / "yesterday" / "tomorrow" / "in 3 days" / "3 days ago", or null when it is not near —
