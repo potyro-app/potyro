@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import react from "@vitejs/plugin-react";
+import { linguiBabelPlugin, linguiVitePlugins } from "@potyro/i18n/build.mjs";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -119,10 +120,42 @@ function claudeCliPlugin(): Plugin {
   };
 }
 
+/** Where the service worker finds the list of language chunks to precache (public/sw.js reads it). */
+const CATALOG_MANIFEST = "i18n-precache.json";
+
+/**
+ * Write the list of per-language catalog chunks the build produced, for the service worker.
+ *
+ * Each language is a lazy chunk (packages/i18n/src/i18n.ts), so a person who has only ever used the
+ * app in English has never fetched Polish — and the worker caches what it has seen. Switching
+ * language on a plane would then fail. The chunk names are content-hashed and only known after the
+ * build, so the worker cannot list them itself: this writes them down, and its install step
+ * fetches every one.
+ */
+function precacheCatalogs(): Plugin {
+  let base = "/";
+  return {
+    name: "potyro-precache-catalogs",
+    apply: "build",
+    configResolved(config) {
+      base = config.base;
+    },
+    generateBundle(_options, bundle) {
+      const files = Object.values(bundle)
+        .filter((c) => c.type === "chunk" && /[\\/]locales[\\/][^\\/]+[\\/]messages\.po$/.test(c.facadeModuleId ?? ""))
+        .map((c) => `${base}${c.fileName}`)
+        .sort();
+      this.emitFile({ type: "asset", fileName: CATALOG_MANIFEST, source: `${JSON.stringify({ files }, null, 2)}\n` });
+    },
+  };
+}
+
 // `pnpm dev` runs trusted; `pnpm dev:sandbox` (mode "sandbox") runs an example untrusted in the
 // QuickJS-WASM isolate.
 export default defineConfig({
-  plugins: [react(), claudeCliPlugin()],
+  // The Lingui macros compile in plugin-react's Babel pass, and `.po` catalogs load as compiled JS
+  // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.

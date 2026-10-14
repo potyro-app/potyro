@@ -2,6 +2,7 @@
 // backends implement this same interface so they report comparable numbers against one corpus.
 
 import type { ModifyContext } from "./prompt.js";
+import type { Language } from "./language.js";
 
 export interface GenPrompt {
   id: string;
@@ -9,6 +10,8 @@ export interface GenPrompt {
   description: string;
   /** Surface areas this prompt exercises (fields/views/logic), for reporting. */
   tags?: string[];
+  /** The person's language (#301): the app's words and any question are written in it. English when absent. */
+  language?: Language;
 }
 
 export interface ModelBackend {

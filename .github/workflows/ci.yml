@@ -25,6 +25,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint:boundaries
       - run: pnpm lint:tokens
+      - run: pnpm lint:i18n
 
   e2e:
     # M1 browser smoke (issue #15). Node 20 satisfies Playwright's >=20 requirement.

@@ -96,9 +96,9 @@ async function step(name) {
     case "typecheck":
       return record(name, run(name, "pnpm", ["typecheck"]));
     case "lint": {
-      const a = run("lint-boundaries", "pnpm", ["lint:boundaries"]);
-      const b = run("lint-tokens", "pnpm", ["lint:tokens"]);
-      return record(name, { ok: a.ok && b.ok, secs: a.secs + b.secs, log: a.ok ? b.log : a.log, tail: a.ok ? b.tail : a.tail });
+      const results = [run("lint-boundaries", "pnpm", ["lint:boundaries"]), run("lint-tokens", "pnpm", ["lint:tokens"]), run("lint-i18n", "pnpm", ["lint:i18n"])];
+      const bad = results.find((r) => !r.ok) ?? results[results.length - 1];
+      return record(name, { ok: results.every((r) => r.ok), secs: results.reduce((n, r) => n + r.secs, 0), log: bad.log, tail: bad.tail });
     }
     default: {
       const m = /^e2e:(\d+)$/.exec(name);

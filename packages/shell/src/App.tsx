@@ -15,6 +15,7 @@ import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { FixPanel } from "./fix-panel.js";
 import { startFix } from "./start-fix.js";
+import { currentLocale } from "./locale.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import type { LoopDeps, LoopOutcome, LoopStep } from "@potyro/generator/agent";
@@ -370,6 +371,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       runtime,
       store: runtime.core.store,
       engine: engineCfg,
+      language: currentLocale(),
       onStep: (step) => {
         if (fixRunId.current !== runId) return; // a superseded run's step; the panel moved on
         setFixSteps((prev) => [...prev, step]);
@@ -849,7 +851,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ...(langNote
       ? [
           canEdit
-            ? { key: "language", label: `Translate into ${langNote.into.name}`, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(`Translate this app into ${langNote.into.name} (${langNote.into.tag}).`) }
+            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(`Translate this app into ${langNote.into.name} (${langNote.into.tag}).`) }
             : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
         ]
       : []),

@@ -13,10 +13,11 @@
 // bug in #78 (a list read once) cannot come back.
 
 import { useEffect, useSyncExternalStore } from "react";
+import { plural } from "@lingui/core/macro";
 import { USER_APPS_CHANGED, listUserApps, type UserApp } from "./user-apps.js";
 import { inspect } from "./app-source.js";
 import { shownName } from "./app-words.js";
-import { LOCALE_CHANGED, LOCALE_KEY, languagePrefs } from "./locale.js";
+import { LOCALE_KEY, languagePrefs, onLanguagePrefsChange } from "./locale.js";
 
 /** There is one kind of app (#152): the examples are seeded into the same registry as yours. The
  *  key keeps its `user:` prefix so entries written before that stay valid. */
@@ -83,8 +84,9 @@ export function attentionOf(entry: LauncherEntry, now: number): Attention {
 
 /** "2 messages · 1 due" — the badge in words. Empty when there is nothing. */
 export function describeAttention(a: Attention): string {
-  const part = (n: number, one: string, many: string): string | null => (n ? `${n} ${n === 1 ? one : many}` : null);
-  return [part(a.chat, "message", "messages"), part(a.due, "due", "due")].filter(Boolean).join(" · ");
+  const chat = a.chat ? plural(a.chat, { one: "# message", other: "# messages" }) : null;
+  const due = a.due ? plural(a.due, { one: "# due", other: "# due" }) : null;
+  return [chat, due].filter(Boolean).join(" · ");
 }
 
 /** Merge new signal values into the app's entry — only when something changed, so a re-render does not write. */
@@ -309,14 +311,12 @@ export function subscribe(cb: () => void): () => void {
   };
   target.addEventListener(CHANGED, cb);
   // A tile's name follows the person's language (#302).
-  target.addEventListener(LOCALE_CHANGED, cb);
-  target.addEventListener("languagechange", cb);
+  const offLanguage = onLanguagePrefsChange(cb);
   target.addEventListener(USER_APPS_CHANGED, cb);
   target.addEventListener("storage", onStorage);
   return () => {
     target.removeEventListener(CHANGED, cb);
-    target.removeEventListener(LOCALE_CHANGED, cb);
-    target.removeEventListener("languagechange", cb);
+    offLanguage();
     target.removeEventListener(USER_APPS_CHANGED, cb);
     target.removeEventListener("storage", onStorage);
   };
@@ -326,7 +326,8 @@ export function subscribe(cb: () => void): () => void {
 // The raw JSON of both keys is the fingerprint: cheap to compare, and it changes iff the list does.
 let snapshot: { raw: string; apps: InstalledApp[] } | null = null;
 function getSnapshot(): InstalledApp[] {
-  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""}`;
+  // The person's languages are part of it: a translated app's tile name follows them (#302).
+  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""} ${languagePrefs().join(",")}`;
   if (!snapshot || snapshot.raw !== raw) snapshot = { raw, apps: listInstalledApps() };
   return snapshot.apps;
 }

@@ -15,7 +15,10 @@
 // find it whenever you want".
 
 import { useState } from "react";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { StorageReport } from "./storage-report.js";
+import { LanguagePicker } from "./language-picker.js";
 import { BackupSwitch } from "./backup-switch.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
@@ -61,9 +64,9 @@ export async function askNameIfUnnamed(): Promise<void> {
   if (me.name && me.name !== DEFAULT_NAME) return;
 
   const name = await shellDialogs.prompt(
-    "What should the people you share with see you as?\n\n" +
-      "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any " +
-      "time from ⌾ You.",
+    t`What should the people you share with see you as?` +
+      "\n\n" +
+      t`Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You.`,
     { default: "" },
   );
   if (!name?.trim()) return;
@@ -85,23 +88,23 @@ export async function offerBackupOnFirstSync(open: () => void): Promise<void> {
   if (globalThis.localStorage?.getItem(OFFERED)) return;
   globalThis.localStorage?.setItem(OFFERED, new Date().toISOString());
   const yes = await shellDialogs.confirm(
-    "Your data now lives in more than one place.\n\n" +
-      "A short list of words is the only way back to it if you lose this device — and the only way " +
-      "to use it on another one. Nobody can recover them for you.\n\nShow them now?",
+    t`Your data now lives in more than one place.` +
+      "\n\n" +
+      t`A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you.` +
+      "\n\n" +
+      t`Show them now?`,
   );
   if (yes) open();
 }
 
 export function IdentityPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useLingui();
   const [me, setMe] = useState(() => peekIdentity());
   const [words, setWords] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const rename = async (): Promise<void> => {
-    const name = await shellDialogs.prompt(
-      "What should people you share with see you as?",
-      { default: me?.name ?? "" },
-    );
+    const name = await shellDialogs.prompt(t`What should people you share with see you as?`, { default: me?.name ?? "" });
     if (!name?.trim()) return;
     // A fresh device may have no identity until something needs one; naming yourself is such a thing.
     await ensureIdentity();
@@ -128,15 +131,17 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
    */
   const changeRelay = async (): Promise<void> => {
     const entered = await shellDialogs.prompt(
-      "Which relay should this device use?\n\n" +
-        "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://.\n" +
-        "Leave it blank to use this site's own relay.",
+      t`Which relay should this device use?` +
+        "\n\n" +
+        t`A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://.` +
+        "\n" +
+        t`Leave it blank to use this site’s own relay.`,
       { default: globalThis.localStorage?.getItem(RELAY_KEY) ?? "" },
     );
     if (entered === null) return; // cancelled — not the same as "clear it"
     const next = entered.trim();
     if (next && !/^wss?:\/\//i.test(next)) {
-      await shellDialogs.confirm("That is not a websocket URL. It needs to start with wss:// or ws://.");
+      await shellDialogs.confirm(t`That is not a websocket URL. It needs to start with wss:// or ws://.`);
       return;
     }
     if (next) globalThis.localStorage?.setItem(RELAY_KEY, next);
@@ -157,8 +162,9 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
 
   const signIn = async (): Promise<void> => {
     const entered = await shellDialogs.prompt(
-      "Paste the words from your other device.\n\nThis replaces the identity on THIS device — anything " +
-        "stored here under the current one stops being yours to open.",
+      t`Paste the words from your other device.` +
+        "\n\n" +
+        t`This replaces the identity on THIS device — anything stored here under the current one stops being yours to open.`,
     );
     if (!entered?.trim()) return;
     setBusy(true);
@@ -183,10 +189,12 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
   // person now; the two device paths sit under one heading; infrastructure is under Advanced.
   return (
     <div className="k-modal-scrim" onClick={onClose}>
-      <div className="k-modal k-identity" role="dialog" aria-modal="true" aria-label="You and your devices" onClick={(e) => e.stopPropagation()}>
+      <div className="k-modal k-identity" role="dialog" aria-modal="true" aria-label={t`You and your devices`} onClick={(e) => e.stopPropagation()}>
         <header className="k-identity-head">
-          <h2>You</h2>
-          <button type="button" className="k-add" onClick={onClose} aria-label="Close">
+          <h2>
+            <Trans comment="Heading of the panel about the person using Potyro and their devices">You</Trans>
+          </h2>
+          <button type="button" className="k-add" onClick={onClose} aria-label={t`Close`}>
             ✕
           </button>
         </header>
@@ -196,62 +204,87 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
             {me ? personInitials(me.name, me.id) : "?"}
           </span>
           <div className="k-identity-who">
-            <strong className="k-identity-name">{named ? me!.name : "No name yet"}</strong>
-            <span className="k-muted">
-              {named ? "Shown to the people you share an app with." : "People you share an app with see you as “Me”."}
-            </span>
+            <strong className="k-identity-name">{named ? me!.name : t`No name yet`}</strong>
+            <span className="k-muted">{named ? t`Shown to the people you share an app with.` : t`People you share an app with see you as “Me”.`}</span>
           </div>
           <button type="button" className="k-add" onClick={() => void rename()}>
-            {named ? "Rename" : "Set a name"}
+            {named ? t`Rename` : t`Set a name`}
           </button>
         </div>
+
+        {/* Early, before anything that has to be read carefully: someone who cannot read the rest
+            of this panel needs to find this first. */}
+        <section aria-labelledby="k-lang-h">
+          <h3 id="k-lang-h">
+            <Trans comment="Section heading: which language Potyro is shown in">Language</Trans>
+          </h3>
+          <LanguagePicker />
+        </section>
 
         {/* Before the devices, deliberately: linking one is only worth doing if there is something
             for it to bring back. */}
         <section aria-labelledby="k-backup-h">
-          <h3 id="k-backup-h">Backup</h3>
+          <h3 id="k-backup-h">
+            <Trans>Backup</Trans>
+          </h3>
           <BackupSwitch />
         </section>
 
         <section aria-labelledby="k-devices-h">
-          <h3 id="k-devices-h">Your devices</h3>
+          <h3 id="k-devices-h">
+            <Trans>Your devices</Trans>
+          </h3>
           <div className="k-identity-device">
             <span aria-hidden>💻</span>
             <div>
-              This device
-              <small className="k-muted">Your apps and data live here. Add another device to use them there too.</small>
+              <Trans>This device</Trans>
+              <small className="k-muted">
+                <Trans>Your apps and data live here. Add another device to use them there too.</Trans>
+              </small>
             </div>
           </div>
           {words ? (
             <div className="k-identity-words">
               <p className="k-muted">
-                Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe.
+                <Trans>Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe.</Trans>
               </p>
               <output className="k-passphrase">{words}</output>
               <button type="button" className="k-add" onClick={() => void navigator.clipboard?.writeText(words).catch(() => {})}>
-                Copy
+                <Trans>Copy</Trans>
               </button>
             </div>
           ) : (
             <button type="button" className="k-identity-path" disabled={busy} onClick={() => void reveal()}>
-              <b>Add a device</b>
-              <small className="k-muted">Shows 24 words to type on the other device. They are the only copy — keep them safe.</small>
+              <b>
+                <Trans>Add a device</Trans>
+              </b>
+              <small className="k-muted">
+                <Trans>Shows 24 words to type on the other device. They are the only copy — keep them safe.</Trans>
+              </small>
             </button>
           )}
           <button type="button" className="k-identity-path" disabled={busy} onClick={() => void signIn()}>
-            <b>This is my second device</b>
-            <small className="k-muted">Type the words from your first device to bring its apps here.</small>
+            <b>
+              <Trans>This is my second device</Trans>
+            </b>
+            <small className="k-muted">
+              <Trans>Type the words from your first device to bring its apps here.</Trans>
+            </small>
           </button>
         </section>
 
         {/* KA-28: "bring your own relay" must be reachable without a rebuild and without devtools —
             and, since it is not something most people should touch, without being on the front. */}
         <details className="k-identity-advanced">
-          <summary>Advanced — sync relay, identity id</summary>
+          <summary>
+            <Trans>Advanced — sync relay, identity id</Trans>
+          </summary>
           <p className="k-muted">
             {relay
-              ? `Synced apps meet through ${ownRelay ? "your own relay" : "this site's relay"}. It only ever sees encrypted data — it cannot read your records.`
-              : "No relay: synced apps stay on this device."}
+              ? ownRelay
+                ? t`Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records.`
+                : t`Synced apps meet through this site’s relay. It only ever sees encrypted data — it cannot read your records.`
+              : t`No relay: synced apps stay on this device.`}
           </p>
           {relay ? (
             <p className="k-muted k-relay-current">
@@ -259,11 +292,13 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
             </p>
           ) : null}
           <button type="button" className="k-add" disabled={busy} onClick={() => void changeRelay()}>
-            Change relay
+            <Trans>Change relay</Trans>
           </button>
           {me ? (
             <p className="k-muted k-identity-id">
-              Identity <code>{me.id}</code>
+              <Trans>
+                Identity <code>{me.id}</code>
+              </Trans>
             </p>
           ) : null}
           {/* What this device's storage is actually doing. Every fallback in `openStore` is silent,

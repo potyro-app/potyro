@@ -4,7 +4,8 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isRtl, languageName, languageNote, ownName, shownName } from "../src/app-words.js";
-import { LOCALE_CHANGED, LOCALE_KEY, chosenLanguage, languagePrefs, onLanguagePrefsChange } from "../src/locale.js";
+import { LOCALE_KEY, chosenLanguage, languagePrefs, onLanguagePrefsChange } from "../src/locale.js";
+import { setLocale } from "@potyro/i18n";
 import { inspect } from "../src/app-source.js";
 
 const groceries = { name: { en: "Groceries", pl: "Zakupy" }, language: "en", languages: ["en", "pl"] };
@@ -51,20 +52,25 @@ describe("the person's languages", () => {
     expect(languagePrefs()).toEqual(["fr-FR", "pl"]);
   });
 
-  it("is heard when it changes here, in another tab, or on the device", () => {
+  it("is heard when it changes under You → Language, or on the device", async () => {
     const heard = vi.fn();
     const stop = onLanguagePrefsChange(heard);
-    globalThis.dispatchEvent(new Event(LOCALE_CHANGED));
+    await setLocale("pl");
     globalThis.dispatchEvent(new Event("languagechange"));
     stop();
-    globalThis.dispatchEvent(new Event(LOCALE_CHANGED));
-    expect(heard).toHaveBeenCalledTimes(2);
+    await setLocale("en");
+    globalThis.dispatchEvent(new Event("languagechange"));
+    expect(heard.mock.calls.length).toBeGreaterThanOrEqual(2);
+    const after = heard.mock.calls.length;
+    await setLocale("de");
+    expect(heard.mock.calls.length).toBe(after);
+    await setLocale("auto");
   });
 });
 
 describe("the quiet line (docs/20 §3.3)", () => {
   it("says which language an app is in when it lacks the person's, and offers theirs", () => {
-    expect(languageNote({ language: "en" }, ["pl-PL"])).toEqual({ line: "This app is in English.", into: { tag: "pl", name: "Polski" } });
+    expect(languageNote({ language: "en" }, ["pl-PL"], "en")).toEqual({ line: "This app is in English.", into: { tag: "pl", name: "Polski" }, offer: "Translate into Polski" });
   });
 
   it("says nothing when the app has the person's language, or declares none", () => {
