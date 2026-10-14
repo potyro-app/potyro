@@ -31,7 +31,7 @@ import { engineLabel, engineReady } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
-import { adoptDraft, appendMessage, briefSince, clearChat, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
+import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { PointGlyph } from "./point-mode.js";
@@ -355,15 +355,18 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setWorking("");
     try {
       await say({ kind: "ask", text: asked, ...(about ? { point: { label: about.label, words: about.words } } : {}) });
-      // Everything said since the app last changed, so an answer reaches the model beside its question.
-      const brief = briefSince(await listMessages(chatRef.current)) || asked;
+      // Everything said since the app last changed, so an answer reaches the model beside its question;
+      // and what was said before that, for the loop's recap of earlier versions (#279).
+      const said = await listMessages(chatRef.current);
+      const brief = briefSince(said) || asked;
+      const earlier = appRef.current ? earlierConversation(said, await listVersions(appRef.current)) : [];
       setHeld(null);
       const current = sourceRef.current;
       const modules = await modulesOf(appRef.current ?? undefined);
       // What was pointed at goes beside the request: in words, and as the lines of the app that hold it.
       const context = about && current !== null ? await pointContext(current, about) : undefined;
       const outcome =
-        current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief, context) : await (await engine()).create(brief);
+        current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief, context, earlier) : await (await engine()).create(brief);
       await answer(outcome, brief);
     } finally {
       setWorking(null);
