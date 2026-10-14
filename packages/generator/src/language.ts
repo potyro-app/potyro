@@ -236,5 +236,10 @@ export function userFacingStrings(source: string): string[] {
 
 /** The language an app's own words are in, read off its source; null when they say too little. */
 export function appLanguage(source: string): Language | null {
+  // A declared `language: "en"` (#302) says it outright — and an app in several languages has words
+  // in all of them, which no reading of its strings could settle.
+  const declared = /(?:^|[\s{,])language:\s*["']([A-Za-z]{2,3}(?:-[A-Za-z0-9]+)*)["']/m.exec(source)?.[1];
+  const matched = matchLanguage(declared);
+  if (matched) return matched;
   return classifyText(userFacingStrings(source).join("\n"));
 }

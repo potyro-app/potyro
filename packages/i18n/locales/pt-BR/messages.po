@@ -558,6 +558,10 @@ msgstr ""
 msgid "This app"
 msgstr ""
 
+#: ../shell/src/app-words.ts
+msgid "This app is in {language}."
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr ""
@@ -568,6 +572,10 @@ msgstr ""
 
 #: ../shell/src/identity-panel.tsx
 msgid "This replaces the identity on THIS device — anything stored here under the current one stops being yours to open."
+msgstr ""
+
+#: ../shell/src/app-words.ts
+msgid "Translate into {into}"
 msgstr ""
 
 #: ../shell/src/launcher.tsx

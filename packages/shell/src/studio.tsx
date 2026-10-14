@@ -41,6 +41,8 @@ import { duplicateApp, modulesOf } from "./app-modules.js";
 import { describeLibrary } from "./package-libraries.js";
 import { keepLibraryFiles, librariesToFetch, prepareStudioLibraries, type StudioLibraries } from "./studio-libraries.js";
 import { StudioTools, type ToolsTab } from "./studio-tools.js";
+import { ownName, shownName } from "./app-words.js";
+import { languagePrefs } from "./locale.js";
 
 /** What "Write the code yourself" starts from when there is no app yet. */
 const STARTER = `import { defineApp } from "potyro";
@@ -93,7 +95,7 @@ async function nameAfter(app: UserApp, nextDefined: string | undefined): Promise
   if (!nextDefined) return app.name;
   let before: string | undefined;
   try {
-    before = (await loadTrustedModule(app.source, await modulesOf(app.id))).name;
+    before = ownName(await loadTrustedModule(app.source, await modulesOf(app.id)));
   } catch {
     before = undefined;
   }
@@ -171,7 +173,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
   const busy = working !== null;
-  const appName = (appId ? getUserApp(appId)?.name : undefined) ?? preview?.composed.runtime.definition.name ?? "Your app";
+  const savedName = appId ? getUserApp(appId)?.name : undefined;
+  // The name the person reads (#302): their own for it, or the source's in their language.
+  const appName = preview ? shownName(savedName, preview.composed.runtime.core.app.definition, languagePrefs()) : (savedName ?? "Your app");
   const hasApp = appId !== null;
 
   /** Read the conversation back: its messages, and every version it does not already tell. */
@@ -234,7 +238,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
    */
   const keep = async (next: string, built: Preview | null, summary: string, note: string, origin?: VersionOrigin, libraries?: StudioLibraries | null): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
-    const defined = built?.composed.runtime.definition.name;
+    // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
+    // the source's name in its own language around it (#302).
+    const defined = built ? ownName(built.composed.runtime.core.app.definition) : undefined;
     const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || "Untitled app";
     // A library's bytes are in the app's folder before its record names them, so no open finds one missing.
     if (existing && libraries?.files.length) await keepLibraryFiles(existing, libraries.files);

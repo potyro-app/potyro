@@ -106,6 +106,7 @@ export default defineApp({
   icon: "🧾",
   version: "1.2.0",
   schemaVersion: 1,
+  language: "en",
   theme: { accent: "#3C9A8F" },
   permissions: { sync: true },
 

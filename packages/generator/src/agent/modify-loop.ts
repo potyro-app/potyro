@@ -46,6 +46,8 @@ import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
+import type { TranslationDraft } from "./translate-tool.js";
+import { describeWordsReport, wordsReport } from "../source-words.js";
 
 export type ModifyLoopOutcome =
   | {
@@ -109,6 +111,11 @@ export interface ModifyLoopDeps {
   signal?: AbortSignal;
   resumeFrom?: ChatMessage[];
   /**
+   * The app the edits apply to once `translate` has written a language into it (#302) — the same
+   * object the tool was built with. Without it, edits apply to `source` as first shown, as before.
+   */
+  draft?: TranslationDraft;
+  /**
    * Think hard (`reasoning: "high"`) for the one turn after the loop got stuck — a rolled-back
    * repeat or a fresh start (#280, docs/19 F6). The extra cost lands only on changes that were going
    * badly. Off unless the caller turns it on; the Studio's setting defaults it on.
@@ -124,7 +131,7 @@ const DEFAULT_MAX_CANDIDATES = 4;
 const REPEAT_LINES = 5;
 const ASK = "ASK:";
 /** The tools whose use makes a refusal informed. */
-const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read"]);
+const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read", "translate"]);
 
 type Accepted = Extract<ModifyLoopOutcome, { kind: "source" }>;
 
@@ -327,7 +334,13 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     previousReply = text;
     previousReplyAt = messages.length;
 
-    const read = readEditsOrFile(deps.source, text);
+    // Edits apply to the app as it now is: the translated one, once `translate` wrote into it. A
+    // reply with no edits after a translation sends the translation as it is (#302).
+    const base = deps.draft?.source ?? deps.source;
+    const translated = base !== deps.source;
+    const parsed = readEditsOrFile(base, text);
+    const read: typeof parsed =
+      parsed.kind === "unusable" && translated ? { kind: "edits", source: base, applied: 0, ...(text.trim() ? { rationale: text.trim() } : {}) } : parsed;
     if (read.kind === "unusable" || read.kind === "no-match") {
       unusableReplies += 1;
       deps.onStep?.({ kind: "unusable", detail: read.kind === "no-match" ? describeEditFailures(read.failures) : text.trim() || "(empty reply)" });
@@ -419,11 +432,20 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
  */
 async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>): Promise<{ problem: string | null; warning: boolean; gated: GatedRun | null }> {
   let problem: string | null = null;
+  /** A map renamed in the app's own language only (#302): said once the rest of the gate has passed. */
+  let staleWords: string | null = null;
   try {
     const issues = await deps.check(candidate);
     if (issues.length) problem = `The result failed validation:\n${issues.map((i) => `- ${i}`).join("\n")}`;
   } catch (e) {
     problem = `The result does not compile: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (!problem) {
+    // Every language the app carries, kept in step (#302): a gap the candidate ADDS sends it back; a
+    // gap that was there is said, never held against it.
+    const words = describeWordsReport(await wordsReport(deps.source, candidate).catch(() => ({ added: [], existing: [], plain: [], stale: [] })));
+    if (words.fails) problem = `It compiles and validates, but it leaves a translation incomplete.\n${words.text}`;
+    else if (words.warns) staleWords = words.text;
   }
   if (!problem) {
     let shape: AppShape | null = null;
@@ -448,6 +470,14 @@ async function gate(deps: ModifyLoopDeps, candidate: string, warned: Set<string>
         `It compiles and validates, and nothing new threw — but look at this. ${describeRun(report, preexisting)}\n` +
         "If that is what the person asked for, send the same edits again unchanged and they will be accepted; otherwise fix it.";
     }
+  }
+  // Last, so a candidate held on it has passed everything else; its own key, so a run warning on the
+  // same candidate is still said. Sent again unchanged, it is meant: one language on purpose.
+  const wordsKey = `\u0000words\u0000${candidate}`;
+  if (!problem && staleWords && !warned.has(wordsKey)) {
+    warned.add(wordsKey);
+    warning = true;
+    problem = `It compiles and validates, but look at this.\n${staleWords}`;
   }
   return { problem, warning, gated };
 }

@@ -1,5 +1,6 @@
 import type { AppDefinition, AppInput, PotyroApp, Page } from "./types/app.js";
 import { checkReferences, describeIssue, structureSchema, ValidationError } from "./validate.js";
+import { checkWords } from "./words.js";
 
 /**
  * The typed builder (docs/03, docs/04). It:
@@ -32,7 +33,7 @@ export function defineApp(def: AppInput): PotyroApp {
   const pages: Page[] = def.pages.map((p) => (p.view ? (p as Page) : { ...p, view: p.layout!.items[0]!.view }));
   const definition: AppDefinition = { ...def, pages };
 
-  const refIssues = checkReferences(definition);
+  const refIssues = [...checkReferences(definition), ...checkWords(definition)];
   if (refIssues.length > 0) {
     throw new ValidationError(refIssues);
   }

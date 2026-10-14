@@ -73,6 +73,7 @@ export default defineApp({
   icon: "🍳",
   version: "1.0.0",
   schemaVersion: 1,
+  language: "en",
   theme: { accent: "#E4A93C" },
   permissions: { camera: true, filesystem: true },
 

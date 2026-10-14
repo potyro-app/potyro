@@ -390,6 +390,7 @@ export default defineApp({
   icon: "🏋",
   version: "1.1.1",
   schemaVersion: 1,
+  language: "en",
   theme: { accent: "#5B8DEF" },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
   nav: "grid", // land on an object grid (Exercises / Sessions) with the quick actions on top

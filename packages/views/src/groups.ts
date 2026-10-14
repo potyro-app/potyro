@@ -3,7 +3,7 @@
 // the sections they read back. Before this, only the detail view had sections and only the form
 // followed field order, and the two never matched.
 
-import type { EntityDef, Field } from "potyro";
+import type { ShownEntity, ShownField } from "./shown.js";
 
 export interface ResolvedGroup {
   title?: string;
@@ -17,7 +17,7 @@ export interface ResolvedGroup {
 
 export type GroupSurface = "form" | "detail";
 
-const isHidden = (field: Field | undefined): boolean => Boolean((field as { hidden?: boolean } | undefined)?.hidden);
+const isHidden = (field: ShownField | undefined): boolean => Boolean((field as { hidden?: boolean } | undefined)?.hidden);
 
 /**
  * The entity's groups as this surface shows them. Hidden fields never appear. The form shows
@@ -26,7 +26,7 @@ const isHidden = (field: Field | undefined): boolean => Boolean((field as { hidd
  * order — a field added in the Studio is never lost for want of a group. Groups left with nothing
  * to show are dropped rather than rendered as an empty heading.
  */
-export function resolveGroups(entity: EntityDef | undefined, surface: GroupSurface): ResolvedGroup[] {
+export function resolveGroups(entity: ShownEntity | undefined, surface: GroupSurface): ResolvedGroup[] {
   const fields = entity?.fields ?? {};
   const computed = entity?.computed ?? {};
   const shows = (key: string): boolean => {

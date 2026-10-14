@@ -57,6 +57,8 @@ export interface ChromeQuick {
 export interface ChromeTool {
   key: string;
   label: string;
+  /** Says something rather than does something (the app's language, when it cannot be changed here). */
+  disabled?: boolean;
   /** A glyph, or a drawn icon where no glyph says it (Data's database). */
   icon?: ReactNode;
   hint?: string;
@@ -169,7 +171,7 @@ function FullscreenFrame({ onExit, children }: { onExit: () => void; children: R
 }
 
 function toolEntry(t: ChromeTool): MenuEntry {
-  return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger };
+  return { key: t.key, label: t.label, icon: t.icon, hint: t.hint ?? (t.active ? "on" : undefined), onSelect: t.onSelect, className: t.className, danger: t.danger, disabled: t.disabled };
 }
 
 function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
@@ -346,6 +348,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
       // The same accessible names as the phone's controls, whatever the visible word.
       aria-label={t.key === "edit-mode" ? "Edit mode" : t.key === "apps" ? "Switch app" : t.hint ? t.label : undefined}
       title={t.hint}
+      disabled={t.disabled}
       onClick={t.onSelect}
     >
       <span className="k-tool-icon" aria-hidden>

@@ -1,24 +1,55 @@
-// The person's language, for the model turns (#301) — a minimal stand-in.
+// The person's language, for the shell's callers — thin, over @potyro/i18n (#298), which owns the
+// saved choice (You → Language), the device's languages and the live switch.
 //
-// #298 owns the real thing: the Lingui catalogs, You → Language and locale detection. Until it lands
-// this is the one place a model turn asks "which language?": the choice saved on this device, else the
-// best match for the browser's languages, else English. #298 should replace this file's body (or
-// re-export its own getter under this name); every caller goes through `currentLocale()`, so nothing
-// else needs to change.
+// Two readings of one preference:
+//   - `currentLocale()` (#301): the ONE language a model turn answers in and writes new apps in —
+//     one the generator speaks.
+//   - `languagePrefs()` (#302): the languages an APP is shown in, best first. An explicit choice wins
+//     outright; otherwise the device's whole list, so a French phone still reads a French app in
+//     French though the shell has no French (docs/20 §3.1, Q10).
 
+import { LOCALE_KEY, deviceLanguages, i18n, initialLocale, savedLocale } from "@potyro/i18n";
 import { bestLanguage, isLanguage, type Language } from "@potyro/generator/language";
 
-/** Where a chosen language is saved on this device. #298 may move it; then only this line changes. */
-export const LOCALE_KEY = "potyro:locale";
+export { LOCALE_KEY };
 
-/** The language the model answers in and writes new apps in: the saved choice, else the device's. */
+/** The language the model answers in and writes new apps in: the shell's, else the device's best match. */
 export function currentLocale(): Language {
-  try {
-    const saved = globalThis.localStorage?.getItem(LOCALE_KEY);
-    if (isLanguage(saved)) return saved;
-  } catch {
-    // storage blocked: fall through to the device's languages
-  }
-  const nav = globalThis.navigator;
-  return bestLanguage(nav?.languages?.length ? nav.languages : [nav?.language]);
+  const shell = initialLocale();
+  if (isLanguage(shell)) return shell;
+  const { browser, system } = deviceLanguages();
+  return bestLanguage(system?.length ? system : browser);
+}
+
+/** The explicit choice under You → Language, or `null` to follow the device. */
+export function chosenLanguage(): string | null {
+  const saved = savedLocale();
+  return saved && saved !== "auto" ? saved : null;
+}
+
+/** The languages this person reads apps in, best first: their choice alone, else the device's list. */
+export function languagePrefs(): string[] {
+  const chosen = chosenLanguage();
+  if (chosen) return [chosen];
+  const { browser, system } = deviceLanguages();
+  const list = system?.length ? [...system] : [...browser];
+  return list.length ? list : ["en"];
+}
+
+/** Hear the person's languages change: You → Language (here or in another tab), or the device's. */
+export function onLanguagePrefsChange(cb: () => void): () => void {
+  const offI18n = i18n.on("change", cb);
+  const target = globalThis as unknown as EventTarget;
+  if (typeof target.addEventListener !== "function") return offI18n;
+  const onStorage = (e: Event): void => {
+    const key = (e as StorageEvent).key;
+    if (key === null || key === LOCALE_KEY) cb();
+  };
+  target.addEventListener("languagechange", cb);
+  target.addEventListener("storage", onStorage);
+  return () => {
+    offI18n();
+    target.removeEventListener("languagechange", cb);
+    target.removeEventListener("storage", onStorage);
+  };
 }

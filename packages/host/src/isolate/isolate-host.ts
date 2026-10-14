@@ -3,7 +3,9 @@
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
 // memory + time limits.
 
-import type { AppDefinition, Ctx, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value } from "potyro";
+import type { AppDefinition, Ctx, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value, Words } from "potyro";
+import { localize } from "potyro";
+import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
@@ -140,14 +142,14 @@ class IsolateLoadedApp implements LoadedApp {
         const me = this.ctxHost?.me.id;
         if (!me) throw new Error("ctx.create: no identity to stamp the record with");
         const clean = stampAuthor(op.data, me);
-        assertValuesFit(this.definition, op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me));
+        assertValuesFit(this.shown(), op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me));
         const row = await this.store.insert(op.entity as string, clean as Partial<PotyroRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
       case "data.patch": {
         const clean = stripAuthor(op.data);
         const current = (await this.store.get(op.entity as string, op.id as string)) as Record<string, unknown> | null;
-        assertPatchFits(this.definition, op.entity as string, clean, current, {
+        assertPatchFits(this.shown(), op.entity as string, clean, current, {
           now: currentPeople(this.ctxHost?.space, this.ctxHost?.me),
           ever: everyone(this.store),
         });
@@ -162,7 +164,7 @@ class IsolateLoadedApp implements LoadedApp {
         const id = op.id as string;
         const field = op.field as string;
         assertNotAuthor(field);
-        assertCountable(this.definition, entity, field);
+        assertCountable(this.shown(), entity, field);
         const delta = Number(op.delta);
         if (!Number.isFinite(delta)) throw new Error("ctx.increment: delta must be a number");
         if (this.store.increment) {
@@ -195,7 +197,7 @@ class IsolateLoadedApp implements LoadedApp {
         return serialize(all.map((k) => k.slice(KV_PREFIX.length)).filter((k) => (prefix ? k.startsWith(prefix) : true)));
       }
       case "ui.toast":
-        this.ctxHost?.ui.toast(op.msg as string);
+        this.ctxHost?.ui.toast(op.msg as Words);
         return nul;
       // Questions for the person (#112) — and the older confirm/prompt/pick. Plain data both ways, no
       // permission: none of them reach outside the app. While one is open the call's budget pauses.
@@ -212,9 +214,9 @@ class IsolateLoadedApp implements LoadedApp {
           const opts = (op.opts ?? undefined) as never;
           const answer =
             kind === "ui.confirm"
-              ? await ctx.ui.confirm(op.msg as string, opts)
+              ? await ctx.ui.confirm(op.msg as Words, opts)
               : kind === "ui.prompt"
-                ? await ctx.ui.prompt(op.msg as string, opts)
+                ? await ctx.ui.prompt(op.msg as Words, opts)
                 : kind === "ui.pick"
                   ? // `opts.label` is a function and cannot cross, so only `{multi}` arrives: an untrusted
                     // picker labels items the host's default way — a deliberate gap, not an oversight.
@@ -330,7 +332,7 @@ class IsolateLoadedApp implements LoadedApp {
         console.log(`[${this.definition.id}]`, ...((op.args as unknown[]) ?? []));
         return;
       case "ui.toast":
-        this.ctxHost?.ui.toast(op.msg as string);
+        this.ctxHost?.ui.toast(op.msg as Words);
         return;
       case "nav":
         this.ctxHost?.navigate(op.page as string, op.params as Record<string, string>);
@@ -349,7 +351,7 @@ class IsolateLoadedApp implements LoadedApp {
         const id = op.id as string;
         let bar = this.progress.get(id);
         if (!bar && this.ctxHost) {
-          bar = this.ctxHost.ui.progress(String(op.label ?? ""));
+          bar = this.ctxHost.ui.progress((op.label ?? "") as Words);
           this.progress.set(id, bar);
         }
         if (!bar) return;
@@ -375,6 +377,21 @@ class IsolateLoadedApp implements LoadedApp {
     });
     this.vm.setProp(this.vm.global, "__hostSync", syncFn);
     syncFn.dispose();
+
+    // Formatting, answered on the spot (#302): the box has no `Intl`. Pure — `Intl` and the ICU
+    // formatter over the arguments, in the host's locale — so it may be synchronous; its time counts
+    // against the call's deadline like everything else inside `enter()`. Validation: format.ts.
+    const pureFn = this.vm.newFunction("__hostPure", (argHandle) => {
+      const ctx = this.ctxHost;
+      return this.vm.newString(ctx ? hostPure(this.vm.getString(argHandle), ctx) : `${PURE_ERROR}no call is running`);
+    });
+    this.vm.setProp(this.vm.global, "__hostPure", pureFn);
+    pureFn.dispose();
+  }
+
+  /** The definition as the person reads it, for messages about a value that does not fit. */
+  private shown(): AppDefinition {
+    return localize(this.definition, this.ctxHost?.locale);
   }
 
   private capsAvailable(ctx: Ctx): string[] {
@@ -473,6 +490,8 @@ class IsolateLoadedApp implements LoadedApp {
       space: ctx.space ? { id: ctx.space.id, role: ctx.space.role, members: ctx.space.members } : undefined,
       // The selection is plain resolved data, like `record` — nothing to reach back through.
       scope: ctx.scope,
+      // Which language the words are in, so `ctx.locale` and `ctx.t(words)` never leave the box.
+      words: { locale: ctx.locale, language: this.definition.language, languages: this.definition.languages, formatLocale: ctx.format.locale },
     };
   }
 

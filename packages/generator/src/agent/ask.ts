@@ -13,7 +13,7 @@
 // that the model cannot link to a record that already exists or know what is already there; the
 // shell de-duplicates against the person's records, locally, after the proposal comes back.
 
-import { actionInfo, fieldValueProblem, humanizeKey, type AppDefinition, type Field } from "potyro";
+import { actionInfo, fieldValueProblem, humanizeKey, plainWords, type AppDefinition, type Field } from "potyro";
 import type { ChatEngine, ChatMessage, Citation } from "../chat-backend.js";
 import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import { Retrieved, verifyRow, type Evidence, type Trust } from "./evidence.js";
@@ -131,7 +131,7 @@ const MAX_STEPS_WITH_SOURCES = 12;
 /** Field types a model cannot fill: a photo it does not have, a person it cannot see. */
 const UNSETTABLE = new Set<Field["type"]>(["media", "file", "member"]);
 
-const labelOf = (key: string, field: Field): string => field.label ?? humanizeKey(key);
+const labelOf = (key: string, field: Field): string => (field.label === undefined ? humanizeKey(key) : plainWords(field.label));
 
 function describeField(key: string, field: Field): string {
   const rules: string[] = [];

@@ -7,7 +7,7 @@
 // numeric or decimal keyboard; a duration in hours or minutes is entered as `h : min`.
 
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import type { DurationField, NumberField } from "potyro";
+import type { ShownDurationField as DurationField, ShownNumberField as NumberField } from "./shown.js";
 
 const HOLD_MS = 400;
 const REPEAT_MS = 80;

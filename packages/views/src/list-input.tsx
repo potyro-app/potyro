@@ -11,7 +11,7 @@
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import type { Field, ListField } from "potyro";
+import type { ShownField as Field, ShownListField as ListField } from "./shown.js";
 // A row holds fields and a field may be a list, so these two modules name each other. ESM is fine
 // with that here: both sides are hoisted function declarations, used at render, not at module load.
 import { FieldInput } from "./field-input.js";

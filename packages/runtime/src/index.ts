@@ -1,6 +1,6 @@
 // @potyro/runtime — the core the views consume.
 export { createRuntime, type PotyroRuntime } from "./create-runtime.js";
-export { RuntimeCore, type RuntimeDeps, FN_SENTINEL } from "./core.js";
+export { RuntimeCore, type RuntimeDeps, type RuntimeLanguage, FN_SENTINEL } from "./core.js";
 export { usePageQuery, useEntityQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 export { asyncSort } from "./async-sort.js";
 

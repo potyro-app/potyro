@@ -7,6 +7,7 @@ import type { Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import type { LoadIsolated } from "./isolate-bridge.js";
+import { languagePrefs } from "./locale.js";
 
 export interface ComposeOptions {
   /** Required for the trusted (direct) path; the untrusted (isolate) path loads from `bundleCode`. */
@@ -28,6 +29,8 @@ export interface ComposeOptions {
   me?: Person;
   /** A function here keeps membership current; a value is a boot-time snapshot. See RuntimeDeps. */
   space?: Space | (() => Space | undefined);
+  /** The person's languages, best first (#302). Default: what this device says (`languagePrefs`). */
+  languages?: readonly string[];
 }
 
 export interface Composed {
@@ -51,6 +54,7 @@ export async function compose(opts: ComposeOptions): Promise<Composed> {
     nav: opts.nav,
     me: opts.me,
     space: opts.space,
+    languages: opts.languages ?? languagePrefs(),
   });
   return { runtime, loaded };
 }

@@ -11,16 +11,17 @@
 // `FieldValue` and `FieldInput`: a money field shows as money and edits as money, exactly as it does
 // in the app, and a write goes through `ctx` like any other edit.
 
-import { defineApp, type Field, type PotyroApp } from "potyro";
+import { defineApp, localizeFields, pickLanguage, word, type Field, type PotyroApp } from "potyro";
 import { createHost } from "@potyro/host";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import type { Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
-import { declaredEntities, type DeclaredEntity } from "./app-source.js";
+import { declaredEntities, declaredLanguages, type DeclaredEntity } from "./app-source.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { shellDialogs } from "./dialog.js";
 import type { UserApp } from "./user-apps.js";
+import { languagePrefs } from "./locale.js";
 
 export interface DataEntity {
   key: string;
@@ -45,7 +46,17 @@ export interface DataSession {
  * `options` come from a const has no options here. Rather than let one such field fail the whole app,
  * each field is added only if the definition still validates with it; the rest fall back to raw.
  */
-export function dataDefinition(appId: string, declared: Record<string, DeclaredEntity>): { app: PotyroApp; rejected: Record<string, string[]> } {
+/** An app's languages and the one to show it in, for a definition built from its source (#302). */
+export interface DataWords {
+  language?: string;
+  languages?: string[];
+  shownIn?: string;
+}
+
+export function dataDefinition(appId: string, declared: Record<string, DeclaredEntity>, words: DataWords = {}): { app: PotyroApp; rejected: Record<string, string[]> } {
+  // The panel's own definition carries no languages: its fields' words arrive already in the
+  // person's, so a translated app's fields are as readable here as anyone's.
+  const shown = (fields: Record<string, Field>): Record<string, Field> => localizeFields(fields, words.shownIn, words) as Record<string, Field>;
   const base = (entities: Record<string, { fields: Record<string, Field> }>) =>
     defineApp({ id: "data-panel", name: appId, version: "1.0.0", schemaVersion: 1, entities, pages: [] });
 
@@ -53,7 +64,7 @@ export function dataDefinition(appId: string, declared: Record<string, DeclaredE
   const rejected: Record<string, string[]> = {};
   for (const [entity, decl] of Object.entries(declared)) {
     for (const [key, field] of Object.entries(decl.fields)) {
-      const next = { ...kept, [entity]: { fields: { ...kept[entity]!.fields, [key]: field as unknown as Field } } };
+      const next = { ...kept, [entity]: { fields: { ...kept[entity]!.fields, ...shown({ [key]: field as unknown as Field }) } } };
       try {
         base(next);
         Object.assign(kept, next);
@@ -65,7 +76,8 @@ export function dataDefinition(appId: string, declared: Record<string, DeclaredE
   // What a relation to this entity shows — its display field, when that field survived.
   const named = Object.fromEntries(
     Object.entries(kept).map(([entity, def]) => {
-      const { label, displayField } = declared[entity]!;
+      const { label: declaredLabel, displayField } = declared[entity]!;
+      const label = declaredLabel === undefined ? undefined : word(declaredLabel, words.shownIn, words);
       return [entity, { ...def, ...(label ? { label } : {}), ...(displayField && displayField in def.fields ? { displayField } : {}) }];
     }),
   );
@@ -75,7 +87,9 @@ export function dataDefinition(appId: string, declared: Record<string, DeclaredE
 /** Open `app`'s store (the one it really uses — local or synced) with a data-only runtime over it. */
 export async function openDataSession(app: UserApp, caps: Capabilities): Promise<DataSession> {
   const declared = (await declaredEntities(app.source)) ?? {};
-  const { app: definition, rejected } = dataDefinition(app.id, declared);
+  const langs = await declaredLanguages(app.source);
+  const words: DataWords = { ...langs, shownIn: pickLanguage(languagePrefs(), langs) };
+  const { app: definition, rejected } = dataDefinition(app.id, declared, words);
 
   // Opened exactly as the app opens it: the same store, and an example that has never been opened
   // gets its first-run rows here rather than showing an empty table.
@@ -91,13 +105,14 @@ export async function openDataSession(app: UserApp, caps: Capabilities): Promise
     caps,
     ui: createUiBridge(() => {}, undefined, shellDialogs),
     nav: createNavBridge(() => {}),
+    languages: languagePrefs(),
   });
 
   const entities = Object.entries(declared).map(([key, decl]) => {
     const readable = Object.keys(definition.entities[key]?.fields ?? {});
     return {
       key,
-      label: decl.label ?? key,
+      label: decl.label === undefined ? key : word(decl.label, words.shownIn, words),
       fields: readable,
       opaque: [...decl.opaque, ...(rejected[key] ?? [])],
     };

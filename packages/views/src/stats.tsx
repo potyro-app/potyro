@@ -6,7 +6,8 @@
 // by an arrow AND words ("▲ 1 more than last week"), never by colour alone.
 
 import { useEffect, useState } from "react";
-import type { Field, Resolved, StatItem } from "potyro";
+import type { Resolved } from "potyro";
+import type { ShownField as Field, ShownStatItem as StatItem } from "./shown.js";
 import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 import { figureValue } from "./summary.js";
