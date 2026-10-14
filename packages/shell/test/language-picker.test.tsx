@@ -36,15 +36,16 @@ describe("the language select", () => {
     expect(select.tagName).toBe("SELECT");
     expect(select.value).toBe("auto");
     expect(labels(select)).toEqual([
-      ["auto", "Match this device (Polski)"],
-      // The device is Polish, so Potyro is: the second name is in Polish, and Polish is not named twice.
+      // The device is Polish, so Potyro is: the picker reads in Polish (#300), the second name is in
+      // Polish, and Polish is not named twice.
+      ["auto", "Jak to urządzenie (Polski)"],
       ["en", "English — angielski"],
       // How `Intl` names Brazilian Portuguese in Polish depends on the ICU data; its shape does not.
-      ["pt-BR", expect.stringMatching(/^Português \(Brasil\) — \S.* \(draft\)$/)],
-      ["de", "Deutsch — niemiecki (draft)"],
-      ["es", "Español — hiszpański (draft)"],
-      ["pl", "Polski (draft)"],
-      ["it", "Italiano — włoski (draft)"],
+      ["pt-BR", expect.stringMatching(/^Português \(Brasil\) — \S.* \(wersja robocza\)$/)],
+      ["de", "Deutsch — niemiecki (wersja robocza)"],
+      ["es", "Español — hiszpański (wersja robocza)"],
+      ["pl", "Polski (wersja robocza)"],
+      ["it", "Italiano — włoski (wersja robocza)"],
     ]);
   });
 
@@ -63,7 +64,7 @@ describe("the language select", () => {
     expect(select.value).toBe("de");
     expect(localStorage.getItem("potyro:locale")).toBe("de");
     // Re-rendered in German without a reload: the other languages are named in German now.
-    await waitFor(() => expect(labels(select).find(([v]) => v === "pl")?.[1]).toBe("Polski — Polnisch (draft)"));
+    await waitFor(() => expect(labels(select).find(([v]) => v === "pl")?.[1]).toBe("Polski — Polnisch (Entwurf)"));
     expect(labels(select).find(([v]) => v === "en")?.[1]).toBe("English — Englisch");
 
     await act(async () => {

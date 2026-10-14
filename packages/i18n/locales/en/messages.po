@@ -3622,8 +3622,8 @@ msgid "Only the person who added this can change it."
 msgstr "Only the person who added this can change it."
 
 #: ../shell/src/people-panel.tsx
-msgid "Only the person who created this app, who created this app, can invite or remove people."
-msgstr "Only the person who created this app, who created this app, can invite or remove people."
+msgid "Only the person who created this app can invite or remove people."
+msgstr "Only the person who created this app can invite or remove people."
 
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"
@@ -3868,6 +3868,10 @@ msgstr "Recent"
 #: ../shell/src/engine-settings.tsx
 msgid "Recommended balance"
 msgstr "Recommended balance"
+
+#: ../views/src/media-input.tsx
+msgid "Record audio"
+msgstr "Record audio"
 
 #. Status: a bug report is being recorded
 #. Status: a bug report is being recorded
@@ -4568,10 +4572,6 @@ msgstr "table"
 #: ../shell/src/ask-review.tsx
 msgid "Table"
 msgstr "Table"
-
-#: ../views/src/media-input.tsx
-msgid "Take a audio"
-msgstr "Take a audio"
 
 #: ../views/src/media-input.tsx
 msgid "Take a file"

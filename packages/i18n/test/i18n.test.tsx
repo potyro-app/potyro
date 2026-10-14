@@ -42,10 +42,10 @@ describe("fallback, per message", () => {
     expect(merged).toEqual({ a: "A-pl", b: "B", c: "C", d: "D" });
   });
 
-  it("shows English for a language whose catalog is empty", async () => {
+  it("shows a language's own catalog once it is chosen", async () => {
     await setLocale("pl");
     expect(i18n.locale).toBe("pl");
-    expect(i18n._(idOf("History"))).toBe("History");
+    expect(i18n._(idOf("History"))).toBe("Historia");
     expect(document.documentElement.lang).toBe("pl");
   });
 });
