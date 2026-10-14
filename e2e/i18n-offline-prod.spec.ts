@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Every language works offline (#298). Each one is a lazy chunk, and the service worker otherwise
 // caches only what has been fetched — so a language never chosen online would be missing on a plane.

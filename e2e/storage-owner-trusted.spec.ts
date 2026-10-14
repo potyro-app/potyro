@@ -1,4 +1,4 @@
-import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { test, expect, type Page, type BrowserContext } from "./console-guard";
 
 // One tab owns the storage (packages/store/src/storage-owner.ts).
 //

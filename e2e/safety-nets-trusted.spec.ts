@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -166,7 +166,8 @@ test("an app from someone else is tried in the sealed box before it is added, an
   await expect(dialog.getByRole("button", { name: "Add app" })).toBeEnabled();
 });
 
-test("a computed value and a custom view that throw fail alone: the app opens, its other pages show their records, the broken parts say so", async ({ page }) => {
+test("a computed value and a custom view that throw fail alone: the app opens, its other pages show their records, the broken parts say so", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/the chart could not find its canvas|^The above error occurred in the <render> component/, "the app's custom view throws on purpose; React reports the contained error");
   await page.addInitScript(
     ([source, id]) => {
       if (localStorage.getItem("potyro:user-apps")) return;

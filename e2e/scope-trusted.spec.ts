@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // `scope` (#134): the one record everything else belongs to. This is the journey that opened the
 // issue — "select a trip, then everything shows that trip" — driven as a person would: the app asks
