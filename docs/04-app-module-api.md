@@ -34,6 +34,23 @@ type CustomView    = (props: ViewProps) => JSX.Element;   // full React componen
 `computed` values available as properties (computed are lazily evaluated + memoized when
 accessed). Deeper traversal or cross-entity queries use `ctx.query`.
 
+A `computed` entry is a `Computed` function, or **`{ value: Computed; label?: Words }`** (#310) when a
+page shows it under a heading — in an entity's `groups`, a detail page's `sections`, a table's
+`columns`. The views head it with its `label` in the person's language, and fall back to the key,
+humanised ("Calories Per Serving"), only when there is none. Both spellings run the same, at both
+provenances; `computedInfo` / `computedRun` (from `potyro`) read either, as `actionInfo` does for
+actions. Additive and optional: no app bumps `schemaVersion` for it.
+
+```ts
+computed: {
+  calories: (r) => r.ingredients.reduce(…),                       // used only by other logic
+  caloriesPerServing: {                                            // shown in "Nutrition & cost"
+    label: { en: "Calories per serving", pl: "Kalorie na porcję" },
+    value: (r) => r.calories / Math.max(r.servings, 1),
+  },
+}
+```
+
 ## `ctx` — the host API surface (complete)
 
 ```ts
@@ -172,7 +189,8 @@ version) is not bumped.
 Every declarative slot a person reads takes **`Words`**: a string, the same in every language, or a
 map, `{ en: "Quantity", pl: "Ilość" }`. That is entity and field labels, help, placeholders and
 units, page, group, section and layout titles, empty texts, chart and aggregate titles, button,
-action, summary, stat, chip and quick-action labels, the scope's label and the app's `name`. An
+action, summary, stat, chip and quick-action labels, a computed's `label` (#310), the scope's label
+and the app's `name`. An
 `enum` or `tags` field gains **`labels`**, keyed by option: the option is what records store and
 never changes by language; only its words do. The list exists once, in the Zod schema (`zWords` at
 each slot), and one walker derived from it does the checking and the resolving.

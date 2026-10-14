@@ -240,7 +240,8 @@ export interface Runtime {
 ```
 
 Views call this; never Store/Capabilities/Host directly. Computed values on `Resolved` are
-produced by the runtime via `host.callComputed` and memoized per query pass.
+produced by the runtime via `host.callComputed` and memoized per query pass. A computed written
+`{ value, label }` (#310) runs its `value`, in both runners (`computedRun`; the harness the same).
 
 **Language (#302, docs/20 §3).** `createRuntime` takes the person's languages (`RuntimeDeps.languages`:
 their explicit choice alone, or the device's list) and picks the app's (`pickLanguage`). The
@@ -248,7 +249,9 @@ definition views read is `localize(app.definition, language)` — the raw one st
 so views only ever see strings; a `Dynamic<Words>` option (`emptyText`, a page `title`) that returns a
 map is resolved the same way. Every ctx it builds carries `language` and `formatLocale`. An app that
 declares no language is shown as written. The only view-side addition is option `labels`: an enum or
-tags value reads as `labels[option] ?? option` on boards, pills, buttons, chips and headings.
+tags value reads as `labels[option] ?? option` on boards, pills, buttons, chips and headings. And a
+key's heading (`fieldLabel`: a detail row, a table column) is the field's `label`, else the computed's
+`label` (#310), else the key humanised.
 
 ## View contract (packages/views)
 
