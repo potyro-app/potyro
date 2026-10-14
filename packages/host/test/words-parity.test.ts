@@ -1,17 +1,17 @@
 // `ctx.locale`, `ctx.t` and `ctx.format` read the same at both provenances (#302, docs/20 §2.3).
 //
 // ONE app source — plain ES2020, so it runs unchanged in the sealed box — is run directly (as the
-// person's own app) and in the QuickJS isolate (as a shared one). Every row of the table is a
-// computed; the two runners must give the same string for every row, in two languages. A row that
-// should fail must fail in both, with the same words.
+// person's own app) and sealed (as a shared one): in the browser realm, which formats with the host's
+// own format.ts and its own `Intl`, and in the QuickJS isolate, which has no `Intl` and asks the host
+// (`__hostPure`). Every row of the table is a computed; every runner must give the same string for
+// every row, in two languages. A row that should fail must fail in all of them, with the same words.
 
 import { describe, expect, it } from "vitest";
-import { newAsyncContext } from "quickjs-emscripten";
 import { defineApp, type AppInput, type Ctx } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, FORMAT_LIMITS, hostPure, PURE_OK, type LoadedApp, type MakeCtxBase, type UiBridge } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { RUNNERS, quickjs, realm, type Runner as Sealed } from "./runners.js";
 
 const NOW = new Date("2026-10-13T10:00:00Z");
 
@@ -63,22 +63,18 @@ const APP = `({
   pages: [{ id: "all", title: { en: "All", pl: "Wszystkie" }, view: { type: "list", entity: "plant" } }]
 })`;
 
-function newContext(): Promise<QuickJSAsyncContextLike> {
-  return newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>;
-}
-
 interface Runner {
   loaded: LoadedApp;
   ctx: Ctx;
   toasts: string[];
 }
 
-async function run(kind: "direct" | "isolate", language: string, formatLocale: string): Promise<Runner> {
+async function run(kind: "direct" | Sealed, language: string, formatLocale: string): Promise<Runner> {
   const store = new MemoryStore();
   await store.open("words");
   const toasts: string[] = [];
   const ui: UiBridge = { toast: (m) => void toasts.push(m), confirm: async () => true, prompt: async () => null, pick: async () => null };
-  const host = createHost({ loadIsolated: createIsolateLoader({ store, newContext }) });
+  const host = createHost(kind === "direct" ? {} : { loadIsolated: await kind.loader(store) });
   const loaded =
     kind === "direct"
       ? await host.load({ kind: "module", app: defineApp(new Function(`return ${APP};`)() as AppInput) })
@@ -95,18 +91,18 @@ async function table(r: Runner): Promise<Record<string, string>> {
     try {
       out[key] = String(await r.loaded.callComputed("plant", key, RECORD, r.ctx));
     } catch (e) {
-      // The isolate prefixes its errors; the words after it are what must match.
-      out[key] = `ERROR ${String(e instanceof Error ? e.message : e).replace(/^isolate app error: /, "")}`;
+      // A sealed runner prefixes its errors; the words after it are what must match.
+      out[key] = `ERROR ${String(e instanceof Error ? e.message : e).replace(/^(isolate|realm) app error: /, "")}`;
     }
   }
   return out;
 }
 
-describe("ctx.t and ctx.format — DirectHost and IsolateHost agree (docs/20 §2.3)", () => {
+describe.each(RUNNERS)("ctx.t and ctx.format — DirectHost and the $name runner agree (docs/20 §2.3)", (sealed) => {
   for (const [language, formatLocale] of [["pl", "pl-PL"], ["en", "en-GB"]] as const) {
     it(`gives the same answer for every row, in ${language} (${formatLocale})`, async () => {
       const direct = await run("direct", language, formatLocale);
-      const boxed = await run("isolate", language, formatLocale);
+      const boxed = await run(sealed, language, formatLocale);
       const [a, b] = [await table(direct), await table(boxed)];
       expect(b).toEqual(a);
       boxed.loaded.dispose();
@@ -141,7 +137,7 @@ describe("ctx.t and ctx.format — DirectHost and IsolateHost agree (docs/20 §2
   }
 
   it("resolves a map handed to ctx.ui.toast, in both runners", async () => {
-    for (const kind of ["direct", "isolate"] as const) {
+    for (const kind of ["direct", sealed] as const) {
       const r = await run(kind, "pl", "pl-PL");
       await r.loaded.callAction("plant", "hello", RECORD, r.ctx);
       expect(r.toasts).toEqual(["Podlano: Monstera"]);
@@ -149,12 +145,13 @@ describe("ctx.t and ctx.format — DirectHost and IsolateHost agree (docs/20 §2
     }
   });
 
-  it("the sealed box still has no Intl of its own — the words come from the host", async () => {
-    const r = await run("isolate", "pl", "pl-PL");
+  // QuickJS has no Intl: its words come from the host. The realm is a browser's own: it has one (#272).
+  it(`the ${sealed.name} box ${sealed === quickjs ? "has no Intl of its own — the words come from the host" : "has Intl of its own"}`, async () => {
+    const r = await run(sealed, "pl", "pl-PL");
     const code = `({ id: "x", name: "X", version: "1.0.0", schemaVersion: 1, entities: { a: { fields: {}, computed: { intl: function(){ return typeof Intl; } } } }, pages: [] })`;
-    const host = createHost({ loadIsolated: createIsolateLoader({ store: new MemoryStore(), newContext }) });
+    const host = createHost({ loadIsolated: await sealed.loader(new MemoryStore()) });
     const probe = await host.load({ kind: "bundle", code: `globalThis.__potyroApp = ${code};`, provenance: "untrusted" });
-    expect(await probe.callComputed("a", "intl", RECORD, r.ctx)).toBe("undefined");
+    expect(await probe.callComputed("a", "intl", RECORD, r.ctx)).toBe(sealed === realm ? "object" : "undefined");
     probe.dispose();
     r.loaded.dispose();
   });

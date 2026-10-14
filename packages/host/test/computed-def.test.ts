@@ -1,14 +1,13 @@
 // A computed written `{ value, label }` (#310) runs the same as a bare function, at both provenances:
 // called on its own, and while resolving rows (where a later computed reads an earlier one). The
-// definition the isolate hands back keeps the label as data, the value as the box's placeholder.
+// definition a sealed runner hands back keeps the label as data, the value as the box's placeholder.
 
 import { describe, expect, it } from "vitest";
-import { newAsyncContext } from "quickjs-emscripten";
 import { defineApp, localize, type AppInput } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type UiBridge } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { RUNNERS, type Runner } from "./runners.js";
 
 // Plain ES2020: the same text runs in the box.
 const APP = `({
@@ -20,13 +19,11 @@ const APP = `({
   pages: [{ id: "all", title: "All", view: { type: "list", entity: "dish" } }]
 })`;
 
-const newContext = (): Promise<QuickJSAsyncContextLike> => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>;
-
-async function load(kind: "direct" | "isolate") {
+async function load(kind: "direct" | Runner) {
   const store = new MemoryStore();
   await store.open("dishes");
   const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
-  const host = createHost({ loadIsolated: createIsolateLoader({ store, newContext }) });
+  const host = createHost(kind === "direct" ? {} : { loadIsolated: await kind.loader(store) });
   const loaded =
     kind === "direct"
       ? await host.load({ kind: "module", app: defineApp(new Function(`return ${APP};`)() as AppInput) })
@@ -36,8 +33,8 @@ async function load(kind: "direct" | "isolate") {
 }
 
 describe("a computed with a label", () => {
-  for (const kind of ["direct", "isolate"] as const) {
-    it(`runs its value, alone and while resolving rows (${kind})`, async () => {
+  for (const kind of ["direct", ...RUNNERS] as const) {
+    it(`runs its value, alone and while resolving rows (${kind === "direct" ? kind : kind.name})`, async () => {
       const { loaded, ctx } = await load(kind);
       await ctx.create("dish", { kcal: 900, servings: 3 });
       const [row] = await ctx.query("dish");
