@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Switching in place with untrusted apps (#89): each switch puts the previous app's QuickJS isolate
 // away and starts the next one, with no page load.

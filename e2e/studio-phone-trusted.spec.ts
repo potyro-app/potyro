@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "./console-guard";
 import { currentCard } from "./studio-helpers.js";
 
 // The Studio on a phone and on a desktop (#80, then #261). It is a conversation: the box to say

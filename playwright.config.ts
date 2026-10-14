@@ -29,7 +29,9 @@ function workerCount(): number {
   return n;
 }
 
-export default defineConfig({
+// `guardConsole` is e2e/console-guard.ts: a test that leaves an error in the browser console fails.
+// On for the trusted and sandbox projects, the suite every change runs.
+export default defineConfig<{ guardConsole: boolean }>({
   testDir: "./e2e",
   fullyParallel: false,
   // ONE WORKER by default, which is a claim about this suite rather than about Playwright.
@@ -115,7 +117,7 @@ export default defineConfig({
     {
       name: "trusted",
       testMatch: /.*trusted\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}` },
+      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}`, guardConsole: true },
     },
     // Firefox, for the trusted app surface only. The geo picker rendered fine in Chromium and blank
     // in the user's Firefox — a Chrome-only suite could not see it.
@@ -140,7 +142,7 @@ export default defineConfig({
     {
       name: "sandbox",
       testMatch: /.*sandbox\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}` },
+      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}`, guardConsole: true },
     },
     // The browser realm's own specs in Firefox and WebKit (#272): its containment, its watchdog and the
     // shell's frame-src are properties of each engine, measured in all three (docs/22). OPT-IN

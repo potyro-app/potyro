@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Nothing you can tap may sit under a phone's status bar (#253, seen on a Pixel 10).
 //

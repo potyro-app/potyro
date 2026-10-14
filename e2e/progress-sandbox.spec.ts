@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Stats and a chart render UNTRUSTED (#109): Workout runs in the QuickJS-WASM isolate, and every
 // figure, comparison and the chart's series are folds that cross the bridge as plain values.

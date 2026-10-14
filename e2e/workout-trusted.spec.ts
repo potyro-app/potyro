@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 // A one-screen app whose quick action is a MENU: one required enum, everything else defaulted —
 // the shape that makes "press the button, pick the type, and you are in it" possible. It lives here
 // rather than in an example because it is a platform behaviour: PPL Log used to carry it, until

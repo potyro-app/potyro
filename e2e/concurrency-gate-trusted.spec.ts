@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // The gate, in a browser, on the path a real person takes.

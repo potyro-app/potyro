@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Opening an app, going home and opening it again — without a reload — must find the same records.
 //
