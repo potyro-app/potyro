@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "@playwright/test";
 
 // The owner, on apps.vaz.io: Places showed "This part of the app hit a problem: “Open Now” could not
@@ -32,14 +34,36 @@ async function expectQuietMap(page: Page, markers: number): Promise<void> {
   }
 }
 
+// The Places example as it ships, plus one button that adds a place the way app code, an import or
+// another device does — with no `openingHours` at all. (The form writes an empty list, so a place
+// added by hand never had the problem; the owner's place did not come from the form.)
+const FIT = `run: (ctx) => void ctx.views.map("map").fit(),
+        },`;
+const BARE = `${FIT}
+        {
+          label: "Add a bare place",
+          run: async (ctx) => {
+            await ctx.create("place", { name: "Kiosk ohne Zeiten", location: { lat: 52.519, lng: 13.402 }, kind: "cafe" });
+          },
+        },`;
+const PLACES = readFileSync(fileURLToPath(new URL("../examples/places.app.ts", import.meta.url)), "utf8");
+
 test("Places with a place that has no opening hours still shows the map, with every place on it", async ({ page }) => {
-  await page.goto("/?app=places");
-  await expect(page.locator("h1")).toHaveText("Places", { timeout: 30_000 });
+  expect(PLACES).toContain(FIT);
+  await page.addInitScript(
+    ([source]) => {
+      if (localStorage.getItem("potyro:user-apps")) return;
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "places", name: "Places", source, trusted: true, updatedAt: new Date().toISOString() }]));
+    },
+    [PLACES.replace(FIT, BARE)],
+  );
+  await page.goto("/?user=places");
+  await expect(page.locator("h1").first()).toHaveText("Places", { timeout: 30_000 });
   const markers = page.locator(".maplibregl-marker");
   await expect(markers.first()).toBeVisible({ timeout: 30_000 });
   const before = await markers.count();
 
-  await addPlaceOnMap(page, "Kiosk ohne Zeiten");
+  await page.getByRole("button", { name: "Add a bare place" }).click();
   await expectQuietMap(page, before + 1);
 
   // And it reads as not open — what "no hours" means — rather than as a failure.
