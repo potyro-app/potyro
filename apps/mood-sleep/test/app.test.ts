@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkReferences, fieldValueProblem, isPotyroApp, structureSchema } from "potyro";
+import { checkReferences, checkWords, fieldValueProblem, isPotyroApp, structureSchema, wordGaps, wordSlots } from "potyro";
 import app from "../mood-sleep.app.js";
 
 describe("Sleep & Mood", () => {
@@ -26,5 +26,21 @@ describe("Sleep & Mood", () => {
         expect(fieldValueProblem(fields[key]!, value, "write", key), `${key}=${JSON.stringify(value)}`).toBeNull();
       }
     }
+  });
+});
+
+describe("in six languages (#303)", () => {
+  it("is written in English and carries all six, with no map missing one", () => {
+    expect(app.language).toBe("en");
+    expect(app.languages).toEqual(["en", "pt-BR", "de", "es", "pl", "it"]);
+    expect(checkWords(app)).toEqual([]);
+    expect(wordGaps(app)).toEqual([]);
+  });
+
+  it("leaves plain only what reads the same everywhere: units and the game's name", () => {
+    const plain = wordSlots(app)
+      .filter((s) => typeof s.value === "string")
+      .map((s) => s.value as string);
+    for (const p of plain) expect(p, p).toMatch(/^(\S{1,5}|Breakout)$/);
   });
 });

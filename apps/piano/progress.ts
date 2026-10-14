@@ -272,14 +272,27 @@ export function moduleWeekId(plan: Plan, m: ModuleState): string {
   return w ? w.id : m.id;
 }
 
-/** Why starting this module now is early, or null when it is not. */
-export function moduleWarning(plan: Plan, progress: Progress, module: PlanModule): string | null {
+/** What a module warning names, for the app to put into words. */
+export interface ModuleWarning {
+  module: string;
+  from: string;
+  phase: string;
+  here: string;
+}
+
+const englishWarning = (v: ModuleWarning): string => `The plan suggests ${v.module} from ${v.from} (${v.phase}); you are on ${v.here}.`;
+
+/**
+ * Why starting this module now is early, or null when it is not. `say` words it — the app passes
+ * one in the person's language (#303); without one it is English.
+ */
+export function moduleWarning(plan: Plan, progress: Progress, module: PlanModule, say: (v: ModuleWarning) => string = englishWarning): string | null {
   if (!module.availableFrom) return null;
   const weeks = mainWeeks(plan);
   const from = weeks.find((w) => w.week.id === module.availableFrom);
   const here = weeks.find((w) => w.week.id === progress.weekId);
   if (!from || !here || here.index >= from.index) return null;
-  return `The plan suggests ${module.title.toLowerCase()} from ${from.week.label} (${from.phase.title}); you are on ${here.week.label}.`;
+  return say({ module: module.title.toLowerCase(), from: from.week.label, phase: from.phase.title, here: here.week.label });
 }
 
 // ---- what the sessions say ----

@@ -10,22 +10,22 @@
   },
   "levels": [
     {
-      "name": "Warm up",
+      "name": { "en": "Warm up", "pt-BR": "Aquecimento", "de": "Aufwärmen", "es": "Calentamiento", "pl": "Rozgrzewka", "it": "Riscaldamento" },
       "speed": 1,
       "rows": ["YYYYYYYY", "YYYYYYYY", "GGGGGGGG"]
     },
     {
-      "name": "Sunset",
+      "name": { "en": "Sunset", "pt-BR": "Pôr do sol", "de": "Sonnenuntergang", "es": "Atardecer", "pl": "Zachód słońca", "it": "Tramonto" },
       "speed": 1.15,
       "rows": ["RRRRRRRR", "OOOOOOOO", "YYYYYYYY", "GGGGGGGG", "BBBBBBBB"]
     },
     {
-      "name": "Gaps",
+      "name": { "en": "Gaps", "pt-BR": "Vãos", "de": "Lücken", "es": "Huecos", "pl": "Luki", "it": "Buchi" },
       "speed": 1.3,
       "rows": ["P.P.P.P.", ".B.B.B.B", "G.G.G.G.", ".Y.Y.Y.Y", "OOOOOOOO"]
     },
     {
-      "name": "The wall",
+      "name": { "en": "The wall", "pt-BR": "A muralha", "de": "Die Mauer", "es": "El muro", "pl": "Mur", "it": "Il muro" },
       "speed": 1.45,
       "rows": ["SSSSSSSS", "R.RRRR.R", "OOOOOOOO", "YY.YY.YY", "GGGGGGGG", "BBBBBBBB"]
     }
