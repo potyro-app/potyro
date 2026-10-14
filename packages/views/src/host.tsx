@@ -1,8 +1,9 @@
 // ViewHost — renders the correct built-in (or custom) view component for a page.
 //
 // Each view is its own part (#271): a view that crashes while rendering fails alone, in its place,
-// and a computed value or a filter of its own that threw is said above it — never a blank page, and
-// never the rest of the app taken down with it (part-failure.tsx).
+// and a page whose records could not be listed says so above it — never a blank page, and never the
+// rest of the app taken down with it. A computed value that threw for some records is not said here:
+// the view shows every record, with that value empty where it failed (part-failure.tsx).
 
 import type { ComponentType, ReactNode } from "react";
 import type { View } from "potyro";
@@ -18,8 +19,7 @@ export function ViewHost(
   // the shell's page boundary says so.
   const view = getView(props.runtime, props.pageId);
   const Component = resolveViewComponent(view.type, props.registry);
-  const entity = (view as { entity?: string }).entity;
-  const failures = usePartFailures(props.runtime, props.pageId, entity, view.type);
+  const failures = usePartFailures(props.runtime, props.pageId, view.type);
   const notes: ReactNode = failures.map((f) => <PartProblem key={f.what} text={describePartFailure(f, props.runtime)} />);
   // `key` on the page: a part that failed on one page starts clean on the next.
   const part = (body: ReactNode): ReactNode => (

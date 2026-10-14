@@ -166,7 +166,7 @@ test("an app from someone else is tried in the sealed box before it is added, an
   await expect(dialog.getByRole("button", { name: "Add app" })).toBeEnabled();
 });
 
-test("a computed value and a custom view that throw fail alone: the app opens, its other pages show their records, the broken parts say so", async ({ page }) => {
+test("a computed value and a custom view that throw fail alone: the app opens, its other pages show their records, the view that cannot show says so", async ({ page }) => {
   await page.addInitScript(
     ([source, id]) => {
       if (localStorage.getItem("potyro:user-apps")) return;
@@ -183,13 +183,15 @@ test("a computed value and a custom view that throw fail alone: the app opens, i
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toContainText("Buy milk");
 
-  // The broken computed: the record is there, and the value's part says what went wrong.
+  // The broken computed: the record is there, its value is empty, and nothing alerts over the list —
+  // the person using the app cannot fix the app's code, and the list still works.
   await nav("Items");
   await page.getByRole("button", { name: "Add: Item" }).click();
   await page.getByLabel("Title").fill("First item");
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.locator(".k-list-row")).toContainText("First item");
-  await expect(page.locator(".k-part-problem")).toHaveText("This part of the app hit a problem: “Month” could not be worked out for some records: the month table is missing");
+  await expect(page.locator(".k-list-row")).not.toContainText("month table");
+  await expect(page.locator(".k-part-problem")).toHaveCount(0);
 
   // The broken custom view: its part says so, and the app around it is still there.
   await nav("Chart");
