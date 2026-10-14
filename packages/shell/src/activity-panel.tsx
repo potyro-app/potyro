@@ -24,6 +24,9 @@
 import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { activitySince, activitySupported, type ActivityItem } from "@potyro/runtime";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { fmt } from "@potyro/i18n";
 
 /** Where this device remembers what it has already shown you. Local by design — see the header. */
 const seenKey = (appId: string): string => `potyro:seen:${appId}`;
@@ -74,12 +77,10 @@ export async function loadActivity(runtime: PotyroRuntime, appId: string): Promi
 /** "2 minutes ago" — precise enough for a feed, and it never says "in -3 seconds". */
 function ago(at: Date, now: number): string {
   const seconds = Math.max(0, Math.round((now - at.getTime()) / 1000));
-  if (seconds < 60) return "just now";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return at.toLocaleDateString();
+  if (seconds < 60) return t({ message: "just now", comment: "Activity feed: when a change was made, under a minute ago" });
+  // "5m ago", "2h ago" in English; each language's own short form elsewhere.
+  if (seconds < 24 * 3600) return fmt.relative(at, now, { numeric: "auto", style: "narrow" });
+  return fmt.date(at, { dateStyle: "short" });
 }
 
 export function ActivityPanel({
@@ -93,7 +94,9 @@ export function ActivityPanel({
   items: ActivityItem[];
   onClose: () => void;
 }) {
+  const { t } = useLingui();
   const now = Date.now();
+  const appName = runtime.definition.name;
 
   // Reading the panel IS having seen it, so the watermark moves on close rather than on open —
   // closing it without reading would otherwise silently discard everything it was showing.
@@ -116,20 +119,21 @@ export function ActivityPanel({
         className="k-modal k-activity"
         role="dialog"
         aria-modal="true"
-        aria-label="What changed"
+        aria-label={t`What changed`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="k-activity-head">
-          <h2>What changed</h2>
-          <button type="button" className="k-add" onClick={close} aria-label="Close">
+          <h2>
+            <Trans>What changed</Trans>
+          </h2>
+          <button type="button" className="k-add" onClick={close} aria-label={t`Close`}>
             ✕
           </button>
         </header>
 
         {items.length === 0 ? (
           <p className="k-muted">
-            Nothing since you last looked. Changes made by anyone you share {runtime.definition.name} with
-            will show up here.
+            <Trans>Nothing since you last looked. Changes made by anyone you share {appName} with will show up here.</Trans>
           </p>
         ) : (
           <ul className="k-activity-list">

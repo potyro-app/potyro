@@ -8,6 +8,7 @@
 // organised and nothing that is in it (packages/generator/src/agent/ask.ts). Outside data comes
 // through `fetchSource`, which holds the keys; the loop only ever sees what came back.
 
+import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@potyro/generator/agent";
 import type { ChatMessage } from "@potyro/generator/agent";
@@ -18,8 +19,8 @@ export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 
 /** Why Ask cannot run on this engine, in words for the person — or null when it can. */
 export function askRefusal(cfg: EngineConfig): string | null {
-  if (cfg.engine !== "openrouter") return "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings.";
-  if (!cfg.openrouterKey) return "Ask needs your OpenRouter key. Add it in the Studio’s Model settings.";
+  if (cfg.engine !== "openrouter") return t`Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings.`;
+  if (!cfg.openrouterKey) return t`Ask needs your OpenRouter key. Add it in the Studio’s Model settings.`;
   return null;
 }
 

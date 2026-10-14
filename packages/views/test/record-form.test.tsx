@@ -134,7 +134,7 @@ describe("FormSheet", () => {
     document.body.append(opener);
     opener.focus();
     const view = render(<RecordForm runtime={runtime} entity="recipe" onDone={() => {}} onCancel={() => {}} />);
-    const dialog = await screen.findByRole("dialog", { name: "New Recipe" });
+    const dialog = await screen.findByRole("dialog", { name: "Add: Recipe" });
     const name = screen.getByRole("textbox", { name: "Name" });
     expect(document.activeElement).toBe(name);
     // Shift+Tab from the first control (Close) wraps to the last (Create); Tab from the last wraps back.
@@ -153,7 +153,7 @@ describe("FormSheet", () => {
     confirm.mockResolvedValue(false);
     const onCancel = vi.fn();
     render(<RecordForm runtime={runtime} entity="recipe" onDone={() => {}} onCancel={onCancel} />);
-    const dialog = await screen.findByRole("dialog", { name: "New Recipe" });
+    const dialog = await screen.findByRole("dialog", { name: "Add: Recipe" });
     fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
     expect(confirm).not.toHaveBeenCalled();

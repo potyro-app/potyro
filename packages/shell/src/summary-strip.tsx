@@ -12,6 +12,7 @@
 // to compute.
 
 import { useEffect, useState } from "react";
+import { useLingui } from "@lingui/react/macro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { Field, Resolved, SummaryValue } from "potyro";
 import { computeSummary, type SummaryFigure } from "@potyro/views";
@@ -30,6 +31,7 @@ export function SummaryStrip({ runtime, pageId, params }: SummaryStripProps) {
 }
 
 function Figures({ runtime, pageId, params, specs }: SummaryStripProps & { specs: SummaryValue[] }) {
+  const { t } = useLingui();
   const page = runtime.definition.pages.find((p) => p.id === pageId);
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   // Figures became async when the `value` form started going through the host (so it works for
@@ -57,7 +59,7 @@ function Figures({ runtime, pageId, params, specs }: SummaryStripProps & { specs
   }, [specs, rows, entity, pageId, runtime]);
 
   return (
-    <section className="k-summary" aria-label="Summary" data-k-view>
+    <section className="k-summary" aria-label={t({ message: "Summary", comment: "The strip of totals above a list" })} data-k-view>
       {figures.map((figure, i) => (
         <div key={i} className="k-summary-figure">
           <span className="k-summary-label" data-k-wording>

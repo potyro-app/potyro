@@ -26,7 +26,8 @@ test.beforeEach(async ({ page }) => {
 const dayName = (offset: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toDateString();
+  // The day buttons are named the way the language writes a full date (Intl, #299).
+  return new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(d);
 };
 
 async function openForm(page: import("@playwright/test").Page): Promise<void> {

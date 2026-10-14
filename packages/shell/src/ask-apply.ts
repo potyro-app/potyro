@@ -14,6 +14,8 @@
 // gets its links by a patch. A link to a row the person unticked is dropped. A link to one of the
 // person's records arrives here already resolved to its id.
 
+import { t } from "@lingui/core/macro";
+import { fmt } from "@potyro/i18n";
 import type { AppDefinition, Field, PotyroRecord } from "potyro";
 import { actionInfo, humanizeKey } from "potyro";
 import type { Proposal, ProposedAction, ProposedEdit, ProposedRow, Trust } from "@potyro/generator/agent";
@@ -114,12 +116,13 @@ class Links {
     if (exact.length === 1) return exact[0];
     const many = exact.length > 1 ? exact : partial;
     if (many.length) {
-      notes.push(`${label}: “${name}” could be ${many.map(called).join(", ")}; left empty.`);
+      const candidates = fmt.list(many.map(called), { type: "unit" });
+      notes.push(t({ message: `${label}: “${name}” could be ${candidates}; left empty.`, comment: "Ask review: a link the model named matches several records; label is the field" }));
       return undefined;
     }
     const by = creatableByName(this.def, to);
     if (!by) {
-      notes.push(`${label}: nothing called “${name}”; left empty.`);
+      notes.push(t({ message: `${label}: nothing called “${name}”; left empty.`, comment: "Ask review: label is the field the link is in" }));
       return undefined;
     }
     const key = `${to}:${norm(name)}`;
@@ -186,6 +189,19 @@ export function markDuplicates(def: AppDefinition, rows: ProposedRow[], existing
   });
 }
 
+/**
+ * What the review says about a name it looked up among the person's records. `entity` is the app's own
+ * noun, so the sentence is built around it rather than agreeing with it (docs/20 Q3): "Exercise:
+ * nothing called “deadlift”.", never "No exercise called…", which cannot agree in gender in pl/de/es/it/pt.
+ */
+function matchNotes(entity: string, match: string, found: number, exact: number): string[] {
+  if (!found) return [t({ message: `${entity}: nothing called “${match}”.`, comment: "Ask review: entity is the app's own name for a kind of record" })];
+  if (exact > 1)
+    return [t({ message: `${entity}: more than one is called “${match}”; tick the ones you meant.`, comment: "Ask review: entity is the app's own name for a kind of record" })];
+  if (!exact) return [t`Nothing is called exactly “${match}”; tick the ones you meant.`];
+  return [];
+}
+
 function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow[], existing: Records, links: Links, dup: Map<string, string>): ReviewAction {
   const info = actionInfo(def.entities[run.entity], run.action);
   const notes: string[] = [];
@@ -206,16 +222,13 @@ function reviewAction(def: AppDefinition, run: ProposedAction, rows: ProposedRow
     for (const id of exact.length ? exact : partial) {
       targets.push({ kind: "existing", id, name: nameOf(def, run.entity, records.find((r) => r.id === id)!), ticked: exact.length === 1 });
     }
-    const label = def.entities[run.entity]?.label?.toLowerCase() ?? run.entity;
-    if (!targets.length) notes.push(`No ${label} called “${run.match}”.`);
-    else if (exact.length > 1) notes.push(`More than one ${label} is called “${run.match}”; tick the ones you meant.`);
-    else if (!exact.length) notes.push(`Nothing is called exactly “${run.match}”; tick the ones you meant.`);
+    notes.push(...matchNotes(def.entities[run.entity]?.label ?? run.entity, run.match, targets.length, exact.length));
   }
   const inputText = run.input && info?.input
     ? Object.entries(run.input)
         .map(([k, v]) => {
           const f = info.input![k];
-          const shown = typeof v === "object" && v !== null && "match" in v ? String((v as { match: unknown }).match) : Array.isArray(v) ? `${v.length}` : String(v);
+          const shown = typeof v === "object" && v !== null && "match" in v ? String((v as { match: unknown }).match) : Array.isArray(v) ? fmt.number(v.length) : typeof v === "number" ? fmt.number(v) : String(v);
           return `${f?.label ?? humanizeKey(k)} ${shown}`;
         })
         .join(" · ")
@@ -229,14 +242,11 @@ function reviewEdit(def: AppDefinition, edit: ProposedEdit, existing: Records, l
   const set = retarget(fields, links.values(fields, edit.set, notes), dup);
   const records = existing[edit.entity] ?? [];
   const { exact, partial } = findByName(def, edit.entity, records, edit.match);
-  const label = def.entities[edit.entity]?.label?.toLowerCase() ?? edit.entity;
   const targets = (exact.length ? exact : partial).map((id) => {
     const record = records.find((r) => r.id === id)!;
     return { id, name: nameOf(def, edit.entity, record), ticked: exact.length === 1, before: Object.fromEntries(Object.keys(set).map((k) => [k, record[k]])) };
   });
-  if (!targets.length) notes.push(`No ${label} called “${edit.match}”.`);
-  else if (exact.length > 1) notes.push(`More than one ${label} is called “${edit.match}”; tick the ones you meant.`);
-  else if (!exact.length) notes.push(`Nothing is called exactly “${edit.match}”; tick the ones you meant.`);
+  notes.push(...matchNotes(def.entities[edit.entity]?.label ?? edit.entity, edit.match, targets.length, exact.length));
   return { ref: edit.ref, entity: edit.entity, match: edit.match, set, targets, notes, ...(trust ? { trust } : {}) };
 }
 
@@ -253,16 +263,16 @@ const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === 
  * The rest is a new record's rule (ask-verdicts.ts): an edit's trust is judged the same way.
  */
 export function editApproval(edit: ReviewEdit, kept: ReadonlySet<string> = new Set(), ticked?: ReadonlySet<string>): { approved: boolean; reason?: string } {
-  const isTicked = (t: ReviewEdit["targets"][number]) => (ticked ? ticked.has(t.id) : t.ticked);
-  if (!edit.targets.some(isTicked)) return { approved: false, reason: edit.notes[0] ?? "No record to change." };
+  const isTicked = (target: ReviewEdit["targets"][number]) => (ticked ? ticked.has(target.id) : target.ticked);
+  if (!edit.targets.some(isTicked)) return { approved: false, reason: edit.notes[0] ?? t`No record to change.` };
   const issues = edit.trust?.fieldIssues ?? {};
   const keys = Object.keys(edit.set);
   const saved = keys.filter((k) => issues[k]?.kind !== "contradicted" || kept.has(k));
-  if (!saved.length) return { approved: false, reason: issues[keys[0]!]?.why ?? "Its sources say otherwise." };
-  const t = edit.trust;
-  if (t?.status === "unsupported" || t?.status === "contradicted") return { approved: false, reason: t.issues[0] ?? "Nothing that was read supports it." };
+  if (!saved.length) return { approved: false, reason: issues[keys[0]!]?.why ?? t`Its sources say otherwise.` };
+  const trust = edit.trust;
+  if (trust?.status === "unsupported" || trust?.status === "contradicted") return { approved: false, reason: trust.issues[0] ?? t`Nothing that was read supports it.` };
   const changes = edit.targets.filter(isTicked).some((x) => saved.some((k) => !same(x.before[k], edit.set[k])));
-  if (!changes) return { approved: false, reason: "It already holds these values." };
+  if (!changes) return { approved: false, reason: t`It already holds these values.` };
   return { approved: true };
 }
 
@@ -279,7 +289,10 @@ function areaNotes(def: AppDefinition, row: ReviewRow, area: { lat: number; lng:
     const v = row.values[key] as { lat?: unknown; lng?: unknown } | undefined;
     if (f.type !== "geo" || typeof v?.lat !== "number" || typeof v?.lng !== "number") continue;
     const km = distanceKm(area, { lat: v.lat, lng: v.lng });
-    if (km > Math.max(3, 2 * (area.radiusKm ?? 1))) out.push(`About ${Math.round(km)} km from the area on your map.`);
+    if (km > Math.max(3, 2 * (area.radiusKm ?? 1))) {
+      const distance = fmt.number(Math.round(km), { style: "unit", unit: "kilometer" });
+      out.push(t`About ${distance} from the area on your map.`);
+    }
   }
   return out;
 }

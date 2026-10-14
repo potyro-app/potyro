@@ -11,6 +11,7 @@
 // and never learns there is a React tree involved.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export interface DialogRequest {
   kind: "confirm" | "prompt" | "share";
@@ -91,6 +92,7 @@ export const shellDialogs = new DialogHost();
 
 export function Dialogs({ host }: { host: DialogHost }) {
   const request = useSyncExternalStore(host.subscribe, host.get, host.get);
+  const { t } = useLingui();
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const okRef = useRef<HTMLButtonElement | null>(null);
@@ -100,8 +102,8 @@ export function Dialogs({ host }: { host: DialogHost }) {
     setText(request.initial);
     // Focus what the user is about to act on, so the dialog is usable from the keyboard the moment
     // it appears — the one thing the native dialogs did get right.
-    const t = setTimeout(() => (request.kind === "prompt" ? inputRef.current?.focus() : okRef.current?.focus()), 0);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => (request.kind === "prompt" ? inputRef.current?.focus() : okRef.current?.focus()), 0);
+    return () => clearTimeout(timer);
   }, [request]);
 
   if (!request) return null;
@@ -116,7 +118,7 @@ export function Dialogs({ host }: { host: DialogHost }) {
           className="k-modal k-dialog k-share-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label="Share link"
+          aria-label={t`Share link`}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === "Escape") cancel();
@@ -156,10 +158,10 @@ export function Dialogs({ host }: { host: DialogHost }) {
         ) : null}
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={cancel}>
-            {request.cancel ?? "Cancel"}
+            {request.cancel ?? t({ message: "Cancel", comment: "Dialog button: decline" })}
           </button>
           <button ref={okRef} type="button" className={`k-add k-primary-action${request.destructive ? " k-dialog-destructive" : ""}`} onClick={accept}>
-            {request.ok ?? (request.kind === "confirm" ? "Confirm" : "OK")}
+            {request.ok ?? (request.kind === "confirm" ? t({ message: "Confirm", comment: "Dialog button: accept" }) : t({ message: "OK", comment: "Prompt button: accept what was typed" }))}
           </button>
         </div>
       </div>
@@ -169,7 +171,6 @@ export function Dialogs({ host }: { host: DialogHost }) {
 
 type CopyState = "idle" | "copied" | "failed";
 
-const COPY_FAILED = "Couldn't copy — select the link and copy it yourself.";
 
 /**
  * The body of the share dialog: the link, read-only; Copy, which says whether it worked; and the
@@ -180,6 +181,7 @@ const COPY_FAILED = "Couldn't copy — select the link and copy it yourself.";
  * rather than a 200-character drag on a phone.
  */
 function ShareBody({ link, onDone }: { link: string; onDone: () => void }) {
+  const { t } = useLingui();
   const [state, setState] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const copyRef = useRef<HTMLButtonElement | null>(null);
@@ -220,25 +222,25 @@ function ShareBody({ link, onDone }: { link: string; onDone: () => void }) {
       <input
         ref={inputRef}
         className="k-input k-share-link"
-        aria-label="Share link"
+        aria-label={t`Share link`}
         readOnly
         value={link}
         onFocus={(e) => e.currentTarget.select()}
       />
       <p className={`k-share-status${state === "failed" ? " k-share-status-failed" : ""}`} role="status" aria-live="polite">
-        {state === "copied" ? "Copied" : state === "failed" ? COPY_FAILED : ""}
+        {state === "copied" ? t`Copied` : state === "failed" ? t`Couldn't copy — select the link and copy it yourself.` : ""}
       </p>
       <div className="k-form-actions k-share-actions">
         <button type="button" className="k-add" onClick={onDone}>
-          Done
+          <Trans comment="Share dialog: close it">Done</Trans>
         </button>
         {canShare ? (
           <button type="button" className="k-add" onClick={() => void shareNative()}>
-            Share…
+            <Trans comment="Opens the device's own share sheet">Share…</Trans>
           </button>
         ) : null}
         <button ref={copyRef} type="button" className="k-add k-primary-action" onClick={() => void copy()}>
-          Copy link
+          <Trans>Copy link</Trans>
         </button>
       </div>
     </>

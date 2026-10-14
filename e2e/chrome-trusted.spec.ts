@@ -51,7 +51,7 @@ test.describe("phone", () => {
     expect(box.y + box.height).toBeLessThan(812 - 60); // above the tab bar
     expect(box.height).toBeGreaterThanOrEqual(44);
     await fab.tap();
-    await expect(page.getByRole("dialog", { name: "New Recipe" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Add: Recipe" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     // Hold: the other quick action rises above it.
@@ -63,7 +63,7 @@ test.describe("phone", () => {
     const dial = page.getByRole("group", { name: "Quick actions" });
     await expect(dial).toBeVisible();
     await dial.getByRole("button", { name: /New Ingredient/ }).tap();
-    await expect(page.getByRole("dialog", { name: "New Ingredient" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Add: Ingredient" })).toBeVisible();
   });
 
   test("a detail page: back in the top bar, one filled action, Delete last in More actions", async ({ page }) => {

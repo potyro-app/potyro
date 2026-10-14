@@ -55,7 +55,7 @@ test.describe("phone", () => {
     // where adding is still a button, and a form opened from it is the same sheet either way.
     await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
     await page.getByRole("button", { name: "New Place" }).click();
-    const dialog = page.getByRole("dialog", { name: "New Place" });
+    const dialog = page.getByRole("dialog", { name: "Add: Place" });
     await expect(dialog).toBeVisible();
     // The sheet slides up when it opens; measure where it lands, not where it is passing through.
     await settled(dialog);
@@ -77,7 +77,7 @@ test.describe("phone", () => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
     await page.getByRole("button", { name: "New Plant" }).click();
-    const dialog = page.getByRole("dialog", { name: "New Plant" });
+    const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await expect(dialog).toBeVisible();
     await settled(dialog);
     const head = (await dialog.locator(".k-form-head").boundingBox())!;
@@ -101,7 +101,7 @@ test.describe("desktop", () => {
     await page.goto("/?user=tall");
     await expect(page.locator("h1").first()).toHaveText("Tall", { timeout: 30_000 });
     await page.getByRole("button", { name: "New Thing" }).click();
-    const dialog = page.getByRole("dialog", { name: "New Thing" });
+    const dialog = page.getByRole("dialog", { name: "Add: Thing" });
     await expect(dialog).toBeVisible();
     const sheet = (await dialog.boundingBox())!;
     expect(sheet.height).toBeLessThanOrEqual(900 * 0.9 + 1);
@@ -120,7 +120,7 @@ test.describe("desktop", () => {
     const opener = page.getByRole("button", { name: "New Plant" });
     await opener.focus();
     await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog", { name: "New Plant" });
+    const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("textbox", { name: "Name" })).toBeFocused();
     // Shift+Tab reaches the Close before the field; from there it wraps to the last control, and
@@ -145,7 +145,7 @@ test.describe("desktop", () => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
     await page.getByRole("button", { name: "New Plant" }).click();
-    const dialog = page.getByRole("dialog", { name: "New Plant" });
+    const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await dialog.getByRole("textbox", { name: "Name" }).fill("Basil");
     await page.keyboard.press("Escape");
     const ask = page.getByRole("dialog", { name: "Discard your changes?" });

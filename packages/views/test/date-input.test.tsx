@@ -107,7 +107,7 @@ describe("DateInput", () => {
     const dialog = screen.getByRole("dialog", { name: "Due" });
     expect(dialog.querySelector(".k-date-day[data-selected]")?.textContent).toBe("12");
     fireEvent.click(screen.getByRole("button", { name: "Next month" }));
-    fireEvent.click(screen.getByRole("button", { name: new Date(2026, 9, 3).toDateString() }));
+    fireEvent.click(screen.getByRole("button", { name: new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(new Date(2026, 9, 3)) }));
     expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 9, 3));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
