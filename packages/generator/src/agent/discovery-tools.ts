@@ -16,10 +16,10 @@
 import { SCHEMA_REFERENCE } from "../reference.generated.js";
 import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
 import { loadCorpus } from "../load-corpus.js";
-import { describeRun, type RunGate } from "../run-report.js";
+import { describeRun, runSafely, type RunGate, type RunReport } from "../run-report.js";
 import { readEditsOrFile } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO } from "../prompt.js";
+import { EXAMPLE_COMPUTED, EXAMPLE_CUSTOM_VIEW, EXAMPLE_TODO, extractSource, looksLikeApp } from "../prompt.js";
 import { VIEW_FIELDS } from "potyro";
 import type { AgentTool } from "./tools.js";
 import { buildTranslateTool, type TranslationDraft } from "./translate-tool.js";
@@ -102,18 +102,23 @@ const EXAMPLES: ReadonlyArray<{ title: string; source: string }> = [
   { title: "a custom view (React component in the app file)", source: EXAMPLE_CUSTOM_VIEW },
 ];
 
+/** `lookup`, the tool every loop offers first. */
+function lookupTool(): AgentTool {
+  return {
+    name: "lookup",
+    description:
+      "Read the real declaration of a type, a property or a view type from the potyro module — the same text as the REFERENCE in your instructions, " +
+      "found for you. Use it BEFORE deciding an option does not exist: lookup(\"MapView\"), lookup(\"camera\"), lookup(\"map\"), lookup(\"ctx.scope\"). " +
+      "If it answers that nothing declares it, that is the fact to quote in a NOT-IN-APP.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "A type name, property name, view type, or ctx.<member>" } }, required: ["query"] },
+    run: async (args) => ({ ok: true, detail: lookupReference(SCHEMA_REFERENCE, String(args.query ?? "")) }),
+  };
+}
+
 export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
   const corpus = deps.corpus ?? loadCorpus;
   return [
-    {
-      name: "lookup",
-      description:
-        "Read the real declaration of a type, a property or a view type from the potyro module — the same text as the REFERENCE in your instructions, " +
-        "found for you. Use it BEFORE deciding an option does not exist: lookup(\"MapView\"), lookup(\"camera\"), lookup(\"map\"), lookup(\"ctx.scope\"). " +
-        "If it answers that nothing declares it, that is the fact to quote in a NOT-IN-APP.",
-      parameters: { type: "object", properties: { query: { type: "string", description: "A type name, property name, view type, or ctx.<member>" } }, required: ["query"] },
-      run: async (args) => ({ ok: true, detail: lookupReference(SCHEMA_REFERENCE, String(args.query ?? "")) }),
-    },
+    lookupTool(),
     {
       name: "check",
       description:
@@ -156,6 +161,14 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
         return { ok: report.errors.length === 0, detail: `${applied}; it compiles and validates. ${describeRun(report, preexisting)}${wordsLine}` };
       },
     },
+    ...readingTools(corpus),
+    ...(deps.draft ? [buildTranslateTool({ draft: deps.draft, check: deps.check })] : []),
+  ];
+}
+
+/** `example`, `search_corpus` and `read`: what a loop reads the release's corpus with. */
+function readingTools(corpus: () => Promise<Corpus>): AgentTool[] {
+  return [
     {
       name: "example",
       description:
@@ -190,6 +203,48 @@ export function buildDiscoveryTools(deps: DiscoveryDeps): AgentTool[] {
       },
       run: async (args) => ({ ok: true, detail: readCorpus(await corpus(), String(args.path ?? ""), Number(args.line ?? 1)) }),
     },
-    ...(deps.draft ? [buildTranslateTool({ draft: deps.draft, check: deps.check })] : []),
+  ];
+}
+
+export interface CreateToolDeps {
+  /** Bundle + validate a candidate; the validator's issues, empty when it is a well-formed app. Throws when it does not compile. */
+  check: (source: string) => Promise<string[]>;
+  /** Run a candidate that validates on sample records (#262 phase 3). A new app has nothing to be
+   *  compared with, so this is the run itself: what threw, and what looks wrong. Optional. */
+  run?: (source: string) => Promise<RunReport>;
+  corpus?: () => Promise<Corpus>;
+}
+
+/**
+ * The tools for making a NEW app (#262 phase 3): the same `lookup` and corpus tools as a change, and
+ * a `check` that takes the WHOLE app — there is no app yet to write edits against.
+ */
+export function buildCreateTools(deps: CreateToolDeps): AgentTool[] {
+  const corpus = deps.corpus ?? loadCorpus;
+  return [
+    lookupTool(),
+    {
+      name: "check",
+      description:
+        "Try an app before sending it: the whole .app.ts source. It is bundled and validated" +
+        (deps.run ? ", then RUN on sample records," : ",") +
+        " and you get the validator's words or what the run showed. Use it when you are unsure an app validates; then send the app as your reply.",
+      parameters: { type: "object", properties: { source: { type: "string", description: "The whole .app.ts source" } }, required: ["source"] },
+      run: async (args) => {
+        const source = extractSource(String(args.source ?? args.edits ?? ""));
+        if (!looksLikeApp(source)) return { ok: false, detail: "That is not an app: send the whole .app.ts source, with `export default defineApp({ … })`." };
+        let issues: string[];
+        try {
+          issues = await deps.check(source);
+        } catch (e) {
+          return { ok: false, detail: `It does not compile: ${e instanceof Error ? e.message : String(e)}` };
+        }
+        if (issues.length) return { ok: false, detail: `It fails validation:\n${issues.map((i) => `- ${i}`).join("\n")}` };
+        if (!deps.run) return { ok: true, detail: "It compiles and validates." };
+        const report = await runSafely(deps.run, source);
+        return { ok: report.errors.length === 0, detail: `It compiles and validates. ${describeRun(report)}` };
+      },
+    },
+    ...readingTools(corpus),
   ];
 }
