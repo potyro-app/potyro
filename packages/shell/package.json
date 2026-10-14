@@ -13,6 +13,7 @@
     "test": "vitest run --passWithNoTests",
     "dev": "vite",
     "dev:sandbox": "vite --mode sandbox",
+    "dev:sandbox:quickjs": "vite --mode sandbox-quickjs",
     "build:web": "vite build"
   },
   "dependencies": {

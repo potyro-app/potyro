@@ -1,6 +1,7 @@
 // Shell entry / composition root wiring. Every app — the seeded examples included (#152) — is a
-// saved source: trusted ones run direct, untrusted ones in the QuickJS-WASM isolate. `pnpm
-// dev:sandbox` (mode "sandbox") seeds the examples untrusted, which is what exercises the isolate.
+// saved source: trusted ones run direct, untrusted ones sealed — in the browser realm (#272), or the
+// QuickJS-WASM isolate behind a flag (sandbox-runner.ts). `pnpm dev:sandbox` (mode "sandbox") seeds
+// the examples untrusted, which is what exercises the sealed box.
 
 // First, before any module below reads localStorage: the codename-to-product key move (#114).
 import { plural, t } from "@lingui/core/macro";
@@ -50,7 +51,8 @@ import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
 
-const SANDBOX = import.meta.env.MODE === "sandbox";
+// `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
+const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
 
 // Route from the URL: a saved app (?user=, or the older ?app= that named an example) or the home.
 // The examples are ordinary apps (#152), so `?app=recipes` is the same app as `?user=recipes`.
@@ -522,13 +524,13 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     }
   }
   if (provenance === "untrusted") {
-    const [{ createAppBundler }, { createSandboxLoader }] = await Promise.all([
+    const [{ createAppBundler }, { createSharedAppLoader }] = await Promise.all([
       import("./app-bundler.js"),
       import("./isolate-bridge.js"),
     ]);
     try {
       appSource = await (await createAppBundler())(saved.source, modules);
-      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSandboxLoader(store) });
+      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
     } catch (e) {
       return failed(e);
     }
