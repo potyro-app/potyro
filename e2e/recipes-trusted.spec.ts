@@ -132,7 +132,7 @@ test("a table wider than the phone scrolls itself, and the page does not", async
   expect(Math.round(box.y + box.height)).toBeLessThanOrEqual(780);
   expect(box.x).toBe(0);
 
-  // The columns are named, not keyed: "Calories Per Serving", not "caloriesPerServing" — which is
+  // The columns are named, not keyed: "Calories per serving" (its label, #310), not "caloriesPerServing" — which is
   // also a twenty-character word that cannot wrap, and half of why this was ever too wide.
-  await expect(page.locator(".k-table th").nth(2)).toHaveText(/Calories Per Serving/i);
+  await expect(page.locator(".k-table th").nth(2)).toHaveText("Calories per serving");
 });

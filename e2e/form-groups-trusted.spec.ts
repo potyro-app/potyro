@@ -39,8 +39,8 @@ test.describe("desktop", () => {
     await expect(steps).toHaveAttribute("aria-expanded", "false");
     await steps.click();
     await expect(steps).toHaveAttribute("aria-expanded", "true");
-    // A computed value in a group shows on the detail page.
-    await expect(detail.locator(".k-field dt", { hasText: "Calories Per Serving" })).toBeVisible();
+    // A computed value in a group shows on the detail page, under its own label (#310).
+    await expect(detail.locator(".k-field dt", { hasText: "Calories per serving" })).toBeVisible();
 
     // The form: the same four groups, the computed-only fields skipped, Steps folded.
     await page.getByRole("button", { name: /Recipes/ }).click();
