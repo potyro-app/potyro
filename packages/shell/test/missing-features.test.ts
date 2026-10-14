@@ -41,6 +41,9 @@ describe("naming what is missing", () => {
       expect(missingFeature(new ReferenceError(`${name} is not defined`), "quickjs")?.words).toBe(`a full web page (${name})`);
     }
     expect(missingFeatures(["'Intl' is not defined", "document is not defined"], "realm").map((f) => f.name)).toEqual(["document"]);
+    // WebKit's words for it — the realm on Safari and on an iPhone.
+    expect(missingFeature(new ReferenceError("Can't find variable: document"), "realm")?.words).toBe("a full web page (document)");
+    expect(missingFeature(new ReferenceError("Can't find variable: totl"), "realm")).toBeUndefined();
   });
 
   it("each feature once, and a sentence a person can read", () => {
