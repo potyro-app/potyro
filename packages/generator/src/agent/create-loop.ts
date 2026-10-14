@@ -14,7 +14,15 @@
 // one attempt repaired step by step. So a create makes up to `drafts` (default 2) INDEPENDENT first
 // drafts — each its own conversation, the later one not seeing the earlier — and keeps the better by
 // the gate. The second draft is made only when the first did not pass: the gate cannot rank two apps
-// that both pass, so a second passing draft would be paid for and thrown away. When no draft passes,
+// that both pass, so a second passing draft would be paid for and thrown away.
+//
+// A first draft is ONE call with the tools off — the single-shot create plus the corpus passages. The
+// first paid run gave every draft the tools, and the model spent them looking things up before it
+// had written anything: two to ten calls a case, 3–5× the cost of one call, and three apps lost to
+// the step budget — one of them after its own `check` had passed. So the tools come on only for the
+// repair, where there is a problem to look into; an app the model's `check` passed is kept even if
+// the calls run out before it is sent; and the loop never gives up while it holds an app that
+// validates (one whose run threw is kept, with what the run found said beside it). When no draft passes,
 // the one with the fewest problems is repaired in its own conversation; a chain with two candidates
 // turned back starts again from the request with a note of what was turned back (F2), and a model
 // that repeats itself has the repeat taken out (F1) — then, the second time, that chain is over.
@@ -29,7 +37,7 @@
 import type { ChatEngine, ChatMessage, ToolCallOnMessage } from "../chat-backend.js";
 import { readEditsOrFile } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { buildUserMessage, looksLikeApp, questionIn } from "../prompt.js";
+import { buildUserMessage, extractSource, looksLikeApp, questionIn } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
 import type { Language } from "../language.js";
 import { describeRun, runSafely, type RunReport } from "../run-report.js";
@@ -85,7 +93,7 @@ export interface CreateLoopDeps {
   maxSteps?: number;
   /** Candidates that may fail the gate before the loop gives up. Tool reads do not count. */
   maxCandidates?: number;
-  /** Model calls one first draft may spend before it has to send an app. */
+  /** Model calls one first draft may spend before it has to send an app (one more than the draft, for a reply that was not one). */
   draftSteps?: number;
   /** Think hard for the one turn after the loop got stuck (#280). */
   escalate?: boolean;
@@ -94,9 +102,11 @@ export interface CreateLoopDeps {
 }
 
 export const DEFAULT_DRAFTS = 2;
-const DEFAULT_MAX_STEPS = 14;
+const DEFAULT_MAX_STEPS = 10;
 const DEFAULT_MAX_CANDIDATES = 4;
-const DEFAULT_DRAFT_STEPS = 5;
+const DEFAULT_DRAFT_STEPS = 2;
+/** Calls a draft that was sent to the tools (an unlooked NEEDS-PLATFORM) gets to look with. */
+const LOOK_STEPS = 3;
 /** The first draft is written as the single-shot create was (chat-backend's GENERATE_TEMPERATURE). */
 const FIRST_TEMPERATURE = 0.2;
 /** A later draft is sampled wider, so it is a different attempt and not the same one again. */
@@ -126,6 +136,8 @@ interface Chain {
   toolStreak: { sig: string; count: number; at: number; tried: string; answer: string } | null;
   looked: boolean;
   nudged: boolean;
+  /** Tools offered (`tool_choice: "auto"`). Off for a first draft: it is one call, the app itself. */
+  tools: boolean;
 }
 
 /** What a chain came to once it stopped calling tools. */
@@ -152,6 +164,8 @@ interface Tried {
   source: string;
   problem: string;
   rank: readonly [number, number];
+  /** Which candidate it was, counted from 1. */
+  n: number;
 }
 
 const better = (a: Tried, b: Tried): number => a.rank[0] - b.rank[0] || a.rank[1] - b.rank[1];
@@ -246,8 +260,12 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
     previousAnswer: "",
     toolStreak: null,
     looked: false,
+    // A first draft is one call, tools off; a fresh start in the repair has them.
+    tools: Boolean(note),
     nudged: false,
   });
+  /** Apps the model's own `check` passed, latest last: kept, so a chain that runs out of calls after one does not lose it. */
+  const checked: string[] = [];
 
   /** The offer to append beside a failure that names something Potyro lacks — once in the loop. */
   const offerFor = (text: string): string => {
@@ -263,7 +281,24 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
     writePlatformRequest({ engine: deps.engine, ...(deps.model ? { model: deps.model } : {}), messages: chain.messages, tools: specs, seed, ...(deps.language ? { language: deps.language } : {}) });
 
   const gaveUp = async (cause: GiveUp, why: string): Promise<CreateLoopOutcome> => {
+    // Never give up while an app that validates exists. First, one the model's own `check` passed
+    // but that it never got round to sending (the paid eval lost three apps that way)…
+    for (const source of [...checked].reverse()) {
+      if (refused.has(source)) continue;
+      const verdict = await gate(deps, source);
+      if (verdict.problem === null) {
+        candidates += 1;
+        deps.onStep?.({ kind: "candidate", passed: true, n: candidates, draft: last?.draft ?? 1, detail: `${verdict.passed} — the app its own check passed` });
+        return { kind: "source", source, warnings: verdict.warnings, draft: last?.draft ?? 1, candidate: candidates };
+      }
+    }
     const best = [...tried].sort(better)[0];
+    // …then the best candidate, when it validates and only its run found something: the app is
+    // kept, and what the run found is said beside it rather than the whole app thrown away.
+    if (best && best.rank[0] <= 1) {
+      deps.onStep?.({ kind: "candidate", passed: true, n: best.n, draft: best.chain.draft, detail: `${why} — keeping the candidate that validates` });
+      return { kind: "source", source: best.source, warnings: [oneLine(best.problem, 600)], draft: best.chain.draft, candidate: best.n };
+    }
     const platformRequest =
       platformSeen && last && !deps.signal?.aborted
         ? await askAfterGiveUp({ engine: deps.engine, model: deps.model, messages: last.messages, tools: specs, signal: platformSeen, language: deps.language })
@@ -311,6 +346,10 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
       }
       const result = await runTool(deps.tools, { id: c.id, name: c.function.name, args });
       if (DISCOVERY.has(result.name)) chain.looked = true;
+      if (result.name === "check" && result.ok) {
+        const source = extractSource(String(args.source ?? ""));
+        if (looksLikeApp(source)) checked.push(source);
+      }
       if (streak.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
       deps.onStep?.({ kind: "tool", name: result.name, ok: result.ok, detail: result.detail });
       chain.messages.push({ role: "tool", tool_call_id: c.id, content: `${result.detail}${offerFor(result.detail)}` });
@@ -330,6 +369,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
       // An uninformed "Potyro can't" is sent to the tools once; said again after looking, it is the answer.
       if (!chain.looked && !chain.nudged) {
         chain.nudged = true;
+        chain.tools = true;
         deps.onStep?.({ kind: "unusable", detail: `said Potyro lacks it without looking: ${said}` });
         chain.messages.push({ role: "assistant", content: text });
         chain.messages.push({
@@ -399,7 +439,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
         ...(deps.model ? { model: deps.model } : {}),
         messages: chain.messages,
         tools: specs,
-        tool_choice: "auto",
+        tool_choice: chain.tools ? "auto" : "none",
         temperature: chain.temperature,
         ...(escalated ? { reasoning: "high" as const } : {}),
       });
@@ -439,7 +479,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
     refused.set(reply.source, back);
     turnedBack.push(back);
     chain.refused += 1;
-    tried.push({ chain, text: reply.text, source: reply.source, problem: `${verdict.problem}${offerFor(verdict.problem)}`, rank: verdict.rank });
+    tried.push({ chain, text: reply.text, source: reply.source, problem: `${verdict.problem}${offerFor(verdict.problem)}`, rank: verdict.rank, n: candidates });
     return null;
   };
 
@@ -455,7 +495,9 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
   for (let d = 1; d <= drafts; d += 1) {
     if (steps >= maxSteps || candidates >= maxCandidates) break;
     const chain = chainFor(d);
-    const reply = await advance(chain, Math.min(draftSteps, maxSteps - steps));
+    let reply = await advance(chain, Math.min(draftSteps, maxSteps - steps));
+    // A draft sent to the tools before saying "Potyro can't" gets the calls to look with.
+    if (reply.kind === "spent" && chain.nudged) reply = await advance(chain, Math.min(LOOK_STEPS, maxSteps - steps));
     const end = await ending(chain, reply);
     if (end) return end;
     if (reply.kind !== "candidate") {
@@ -483,6 +525,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
     });
     c.previousAnswer = oneLine(problem, 240);
     c.temperature = REPAIR_TEMPERATURE;
+    c.tools = true;
   };
   sendBack(chain, best.text, best.problem);
   while (candidates < maxCandidates && steps < maxSteps) {
