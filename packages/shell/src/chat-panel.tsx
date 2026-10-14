@@ -196,7 +196,7 @@ export function ChatPeek({
 }) {
   const { t } = useLingui();
   const { me, members } = useLiveMembers(runtime);
-  const who = memberName(message.by, { me, members });
+  const who = message.by === me?.id ? t({ message: "You", comment: "Chat: a message you wrote" }) : memberName(message.by, { me, members });
   const at = useAnchored(anchor);
   if (!at) return null;
 
@@ -326,7 +326,7 @@ export function Thread({
           <li className="k-muted k-chat-empty">{emptyText}</li>
         ) : (
           messages.map((m) => {
-            const who = memberName(m.by, { me, members });
+            const who = m.by === me?.id ? t({ message: "You", comment: "Chat: a message you wrote" }) : memberName(m.by, { me, members });
             return (
               <li
                 key={m.id}

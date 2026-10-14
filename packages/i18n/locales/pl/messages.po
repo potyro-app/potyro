@@ -526,6 +526,22 @@ msgid ""
 "Once, now, and kept with the app: after that it works without the internet."
 msgstr ""
 
+#: ../shell/src/activity-panel.tsx
+msgid "{who} changed {field} from {from} to {to}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} changed {field} from {from} to {to} on {record}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} set {field} to {to}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} set {field} to {to} on {record}"
+msgstr ""
+
 #: ../shell/src/ask-panel.tsx
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
 msgstr ""
@@ -2583,6 +2599,11 @@ msgstr ""
 msgid "Next month"
 msgstr ""
 
+#. Activity feed: an unticked box
+#: ../shell/src/activity-panel.tsx
+msgid "no"
+msgstr ""
+
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
@@ -2713,6 +2734,13 @@ msgstr ""
 #. Fix agent step: the model's reply could not be used
 #: ../shell/src/fix-panel.tsx
 msgid "not usable — {detail}"
+msgstr ""
+
+#. Activity feed: a field that has no value
+#. Activity feed: a field that has no value
+#: ../shell/src/activity-panel.tsx
+#: ../shell/src/activity-panel.tsx
+msgid "nothing"
 msgstr ""
 
 #: ../shell/src/chat-panel.tsx
@@ -3481,6 +3509,11 @@ msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
+msgstr ""
+
+#. Activity feed: a value that cannot be shown in words
+#: ../shell/src/activity-panel.tsx
+msgid "something"
 msgstr ""
 
 #: ../shell/src/view-error-boundary.tsx
@@ -4376,6 +4409,11 @@ msgstr ""
 msgid "Writes and edits apps; cannot investigate a reported problem step by step."
 msgstr ""
 
+#. Activity feed: a ticked box
+#: ../shell/src/activity-panel.tsx
+msgid "yes"
+msgstr ""
+
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
@@ -4392,7 +4430,11 @@ msgstr ""
 msgid "you"
 msgstr ""
 
+#. Chat: a message you wrote
+#. Chat: a message you wrote
 #. Heading of the panel about the person using Potyro and their devices
+#: ../shell/src/chat-panel.tsx
+#: ../shell/src/chat-panel.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "You"
 msgstr ""
@@ -4407,12 +4449,28 @@ msgstr ""
 msgid "You can go back to the version before from History."
 msgstr ""
 
+#: ../shell/src/activity-panel.tsx
+msgid "You changed {field} from {from} to {to}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "You changed {field} from {from} to {to} on {record}"
+msgstr ""
+
 #: ../shell/src/fix-panel.tsx
 msgid "You ended this before it finished."
 msgstr ""
 
 #: ../shell/src/case-report.tsx
 msgid "You expected: {expectation}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "You set {field} to {to}"
+msgstr ""
+
+#: ../shell/src/activity-panel.tsx
+msgid "You set {field} to {to} on {record}"
 msgstr ""
 
 #: ../shell/src/ask-panel.tsx

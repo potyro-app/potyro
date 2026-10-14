@@ -529,6 +529,22 @@ msgstr ""
 "\n"
 "Once, now, and kept with the app: after that it works without the internet."
 
+#: ../shell/src/activity-panel.tsx
+msgid "{who} changed {field} from {from} to {to}"
+msgstr "{who} changed {field} from {from} to {to}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} changed {field} from {from} to {to} on {record}"
+msgstr "{who} changed {field} from {from} to {to} on {record}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} set {field} to {to}"
+msgstr "{who} set {field} to {to}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} set {field} to {to} on {record}"
+msgstr "{who} set {field} to {to} on {record}"
+
 #: ../shell/src/ask-panel.tsx
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
 msgstr "{why} What was already done is in the app; asking again will mark what is already there."
@@ -2593,6 +2609,11 @@ msgstr "New on this device"
 msgid "Next month"
 msgstr "Next month"
 
+#. Activity feed: an unticked box
+#: ../shell/src/activity-panel.tsx
+msgid "no"
+msgstr "no"
+
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
@@ -2724,6 +2745,13 @@ msgstr "Not saved: {reason}"
 #: ../shell/src/fix-panel.tsx
 msgid "not usable — {detail}"
 msgstr "not usable — {detail}"
+
+#. Activity feed: a field that has no value
+#. Activity feed: a field that has no value
+#: ../shell/src/activity-panel.tsx
+#: ../shell/src/activity-panel.tsx
+msgid "nothing"
+msgstr "nothing"
 
 #: ../shell/src/chat-panel.tsx
 msgid "Nothing about {label} yet."
@@ -3492,6 +3520,11 @@ msgstr "some pages aren't written as plain objects with an id"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
 msgstr "Someone sent you one, or you made it somewhere else."
+
+#. Activity feed: a value that cannot be shown in words
+#: ../shell/src/activity-panel.tsx
+msgid "something"
+msgstr "something"
 
 #: ../shell/src/view-error-boundary.tsx
 msgid "Something went wrong opening {pageLabel}."
@@ -4395,6 +4428,11 @@ msgstr "Write the code yourself"
 msgid "Writes and edits apps; cannot investigate a reported problem step by step."
 msgstr "Writes and edits apps; cannot investigate a reported problem step by step."
 
+#. Activity feed: a ticked box
+#: ../shell/src/activity-panel.tsx
+msgid "yes"
+msgstr "yes"
+
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/format.ts
 #: ../views/src/summary.ts
@@ -4411,7 +4449,11 @@ msgstr "Yesterday"
 msgid "you"
 msgstr "you"
 
+#. Chat: a message you wrote
+#. Chat: a message you wrote
 #. Heading of the panel about the person using Potyro and their devices
+#: ../shell/src/chat-panel.tsx
+#: ../shell/src/chat-panel.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "You"
 msgstr "You"
@@ -4426,6 +4468,14 @@ msgstr "You and your devices"
 msgid "You can go back to the version before from History."
 msgstr "You can go back to the version before from History."
 
+#: ../shell/src/activity-panel.tsx
+msgid "You changed {field} from {from} to {to}"
+msgstr "You changed {field} from {from} to {to}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You changed {field} from {from} to {to} on {record}"
+msgstr "You changed {field} from {from} to {to} on {record}"
+
 #: ../shell/src/fix-panel.tsx
 msgid "You ended this before it finished."
 msgstr "You ended this before it finished."
@@ -4433,6 +4483,14 @@ msgstr "You ended this before it finished."
 #: ../shell/src/case-report.tsx
 msgid "You expected: {expectation}"
 msgstr "You expected: {expectation}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You set {field} to {to}"
+msgstr "You set {field} to {to}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You set {field} to {to} on {record}"
+msgstr "You set {field} to {to} on {record}"
 
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."

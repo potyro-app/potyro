@@ -143,6 +143,18 @@ export const CLEAN = new Set([
   "packages/shell/src/ask-verdicts.ts",
   "packages/shell/src/ask-geocode.ts",
   "packages/shell/src/start-ask.ts",
+  // #299, sharing, people, sync, chat and activity.
+  "packages/shell/src/people-panel.tsx",
+  "packages/shell/src/share-page.tsx",
+  "packages/shell/src/share-chat.ts",
+  "packages/shell/src/share-sync.ts",
+  "packages/shell/src/share-inbox.ts",
+  "packages/shell/src/sync-consent.ts",
+  "packages/shell/src/app-sync.ts",
+  "packages/shell/src/chat-sync.ts",
+  "packages/shell/src/activity-panel.tsx",
+  "packages/shell/src/app-store.ts",
+  "packages/shell/src/reminder-sync.ts",
 ]);
 
 const ATTRS = new Set([
