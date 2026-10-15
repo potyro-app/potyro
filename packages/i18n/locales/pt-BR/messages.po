@@ -2077,12 +2077,12 @@ msgid "Couldn't reach the AI service. Check your connection and try again."
 msgstr "Não foi possível acessar o serviço de IA. Verifique sua conexão e tente de novo."
 
 #: ../shell/src/main.tsx
-msgid "Couldn't run \"{name}\" trusted; opening safely."
-msgstr "Não foi possível rodar “{name}” como confiável; abrindo com segurança."
+msgid "Couldn’t run “{name}” as yours, so it opens sealed."
+msgstr "Não deu para rodar “{name}” como seu, então ele abre lacrado."
 
 #: ../shell/src/main.tsx
-msgid "Couldn't run \"{name}\" trusted; opening safely. {why}"
-msgstr "Não foi possível rodar “{name}” como confiável; abrindo com segurança. {why}"
+msgid "Couldn’t run “{name}” as yours, so it opens sealed. {why}"
+msgstr "Não deu para rodar “{name}” como seu, então ele abre lacrado. {why}"
 
 #: ../views/src/record-form.tsx
 msgid "Couldn't save: {saveError}"
@@ -3093,12 +3093,12 @@ msgid "It was not added from a link, so its files can only come back from its pa
 msgstr "Ele não foi adicionado por um link, então os arquivos só podem voltar do pacote: adicione-o de novo e escolha “Substituir, mantendo os dados”."
 
 #: ../shell/src/main.tsx
-msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
-msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app gravar neste dispositivo, elas podem ler. Apps de outras pessoas rodam isolados por padrão. Você pode mudar isso depois no cabeçalho do app."
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header."
+msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app escreve neste aparelho, elas podem ler. Apps de outras pessoas rodam na caixa lacrada, a menos que você diga o contrário. Você pode mudar isso depois no topo do app."
 
 #: ../shell/src/main.tsx
-msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header."
-msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app gravar neste dispositivo, elas podem ler. As telas dele são feitas com código próprio, então ele precisa rodar como confiável para mostrá-las. Você pode mudar isso depois no cabeçalho do app."
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run as yours to show them. You can change this later from the app header."
+msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app escreve neste aparelho, elas podem ler. As telas dele são feitas com o próprio código, então ele precisa rodar como seu para mostrá-las. Você pode mudar isso depois no topo do app."
 
 #: ../shell/src/add-app.ts
 msgid "Its description says it is “{said}”, and its code says “{code}”, so it was not added."
@@ -3123,12 +3123,12 @@ msgid "Its sources say otherwise."
 msgstr "As fontes dizem outra coisa."
 
 #: ../shell/src/main.tsx
-msgid "Join and trust"
-msgstr "Entrar e confiar"
+msgid "Join, keep it sealed"
+msgstr "Entrar, manter lacrado"
 
 #: ../shell/src/main.tsx
-msgid "Join, keep sandboxed"
-msgstr "Entrar, manter isolado"
+msgid "Join, run it as yours"
+msgstr "Entrar, rodar como seu"
 
 #: ../shell/src/splash.tsx
 msgid "Joining…"

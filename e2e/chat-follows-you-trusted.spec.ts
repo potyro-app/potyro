@@ -79,7 +79,7 @@ test("a Studio conversation reaches your other device, and not the person you sh
 
     // ---- C: someone A shares it with ----
     await c.page.goto(link);
-    await c.page.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+    await c.page.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
     await answerNamePrompt(c.page, "Caio");
     await expect(c.page.locator("h1").first()).toHaveText("Notes", { timeout: 60_000 });
 
