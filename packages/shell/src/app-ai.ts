@@ -18,6 +18,7 @@ import { AI_FORMAT, OPENROUTER_URL, openRouterBody, readOpenRouterReply, type Ai
 import type { AiCall, AiCap, AiReply } from "@potyro/capabilities";
 import { addSpend } from "./ask-spend.js";
 import { aiStanding, setAiStanding } from "./ai-setting.js";
+import { currentSite } from "./site.js";
 
 /** Each way of paying gets this long, body included. */
 export const AI_TIMEOUT_MS = 60_000;
@@ -51,7 +52,7 @@ export interface AppAiDeps {
 /** Where the free relay is: the build's own address for it, or next to the site. */
 export function aiRelayEndpoint(): string {
   const configured = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_POTYRO_AI;
-  const base = configured || `${globalThis.location?.origin ?? ""}/ai`;
+  const base = configured || `${currentSite()?.origin ?? ""}/ai`;
   return `${base.replace(/\/$/, "")}/complete`;
 }
 

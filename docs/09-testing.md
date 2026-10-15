@@ -38,6 +38,12 @@ Tests are per-WP and ship in the same PR as the code. Two things need special di
   native: yes) — the difference is asserted rather than papered over. Two tests point the suite at
   deliberately wrong targets, so a suite nothing can fail would itself fail. What only a device can
   prove — a notification firing with the app closed — stays the device checklist in docs/13.
+  **iOS** runs the same `CapacitorCapabilities`, so the same suite covers it; what differs is
+  declared, not forked: on iOS the adapter is built with `maxPendingNotifications: 64` (iOS drops
+  pending notifications past 64 per app without an error), and `test/pending-limit.test.ts` holds that
+  the soonest 64 are what stays pending whatever the scheduling order. The generated Xcode project's
+  patch (`scripts/patch-plist.mjs`) has its own tests beside the manifest's. The iOS device checklist
+  is docs/27 §5; nothing in it has been run yet.
 - **E2E smoke** (`shell`): headless load of each example, basic navigation, import/export
   round-trip. (jsdom for logic; a real browser runner for the PWA install/offline path.)
 
