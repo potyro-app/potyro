@@ -24,6 +24,9 @@ import { MARSHAL_SOURCE } from "./marshal.js";
 export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
 (function(){
   var calls = {}, callSeq = 0;
+  // Live connections (docs/28), by the number the host gave each. Kept across calls: a connection
+  // outlives the action that opened it.
+  var socks = {};
   function bridge(obj){
     return new Promise(function(resolve, reject){
       var id = "c" + (++callSeq);
@@ -246,12 +249,100 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         return bridge({op:"cap.ai.ask", prompt: String(prompt), opts: o ? { instructions: o.instructions == null ? null : o.instructions, image: aiImgs(o.image) } : null});
       }
     };
-    if (has("network")) ctx.caps.network = { fetch: async function(){ throw new Error("network fetch is not marshalable in isolate v1"); } };
+    if (has("network")) ctx.caps.network = {
+      fetch: async function(){ throw new Error("network fetch is not marshalable in isolate v1"); },
+      socket: async function(url, o){
+        var p = o && o.protocols;
+        var info = await bridge({op:"cap.socket.open", url:String(url), opts: p == null ? null : { protocols: Array.isArray(p) ? p.map(String) : [String(p)] }});
+        return makeSock(info);
+      },
+      room: async function(id, o){
+        var info = await bridge({op:"cap.socket.room", id: id == null ? null : String(id), opts: (o && o.name != null) ? { name: String(o.name) } : null});
+        return makeSock(info);
+      }
+    };
     if (has("filesystem")) ctx.caps.filesystem = {
       pick: async function(){ throw new Error("filesystem pick is not marshalable in isolate v1"); },
       save: async function(){ throw new Error("filesystem save is not marshalable in isolate v1"); }
     };
     return ctx;
+  }
+
+  function sockErr(m, code){ var e = new Error(m); e.code = code; return e; }
+  function sizeOf(d){ return typeof d === "string" ? d.length : d.byteLength; }
+  function each(list, arg, where){
+    for (var i = 0; i < list.length; i++) { try { list[i](arg); } catch (e) { bridgeSync({op:"log", args:[where + " threw: " + String((e && e.message) || e)]}); } }
+  }
+  // A connection as the app holds it: the host has the real one (socket-bridge.ts).
+  function makeSock(info){
+    var sid = info.sid, msgCbs = [], closeCbs = [], presCbs = [], held = [], closedWith = null;
+    var s = { url: info.url, protocol: info.protocol || "", readyState: "open" };
+    s.send = function(d){
+      if (typeof d !== "string" && !(d instanceof Uint8Array)) return Promise.reject(new TypeError("send takes a string or a Uint8Array"));
+      if (s.readyState !== "open") return Promise.reject(sockErr("The connection is not open", "closed"));
+      return bridge({op:"cap.socket.send", sid:sid, data: typeof d === "string" ? {t:d} : {b: toBase64(d)}}).then(function(){});
+    };
+    s.onMessage = function(cb){
+      if (typeof cb !== "function") throw new TypeError("onMessage takes a function");
+      if (closedWith) return function(){};
+      msgCbs.push(cb);
+      if (held.length) {
+        var h = held; held = [];
+        Promise.resolve().then(function(){
+          var bytes = 0;
+          for (var i = 0; i < h.length; i++) { bytes += sizeOf(h[i]); try { cb(h[i]); } catch (e) { bridgeSync({op:"log", args:["a socket's onMessage threw: " + String((e && e.message) || e)]}); } }
+          bridgeSync({op:"cap.socket.ack", sid:sid, n:h.length, bytes:bytes});
+        });
+      }
+      return function(){ msgCbs = msgCbs.filter(function(x){ return x !== cb; }); };
+    };
+    s.onClose = function(cb){
+      if (typeof cb !== "function") throw new TypeError("onClose takes a function");
+      if (closedWith) { var c = closedWith; Promise.resolve().then(function(){ cb(c); }); return function(){}; }
+      closeCbs.push(cb);
+      return function(){ closeCbs = closeCbs.filter(function(x){ return x !== cb; }); };
+    };
+    s.close = function(code, reason){
+      if (s.readyState !== "open") return;
+      s.readyState = "closing";
+      bridgeSync({op:"cap.socket.close", sid:sid, code: code == null ? null : Number(code), reason: reason == null ? null : String(reason)});
+    };
+    if (info.room) {
+      s.id = info.room.id;
+      s.me = info.room.me;
+      s.members = info.room.members || [];
+      s.onPresence = function(cb){
+        if (typeof cb !== "function") throw new TypeError("onPresence takes a function");
+        if (closedWith) return function(){};
+        presCbs.push(cb);
+        return function(){ presCbs = presCbs.filter(function(x){ return x !== cb; }); };
+      };
+    }
+    // One event from the host. "1": taken (or needs no ack); "0": held until the app listens.
+    s._event = function(ev){
+      if (ev.kind === "message") {
+        var d = typeof ev.t === "string" ? ev.t : fromBase64(ev.b || "");
+        if (!msgCbs.length) { held.push(d); return "0"; }
+        each(msgCbs.slice(), d, "a socket's onMessage");
+        return "1";
+      }
+      if (ev.kind === "presence") {
+        var m = { id: String(ev.member && ev.member.id || ""), name: String(ev.member && ev.member.name || "") };
+        s.members = ev.type === "join" ? s.members.filter(function(x){ return x.id !== m.id; }).concat([m]) : s.members.filter(function(x){ return x.id !== m.id; });
+        each(presCbs.slice(), { type: ev.type, member: m }, "a room's onPresence");
+        return "1";
+      }
+      if (closedWith) return "1";
+      closedWith = { code: Number(ev.code), reason: String(ev.reason || ""), why: ev.why };
+      s.readyState = "closed";
+      delete socks[sid];
+      held = [];
+      var cbs = closeCbs; closeCbs = []; msgCbs = []; presCbs = [];
+      each(cbs, closedWith, "a socket's onClose");
+      return "1";
+    };
+    socks[sid] = s;
+    return s;
   }
 
   function resolveBinding(app, p, record, ctx){
@@ -273,7 +364,15 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       var c = calls[id];
       delete calls[id];
       if (!c) return;
-      if (ok) c.resolve(__deserialize(json)); else c.reject(new Error(json));
+      if (ok) return c.resolve(__deserialize(json));
+      // An error with a code (a socket's "denied") arrives as {"__err", "code"}; anything else is the message.
+      if (json.indexOf('{"__err":') === 0) { try { var pe = JSON.parse(json); var err = new Error(pe.__err); err.code = pe.code; return c.reject(err); } catch (x) {} }
+      c.reject(new Error(json));
+    },
+    sock: function(json){
+      var ev = JSON.parse(json);
+      var s = socks[ev.sid];
+      return s ? s._event(ev) : "1";
     },
     call: async function(payloadJson){
       var p = __deserialize(payloadJson);

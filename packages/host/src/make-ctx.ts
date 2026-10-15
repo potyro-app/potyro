@@ -385,6 +385,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       ui,
       appName: say(app.definition.name),
       ai: { language: locale, image: (img) => aiImage(store, img) },
+      owner: app,
     }),
 
     media: {

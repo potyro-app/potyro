@@ -13,6 +13,7 @@ import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, every
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
+import { SocketBridge, type BoxSocketEvent, type BoxSocketInfo } from "../socket-bridge.js";
 
 const KV_PREFIX = "kv:";
 
@@ -90,6 +91,12 @@ class IsolateLoadedApp implements LoadedApp {
   private questionSince = 0;
   private questionMs = 0;
   private readonly resolveDeps: ResolveDeps;
+  /**
+   * Live connections (docs/28): the host holds them; the box has a number for each, and its events go
+   * in through `__potyro.sock` — bytes as base64, as everything over this bridge. A message held in the
+   * box (no `onMessage` yet) is acked when the app takes it, so the bridge's window bounds the box.
+   */
+  private readonly sockets = new SocketBridge((ev) => this.socketIn(ev));
 
   constructor(
     private readonly vm: QuickJSAsyncContextLike,
@@ -270,6 +277,31 @@ class IsolateLoadedApp implements LoadedApp {
           this.closeQuestion();
         }
       }
+      // Live connections (docs/28): `mediateCaps` decides — the manifest's hosts, the person's consent
+      // once. Asking waits on the person, so the call's budget pauses.
+      case "cap.socket.open":
+      case "cap.socket.room": {
+        await null; // out of the VM's turn before anything can call back into it
+        const ctx = this.ctxHost;
+        if (!ctx) throw new Error("no call is running");
+        const o = (op.opts ?? null) as { protocols?: string[]; name?: string } | null;
+        this.openQuestion();
+        try {
+          const info =
+            kind === "cap.socket.open"
+              ? await this.sockets.open(ctx, String(op.url), o?.protocols ? { protocols: o.protocols.map(String) } : undefined)
+              : await this.sockets.room(ctx, op.id == null ? undefined : String(op.id), o?.name != null ? { name: String(o.name) } : undefined);
+          return serialize(info as unknown as Value);
+        } finally {
+          this.closeQuestion();
+        }
+      }
+      case "cap.socket.send": {
+        await null;
+        const d = (op.data ?? {}) as { t?: string; b?: string };
+        await this.sockets.send(Number(op.sid), typeof d.t === "string" ? d.t : typeof d.b === "string" ? bytesOfBase64(d.b) : undefined);
+        return nul;
+      }
       case "media.url":
         return serialize((await this.ctxHost?.media.url(op.ref as { key: string; mime: string })) ?? "");
       // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /
@@ -366,12 +398,25 @@ class IsolateLoadedApp implements LoadedApp {
       case "host.call": {
         // Answered later, never now: the VM is mid-execution while this runs.
         const id = op.id as string;
-        this.handleOp(op.req as Record<string, unknown>).then(
-          (json) => this.settle(id, true, json),
-          (e: unknown) => this.settle(id, false, e instanceof Error ? e.message : String(e)),
+        const req = op.req as Record<string, unknown>;
+        const opens = req?.op === "cap.socket.open" || req?.op === "cap.socket.room";
+        this.handleOp(req).then(
+          (json) => {
+            this.settle(id, true, json);
+            // The box has the connection's number now: its events may follow.
+            if (opens) this.sockets.ready(deserialize<BoxSocketInfo>(json).sid);
+          },
+          (e: unknown) => this.settle(id, false, errorForBox(e)),
         );
         return;
       }
+      // Never on the spot: the VM is running, and what these set off may enter it again.
+      case "cap.socket.ack":
+        setTimeout(() => this.sockets.ack(Number(op.sid), Number(op.n), Number(op.bytes)), 0);
+        return;
+      case "cap.socket.close":
+        setTimeout(() => this.sockets.close(Number(op.sid), op.code ?? undefined, op.reason ?? undefined), 0);
+        return;
       case "ui.progress": {
         // A bar is a handle inside the VM; out here it is an id, opened on first sight.
         const id = op.id as string;
@@ -445,6 +490,27 @@ class IsolateLoadedApp implements LoadedApp {
     } finally {
       this.vm.runtime.removeInterruptHandler?.();
     }
+  }
+
+  /** One connection event into the box. True when the app took it (or it needs no ack); false when held. */
+  private socketIn(ev: BoxSocketEvent): boolean {
+    if (this.disposed) return true;
+    const wire =
+      ev.kind === "message"
+        ? { sid: ev.sid, kind: "message", ...(typeof ev.data === "string" ? { t: ev.data } : { b: base64OfBytes(ev.data) }) }
+        : ev;
+    let taken = "1";
+    try {
+      this.enter(() => {
+        const h = this.vm.unwrapResult(this.vm.evalCode(`globalThis.__potyro.sock(${JSON.stringify(JSON.stringify(wire))})`));
+        taken = this.vm.getString(h);
+        h.dispose();
+      });
+    } catch (e) {
+      // The app's callback threw at the top level or ran out of budget: that message is spent.
+      console.warn(`[${this.definition.id}] a socket callback failed:`, e);
+    }
+    return ev.kind !== "message" || taken !== "0";
   }
 
   /** A host call's answer, handed back to the promise waiting for it inside the VM. */
@@ -579,9 +645,17 @@ class IsolateLoadedApp implements LoadedApp {
     return null; // docs/05: custom views run only for trusted apps
   }
   dispose(): void {
+    this.sockets.endAll("left", "the app was closed");
     this.disposed = true;
     this.vm.dispose();
   }
+}
+
+/** An error for the box: its message, and its `code` when it has one (a socket's "denied"), which the harness restores. */
+function errorForBox(e: unknown): string {
+  const message = e instanceof Error ? e.message : String(e);
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "string" ? JSON.stringify({ __err: message, code }) : message;
 }
 
 /** Build the untrusted loader. Each loaded app gets its own isolate. */
