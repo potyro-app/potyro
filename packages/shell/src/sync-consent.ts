@@ -57,7 +57,7 @@ export async function askToSync(app: UserApp): Promise<boolean> {
   const asked = await declaredSync(app.source);
   const name = app.name;
   const ok = await shellDialogs.confirm(
-    asked === true ? t`“${name}” was made by someone else, so it runs in a sandbox.` : t`“${name}” never asked to sync.`,
+    asked === true ? t`“${name}” was made by someone else, so it runs in the sealed box.` : t`“${name}” never asked to sync.`,
     asked === true
       ? {
           detail: t`Sharing it turns on sync: from then on its own code writes into data that leaves this device, where the people you share with can read it. The app asks for this. Share it?`,
@@ -65,7 +65,7 @@ export async function askToSync(app: UserApp): Promise<boolean> {
           cancel: t`Not now`,
         }
       : {
-          detail: t`It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway.`,
+          detail: t`It was made by someone else and runs in the sealed box. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway.`,
           ok: t`Share anyway`,
           cancel: t`Don't share`,
           destructive: true,

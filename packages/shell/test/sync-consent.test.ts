@@ -65,7 +65,7 @@ describe("asking", () => {
     const ask = vi.fn(async () => true);
     shellDialogs.confirm = ask;
     await askToSync({ ...app(), source: SOURCE("{ sync: true }") } as UserApp);
-    expect(ask.mock.calls[0]![0]).toContain("runs in a sandbox");
+    expect(ask.mock.calls[0]![0]).toContain("runs in the sealed box");
     expect(ask.mock.calls[0]![1]).toMatchObject({ ok: "Share" });
     expect(ask.mock.calls[0]![1]?.destructive).toBeUndefined();
 

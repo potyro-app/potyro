@@ -63,7 +63,7 @@ test("a sandboxed app that asks to sync says so, and sharing proceeds once allow
   await seed(page, { trusted: false, permissions: "{ sync: true }" });
   await openTile(page, "share");
 
-  const ask = page.locator(".k-dialog", { hasText: "runs in a sandbox" });
+  const ask = page.locator(".k-dialog", { hasText: "runs in the sealed box" });
   await expect(ask).toBeVisible({ timeout: 30_000 });
   await expect(ask).toContainText("The app asks for this");
   await ask.getByRole("button", { name: "Share" }).click();
@@ -80,5 +80,5 @@ test("your own app is never asked about", async ({ page }) => {
   await openTile(page, "share");
   // Straight to the ordinary share question — no permission dialog in front of it.
   await expect(page.locator(".k-dialog", { hasText: "This turns on sync" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".k-dialog", { hasText: "sandbox" })).toHaveCount(0);
+  await expect(page.locator(".k-dialog", { hasText: "sealed box" })).toHaveCount(0);
 });

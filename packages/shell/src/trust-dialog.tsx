@@ -52,11 +52,11 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
         {trusted ? (
           <>
             <h3 id="k-trustdialog-title">
-              <Trans>Trusted app</Trans>
+              <Trans>It runs as yours</Trans>
             </h3>
             <p className="k-muted">
               <Trans>
-                <strong>{name}</strong> runs directly on this device (not sandboxed). Revoke to run it in the isolate again.
+                <strong>{name}</strong> runs like the apps you made, with the same reach. Put it back in the sealed box to keep it away from the rest of Potyro again.
               </Trans>
             </p>
             <div className="k-form-actions">
@@ -64,19 +64,19 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
                 <Trans>Close</Trans>
               </button>
               <button type="button" className="k-add" onClick={onRevoke}>
-                <Trans>Revoke trust</Trans>
+                <Trans>Put it back in the sealed box</Trans>
               </button>
             </div>
           </>
         ) : (
           <>
             <h3 id="k-trustdialog-title">
-              <Trans>Promote to trusted?</Trans>
+              <Trans>Let it run as yours?</Trans>
             </h3>
             <p className="k-muted">
               <Trans>
-                Trusted apps run <strong>directly</strong> with full access — no sandbox. Only promote an app you wrote or fully trust.{" "}
-                <strong>{name}</strong> declares:
+                It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did.{" "}
+                <strong>{name}</strong> asks for:
               </Trans>
             </p>
             <ul className="k-trust-caps">
@@ -99,7 +99,7 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
                 <Trans>Cancel</Trans>
               </button>
               <button type="button" className="k-add k-primary-action" onClick={onPromote}>
-                <Trans>Promote to trusted</Trans>
+                <Trans>Yes, run it as yours</Trans>
               </button>
             </div>
           </>
