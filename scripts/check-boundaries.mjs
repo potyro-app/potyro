@@ -47,6 +47,12 @@ const rules = [
     note: "platform-requests depends on no Potyro package; the shell depends on it",
   },
   {
+    // The free AI allowance's relay (docs/23) runs on the server with Potyro's key: the same rule.
+    pkg: "packages/ai-relay/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "ai-relay depends on no Potyro package; the shell depends on it",
+  },
+  {
     pkg: "examples",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
     note: "app modules reach host power only via ctx; import `potyro` only",

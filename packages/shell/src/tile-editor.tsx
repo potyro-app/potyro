@@ -11,6 +11,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { updateEntry, type InstalledApp } from "./launcher-store.js";
 import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
 import { askEnabled, setAskEnabled } from "./ask-setting.js";
+import { aiStanding, setAiStanding, type AiStanding } from "./ai-setting.js";
+import { formatSpend, spentIn } from "./ask-spend.js";
 import { fmt } from "@potyro/i18n";
 
 const hueNumber = (h: number): string => fmt.number(h);
@@ -32,6 +34,10 @@ export function TileEditor({ app, onClose }: Props) {
   const [hue, setHue] = useState<number | undefined>(app.entry.hue);
   // Ask (#213) is turned off from inside the app; this is where it comes back.
   const [ask, setAsk] = useState(() => askEnabled(app.id));
+  // The app's own AI (docs/23): shown once the app has used it or been allowed to, with what it cost.
+  const [ai, setAi] = useState<AiStanding | undefined>(() => aiStanding(app.id));
+  const aiSpent = spentIn(app.id, "ai");
+  const aiSpentWords = formatSpend(aiSpent);
 
   const appName = app.name;
   const preview = tileIdentity({ key: app.key, name: name.trim() || declaredName, icon: icon.trim() || declaredIcon, accent: app.accent, hue });
@@ -43,6 +49,7 @@ export function TileEditor({ app, onClose }: Props) {
       hue,
     });
     setAskEnabled(app.id, ask);
+    if (ai !== undefined) setAiStanding(app.id, ai);
     onClose();
   };
 
@@ -136,6 +143,21 @@ export function TileEditor({ app, onClose }: Props) {
             </span>
           </span>
         </label>
+
+        {ai !== undefined ? (
+          <label className="k-tile-editor-ask">
+            <input type="checkbox" checked={ai === "on"} onChange={(e) => setAi(e.target.checked ? "on" : "off")} />
+            <span>
+              <span className="k-field-label">
+                <Trans comment="Tile editor: the app's own use of AI (ctx.caps.ai)">AI</Trans>
+              </span>
+              <span className="k-muted">
+                <Trans>Let this app send what it asks about — a photo, some text — to an AI service.</Trans>
+              </span>
+              {aiSpent > 0 ? <span className="k-muted">{t`AI in this app has used ${aiSpentWords} of your OpenRouter credit on this device.`}</span> : null}
+            </span>
+          </label>
+        ) : null}
 
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={onClose}>

@@ -19,6 +19,10 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
+Two optional services sit beside them, neither deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet)
+and the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps. Without them requests
+wait on the device, and apps' AI runs on the person's own key.
+
 ## The live deployment, as configured
 
 | | |
@@ -415,6 +419,100 @@ lifted or the route is exempted from it (with the rate limit as its only guard).
 **Updating it:** rsync the package again and `docker restart potyro-requests`. Its rate limits and
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
+
+## AI for apps (docs/23) — NOT deployed yet
+
+Apps can read a photo or a text with AI (`ctx.caps.ai`). Who pays: a **free allowance** first,
+through a small relay that holds Potyro's OpenRouter key (`packages/ai-relay`), then the person's
+own OpenRouter key from Model settings. **Until the relay below is running**, apps work on the
+person's own key, and without one the action fails with "Free AI isn't available yet — add your
+own key in Model settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's
+own page or a 404 back, and does not ask again for ten minutes.
+
+What it accepts and does, so you know what you are putting on the internet:
+
+| | |
+|---|---|
+| Route | `POST /complete` (and `GET /health`), behind `/ai/`. Nothing else. |
+| What is in a request | The host's instructions to the model, the parts the app's call named (its words and its pictures, resized on the device to 1600 px), the JSON Schema for the answer, a token cap, a random device id. Never a key; never a record the app did not pass. |
+| What it sends on | `google/gemini-2.5-flash-lite` (or `AI_MODEL`), always — the sender cannot choose the model, the token cap (≤ 4 000) or the provider rules (`data_collection: "deny"`). No tools, no web search. |
+| Size | 6 MiB a request, checked before parsing; ≤ 4 pictures of ≤ 3 MiB each as data URLs; ≤ 40 000 characters of text. Too big is refused, never cut. |
+| Limits | 20 a day and 100 a month per device id, 60 a day per address (first `X-Forwarded-For`), 2 at once per device. |
+| Spending cap | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service a calendar month (UTC), checked **before** each request with a cent of room; what each request really cost (OpenRouter's `usage.cost`) is added after it. Past it, every device is told "used up" and moves to its own key. |
+| State | The month's spend and each device's count in `AI_LEDGER` (a JSON file), written on every change, so a restart does not start the month again. A file it cannot read stops it starting. Daily limits are in memory. |
+| Logs | The upstream's error messages only. Never a request's content, a device id or an address. |
+
+At ~$0.0003 a receipt, $10 is ~30 000 photos a month. Set the same ceiling, or a lower one, as the
+key's own **credit limit** on OpenRouter: that is the cap that holds even if this code is wrong.
+
+### 1. A key that can only spend a little
+
+On openrouter.ai, under the Potyro account: Settings → **Keys** → Create key, named
+`potyro-free-ai`, with a **credit limit** (e.g. $10). Settings → Privacy: leave model training and
+logging **off**. On the server, out of the repository and readable by root only:
+
+```bash
+sudo install -m 600 /dev/null /etc/potyro/ai.env
+sudoedit /etc/potyro/ai.env
+#   OPENROUTER_API_KEY=sk-or-v1-…
+#   AI_MONTHLY_CAP_USD=10
+#   AI_LEDGER=/data/ai-ledger.json
+#   HOST=0.0.0.0          # inside the container; published to loopback only, below
+#   PORT=4204
+```
+
+### 2. Run it
+
+No dependencies, like the request relay. Port **4204**: 4201 is the sync relay, 4202 the request
+relay and 4203 the share links (docs/24).
+
+```bash
+rsync -az --delete packages/ai-relay/ e@vaz.io:/opt/potyro-ai/
+sudo mkdir -p /var/lib/potyro-ai
+
+docker run -d --name potyro-ai --restart unless-stopped \
+  -p 127.0.0.1:4204:4204 \
+  --env-file /etc/potyro/ai.env \
+  -v /opt/potyro-ai:/app:ro -v /var/lib/potyro-ai:/data -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite, cap $10 a month, listening on 0.0.0.0:4204"
+```
+
+Without `OPENROUTER_API_KEY` it refuses to start.
+
+### 3. Put it behind the site's gate
+
+In the vhost, next to `/requests/` and **before** the SPA rule:
+
+```apache
+    # The free AI allowance for apps (docs/23).
+    RewriteRule ^/ai/(.*)$ http://127.0.0.1:4204/$1 [P,L]
+```
+
+`configtest`, reload, and copy the vhost into `deploy/`, as for the request relay. The site's
+basic-auth gate covers it, which is today the strongest of its limits.
+
+### 4. Check it
+
+```bash
+curl -su USER:PASS https://apps.vaz.io/ai/health                                   # {"ok":true}
+curl -su USER:PASS -X POST https://apps.vaz.io/ai/complete -d '{}' \
+  -H 'content-type: application/json'                                               # 400 {"ok":false,…}
+cat /var/lib/potyro-ai/ai-ledger.json                                               # after a real request
+```
+
+Then, with no key in Model settings, open Receipt Split (`apps/receipt-split`), **Read a receipt**
+with a real photo, and check the items and the ledger's spend.
+
+**The Android app** is not on this origin: build it with `VITE_POTYRO_AI=https://apps.vaz.io/ai`; the
+basic-auth gate then stands in its way as it does for requests, so it uses the person's own key
+until the gate is lifted or the route exempted.
+
+**Changing the model** is `AI_MODEL` here, plus `AI_MODEL` in `src/request.ts` for the person's own
+key; pick one with image input and structured outputs on OpenRouter.
+
+**Updating it:** rsync the package again and `docker restart potyro-ai`. The ledger survives.
 
 ## What this does NOT protect
 
