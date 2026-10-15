@@ -176,6 +176,9 @@ export interface LoadedApp {
   // A field's `default` when it is a function of ctx (KA-25) — evaluated where the function lives,
   // since an untrusted app's definition holds only the sentinel string where it was.
   callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value>;
+  // The app's live launcher tile (docs/04 §Tile): what `tile(ctx)` returns, or null without one.
+  // Through the host for the same reason: a sealed app's tile runs in its box; only data comes out.
+  callTile(ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
   dispose(): void;

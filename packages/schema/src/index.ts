@@ -94,6 +94,7 @@ export type {
   AiExtractRequest,
 } from "./types/ctx.js";
 export type { Face, FaceEye, FaceExpressions, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
+export type { TileContent } from "./types/tile.js";
 
 // ---- app definition ----
 export type {
