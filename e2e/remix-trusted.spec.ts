@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { consoleGuard, makeDemoLink, stranger } from "./share-demo";
+import { test, expect } from "./console-guard";
+import { makeDemoLink, stranger } from "./share-demo";
 
 // "Made with Potyro · Remix this" (docs/24 §6). Inside a shared app, Remix opens the Studio on the
 // person's own copy, prefilled with "Make me a version of <app> that…"; the copy says what it is a
@@ -18,7 +18,6 @@ test("Remix this: the Studio opens on your own sealed copy, prefilled, and the c
   const link = await makeDemoLink(page, "Groceries");
 
   const { context, page: viewer } = await stranger(browser, baseURL!);
-  const problems = consoleGuard(viewer);
   await viewer.goto(link);
   await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
   const bar = viewer.locator(".k-demo-bar");
@@ -43,6 +42,5 @@ test("Remix this: the Studio opens on your own sealed copy, prefilled, and the c
   expect(copy.remixOf).toEqual({ name: "Groceries", by: "Ana" });
   expect(copy.credit).toBeUndefined();
   expect(JSON.parse((await viewer.evaluate(() => localStorage.getItem("potyro:share-counts"))) ?? "{}")).toMatchObject({ "demo-opened": 1, "demo-remixed": 1 });
-  expect(problems).toEqual([]);
   await context.close();
 });
