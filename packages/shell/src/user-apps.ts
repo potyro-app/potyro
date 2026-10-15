@@ -57,6 +57,12 @@ export interface UserApp {
    * change code that runs on this device by changing a file.
    */
   lock?: AppLock;
+  /**
+   * The files its package shipped into its folder (`levels.json`), by path — the person's files, not
+   * its code. Opening the app checks they are there: an app missing a file it shipped with is told
+   * apart from an app with a bug, and can get the file back from its package.
+   */
+  shipped?: string[];
 }
 
 function read(): UserApp[] {
@@ -111,6 +117,7 @@ export async function saveUserApp(
     joined?: boolean;
     link?: string;
     lock?: AppLock;
+    shipped?: string[];
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
@@ -159,6 +166,8 @@ export async function saveUserApp(
     link: input.link ?? prev?.link,
     // Carried too: an edit to the source must not cut the app off from the libraries it imports.
     lock: input.lock ?? prev?.lock,
+    // And what it shipped with: an edit of the source does not take its files away.
+    shipped: input.shipped ?? prev?.shipped,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
@@ -208,6 +217,11 @@ export async function removeUserApp(id: string): Promise<void> {
   await clearCases(id);
   // And for the same reason its conversation: the next app called this must start its own.
   await clearChat(id);
+}
+
+/** Record the files an app's package shipped (see `UserApp.shipped`). Not a new version of the app. */
+export function setUserAppShipped(id: string, shipped: string[]): void {
+  write(read().map((a) => (a.id === id ? { ...a, shipped: shipped.length ? shipped : undefined } : a)));
 }
 
 /** Promote/demote a saved app's trust. Trusted apps run directly (not in the isolate). */

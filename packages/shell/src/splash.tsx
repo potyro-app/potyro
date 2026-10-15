@@ -10,6 +10,7 @@
 // and a bar that says something is happening. The tile is the same identity the user just tapped,
 // which is what makes this feel like the app opening rather than a screen in between.
 
+import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
 import { appKey, getEntry } from "./launcher-store.js";
@@ -40,13 +41,21 @@ export interface SplashProps {
    * screen then offers exactly that. Never for code that does not match its lock.
    */
   promote?: Pick<UserApp, "id" | "name" | "source">;
+  /**
+   * The way out of a failure that is not the app's: "Try again" once its data is free in the other
+   * tab, "Reinstall its files" from where it came from. The button is the primary one; while it
+   * runs it says so, and if it fails the reason replaces the old one.
+   */
+  action?: { label: string; run: () => Promise<void> };
 }
 
 /** Read a declaration out of an app's source without running it — the trick `examples.ts` uses. */
 const declared = (source: string | undefined, key: string): string | undefined =>
   source ? (new RegExp(`^\\s*${key}:\\s*"([^"]+)"`, "m").exec(source)?.[1] ?? undefined) : undefined;
 
-export function Splash({ id, name, source, icon, verb = "Opening", failed, promote }: SplashProps) {
+export function Splash({ id, name, source, icon, verb = "Opening", failed, promote, action }: SplashProps) {
+  const [busy, setBusy] = useState(false);
+  const [actionFailed, setActionFailed] = useState<string | null>(null);
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
   // colour someone picked (#83) — so the splash matches the tile that was tapped, not the app's
   // own idea of itself.
@@ -72,7 +81,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
             <p className="k-splash-verb">
               <Trans>It could not open.</Trans>
             </p>
-            <p className="k-splash-why">{failed}</p>
+            <p className="k-splash-why">{actionFailed ?? failed}</p>
             {promote ? (
               <p className="k-splash-why k-splash-advice">
                 <Trans>Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open.</Trans>
@@ -80,6 +89,23 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
             ) : null}
             <div className="k-splash-actions">
               {promote ? <PromoteButton app={promote} primary /> : null}
+              {action ? (
+                <button
+                  type="button"
+                  className="k-add k-primary-action"
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true);
+                    setActionFailed(null);
+                    action.run().catch((e: unknown) => {
+                      setActionFailed(e instanceof Error ? e.message : String(e));
+                      setBusy(false);
+                    });
+                  }}
+                >
+                  {busy ? t`Working…` : action.label}
+                </button>
+              ) : null}
               <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
                 <Trans>Back to my apps</Trans>
               </button>

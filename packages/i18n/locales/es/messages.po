@@ -88,6 +88,14 @@ msgstr "“{name}” se acaba de actualizar a una versión más nueva."
 msgid "“{name}” was made by someone else, so it runs in a sandbox."
 msgstr "“{name}” la hizo otra persona, así que se ejecuta en un entorno aislado."
 
+#: ../shell/src/add-app.ts
+msgid "“{name}” was not added: its files could not be saved. {why}"
+msgstr "«{name}» no se añadió: no se pudieron guardar sus archivos. {why}"
+
+#: ../shell/src/add-app.ts
+msgid "“{name}” was not fully updated: its files could not be saved. {why}"
+msgstr "«{name}» no se actualizó del todo: no se pudieron guardar sus archivos. {why}"
+
 #: ../shell/src/version-gate.ts
 msgid "“{name}” was updated by someone you share it with."
 msgstr "Alguien con quien la compartes actualizó “{name}”."
@@ -1076,6 +1084,10 @@ msgstr "Añadir aquí: {entityLabel}"
 #: ../shell/src/files-panel.tsx
 msgid "Add it"
 msgstr "Añadirlo"
+
+#: ../shell/src/main.tsx
+msgid "Add it again from its package, and choose “Replace it, keep its data”: its records stay."
+msgstr "Añádela de nuevo desde su paquete y elige «Reemplazarla, conservar sus datos»: sus registros se quedan."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -2988,6 +3000,10 @@ msgstr "Se ejecuta en la caja sellada: solo puede usar lo que permitas, cuando l
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 msgstr "La hizo otra persona y se ejecuta en un entorno aislado. Compartirla dejaría que su código escriba en datos que salen de este dispositivo, algo que no dice necesitar. Puedes compartirla igualmente."
 
+#: ../shell/src/shipped-files.ts
+msgid "It was not added from a link, so its files can only come back from its package: add it again, and choose “Replace it, keep its data”."
+msgstr "No se añadió desde un enlace, así que sus archivos solo pueden volver desde su paquete: añádela de nuevo y elige «Reemplazarla, conservar sus datos»."
+
 #: ../shell/src/main.tsx
 msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
 msgstr "Sus datos se sincronizan con las personas que la comparten: lo que la app escriba en este dispositivo, ellas lo pueden leer. Las apps de otras personas se ejecutan aisladas por defecto. Puedes cambiarlo más tarde desde la cabecera de la app."
@@ -4234,6 +4250,10 @@ msgstr "Grabar audio"
 msgid "Recording"
 msgstr "Grabando"
 
+#: ../shell/src/main.tsx
+msgid "Reinstall its files"
+msgstr "Reinstalar sus archivos"
+
 #: ../shell/src/ask-review-parts.tsx
 msgid "Reject"
 msgstr "Rechazar"
@@ -5129,6 +5149,14 @@ msgstr "El endpoint debe ser una dirección https://."
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
 msgstr "El archivo tal como está ahora se guarda como copia anterior, así que puedes cambiar de idea."
 
+#: ../shell/src/shipped-files.ts
+msgid "The file it came with, {list}, is not on this device, so it cannot run."
+msgstr "El archivo con el que vino, {list}, no está en este dispositivo, así que no puede funcionar."
+
+#: ../shell/src/shipped-files.ts
+msgid "The files it came with — {list} — are not on this device, so it cannot run."
+msgstr "Los archivos con los que vino — {list} — no están en este dispositivo, así que no puede funcionar."
+
 #: ../shell/src/app-ai.ts
 msgid "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
 msgstr "El servicio de IA gratuito no respondió. Inténtalo dentro de un minuto o añade tu propia clave de OpenRouter en los ajustes del modelo."
@@ -5246,6 +5274,10 @@ msgstr "No hay nada que investigar: esta grabación no tiene título ni una nota
 #: ../shell/src/restore-apps.tsx
 msgid "These are on your account. Anything you leave unticked stays there — you can pull it onto this device later."
 msgstr "Están en tu cuenta. Lo que dejes sin marcar se queda allí: podrás traerlo a este dispositivo más tarde."
+
+#: ../shell/src/add-app.ts
+msgid "These files did not land in its folder: {list}."
+msgstr "Estos archivos no llegaron a su carpeta: {list}."
 
 #: ../shell/src/thinking-settings.tsx
 msgid "Think hard when stuck"
@@ -5367,6 +5399,10 @@ msgstr "Esta app no está guardada en este dispositivo, así que aquí no se pue
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
 msgstr "Esta app no está escrita de forma que se pueda cambiar directamente."
+
+#: ../shell/src/open-store.ts
+msgid "This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again."
+msgstr "Los datos de esta app están abiertos en otra pestaña o ventana de Potyro, así que no se pueden abrir también aquí. Ciérrala allí y vuelve a intentarlo."
 
 #: ../shell/src/app-source.ts
 #: ../shell/src/app-source.ts
@@ -5577,6 +5613,7 @@ msgstr "App de confianza"
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
 msgstr "Las apps de confianza se ejecutan <0>directamente</0> con acceso total, sin entorno aislado. Marca como de confianza solo una app que hayas escrito tú o en la que confíes del todo. <1>{name}</1> declara:"
 
+#: ../shell/src/main.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Intentar de nuevo"
@@ -5884,6 +5921,7 @@ msgstr "¿Qué palabras suenan mal?"
 msgid "Working on it…"
 msgstr "Trabajando en ello…"
 
+#: ../shell/src/splash.tsx
 #: ../shell/src/studio-thread-view.tsx
 msgid "Working…"
 msgstr "Trabajando…"
