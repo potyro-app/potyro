@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { test, expect, type Page, type Request } from "@playwright/test";
+import { test, expect, type Page, type Request } from "./console-guard";
 import { installShared } from "./realm.js";
 
 // `ctx.caps.ai` in a shared app (docs/23): Receipt Split, sealed, reads a photo of a receipt into
@@ -61,7 +61,8 @@ async function readReceipt(page: Page, name: string): Promise<void> {
 }
 
 for (const sandbox of ["realm", "quickjs"] as const) {
-  test(`a shared app asks before sending a photo to AI, then shows the items it read (${sandbox})`, async ({ page }) => {
+  test(`a shared app asks before sending a photo to AI, then shows the items it read (${sandbox})`, async ({ page, consoleGuard }) => {
+    consoleGuard.allow(/Failed to load resource: .*404/, "the free AI relay is not deployed in this test: its /ai/health and /ai/complete answer 404, as on a site without it");
     const sent = await prepare(page, sandbox);
     await expect(page.locator("h1").first()).toHaveText("Receipt Split");
 
@@ -104,7 +105,8 @@ for (const sandbox of ["realm", "quickjs"] as const) {
   });
 }
 
-test("Not now sends nothing and adds nothing (realm)", async ({ page }) => {
+test("Not now sends nothing and adds nothing (realm)", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/Failed to load resource: .*404/, "the free AI relay is not deployed in this test: its /ai/health and /ai/complete answer 404, as on a site without it");
   const sent = await prepare(page, "realm");
   await readReceipt(page, "receipt.png");
   const dialog = page.locator(".k-dialog");
