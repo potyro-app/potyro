@@ -621,8 +621,10 @@ Real-time multiplayer apps (the first is a draw-and-guess game whose rooms are j
 link) need a server that passes messages between the people in a room. `packages/rooms` is that
 server: `wss://apps.vaz.io/rooms/<roomId>`, every frame one member sends goes as-is to the others,
 plus a small presence envelope (who is here, who joined, who left). The protocol, written for app
-authors, is [docs/26](26-rooms-relay.md). Apps reach it through `ctx.caps.network.socket(url)`,
-which is not built yet; **until then nothing uses it**, and until it runs nothing breaks.
+authors, is [docs/26](26-rooms-relay.md). Apps reach it through `ctx.caps.network.room(id)`
+(docs/28), which connects to the site's own `/rooms/` — the native app to its `VITE_POTYRO_SITE`'s;
+`VITE_POTYRO_ROOMS` at build time names another. **Until the relay runs, joining a room is refused**
+(the app hears `"refused"`), and nothing else breaks.
 
 What it accepts and does, so you know what you are putting on the internet:
 
