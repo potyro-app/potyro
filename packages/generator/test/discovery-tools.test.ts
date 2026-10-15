@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildDiscoveryTools, lookupReference } from "../src/agent/discovery-tools.js";
+import { LOOKUP_REFERENCE, buildDiscoveryTools, lookupReference } from "../src/agent/discovery-tools.js";
 import { buildCorpus } from "../src/corpus.js";
 import { regressionGate } from "../src/run-report.js";
-import { SCHEMA_REFERENCE } from "../src/reference.generated.js";
 import { runTool } from "../src/agent/tools.js";
 
 // Discovery (#131): a developer who does not know whether `camera` takes a function writes it and
@@ -15,34 +14,34 @@ describe("lookupReference", () => {
   // AppDefinition declares `reminders?: Reminder[]` — a doc comment's match ran on past its own end and
   // swallowed the declarations after it. Every declared type must be found by its own name.
   it("finds EVERY declared type by its name — none is swallowed by a doc comment before it", () => {
-    const names = [...SCHEMA_REFERENCE.matchAll(/^export (?:interface|type) (\w+)/gm)].map((m) => m[1]!);
+    const names = [...LOOKUP_REFERENCE.matchAll(/^export (?:interface|type) (\w+)/gm)].map((m) => m[1]!);
     expect(names).toContain("Reminder");
-    const missing = names.filter((n) => !lookupReference(SCHEMA_REFERENCE, n).includes(`${n}`) || lookupReference(SCHEMA_REFERENCE, n).startsWith("Nothing in the potyro module"));
+    const missing = names.filter((n) => !lookupReference(LOOKUP_REFERENCE, n).includes(`${n}`) || lookupReference(LOOKUP_REFERENCE, n).startsWith("Nothing in the potyro module"));
     expect(missing).toEqual([]);
-    expect(lookupReference(SCHEMA_REFERENCE, "ReminderWhen")).toContain("export type ReminderWhen");
+    expect(lookupReference(LOOKUP_REFERENCE, "ReminderWhen")).toContain("export type ReminderWhen");
   });
 
   it("returns a type by name, with its doc comment", () => {
-    const out = lookupReference(SCHEMA_REFERENCE, "MapCamera");
+    const out = lookupReference(LOOKUP_REFERENCE, "MapCamera");
     expect(out).toContain("export type MapCamera");
     expect(out).toMatch(/remember/);
   });
 
   it("finds the interface that declares a property, and the view interface for a view type", () => {
-    expect(lookupReference(SCHEMA_REFERENCE, "camera")).toContain("interface MapView");
+    expect(lookupReference(LOOKUP_REFERENCE, "camera")).toContain("interface MapView");
     // "map" is a view type: the answer is the MapView declaration and what the validator accepts.
-    const map = lookupReference(SCHEMA_REFERENCE, "map");
+    const map = lookupReference(LOOKUP_REFERENCE, "map");
     expect(map).toContain("interface MapView");
     expect(map).toMatch(/validator accepts.*camera\?/);
   });
 
   it("finds ctx members and top-level app keys", () => {
-    expect(lookupReference(SCHEMA_REFERENCE, "scope")).toContain("interface ScopeDef");
-    expect(lookupReference(SCHEMA_REFERENCE, "ctx.scope")).toContain("scope: Readonly<Record<string, Resolved | undefined>>");
+    expect(lookupReference(LOOKUP_REFERENCE, "scope")).toContain("interface ScopeDef");
+    expect(lookupReference(LOOKUP_REFERENCE, "ctx.scope")).toContain("scope: Readonly<Record<string, Resolved | undefined>>");
   });
 
   it("says plainly when nothing declares it, so a refusal can quote that", () => {
-    const out = lookupReference(SCHEMA_REFERENCE, "initialPosition");
+    const out = lookupReference(LOOKUP_REFERENCE, "initialPosition");
     expect(out).toMatch(/nothing .* declares .*initialPosition/i);
     expect(out).toMatch(/does not exist/i);
   });

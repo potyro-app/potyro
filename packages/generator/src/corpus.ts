@@ -190,8 +190,9 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
  * What the model should have read before its first turn (#262): the one or two corpus files that
  * speak to the request, around where they do. A passage must share at least two of the request's
  * words — one shared word is a coincidence, not a precedent. The app being edited is never offered
- * back to itself, and the schema types are left out: the reference already carries them. Empty when
- * the corpus has nothing to say, so the first message says nothing either.
+ * back to itself, and the schema types are left out: the reference carries the core, and the
+ * request's own turn carries the declarations of the capabilities it names (`capabilityNotes`,
+ * #341). Empty when the corpus has nothing to say, so the first message says nothing either.
  */
 export function primeCorpus(corpus: Corpus, instruction: string, source: string): string {
   const words = primeTerms(instruction);

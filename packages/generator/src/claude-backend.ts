@@ -84,7 +84,7 @@ export class ClaudeBackend implements ModelBackend {
       messages: [
         { role: "user", content: buildModifyOpener() },
         { role: "assistant", content: "```ts\n" + source + "\n```" },
-        { role: "user", content: buildModifyMessage(instruction, ctx) },
+        { role: "user", content: buildModifyMessage(instruction, ctx, { source }) },
       ],
     });
     return joinText(res);
