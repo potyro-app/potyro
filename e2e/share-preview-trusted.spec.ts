@@ -60,7 +60,8 @@ test("a hosted link: preview meta and picture for chats, nothing of the sharer's
   const sealed = (await (await page.request.get(`/share-api/shares/${id}/payload`)).body()).toString("latin1");
   expect(sealed).not.toContain(SECRET);
   expect(sealed).not.toContain("Apples");
-  expect(sealed).not.toContain("PK");
+  // Not a zip: no local-file header anywhere (two letters alone turn up in random bytes by chance).
+  expect(sealed).not.toContain("PK\u0003\u0004");
 
   // And it opens, for someone who has never used Potyro, sealed and in their language.
   const { context, page: viewer } = await stranger(browser, baseURL!, { locale: "pl-PL" });
