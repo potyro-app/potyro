@@ -1,0 +1,24 @@
+{
+  "name": "@potyro/rooms",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "description": "The rooms relay for real-time multiplayer apps (docs/26): wss://<host>/rooms/<roomId>, every frame a member sends goes as-is to every other member of the room, plus a small versioned presence envelope (welcome, join, leave). No persistence, no accounts, no logs of payloads; size, member, per-address and per-connection rate limits, each with its own close code. Depends on no Potyro package. Deployment: docs/16.",
+  "exports": {
+    ".": "./src/protocol.ts",
+    "./relay": "./src/relay.ts"
+  },
+  "types": "./src/protocol.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --experimental-strip-types src/server.ts"
+  },
+  "dependencies": {
+    "ws": "8.21.1"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1"
+  }
+}
