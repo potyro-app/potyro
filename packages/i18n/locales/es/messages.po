@@ -838,6 +838,10 @@ msgstr "<0>Esta parte de la app tuvo un problema:</0> {text}"
 msgid "📍 Use my location"
 msgstr "📍 Usar mi ubicación"
 
+#: ../shell/src/share-sheet.tsx
+msgid "A 15-second clip"
+msgstr "Un clip de 15 segundos"
+
 #: ../shell/src/studio-engine.ts
 msgid "A change passed the check."
 msgstr "Un cambio pasó la comprobación."
@@ -4269,9 +4273,17 @@ msgstr "Recientes"
 msgid "Recommended balance"
 msgstr "Equilibrio recomendado"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Record a clip"
+msgstr "Grabar un clip"
+
 #: ../views/src/media-input.tsx
 msgid "Record audio"
 msgstr "Grabar audio"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Record the app as it is on your screen, to post as a video. Nothing is uploaded: you get a file."
+msgstr "Graba la app tal como está en tu pantalla, para publicarla como vídeo. No se sube nada: obtienes un archivo."
 
 #. Status: a bug report is being recorded
 #. Status: a bug report is being recorded
@@ -4279,6 +4291,11 @@ msgstr "Grabar audio"
 #: ../shell/src/chrome.tsx
 msgid "Recording"
 msgstr "Grabando"
+
+#. While a clip of the app is recorded; left is seconds
+#: ../shell/src/share-sheet.tsx
+msgid "Recording · {left} s"
+msgstr "Grabando · {left} s"
 
 #: ../shell/src/main.tsx
 msgid "Reinstall its files"
@@ -4601,6 +4618,14 @@ msgstr "Guardar nota"
 msgid "Save one thing"
 msgstr "Guardar una cosa"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Save the clip"
+msgstr "Guardar el clip"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Saved {file}."
+msgstr "Se guardó {file}."
+
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "Se guardó {packed}. Envíalo a alguien y lo añadirá con “Añadir una app”."
@@ -4675,6 +4700,11 @@ msgstr "Enviar"
 #: ../shell/src/fix-panel.tsx
 msgid "Send answer"
 msgstr "Enviar respuesta"
+
+#. Share sheet: the chat apps a link can be sent with
+#: ../shell/src/share-sheet.tsx
+msgid "Send it with"
+msgstr "Enviarlo con"
 
 #: ../shell/src/people-panel.tsx
 msgid "Send this link. Whoever opens it can see your app, but not change it."
@@ -4914,8 +4944,10 @@ msgstr "Pasos"
 
 #. Ask: stop the request
 #. Button: stop the fix agent
+#. Stop recording the clip
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
+#: ../shell/src/share-sheet.tsx
 msgid "Stop"
 msgstr "Detener"
 
@@ -5189,6 +5221,14 @@ msgstr "El código fuente de la app"
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
 msgstr "Las apps que ya están allí se quedan: esto no borra nada. Desactiva la sincronización de una app concreta para quitarla del relay."
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip could not be recorded: {why}"
+msgstr "No se pudo grabar el clip: {why}"
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip is ready."
+msgstr "El clip está listo."
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "The conversation about this app"
@@ -5470,6 +5510,10 @@ msgstr "las páginas de esta app no son un array simple"
 msgid "This board needs an enum field for its columns."
 msgstr "Este tablero necesita un campo de opciones para sus columnas."
 
+#: ../shell/src/share-sheet.tsx
+msgid "This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds."
+msgstr "Este navegador no puede grabar la app. La grabación de pantalla de tu teléfono sí: graba la app y recórtala a 15 segundos."
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "This browser has no secure store, so keys are kept only until you close this page."
 msgstr "Este navegador no tiene almacén seguro, así que las claves solo se guardan hasta que cierres esta página."
@@ -5675,6 +5719,11 @@ msgstr "App de confianza"
 #: ../shell/src/trust-dialog.tsx
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
 msgstr "Las apps de confianza se ejecutan <0>directamente</0> con acceso total, sin entorno aislado. Marca como de confianza solo una app que hayas escrito tú o en la que confíes del todo. <1>{name}</1> declara:"
+
+#. The words sent with a demo link in a chat
+#: ../shell/src/share-sheet.tsx
+msgid "Try {name}, made with Potyro"
+msgstr "Prueba {name}, hecha con Potyro"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
@@ -6122,6 +6171,10 @@ msgstr "Tus apps están en el relay. Todo lo que hagas después también va."
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Tus apps en esta cuenta"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Your browser will ask what to record: choose this tab."
+msgstr "Tu navegador te preguntará qué grabar: elige esta pestaña."
 
 #: ../shell/src/launcher.tsx
 msgid "Your data"
