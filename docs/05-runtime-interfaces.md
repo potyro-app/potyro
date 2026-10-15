@@ -110,6 +110,11 @@ export interface LiveCameraCap {
   current(): LiveCamera | null;                        // what is running, for the shell's indicator
   subscribe(fn: (on: LiveCamera | null) => void): () => void;
   stopAll(why: LiveCameraStop): void;                  // the shell: leaving an app, "Turn off"
+  useFaces(loader: FaceLoader | null): void;           // the shell's face finder, for live({ faces }) (docs/25 §Faces)
+}
+export type FaceLoader = () => Promise<FaceFinder>;    // loads once per page; rejects with code "unsupported" | "failed"
+export interface FaceFinder {                          // one call at a time per session; frames skip while it runs
+  find(video: HTMLVideoElement, time: number, opts: { max: number; points: boolean }): Promise<Face[]>;
 }
 export interface NotificationCap {
   schedule(n: { id: string; at: string; title: string; body?: string }): Promise<void>;
@@ -136,6 +141,12 @@ indicator watches it, and a second instance (the Studio's preview builds its own
 be a camera the indicator could not see. It stops itself when the page is hidden or goes away. The
 host puts it on `ctx.caps.camera.live` for trusted apps only (docs/25); `createLiveCamera(deps)` takes
 every browser dependency as an argument, which is how its tests run without one.
+
+Faces: the capability owns the rule (one find in flight per session, every frame carrying the latest
+faces, `facesFailed` on a loader or finder that fails) and the arithmetic (`faceFrom`: the landmarker's
+raw mesh → `Face`); the SHELL owns the finding (`packages/shell/src/faces/`: MediaPipe's Face
+Landmarker in a worker, loaded from files the shell serves itself) and hands it over with `useFaces` at
+boot. `createFakeLiveCamera({ faces })` scripts faces for tests; `sketchFace` draws a believable one.
 
 ## Host (packages/host) — loading, execution, trust  **[central, new]**
 
