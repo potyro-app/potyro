@@ -8,6 +8,7 @@
 // any message it could send, so it is given nothing worth forging.
 
 import type { Resolved } from "potyro";
+import type { RealmSocketEvent } from "./realm-sockets.js";
 
 /** What app code is called for — the `LoadedApp` call surface, by name. */
 export type CallKind =
@@ -91,6 +92,11 @@ export const OPS = [
   "caps.filesystem.pick",
   "caps.filesystem.save",
   "caps.network.fetch",
+  // Live connections (docs/28): opened and held by the host; the realm has a number for each.
+  "caps.network.socket",
+  "caps.network.room",
+  "caps.network.socket.send",
+  "caps.network.socket.close",
   "caps.ai.extract",
   "caps.ai.ask",
 ] as const;
@@ -100,7 +106,10 @@ export type Op = (typeof OPS)[number];
 export type HostToRealm =
   | { t: "load"; code: string }
   | { t: "call"; id: number; kind: CallKind; args: unknown[]; base: CtxBase }
-  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string };
+  /** `code`: an Error's own code (a socket's "denied", AI's "offline"…), so the app reads the same as a trusted one. */
+  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }
+  /** Something happened on a live connection (docs/28). */
+  | { t: "sock"; ev: RealmSocketEvent };
 
 // ---- realm → host ----
 export type RealmToHost =
@@ -110,6 +119,8 @@ export type RealmToHost =
   | { t: "ready"; definition?: string; error?: string; start?: boolean }
   | { t: "result"; id: number; ok: boolean; value?: unknown; error?: string }
   | { t: "op"; id: number; ctxId: number; op: string; args: unknown[] }
+  /** `n` socket events (of `bytes`) were handed to the app's callbacks: the host may send more. */
+  | { t: "sockack"; sid: number; n: number; bytes: number }
   | { t: "hb"; at: number };
 
 /** What `caps.network.fetch` hands back into the realm, where it becomes a `Response` again. */
