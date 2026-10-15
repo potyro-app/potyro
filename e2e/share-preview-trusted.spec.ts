@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { consoleGuard, foreignHosts, makeDemoLink, stranger } from "./share-demo";
+import { test, expect } from "./console-guard";
+import { foreignHosts, makeDemoLink, stranger } from "./share-demo";
 
 // Link previews (docs/24 §4–§5). With the share service there (the dev server mounts it), a demo link
 // is short — `/s/<id>#k=<key>` — and its page carries Open Graph and Twitter meta: the app's name, a
@@ -65,7 +65,6 @@ test("a hosted link: preview meta and picture for chats, nothing of the sharer's
 
   // And it opens, for someone who has never used Potyro, sealed and in their language.
   const { context, page: viewer } = await stranger(browser, baseURL!, { locale: "pl-PL" });
-  const problems = consoleGuard(viewer);
   const foreign = foreignHosts(context, url.hostname);
   await viewer.goto(link);
   await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
@@ -74,7 +73,6 @@ test("a hosted link: preview meta and picture for chats, nothing of the sharer's
   await expect(viewer.getByText(SECRET)).toHaveCount(0);
   await expect(viewer.locator(".k-demo-bar")).toContainText("Zrobione w Potyro");
   expect(foreign).toEqual([]);
-  expect(problems).toEqual([]);
   await context.close();
 });
 
