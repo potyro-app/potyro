@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Ask runs an app's actions (#213), with the model stubbed. "Add a basil in the kitchen, water it and
 // the ferns, feed the monstera 12 g": the model names records the way the person did, never having

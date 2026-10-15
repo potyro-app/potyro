@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
 import { installQuestions } from "./ui-questions.js";
 

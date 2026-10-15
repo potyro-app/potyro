@@ -247,6 +247,29 @@ class IsolateLoadedApp implements LoadedApp {
       case "cap.notifications.cancel":
         await this.ctxHost?.caps.notifications?.cancel(op.id as string);
         return nul;
+      // AI (docs/23): present only when `mediateCaps` granted it. The shape, the person's consent and
+      // the answer's validation are all in ai.ts; here bytes come back from base64. The wait is the
+      // network's, so the call's budget pauses as it does for a question.
+      case "cap.ai.extract":
+      case "cap.ai.ask": {
+        const ai = this.ctxHost?.caps.ai;
+        if (!ai) throw new Error("Permission denied: AI");
+        const images = (v: unknown): unknown => {
+          const one = (i: unknown) => (i && typeof i === "object" && typeof (i as { __bytes?: unknown }).__bytes === "string" ? bytesOfBase64((i as { __bytes: string }).__bytes) : i ?? undefined);
+          return v == null ? undefined : Array.isArray(v) ? v.map(one) : one(v);
+        };
+        this.openQuestion();
+        try {
+          if (kind === "cap.ai.extract") {
+            const r = (op.req ?? {}) as { schema?: unknown; instructions?: string | null; text?: string | null; image?: unknown };
+            return serialize((await ai.extract({ schema: r.schema as never, instructions: r.instructions ?? undefined, text: r.text ?? undefined, image: images(r.image) as never })) as Value);
+          }
+          const o = (op.opts ?? null) as { instructions?: string | null; image?: unknown } | null;
+          return serialize(await ai.ask(String(op.prompt), o ? { instructions: o.instructions ?? undefined, image: images(o.image) as never } : undefined));
+        } finally {
+          this.closeQuestion();
+        }
+      }
       case "media.url":
         return serialize((await this.ctxHost?.media.url(op.ref as { key: string; mime: string })) ?? "");
       // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /

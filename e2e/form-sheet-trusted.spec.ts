@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
 
 // The form's surface (#101). On a phone it is a full-screen sheet with the actions in a footer that

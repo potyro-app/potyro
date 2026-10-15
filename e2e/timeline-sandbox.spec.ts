@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The timeline renders UNTRUSTED (#110): Workout runs in the QuickJS-WASM isolate; the date is a
 // field read off the row, and the card's display bindings come back across the bridge.

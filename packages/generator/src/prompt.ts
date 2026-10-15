@@ -295,6 +295,8 @@ migrations: [
     \`ctx.caps.camera.capture(opts?)\`    → Blob  (then \`await ctx.media.put(blob)\` for a media field)
     \`ctx.caps.notifications.schedule({ id, at, title, body? })\`
     \`ctx.caps.filesystem.pick()\` / \`.save(name, blob)\`, \`ctx.caps.haptics\`, \`ctx.caps.network\`
+    \`await ctx.caps.ai.extract({ image, instructions, schema: { shop: "text?", items: [{ name: "text", price: "number" }] } })\`
+      reads a photo into that shape (\`ask(question, { image })\` → words); send only what the task needs.
   Declare what the app needs at the top level: \`permissions: { geo: true, camera: true }\`.
 - \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
 - \`ctx.files\` — the app's own folder. \`null\` from \`text\`/\`json\` = not here

@@ -131,6 +131,14 @@ interface Ctx {
     haptics?:       { vibrate(pattern?: number | number[]): Promise<void>; };  // non-sensitive
     filesystem?:    { pick(): Promise<Blob>; save(name: string, data: Blob): Promise<void>; };
     network?:       { fetch(input: string, init?: RequestInit): Promise<Response>; };  // gated
+    ai?: {                                                                  // docs/23; permissions: { ai: true }
+      // Read a picture or a text into a plain shape. The answer is checked against it by the host.
+      extract<const S extends AiShape>(req: { schema: S; instructions?: string;
+              image?: AiImage | AiImage[]; text?: string }): Promise<AiValue<S>>;
+      ask(prompt: string, opts?: { image?: AiImage | AiImage[]; instructions?: string }): Promise<string>;
+    };
+    // AiShape: "text" | "number" | "boolean" | "date" (each with "?" for may-be-null), { oneOf: [...] },
+    // [shape], { key: shape }.  AiImage: Blob | Uint8Array | FileRef | a path | a media field's MediaRef.
   };
 
   // ---- media helpers ----
@@ -251,6 +259,19 @@ and writing it needs no permission. `import` and `export` open the system's file
 person chooses every file; that choice is the consent, so they work the same in the sealed box. Bytes
 cross the browser realm as themselves (a `Uint8Array`, a `Blob`); the QuickJS fallback carries them
 across its JSON bridge as base64.
+
+`ctx.caps.ai` (docs/23) is a cap like the others, with two differences a person can see. A sealed
+app is asked about once per app on this device, in words that name the service and what goes
+("“Receipt Split” wants to send a photo to an AI service (OpenRouter) to read it."), and the answer
+is kept; and AI can be turned off per app in Edit tile — which holds for trusted apps too, since it
+is the person's money and their photos. Only what a call names is sent: there is no ambient context,
+so an app's records reach a model only if its code passes them. The answer of `extract` is
+validated against the shape on the host before the app sees it (once more on a mismatch, then an
+error). Failures are errors whose message is for the person: offline, turned off, "Free AI isn't
+available yet — add your own key in Model settings". The call goes through the realm and the
+QuickJS isolate unchanged (`caps.ai.extract` / `caps.ai.ask` ops; bytes as base64 in QuickJS), and
+its wait does not count against the call's time budget. A new optional member: no app's
+`schemaVersion` changes.
 
 This is the entire safety model. The language is full JS; `caps` is where power is governed.
 

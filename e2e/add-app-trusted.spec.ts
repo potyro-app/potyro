@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Add an app (#253), in a real browser: from files on this device, from pasted source, from a link.
 //

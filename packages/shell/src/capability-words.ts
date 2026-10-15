@@ -14,6 +14,7 @@ const CAP_WORDS: Record<string, MessageDescriptor> = {
   network: msg({ message: "the internet", comment: "What an app asks this device for, lower case" }),
   haptics: msg({ message: "vibration", comment: "What an app asks this device for, lower case" }),
   sync: msg({ message: "sharing", comment: "What an app asks this device for, lower case" }),
+  ai: msg({ message: "AI, for the photos and text it sends", comment: "What an app asks this device for, lower case; AI = an online AI service (ctx.caps.ai)" }),
 };
 
 /** A permission key in words; a key Potyro does not know is shown as it is written. */
