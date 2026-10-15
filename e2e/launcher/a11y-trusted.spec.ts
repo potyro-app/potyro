@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 import AxeBuilder from "@axe-core/playwright";
 import { openApp, openHome, openSwitcher, seed } from "./fixture.js";
 

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { crc32, deflateSync } from "node:zlib";
 
 // A local-only app gets a real database, not five megabytes of localStorage.

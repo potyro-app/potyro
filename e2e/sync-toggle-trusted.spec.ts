@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // Turning sync on for an app, in a real browser (KA-08 / ADR 0001 D3).
@@ -149,7 +149,8 @@ test("a record added AFTER sync is on survives an immediate reload", async ({ pa
 // happily serve it back — which is why the failure never showed up in development. ADR D3 calls a
 // solo synced app (durable CRDT, no transport) the default, and that configuration had no such
 // rescue: it was simply broken on the second app.
-test("a SECOND app can be synced on the same device, with no relay", async ({ page }) => {
+test("a SECOND app can be synced on the same device, with no relay", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/^WebSocket connection to 'ws:\/\/127\.0\.0\.1:4299\/' failed/, "no relay listens there, on purpose: syncing must work without one");
   // Before any navigation, so it is in place for the first boot.
   await page.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://127.0.0.1:4299"));
 

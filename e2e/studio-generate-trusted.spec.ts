@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { claudeCliAvailable } from "../packages/generator/src/cli-available.js";
 import { openFromCard, openSource } from "./studio-helpers.js";
 

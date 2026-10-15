@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 

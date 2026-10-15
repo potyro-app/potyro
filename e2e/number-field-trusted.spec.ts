@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Number fields show their unit and get a stepper and the right phone keyboard (#99). Plants'
 // watering interval was a bare "7" in a full-width box; Workout's sets and reps the same.

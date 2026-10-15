@@ -1,23 +1,9 @@
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type Browser, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions";
 
 // Helpers for the demo-link specs (docs/24). Not a `.spec.ts`, so Playwright does not collect it.
 
-/** The one console line every sealed app prints in Chrome: the realm's CSP names a directive it does not know yet. */
-const BENIGN = [/Unrecognized Content-Security-Policy directive 'webrtc'/];
-
-/**
- * Everything a page says is wrong: console errors and uncaught exceptions, minus the known-benign
- * line above. Read it at the end of a flow and expect it empty.
- */
-export function consoleGuard(page: Page): string[] {
-  const problems: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && !BENIGN.some((re) => re.test(m.text()))) problems.push(`console: ${m.text()}`);
-  });
-  page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
-  return problems;
-}
+// Console errors are the suite's console guard's to catch (./console-guard), in every context too.
 
 /** Hosts a context reached that are not the site's own: there must be none (no analytics, no CDN). */
 export function foreignHosts(context: BrowserContext, ownHost: string): string[] {

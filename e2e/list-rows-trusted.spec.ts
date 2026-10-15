@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Nested rows as cards (#104). A recipe's steps are a sequence — order is the content — so an
 // ordered list gets a grip you can drag with a mouse or a finger, and arrow keys when it has focus.
