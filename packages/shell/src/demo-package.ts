@@ -12,6 +12,7 @@
 import { fileSpace, isReservedPath, MemoryStore, packAppPackage, SRC_DIR, type AppCredit, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import type { UserApp } from "./user-apps.js";
 import { hasSeeder, seedIfEmpty } from "./seed.js";
+import { creditToShare } from "./credit-words.js";
 
 export type DemoSeed = NonNullable<AppPackage["seed"]>;
 
@@ -101,6 +102,8 @@ export interface DemoPackage {
   seed?: DemoSeed;
   icon?: string;
   accent?: string;
+  /** Who the link says made it. */
+  credit: AppCredit;
 }
 
 /** Everything `packDemo` needs, read from this device for a saved app. */
@@ -121,10 +124,10 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
       await store.close();
     }
   }
-  const credit: AppCredit = { name: app.name, ...(opts.by ? { by: opts.by } : {}) };
+  const credit = creditToShare(app, opts.by);
   const seed = await demoSeed(app.id, entities);
   // What its first screens show come first: that is what the app is for, at a glance (preview-card.ts).
   const shown = shape.pages.filter((p) => !p.hidden && p.entity).map((p) => p.entity!);
   const byScreen = [...new Set([...shown, ...entities])];
-  return { zip: packDemo({ app, entities, code, files, seed, credit }), entities: byScreen, seed, icon: shape.icon, accent: shape.accent };
+  return { zip: packDemo({ app, entities, code, files, seed, credit }), entities: byScreen, seed, icon: shape.icon, accent: shape.accent, credit };
 }
