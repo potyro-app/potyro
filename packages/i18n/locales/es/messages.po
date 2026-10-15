@@ -28,6 +28,16 @@ msgstr "…pensando"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "“{0}” no está escrito como un objeto simple, así que sus propiedades no se pueden cambiar aquí"
 
+#. Asked before a shared app first uses AI on a picture
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
+msgstr "«{appName}» quiere enviar una foto a un servicio de IA (OpenRouter) para leerla."
+
+#. Asked before a shared app first uses AI on words
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send some text to an AI service (OpenRouter)."
+msgstr "«{appName}» quiere enviar un texto a un servicio de IA (OpenRouter)."
+
 #: ../shell/src/main.tsx
 msgid "“{invited}” was shared with you."
 msgstr "Te compartieron “{invited}”."
@@ -1141,6 +1151,24 @@ msgstr "ajustada"
 msgid "Advanced — sync relay, identity id"
 msgstr "Avanzado: relay de sincronización, id de identidad"
 
+#. Tile editor: the app's own use of AI (ctx.caps.ai)
+#: ../shell/src/tile-editor.tsx
+msgid "AI"
+msgstr "IA"
+
+#: ../shell/src/tile-editor.tsx
+msgid "AI in this app has used {aiSpentWords} of your OpenRouter credit on this device."
+msgstr "La IA de esta app ha usado {aiSpentWords} de tu crédito de OpenRouter en este dispositivo."
+
+#: ../shell/src/app-ai.ts
+msgid "AI is turned off for this app. Turn it on again in Edit tile."
+msgstr "La IA está desactivada para esta app. Vuelve a activarla en «Editar mosaico»."
+
+#. What an app asks this device for, lower case; AI = an online AI service (ctx.caps.ai)
+#: ../shell/src/capability-words.ts
+msgid "AI, for the photos and text it sends"
+msgstr "IA, para las fotos y textos que envía"
+
 #: ../shell/src/chrome.tsx
 msgid "All apps"
 msgstr "Todas las apps"
@@ -1158,6 +1186,8 @@ msgstr "Todos los detalles y fuentes"
 msgid "All done."
 msgstr "Todo hecho."
 
+#. Button: let a shared app use AI
+#: ../shell/src/app-ai.ts
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Permitir"
@@ -1978,6 +2008,10 @@ msgstr "No se pudo copiar: selecciona el enlace y cópialo tú."
 msgid "Couldn’t open {name}’s data: {failed}"
 msgstr "No se pudieron abrir los datos de {name}: {failed}"
 
+#: ../shell/src/app-ai.ts
+msgid "Couldn't reach the AI service. Check your connection and try again."
+msgstr "No se pudo contactar con el servicio de IA. Revisa tu conexión e inténtalo de nuevo."
+
 #: ../shell/src/main.tsx
 msgid "Couldn't run \"{name}\" trusted; opening safely."
 msgstr "No se pudo ejecutar “{name}” como de confianza; se abre de forma segura."
@@ -2535,6 +2569,10 @@ msgstr "Encontrado en {sites}"
 #: ../views/src/date-input.tsx
 msgid "Fr"
 msgstr "Vi"
+
+#: ../shell/src/app-ai.ts
+msgid "Free AI isn't available yet — add your own key in Model settings."
+msgstr "La IA gratuita aún no está disponible: añade tu propia clave en los ajustes del modelo."
 
 #. Ask review: where a proposed record was confirmed, e.g. From Wikidata
 #: ../shell/src/ask-verdicts.ts
@@ -3141,6 +3179,10 @@ msgstr "¿Dejar que Ask lea de {host}?"
 msgid "Let it run as yours"
 msgstr "Dejar que se ejecute como tuya"
 
+#: ../shell/src/tile-editor.tsx
+msgid "Let this app send what it asks about — a photo, some text — to an AI service."
+msgstr "Permite que esta app envíe aquello sobre lo que pregunta (una foto, un texto) a un servicio de IA."
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Libraries"
 msgstr "Bibliotecas"
@@ -3618,6 +3660,8 @@ msgstr "No está en sus fuentes:"
 msgid "not known until it runs"
 msgstr "no se sabe hasta que se ejecuta"
 
+#. Button: refuse a shared app's AI request this time
+#: ../shell/src/app-ai.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
@@ -3909,6 +3953,14 @@ msgstr "Solo la persona que creó esta app puede invitar o quitar personas."
 #: ../shell/src/suggest-wording.tsx
 msgid "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
 msgstr "Al equipo de Potyro solo le llegan estas palabras y tu propuesta — nada sobre ti ni tus apps."
+
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this photo and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+msgstr "Solo se envía lo que la app envía: esta foto y su pregunta, nada más de la app. Gratis mientras dure la cuota de este mes; después, tu propia clave de OpenRouter, normalmente menos de 1 ¢."
+
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this text and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+msgstr "Solo se envía lo que la app envía: este texto y su pregunta, nada más de la app. Gratis mientras dure la cuota de este mes; después, tu propia clave de OpenRouter, normalmente menos de 1 ¢."
 
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"
@@ -5012,6 +5064,18 @@ msgstr "No se pudo enviar ese mensaje."
 msgid "the \"{shownTitle}\" page"
 msgstr "la página “{shownTitle}”"
 
+#: ../shell/src/app-ai.ts
+msgid "The AI service could not answer this time. Try again."
+msgstr "El servicio de IA no pudo responder esta vez. Inténtalo de nuevo."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service is busy. Try again in a minute."
+msgstr "El servicio de IA está ocupado. Inténtalo dentro de un minuto."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service took too long to answer. Try again."
+msgstr "El servicio de IA tardó demasiado en responder. Inténtalo de nuevo."
+
 #: ../shell/src/studio-files.tsx
 msgid "The app and the files it comes with, as one file"
 msgstr "La app y los archivos que trae, en un solo archivo"
@@ -5064,6 +5128,10 @@ msgstr "El endpoint debe ser una dirección https://."
 #: ../shell/src/file-viewer.tsx
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
 msgstr "El archivo tal como está ahora se guarda como copia anterior, así que puedes cambiar de idea."
+
+#: ../shell/src/app-ai.ts
+msgid "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
+msgstr "El servicio de IA gratuito no respondió. Inténtalo dentro de un minuto o añade tu propia clave de OpenRouter en los ajustes del modelo."
 
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
@@ -5272,6 +5340,14 @@ msgstr ""
 "\n"
 "¿Guardar de todos modos?"
 
+#: ../shell/src/app-ai.ts
+msgid "This app has used $1 of your OpenRouter credit on AI this month, the most one app may. It can use AI again next month."
+msgstr "Esta app ha usado 1 $ de tu crédito de OpenRouter en IA este mes, lo máximo que puede una app. Podrá volver a usar la IA el mes que viene."
+
+#: ../shell/src/app-ai.ts
+msgid "This app is asking the AI too often. Wait a minute and try again."
+msgstr "Esta app consulta a la IA con demasiada frecuencia. Espera un minuto e inténtalo de nuevo."
+
 #: ../shell/src/app-words.ts
 msgid "This app is in {language}."
 msgstr "Esta app está en {language}."
@@ -5383,6 +5459,10 @@ msgstr "Este enlace es un paquete zip, que este dispositivo solo puede descargar
 msgid "This month"
 msgstr "Este mes"
 
+#: ../shell/src/app-ai.ts
+msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
+msgstr "La IA gratuita de este mes se ha agotado: añade tu propia clave de OpenRouter en los ajustes del modelo."
+
 #: ../shell/src/fix-panel.tsx
 msgid "This one isn’t in your app"
 msgstr "Esto no está en tu app"
@@ -5394,6 +5474,10 @@ msgstr "Esta página no se pudo mostrar"
 #: ../shell/src/app-source.ts
 msgid "this page's title is not written as a translation map"
 msgstr "el título de esta página no está escrito como un mapa de traducciones"
+
+#: ../shell/src/app-ai.ts
+msgid "This picture's format can't be read. Try a JPEG or PNG photo."
+msgstr "No se puede leer el formato de esta imagen. Prueba con una foto JPEG o PNG."
 
 #: ../shell/src/data-table.tsx
 #: ../views/src/builtins.tsx
@@ -5886,6 +5970,10 @@ msgstr "Pusiste {field} en {to} en {record}"
 msgid "You stopped it before it finished."
 msgstr "Lo detuviste antes de que terminara."
 
+#: ../shell/src/app-ai.ts
+msgid "You're offline. AI needs the internet — try again when you're connected."
+msgstr "Estás sin conexión. La IA necesita internet: inténtalo de nuevo cuando estés conectado."
+
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Your answer"
@@ -5936,6 +6024,14 @@ msgstr "Tus datos todavía usan la versión anterior. Actualízalos para seguir 
 #: ../shell/src/identity-panel.tsx
 msgid "Your devices"
 msgstr "Tus dispositivos"
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter account is out of credit."
+msgstr "Tu cuenta de OpenRouter se ha quedado sin crédito."
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter key was refused. Check it in Model settings."
+msgstr "Tu clave de OpenRouter fue rechazada. Revísala en los ajustes del modelo."
 
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"
