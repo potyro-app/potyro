@@ -93,7 +93,12 @@ describe("SYSTEM_PROMPT", () => {
     // pointer read with `ctx.files.text`, `null` means not on this device yet, starting data is a
     // shipped JSON. The API is in the reference already (#252); these ~450 characters are the rules
     // the reference cannot say, cut to three lines first. ~120 cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(81_000);
+    //
+    // Raised 81k -> 82.5k on 2026-10-15 (#213, docs/23) for `ctx.caps.ai`: the shape an app reads a photo
+    // into, the picture types and the two calls, plus one example line, which is what makes a receipt
+    // or a poster app buildable at all. Trimmed first: every comment is one line, and the answer's
+    // inferred type (`AiValue`) lives in infer.ts, outside the reference. ~400 cached tokens.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(82_500);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {

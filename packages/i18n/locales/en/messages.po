@@ -28,6 +28,16 @@ msgstr "…thinking"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 
+#. Asked before a shared app first uses AI on a picture
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
+msgstr "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
+
+#. Asked before a shared app first uses AI on words
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send some text to an AI service (OpenRouter)."
+msgstr "“{appName}” wants to send some text to an AI service (OpenRouter)."
+
 #: ../shell/src/main.tsx
 msgid "“{invited}” was shared with you."
 msgstr "“{invited}” was shared with you."
@@ -1175,6 +1185,28 @@ msgstr "adjusted"
 msgid "Advanced — sync relay, identity id"
 msgstr "Advanced — sync relay, identity id"
 
+#. Tile editor: the app's own use of AI (ctx.caps.ai)
+#: ../shell/src/tile-editor.tsx
+msgid "AI"
+msgstr "AI"
+
+#: ../shell/src/tile-editor.tsx
+msgid "AI in this app has used {aiSpentWords} of your OpenRouter credit on this device."
+msgstr "AI in this app has used {aiSpentWords} of your OpenRouter credit on this device."
+
+#: ../shell/src/app-ai.ts
+msgid "AI is turned off for this app. Turn it on again in Edit tile."
+msgstr "AI is turned off for this app. Turn it on again in Edit tile."
+
+#: ../shell/src/app-ai.ts
+msgid "AI isn't available until you add your own OpenRouter key in Model settings."
+msgstr "AI isn't available until you add your own OpenRouter key in Model settings."
+
+#. What an app asks this device for, lower case; AI = an online AI service (ctx.caps.ai)
+#: ../shell/src/capability-words.ts
+msgid "AI, for the photos and text it sends"
+msgstr "AI, for the photos and text it sends"
+
 #: ../shell/src/chrome.tsx
 msgid "All apps"
 msgstr "All apps"
@@ -1192,6 +1224,8 @@ msgstr "All details and sources"
 msgid "All done."
 msgstr "All done."
 
+#. Button: let a shared app use AI
+#: ../shell/src/app-ai.ts
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Allow"
@@ -2031,6 +2065,10 @@ msgstr "Couldn't copy — select the link and copy it yourself."
 msgid "Couldn’t open {name}’s data: {failed}"
 msgstr "Couldn’t open {name}’s data: {failed}"
 
+#: ../shell/src/app-ai.ts
+msgid "Couldn't reach the AI service. Check your connection and try again."
+msgstr "Couldn't reach the AI service. Check your connection and try again."
+
 #: ../shell/src/main.tsx
 msgid "Couldn't run \"{name}\" trusted; opening safely."
 msgstr "Couldn't run \"{name}\" trusted; opening safely."
@@ -2589,6 +2627,14 @@ msgstr "Found on {sites}"
 msgid "Fr"
 msgstr "Fr"
 
+#: ../shell/src/app-ai.ts
+msgid "Free AI isn't available yet — add your own key in Model settings."
+msgstr "Free AI isn't available yet — add your own key in Model settings."
+
+#: ../shell/src/app-ai.ts
+msgid "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+msgstr "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+
 #. Ask review: where a proposed record was confirmed, e.g. From Wikidata
 #: ../shell/src/ask-verdicts.ts
 msgid "From {via}"
@@ -3019,6 +3065,10 @@ msgstr "It runs in the sealed box, and its libraries need a full web page, so he
 msgid "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
 msgstr "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
 
+#: ../shell/src/app-ai.ts
+msgid "It uses your own OpenRouter key from Model settings, usually under 1¢ a request."
+msgstr "It uses your own OpenRouter key from Model settings, usually under 1¢ a request."
+
 #: ../shell/src/sync-consent.ts
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
 msgstr "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
@@ -3222,6 +3272,10 @@ msgstr "Let Ask read from {host}?"
 #: ../shell/src/trust-dialog.tsx
 msgid "Let it run as yours"
 msgstr "Let it run as yours"
+
+#: ../shell/src/tile-editor.tsx
+msgid "Let this app send what it asks about — a photo, some text — to an AI service."
+msgstr "Let this app send what it asks about — a photo, some text — to an AI service."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Libraries"
@@ -3720,6 +3774,8 @@ msgstr "Not in its sources:"
 msgid "not known until it runs"
 msgstr "not known until it runs"
 
+#. Button: refuse a shared app's AI request this time
+#: ../shell/src/app-ai.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
@@ -4011,6 +4067,14 @@ msgstr "Only the person who created this app can invite or remove people."
 #: ../shell/src/suggest-wording.tsx
 msgid "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
 msgstr "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
+
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this photo and its question — nothing else in the app."
+msgstr "Only what the app sends goes: this photo and its question — nothing else in the app."
+
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this text and its question — nothing else in the app."
+msgstr "Only what the app sends goes: this text and its question — nothing else in the app."
 
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"
@@ -5169,6 +5233,18 @@ msgstr "That message could not be sent."
 msgid "the \"{shownTitle}\" page"
 msgstr "the \"{shownTitle}\" page"
 
+#: ../shell/src/app-ai.ts
+msgid "The AI service could not answer this time. Try again."
+msgstr "The AI service could not answer this time. Try again."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service is busy. Try again in a minute."
+msgstr "The AI service is busy. Try again in a minute."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service took too long to answer. Try again."
+msgstr "The AI service took too long to answer. Try again."
+
 #: ../shell/src/studio-files.tsx
 msgid "The app and the files it comes with, as one file"
 msgstr "The app and the files it comes with, as one file"
@@ -5233,6 +5309,10 @@ msgstr "The file it came with, {list}, is not on this device, so it cannot run."
 #: ../shell/src/shipped-files.ts
 msgid "The files it came with — {list} — are not on this device, so it cannot run."
 msgstr "The files it came with — {list} — are not on this device, so it cannot run."
+
+#: ../shell/src/app-ai.ts
+msgid "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
+msgstr "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
 
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
@@ -5445,6 +5525,14 @@ msgstr ""
 "\n"
 "Save anyway?"
 
+#: ../shell/src/app-ai.ts
+msgid "This app has used $1 of your OpenRouter credit on AI this month, the most one app may. It can use AI again next month."
+msgstr "This app has used $1 of your OpenRouter credit on AI this month, the most one app may. It can use AI again next month."
+
+#: ../shell/src/app-ai.ts
+msgid "This app is asking the AI too often. Wait a minute and try again."
+msgstr "This app is asking the AI too often. Wait a minute and try again."
+
 #: ../shell/src/app-words.ts
 msgid "This app is in {language}."
 msgstr "This app is in {language}."
@@ -5574,6 +5662,10 @@ msgstr "This link no longer works: whoever shared it took it down, or it was nev
 msgid "This month"
 msgstr "This month"
 
+#: ../shell/src/app-ai.ts
+msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
+msgstr "This month's free AI is used up — add your own OpenRouter key in Model settings."
+
 #: ../shell/src/fix-panel.tsx
 msgid "This one isn’t in your app"
 msgstr "This one isn’t in your app"
@@ -5585,6 +5677,10 @@ msgstr "This page couldn’t be shown"
 #: ../shell/src/app-source.ts
 msgid "this page's title is not written as a translation map"
 msgstr "this page's title is not written as a translation map"
+
+#: ../shell/src/app-ai.ts
+msgid "This picture's format can't be read. Try a JPEG or PNG photo."
+msgstr "This picture's format can't be read. Try a JPEG or PNG photo."
 
 #: ../shell/src/data-table.tsx
 #: ../views/src/builtins.tsx
@@ -6104,6 +6200,10 @@ msgstr "You set {field} to {to} on {record}"
 msgid "You stopped it before it finished."
 msgstr "You stopped it before it finished."
 
+#: ../shell/src/app-ai.ts
+msgid "You're offline. AI needs the internet — try again when you're connected."
+msgstr "You're offline. AI needs the internet — try again when you're connected."
+
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
 msgid "Your answer"
@@ -6158,6 +6258,14 @@ msgstr "Your data still uses the previous version. Update it to keep making chan
 #: ../shell/src/identity-panel.tsx
 msgid "Your devices"
 msgstr "Your devices"
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter account is out of credit."
+msgstr "Your OpenRouter account is out of credit."
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter key was refused. Check it in Model settings."
+msgstr "Your OpenRouter key was refused. Check it in Model settings."
 
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"
