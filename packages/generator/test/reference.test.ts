@@ -93,7 +93,11 @@ describe("SYSTEM_PROMPT", () => {
     // pointer read with `ctx.files.text`, `null` means not on this device yet, starting data is a
     // shipped JSON. The API is in the reference already (#252); these ~450 characters are the rules
     // the reference cannot say, cut to three lines first. ~120 cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(81_000);
+    //
+    // Raised 81k -> 81.5k on 2026-10-15 (docs/25) for `ctx.caps.camera.live` — the live camera a camera
+    // toy draws from: `LiveCamera` and its option, stop and failure types. Cut first to one comment per
+    // type and two lines of members (~900 characters). ~230 cached tokens.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(81_500);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {
