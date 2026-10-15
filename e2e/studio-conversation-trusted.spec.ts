@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { ask, currentCard, openNewStudio } from "./studio-helpers.js";
 
 // Making an app is a conversation, and the conversation is kept (#261).

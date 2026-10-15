@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio } from "./studio-helpers.js";
 
 // The modify loop can read the release's corpus (#262), end to end in the Studio with a scripted

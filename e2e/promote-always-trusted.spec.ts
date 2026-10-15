@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // There is ALWAYS a way to let a sealed app run as yours (owner, 2026-10-13). The bug that asked for
 // it: Photo Garden added from a link installs sealed, p5 touches `window` as it loads, so the app

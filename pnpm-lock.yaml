@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@sqlite.org/sqlite-wasm@3.53.0-build1':
+    hash: 657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990
+    path: patches/@sqlite.org__sqlite-wasm@3.53.0-build1.patch
+
 importers:
 
   .:
@@ -435,7 +440,7 @@ importers:
     dependencies:
       '@sqlite.org/sqlite-wasm':
         specifier: 3.53.0-build1
-        version: 3.53.0-build1
+        version: 3.53.0-build1(patch_hash=657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990)
       cojson:
         specifier: 0.20.19
         version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
@@ -4893,7 +4898,7 @@ snapshots:
 
   '@sinclair/typebox@0.27.12': {}
 
-  '@sqlite.org/sqlite-wasm@3.53.0-build1': {}
+  '@sqlite.org/sqlite-wasm@3.53.0-build1(patch_hash=657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990)': {}
 
   '@stablelib/base64@1.0.1': {}
 

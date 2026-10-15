@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // Opening an app and reading its code must not bounce you somewhere else.

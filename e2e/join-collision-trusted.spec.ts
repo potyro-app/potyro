@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { answerNamePrompt } from "./name-prompt.js";
 import { tileAction } from "./launcher-actions.js";
 

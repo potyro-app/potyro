@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The real web capabilities, exercised by the examples (KA-02 acceptance, #2).
 //
