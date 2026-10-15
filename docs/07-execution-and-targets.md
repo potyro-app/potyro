@@ -106,6 +106,13 @@ on this device (Edit tile shows it, and turns it off), and the question names th
 goes. The off switch applies to trusted apps too. The key that pays is never in reach of app code:
 the shell holds it (Model settings) or the free relay does.
 
+`ctx.caps.network.socket` and `.room` (docs/28) are gated by the same `permissions.network`: a host the
+manifest does not name is refused before anyone is asked, Potyro's rooms need `rooms: true`, and the
+first connection to each host (or to the rooms) asks once per app, in words that name it; the answer
+is kept on this device (like AI's) and forgotten when the app is deleted. Not now is not remembered.
+The connection is the shell's, opened in its realm — never from the sealed frame, whose CSP connects
+nowhere — and ends with the app.
+
 Data isolation: an untrusted app can never read another app's records — the `Store` is opened
 per app id, and the realm (or the isolate) only receives a `ctx` bound to that app's store.
 
@@ -297,6 +304,7 @@ is what the Android probe measures (docs/22 §5) before views of shared apps are
 | **notifications** | web push (installed PWA only), no reliable exact local schedule | @capacitor/local-notifications — real offline exact schedule | **deciding feature** |
 | haptics | navigator.vibrate | @capacitor/haptics | non-sensitive; manifest-gated, no prompt |
 | network | fetch (gated via ctx.caps.network) | native http/fetch | gated for untrusted apps |
+| live connections (docs/28) | the page's WebSocket: wss://, ws:// only to the device itself | the WebView's WebSocket; Android adds ws:// to the local network (own plugin) | every app: 4 at most, closed on leave and after 30 s hidden; sealed: declared hosts, asked once |
 | ai (docs/23) | fetch to the free relay / OpenRouter | same | not a device feature: the shell composes it per app; online only |
 | map tiles | online, or cache a region | same + native caching | offline maps need cached tiles |
 
