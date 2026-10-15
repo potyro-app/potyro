@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { addAsMine, count, near, needEsmSh, packApp, pixelsOf, watchEsmSh } from "./library-demos";
 
 // apps/mood-sleep, packed as its build packs it and added as the person's own app, with chart.js

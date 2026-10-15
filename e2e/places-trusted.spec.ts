@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // M3 DoD, trusted path: browse places, open a detail + run an action, see the map render markers,
 // toggle the "Open now" filter chip, and use "Near me" (mocked geolocation) to filter by distance.

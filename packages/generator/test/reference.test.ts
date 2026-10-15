@@ -94,10 +94,14 @@ describe("SYSTEM_PROMPT", () => {
     // shipped JSON. The API is in the reference already (#252); these ~450 characters are the rules
     // the reference cannot say, cut to three lines first. ~120 cached tokens.
     //
-    // Raised 81k -> 81.5k on 2026-10-15 (docs/25) for `ctx.caps.camera.live` — the live camera a camera
-    // toy draws from: `LiveCamera` and its option, stop and failure types. Cut first to one comment per
-    // type and two lines of members (~900 characters). ~230 cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(81_500);
+    // Raised 81k -> 82.5k on 2026-10-15 (#213, docs/23) for `ctx.caps.ai`: the shape an app reads a photo
+    // into, the picture types and the two calls, plus one example line, which is what makes a receipt
+    // or a poster app buildable at all. Trimmed first: every comment is one line, and the answer's
+    // inferred type (`AiValue`) lives in infer.ts, outside the reference. ~400 cached tokens.
+    // Raised 82.5k -> 83.6k on 2026-10-15 (docs/25) for `ctx.caps.camera.live`, the live camera a camera
+    // toy draws from: `LiveCamera`, its options, stop and failure types, one comment each (~1k
+    // characters). The last raise for a capability: #341 moves capability docs out of the prompt.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(83_600);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {

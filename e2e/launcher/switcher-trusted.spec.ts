@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../console-guard";
 import { openApp, openSwitcher, seed } from "./fixture.js";
 
 // The in-app switcher on a phone (#88): a bottom sheet with a one-line header and a compact list,

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The two dead ends a map app hits, driven the way a person hits them:
 //
@@ -148,7 +148,8 @@ test("a relation to an empty entity can create its first record inline", async (
 // Tiles come from a third-party host, which a VPN, an ad blocker, or an offline device can block.
 // The old behaviour was a silent blank rectangle indistinguishable from a broken app. The field must
 // say so and fall back to coordinates.
-test("a blocked tile host degrades to a visible message, not an empty area", async ({ page }) => {
+test("a blocked tile host degrades to a visible message, not an empty area", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/^Failed to load resource: net::ERR_FAILED$|AJAXError: Failed to fetch \(0\): https:\/\/tile\.openstreetmap\.org\//, "the tile host is blocked on purpose; the test asserts the message the person sees instead");
   await page.route("**tile.openstreetmap.org/**", (r) => r.abort());
 
   await page.goto("/?user=places-form");

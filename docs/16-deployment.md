@@ -19,6 +19,10 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
+Two optional services sit beside them, neither deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet)
+and the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps. Without them requests
+wait on the device, and apps' AI runs on the person's own key.
+
 ## The live deployment, as configured
 
 | | |
@@ -415,6 +419,198 @@ lifted or the route is exempted from it (with the rate limit as its only guard).
 **Updating it:** rsync the package again and `docker restart potyro-requests`. Its rate limits and
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
+
+## AI for apps (docs/23) — NOT deployed yet
+
+Apps can read a photo or a text with AI (`ctx.caps.ai`). Who pays: a **free allowance** first,
+through a small relay that holds Potyro's OpenRouter key (`packages/ai-relay`), then the person's
+own OpenRouter key from Model settings. **Until the relay below is running**, apps work on the
+person's own key, and without one the action fails with "Free AI isn't available yet — add your
+own key in Model settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's
+own page or a 404 back, and does not ask again for ten minutes.
+
+What it accepts and does, so you know what you are putting on the internet:
+
+| | |
+|---|---|
+| Route | `POST /complete` (and `GET /health`), behind `/ai/`. Nothing else. |
+| What is in a request | The host's instructions to the model, the parts the app's call named (its words and its pictures, resized on the device to 1600 px), the JSON Schema for the answer, a token cap, a random device id. Never a key; never a record the app did not pass. |
+| What it sends on | `google/gemini-2.5-flash-lite` (or `AI_MODEL`), always — the sender cannot choose the model, the token cap (≤ 4 000) or the provider rules (`data_collection: "deny"`). No tools, no web search. |
+| Size | 6 MiB a request, checked before parsing; ≤ 4 pictures of ≤ 3 MiB each as data URLs; ≤ 40 000 characters of text. Too big is refused, never cut. |
+| Limits | 20 a day and 100 a month per device id, 60 a day per address (first `X-Forwarded-For`), 2 at once per device. |
+| Spending cap | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service a calendar month (UTC), checked **before** each request with a cent of room; what each request really cost (OpenRouter's `usage.cost`) is added after it. Past it, every device is told "used up" and moves to its own key. |
+| State | The month's spend and each device's count in `AI_LEDGER` (a JSON file), written on every change, so a restart does not start the month again. A file it cannot read stops it starting. Daily limits are in memory. |
+| Logs | The upstream's error messages only. Never a request's content, a device id or an address. |
+
+At ~$0.0003 a receipt, $10 is ~30 000 photos a month. Set the same ceiling, or a lower one, as the
+key's own **credit limit** on OpenRouter: that is the cap that holds even if this code is wrong.
+
+### 1. A key that can only spend a little
+
+On openrouter.ai, under the Potyro account: Settings → **Keys** → Create key, named
+`potyro-free-ai`, with a **credit limit** (e.g. $10). Settings → Privacy: leave model training and
+logging **off**. On the server, out of the repository and readable by root only:
+
+```bash
+sudo install -m 600 /dev/null /etc/potyro/ai.env
+sudoedit /etc/potyro/ai.env
+#   OPENROUTER_API_KEY=sk-or-v1-…
+#   AI_MONTHLY_CAP_USD=10
+#   AI_LEDGER=/data/ai-ledger.json
+#   HOST=0.0.0.0          # inside the container; published to loopback only, below
+#   PORT=4204
+```
+
+### 2. Run it
+
+No dependencies, like the request relay. Port **4204**: 4201 is the sync relay, 4202 the request
+relay and 4203 the share links (docs/24).
+
+```bash
+rsync -az --delete packages/ai-relay/ e@vaz.io:/opt/potyro-ai/
+sudo mkdir -p /var/lib/potyro-ai
+
+docker run -d --name potyro-ai --restart unless-stopped \
+  -p 127.0.0.1:4204:4204 \
+  --env-file /etc/potyro/ai.env \
+  -v /opt/potyro-ai:/app:ro -v /var/lib/potyro-ai:/data -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite, cap $10 a month, listening on 0.0.0.0:4204"
+```
+
+Without `OPENROUTER_API_KEY` it refuses to start.
+
+### 3. Put it behind the site's gate
+
+In the vhost, next to `/requests/` and **before** the SPA rule:
+
+```apache
+    # The free AI allowance for apps (docs/23).
+    RewriteRule ^/ai/(.*)$ http://127.0.0.1:4204/$1 [P,L]
+```
+
+`configtest`, reload, and copy the vhost into `deploy/`, as for the request relay. The site's
+basic-auth gate covers it, which is today the strongest of its limits.
+
+### 4. Check it
+
+```bash
+curl -su USER:PASS https://apps.vaz.io/ai/health                                   # {"ok":true}
+curl -su USER:PASS -X POST https://apps.vaz.io/ai/complete -d '{}' \
+  -H 'content-type: application/json'                                               # 400 {"ok":false,…}
+cat /var/lib/potyro-ai/ai-ledger.json                                               # after a real request
+```
+
+Then, with no key in Model settings, open Receipt Split (`apps/receipt-split`), **Read a receipt**
+with a real photo, and check the items and the ledger's spend.
+
+**The Android app** is not on this origin: build it with `VITE_POTYRO_AI=https://apps.vaz.io/ai`; the
+basic-auth gate then stands in its way as it does for requests, so it uses the person's own key
+until the gate is lifted or the route exempted.
+
+**Changing the model** is `AI_MODEL` here, plus `AI_MODEL` in `src/request.ts` for the person's own
+key; pick one with image input and structured outputs on OpenRouter.
+
+**Updating it:** rsync the package again and `docker restart potyro-ai`. The ledger survives.
+
+## Demo links and their previews (docs/24): NOT deployed yet
+
+A demo link opens an app running in the browser with sample records, and a chat shows a preview
+card for it (title, one line, a picture). The site is static, so the preview needs a small service
+beside the relay: `packages/share-links`. **Until it runs, nothing breaks:** the shell sees no
+`/share-api/health` and makes the *inline* form of the link (`/#try=…`). That form carries the
+whole app in the fragment, works on the static site as it is, and has no preview. Each link is
+10–20 KB, and some messengers cut a link that long (Telegram stops at 4096 characters).
+
+What the service accepts and does:
+
+| | |
+|---|---|
+| Routes | `POST /share-api/shares`, `GET /share-api/shares/<id>/payload`, `DELETE /share-api/shares/<id>` (with `x-delete-token`), `GET /share-api/health`, `GET /s/<id>` (the shell's `index.html` with the link's Open Graph and Twitter meta written in), `GET /s/<id>/preview.jpg`. |
+| What it holds | Per link: the **sealed** app package (AES-GCM, ≤ 2 MiB). The key is in the link's fragment and never reaches the service. Beside it, what the sharer's device made public for the preview: a title (the app's name), one line, a language, and a 1200×630 JPEG or PNG of ≤ 300 KB drawn from **demo** records. It also keeps the sha256 of the token that takes the link down. |
+| Checks | Body size before parsing, then each part. The picture is checked by its first bytes (JPEG/PNG only). Meta text is cleaned and capped, and HTML-escaped where it goes into the page. Ids are 128 random bits. |
+| Rate limit | 30 links a day per address (the first `X-Forwarded-For` entry), in memory. |
+| Pages | `noindex, nofollow` (header and meta). A link is for whoever it was sent to. |
+| It never | runs app code or reads a package. It has no accounts and no list of links. |
+
+### 1. Run it
+
+Node 22 runs the TypeScript as it is, and the package has no dependencies. Same container shape as
+the relay and the requests relay. It reads the built shell's `index.html` (read-only) on every
+request, so a deploy shows at once.
+
+```bash
+sudo mkdir -p /var/lib/potyro/shares && sudo chown -R "$USER": /var/lib/potyro/shares
+rsync -az --delete packages/share-links/ e@vaz.io:/opt/potyro-share-links/
+
+docker run -d --name potyro-share-links --restart unless-stopped \
+  -p 127.0.0.1:4203:4203 \
+  -e HOST=0.0.0.0 -e PORT=4203 \
+  -e POTYRO_SHARES_DIR=/data -e POTYRO_SHELL_INDEX=/site/index.html \
+  -e POTYRO_PUBLIC_ORIGIN=https://apps.vaz.io \
+  -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /var/www/karta:/site:ro -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-share-links   # "[share-links] keeping shares in /data, page from /site/index.html, listening on 0.0.0.0:4203"
+```
+
+`POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
+and Apache does not tell the service which scheme it was reached by.
+
+### 2. Route it, before the SPA rule
+
+In `deploy/apps.vaz.io.conf`, next to `/sync`:
+
+```apache
+    # Demo links (docs/24): the link's page, its preview picture, and the share API.
+    RewriteRule ^/s/([A-Za-z0-9_-]{22})(/preview\.(jpg|png))?/?$ http://127.0.0.1:4203/s/$1$2 [P,L]
+    RewriteRule ^/share-api/(.*)$ http://127.0.0.1:4203/share-api/$1 [P,L]
+```
+
+Then `sudo apache2ctl configtest`, `sudo systemctl reload apache2` (§6), and copy the vhost back
+into `deploy/`.
+
+### 3. The gate
+
+**Previews cannot work behind basic auth.** WhatsApp, Telegram, iMessage, Discord and X fetch
+`/s/<id>` and the picture without credentials. While `apps.vaz.io` is a private test, the gate
+stays. Invited people still get the short link and the demo, but chats show no card. When the site
+goes public, or to test previews before then, exempt exactly these paths:
+
+```apache
+    <LocationMatch "^/s/[A-Za-z0-9_-]{22}(/preview\.(jpg|png))?/?$">
+        Require all granted
+    </LocationMatch>
+```
+
+That alone shows the **preview**. Opening the demo also needs the shell's assets (`/assets/`,
+`/sw.js`, the manifest, the icons) and `GET /share-api/shares/<id>/payload` reachable without the
+gate. Exempting those is deciding to make the site public, so take that decision on purpose and not
+as a side effect of this section.
+
+### 4. Check it
+
+```bash
+curl -s https://apps.vaz.io/share-api/health                                   # {"ok":true}
+```
+
+Then make a link from a tile (*Share → Make the link*). It should look like `/s/<id>#k=…`, and the
+sheet should not say "without a preview picture". Check:
+
+- `curl -s https://apps.vaz.io/s/<id> | grep og:` shows the title and the image URL.
+- The image URL answers `image/jpeg`.
+- Pasting the link into a chat shows the card, once the gate allows it (§3).
+
+**Taking a link down** (a notice, a takedown, or the sharer's own request):
+`sudo rm -rf /var/lib/potyro/shares/<first two characters of id>/<id>`. The page then still loads
+the shell, which tells the person the link no longer works. The sharer's device keeps each link's
+delete token (`potyro:shares`); `DELETE /share-api/shares/<id>` with `x-delete-token` does the same.
+Before opening this to the public, see the research note on the DSA (a hosting service must have a
+notice-and-action path). The folder and the `rm` above are that path's mechanism, not the whole of it.
+
+**Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
+`du -sh /var/lib/potyro/shares` to watch it.
 
 ## What this does NOT protect
 

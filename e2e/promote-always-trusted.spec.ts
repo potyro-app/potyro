@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // There is ALWAYS a way to let a sealed app run as yours (owner, 2026-10-13). The bug that asked for
 // it: Photo Garden added from a link installs sealed, p5 touches `window` as it loads, so the app
@@ -107,9 +107,9 @@ test("added from a link, an app that cannot open sealed is offered to run as you
   await splash.getByRole("button", { name: "Let it run as yours" }).click();
 
   // The one trust dialog, with the one warning.
-  const trust = page.getByRole("dialog", { name: "Promote to trusted?" });
-  await expect(trust).toContainText("Only promote an app you wrote or fully trust.");
-  await trust.getByRole("button", { name: "Promote to trusted" }).click();
+  const trust = page.getByRole("dialog", { name: "Let it run as yours?" });
+  await expect(trust).toContainText("Only do this if you made it, or you know and trust whoever did.");
+  await trust.getByRole("button", { name: "Yes, run it as yours" }).click();
 
   // It reopens as yours, and the library really drew.
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
@@ -124,7 +124,7 @@ test("the card's button promotes too, and a sealed app is promoted from its tile
   // From the card, straight after it was added.
   const dialog = await addFromLink(page, one, "Painter One");
   await dialog.getByRole("alert").getByRole("button", { name: "Let it run as yours" }).click({ timeout: 30_000 });
-  await page.getByRole("dialog", { name: "Promote to trusted?" }).getByRole("button", { name: "Promote to trusted" }).click();
+  await page.getByRole("dialog", { name: "Let it run as yours?" }).getByRole("button", { name: "Yes, run it as yours" }).click();
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
   expect(await paintedColour(page)).toEqual(TEAL);
 
@@ -147,7 +147,7 @@ test("the card's button promotes too, and a sealed app is promoted from its tile
   await page.keyboard.press("Enter");
   await menu.getByRole("menuitem", { name: "Let it run as yours" }).focus();
   await page.keyboard.press("Enter");
-  const trust = page.getByRole("dialog", { name: "Promote to trusted?" });
+  const trust = page.getByRole("dialog", { name: "Let it run as yours?" });
   await expect(trust).toContainText("no special capabilities");
   // Escape is no; focus starts on Cancel, the safe answer.
   await page.keyboard.press("Escape");
@@ -158,7 +158,7 @@ test("the card's button promotes too, and a sealed app is promoted from its tile
   await page.keyboard.press("Enter");
   await expect(trust.getByRole("button", { name: "Cancel" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(trust.getByRole("button", { name: "Promote to trusted" })).toBeFocused();
+  await expect(trust.getByRole("button", { name: "Yes, run it as yours" })).toBeFocused();
   await page.keyboard.press("Enter");
 
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
@@ -221,12 +221,12 @@ export default defineApp({
 
   // The sealed screen's own button: one dialog, though the same app is open under the Studio.
   await preview.getByRole("button", { name: "Run it as mine…" }).click();
-  await expect(page.getByRole("dialog", { name: "Promote to trusted?" })).toHaveCount(1);
-  await page.getByRole("dialog", { name: "Promote to trusted?" }).getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByRole("dialog", { name: "Promote to trusted?" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Let it run as yours?" })).toHaveCount(1);
+  await page.getByRole("dialog", { name: "Let it run as yours?" }).getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Let it run as yours?" })).toHaveCount(0);
 
   await preview.getByRole("button", { name: "Let it run as yours" }).click();
-  await page.getByRole("dialog", { name: "Promote to trusted?" }).getByRole("button", { name: "Promote to trusted" }).click();
+  await page.getByRole("dialog", { name: "Let it run as yours?" }).getByRole("button", { name: "Yes, run it as yours" }).click();
   await expect(preview.getByText("Hello from my own code")).toBeVisible({ timeout: 30_000 });
   await expect(preview.getByRole("button", { name: "Let it run as yours" })).toHaveCount(0);
 

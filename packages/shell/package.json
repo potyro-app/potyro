@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@babel/parser": "^7.29.8",
+    "@potyro/ai-relay": "workspace:*",
     "@potyro/capabilities": "workspace:*",
     "@potyro/generator": "workspace:^",
     "@potyro/host": "workspace:*",
@@ -28,6 +29,7 @@
     "@potyro/native": "workspace:*",
     "@potyro/platform-requests": "workspace:*",
     "@potyro/runtime": "workspace:*",
+    "@potyro/share-links": "workspace:*",
     "@potyro/store": "workspace:*",
     "@potyro/views": "workspace:*",
     "esbuild-wasm": "^0.28.1",

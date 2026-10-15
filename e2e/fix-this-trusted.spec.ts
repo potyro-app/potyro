@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page, type Route } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // The whole loop, with the model stubbed: a recorded failing path, an agent that investigates and
@@ -225,7 +225,11 @@ test("a reported problem is investigated, verified and applied", async ({ page }
   const outcome = fixPanel.locator('[data-kind="fix"]');
   await expect(outcome).toBeVisible({ timeout: 15_000 });
   await expect(outcome).toContainText(/map/i);
+  // Wait for the reload itself: the old page has the same h1, so checking it alone could pass before
+  // the reload and then lose the Studio opened next to it.
+  const reloaded = page.waitForEvent("load");
   await outcome.getByRole("button", { name: "Apply" }).click();
+  await reloaded;
 
   // Applying reloads with the fixed source running — the same "re-run the app" contract every other
   // source-changing path in App.tsx follows (applyModify, applyStructuralEdit, setTrust).

@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -92,7 +92,7 @@ test("an app sees a new member without reloading, even if they write nothing", a
   const ctxB = await browser.newContext();
   const bruno = await device(ctxB);
   await bruno.goto(link);
-  await bruno.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bruno.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bruno, "Bruno");
   await expect(bruno.locator("h1").first()).toHaveText("Roster", { timeout: 60_000 });
 

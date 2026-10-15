@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { addAsMine, changed, count, needEsmSh, packApp, pixelsOf, watchEsmSh } from "./library-demos";
 

@@ -17,6 +17,8 @@ import { describeLibrary, formatSize } from "./package-libraries.js";
 import { describeMissing } from "./missing-features.js";
 import { navigateTo } from "./router.js";
 import { PromoteButton } from "./trust-dialog.js";
+import { creditLine } from "./credit-words.js";
+import { handToStudio } from "./studio-handoff.js";
 
 type Step =
   | { kind: "choose"; tab: AddSource | null }
@@ -55,10 +57,32 @@ const list = (words: readonly string[]): string => fmt.list(words);
 /**
  * `initialFiles`: files that arrived from outside — dropped on Potyro, or opened or shared with it
  * (#254) — read straight away, as if they had been chosen here.
+ *
+ * `initialPackage`: the package a demo link carried (docs/24), read straight away as one that came
+ * from a link — so it is sealed, and "I wrote this" is never offered for it.
+ *
+ * `onAdded`: told once the app is saved, before it is opened.
+ *
+ * `remix`: the person's own copy to change (docs/24 §6) — always a new app beside any copy they have,
+ * credited as a remix, and opened with the Studio asking what to change.
  */
-export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: () => void; initialLink?: string; initialFiles?: File[] }) {
+export function AddAppDialog({
+  onClose,
+  initialLink,
+  initialFiles,
+  initialPackage,
+  onAdded,
+  remix,
+}: {
+  onClose: () => void;
+  initialLink?: string;
+  initialFiles?: File[];
+  initialPackage?: AppPackage;
+  onAdded?: (done: Installed) => void;
+  remix?: boolean;
+}) {
   const { t } = useLingui();
-  const [step, setStep] = useState<Step>(initialFiles?.length ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
+  const [step, setStep] = useState<Step>(initialFiles?.length || initialPackage ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
   const [link, setLink] = useState(initialLink ?? "");
   const [paste, setPaste] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +115,13 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
   // Files that arrived from outside are read once: a second read (strict mode) would only repeat it.
   const readInitial = useRef(false);
   useEffect(() => {
-    if (!initialFiles?.length || readInitial.current) return;
+    if (readInitial.current) return;
+    if (initialPackage) {
+      readInitial.current = true;
+      void read("link", async () => initialPackage);
+      return;
+    }
+    if (!initialFiles?.length) return;
     readInitial.current = true;
     void read("file", () => gatherFromFiles(initialFiles));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,7 +138,12 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
     setError(null);
     setStep({ kind: "installing", name: step.inspected.name });
     try {
-      const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode, link: step.link });
+      const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode: remix ? "copy" : mode, link: step.link, remix });
+      onAdded?.(done);
+      if (remix) {
+        const name = step.inspected.name;
+        handToStudio(done.app.id, t({ message: `Make me a version of ${name} that…`, comment: "What the Studio starts with after Remix this" }));
+      }
       // Something to say before opening: changed files kept, files the new version dropped, or a
       // library that cannot start in the sealed box (known only once it was fetched).
       const sealed = sealedAfter(done, step.inspected);
@@ -132,17 +167,30 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
         className="k-modal k-add-app"
         role="dialog"
         aria-modal="true"
-        aria-label={t`Add an app`}
+        aria-label={remix ? t({ message: "Remix an app", comment: "The Add-an-app dialog, opened from Remix this" }) : t`Add an app`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === "Escape" && !busy && onClose()}
       >
         <header className="k-add-app-head">
-          <h2>
-            <Trans>Add an app</Trans>
-          </h2>
-          <p className="k-muted">
-            <Trans>Someone sent you one, or you made it somewhere else.</Trans>
-          </p>
+          {remix ? (
+            <>
+              <h2>
+                <Trans comment="The Add-an-app dialog, opened from Remix this">Remix an app</Trans>
+              </h2>
+              <p className="k-muted">
+                <Trans>You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it.</Trans>
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>
+                <Trans>Add an app</Trans>
+              </h2>
+              <p className="k-muted">
+                <Trans>Someone sent you one, or you made it somewhere else.</Trans>
+              </p>
+            </>
+          )}
         </header>
 
         {step.kind === "choose" ? (
@@ -218,7 +266,7 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
           </p>
         ) : null}
 
-        {step.kind === "card" ? <Card step={step} mine={mine} setMine={setMine} mode={mode} setMode={setMode} /> : null}
+        {step.kind === "card" ? <Card step={step} mine={mine} setMine={setMine} mode={mode} setMode={setMode} remix={remix} /> : null}
 
         {step.kind === "updated" ? (
           <div className="k-add-app-updated" role="status">
@@ -271,7 +319,7 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
             </button>
           ) : (
             <>
-              {step.kind === "card" ? (
+              {step.kind === "card" && !initialPackage ? (
                 <button type="button" className="k-add" onClick={() => setStep({ kind: "choose", tab: step.source === "file" ? null : step.source })}>
                   <Trans>Back</Trans>
                 </button>
@@ -281,7 +329,7 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
               </button>
               {step.kind === "card" ? (
                 <button type="button" className="k-add k-primary-action" disabled={step.inspected.issues.length > 0} onClick={() => void install()}>
-                  {step.inspected.installed && mode === "replace" ? t`Update app` : t`Add app`}
+                  {remix ? t({ message: "Remix it", comment: "Add-an-app card button, opened from Remix this" }) : step.inspected.installed && mode === "replace" ? t`Update app` : t`Add app`}
                 </button>
               ) : null}
             </>
@@ -298,7 +346,9 @@ function Card({
   setMine,
   mode,
   setMode,
+  remix,
 }: {
+  remix?: boolean;
   step: Extract<Step, { kind: "card" }>;
   mine: boolean;
   setMine: (v: boolean) => void;
@@ -322,7 +372,8 @@ function Card({
         </span>
         <div>
           <h3>{app.name}</h3>
-          <p className="k-muted">{app.installed ? t`Already on this device` : t`New on this device`}</p>
+          {creditLine(app.credit) ? <p className="k-add-app-credit">{creditLine(app.credit)}</p> : null}
+          <p className="k-muted">{app.installed && !remix ? t`Already on this device` : t`New on this device`}</p>
         </div>
       </div>
 
@@ -447,7 +498,7 @@ function Card({
         </div>
       ) : null}
 
-      {app.installed ? (
+      {app.installed && !remix ? (
         <fieldset className="k-add-app-choice">
           <legend>
             <Trans>It is already here</Trans>

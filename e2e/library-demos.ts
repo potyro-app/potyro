@@ -5,7 +5,7 @@
 // These specs fetch the libraries from the REAL esm.sh, on purpose: they are the real-world check of
 // #266 that the fixture-served libraries-trusted.spec.ts cannot be. With no route to esm.sh they skip
 // and say why, rather than fail for a reason that has nothing to do with the code.
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./console-guard";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";

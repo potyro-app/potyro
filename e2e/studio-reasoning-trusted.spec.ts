@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { ask, currentCard, openFromCard, openNewStudio } from "./studio-helpers.js";
 
 // #280: how hard the model thinks is chosen in Model settings, and it reaches the requests the

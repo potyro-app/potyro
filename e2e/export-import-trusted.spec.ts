@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // KA-04 data round-trip in a real browser: export the recipes data to a .potyro.zip, add a recipe
 // that ISN'T in that bundle, then import the bundle back — the imported (bundle) data replaces the

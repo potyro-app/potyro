@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Locator, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -84,7 +84,7 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   const boFlat = bo.getByRole("button", { name: /^Flat/ });
   await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
@@ -161,7 +161,7 @@ test("two people who each paid for something owe the difference, not the whole",
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   const boFlat = bo.getByRole("button", { name: /^Flat/ });
   await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
@@ -211,7 +211,7 @@ test("an expense with nobody named is still split between the people in the grou
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   const boFlat = bo.getByRole("button", { name: /^Flat/ });
   await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });

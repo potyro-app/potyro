@@ -1,7 +1,7 @@
 // @potyro/store — persistence seam.
 export type { StoredFile, EarlierCopy, SpaceUsage } from "./types.js";
 export { declareApp, parseDeclaration, FN_MARKER, type AppDeclaration } from "./app-declaration.js";
-export { readAppPackage, packAppPackage, sourcePackage, isZip, AppPackageError, APP_PACKAGE_FORMAT, type AppPackage, type PackagedFile } from "./app-package.js";
+export { readAppPackage, packAppPackage, sourcePackage, isZip, AppPackageError, APP_PACKAGE_FORMAT, parseCredit, CREDIT_DEPTH, type AppCredit, type AppPackage, type PackagedFile } from "./app-package.js";
 export {
   MODULES_DIR,
   SRC_DIR,
@@ -36,7 +36,7 @@ export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccount
 export { readAccountChat, publishChatMessages, removeChatMessages, watchAccountChats, type AccountChat, type AccountChatMessage } from "./account-chats.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, SPACE_BUDGET, type JazzStoreDeps } from "./jazz-store.js";
-export { openWorkerSqliteHandle, workersAvailable } from "./sqlite-worker-client.js";
+export { isStorageElsewhere, onStorageElsewhere, openWorkerSqliteHandle, StorageElsewhereError, takeOverStorageOnNextLoad, workersAvailable } from "./sqlite-worker-client.js";
 export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, peekAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, publishAccountName, readProfileName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
 export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {

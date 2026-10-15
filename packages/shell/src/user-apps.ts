@@ -15,7 +15,7 @@ import { clearDiagnoses } from "./app-diagnoses.js";
 import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
-import { libraryLock, lockJson, parseLock, type AppLock } from "@potyro/store";
+import { libraryLock, lockJson, parseLock, type AppCredit, type AppLock } from "@potyro/store";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -63,6 +63,13 @@ export interface UserApp {
    * apart from an app with a bug, and can get the file back from its package.
    */
   shipped?: string[];
+  /**
+   * Who made it, when it came from someone who said (docs/24 §6): a kept demo, an added package. Said
+   * on, and passed on with, a link to it — so sharing someone's app on does not claim it.
+   */
+  credit?: AppCredit;
+  /** The app this one is a remix of, and who made that (docs/24 §6). Passed on when it is shared. */
+  remixOf?: AppCredit;
 }
 
 function read(): UserApp[] {
@@ -118,6 +125,8 @@ export async function saveUserApp(
     link?: string;
     lock?: AppLock;
     shipped?: string[];
+    credit?: AppCredit;
+    remixOf?: AppCredit;
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
@@ -168,6 +177,9 @@ export async function saveUserApp(
     lock: input.lock ?? prev?.lock,
     // And what it shipped with: an edit of the source does not take its files away.
     shipped: input.shipped ?? prev?.shipped,
+    // And who made it: an edit does not change whose app it was, or what it remixed.
+    credit: input.credit ?? prev?.credit,
+    remixOf: input.remixOf ?? prev?.remixOf,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the

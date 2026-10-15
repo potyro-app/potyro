@@ -198,6 +198,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         sheet: function(o){ return bridge({op:"ui.sheet", opts:o}); },
         menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
         form: function(o){ return bridge({op:"ui.form", opts:o}); },
+        share: function(o){ return bridge({op:"ui.share", opts:o}); },
         progress: function(label){
           var id = "p" + (++progressSeq);
           bridgeSync({op:"ui.progress", id:id, label:words(label)});
@@ -228,6 +229,23 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       cancel: async function(id){ await bridge({op:"cap.notifications.cancel", id:id}); }
     };
     if (has("haptics")) ctx.caps.haptics = { vibrate: function(pattern){ bridgeSync({op:"cap.haptics.vibrate", pattern: pattern == null ? 30 : pattern}); } };
+    // AI (docs/23): plain data out, the validated answer back. Bytes cross as base64; there is no Blob here.
+    function aiImg(img){
+      if (img instanceof Uint8Array) return { __bytes: toBase64(img) };
+      if (typeof img === "string") return img;
+      if (img && typeof img === "object") return img.key !== undefined ? { key: img.key, mime: img.mime } : { id: img.id, path: img.path, name: img.name, mime: img.mime };
+      throw new Error("ctx.caps.ai: an image is bytes, a file or a photo field's value in a shared app");
+    }
+    function aiImgs(img){ return img == null ? null : (Array.isArray(img) ? img.map(aiImg) : aiImg(img)); }
+    if (has("ai")) ctx.caps.ai = {
+      extract: async function(req){
+        req = req || {};
+        return bridge({op:"cap.ai.extract", req:{ schema: req.schema, instructions: req.instructions == null ? null : req.instructions, text: req.text == null ? null : req.text, image: aiImgs(req.image) }});
+      },
+      ask: async function(prompt, o){
+        return bridge({op:"cap.ai.ask", prompt: String(prompt), opts: o ? { instructions: o.instructions == null ? null : o.instructions, image: aiImgs(o.image) } : null});
+      }
+    };
     if (has("network")) ctx.caps.network = { fetch: async function(){ throw new Error("network fetch is not marshalable in isolate v1"); } };
     if (has("filesystem")) ctx.caps.filesystem = {
       pick: async function(){ throw new Error("filesystem pick is not marshalable in isolate v1"); },

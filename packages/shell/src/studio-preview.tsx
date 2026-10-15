@@ -15,6 +15,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState, useEffect } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
+import { capsWithAi } from "./app-ai-caps.js";
 import { PortalRootContext } from "@potyro/views";
 import type { Provenance } from "@potyro/host";
 import { createAppBundler } from "./app-bundler.js";
@@ -85,7 +86,8 @@ export async function buildPreview(
     const dialogs = new DialogHost();
     const base = {
       store,
-      caps: createWebCapabilities(),
+      // A preview reads a receipt the way the app will (docs/23), under the app's own switch and spend.
+      caps: capsWithAi(createWebCapabilities(), storeNamespace ?? "studio-draft"),
       ui: createUiBridge(toaster.push, picker, dialogs, questions),
       nav: createNavBridge(() => {}),
     };

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // M3 DoD, sandbox path: the places app runs UNTRUSTED in the QuickJS-WASM isolate. The All-places
 // list and the Map (markers resolved via the isolate's `geo` binding + computed) both render,

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { installShared, startGapMeter, startProbe, type Probe } from "./realm.js";
@@ -80,7 +80,8 @@ test("what a realm stores does not reach the next realm", async ({ page }) => {
   await expect(toast(page)).toHaveText(/^caches: (blocked|nothing there)/);
 });
 
-test("control: the same app run as yours does reach the probe, so the empty count above means something", async ({ page }) => {
+test("control: the same app run as yours does reach the probe, so the empty count above means something", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/^WebSocket connection to 'ws:\/\/127\.0\.0\.1:\d+\/relay' failed|^EventSource's response has a MIME type/, "the trusted control dials the test's probe server with every kind of connection; the probe only counts them");
   probe.hits.length = 0;
   const source = FIXTURE.replaceAll("__PROBE__", probe.origin).replaceAll("__SHELL__", new URL(String(test.info().project.use.baseURL)).origin);
   await page.addInitScript((src) => {

@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 
 // Linking a second device with a recovery passphrase (KA-16 · ADR 0001 D2a).
 //

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { addAsMine, changed, count, packApp, pixelsOf } from "./library-demos";
 
 // The live camera (docs/25), through apps/mirror-monsters added as the person's own app, on Chromium's

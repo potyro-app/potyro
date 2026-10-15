@@ -80,6 +80,7 @@ export const OPS = [
   "ui.menu",
   "ui.form",
   "ui.progress",
+  "ui.share",
   "navigate",
   "views.call",
   "caps.camera.capture",
@@ -90,6 +91,8 @@ export const OPS = [
   "caps.filesystem.pick",
   "caps.filesystem.save",
   "caps.network.fetch",
+  "caps.ai.extract",
+  "caps.ai.ask",
 ] as const;
 export type Op = (typeof OPS)[number];
 

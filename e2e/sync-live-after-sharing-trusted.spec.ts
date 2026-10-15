@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -79,7 +79,7 @@ test("what the other person adds shows up on the page you shared from, with no n
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Shared List", { timeout: 60_000 });
   await expect(b.getByRole("checkbox", { name: "Bread" })).toBeVisible({ timeout: 60_000 });

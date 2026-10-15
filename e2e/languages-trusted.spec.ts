@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -120,11 +120,11 @@ test("one app, two languages: an English owner and a Polish guest in the sealed 
   const ctxB = await browser.newContext({ locale: "pl-PL" });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: "Dołącz, zostaw w piaskownicy" }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: "Dołącz, zostaw zamkniętą" }).click();
   await answerNamePrompt(b);
   await expect(b.locator("h1").first()).toHaveText("Miejsca", { timeout: 60_000 });
   // Potyro's own words are Polish too, now that Polish is translated (#300).
-  await expect(b.getByRole("button", { name: "Działa w piaskownicy: przejrzyj" })).toBeVisible(); // the sealed box
+  await expect(b.getByRole("button", { name: "Działa w zamknięciu: przejrzyj" })).toBeVisible(); // the sealed box
   await expect(row(b, "Miradouro")).toBeVisible({ timeout: 60_000 }); // the record, as typed
   await expect(row(b, "Miradouro")).toContainText(PL_MONTH); // ctx.format, answered by the host
   await expect(row(b, "Miradouro")).toContainText("Dodane ");

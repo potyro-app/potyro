@@ -1,4 +1,4 @@
-import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { test, expect, type Page, type BrowserContext } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -152,7 +152,7 @@ test("two people talk in the room and on a record", async ({ browser }) => {
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click(); // trust prompt
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click(); // trust prompt
   // Joining asks too — and BEFORE the join completes, so the person who invited you never watches a
   // "Me" arrive and then change.
   await answerNamePrompt(b, "Bo");

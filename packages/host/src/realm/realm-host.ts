@@ -365,6 +365,8 @@ export class RealmLoadedApp implements LoadedApp {
         return this.question(() => ctx.ui.menu(x(0)));
       case "ui.form":
         return this.question(() => ctx.ui.form(x(0)));
+      case "ui.share":
+        return this.question(() => ctx.ui.share(x(0)));
       case "ui.progress": {
         const [pid, what, arg, detail] = [s(0), s(1), a[2], a[3]];
         const bar = this.progress.get(pid);
@@ -421,6 +423,18 @@ export class RealmLoadedApp implements LoadedApp {
         if (!(a[1] instanceof Blob)) throw new Error("caps.filesystem.save takes a Blob");
         const data = a[1];
         return this.question(() => fs.save(s(0), data));
+      }
+      // AI (docs/23): `mediateCaps` put it here only if the manifest asked; the shape is checked, the
+      // person asked and the answer validated in ai.ts. The wait is the network's, not the app's.
+      case "caps.ai.extract": {
+        const ai = ctx.caps.ai;
+        if (!ai) throw new Error("Permission denied: AI");
+        return this.question(() => ai.extract(x(0)));
+      }
+      case "caps.ai.ask": {
+        const ai = ctx.caps.ai;
+        if (!ai) throw new Error("Permission denied: AI");
+        return this.question(() => ai.ask(s(0), x(1)));
       }
       case "caps.network.fetch": {
         // `mediateCaps` decides: the manifest, the host allow-list, the person's consent.

@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "./console-guard";
 import { SEED_NAMES, openApp, openHome, openSwitcher, seed } from "./launcher/fixture.js";
 
 const SCREENSHOTS = process.env.I18N_SHOTS; // a folder: the guard also saves what it looked at (#299)

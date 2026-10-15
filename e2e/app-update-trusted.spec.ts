@@ -1,4 +1,4 @@
-import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import { test, expect, type Page, type BrowserContext } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
@@ -70,7 +70,7 @@ test("a collaborator's edit is offered, not a blank page", async ({ browser }) =
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Shared Todo", { timeout: 60_000 });
 

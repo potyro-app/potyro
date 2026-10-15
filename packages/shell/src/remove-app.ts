@@ -9,6 +9,7 @@ import { t } from "@lingui/core/macro";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, type UserApp } from "./user-apps.js";
 import { recordLeft } from "./account-offer.js";
+import { setAiStanding } from "./ai-setting.js";
 
 /**
  * Ask, then delete. Answers whether it happened.
@@ -35,6 +36,8 @@ export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sy
   // app gone from the launcher must not be offered back by a boot that happens in between.
   forgetOnAccount(app.id);
   await removeUserApp(app.id);
+  // The person allowed THIS app's AI (docs/23): another app arriving later under the same id asks again.
+  setAiStanding(app.id, undefined);
   return true;
 }
 

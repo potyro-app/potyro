@@ -29,7 +29,9 @@ function workerCount(): number {
   return n;
 }
 
-export default defineConfig({
+// `guardConsole` is e2e/console-guard.ts: a test that leaves an error in the browser console fails.
+// On for the trusted and sandbox projects, the suite every change runs.
+export default defineConfig<{ guardConsole: boolean }>({
   testDir: "./e2e",
   fullyParallel: false,
   // ONE WORKER by default, which is a claim about this suite rather than about Playwright.
@@ -115,7 +117,7 @@ export default defineConfig({
     {
       name: "trusted",
       testMatch: /.*trusted\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}` },
+      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}`, guardConsole: true },
     },
     // Firefox, for the trusted app surface only. The geo picker rendered fine in Chromium and blank
     // in the user's Firefox — a Chrome-only suite could not see it.
@@ -140,7 +142,7 @@ export default defineConfig({
     {
       name: "sandbox",
       testMatch: /.*sandbox\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}` },
+      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}`, guardConsole: true },
     },
     // The browser realm's own specs in Firefox and WebKit (#272): its containment, its watchdog and the
     // shell's frame-src are properties of each engine, measured in all three (docs/22). OPT-IN
@@ -156,6 +158,23 @@ export default defineConfig({
           name,
           testMatch: /(realm|realm-escape|shell-csp)-sandbox\.spec\.ts/,
           use: { ...device, baseURL: `http://localhost:${SANDBOX_PORT}` },
+        }))
+      : []),
+    // One tab owns the storage (storage-owner.ts), in the other two engines: the two-tab errors were
+    // reported from Firefox, and Web Locks, OPFS and sync access handles are each engine's own. OPT-IN
+    // (`POTYRO_STORAGE_BROWSERS=1 pnpm e2e --project=storage-firefox --project=storage-webkit`) for
+    // the reason trusted-firefox is. Playwright's WebKit on Linux has no OPFS at all, so there it
+    // proves the lock and the screen over the fallback storage, and skips what needs a pool.
+    ...(process.env.POTYRO_STORAGE_BROWSERS
+      ? (
+          [
+            ["storage-firefox", devices["Desktop Firefox"]],
+            ["storage-webkit", devices["Desktop Safari"]],
+          ] as const
+        ).map(([name, device]) => ({
+          name,
+          testMatch: /storage-owner-trusted\.spec\.ts/,
+          use: { ...device, baseURL: `http://localhost:${TRUSTED_PORT}` },
         }))
       : []),
     ...(process.env.POTYRO_QUICKJS

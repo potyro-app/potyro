@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, currentCard, openFromCard, openHistory, openNewStudio, openSource } from "./studio-helpers.js";
 
 // One action and one engine. The engine is chosen in Model settings and used by BOTH create and

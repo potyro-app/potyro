@@ -90,6 +90,19 @@ export interface Capabilities {
   filesystem: FileCap;                     // always present
   network: NetworkCap;                     // always present at platform level; gated per app by host
   liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
+  ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
+}
+/** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
+export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob }>;
+                          json?: Record<string, unknown>; maxTokens: number; }
+export interface AiReply { text: string; via: "free" | "own-key"; cost?: number; }
+export interface AiCap {
+  readonly service: string;                 // "OpenRouter", named in the consent question
+  readonly language?: string;               // the person's own; what the model writes in
+  complete(call: AiCall): Promise<AiReply>; // throws words for the person: offline, off, nobody pays
+  standing?(): "on" | "off" | undefined;    // this app's answer on this device
+  allow?(): void;
+  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>; // { message; detail; ok; cancel }, saying who pays now
 }
 export interface CameraCap { capture(o?: { source?: "camera"|"library" }): Promise<Blob>; }
 export interface LiveCameraCap {
@@ -109,7 +122,14 @@ export interface NetworkCap { fetch(input: string, init?: RequestInit): Promise<
 export interface HapticsCap { vibrate(pattern?: number | number[]): Promise<void>; }  // Web Vibration-style
 ```
 
-Implementations: `WebCapabilities`, `CapacitorCapabilities`, `FakeCapabilities` (tests).
+Implementations: `WebCapabilities`, `CapacitorCapabilities`, `FakeCapabilities` (tests; `FakeAi`
+scripts an AI service).
+
+`ai` is the one member no target implements: it is not a device feature. The shell composes one per
+app (`app-ai.ts`, `capsWithAi`) — the free relay first, then the person's own OpenRouter key — and
+the host turns it into `ctx.caps.ai` (`host/src/ai.ts`: the shape check, the prompt, the answer's
+validation, the pictures read from the app's own store; `mediate.ts`: the sealed app's consent and
+everyone's off switch). The host never sends anything and the shell never sees a shape.
 
 `liveCamera` is ONE object per page (`sharedLiveCamera()`), not one per `Capabilities`: the shell's
 indicator watches it, and a second instance (the Studio's preview builds its own capabilities) would
@@ -173,10 +193,12 @@ Runner behavior:
   the values gate and authorship are the trusted path's own, never a copy. `ctx.caps` are the
   mediated wrappers for granted permissions only; with the realm, `network.fetch`, `camera`,
   `filesystem`, `media.put` and `files.bytes` cross as themselves (Blobs, bytes, a `Response`),
-  which the isolate could not carry. The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
+  which the isolate could not carry. `caps.ai.extract` / `caps.ai.ask` (docs/23) are two more ops:
+  a picture crosses as a Blob, a reference as its plain fields; the isolate carries bytes as base64.
+  The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
   fallback behind a flag (docs/07) and still runs verification until docs/22 phase 2.
 - **Hard limits (realm).** A per-call deadline (1 s, paused while a question, a dialog, a consent
-  prompt or a fetch waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
+  prompt, a fetch or an AI request waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
   flood guard (more than 2,000 messages in 50 ms). A stop tears the realm down and rejects what was
   waiting with the reason; the next call starts a fresh realm. There is no per-Worker memory cap
   (QuickJS's did not hold either, docs/22 §6.1); what crosses `ctx` is what is capped
@@ -202,7 +224,10 @@ person — which is why it may be synchronous inside a `filter`. The host checks
 items, 10,000 characters), and formats in its own locale; host time counts against the call's
 deadline. `mediate.ts` is unchanged: formatting is not a capability. `ctx.ui` takes `Words`
 everywhere it takes words, and `ctx` resolves them before the `UiBridge` sees them, so the shell only
-ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`).
+ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`). `UiBridge.share`
+(`ctx.ui.share`) receives `{ text?, url?, title? }` already checked — something to send, an http(s)
+link only, at most 10,000 characters — and answers whether it was copied or handed to the share
+sheet; a headless bridge leaves it out and `ctx` answers `false`.
 
 Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
 surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app
