@@ -2,7 +2,7 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
+import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
 import { checkFormFields, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
@@ -165,6 +165,42 @@ export function filesFor(store: Store, caps: Capabilities): CtxFiles {
   };
 }
 
+/**
+ * A picture for `ctx.caps.ai` (docs/23), as bytes: a Blob as it is; bytes; a media field's value
+ * from this app's store; a `file` field's value or a path from this app's folder. Only this app's own
+ * store is reachable, so a sealed app cannot name another app's picture.
+ */
+async function aiImage(store: Store, img: AiImage): Promise<Blob> {
+  if (img instanceof Blob) return img;
+  if (img instanceof Uint8Array) return new Blob([img as BlobPart], { type: sniffImage(img) });
+  if (typeof img === "string" || (img && typeof img === "object" && ("id" in img || "path" in img) && !("key" in img))) {
+    const ref = img as FileRef;
+    // By id when it has one (it survives a rename), else by path — plain fields, never a getter.
+    const target: FileTarget = typeof img === "string" ? img : typeof ref.id === "string" ? { id: ref.id } : String(ref.path);
+    const f = await appFolder(fileSpace(store)).find(target);
+    if (!f) throw new Error(`No file ${typeof img === "string" ? `"${img}"` : "for that picture"} in this app`);
+    const b = await fileSpace(store).read({ id: f.id });
+    if (!b) throw new Error(`"${f.name}" has not reached this device yet`);
+    return b.type ? b : new Blob([b], { type: f.mime });
+  }
+  if (img && typeof img === "object" && typeof (img as MediaRef).key === "string") {
+    const ref = img as MediaRef;
+    const b = await store.getBlob({ key: ref.key, mime: String(ref.mime ?? "") });
+    if (!b) throw new Error("That picture is not on this device");
+    return b.type ? b : new Blob([b], { type: ref.mime });
+  }
+  throw new Error("ctx.caps.ai: an image is a Blob, bytes, a file (path or file field) or a photo field's value");
+}
+
+/** The picture type from its first bytes, for bytes that arrive without one. */
+function sniffImage(b: Uint8Array): string {
+  if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  return "image/jpeg";
+}
+
 export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
   const { store, caps, ui, nav, views } = base;
   const fixedNow = base.now ?? new Date();
@@ -321,6 +357,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       permissions: app.permissions,
       ui,
       appName: say(app.definition.name),
+      ai: { language: locale, image: (img) => aiImage(store, img) },
     }),
 
     media: {

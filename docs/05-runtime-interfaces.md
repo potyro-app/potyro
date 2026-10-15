@@ -89,6 +89,19 @@ export interface Capabilities {
   haptics: HapticsCap | null;              // vibration; null where unsupported
   filesystem: FileCap;                     // always present
   network: NetworkCap;                     // always present at platform level; gated per app by host
+  ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
+}
+/** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
+export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob }>;
+                          json?: Record<string, unknown>; maxTokens: number; }
+export interface AiReply { text: string; via: "free" | "own-key"; cost?: number; }
+export interface AiCap {
+  readonly service: string;                 // "OpenRouter", named in the consent question
+  readonly language?: string;               // the person's own; what the model writes in
+  complete(call: AiCall): Promise<AiReply>; // throws words for the person: offline, off, nobody pays
+  standing?(): "on" | "off" | undefined;    // this app's answer on this device
+  allow?(): void;
+  consentWords?(appName: string, sends: "photo" | "text"): { message; detail; ok; cancel };
 }
 export interface CameraCap { capture(o?: { source?: "camera"|"library" }): Promise<Blob>; }
 export interface NotificationCap {
@@ -102,7 +115,14 @@ export interface NetworkCap { fetch(input: string, init?: RequestInit): Promise<
 export interface HapticsCap { vibrate(pattern?: number | number[]): Promise<void>; }  // Web Vibration-style
 ```
 
-Implementations: `WebCapabilities`, `CapacitorCapabilities`, `FakeCapabilities` (tests).
+Implementations: `WebCapabilities`, `CapacitorCapabilities`, `FakeCapabilities` (tests; `FakeAi`
+scripts an AI service).
+
+`ai` is the one member no target implements: it is not a device feature. The shell composes one per
+app (`app-ai.ts`, `capsWithAi`) — the free relay first, then the person's own OpenRouter key — and
+the host turns it into `ctx.caps.ai` (`host/src/ai.ts`: the shape check, the prompt, the answer's
+validation, the pictures read from the app's own store; `mediate.ts`: the sealed app's consent and
+everyone's off switch). The host never sends anything and the shell never sees a shape.
 
 ## Host (packages/host) — loading, execution, trust  **[central, new]**
 
@@ -160,10 +180,12 @@ Runner behavior:
   the values gate and authorship are the trusted path's own, never a copy. `ctx.caps` are the
   mediated wrappers for granted permissions only; with the realm, `network.fetch`, `camera`,
   `filesystem`, `media.put` and `files.bytes` cross as themselves (Blobs, bytes, a `Response`),
-  which the isolate could not carry. The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
+  which the isolate could not carry. `caps.ai.extract` / `caps.ai.ask` (docs/23) are two more ops:
+  a picture crosses as a Blob, a reference as its plain fields; the isolate carries bytes as base64.
+  The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
   fallback behind a flag (docs/07) and still runs verification until docs/22 phase 2.
 - **Hard limits (realm).** A per-call deadline (1 s, paused while a question, a dialog, a consent
-  prompt or a fetch waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
+  prompt, a fetch or an AI request waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
   flood guard (more than 2,000 messages in 50 ms). A stop tears the realm down and rejects what was
   waiting with the reason; the next call starts a fresh realm. There is no per-Worker memory cap
   (QuickJS's did not hold either, docs/22 §6.1); what crosses `ctx` is what is capped

@@ -9,6 +9,7 @@
 import type { FileInfo, FileRef, Geo, Id, MediaRef, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 import type { Language, Words } from "./words.js";
+import type { AiValue } from "./infer.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -46,6 +47,30 @@ export interface HapticsCapability {
   vibrate(pattern?: number | number[]): Promise<void>;
 }
 
+/** `ctx.caps.ai.extract`'s answer shape (docs/23): a leaf ("number?" may be null; a date is "YYYY-MM-DD"), one of a list, `[shape]`, or `{ key: shape }`. */
+export type AiLeaf = "text" | "number" | "boolean" | "date";
+export type AiShape = AiLeaf | `${AiLeaf}?` | { readonly oneOf: readonly string[]; readonly optional?: boolean } | readonly [AiShape] | { readonly [key: string]: AiShape };
+
+/** A picture: a camera Blob, bytes, a `file` field's value or a path in `ctx.files`, a `media` field's value. */
+export type AiImage = Blob | Uint8Array | FileRef | MediaRef | string;
+
+export interface AiExtractRequest<S extends AiShape> {
+  schema: S;
+  /** What this is and what to take from it: "A shop receipt. One item per line bought." */
+  instructions?: string;
+  image?: AiImage | readonly AiImage[];
+  text?: string;
+}
+
+/**
+ * AI for the app's own work (docs/23). Sends only what the call names; the answer is checked against
+ * `schema` and typed from it. Needs `permissions: { ai: true }`. Throws words for the person.
+ */
+export interface AiCapability {
+  extract<const S extends AiShape>(req: AiExtractRequest<S>): Promise<AiValue<S>>;
+  ask(prompt: string, opts?: { image?: AiImage | readonly AiImage[]; instructions?: string }): Promise<string>;
+}
+
 /**
  * Native capabilities as app code sees them. Each member is optional: for an untrusted app it
  * is `undefined` unless the permission was declared *and* granted, and when present it may be
@@ -58,6 +83,8 @@ export interface Caps {
   haptics?: HapticsCapability;
   filesystem?: FileCapability;
   network?: NetworkCapability;
+  /** AI for the app's own work (docs/23). Needs `permissions: { ai: true }`. */
+  ai?: AiCapability;
 }
 
 /**
