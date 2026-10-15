@@ -9,6 +9,7 @@ import { inlineDemoLink } from "./demo-link.js";
 import { previewLines, renderPreviewCard } from "./preview-card.js";
 import { shareEvent } from "./share-events.js";
 import type { UserApp } from "./user-apps.js";
+import { currentSite } from "./site.js";
 
 export interface MadeDemoLink {
   link: string;
@@ -67,7 +68,10 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
       console.warn("[potyro] the share service did not take this link; making one that carries the app:", e);
     }
   }
-  const link = inlineDemoLink(demo.zip, opts.origin ?? location.origin, opts.pathname ?? location.pathname);
+  // Named by the build in the native app, where the page is the phone (site.ts).
+  const site = currentSite();
+  const named = site?.configured ? site : null;
+  const link = inlineDemoLink(demo.zip, opts.origin ?? named?.origin ?? location.origin, opts.pathname ?? named?.path ?? location.pathname);
   if (!link) {
     const name = app.name;
     throw new Error(t`“${name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package.`);

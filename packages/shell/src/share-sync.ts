@@ -24,6 +24,7 @@ import { t } from "@lingui/core/macro";
 import { createSpaceInvite, joinSpace, openJazzStore } from "@potyro/store";
 import { syncRelayUrl } from "./open-store.js";
 import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
+import { currentSite } from "./site.js";
 
 interface InvitePayload {
   appId: string;
@@ -83,7 +84,10 @@ export async function createShareLink(appId: string, role: "writer" | "reader" =
     secret,
     custom: usesCustomViews(app.source),
   };
-  return `${location.origin}${location.pathname}#join=${encode(payload)}`;
+  // On a phone the page is the phone (`capacitor://localhost`): the link is the site's (site.ts).
+  const site = currentSite();
+  const at = site?.configured ? `${site.origin}${site.path}` : `${location.origin}${location.pathname}`;
+  return `${at}#join=${encode(payload)}`;
 }
 
 /**

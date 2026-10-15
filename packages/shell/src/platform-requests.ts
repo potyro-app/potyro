@@ -19,6 +19,7 @@ import { REQUEST_FORMAT, type PlatformRequestPayload } from "@potyro/platform-re
 import { appStructure } from "@potyro/generator/agent";
 import type { PlatformAsk } from "./studio-chat.js";
 import { deviceId, randomId } from "./device-id.js";
+import { currentSite } from "./site.js";
 
 export type { PlatformAsk };
 
@@ -44,7 +45,7 @@ export { deviceId };
 /** Where requests go: the build's own address for them, or the relay next to the site. */
 export function requestsEndpoint(): string {
   const configured = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_POTYRO_REQUESTS;
-  const base = configured || `${globalThis.location?.origin ?? ""}/requests`;
+  const base = configured || `${currentSite()?.origin ?? ""}/requests`;
   return `${base.replace(/\/$/, "")}/platform-requests`;
 }
 

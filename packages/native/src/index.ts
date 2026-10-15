@@ -9,11 +9,15 @@ export { maybeCreateNativeVault, vaultOver, type NativeSecretVault } from "./sec
 export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHttp } from "./native-http.js";
 export { listenForShares, textOfShare, filesOfShare, readSharedFile, isOpenedFile, nameFromUri, type SharedText, type SharedFileRef } from "./share-target.js";
 export { systemLanguages } from "./system-locale.js";
+export { keepStorage, keepStorageOn } from "./keep-storage.js";
 
 export {
   CapacitorCapabilities,
   createCapacitorCapabilities,
   stableNotificationId,
+  makeRoom,
+  IOS_PENDING_LIMIT,
+  type PendingRef,
   type CapacitorPlugins,
   type CapacitorHostHelpers,
 } from "./capacitor-capabilities.js";

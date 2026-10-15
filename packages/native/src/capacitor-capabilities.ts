@@ -70,6 +70,42 @@ export interface CapacitorHostHelpers {
   pickFile: () => Promise<Blob>;
   /** The live camera; the page's shared one by default. */
   liveCamera: LiveCameraCap | null;
+  /**
+   * How many notifications the OS keeps pending for one app, or null for no limit worth managing.
+   * iOS keeps 64 and silently drops the rest (IOS_PENDING_LIMIT); Android's limit is in the hundreds.
+   */
+  maxPendingNotifications: number | null;
+}
+
+/**
+ * iOS keeps at most 64 pending local notifications per app — "a system limit and there is no way
+ * around it" (Apple, developer forums thread 811171) — and one scheduled past it is dropped without
+ * an error. The reconciler schedules one per record per reminder, across every app, so a person with
+ * a few busy apps passes 64 quickly, and which ones iOS kept would be arbitrary. `makeRoom` keeps the
+ * SOONEST 64 instead: a later reminder waits, and is scheduled again when its app next reconciles.
+ */
+export const IOS_PENDING_LIMIT = 64;
+
+export interface PendingRef {
+  id: number;
+  /** Epoch ms; NaN when the pending notification carries no readable time. */
+  at: number;
+}
+
+/**
+ * Whether a notification at `at` may be scheduled with `pending` already held, and which pending ones
+ * to cancel first so the soonest `max` are what the OS holds. Pure. `pending` must not contain the
+ * candidate itself (rescheduling the same id replaces it, it does not add one).
+ */
+export function makeRoom(pending: readonly PendingRef[], at: number, max: number): { keep: boolean; drop: number[] } {
+  if (pending.length < max) return { keep: true, drop: [] };
+  // Latest first; one with no readable time counts as the latest, since nothing says it is near.
+  const when = (p: PendingRef): number => (Number.isNaN(p.at) ? Infinity : p.at);
+  const byLatest = [...pending].sort((a, b) => when(b) - when(a));
+  const out = byLatest.slice(0, pending.length - max + 1); // enough to make room for one
+  // The candidate must be sooner than every one it would push out; otherwise it is the one to wait.
+  if (out.some((p) => when(p) <= at)) return { keep: false, drop: [] };
+  return { keep: true, drop: out.map((p) => p.id) };
 }
 
 // --- Helpers ------------------------------------------------------------------------------------
@@ -134,6 +170,7 @@ export class CapacitorCapabilities implements Capabilities {
     const fetchImpl = helpers?.fetchImpl ?? ((input: string) => globalThis.fetch(input));
     const blobToBase64 = helpers?.blobToBase64 ?? defaultBlobToBase64;
     const pickFile = helpers?.pickFile ?? domPickFile;
+    const maxPending = helpers?.maxPendingNotifications ?? null;
     const { Camera, Geolocation, LocalNotifications, Filesystem, Haptics } = plugins;
 
     this.camera = {
@@ -161,10 +198,19 @@ export class CapacitorCapabilities implements Capabilities {
       supportsExactScheduling: true, // the deciding native feature — exact, offline, app-closed
       schedule: async (n) => {
         await LocalNotifications.requestPermissions();
+        const id = stableNotificationId(n.id);
+        if (maxPending !== null) {
+          const held = (await LocalNotifications.getPending()).notifications
+            .filter((p) => p.id !== id)
+            .map((p) => ({ id: p.id, at: Date.parse(p.extra?.at ?? p.schedule?.at ?? "") }));
+          const room = makeRoom(held, new Date(n.at).getTime(), maxPending);
+          if (!room.keep) return; // sooner ones fill the OS's list; its app's next reconcile tries again
+          if (room.drop.length) await LocalNotifications.cancel({ notifications: room.drop.map((d) => ({ id: d })) });
+        }
         await LocalNotifications.schedule({
           notifications: [
             {
-              id: stableNotificationId(n.id),
+              id,
               title: n.title,
               body: n.body,
               schedule: { at: new Date(n.at), allowWhileIdle: true },
@@ -213,7 +259,8 @@ export class CapacitorCapabilities implements Capabilities {
 /** Wire the real @capacitor/* plugins (native runtime only). Dynamically imported so the web bundle
  *  never pulls Capacitor. */
 export async function createCapacitorCapabilities(): Promise<Capabilities> {
-  const [{ Camera }, { Geolocation }, { LocalNotifications }, { Filesystem, Directory }, { Haptics }] = await Promise.all([
+  const [{ Capacitor }, { Camera }, { Geolocation }, { LocalNotifications }, { Filesystem, Directory }, { Haptics }] = await Promise.all([
+    import("@capacitor/core"),
     import("@capacitor/camera"),
     import("@capacitor/geolocation"),
     import("@capacitor/local-notifications"),
@@ -230,5 +277,6 @@ export async function createCapacitorCapabilities(): Promise<Capabilities> {
     },
     Haptics: Haptics as unknown as HapticsPlugin,
   };
-  return new CapacitorCapabilities(plugins);
+  // getPlatform() is a plain function on the core object, not a plugin proxy, so nothing awaits a plugin.
+  return new CapacitorCapabilities(plugins, { maxPendingNotifications: Capacitor.getPlatform() === "ios" ? IOS_PENDING_LIMIT : null });
 }
