@@ -124,7 +124,8 @@ interface Ctx {
 
   // ---- native capabilities (may be denied/scoped for untrusted apps) ----
   caps: {
-    camera?:        { capture(opts?: { source?: "camera"|"library" }): Promise<Blob>; };
+    camera?:        { capture(opts?: { source?: "camera"|"library" }): Promise<Blob>;
+                      live?(opts?: { facing?: "user"|"environment"; width?: number; height?: number }): Promise<LiveCamera>; };  // trusted only, below
     notifications?: { schedule(n: { id: string; at: Date; title: string; body?: string }): Promise<void>;
                       cancel(id: string): Promise<void>; supportsExactScheduling: boolean; };
     geo?:           { current(): Promise<{ lat: number; lng: number }>; };
@@ -227,6 +228,34 @@ each slot), and one walker derived from it does the checking and the resolving.
 These are optional, additive members, and no record changes: a translation moves `version`, never
 `schemaVersion`, and needs no migration. Adding a language is the Studio's `translate` tool (docs/20
 §5.1); the structural editor (below) edits a translated label one language at a time.
+
+### The live camera (`ctx.caps.camera.live`, docs/25)
+
+For camera toys — stickers that follow a face, mirror effects, pose games. `live()` starts the
+camera and resolves to a handle a custom view draws from:
+
+```ts
+interface LiveCamera {
+  readonly video: HTMLVideoElement;  readonly stream: MediaStream;   // playing, muted, not in the page
+  readonly width: number;  readonly height: number;  readonly facing: "user" | "environment";
+  readonly active: boolean;
+  onFrame(cb: (video: HTMLVideoElement, info: { time: number; width: number; height: number }) => void): () => void;
+  snap(opts?: { type?: string; quality?: number }): Promise<Blob>;   // the current frame
+  onStop(cb: (why: "app" | "person" | "hidden" | "closed" | "ended" | "replaced") => void): () => void;
+  stop(): void;
+}
+```
+
+One session per device: a second `live()` replaces the first (that is how to flip cameras). Frames are
+not mirrored. A failure rejects with an `Error` whose `code` is `"denied" | "missing" | "busy" |
+"hidden" | "failed"`. The **shell** shows a "Camera on" indicator with **Turn off** while it runs —
+the app cannot hide it — and the camera **always stops** when the page is hidden, when the person
+leaves the app, or when the device ends it; it never restarts by itself (`onStop` says why, the app
+offers to resume). Frames go nowhere unless the app passes them to a capability that sends.
+
+**Trusted apps only, for now.** In a shared app `live` is `undefined` (its logic runs in the browser
+realm, which has no surface to draw on and no streaming op; docs/25 has the reasons and the path).
+`permissions: { camera: true }` covers both `capture()` and `live()`.
 
 ### How `ctx` differs by trust
 

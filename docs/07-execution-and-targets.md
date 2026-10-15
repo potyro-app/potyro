@@ -286,6 +286,7 @@ is what the Android probe measures (docs/22 §5) before views of shared apps are
 | capability | Web (PWA) | Capacitor (native) | note |
 |---|---|---|---|
 | camera / photos | getUserMedia / input capture | @capacitor/camera | both fine |
+| live camera (docs/25) | getUserMedia | the WebView's getUserMedia (CAMERA via Capacitor's chrome client) | trusted apps only; shell indicator; stops when hidden or left |
 | filesystem | File System Access / download | @capacitor/filesystem | native nicer for share-sheet |
 | geolocation | navigator.geolocation | @capacitor/geolocation | both fine |
 | **notifications** | web push (installed PWA only), no reliable exact local schedule | @capacitor/local-notifications — real offline exact schedule | **deciding feature** |
