@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // M1 DoD, sandbox path: the SAME recipes app loaded UNTRUSTED in the QuickJS-WASM isolate with
 // mediated caps. If the list renders with computed macros, the isolate successfully ran the app's

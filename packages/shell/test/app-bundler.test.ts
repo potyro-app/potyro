@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { bundleAppSource, type EsbuildLike } from "../src/app-bundler.js";
+import { bundleAppSource, potyroStub, type EsbuildLike } from "../src/app-bundler.js";
 
 // The runtime bundler must turn a generated/imported `.app.ts` into the isolate IIFE — verified in
 // Node with the native esbuild + the real isolate stubs, then evaluated to confirm it yields the app.
@@ -34,6 +34,14 @@ describe("bundleAppSource", () => {
     const bundled = await bundleAppSource(APP, esbuild, stubs);
     expect(bundled).toContain("__potyroApp");
     expect(runIsolateBundle(bundled).id).toBe("todo");
+  });
+
+  it("gives a sealed app the money helpers `potyro` exports — the example Split opens sealed", async () => {
+    const split = readFileSync(here("../../../examples/split.app.ts"), "utf8");
+    const withMoney = { ...stubs, potyro: potyroStub(stubs.potyro, readFileSync(here("../../schema/src/money.ts"), "utf8")) };
+    const bundled = await bundleAppSource(split, esbuild, withMoney);
+    expect(runIsolateBundle(bundled).id).toBe("split");
+    await expect(bundleAppSource(split, esbuild, stubs)).rejects.toThrow(/splitByShares|splitEvenly/);
   });
 
   it("resolves `potyro` to the isolate stub (Zod never enters the bundle)", async () => {

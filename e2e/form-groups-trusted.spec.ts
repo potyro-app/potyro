@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Entity groups drive both the form and the detail page (#100): Recipes declares four, and the
 // person who edits a recipe under "Nutrition & cost" reads it back under "Nutrition & cost". A

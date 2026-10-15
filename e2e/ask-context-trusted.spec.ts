@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Ask's conversation and context (#213), with the model stubbed. From the owner's report: on a map of
 // Cuneo, "add vegetarian restaurants" came back as a question. Now the dialog shows what goes with

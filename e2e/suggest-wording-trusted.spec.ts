@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { seed } from "./launcher/fixture.js";
 
 // "Something reads wrong? Suggest a better wording" (#300), in Polish, as rendered. From the
@@ -11,7 +11,8 @@ test.use({ locale: "pl-PL" });
 const OUTBOX = "potyro:platform-requests:outbox";
 const outbox = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "[]") as Array<{ payload: Record<string, string> }>, OUTBOX);
 
-test("a better wording for words on the screen is kept, then sent once the team can be reached", async ({ page }) => {
+test("a better wording for words on the screen is kept, then sent once the team can be reached", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/^Failed to load resource: the server responded with a status of 404/, "the team's endpoint answers 404 on purpose until it can be reached");
   const posted: string[] = [];
   // No relay yet: what the dev server answers for /requests/ is not the relay's JSON.
   await page.route("**/requests/platform-requests", async (route) => {

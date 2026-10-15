@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // The Studio as a conversation, and copying an app (#218).
