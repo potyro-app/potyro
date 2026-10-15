@@ -12,6 +12,7 @@ import type { Ctx, CtxFiles, FileInfo, FileRef, MediaRef, QuerySpec, Resolved, U
 import { makeFormat, translate, type WordsContext } from "../format.js";
 import type { Transport } from "./port-transport.js";
 import type { CtxBase, FetchAnswer, Op } from "./protocol.js";
+import { realmSocket, type RealmSocketInfo } from "./realm-sockets.js";
 
 let progressSeq = 0;
 
@@ -103,6 +104,13 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
         const r = await call<FetchAnswer>("caps.network.fetch", String(input), plainInit(init));
         return new Response(r.status === 204 || r.status === 304 ? null : r.body, { status: r.status, statusText: r.statusText, headers: r.headers });
       },
+      // The host opens and holds the connection (the realm connects nowhere); this is its handle.
+      socket: async (url, o) => {
+        const p = o?.protocols;
+        return realmSocket(await call<RealmSocketInfo>("caps.network.socket", String(url), p == null ? undefined : { protocols: Array.isArray(p) ? p.map(String) : String(p) }), call, tx);
+      },
+      room: async (rid, o) =>
+        realmSocket(await call<RealmSocketInfo>("caps.network.room", rid == null ? undefined : String(rid), o?.name == null ? undefined : { name: String(o.name) }), call, tx) as never,
     },
     filesystem: {
       pick: () => call<Blob>("caps.filesystem.pick"),

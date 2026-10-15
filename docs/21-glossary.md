@@ -61,6 +61,8 @@ change it in every message of that language, not only the one you are looking at
 | New app | Novo app | Neue App | Nueva app | Nowa aplikacja | Nuova app |
 | sync / synced | sincronização / sincronizado | Synchronisierung / synchronisiert | sincronización / sincronizado | synchronizacja / zsynchronizowana | sincronizzazione / sincronizzata |
 | relay | relay | Relay | relay | przekaźnik | relay |
+| live connection (ctx.caps.network.socket) | conexão ao vivo | Live-Verbindung | conexión en vivo | połączenie na żywo | connessione in tempo reale |
+| Potyro’s rooms (the multiplayer relay) | salas do Potyro | Potyros Räume | salas de Potyro | pokoje Potyro | stanze di Potyro |
 | share / shared | compartilhar / compartilhado | teilen / geteilt | compartir / compartido | udostępnić / udostępniona | condividere / condivisa |
 | History (an app's versions) | Histórico | Verlauf | Historial | Historia | Cronologia |
 | version | versão | Version | versión | wersja | versione |

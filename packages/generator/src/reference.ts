@@ -22,7 +22,7 @@
 export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
 
 /** Type files that are never in the core: read only through `lookup` and the capability passages. */
-export const LOOKUP_ONLY_FILES = ["faces.ts"] as const;
+export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 
@@ -218,6 +218,22 @@ export const CAPABILITIES: readonly Capability[] = [
     declarations: ["NetworkCapability"],
     cues: /caps\.network\b|\b(fetch|api|http|https|internet|online|weather|exchange rate|from the web|download\w*)\b/i,
     uses: /caps\.network\b/,
+  },
+  {
+    key: "ctx.caps.network.socket",
+    summary:
+      "live data both ways (prices, a home hub, chat): `const s = await ctx.caps.network.socket(\"wss://…\")`, `s.onMessage(d => …)`, `s.send(…)`, `s.onClose(c => …)`; `ctx.caps.network.room(id?)` joins Potyro's rooms for multiplayer (`permissions: { network: { hosts: [\"…\"], rooms: true } }`)",
+    declarations: ["SocketFailure", "SocketSendFailure", "SocketCloseWhy", "SocketClose", "SocketData", "SocketOptions", "Socket", "RoomMember", "RoomPresence", "RoomOptions", "Room"],
+    notes: [
+      "Open a connection from an action, a page action or a custom view, and keep it in a module-level variable: it outlives the call.",
+      "Write what arrives as records (`ctx.create`/`ctx.patch` inside `onMessage`) so every view shows it. Potyro closes every",
+      "connection when the person leaves the app or Potyro has been in the background 30 s, and never reconnects by itself —",
+      "`onClose` says why (`c.why`). To reconnect, open a new one after a pause that grows (1 s, 2 s, 4 s… up to 30 s), and not",
+      "when `c.why` is \"app\", \"left\" or \"hidden\". A room's id is its invitation: share it with `ctx.ui.share`. A failure's",
+      "`e.code` is one of SocketFailure; word it for the person (\"offline\" → \"You're offline\").",
+    ].join("\n"),
+    cues: /caps\.network\.(?:socket|room)\b|\b(live|real[- ]?time|websockets?|sockets?|multi-?player|stream\w*|ticker|chat ?rooms?|lobby|home assistant|push updates?|ao vivo|tempo real|na żywo|czas\w* rzeczywist\w*|en vivo|tiempo real|echtzeit|tempo reale|in diretta)\b/i,
+    uses: /caps\.network\.(?:socket|room)\b/,
   },
   {
     key: "ctx.media",
