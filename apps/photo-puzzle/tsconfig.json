@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    // Same relaxation as examples/: app modules are written against the permissive `Resolved`
+    // record, so inline callbacks over rows would otherwise trip `noImplicitAny`.
+    "noImplicitAny": false
+  },
+  "include": ["."],
+  "exclude": ["node_modules"]
+}
