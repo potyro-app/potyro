@@ -15,6 +15,7 @@
 // degrade that way, because LocalStore has no CRDT: rather than silently drop the guarantee the
 // user switched on, it fails loudly and the caller decides.
 
+import { currentSite } from "./site.js";
 import { t } from "@lingui/core/macro";
 import { copyStoreData, createSqliteStore, isStorageElsewhere, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
@@ -214,10 +215,11 @@ export function syncRelayUrl(): string | undefined {
 
   if (import.meta.env?.DEV) return "ws://localhost:4201";
 
-  const loc = globalThis.location;
-  // `file:` and any other non-http origin have no host to derive one from.
-  if (!loc?.host || !/^https?:$/.test(loc.protocol)) return undefined;
-  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/sync`;
+  // The site's own `/sync`: the page's origin on the web, the site the build names in the native app
+  // (`VITE_POTYRO_SITE`, site.ts). `file:`, and a native build told no site, have none: local-only.
+  const site = currentSite();
+  if (!site) return undefined;
+  return `${site.secure ? "wss" : "ws"}://${site.host}/sync`;
 }
 
 /**

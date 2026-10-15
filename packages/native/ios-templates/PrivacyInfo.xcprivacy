@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Potyro app privacy manifest (docs/27 §4.6). UNTESTED. Add it to the App target (File → Add Files,
+     target "App" ticked) and a copy to the ShareExtension target. Each plugin ships its own manifest
+     for the APIs it calls; this one declares what the app's own code and the extension use:
+       - UserDefaults (CA92.1 app-only; 1C8F.1 shared with the App Group): the share hand-off.
+       - File timestamps (C617.1): @capacitor/filesystem reading files in the app's own container.
+     No tracking and no tracking domains. What data leaves the device (sync, AI) is answered in App
+     Store Connect's privacy questions by the owner, not in this file. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+				<string>1C8F.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

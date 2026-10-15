@@ -13,7 +13,8 @@
 // and `search_corpus` / `read` open the release's corpus — the example apps, the personal apps, the
 // API docs and the schema types — so the model can see how a real app puts the parts together.
 
-import { SCHEMA_REFERENCE } from "../reference.generated.js";
+import { CAPABILITY_REFERENCE, SCHEMA_REFERENCE } from "../reference.generated.js";
+import { capabilityBlock, capabilityNamed, declarations, memberLine, type Declaration } from "../reference.js";
 import { exampleFromCorpus, readCorpus, searchCorpus, type Corpus } from "../corpus.js";
 import { loadCorpus } from "../load-corpus.js";
 import { describeRun, runSafely, type RunGate, type RunReport } from "../run-report.js";
@@ -25,72 +26,66 @@ import type { AgentTool } from "./tools.js";
 import { buildTranslateTool, type TranslationDraft } from "./translate-tool.js";
 import { describeWordsReport, wordsReport } from "../source-words.js";
 
-interface Declaration {
-  name: string;
-  /** The doc comment (if any) and the declaration itself. */
-  text: string;
-}
-
-const START = /^export (?:interface|type) (\w+)\b/;
-
-/** Brackets opened minus closed on a line, strings and comments not counted. */
-function depthOf(line: string): number {
-  let d = 0;
-  for (const c of line.replace(/\/\/.*$/, "").replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, "")) {
-    if (c === "{" || c === "(" || c === "[") d += 1;
-    else if (c === "}" || c === ")" || c === "]") d -= 1;
-  }
-  return d;
-}
-
 /**
- * Every top-level declaration, line by line: the doc comment right above it (if any), then
- * `export interface X { … }` up to its closing brace at column 0, or `export type X = …` up to the
- * line where its brackets close and it ends with `;`. A regex used to do this and, on a one-line
- * `export type X = A | B;` or a doc comment not followed by a declaration, ran on and swallowed the
- * declarations after it — `lookup("Reminder")` answered "it does not exist" (#262 phase 3).
+ * What `lookup` reads (#341): the core the system prompt carries AND every capability's declarations,
+ * which the prompt only names. A capability that left the prompt is still one lookup away.
  */
-function declarations(reference: string): Declaration[] {
-  const lines = reference.split("\n");
-  const out: Declaration[] = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    const m = START.exec(lines[i]!);
-    if (!m) continue;
-    let from = i;
-    if (i > 0 && lines[i - 1]!.trimEnd().endsWith("*/")) {
-      let j = i - 1;
-      while (j > 0 && !lines[j]!.trimStart().startsWith("/**")) j -= 1;
-      if (lines[j]!.trimStart().startsWith("/**")) from = j;
-    }
-    let end = i;
-    if (/^export interface/.test(lines[i]!)) {
-      while (end < lines.length - 1 && !/^\}/.test(lines[end]!) && !(end === i && /\}\s*$/.test(lines[i]!) && depthOf(lines[i]!) === 0)) end += 1;
-    } else {
-      let depth = 0;
-      for (; end < lines.length; end += 1) {
-        depth += depthOf(lines[end]!);
-        if (depth <= 0 && /;\s*(\/\/.*)?$/.test(lines[end]!)) break;
-        if (end > i && START.test(lines[end + 1] ?? "")) break;
-      }
-    }
-    out.push({ name: m[1]!, text: lines.slice(from, end + 1).join("\n") });
-    i = end;
-  }
-  return out;
-}
+export const LOOKUP_REFERENCE: string = [SCHEMA_REFERENCE, ...Object.values(CAPABILITY_REFERENCE)].join("\n\n");
 
 const MAX_CHARS = 6000;
 
+/** The names a member's type mentions that are declared (`Promise<LiveCamera>` → LiveCamera). */
+function typesNamed(line: string, decls: readonly Declaration[]): Declaration[] {
+  const names = new Set([...line.matchAll(/\b([A-Z]\w+)\b/g)].map((m) => m[1]!));
+  return decls.filter((d) => names.has(d.name));
+}
+
 /**
- * The declarations that answer a query: a type by name, the interfaces that declare a property of
- * that name, a view type by its short name (`map` → `MapView` plus what the validator accepts), or
- * `ctx.<member>`. Plain text the model can quote; a clear "nothing declares it" when there is none,
- * so a refusal can cite this rather than an assumption.
+ * `ctx.caps.camera.live`, `ctx.files.import`, `ctx.ui.share`: walk from `Ctx`, member by member, to
+ * the interface that declares the last one. Answers with that declaration (every interface of the
+ * name — `CtxUi` is declared in the core and continued with `share`) and the types the member's
+ * signature names, so `live` comes with `LiveCameraOptions` and `LiveCamera`. Null when the path
+ * leaves the declarations, so the query falls back to the name and property search.
+ */
+function lookupPath(decls: readonly Declaration[], path: readonly string[]): Declaration[] | null {
+  let hosts = decls.filter((d) => d.name === "Ctx");
+  for (let i = 0; i < path.length; i += 1) {
+    const re = memberLine(path[i]!);
+    const host = hosts.find((d) => d.text.split("\n").some((l) => re.test(l)));
+    if (!host) return null;
+    const line = host.text.split("\n").find((l) => re.test(l))!;
+    const named = typesNamed(line.replace(re, ""), decls);
+    if (i === path.length - 1) {
+      const out = [host, ...named];
+      return out.filter((d, k) => out.indexOf(d) === k);
+    }
+    const next = named.find((d) => /^export interface/m.test(d.text));
+    if (!next) return null;
+    hosts = decls.filter((d) => d.name === next.name);
+  }
+  return null;
+}
+
+/**
+ * The declarations that answer a query: a capability by its index name (`ctx.caps.ai`, `Face`,
+ * `languages`) with what the prompt says about it, a `ctx.` path (`ctx.caps.camera.live`), a type
+ * by name, the interfaces that declare a property of that name, a view type by its short name
+ * (`map` → `MapView` plus what the validator accepts), or `ctx.<member>`. Plain text the model can
+ * quote; a clear "nothing declares it" when there is none, so a refusal can cite this rather than an
+ * assumption.
  */
 export function lookupReference(reference: string, rawQuery: string): string {
-  const query = rawQuery.trim().replace(/^ctx\./i, "").replace(/[?:]+$/, "");
-  if (!query) return "Ask for a type name (MapView, Ctx, FilterChip), a property (camera, scope) or a view type (map, list).";
+  const trimmed = rawQuery.trim().replace(/[?:]+$/, "").replace(/\(\)$/, "");
+  const capability = capabilityNamed(trimmed);
+  if (capability) return clip(capabilityBlock(capability, CAPABILITY_REFERENCE));
   const decls = declarations(reference);
+  const path = /^ctx\./i.test(trimmed) ? trimmed.slice(4).split(".").filter(Boolean) : [];
+  if (path.length > 1) {
+    const found = lookupPath(decls, path);
+    if (found) return clip(found.slice(0, 4).map((d) => d.text.trim()).join("\n\n"));
+  }
+  const query = trimmed.replace(/^ctx\./i, "");
+  if (!query) return "Ask for a type name (MapView, Ctx, FilterChip), a property (camera, scope), a view type (map, list) or a capability (ctx.caps.ai).";
   const lower = query.toLowerCase();
   const byName = decls.filter((d) => d.name.toLowerCase() === lower);
   const viewType = VIEW_FIELDS[lower] ? decls.filter((d) => d.name.toLowerCase() === `${lower}view`) : [];
@@ -114,9 +109,11 @@ export function lookupReference(reference: string, rawQuery: string): string {
   }
   const parts = picked.map((d) => d.text.trim());
   if (VIEW_FIELDS[lower]) parts.unshift(`\`${lower}\` view — what the validator accepts: ${VIEW_FIELDS[lower]!.join(", ")}`);
-  let text = parts.join("\n\n");
-  if (text.length > MAX_CHARS) text = `${text.slice(0, MAX_CHARS)}\n… (truncated; ask for a more specific name)`;
-  return text;
+  return clip(parts.join("\n\n"));
+}
+
+function clip(text: string): string {
+  return text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS)}\n… (truncated; ask for a more specific name)` : text;
 }
 
 export interface DiscoveryDeps {
@@ -146,10 +143,11 @@ function lookupTool(): AgentTool {
     name: "lookup",
     description:
       "Read the real declaration of a type, a property or a view type from the potyro module — the same text as the REFERENCE in your instructions, " +
-      "found for you. Use it BEFORE deciding an option does not exist: lookup(\"MapView\"), lookup(\"camera\"), lookup(\"map\"), lookup(\"ctx.scope\"). " +
+      "found for you, and the declarations of every capability in the CAPABILITIES index. Use it BEFORE deciding an option does not exist, and before using a capability: " +
+      "lookup(\"MapView\"), lookup(\"camera\"), lookup(\"map\"), lookup(\"ctx.scope\"), lookup(\"ctx.caps.ai\"), lookup(\"ctx.caps.camera.live\"). " +
       "If it answers that nothing declares it, that is the fact to quote in a NOT-IN-APP.",
-    parameters: { type: "object", properties: { query: { type: "string", description: "A type name, property name, view type, or ctx.<member>" } }, required: ["query"] },
-    run: async (args) => ({ ok: true, detail: lookupReference(SCHEMA_REFERENCE, String(args.query ?? "")) }),
+    parameters: { type: "object", properties: { query: { type: "string", description: "A type name, property name, view type, ctx.<member> path, or a capability from the index" } }, required: ["query"] },
+    run: async (args) => ({ ok: true, detail: lookupReference(LOOKUP_REFERENCE, String(args.query ?? "")) }),
   };
 }
 

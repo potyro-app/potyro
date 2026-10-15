@@ -409,7 +409,10 @@ the model works down, stopping at the first rung that fits:
 
 1. **Declare it** with the built-in views and options — the schema's own type declarations are in
    the prompt verbatim (`reference.generated.ts`, regenerated from `packages/schema/src/types` and
-   checked by a test), so "this option does not exist" is something to read, not assume.
+   checked by a test), so "this option does not exist" is something to read, not assume. Since
+   #341 the prompt carries the core of them; each capability (`ctx.caps.*`, `ctx.files`, `ctx.ui.share`…)
+   is one index line, its declarations a `lookup` away and put beside a request that names it
+   (`CAPABILITIES` in `packages/generator/src/reference.ts`).
 2. **A `custom` view** when no built-in fits — the person's own app runs trusted.
 3. **The doable parts**, as SEARCH/REPLACE edits, with the rest listed under **`Not done:`** in the
    prose (carried as `notDone`, shown in the Studio, filed as diagnoses). A request is never refused

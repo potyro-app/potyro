@@ -202,15 +202,16 @@ export class ClaudeCliBackend implements MeteredBackend {
   /** The prompt for one request. The CLI is stateless per invocation, so prior turns ride inline. */
   private message(req: MeteredRequest): string {
     if (req.kind === "generate") return buildUserMessage(req.prompt);
+    // A modify's capability passages come with the change (and the app it changes), not twice.
     return [
-      buildUserMessage(req.prompt),
+      buildUserMessage(req.prompt, req.kind === "modify" ? { capabilities: false } : {}),
       "",
       "You previously produced this app:",
       "```ts",
       req.source,
       "```",
       "",
-      req.kind === "repair" ? buildRepairMessage(req.errors) : buildModifyMessage(req.instruction, req.ctx),
+      req.kind === "repair" ? buildRepairMessage(req.errors) : buildModifyMessage(req.instruction, req.ctx, { source: req.source }),
     ].join("\n");
   }
 

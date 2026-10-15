@@ -7,8 +7,9 @@
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
 // Behind Apache on the same origin as the site (`/s/…` and `/share-api/…` → here), so the shell needs
-// no CORS. The sender's address is the first `X-Forwarded-For` entry, which the proxy sets; bound to
-// loopback, nothing else can set it.
+// no CORS. The sender's address is the LAST `X-Forwarded-For` entry:
+// Apache appends the real peer, and anything before it is whatever the client sent (#348). Bound to
+// loopback, only the proxy reaches it.
 import { createServer, type Server } from "node:http";
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
@@ -34,7 +35,7 @@ export function startServer(opts: { handle: (req: ShareRequest) => Promise<Share
       if (over) return reply({ status: 413, headers: { "content-type": "application/json" }, body: '{"ok":false,"error":"too big"}' });
       const headers: Record<string, string | undefined> = {};
       for (const [k, v] of Object.entries(req.headers)) headers[k] = Array.isArray(v) ? v[0] : v;
-      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]!.trim();
+      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",").pop()!.trim();
       opts
         .handle({
           method: req.method ?? "GET",
