@@ -7483,6 +7483,11 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--ink-soft);
   font-size: 0.88rem;
 }
+/* Another tab has the storage (storage-elsewhere.tsx): the same calm screen, over everything —
+   dialogs included, since what is behind it can no longer be saved. */
+.k-elsewhere {
+  z-index: 2000;
+}
 /* The way out first — "Let it run as yours" when that is what fixes it — then the way home. */
 .k-splash-actions {
   display: flex;

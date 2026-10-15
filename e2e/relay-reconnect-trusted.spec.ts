@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -138,7 +138,8 @@ const add = async (page: Page, title: string): Promise<void> => {
   await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible();
 };
 
-test("two peers keep syncing after the relay dies and comes back", async ({ browser }) => {
+test("two peers keep syncing after the relay dies and comes back", async ({ browser, consoleGuard }) => {
+  consoleGuard.allow(/^WebSocket connection to 'ws:\/\/localhost:\d+\/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED$/, "the relay is killed on purpose while the peers keep trying");
   test.slow();
   await startRelay();
 

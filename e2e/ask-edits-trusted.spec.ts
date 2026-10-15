@@ -1,4 +1,4 @@
-import { test, expect, type Route } from "@playwright/test";
+import { test, expect, type Route } from "./console-guard";
 
 // Ask changing records the person already has (#213), with the model stubbed. The model never sees
 // the records: it names them as the person did, and the device finds them. One name finds one record

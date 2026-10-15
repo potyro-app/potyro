@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { installQuestions } from "./ui-questions.js";
 
 // The structured questions cross the isolate (#112): an untrusted app's form, menu and progress are

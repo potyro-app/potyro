@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { seed } from "./launcher/fixture.js";
 
 // Every shipped language reads as itself (#300): choose it under You → Language and the launcher,

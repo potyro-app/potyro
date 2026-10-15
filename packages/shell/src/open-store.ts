@@ -16,7 +16,7 @@
 // user switched on, it fails loudly and the caller decides.
 
 import { t } from "@lingui/core/macro";
-import { copyStoreData, createSqliteStore, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
+import { copyStoreData, createSqliteStore, isStorageElsewhere, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -304,10 +304,14 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
       rememberHome(namespace);
       return store;
     } catch (err) {
-      // A database that is THERE but cannot be opened right now is not a reason to open another one.
-      // The fallbacks below are a different store: an app opened on one would find none of its
-      // records or files ("No file levels.json in this app"), and what it wrote there would be
-      // stranded when the real one opened again.
+      // Another tab owns the storage (packages/store/src/storage-owner.ts): the whole tab says so and
+      // offers "Use it here" (storage-elsewhere.tsx). Never a second copy in localStorage.
+      if (isStorageElsewhere(err)) throw err;
+      // The last resort, for what the owner cannot see (a tab of an older build, holding the files
+      // without the lock, is reported as elsewhere too): a database that is THERE but cannot be
+      // opened right now is not a reason to open another one. The fallbacks below are a different
+      // store: an app opened on one would find none of its records or files ("No file levels.json in
+      // this app"), and what it wrote there would be stranded when the real one opened again.
       if (!mayFallBack(namespace, err)) throw new StoreBusyError(namespace, err);
       console.info(`[potyro] no worker database for "${namespace}" (${err instanceof Error ? err.message : String(err)}), falling back`);
     }

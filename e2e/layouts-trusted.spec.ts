@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Page layouts (#105). Plants opens on "Today": a grid of the watering figures, the overdue list
 // and this month's calendar — three views on one page, three columns on a wide page, one column

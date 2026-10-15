@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { crc32, deflateSync } from "node:zlib";
 
 // The photo field (#102). Plants' "Photo" is a tile that says "Add photo", not the browser's

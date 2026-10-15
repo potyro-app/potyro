@@ -19,6 +19,17 @@ let progressSeq = 0;
 const fileArg = (f: string | FileRef): string | FileRef =>
   typeof f === "string" ? f : f && typeof f === "object" ? { id: f.id, path: f.path, name: f.name, mime: f.mime } as FileRef : f;
 
+/** A picture as data that clones: a Blob or bytes as themselves, a reference by its fields only. */
+function aiImage(img: unknown): unknown {
+  if (img instanceof Blob || img instanceof Uint8Array || typeof img === "string") return img;
+  if (img && typeof img === "object") {
+    const r = img as Record<string, unknown>;
+    return r.key !== undefined ? { key: r.key, mime: r.mime } : { id: r.id, path: r.path, name: r.name, mime: r.mime };
+  }
+  return img;
+}
+const aiImages = (img: unknown): unknown => (Array.isArray(img) ? img.map(aiImage) : img == null ? undefined : aiImage(img));
+
 function applySpec(rows: Resolved[], spec?: QuerySpec): Resolved[] {
   let out = rows;
   if (spec?.filter) out = out.filter((r) => spec.filter!(r));
@@ -107,6 +118,18 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       vibrate: async (p) => {
         send("caps.haptics.vibrate", p);
       },
+    };
+  if (has("ai"))
+    caps.ai = {
+      // The host checks the shape, asks the person, sends and validates (ai.ts); nothing of that is here.
+      extract: (req) =>
+        call("caps.ai.extract", {
+          schema: req?.schema,
+          instructions: req?.instructions,
+          text: req?.text,
+          image: aiImages(req?.image),
+        }) as never,
+      ask: (prompt, o) => call<string>("caps.ai.ask", String(prompt), o ? { instructions: o.instructions, image: aiImages(o.image) } : undefined),
     };
   if (has("notifications"))
     caps.notifications = {

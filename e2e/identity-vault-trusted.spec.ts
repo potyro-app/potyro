@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { ensureIdentity, recoveryPassphrase, type IdentityKeys } from "../packages/identity/src/index.js";
 import { tileAction } from "./launcher-actions.js";
 

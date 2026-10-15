@@ -101,6 +101,11 @@ first use, and a refusal simply opens the local store: the app keeps working, on
 Joining a shared link is itself the consent, and the join dialog says what syncing means. Declaring
 `sync` in the manifest changes what the question says, not whether it is asked (KA-23).
 
+`permissions.ai` (docs/23) is prompted on first use like the others, but its answer is kept per app
+on this device (Edit tile shows it, and turns it off), and the question names the service and what
+goes. The off switch applies to trusted apps too. The key that pays is never in reach of app code:
+the shell holds it (Model settings) or the free relay does.
+
 Data isolation: an untrusted app can never read another app's records — the `Store` is opened
 per app id, and the realm (or the isolate) only receives a `ctx` bound to that app's store.
 
@@ -291,6 +296,7 @@ is what the Android probe measures (docs/22 §5) before views of shared apps are
 | **notifications** | web push (installed PWA only), no reliable exact local schedule | @capacitor/local-notifications — real offline exact schedule | **deciding feature** |
 | haptics | navigator.vibrate | @capacitor/haptics | non-sensitive; manifest-gated, no prompt |
 | network | fetch (gated via ctx.caps.network) | native http/fetch | gated for untrusted apps |
+| ai (docs/23) | fetch to the free relay / OpenRouter | same | not a device feature: the shell composes it per app; online only |
 | map tiles | online, or cache a region | same + native caching | offline maps need cached tiles |
 
 ### Notifications & maps

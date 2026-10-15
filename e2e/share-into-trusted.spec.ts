@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Text shared into Potyro from another app (#213). The Android share sheet puts it in the session's
 // share inbox (share-target.ts → rememberShare) and opens "Bring this into…"; here the inbox is

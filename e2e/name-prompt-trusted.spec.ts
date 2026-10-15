@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // When Potyro asks what to call you — and, more importantly, when it must NOT.

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { currentCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // Two things found while using the Studio on a running app (2026-09-13), and how they hold now that

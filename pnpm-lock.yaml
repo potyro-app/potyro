@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@sqlite.org/sqlite-wasm@3.53.0-build1':
+    hash: 657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990
+    path: patches/@sqlite.org__sqlite-wasm@3.53.0-build1.patch
+
 importers:
 
   .:
@@ -90,6 +95,12 @@ importers:
         specifier: ^18.3.12
         version: 18.3.31
 
+  apps/receipt-split:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
   examples:
     dependencies:
       potyro:
@@ -102,6 +113,8 @@ importers:
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
+
+  packages/ai-relay: {}
 
   packages/capabilities:
     dependencies:
@@ -343,6 +356,9 @@ importers:
       '@lingui/react':
         specifier: ^5.9.5
         version: 5.9.5(@lingui/babel-plugin-lingui-macro@5.9.5(typescript@5.9.3))(react@18.3.1)
+      '@potyro/ai-relay':
+        specifier: workspace:*
+        version: link:../ai-relay
       '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
@@ -430,7 +446,7 @@ importers:
     dependencies:
       '@sqlite.org/sqlite-wasm':
         specifier: 3.53.0-build1
-        version: 3.53.0-build1
+        version: 3.53.0-build1(patch_hash=657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990)
       cojson:
         specifier: 0.20.19
         version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
@@ -4888,7 +4904,7 @@ snapshots:
 
   '@sinclair/typebox@0.27.12': {}
 
-  '@sqlite.org/sqlite-wasm@3.53.0-build1': {}
+  '@sqlite.org/sqlite-wasm@3.53.0-build1(patch_hash=657ba3de84dbd80d23de4ce0b628c50683488508968711c793ef64650ed85990)': {}
 
   '@stablelib/base64@1.0.1': {}
 

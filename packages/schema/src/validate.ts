@@ -706,6 +706,7 @@ const permissionSchema = z.object({
   geo: z.boolean().optional(),
   haptics: z.boolean().optional(),
   network: networkPermissionSchema.optional(),
+  ai: z.boolean().optional(),
 });
 
 
