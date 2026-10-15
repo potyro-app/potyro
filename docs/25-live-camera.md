@@ -74,8 +74,9 @@ cam.stop();
   CAMERA runtime permission in the app (Capacitor's WebView asks for it when the page calls
   `getUserMedia`). Refused, `live()` rejects with `"denied"`.
 - **A "camera on" indicator owned by the shell.** While a session runs the shell shows a pill at the
-  top of the screen — a red dot, "Camera on", and **Turn off** — outside the app's view, above
-  everything the app can draw. The app does not render it and cannot dismiss it: removing or hiding
+  top of the screen — a red dot, "Camera on", and **Turn off** — above everything the app can draw.
+  On a phone it sits just under the app's top bar, at its right, so it never covers the app's name
+  or the bar's buttons; with no top bar it is centred at the top. The app does not render it and cannot dismiss it: removing or hiding
   the element puts it back. (A trusted app shares the page with the shell, so this is a guard
   against a careless app, not a wall against a hostile one — a hostile app is the sealed kind, which
   has no page to reach. The browser's and the phone's own indicators stand behind it either way.)
