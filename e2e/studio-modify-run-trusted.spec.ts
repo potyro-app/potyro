@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The modify loop RUNS a candidate before accepting it (#262), end to end in the conversation-first

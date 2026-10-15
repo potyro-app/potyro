@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // "Load your apps?" kept coming back (the owner, on apps.vaz.io): after deleting shared apps it was

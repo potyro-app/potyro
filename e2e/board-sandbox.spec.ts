@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The board renders UNTRUSTED (#107): Recipes runs in the QuickJS-WASM isolate, its `sort` and
 // display bindings cross the bridge as values, and a move is still a host-side patch.

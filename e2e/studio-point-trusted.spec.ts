@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { ask, chooseOpenRouter, currentCard } from "./studio-helpers.js";
 
 // Point at the app (#284): in the Studio's preview, tap a part of the app and talk about it.

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The checklist view (#106) in the Groceries example, after a week of using it on a phone: a tick
 // buys the item and SINKS it to the bottom of its own aisle — what is left to buy stays together —

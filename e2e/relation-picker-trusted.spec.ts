@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // A field pointing at other records is a searchable picker, not a browser <select> — the last raw
 // browser control in a form. Recipes' ingredient rows each point at an ingredient.

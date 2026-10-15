@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../console-guard";
 
 // Opening and switching apps without reloading the page (#89). Every switch used to be a full page
 // load — a white flash, the bundle, storage and identity all started again — and Back left the site.

@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page, type Route } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // The whole loop, with the model stubbed: a recorded failing path, an agent that investigates and

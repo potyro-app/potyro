@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
 
 // The identity panel leads with the person, not with infrastructure (#95). It used to open on a

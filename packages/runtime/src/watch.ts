@@ -51,6 +51,11 @@ function watch<T>(
   core: RuntimeCore,
   entity: string,
   read: () => Promise<T>,
+  /** What a failed read shows. Only asked while someone is still watching and the app is open: a read
+   *  that fails because the app was closed under it (switching apps in place) is nobody's error, and
+   *  reporting it put "could not load: this app was closed" in the console on every switch
+   *  (e2e/console-guard.ts). */
+  fail: (e: unknown) => T,
   emit: (value: T) => void,
 ): Unsubscribe {
   let alive = true;
@@ -85,9 +90,13 @@ function watch<T>(
         if (alive) emit(value);
         settle();
       },
-      // A failed read must not wedge the watcher shut: whatever it was reading may be readable by
-      // the time the next change arrives.
-      settle,
+      (e: unknown) => {
+        // Not while the app is being put away: its realm or store going is what failed the read.
+        if (alive && !core.closed) emit(fail(e));
+        // A failed read must not wedge the watcher shut: whatever it was reading may be readable by
+        // the time the next change arrives.
+        settle();
+      },
     );
   };
   run();
@@ -114,17 +123,14 @@ export function watchPageQuery(
   return watch(
     core,
     core.entityForPage(pageId),
-    () =>
-      core.queryPage(pageId, read()).then(
-        ({ rows }): QueryState => ({ rows, loading: false }),
-        (e: unknown): QueryState => {
-          // A page's rows are its filter, sort and query: app code. Whoever shows the page says so
-          // where the rows would be (#271); the rest of the app is untouched.
-          const error = failed(`page "${pageId}"`, e);
-          reportAppFailure({ app: core.definition.id, what: `page ${pageId}`, message: error });
-          return { rows: [], loading: false, error };
-        },
-      ),
+    () => core.queryPage(pageId, read()).then(({ rows }): QueryState => ({ rows, loading: false })),
+    (e: unknown): QueryState => {
+      // A page's rows are its filter, sort and query: app code. Whoever shows the page says so
+      // where the rows would be (#271); the rest of the app is untouched.
+      const error = failed(`page "${pageId}"`, e);
+      reportAppFailure({ app: core.definition.id, what: `page ${pageId}`, message: error });
+      return { rows: [], loading: false, error };
+    },
     cb,
   );
 }
@@ -139,11 +145,8 @@ export function watchEntityQuery(
   return watch(
     core,
     entity,
-    () =>
-      core.queryEntity(entity, spec?.()).then(
-        (rows): QueryState => ({ rows, loading: false }),
-        (e: unknown): QueryState => ({ rows: [], loading: false, error: failed(`"${entity}" records`, e) }),
-      ),
+    () => core.queryEntity(entity, spec?.()).then((rows): QueryState => ({ rows, loading: false })),
+    (e: unknown): QueryState => ({ rows: [], loading: false, error: failed(`"${entity}" records`, e) }),
     cb,
   );
 }
@@ -158,11 +161,8 @@ export function watchRecord(
   return watch(
     core,
     entity,
-    () =>
-      core.getRecord(entity, id).then(
-        (record): RecordState => ({ record, loading: false }),
-        (e: unknown): RecordState => ({ record: null, loading: false, error: failed(`${entity} ${id}`, e) }),
-      ),
+    () => core.getRecord(entity, id).then((record): RecordState => ({ record, loading: false })),
+    (e: unknown): RecordState => ({ record: null, loading: false, error: failed(`${entity} ${id}`, e) }),
     cb,
   );
 }
