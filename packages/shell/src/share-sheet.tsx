@@ -8,6 +8,7 @@ import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { ShareBody } from "./dialog.js";
 import type { UserApp } from "./user-apps.js";
 import type { MadeDemoLink } from "./demo-share.js";
+import { creditLine } from "./credit-words.js";
 
 type State = { kind: "choose" } | { kind: "making" } | { kind: "made"; made: MadeDemoLink } | { kind: "failed"; why: string };
 
@@ -22,7 +23,10 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
   const { t } = useLingui();
   const [state, setState] = useState<State>({ kind: "choose" });
   const me = peekIdentity();
-  const myName = me && me.name && me.name !== DEFAULT_NAME ? me.name : undefined;
+  // A kept app is passed on as its maker's (docs/24 §6): there is no "by me" to offer for it.
+  const kept = Boolean(app.credit && !app.remixOf);
+  const myName = !kept && me && me.name && me.name !== DEFAULT_NAME ? me.name : undefined;
+  const madeBy = kept ? creditLine(app.credit) : null;
   const [showName, setShowName] = useState(Boolean(myName));
   const name = app.name;
 
@@ -71,6 +75,7 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
             </>
           ) : (
             <>
+              {madeBy ? <p className="k-share-note">{madeBy}</p> : null}
               {myName ? (
                 <label className="k-share-name">
                   <input type="checkbox" checked={showName} onChange={(e) => setShowName(e.target.checked)} disabled={state.kind === "making"} />

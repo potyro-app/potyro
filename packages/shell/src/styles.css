@@ -11623,8 +11623,15 @@ body:has(.k-tabbar) .k-toasts {
     order: 3;
     flex-basis: 100%;
   }
+  /* Two equal buttons under the line, within a thumb's reach of each other. */
+  .k-demo-actions {
+    order: 4;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
   .k-demo-actions button {
-    min-height: 2.25rem;
+    flex: 1 1 0;
+    min-height: 2.5rem;
     padding: 0.3rem 0.8rem;
   }
 }
@@ -11679,5 +11686,21 @@ body:has(.k-tabbar) .k-toasts {
 .k-share-note {
   font-size: 0.85rem;
   color: var(--ink-soft);
+}
+.k-demo-credit {
+  color: var(--ink);
+  font-weight: 650;
+}
+.k-demo-credit::after {
+  content: " · ";
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+/* Who made it, on the Add-an-app card (docs/24 §6). */
+.k-add-app-credit {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink);
+  font-style: italic;
 }
 /* tokens-only: end — share links */
