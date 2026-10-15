@@ -12,7 +12,7 @@
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
 // Behind Apache on the site's origin (`/ai/` → here), like the platform-request relay: the site's gate
-// covers it and the browser needs no CORS. The sender's address is the first `X-Forwarded-For` entry.
+// covers it and the browser needs no CORS. The sender's address is the LAST `X-Forwarded-For` entry: Apache appends the real peer, and anything before it is whatever the client sent (#348).
 
 import { createServer, type Server } from "node:http";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -36,7 +36,7 @@ export function startServer(opts: { handle: (req: RelayRequest) => Promise<Relay
       else chunks.push(chunk);
     });
     req.on("end", () => {
-      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]!.trim();
+      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",").pop()!.trim();
       const reply = (r: RelayResponse): void => {
         res.writeHead(r.status, { "content-type": "application/json", "cache-control": "no-store" });
         res.end(JSON.stringify(r.body));
