@@ -143,6 +143,11 @@ export class DirectLoadedApp implements LoadedApp {
     return (typeof d === "function" ? await (d as Fn)(ctx) : (d ?? null)) as Value;
   }
 
+  async callTile(ctx: unknown): Promise<Value> {
+    const tile = (this.definition as { tile?: unknown }).tile;
+    return (typeof tile === "function" ? await (tile as Fn)(ctx) : null) as Value;
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: unknown): Promise<Date | null> {
     const rem = (this.definition.reminders ?? []).find((r) => r.id === id);
     if (!rem) throw new Error(`reminder ${id} not found`);

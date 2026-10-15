@@ -571,6 +571,10 @@ class IsolateLoadedApp implements LoadedApp {
     return this.invoke({ kind: "fieldDefault", entity, key: field, ...this.base(ctx) }, ctx);
   }
 
+  async callTile(ctx: Ctx): Promise<Value> {
+    return this.invoke({ kind: "tile", ...this.base(ctx) }, ctx);
+  }
+
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
     const v = await this.invoke({ kind: "reminderWhen", id, record, ...this.base(ctx) }, ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));
