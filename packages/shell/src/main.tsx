@@ -50,6 +50,7 @@ import { SharePage } from "./share-page.js";
 import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
+import { watchLiveCamera } from "./camera-indicator.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -678,6 +679,9 @@ let routeSeq = 0;
  * runtime, isolate, store and watchers put away.
  */
 async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<void> {
+  // Leaving an app turns its camera off, whatever the app did or forgot to do (docs/25). First, so
+  // not one frame of it reaches the next screen.
+  caps.liveCamera?.stopAll("closed");
   const seq = ++routeSeq;
   const isCurrent = (): boolean => seq === routeSeq;
   const prev = current;
@@ -917,6 +921,8 @@ async function boot(): Promise<void> {
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   setShellCaps(caps);
+  // "Camera on" whenever an app sees through the camera live; the shell's, not the app's (docs/25).
+  if (caps.liveCamera) watchLiveCamera(caps.liveCamera);
 
   // Opening an app, going home and Back switch in place from here on (#89).
   setRouteHandler((next) => {

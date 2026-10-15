@@ -5,6 +5,7 @@
 // string for notification scheduling).
 
 import type { Geo } from "potyro";
+import type { LiveCameraCap } from "./live-camera.js";
 
 export interface CameraCap {
   capture(o?: { source?: "camera" | "library" }): Promise<Blob>;
@@ -51,4 +52,9 @@ export interface Capabilities {
   filesystem: FileCap;
   /** Always present at the platform level; gated per-app by the host. */
   network: NetworkCap;
+  /**
+   * The live camera (docs/25): `null`/absent where there is no `getUserMedia`. One per page
+   * (`sharedLiveCamera()`), however many `Capabilities` exist. The host gives it to trusted apps only.
+   */
+  liveCamera?: LiveCameraCap | null;
 }

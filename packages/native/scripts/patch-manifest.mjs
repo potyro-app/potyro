@@ -12,7 +12,9 @@
 //     ask the person, it REFUSES: "Missing the following permissions in AndroidManifest.xml".
 //     Found on a Pixel on 2026-09-16 — "Use my location" did nothing, and nothing in the app said
 //     why, because the refusal arrives as a rejected promise the geo field swallows.
-//   CAMERA — `ctx.caps.camera` taking a new photo (the library picker needs nothing).
+//   CAMERA — `ctx.caps.camera` taking a new photo (the library picker needs nothing), and the live
+//     camera (docs/25): the WebView's getUserMedia asks for it through Capacitor's chrome client.
+//     Video only — RECORD_AUDIO is never needed, and stays out.
 //
 // NOT here: READ_EXTERNAL_STORAGE. The camera plugin asks for it only because
 // `requestPermissions()` with no argument checks every alias it has; the adapter asks for the one

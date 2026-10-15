@@ -5936,6 +5936,78 @@ body:has(.k-tabbar) .k-toasts {
   }
 }
 
+/* ---- "Camera on" (docs/25) -----------------------------------------------------------------------
+   The shell's sign that an app sees through the camera live. Top centre, clear of the status bar and
+   of the ✕ in the corner; above everything an app can draw (camera-indicator.ts puts it back if an app
+   removes or hides it). Ink on paper inverted, like a toast, with the danger colour's dot: it reads
+   as "recording" without shouting over the toy underneath. */
+/* tokens-only: start */
+.k-camera-on {
+  position: fixed;
+  top: calc(var(--k-safe-top) + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.35rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  animation: camera-on-in 220ms var(--ease);
+  pointer-events: auto;
+}
+.k-camera-on-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 0.2rem color-mix(in oklch, var(--danger) 35%, transparent);
+  animation: camera-on-pulse 1.6s ease-in-out infinite;
+}
+.k-camera-on-off {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  min-height: 1.9rem;
+  cursor: pointer;
+}
+.k-camera-on-off:hover {
+  background: color-mix(in oklch, var(--paper) 85%, var(--danger));
+}
+.k-camera-on-off:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 2px;
+}
+/* tokens-only: end */
+@keyframes camera-on-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+@keyframes camera-on-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-camera-on,
+  .k-camera-on-dot {
+    animation: none;
+  }
+}
+
 /* ---- Studio: making an app is a conversation (#261) -----------------------------------------
    The conversation is the screen: a reading column of paper, the person's words in their own tinted
    bubbles on the right, the agent's under them on the left, and a CARD wherever something was made —
