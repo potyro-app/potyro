@@ -116,7 +116,7 @@ test("two devices share one dataset through the relay", async ({ browser }) => {
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click(); // trust prompt
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click(); // trust prompt
   await answerNamePrompt(b);
 
   // B never created this app: both the DATA and the app SOURCE arrived over sync.

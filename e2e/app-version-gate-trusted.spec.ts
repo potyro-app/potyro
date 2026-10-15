@@ -86,7 +86,7 @@ test("a newer version locks an open copy, and data changes shape only when asked
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Shared Todo", { timeout: 60_000 });
   await expect(b.locator(".k-sync-status")).toContainText("Synced", { timeout: 30_000 });

@@ -67,7 +67,7 @@ test("expenses written before sharing still split with the person you share with
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   const boFlat = bo.getByRole("button", { name: /^Flat/ });
   await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });

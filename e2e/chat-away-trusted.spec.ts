@@ -61,7 +61,7 @@ test("a message that arrives while the app is AWAY is announced when it comes ba
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   await expect(bo.locator("h1").first()).toHaveText("Talk", { timeout: 60_000 });
 
