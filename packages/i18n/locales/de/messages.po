@@ -68,6 +68,10 @@ msgstr "„{name}“ wurde auf eine neuere Version aktualisiert."
 msgid "\"{name}\" is synced; a data import would overwrite what others share."
 msgstr "„{name}“ wird synchronisiert; ein Datenimport würde überschreiben, was andere teilen."
 
+#: ../shell/src/demo-share.ts
+msgid "“{name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package."
+msgstr "„{name}“ ist zu groß, um allein in einen Link zu passen. Schick stattdessen das Paket: im Studio unter Dateien → Als Paket speichern."
+
 #: ../shell/src/open-libraries.ts
 msgid "“{name}” needs {what} on this device."
 msgstr "„{name}“ braucht {what} auf diesem Gerät."
@@ -633,6 +637,11 @@ msgstr "{n} MB"
 msgid "{name} (shared)"
 msgstr "{name} (geteilt)"
 
+#. Demo bar: who shared the app; nothing done in the demo is kept
+#: ../shell/src/demo.tsx
+msgid "{name} by {by} · a demo: nothing you do here is kept"
+msgstr "{name} von {by} · eine Demo: Was du hier tust, wird nicht gespeichert"
+
 #: ../shell/src/ask-material.tsx
 msgid "{name} has no text in it."
 msgstr "{name} enthält keinen Text."
@@ -860,6 +869,11 @@ msgstr "eine Datenbank in einem Worker (die schnelle)"
 msgid "a database on the main thread"
 msgstr "eine Datenbank im Hauptthread"
 
+#. Demo bar: nothing done in the demo is kept
+#: ../shell/src/demo.tsx
+msgid "A demo: nothing you do here is kept"
+msgstr "Eine Demo: Was du hier tust, wird nicht gespeichert"
+
 #: ../shell/src/language-picker.tsx
 msgid "A draft translation was written by a model and may read oddly in places. It is being improved."
 msgstr "Eine Entwurfsübersetzung wurde von einem Modell geschrieben und klingt stellenweise vielleicht seltsam. Sie wird verbessert."
@@ -879,6 +893,14 @@ msgstr "eine vollständige Webseite"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A header named…"
 msgstr "Ein Header namens…"
+
+#: ../shell/src/App.tsx
+msgid "a link anyone can try"
+msgstr "ein Link, den jede:r ausprobieren kann"
+
+#: ../shell/src/share-sheet.tsx
+msgid "A link anyone can try"
+msgstr "Ein Link, den jede:r ausprobieren kann"
 
 #: ../shell/src/backup-switch.tsx
 msgid "A new device signed in with your words can bring them all back."
@@ -946,6 +968,11 @@ msgstr "Etwa {distance} vom Bereich auf deiner Karte entfernt."
 #: ../shell/src/add-app-dialog.tsx
 msgid "About {name}"
 msgstr "Über {name}"
+
+#. The bar above an app opened from a shared link
+#: ../shell/src/demo.tsx
+msgid "About this demo"
+msgstr "Über diese Demo"
 
 #. The colour the shell wears
 #: ../shell/src/look-panel.tsx
@@ -1752,6 +1779,10 @@ msgstr "Aus der Mediathek wählen"
 #: ../views/src/layout-host.tsx
 msgid "Choose one on the left."
 msgstr "Wähle links eins aus."
+
+#: ../shell/src/share-sheet.tsx
+msgid "Choose Share on its tile in your apps to invite someone: that turns on sync for it."
+msgstr "Um jemanden einzuladen, wähle „Teilen“ auf ihrer Kachel unter deinen Apps: Damit wird die Synchronisierung für sie eingeschaltet."
 
 #: ../shell/src/studio.tsx
 msgid "Choose which model writes and edits your app"
@@ -2933,6 +2964,14 @@ msgstr "Wird untersucht…"
 msgid "Investigation finished"
 msgstr "Untersuchung abgeschlossen"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Invite people into this app and its records. What one of you changes, the others see."
+msgstr "Lade Leute in diese App und ihre Einträge ein. Was eine:r von euch ändert, sehen die anderen."
+
+#: ../shell/src/share-sheet.tsx
+msgid "Invite people…"
+msgstr "Leute einladen…"
+
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
 msgid "Invite someone"
@@ -2991,9 +3030,17 @@ msgstr "Sie ist schon da"
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "Er wird auch aus der App entfernt und lässt sich nicht zurückholen."
 
+#: ../shell/src/main.tsx
+msgid "It needs a library from the internet to open, and you said not now."
+msgstr "Zum Öffnen braucht sie eine Bibliothek aus dem Internet, und du hast „Jetzt nicht“ gesagt."
+
 #: ../shell/src/ask-panel.tsx
 msgid "It needs to know one thing"
 msgstr "Es muss eine Sache wissen"
+
+#: ../shell/src/share-sheet.tsx
+msgid "It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it."
+msgstr "Er öffnet die App sofort in jedem Browser, mit Beispieleinträgen. Kein Konto, nichts zu installieren. Keiner deiner Einträge geht mit."
 
 #: ../shell/src/fix-panel.tsx
 msgid "It replayed clean against the app as it is — {detail}"
@@ -3108,6 +3155,11 @@ msgstr "Nur auf diesem Gerät behalten"
 #: ../views/src/checklist.tsx
 msgid "Keep them"
 msgstr "Behalten"
+
+#. Demo bar: add this app to your own apps
+#: ../shell/src/demo.tsx
+msgid "Keep this app"
+msgstr "Diese App behalten"
 
 #: ../shell/src/backup-switch.tsx
 msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
@@ -3333,15 +3385,28 @@ msgstr "„{name}“ erstellt."
 msgid "made by the app"
 msgstr "von der App erstellt"
 
+#. Demo bar: links to Potyro itself
+#: ../shell/src/demo.tsx
+msgid "Made with Potyro"
+msgstr "Gemacht mit Potyro"
+
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Mach die App, die du brauchst"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Make the link"
+msgstr "Link erstellen"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Making it via {label}… {elapsed}"
 msgstr "Wird über {label} erstellt… {elapsed}"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Making the link…"
+msgstr "Link wird erstellt…"
 
 #. Launcher sort: your own order
 #: ../shell/src/launcher-order.ts
@@ -4580,6 +4645,10 @@ msgstr "{packed} gespeichert. Schick es jemandem – mit „App hinzufügen“ f
 msgid "Saving…"
 msgstr "Wird gespeichert…"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Say it is by {myName}"
+msgstr "Sagen, dass sie von {myName} ist"
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Sag es so, wie du es einem Menschen sagen würdest — „füge eine Bewertung hinzu“, „das Neueste zuerst“, „eine Seite für die Einkaufsliste“."
@@ -4686,10 +4755,14 @@ msgstr "Mit deiner Anfrage gesendet"
 msgid "Set a name"
 msgstr "Namen festlegen"
 
+#. App menu: share this app
 #. Button: share the app (turns sync on)
 #. Share dialog title when an app gives none
+#. Share sheet eyebrow
+#: ../shell/src/App.tsx
 #: ../shell/src/dialog.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/share-sheet.tsx
 #: ../shell/src/sync-consent.ts
 msgid "Share"
 msgstr "Teilen"
@@ -4697,6 +4770,11 @@ msgstr "Teilen"
 #: ../shell/src/launcher.tsx
 msgid "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
 msgstr "„{name}“ teilen? Das schaltet die Synchronisierung ein und kopiert ihre Daten in den synchronisierten Speicher. Du kannst sie später wieder ausschalten."
+
+#. The share sheet's title
+#: ../shell/src/share-sheet.tsx
+msgid "Share {name}"
+msgstr "{name} teilen"
 
 #: ../shell/src/sync-consent.ts
 msgid "Share anyway"
@@ -4728,6 +4806,13 @@ msgstr "geteilt"
 #: ../shell/src/data-page.tsx
 msgid "Shared — edits here reach everyone in it"
 msgstr "Geteilt — Änderungen hier erreichen alle darin"
+
+#. A demo app whose name could not be read
+#. A demo app whose name could not be read
+#: ../shell/src/demo.tsx
+#: ../shell/src/main.tsx
+msgid "Shared app"
+msgstr "Geteilte App"
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "Shared costs with my flatmates"
@@ -5512,13 +5597,25 @@ msgstr "Das ist der Anfang von {name}. Speichere eine Kopie, um alles zu lesen."
 msgid "this item"
 msgstr "dieses Element"
 
+#: ../shell/src/demo.tsx
+msgid "This kind of link cannot be opened here yet."
+msgstr "Diese Art Link kann hier noch nicht geöffnet werden."
+
 #: ../shell/src/app-source.ts
 msgid "this label is not written as a translation map"
 msgstr "diese Bezeichnung ist nicht als Übersetzungstabelle geschrieben"
 
+#: ../shell/src/share-sheet.tsx
+msgid "This link carries the whole app, so chats show it without a preview picture."
+msgstr "Dieser Link enthält die ganze App, deshalb zeigen Chats ihn ohne Vorschaubild."
+
 #: ../shell/src/add-app.ts
 msgid "This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file."
 msgstr "Dieser Link ist eine Paket-ZIP, die dieses Gerät nur von einem Server laden kann, der das erlaubt. Lade sie herunter und füge sie als Datei hinzu."
+
+#: ../shell/src/demo.tsx
+msgid "This link is damaged: the app in it could not be read. Ask whoever sent it for a new one."
+msgstr "Dieser Link ist beschädigt: Die App darin konnte nicht gelesen werden. Bitte die Person, die ihn geschickt hat, um einen neuen."
 
 #: ../views/src/timeline.tsx
 msgid "This month"
@@ -5642,6 +5739,7 @@ msgstr "Vertrauenswürdige App"
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
 msgstr "Vertrauenswürdige Apps laufen <0>direkt</0> mit vollem Zugriff — ohne Sandbox. Stufe nur eine App hoch, die du geschrieben hast oder der du ganz vertraust. <1>{name}</1> gibt an:"
 
+#: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
@@ -5772,6 +5870,10 @@ msgstr "Deine Daten wurden von {was} auf {to} aktualisiert."
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Use it here"
 msgstr "Hier verwenden"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Use it together"
+msgstr "Gemeinsam nutzen"
 
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
@@ -5999,8 +6101,10 @@ msgstr "du"
 #. Chat: a message you wrote
 #. Chat: a message you wrote
 #. Heading of the panel about the person using Potyro and their devices
+#. The person trying a demo app
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/chat-panel.tsx
+#: ../shell/src/demo.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "You"
 msgstr "Du"

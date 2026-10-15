@@ -10,6 +10,9 @@
 //                        as data (#271): what the Add-an-app card reads instead of running the code
 //   chat.json            optional: the Studio conversation that made it, when the author included it
 //
+// The manifest may also say who made it (`credit`, docs/24 §6): the app's name, its maker's name when
+// they chose to show it, and what it is a remix of — a short chain, read defensively.
+//
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
 // seed — and an export bundle (`potyro-bundle/1`, which carries `app.ts` beside its data) is read as
 // one too, so a backup can be installed on a device that never had the app. A bundle carries the
@@ -56,6 +59,34 @@ export interface AppPackage {
    * drawn from this without running the app. Absent in an older package or a bare source.
    */
   declared?: AppDeclaration;
+  /** Who made it and what it is a remix of (docs/24 §6), when whoever packed it said. */
+  credit?: AppCredit;
+}
+
+/**
+ * Who made an app (docs/24 §6): its name, its maker's name when they chose to show it, and the app it
+ * is a remix of, which has a credit of its own — a chain, at most `CREDIT_DEPTH` long.
+ */
+export interface AppCredit {
+  name: string;
+  by?: string;
+  remixOf?: AppCredit;
+}
+
+/** How far back a remix chain is kept. Past it the oldest links are dropped. */
+export const CREDIT_DEPTH = 5;
+const CREDIT_TEXT = 80;
+
+/** A credit as JSON says it, or undefined when it is not one. Text is trimmed and capped; the chain is cut at its depth. */
+export function parseCredit(raw: unknown, depth = 0): AppCredit | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || depth >= CREDIT_DEPTH) return undefined;
+  const c = raw as Record<string, unknown>;
+  const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim().slice(0, CREDIT_TEXT) : undefined);
+  const name = text(c.name);
+  if (!name) return undefined;
+  const by = text(c.by);
+  const remixOf = parseCredit(c.remixOf, depth + 1);
+  return { name, ...(by ? { by } : {}), ...(remixOf ? { remixOf } : {}) };
 }
 
 export const APP_PACKAGE_FORMAT = "potyro-app/1";
@@ -124,7 +155,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   const prefix = roots.size === 1 && names.every((n) => n.includes("/")) ? `${[...roots][0]}/` : "";
   const at = (name: string): Uint8Array | undefined => entries[prefix + name];
 
-  let manifest: { format?: string; source?: string; app?: unknown } = {};
+  let manifest: { format?: string; source?: string; app?: unknown; credit?: unknown } = {};
   const rawManifest = at(MANIFEST);
   if (rawManifest) {
     try {
@@ -141,6 +172,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
 
   const isBundle = isBundleFormat(manifest.format);
   const declared = parseDeclaration(manifest.app);
+  const credit = parseCredit(manifest.credit);
   const under = (folder: string): PackagedFile[] =>
     names
       .filter((n) => n.startsWith(prefix + folder))
@@ -167,12 +199,13 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
     kind: isBundle ? "bundle" : "package",
     // A declaration that is not one is ignored, not fatal: the card then reads the app itself.
     ...(declared ? { declared } : {}),
+    ...(credit ? { credit } : {}),
   };
 }
 
 /** Make a package zip. The inverse of `readAppPackage` for a `potyro-app/1` package. */
 export function packAppPackage(
-  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock" | "declared">>,
+  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock" | "declared" | "credit">>,
 ): Uint8Array {
   const modules = pkg.modules ?? [];
   const sourceName = SOURCE_NAMES.includes(pkg.sourceName) ? pkg.sourceName : /x$/.test(pkg.sourceName) ? "app.tsx" : "app.ts";
@@ -185,6 +218,7 @@ export function packAppPackage(
           files: pkg.files.map((f) => ({ path: f.path, size: f.data.byteLength })),
           ...(modules.length ? { modules: modules.map((m) => ({ path: m.path, size: m.data.byteLength })) } : {}),
           ...(pkg.declared ? { app: pkg.declared } : {}),
+          ...(pkg.credit ? { credit: parseCredit(pkg.credit) } : {}),
         },
         null,
         2,

@@ -195,7 +195,8 @@ type CopyState = "idle" | "copied" | "failed";
  * is told, and what was to be copied is left selected so that the recourse — copy it by hand — is one
  * keystroke rather than a 200-character drag on a phone.
  */
-function ShareBody({ link, text, onHanded, onDone }: { link: string; text?: string; onHanded: () => void; onDone: () => void }) {
+/** `onHanded` says how it left: copied, or through the device's own sheet (docs/24 counts which). */
+export function ShareBody({ link, text, onHanded, onDone }: { link: string; text?: string; onHanded: (how: "copy" | "native") => void; onDone: () => void }) {
   const { t } = useLingui();
   const [state, setState] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -220,7 +221,7 @@ function ShareBody({ link, text, onHanded, onDone }: { link: string; text?: stri
       if (!navigator.clipboard) throw new Error("No clipboard in this context");
       await navigator.clipboard.writeText(whole);
       setState("copied");
-      onHanded();
+      onHanded("copy");
     } catch {
       setState("failed");
       selectIt();
@@ -230,7 +231,7 @@ function ShareBody({ link, text, onHanded, onDone }: { link: string; text?: stri
   const shareNative = async (): Promise<void> => {
     try {
       await navigator.share({ ...(text ? { text } : {}), ...(link ? { url: link } : {}) });
-      onHanded();
+      onHanded("native");
       if (words) onDone();
     } catch (e) {
       // Closing the sheet without choosing anything is not a failure.

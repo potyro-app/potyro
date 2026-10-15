@@ -27,6 +27,7 @@ import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./packag
 import { freeAppId, getUserApp, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
+import { openStore } from "./open-store.js";
 import { sourceHttp } from "./ask-sources.js";
 import { keepCode } from "./app-modules.js";
 
@@ -393,7 +394,10 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     },
     now,
   );
-  const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => openAppStore(a, o));
+  // A package that brings its own first records is not also given the example's: the example seeders
+  // are keyed on the app id, so keeping a shared Groceries listed every item twice (docs/24 §3).
+  const hasSeed = !update && Object.values(pkg.seed ?? {}).some((rows) => rows.length > 0);
+  const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => (hasSeed ? openStore(`user:${a.id}`, o) : openAppStore(a, o)));
   const theirs = (paths: string[]) => paths.filter((p) => !isReservedPath(p));
   let files: ShippedResult;
   let seeded: number;
