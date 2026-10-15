@@ -3,7 +3,7 @@
 // hosts — and resolved again whenever the runtime says something a ctx depends on changed (the
 // selection, membership). A view never calls an app function itself; that is the host's job.
 
-import type { PotyroRuntime } from "@potyro/runtime";
+import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
 import { basePageId, resolveView } from "potyro";
 import { useEffect, useState } from "react";
 
@@ -14,12 +14,23 @@ function declared(runtime: PotyroRuntime, pageRef: string, key: string, where: "
 }
 
 /**
+ * What an option says as it stands: its literal text, the fallback when it is absent, or null when it
+ * must be resolved through the runtime — a function, or in a sealed app's definition the sentinel
+ * string left where the function was (which read as the option's text: a chart titled
+ * "__potyro_fn__").
+ */
+export function literalText(raw: unknown, fallback: string): string | null {
+  if (raw === FN_SENTINEL) return null;
+  return typeof raw === "string" ? raw : raw === undefined ? fallback : null;
+}
+
+/**
  * A string option that may be a function of ctx. Returns the literal at once, the fallback until a
  * function resolves, and the resolved text after. Re-resolves on `runtime.core.onInvalidate`.
  */
 export function useDynamicText(runtime: PotyroRuntime, pageId: string, key: string, where: "view" | "page", fallback: string): string {
   const raw = declared(runtime, pageId, key, where);
-  const literal = typeof raw === "string" ? raw : raw === undefined ? fallback : null;
+  const literal = literalText(raw, fallback);
   const [resolved, setResolved] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,12 +66,12 @@ export function useDynamicText(runtime: PotyroRuntime, pageId: string, key: stri
 export function usePageTitles(runtime: PotyroRuntime): Record<string, string> {
   const pages = runtime.definition.pages;
   const initial = (): Record<string, string> =>
-    Object.fromEntries(pages.map((p) => [p.id, typeof p.title === "string" ? p.title : p.id]));
+    Object.fromEntries(pages.map((p) => [p.id, literalText(p.title, p.id) ?? p.id]));
   const [titles, setTitles] = useState<Record<string, string>>(initial);
 
   useEffect(() => {
     let live = true;
-    const dynamic = pages.filter((p) => typeof p.title !== "string");
+    const dynamic = pages.filter((p) => literalText(p.title, p.id) === null);
     if (!dynamic.length) {
       setTitles(initial());
       return;

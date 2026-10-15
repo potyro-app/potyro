@@ -540,17 +540,21 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
-  // Placing a point on the map opens the create form already carrying it.
-  const onCreate = (entity: string, initial: Record<string, unknown>): void =>
-    setEditor({ entity, initial, openAfter: false });
+  // Placing a point on the map opens the create form already carrying it — unless the app said nothing
+  // is added by hand (`quickActions: []`, a live feed's records): then a map has no place button.
+  const handAdds = (def as { quickActions?: unknown[] }).quickActions?.length !== 0;
+  const onCreate = handAdds
+    ? (entity: string, initial: Record<string, unknown>): void => setEditor({ entity, initial, openAfter: false })
+    : undefined;
 
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
   const addLabel = (noun: string): string => t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" });
 
   // Quick actions: the app's declared triggers, else an auto "Add: <Entity>" per top-level object —
-  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3).
-  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions ?? [];
-  const quickActions: QuickActionDef[] = declaredQuick.length
+  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3). A declared empty list
+  // is an app saying "none": records it makes itself (a live feed's) are not for adding by hand.
+  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions;
+  const quickActions: QuickActionDef[] = declaredQuick
     ? declaredQuick
     : baseEntities.map((e) => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }));
 

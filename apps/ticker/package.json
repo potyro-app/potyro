@@ -1,0 +1,18 @@
+{
+  "name": "@potyro/app-ticker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ticker: a watchlist of live prices — crypto from Coinbase's public WebSocket, currencies from the ECB via Frankfurter — sparklines, change and price alerts (ctx.caps.network.socket, docs/28)",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs ticker.app.ts -o dist/ticker.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  },
+  "devDependencies": {
+    "intl-messageformat": "^10.7.18"
+  }
+}
