@@ -16,7 +16,7 @@ import {
   buildUserMessage,
   extractSource,
 } from "./prompt.js";
-import type { ModifyContext } from "./prompt.js";
+import type { ModifyContext, TurnOptions } from "./prompt.js";
 
 export interface ToolCallOnMessage {
   id: string;
@@ -97,12 +97,17 @@ export abstract class ChatBackend implements ModelBackend {
     return SYSTEM_PROMPT;
   }
 
+  /** Whether a turn carries the declarations of the capabilities it names (#341); on-device engines say no. */
+  protected get turnOptions(): TurnOptions {
+    return {};
+  }
+
   async generate(prompt: GenPrompt): Promise<string> {
     return extractSource(
       await this.ask(
         [
           { role: "system", content: this.systemPrompt },
-          { role: "user", content: buildUserMessage(prompt) },
+          { role: "user", content: buildUserMessage(prompt, this.turnOptions) },
         ],
         GENERATE_TEMPERATURE,
       ),
@@ -114,7 +119,7 @@ export abstract class ChatBackend implements ModelBackend {
       await this.ask(
         [
           { role: "system", content: this.systemPrompt },
-          { role: "user", content: buildUserMessage(prompt) },
+          { role: "user", content: buildUserMessage(prompt, this.turnOptions) },
           priorTurn(source),
           { role: "user", content: buildRepairMessage(errors) },
         ],
@@ -133,7 +138,7 @@ export abstract class ChatBackend implements ModelBackend {
         { role: "system", content: this.systemPrompt },
         { role: "user", content: buildModifyOpener() },
         priorTurn(source),
-        { role: "user", content: buildModifyMessage(instruction, ctx) },
+        { role: "user", content: buildModifyMessage(instruction, ctx, { ...this.turnOptions, source }) },
       ],
       EDIT_TEMPERATURE,
     );

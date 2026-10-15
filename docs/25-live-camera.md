@@ -75,8 +75,9 @@ cam.onFrame((video, { faces, facesFailed }) => {
   cannot find faces: no Worker or WebAssembly SIMD, or no finder at all) or `"failed"` (the model
   would not load, or the finder broke); `faces` is then `[]`. Say it once in your own words and carry on.
 - **The types** (`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceOptions`, `FacesFailure`) are
-  exported by `potyro`, from `packages/schema/src/types/faces.ts` — outside the model's reference on
-  purpose (#341): the prompt carries only `faces` in the options and in the frame info.
+  exported by `potyro`, from `packages/schema/src/types/faces.ts`. Like every capability since #341
+  they are outside the core of the model's prompt: it carries one index line, and the declarations
+  come through `lookup("Face")` and beside a request that asks for faces.
 
 ### How Potyro finds them
 
@@ -180,7 +181,7 @@ a fixture video of Leonardo's Mona Lisa (public domain) and checks the monster's
 | `LiveCameraCap` — one session per page, frame loop, `snap`, stop rules, `subscribe` | `@potyro/capabilities` `live-camera.ts` | DOM-only, every dependency injectable; one per page (`sharedLiveCamera()`), shared by every `Capabilities` instance, so the Studio's preview is covered by the same indicator |
 | `ctx.caps.camera.live` for trusted apps, absent for sealed | `@potyro/host` `mediate.ts` | the realm and the isolate never see it |
 | the indicator, and stopping on leaving an app | `@potyro/shell` `camera-indicator.ts`, `main.tsx` `show()` | the shell owns the screen |
-| `Face`, `FaceOptions`, `FacesFailure` | `potyro` (schema types, `types/faces.ts`) | outside the model's reference (#341) |
+| `Face`, `FaceOptions`, `FacesFailure` | `potyro` (schema types, `types/faces.ts`) | outside the prompt's core; `lookup("Face")` (#341) |
 | faces in a session: one find at a time, `facesFailed`, `faceFrom`, `sketchFace`, the fake's scripted faces | `@potyro/capabilities` `faces.ts`, `live-camera.ts` | pure, tested without a browser |
 | the face finder: worker, loading, the files | `@potyro/shell` `src/faces/`, `vite.config.ts` `facesAssets`, `faces/face_landmarker.task` | handed over with `liveCamera.useFaces` at boot |
 | Android | `@potyro/native` | `CapacitorCapabilities.liveCamera` is the same web session: the WebView's `getUserMedia`, asked through Capacitor's `BridgeWebChromeClient` (CAMERA, already in the manifest) |

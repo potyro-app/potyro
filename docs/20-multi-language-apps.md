@@ -390,7 +390,10 @@ and the shell cannot know the gender of an app's noun. See Q3.
 - **Reference** (`gen:reference` from `packages/schema/src/types`): `Words`, `language`/`languages`,
   `labels` on enum/tags, `ctx.locale`/`t`/`format`, each with a one-line doc comment that names the
   rule ("every map has the default language"; "records are never translated"; "return a Date or a
-  number where a view formats it").
+  number where a view formats it"). Since #341 the prompt keeps the essentials (write in the person's
+  language, add one only with `translate`, keep every language in step, a translation never moves
+  `schemaVersion`); `ctx.format` and the rest of the detail are the `ctx.format` and `languages`
+  capabilities, read with `lookup` and put beside a request about languages or an app that has several.
 - **Corpus** (`gen:corpus`): one example becomes multi-language. That is `groceries` (small,
   checklist, declarative) in `en` and `pl`, with one enum gaining `labels`. `plants` replaces
   `relativeTime` with `ctx.format.relative` and gains a `ctx.t` plural. Every example declares
