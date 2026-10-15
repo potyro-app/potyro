@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 
 // Attention badges on the launcher (#86, phase 1): the counts an app already shows, kept on its
 // launcher entry while it is open, so home can show them without running every app. Reminders are

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // M2 DoD, sandbox path: the plants app runs UNTRUSTED in the QuickJS-WASM isolate. If the list and
 // the Schedule calendar render, the isolate ran the app's computed `nextWatering` + calendar

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // Studio, opened from inside an app, is about THAT app (reported 2026-09-13).

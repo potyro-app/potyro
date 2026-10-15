@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Bringing in what another AI made (#213), with the model stubbed: a paste (or a file) goes to the
 // model as data with the request; what the paste names is confirmed by it ("From what you pasted");
