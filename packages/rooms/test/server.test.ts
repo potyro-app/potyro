@@ -24,6 +24,12 @@ describe("configuration from the environment", () => {
   });
 });
 
+// The server is deployed on Node 22 (docs/16), which runs TypeScript with --experimental-strip-types
+// from 22.6. CI's own Node may be older (vazio runs 20), where the flag does not exist: the deployed
+// start is then not something this machine can check, and the test says so instead of failing.
+const [major, minor] = process.versions.node.split(".").map(Number) as [number, number];
+const STRIPS_TYPES = major > 22 || (major === 22 && minor >= 6);
+
 describe("the process", () => {
   let child: ChildProcess | null = null;
   afterEach(() => {
@@ -31,7 +37,7 @@ describe("the process", () => {
     child = null;
   });
 
-  it("starts as deployed (node --experimental-strip-types src/server.ts), relays, and closes members with 1001 on SIGTERM", async () => {
+  it.skipIf(!STRIPS_TYPES)("starts as deployed (node --experimental-strip-types src/server.ts), relays, and closes members with 1001 on SIGTERM", async () => {
     const entry = fileURLToPath(new URL("../src/server.ts", import.meta.url));
     child = spawn(process.execPath, ["--experimental-strip-types", "--no-warnings", entry], {
       env: { ...process.env, PORT: "0", HOST: "127.0.0.1", ROOMS_MAX_MEMBERS: "2" },
