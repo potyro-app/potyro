@@ -55,10 +55,27 @@ const list = (words: readonly string[]): string => fmt.list(words);
 /**
  * `initialFiles`: files that arrived from outside — dropped on Potyro, or opened or shared with it
  * (#254) — read straight away, as if they had been chosen here.
+ *
+ * `initialPackage`: the package a demo link carried (docs/24), read straight away as one that came
+ * from a link — so it is sealed, and "I wrote this" is never offered for it.
+ *
+ * `onAdded`: told once the app is saved, before it is opened.
  */
-export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: () => void; initialLink?: string; initialFiles?: File[] }) {
+export function AddAppDialog({
+  onClose,
+  initialLink,
+  initialFiles,
+  initialPackage,
+  onAdded,
+}: {
+  onClose: () => void;
+  initialLink?: string;
+  initialFiles?: File[];
+  initialPackage?: AppPackage;
+  onAdded?: (done: Installed) => void;
+}) {
   const { t } = useLingui();
-  const [step, setStep] = useState<Step>(initialFiles?.length ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
+  const [step, setStep] = useState<Step>(initialFiles?.length || initialPackage ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
   const [link, setLink] = useState(initialLink ?? "");
   const [paste, setPaste] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +108,13 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
   // Files that arrived from outside are read once: a second read (strict mode) would only repeat it.
   const readInitial = useRef(false);
   useEffect(() => {
-    if (!initialFiles?.length || readInitial.current) return;
+    if (readInitial.current) return;
+    if (initialPackage) {
+      readInitial.current = true;
+      void read("link", async () => initialPackage);
+      return;
+    }
+    if (!initialFiles?.length) return;
     readInitial.current = true;
     void read("file", () => gatherFromFiles(initialFiles));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,6 +132,7 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
     setStep({ kind: "installing", name: step.inspected.name });
     try {
       const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode, link: step.link });
+      onAdded?.(done);
       // Something to say before opening: changed files kept, files the new version dropped, or a
       // library that cannot start in the sealed box (known only once it was fetched).
       const sealed = sealedAfter(done, step.inspected);
@@ -271,7 +295,7 @@ export function AddAppDialog({ onClose, initialLink, initialFiles }: { onClose: 
             </button>
           ) : (
             <>
-              {step.kind === "card" ? (
+              {step.kind === "card" && !initialPackage ? (
                 <button type="button" className="k-add" onClick={() => setStep({ kind: "choose", tab: step.source === "file" ? null : step.source })}>
                   <Trans>Back</Trans>
                 </button>

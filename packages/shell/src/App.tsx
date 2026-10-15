@@ -48,6 +48,7 @@ import { ViewErrorBoundary } from "./view-error-boundary.js";
 import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
+import { ShareSheet } from "./share-sheet.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
 import { isRtl, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
@@ -659,6 +660,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // Reviewing/rolling back what an edit did — same gate as editing: your own saved app.
   const [historyOpen, setHistoryOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  // Share (docs/24): a link anyone can try, or — for a synced app — the people in it.
+  const [shareOpen, setShareOpen] = useState(false);
   // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
   // app — and the control is hidden rather than showing an empty panel that would claim nothing
   // happened.
@@ -860,6 +863,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
     ...(sync && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    ...(generator && currentKind === "user" && appId ? [{ key: "share", label: t({ message: "Share", comment: "App menu: share this app" }), icon: "↗", hint: t`a link anyone can try`, onSelect: () => setShareOpen(true) }] : []),
     ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: t`Export`, icon: "⇡", onSelect: onExport }] : []),
@@ -1158,6 +1162,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         />
       ) : null}
 
+      {shareOpen && appId && getUserApp(appId) ? (
+        <ShareSheet app={getUserApp(appId)!} onClose={() => setShareOpen(false)} onInvite={sync ? () => setPeopleOpen(true) : undefined} />
+      ) : null}
       {peopleOpen && appId ? (
         <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
       ) : null}

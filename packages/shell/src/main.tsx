@@ -52,6 +52,7 @@ import { SharePage } from "./share-page.js";
 import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
+import { readDemoLink, type DemoLink } from "./demo-link.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -318,6 +319,47 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | f
     // into a container it no longer owned ("root container was removed without using React").
     mount(root, <Splash name={invite.name} source={invite.source} verb="Joining" failed={t`Could not join: ${why}`} />);
     return false;
+  }
+}
+
+/**
+ * A demo link (docs/24): the app in it, running straight away — sealed, on records in memory, with
+ * nothing installed and no question asked before it is on screen. Nothing here touches this device's
+ * apps, identity or storage; "Keep this app" is the ordinary Add-an-app card.
+ */
+async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
+  const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
+  setShellCaps(caps);
+  const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath }, { shareEvent }] = await Promise.all([import("./demo.js"), import("./share-events.js")]);
+  // Anywhere a demo goes next — home, an app it was kept as — is the shell at the site's root, by a
+  // page load: the demo's runtime is not one the router knows how to put away.
+  setRouteHandler(() => {
+    leaveDemoPath();
+    return false;
+  });
+  const shared = t({ message: "Shared app", comment: "A demo app whose name could not be read" });
+  let pkg: Awaited<ReturnType<typeof loadDemoPackage>>;
+  mount(root, <Splash name={shared} />);
+  try {
+    pkg = await loadDemoPackage(link);
+  } catch (e) {
+    mount(root, <Splash name={shared} failed={e instanceof Error ? e.message : String(e)} />);
+    return;
+  }
+  const name = demoName(pkg);
+  mount(root, <Splash name={name} source={pkg.source} />);
+  try {
+    const session = await openDemo(pkg, caps);
+    shareEvent("demo-opened");
+    mount(root, <DemoScreen session={session} pkg={pkg} />);
+  } catch (e) {
+    const why =
+      e instanceof DemoDeclined
+        ? t`It needs a library from the internet to open, and you said not now.`
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    mount(root, <Splash name={name} source={pkg.source} failed={why} action={{ label: t`Try again`, run: async () => location.reload() }} />);
   }
 }
 
@@ -894,6 +936,10 @@ async function boot(): Promise<void> {
   // Move secrets an older build left in plain storage into the vault. Not awaited: nothing on screen
   // waits on it, and every read of a secret performs the same move if this has not finished.
   void secureIdentitySecrets().catch((e: unknown) => console.warn("[potyro] could not secure identity keys:", e));
+
+  // A demo link opens its app and nothing else: no examples seeded, no account read, no launcher.
+  const demo = readDemoLink(location.pathname, location.hash);
+  if (demo) return bootDemo(root, demo);
 
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the

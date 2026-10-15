@@ -22,6 +22,7 @@ import { personHue, personInitials } from "@potyro/runtime";
 import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
+import { ShareSheet } from "./share-sheet.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
 import { LookPanel } from "./look-panel.js";
 import { DatabaseIcon } from "./data-icon.js";
@@ -410,6 +411,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
   const [promoting, setPromoting] = useState<UserApp | null>(null);
+  // Share (docs/24): a link anyone can try, or an invite to use it together.
+  const [sharing, setSharing] = useState<UserApp | null>(null);
   // The tile editor (#83): this device's name, icon and colour for an app.
   const [editing, setEditing] = useState<InstalledApp | null>(null);
   // You and your other devices — reachable from every launcher, nagged from none.
@@ -654,7 +657,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         onEditTile: () => setEditing(a),
         onHistory: () => setHistory(a.user),
         onSync: () => void toggleSync(a.user),
-        onShare: () => void share(a.user),
+        onShare: () => setSharing(a.user),
         onRename: () => void rename(a.user),
         onDuplicate: () => void duplicate(a.user),
         onDelete: () => void del(a.user),
@@ -707,6 +710,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
       {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -943,6 +947,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}
           {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
           {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
+          {/* The switcher is its own tree: Share from a tile here needs its sheet here too (docs/24). */}
+          {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
         </div>
       </div>
     );
