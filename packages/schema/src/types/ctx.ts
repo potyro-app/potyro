@@ -171,14 +171,8 @@ export interface CtxUi {
   /** A progress bar for a long action. */
   progress(label: Words): UiProgress;
   /**
-   * Hand words and/or a link to the person to send on: the device's share sheet where there is one,
-   * and a dialog that shows what will be sent with a Copy button everywhere. The person chooses where
-   * it goes, so it needs no permission. `true` once it was copied or handed to the share sheet,
-   * `false` when they closed it without either. `url` must be http(s).
-   *
-   * ```ts
-   * await ctx.ui.share({ title: { en: "Share your result" }, text: "Daily #12 4/6\n🟩🟨⬛⬛🟩" });
-   * ```
+   * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
+   * picks where, so no permission. `true` when copied or shared, `false` when closed.
    */
   share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
 }
