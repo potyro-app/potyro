@@ -159,13 +159,13 @@ export default defineApp({
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
 
   // The mark at the top is a button now.
-  await page.getByRole("button", { name: "Runs in a sandbox: review" }).click();
-  await expect(page.getByRole("heading", { name: "Promote to trusted?" })).toBeVisible();
+  await page.getByRole("button", { name: "Runs sealed: review" }).click();
+  await expect(page.getByRole("heading", { name: "Let it run as yours?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
 
   // And the screen that needs trust asks for it itself.
   await page.getByRole("button", { name: "Run it as mine…" }).click();
-  await page.getByRole("button", { name: "Promote to trusted" }).click();
+  await page.getByRole("button", { name: "Yes, run it as yours" }).click();
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
   await expect(page.getByText("Hello from my own code")).toBeVisible();
 });

@@ -99,7 +99,7 @@ test("share → join → the guest writes → the owner shares AGAIN", async ({ 
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click(); // trust prompt
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click(); // trust prompt
   await answerNamePrompt(b);
   await expect(b.locator("h1").first()).toHaveText("Share Flow", { timeout: 60_000 });
   await expect(b.locator(".k-list-row", { hasText: "Miradouro" })).toBeVisible({ timeout: 60_000 });

@@ -82,11 +82,11 @@ describe("Launcher", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Actions for Garden/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Let it run as yours" }));
-    const dialog = screen.getByRole("dialog", { name: "Promote to trusted?" });
-    expect(dialog.textContent).toContain("Only promote an app you wrote or fully trust.");
+    const dialog = screen.getByRole("dialog", { name: "Let it run as yours?" });
+    expect(dialog.textContent).toContain("Only do this if you made it, or you know and trust whoever did.");
     expect(document.activeElement?.textContent).toBe("Cancel");
     fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(screen.queryByRole("dialog", { name: "Promote to trusted?" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Let it run as yours?" })).toBeNull();
     // Nothing changed by looking.
     expect(JSON.parse(localStorage.getItem("potyro:user-apps")!).find((a: UserApp) => a.id === "garden").trusted).toBe(false);
   });

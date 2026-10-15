@@ -67,13 +67,13 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await page.locator(".k-prov-btn").click();
   const trust = page.locator(".k-trustdialog");
   await expect(trust).toBeVisible();
-  await trust.getByRole("button", { name: "Revoke trust" }).click();
+  await trust.getByRole("button", { name: "Put it back in the sealed box" }).click();
   await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
   // Promote untrusted → trusted: the badge is actionable → a trust prompt → runs DIRECTLY on reload.
   await page.locator(".k-prov-btn").click();
-  await page.locator(".k-trustdialog").getByRole("button", { name: "Promote to trusted" }).click();
+  await page.locator(".k-trustdialog").getByRole("button", { name: "Yes, run it as yours" }).click();
   // Re-runs the saved source as a real module. h1 still renders → it executed.
   await expect(page.locator("h1").first()).toHaveText("My App", { timeout: 30_000 });
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });

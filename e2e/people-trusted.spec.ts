@@ -43,7 +43,7 @@ const openPeople = async (page: Page) => {
 
 async function join(page: Page, link: string, name: string): Promise<void> {
   await page.goto(link);
-  await page.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click(); // trust
+  await page.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click(); // trust
   await answerNamePrompt(page, name);
   await expect(page.locator("h1").first()).toHaveText("People App", { timeout: 60_000 });
 }
@@ -133,7 +133,7 @@ test("the owner removes someone, who then gets nothing new and cannot rejoin wit
   const ctxD = await browser.newContext();
   const d = await device(ctxD);
   await d.goto(oldLink);
-  await d.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await d.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(d, "Dee");
   await expect(d.locator("body")).toContainText(/Could not join/, { timeout: 60_000 });
 

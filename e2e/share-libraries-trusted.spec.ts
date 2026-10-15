@@ -113,7 +113,7 @@ async function sharedSummer(page: Page, opts: { withModule: boolean; beforeShari
 /** Join from the link, sandboxed, and return the question about the library. */
 async function join(page: Page, link: string) {
   await page.goto(link);
-  await page.locator(".k-dialog").getByRole("button", { name: /Join, keep sandboxed/ }).click();
+  await page.locator(".k-dialog").getByRole("button", { name: /Join, keep it sealed/ }).click();
   await answerNamePrompt(page);
   const ask = page.locator(".k-dialog", { hasText: "needs fancy-sum 1.2.3 on this device" });
   await expect(ask).toBeVisible({ timeout: 60_000 });
