@@ -1,4 +1,4 @@
-import { test, expect, type Route } from "@playwright/test";
+import { test, expect, type Route } from "./console-guard";
 
 // Ask's review (#213), with the model stubbed. Every proposed record is checked against what the
 // search actually returned: two sites confirm one, one site only another, nothing names a third.

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { installShared } from "./realm.js";
 
 // Shared apps' logic runs in the browser realm (#272, docs/22 phase 1): a Worker inside an

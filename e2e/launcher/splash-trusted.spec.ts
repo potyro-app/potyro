@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 import { seed } from "./fixture.js";
 
 // What is on screen while an app opens (#89).

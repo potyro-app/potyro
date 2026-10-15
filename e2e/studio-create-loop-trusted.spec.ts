@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, openFromCard, openNewStudio } from "./studio-helpers.js";
 
 // A new app through the create loop (#262 phase 3), end to end with a scripted OpenRouter. The first

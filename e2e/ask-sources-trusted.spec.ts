@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Ask's data sources (#213), in a browser, with the model and the APIs stubbed. The app declares a
 // source that needs a key; the person pastes it once and it is still there after a reload (the

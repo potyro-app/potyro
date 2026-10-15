@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { consoleGuard, foreignHosts, makeDemoLink, stranger } from "./share-demo";
+import { test, expect } from "./console-guard";
+import { foreignHosts, makeDemoLink, stranger } from "./share-demo";
 
 // Every shared link is a working demo (docs/24). Someone who has never used Potyro opens the link and
 // is using the app within seconds: sealed, on its sample records — never the sharer's — in their own
@@ -21,7 +21,6 @@ test("a stranger opens a demo link: the app runs at once, sealed, demo records o
   expect(decodeURIComponent(link)).not.toContain(SECRET);
 
   const { context, page: viewer } = await stranger(browser, baseURL!, { locale: "pl-PL" });
-  const problems = consoleGuard(viewer);
   const foreign = foreignHosts(context, new URL(baseURL!).hostname);
   const started = Date.now();
   await viewer.goto(link);
@@ -49,14 +48,12 @@ test("a stranger opens a demo link: the app runs at once, sealed, demo records o
   expect(JSON.parse(stored.counts ?? "{}")).toEqual({ "demo-opened": 1 });
 
   expect(foreign).toEqual([]);
-  expect(problems).toEqual([]);
   await context.close();
 });
 
 test("Keep this app goes through the Add-an-app card, as a link: sealed, never “I wrote this”", async ({ page, browser, baseURL }) => {
   const link = await makeDemoLink(page, "Groceries");
   const { context, page: viewer } = await stranger(browser, baseURL!);
-  const problems = consoleGuard(viewer);
   await viewer.goto(link);
   await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
 
@@ -74,6 +71,5 @@ test("Keep this app goes through the Add-an-app card, as a link: sealed, never �
   await expect(viewer.getByRole("checkbox", { name: "Milk" })).toBeVisible();
   const apps = await viewer.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; trusted?: boolean }>);
   expect(apps.find((a) => a.id === "groceries")?.trusted).toBe(false);
-  expect(problems).toEqual([]);
   await context.close();
 });
