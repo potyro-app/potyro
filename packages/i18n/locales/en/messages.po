@@ -848,6 +848,10 @@ msgstr "<0>This part of the app hit a problem:</0> {text}"
 msgid "📍 Use my location"
 msgstr "📍 Use my location"
 
+#: ../shell/src/share-sheet.tsx
+msgid "A 15-second clip"
+msgstr "A 15-second clip"
+
 #: ../shell/src/studio-engine.ts
 msgid "A change passed the check."
 msgstr "A change passed the check."
@@ -4348,9 +4352,17 @@ msgstr "Recent"
 msgid "Recommended balance"
 msgstr "Recommended balance"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Record a clip"
+msgstr "Record a clip"
+
 #: ../views/src/media-input.tsx
 msgid "Record audio"
 msgstr "Record audio"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Record the app as it is on your screen, to post as a video. Nothing is uploaded: you get a file."
+msgstr "Record the app as it is on your screen, to post as a video. Nothing is uploaded: you get a file."
 
 #. Status: a bug report is being recorded
 #. Status: a bug report is being recorded
@@ -4358,6 +4370,11 @@ msgstr "Record audio"
 #: ../shell/src/chrome.tsx
 msgid "Recording"
 msgstr "Recording"
+
+#. While a clip of the app is recorded; left is seconds
+#: ../shell/src/share-sheet.tsx
+msgid "Recording · {left} s"
+msgstr "Recording · {left} s"
 
 #: ../shell/src/main.tsx
 msgid "Reinstall its files"
@@ -4680,6 +4697,14 @@ msgstr "Save note"
 msgid "Save one thing"
 msgstr "Save one thing"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Save the clip"
+msgstr "Save the clip"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Saved {file}."
+msgstr "Saved {file}."
+
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "Saved {packed}. Send it to someone, and they add it with “Add an app”."
@@ -4754,6 +4779,11 @@ msgstr "Send"
 #: ../shell/src/fix-panel.tsx
 msgid "Send answer"
 msgstr "Send answer"
+
+#. Share sheet: the chat apps a link can be sent with
+#: ../shell/src/share-sheet.tsx
+msgid "Send it with"
+msgstr "Send it with"
 
 #: ../shell/src/people-panel.tsx
 msgid "Send this link. Whoever opens it can see your app, but not change it."
@@ -4995,8 +5025,10 @@ msgstr "Steps"
 
 #. Ask: stop the request
 #. Button: stop the fix agent
+#. Stop recording the clip
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
+#: ../shell/src/share-sheet.tsx
 msgid "Stop"
 msgstr "Stop"
 
@@ -5282,6 +5314,14 @@ msgstr "The app's source"
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
 msgstr "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip could not be recorded: {why}"
+msgstr "The clip could not be recorded: {why}"
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip is ready."
+msgstr "The clip is ready."
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "The conversation about this app"
@@ -5575,6 +5615,10 @@ msgstr "this app's pages aren't a plain array"
 msgid "This board needs an enum field for its columns."
 msgstr "This board needs an enum field for its columns."
 
+#: ../shell/src/share-sheet.tsx
+msgid "This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds."
+msgstr "This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds."
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "This browser has no secure store, so keys are kept only until you close this page."
 msgstr "This browser has no secure store, so keys are kept only until you close this page."
@@ -5788,6 +5832,11 @@ msgstr "Trusted app"
 #: ../shell/src/trust-dialog.tsx
 msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
 msgstr "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
+
+#. The words sent with a demo link in a chat
+#: ../shell/src/share-sheet.tsx
+msgid "Try {name}, made with Potyro"
+msgstr "Try {name}, made with Potyro"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
@@ -6249,6 +6298,10 @@ msgstr "Your apps are open in one tab at a time, so nothing you change in one is
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Your apps on this account"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Your browser will ask what to record: choose this tab."
+msgstr "Your browser will ask what to record: choose this tab."
 
 #: ../shell/src/launcher.tsx
 msgid "Your data"
