@@ -189,13 +189,18 @@ function RowCard({
         )}
         <div className="k-row-body" ref={focusFirst}>
           {head ? (
-            <FieldInput
-              runtime={runtime}
-              field={head[1]}
-              value={row[head[0]]}
-              onChange={(v) => onUpdate(head[0], v)}
-              label={head[1].label ?? humanizeKey(head[0])}
-            />
+            // The line's own field shows no label (the card reads as its value), but a screen reader
+            // still needs one: without it the box was named by its placeholder, or by nothing.
+            <label className="k-row-head">
+              <span className="k-visually-hidden">{head[1].label ?? humanizeKey(head[0])}</span>
+              <FieldInput
+                runtime={runtime}
+                field={head[1]}
+                value={row[head[0]]}
+                onChange={(v) => onUpdate(head[0], v)}
+                label={head[1].label ?? humanizeKey(head[0])}
+              />
+            </label>
           ) : null}
           {rest.length ? <div className="k-row-sub">{rest.map(([key, f]) => sub(key, f))}</div> : null}
         </div>
