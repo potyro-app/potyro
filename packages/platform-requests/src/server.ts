@@ -6,8 +6,9 @@
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
 // Behind Apache, on the same origin as the site (`/requests/` → here), so the site's gate covers it
-// and the browser needs no CORS. The sender's address is the first `X-Forwarded-For` entry, which
-// the proxy sets; bound to loopback, nothing else can set it.
+// and the browser needs no CORS. The sender's address is the LAST `X-Forwarded-For` entry:
+// Apache appends the real peer, and anything before it is whatever the client sent (#348). Bound to
+// loopback, only the proxy reaches it.
 
 import { createServer, type Server } from "node:http";
 import { pathToFileURL } from "node:url";
@@ -29,7 +30,7 @@ export function startServer(opts: { handle: (req: RelayRequest) => Promise<Relay
       else chunks.push(chunk);
     });
     req.on("end", () => {
-      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]!.trim();
+      const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",").pop()!.trim();
       const reply = (r: RelayResponse): void => {
         res.writeHead(r.status, { "content-type": "application/json", "cache-control": "no-store" });
         res.end(JSON.stringify(r.body));
