@@ -166,6 +166,16 @@ importers:
         specifier: ^18.3.12
         version: 18.3.31
 
+  apps/poster-event:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
+
   apps/receipt-split:
     dependencies:
       potyro:
