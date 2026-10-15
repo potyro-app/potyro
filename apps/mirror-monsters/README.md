@@ -5,7 +5,8 @@ The selfie camera as a mirror, with a monster in it. Five monsters:
 - **Monster** 👹 — horns, googly eyes and a fanged grin that sit on your face and wobble when you
   move. Tap the picture for a new colour.
 - **Twin** 🪞 — the left half of the picture mirrored onto the right: one face, two left sides.
-- **Kaleido** 🔮 — six or eight mirrors, slowly turning.
+- **Kaleido** 🔮 — one slice of the picture around your face, reflected into eight, ten or twelve
+  mirrors (tap the picture for more), slowly turning and drifting.
 - **Trails** ✨ — neon sparks wherever something moved.
 - **Pixel** 👾 — an 8-bit monster in a handheld console's palette.
 

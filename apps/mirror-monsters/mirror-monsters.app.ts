@@ -25,9 +25,13 @@ import {
   rng,
   snapPath,
   sparkle,
-  wedges,
+  MIRRORS,
+  moreMirrors,
+  sample,
+  segment,
   wobble,
   type Box,
+  type Mirrors,
   type Mode,
   type Pupil,
   type Spark,
@@ -184,6 +188,14 @@ const W = {
     pl: "Kamera jako lustro, z potworem w środku. Stuknij, by zmienić kolor.",
     it: "La fotocamera come specchio, con un mostro dentro. Tocca per un nuovo colore.",
   },
+  canvasKaleido: {
+    en: "The camera as a kaleidoscope. Tap for more mirrors.",
+    "pt-BR": "A câmera como caleidoscópio. Toque para mais espelhos.",
+    de: "Die Kamera als Kaleidoskop. Tippen für mehr Spiegel.",
+    es: "La cámara como caleidoscopio. Toca para más espejos.",
+    pl: "Kamera jako kalejdoskop. Stuknij, by dodać lustra.",
+    it: "La fotocamera come caleidoscopio. Tocca per più specchi.",
+  },
 } satisfies Record<string, Words>;
 
 // ---- small helpers ----
@@ -202,6 +214,7 @@ interface Prefs {
   mode: Mode;
   hue: number;
   started: boolean;
+  mirrors?: number;
 }
 
 /** What a refused `live()` says to the person, by its `code`. */
@@ -331,9 +344,13 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
   const tg = thumb.getContext("2d", { willReadFrequently: true })!;
   const pixels = document.createElement("canvas");
   const pg = pixels.getContext("2d", { willReadFrequently: true })!;
+  // The kaleidoscope's one wedge of the picture, drawn once a frame and stamped into every segment.
+  const wedge = document.createElement("canvas");
+  const wg = wedge.getContext("2d")!;
 
   let mode: Mode = "monster";
   let hue = 280;
+  let mirrors: Mirrors = MIRRORS[0];
   let startedBefore = false;
   let facing: "user" | "environment" = "user";
   let cam: LiveCamera | null = null;
@@ -357,8 +374,11 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
   let t = 0;
   const random = rng(Date.now() & 0xffff);
 
-  const showMode = () => modeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
-  const savePrefs = () => void ctx.storage.set(PREFS, { mode, hue, started: startedBefore } satisfies Prefs).catch(() => undefined);
+  const savePrefs = () => void ctx.storage.set(PREFS, { mode, hue, started: startedBefore, mirrors } satisfies Prefs).catch(() => undefined);
+  const showMode = () => {
+    modeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    canvas.setAttribute("aria-label", ctx.t(mode === "kaleido" ? W.canvasKaleido : W.canvas));
+  };
 
   // ---- size: as wide as the page; on a phone as tall as the room under it, portrait ----
   const probe = h("div", {});
@@ -404,6 +424,68 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     return { x: facing === "user" ? Wpx - x - bw : x, y, w: bw, h: bh };
   };
 
+  /**
+   * The kaleidoscope (monsters.ts has its geometry): one wedge of the picture — a slowly turning,
+   * drifting circle around the face — drawn into a small canvas, then stamped into every segment,
+   * every other one mirrored. One clip a frame, not one per segment, and the stamps are plain image
+   * draws, so it holds a phone's frame rate. The wedge reaches a pixel past both of its edges, all
+   * the way to the centre: the neighbours overlap on the reflection lines, where they show the same
+   * pixels, and no seam of background shows through between them.
+   */
+  const drawKaleido = (video: HTMLVideoElement) => {
+    const n = mirrors;
+    const a = (Math.PI * 2) / n;
+    // Far enough that the wedge's straight outer edge still reaches past the stage's corners.
+    const R = (Math.hypot(Wpx, Hpx) / 2 + 2) / Math.cos(a / 2);
+    const scale = Math.min(dpr, 1.5, 900 / R); // wedge pixels per stage pixel
+    const o = 1; // how far, in stage pixels, the wedge reaches past each edge — the same at the centre as at the rim
+    const nx = -Math.sin(a);
+    const ny = Math.cos(a);
+    const apex = (-o * (1 + Math.cos(a))) / Math.sin(a);
+    const pad = Math.ceil(o * scale) + 1;
+    const tw = Math.ceil((R + o) * scale) + 1;
+    const th = Math.ceil((R * Math.sin(a) + 2 * o) * scale) + pad + 1;
+    const left = Math.floor(Math.min(0, apex, R * Math.cos(a) + o * nx) * scale) - 1;
+    if (wedge.width !== tw - left || wedge.height !== th) {
+      wedge.width = tw - left;
+      wedge.height = th;
+    }
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+    const still = reducedMotion();
+    const centre = { x: face.x + face.w / 2, y: face.y + face.h * 0.45 };
+    const s = sample(t, centre, vw, vh, still);
+    wg.setTransform(1, 0, 0, 1, 0, 0);
+    wg.clearRect(0, 0, wedge.width, wedge.height);
+    wg.save();
+    wg.setTransform(scale, 0, 0, scale, -left, pad);
+    wg.beginPath();
+    wg.moveTo(apex, -o);
+    wg.lineTo(R, -o);
+    wg.lineTo(R * Math.cos(a) + o * nx, R * Math.sin(a) + o * ny);
+    wg.closePath();
+    wg.clip();
+    const k = R / s.radius;
+    wg.scale(k, k);
+    wg.rotate(-s.turn);
+    if (facing === "user") wg.scale(-1, 1);
+    wg.translate(-s.cx, -s.cy);
+    wg.drawImage(video, 0, 0, vw, vh);
+    wg.restore();
+
+    g.fillStyle = "#140a24";
+    g.fillRect(0, 0, Wpx, Hpx);
+    for (let i = 0; i < n; i++) {
+      const seg = segment(i, n);
+      g.save();
+      g.translate(Wpx / 2, Hpx / 2);
+      g.rotate(seg.angle);
+      if (seg.flip) g.scale(1, -1);
+      g.drawImage(wedge, left / scale, -pad / scale, wedge.width / scale, wedge.height / scale);
+      g.restore();
+    }
+  };
+
   const drawFrame = (video: HTMLVideoElement, time: number) => {
     const dt = lastTime ? Math.max(1, Math.min(100, time - lastTime)) : 33;
     lastTime = time;
@@ -430,28 +512,8 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     }
 
     if (mode === "kaleido") {
-      const n = wedges(Wpx);
-      const r = Math.hypot(Wpx, Hpx) / 2 + 2;
-      const a = (Math.PI * 2) / n;
-      const turn = reducedMotion() ? 0 : t * 0.00012;
-      g.fillStyle = "#140a24";
-      g.fillRect(0, 0, Wpx, Hpx);
-      for (let i = 0; i < n; i++) {
-        g.save();
-        g.translate(Wpx / 2, Hpx / 2);
-        g.rotate(i * a + turn);
-        if (i % 2) g.scale(1, -1);
-        g.beginPath();
-        g.moveTo(0, 0);
-        g.lineTo(r, 0);
-        g.lineTo(r * Math.cos(a) + 1, r * Math.sin(a) + 1);
-        g.closePath();
-        g.clip();
-        g.rotate(-turn);
-        g.translate(-Wpx / 2, -Hpx / 2);
-        drawCamera(video);
-        g.restore();
-      }
+      face = follow(face, findFace(small, THUMB_W, THUMB_H), dt);
+      drawKaleido(video);
       return;
     }
 
@@ -610,6 +672,12 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     }),
   );
   canvas.addEventListener("click", () => {
+    if (mode === "kaleido" && cam) {
+      mirrors = moreMirrors(mirrors);
+      savePrefs();
+      void ctx.caps.haptics?.vibrate(8);
+      return;
+    }
     hue = (hue + 67) % 360;
     pupils = [
       { ...pupils[0], vy: pupils[0].vy - 4, vx: pupils[0].vx + 2 },
@@ -665,6 +733,8 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
       if (!alive) return;
       if (prefs && isMode(prefs.mode)) mode = prefs.mode;
       if (prefs && Number.isFinite(prefs.hue)) hue = prefs.hue % 360;
+      const m = MIRRORS.find((x) => x === prefs?.mirrors);
+      if (m) mirrors = m;
       startedBefore = prefs?.started === true;
       showMode();
       // Opened before and turned on then: turning it on again is what opening the mirror means. The

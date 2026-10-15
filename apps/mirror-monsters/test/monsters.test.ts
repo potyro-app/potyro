@@ -15,7 +15,11 @@ import {
   rng,
   snapPath,
   sparkle,
-  wedges,
+  MIRRORS,
+  moreMirrors,
+  placed,
+  sample,
+  segment,
   wobble,
   type Box,
 } from "../monsters.js";
@@ -154,12 +158,62 @@ describe("cover", () => {
   });
 });
 
-describe("names", () => {
-  it("has more mirrors on a big screen", () => {
-    expect(wedges(390)).toBe(6);
-    expect(wedges(1200)).toBe(8);
+describe("the kaleidoscope", () => {
+  const TAU = Math.PI * 2;
+  const norm = (v: number) => ((v % TAU) + TAU) % TAU;
+
+  it("fills every segment: the n placed wedges cover the whole circle, none twice", () => {
+    for (const n of MIRRORS) {
+      const a = TAU / n;
+      const covered = new Array<number>(n).fill(0);
+      for (let k = 0; k < n; k++) {
+        // The wedge's middle lands inside exactly one segment — k's own.
+        const mid = norm(placed(k, n, a / 2));
+        covered[Math.floor(mid / a)]!++;
+        expect(Math.floor(mid / a), `n=${n} k=${k}`).toBe(k);
+      }
+      expect(covered).toEqual(new Array(n).fill(1));
+    }
   });
 
+  it("is seamless: neighbours show the same edge of the sample on the line they share", () => {
+    for (const n of MIRRORS) {
+      const a = TAU / n;
+      for (let k = 0; k < n; k++) {
+        const next = (k + 1) % n;
+        // Which edge of the wedge (0 or a) each side puts on the shared line (k+1)·a.
+        const mine = [0, a].find((th) => Math.abs(norm(placed(k, n, th)) - norm((k + 1) * a)) < 1e-9 || Math.abs(norm(placed(k, n, th)) - norm((k + 1) * a)) > TAU - 1e-9);
+        const theirs = [0, a].find((th) => Math.abs(norm(placed(next, n, th)) - norm((k + 1) * a)) < 1e-9 || Math.abs(norm(placed(next, n, th)) - norm((k + 1) * a)) > TAU - 1e-9);
+        expect(mine, `n=${n} k=${k}`).toBeDefined();
+        expect(mine).toBe(theirs);
+      }
+    }
+  });
+
+  it("mirrors every other segment, and an even count closes the circle", () => {
+    for (const n of MIRRORS) {
+      expect(n % 2).toBe(0);
+      expect(segment(0, n).flip).toBe(false);
+      expect(segment(1, n).flip).toBe(true);
+    }
+    expect(moreMirrors(8)).toBe(10);
+    expect(moreMirrors(12)).toBe(8);
+  });
+
+  it("samples around the face, drifting and turning, and never past the picture's edge", () => {
+    const at = sample(0, { x: 0.3, y: 0.4 }, 640, 480, true);
+    expect(at.cx).toBeCloseTo(Math.max(0.3 * 640, at.radius));
+    expect(at.turn).toBe(0);
+    for (let t = 0; t < 120_000; t += 997) {
+      const s = sample(t, { x: 0.02, y: 0.98 }, 640, 480);
+      expect(s.cx - s.radius).toBeGreaterThanOrEqual(0);
+      expect(s.cy + s.radius).toBeLessThanOrEqual(480);
+    }
+    expect(sample(5_000, null, 640, 480).turn).not.toBe(sample(0, null, 640, 480).turn);
+  });
+});
+
+describe("names", () => {
   it("files a snap by mode and moment, so two never collide", () => {
     const at = new Date(2026, 9, 15, 9, 5, 7, 42);
     expect(snapPath("twin", at)).toBe("snaps/twin-20261015-090507-042.png");

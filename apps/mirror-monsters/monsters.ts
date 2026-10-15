@@ -236,8 +236,59 @@ export function cover(vw: number, vh: number, w: number, h: number): { sx: numbe
   return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh };
 }
 
-/** How many mirrors the kaleidoscope has, by how wide the stage is: more on a big screen. */
-export const wedges = (w: number): number => (w < 520 ? 6 : 8);
+// ---- the kaleidoscope ----
+//
+// A real one: ONE triangular sample of the picture, reflected into every segment. Segment k of n
+// covers the angles [k·a, (k+1)·a] (a = 2π/n); the even ones show the sample as it is, the odd ones
+// its mirror image, so neighbours meet on a reflection line and the edges are seamless. n is even, or
+// the last segment would meet the first unmirrored.
+
+/** The mirror counts a tap cycles through. */
+export const MIRRORS = [8, 10, 12] as const;
+export type Mirrors = (typeof MIRRORS)[number];
+
+/** The next mirror count after `n` (and back to the first). */
+export const moreMirrors = (n: number): Mirrors => MIRRORS[(MIRRORS.indexOf(n as Mirrors) + 1) % MIRRORS.length]!;
+
+/**
+ * How segment `k` of `n` places the sample's wedge — the wedge lies between the angles 0 and a:
+ * rotate by `angle`, then, when `flip`, mirror across the rotated x-axis. A mirrored wedge has to be
+ * rotated to its segment's FAR edge: mirrored at its near edge it lands on the segment before it,
+ * and every other segment stays empty (the black wedges a phone showed).
+ */
+export function segment(k: number, n: number): { angle: number; flip: boolean } {
+  const a = (Math.PI * 2) / n;
+  return k % 2 ? { angle: (k + 1) * a, flip: true } : { angle: k * a, flip: false };
+}
+
+/** Where `segment(k, n)` puts the wedge's angle `theta` (0..a) on the stage. */
+export function placed(k: number, n: number, theta: number): number {
+  const s = segment(k, n);
+  return s.angle + (s.flip ? -theta : theta);
+}
+
+/** The piece of the camera's picture the kaleidoscope reflects: a circle's centre and radius, and how far it has turned (video pixels, radians). */
+export interface Sample {
+  cx: number;
+  cy: number;
+  radius: number;
+  turn: number;
+}
+
+/**
+ * The sample at time `t` (ms): around the face when there is one (`centre`, fractions of the frame)
+ * or the middle, drifting in a slow figure and turning about once in 40 s, so it feels alive. The
+ * whole circle stays inside the picture, so no turn of it ever shows the edge of the frame.
+ */
+export function sample(t: number, centre: { x: number; y: number } | null, vw: number, vh: number, still = false): Sample {
+  const m = Math.min(vw, vh);
+  const radius = m * 0.36;
+  const drift = still ? 0 : m * 0.05;
+  const x = (centre?.x ?? 0.5) * vw + Math.sin(t * 0.00031) * drift;
+  const y = (centre?.y ?? 0.5) * vh + Math.sin(t * 0.00023 + 1) * drift;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  return { cx: clamp(x, radius, vw - radius), cy: clamp(y, radius, vh - radius), radius, turn: still ? 0 : (t * 0.00016) % (Math.PI * 2) };
+}
 
 /** The file a snap is kept in: its mode and the moment, so two never collide. */
 export function snapPath(mode: Mode, at: Date): string {
