@@ -57,6 +57,8 @@ export interface UiBridge {
   menu?<T>(opts: { title?: string; items: ShownUiItem<T>[] }): Promise<T | null>;
   form?(opts: { title: string; fields: Record<string, Localized<Field>>; initial?: Record<string, unknown>; submit?: string }): Promise<Record<string, unknown> | null>;
   progress?(label: string): UiProgress;
+  /** `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`). */
+  share?(opts: { text?: string; url?: string; title?: string }): Promise<boolean>;
 }
 
 /** What the shell provides to build `ctx.navigate`. */

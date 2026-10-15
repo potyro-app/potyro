@@ -53,6 +53,10 @@ export default defineApp({
           await ctx.create("note", v);
           ctx.ui.toast(`Added ${v.title} (${v.colour}${v.pinned ? ", pinned" : ""})`);
         },
+        shareIt: async (n, ctx) => {
+          const sent = await ctx.ui.share({ title: "Send this note", text: `${n.title}\n🟩🟨⬛`, url: "https://example.org/note" });
+          ctx.ui.toast(sent ? "Sent" : "Not sent");
+        },
         badForm: async (_n, ctx) => {
           try {
             await ctx.ui.form({ title: "Broken", fields: { when: { type: "calendar" } as never } });
@@ -65,6 +69,6 @@ export default defineApp({
   },
   pages: [
     { id: "notes", title: "Notes", view: { type: "list", entity: "note", display: { primary: "title", badges: ["colour"] }, onOpen: { page: "note", param: { noteId: "id" } } } },
-    { id: "note", title: "Note", hidden: true, view: { type: "detail", entity: "note", param: "noteId", actions: ["recolour", "importDemo", "quickNote", "badForm"] } },
+    { id: "note", title: "Note", hidden: true, view: { type: "detail", entity: "note", param: "noteId", actions: ["recolour", "importDemo", "quickNote", "shareIt", "badForm"] } },
   ],
 });

@@ -165,7 +165,8 @@ interface Ctx {
         sheet<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
         menu<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
         form<T>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
-        progress(label: Words): { update(fraction: number, detail?: string): void; done(): void }; };
+        progress(label: Words): { update(fraction: number, detail?: string): void; done(): void };
+        share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>; };   // true = copied / handed on
   // UiItem<T> = { id: T; label: Words; detail?: Words; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
@@ -188,6 +189,7 @@ what a trusted one does, with no permission prompt — none of them reach outsid
 | `menu({ title, items })` | bottom sheet | hangs under the button that ran the action (a centred panel when there is none) |
 | `form({ title, fields, initial, submit })` | full-screen form sheet | centred form |
 | `progress(label)` | a bar above the tab bar | a bar at the bottom centre |
+| `share({ text, url, title })` | dialog showing what will be sent: **Share…** (the system sheet) and **Copy** | the same dialog; **Copy** (and **Share…** where the browser has one) |
 
 - **Items.** A `destructive` item is always shown last, after a separator, in the danger colour —
   whatever order the app listed it in. Arrow keys, Home/End and Escape work; dismissing answers `null`.
@@ -197,6 +199,10 @@ what a trusted one does, with no permission prompt — none of them reach outsid
   the same way. The answer is the raw values: a relation's id, a number as a number.
 - **Progress.** `update(fraction, detail?)` moves the bar (`detail` replaces the percentage, e.g. "24 of
   40"); `done()` removes it. It is announced as a progress bar.
+- **Share.** For a result, a message or a link the person sends on themselves ("Daily #12 4/6" and its
+  grid; an invite from `ctx.space.invite()`). They choose where it goes — the share sheet or the
+  clipboard — so it needs no permission and works the same sealed. `url` must be http(s), `text` at
+  most 10,000 characters; the answer is `true` once it was copied or handed on.
 - **Untrusted apps.** A question does not hold the sealed box: while a form is open the page keeps
   rendering, and the call's time budget pauses until it is answered.
 
