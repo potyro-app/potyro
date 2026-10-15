@@ -2,7 +2,7 @@
   "name": "@potyro/native",
   "version": "0.0.0",
   "type": "module",
-  "description": "Capacitor target (WP8 / KA-03): native capability impls (exact notifications, camera, geo, filesystem) + composition-root selection.",
+  "description": "Capacitor target, Android + iOS (WP8 / KA-03): native capability impls (exact notifications, camera, geo, filesystem) + composition-root selection.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -15,7 +15,11 @@
     "cap:sync": "cap sync android && node scripts/patch-manifest.mjs && node scripts/pin-gradle.mjs",
     "cap:copy": "cap copy android",
     "cap:open": "cap open android",
-    "android": "pnpm --filter @potyro/shell build:web && pnpm cap:sync && pnpm cap:open"
+    "android": "pnpm --filter @potyro/shell build:web && pnpm cap:sync && pnpm cap:open",
+    "cap:add:ios": "cap add ios && node scripts/patch-plist.mjs",
+    "cap:sync:ios": "cap sync ios && node scripts/patch-plist.mjs",
+    "cap:open:ios": "cap open ios",
+    "ios": "pnpm --filter @potyro/shell build:web && pnpm cap:sync:ios && pnpm cap:open:ios"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",
@@ -33,6 +37,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^8.4.2",
-    "@capacitor/cli": "^8.4.2"
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/ios": "^8.4.2"
   }
 }

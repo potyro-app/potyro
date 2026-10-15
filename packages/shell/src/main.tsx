@@ -22,7 +22,7 @@ import { migrateOnLoad } from "./migrate-on-load.js";
 import { getLaunchUrl, onUrlOpen, systemLanguages } from "@potyro/native";
 import { setSystemLanguages, startI18n } from "@potyro/i18n";
 import { createWebCapabilities, type Capabilities } from "@potyro/capabilities";
-import { isOpenedFile, listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault, nameFromUri } from "@potyro/native";
+import { isOpenedFile, keepStorage, listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault, nameFromUri } from "@potyro/native";
 import { setSourceHttp } from "./ask-sources.js";
 import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@potyro/identity";
 import type { Provenance } from "@potyro/host";
@@ -795,6 +795,9 @@ setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? bro
 void maybeCreateNativeSourceHttp().then((native) => {
   if (native) setSourceHttp(native.http);
 });
+// On a device the WebView's storage IS the person's data: ask WebKit / Android's WebView not to evict
+// it under storage pressure (docs/27 §3.1). A no-op in a browser.
+void keepStorage();
 
 /**
  * Offer the apps on your account that are missing here.
