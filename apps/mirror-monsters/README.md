@@ -2,9 +2,11 @@
 
 The selfie camera as a mirror, with a monster in it. Five monsters:
 
-- **Monster** 👹 — horns, googly eyes and a fanged grin that sit on your face and wobble when you
-  move. Tap the picture for a new colour.
-- **Twin** 🪞 — the left half of the picture mirrored onto the right: one face, two left sides.
+- **Monster** 👹 — googly eyes on your own eyes (they blink when you blink, and wobble when you
+  move), a fanged mouth on yours that opens when you open it, and horns that tilt with your head. Tap
+  the picture for a new colour.
+- **Twin** 🪞 — the left side of the picture mirrored onto the right, split down your nose: one
+  face, two left sides.
 - **Kaleido** 🔮 — one slice of the picture around your face, reflected into eight, ten or twelve
   mirrors (tap the picture for more), slowly turning and drifting.
 - **Trails** ✨ — neon sparks wherever something moved.
@@ -14,10 +16,12 @@ The round button snaps what is on screen into the **Gallery** (a PNG in the app'
 record); 🔄 switches between the selfie and the back camera.
 
 It is the demo of the live camera (docs/25): `ctx.caps.camera.live()` hands it a playing `<video>`
-and a frame callback, and the app draws each frame on a canvas. It never reaches into the browser for
-the camera itself (CLAUDE.md rule 2), and nothing leaves the device: no network, no model, no library
-fetched. The "face" is the densest skin-tone blob on a 64-pixel thumbnail (`monsters.ts`) — not a
-face detector, which is why a monster will happily sit on your hand.
+and a frame callback, and the app draws each frame on a canvas. It asks for faces too
+(`live({ faces: true })`, docs/25 §Faces): Potyro finds your eyes, mouth, blinks and tilt on the
+device and hands them over with each frame. It never reaches into the browser for the camera itself
+(CLAUDE.md rule 2), and nothing leaves the device. Where faces cannot be found it says so once and
+falls back to the densest skin-tone blob on a 64-pixel thumbnail (`monsters.ts`) — which is why a
+monster will then happily sit on your hand.
 
 **It runs as your own app only.** The live camera is for trusted apps until shared apps get custom
 views (docs/25), and the drawing needs a page. Add it with **I wrote this. Run it as mine.** ticked;
@@ -34,7 +38,7 @@ left unticked, the mirror says so instead of turning the camera on.
 
 ```
 mirror-monsters.app.ts   the app: the Mirror and the Gallery
-monsters.ts              the arithmetic: the face-ish blob, googly eyes, trails, palette, file names
+monsters.ts              the arithmetic: the monster's rig on a face (or the blob), googly eyes, kaleidoscope, trails, palette
 styles.ts                the stylesheet, in the shell's tokens around an always-night stage
 test/                    monsters.ts and the app's shape
 ```
@@ -53,5 +57,8 @@ mine.**, then **Add app**.
 ```
 pnpm --filter @potyro/app-mirror-monsters test
 pnpm --filter @potyro/app-mirror-monsters typecheck
-pnpm e2e e2e/mirror-monsters-trusted.spec.ts   # Chromium's fake camera: frames drawn, Camera on, off on leaving
+pnpm e2e e2e/mirror-monsters-trusted.spec.ts        # Chromium's fake camera: frames drawn, Camera on, off on leaving
+pnpm e2e e2e/mirror-monsters-phone-trusted.spec.ts  # 375/412 px: the kaleidoscope fills every segment; Camera on clear of the name
+pnpm e2e e2e/mirror-faces-trusted.spec.ts           # scripted faces: eyes on eyes, mouth opens, blinks, the fallback
+pnpm e2e e2e/mirror-faces-model-trusted.spec.ts     # the real model on a Mona Lisa fixture: eyes on her eyes
 ```

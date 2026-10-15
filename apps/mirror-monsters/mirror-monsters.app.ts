@@ -1,16 +1,18 @@
 // Mirror Monsters — the selfie camera as a mirror with a monster in it. Googly eyes, horns and fangs
-// that find the face-ish blob in the picture and wobble when you move; a mirror twin; a kaleidoscope;
+// that sit on your own eyes and mouth and wobble when you move; a mirror twin; a kaleidoscope;
 // neon trails wherever you move; an 8-bit monster. Snap keeps the picture in the Gallery.
 //
 // The camera comes live through `ctx.caps.camera.live()` (docs/25) and nothing else: the app never
 // reaches into the browser for it (CLAUDE.md rule 2). The shell shows "Camera on" while it runs, and
 // turns it off when the page is hidden or the app is left — the app hears why, and offers to turn it
-// back on. No model, no network: the "face" is a skin-tone blob on a 64-pixel thumbnail (monsters.ts),
-// which is why a monster happily sits on a hand too. Drawing needs a page, so it runs as your own app.
+// back on. It asks for faces too (`live({ faces: true })`): Potyro finds the person's eyes, mouth and
+// expressions on the device, with no network, and the monster sits on them. Where faces cannot be
+// found it falls back to a skin-tone blob on a 64-pixel thumbnail (monsters.ts) — which is why a
+// monster happily sits on a hand too. Drawing needs a page, so it runs as your own app.
 //
 // In six languages (#303); every language but English is a model's draft (#297).
 import { defineApp } from "potyro";
-import type { Ctx, FileRef, LiveCamera, LiveCameraStop, Resolved, ViewProps, Words } from "potyro";
+import type { Ctx, Face, FileRef, LiveCamera, LiveCameraStop, LiveFrameInfo, Resolved, ViewProps, Words } from "potyro";
 import {
   MODES,
   THUMB_H,
@@ -29,11 +31,16 @@ import {
   moreMirrors,
   sample,
   segment,
+  easeRig,
+  rigFromBox,
+  rigFromFace,
+  stageMapper,
   wobble,
   type Box,
   type Mirrors,
   type Mode,
   type Pupil,
+  type Rig,
   type Spark,
 } from "./monsters.js";
 import { STYLES } from "./styles.js";
@@ -188,6 +195,14 @@ const W = {
     pl: "Kamera jako lustro, z potworem w środku. Stuknij, by zmienić kolor.",
     it: "La fotocamera come specchio, con un mostro dentro. Tocca per un nuovo colore.",
   },
+  noFaces: {
+    en: "The monster can’t see faces on this device, so it follows the colours of your skin instead.",
+    "pt-BR": "O monstro não consegue ver rostos neste aparelho, então segue as cores da sua pele.",
+    de: "Das Monster kann auf diesem Gerät keine Gesichter sehen und folgt stattdessen den Farben deiner Haut.",
+    es: "El monstruo no puede ver caras en este dispositivo, así que sigue los colores de tu piel.",
+    pl: "Potwór nie widzi twarzy na tym urządzeniu, więc podąża za kolorem twojej skóry.",
+    it: "Il mostro non riesce a vedere i volti su questo dispositivo, quindi segue i colori della tua pelle.",
+  },
   canvasKaleido: {
     en: "The camera as a kaleidoscope. Tap for more mirrors.",
     "pt-BR": "A câmera como caleidoscópio. Toque para mais espelhos.",
@@ -233,75 +248,123 @@ interface MonsterLook {
   pupils: [Pupil, Pupil];
 }
 
-/** Horns, googly eyes and a fanged grin on a face box (stage pixels). */
-function drawMonster(g: CanvasRenderingContext2D, b: Box, look: MonsterLook): void {
-  const cx = b.x + b.w / 2;
-  const er = b.w * 0.17;
-  const hornH = b.h * 0.36;
+/**
+ * Horns, googly eyes and a fanged grin, on a rig (monsters.ts): on the person's own eyes and mouth
+ * when the camera found a face, on the skin-tone blob when it did not. Drawn in the head's frame, so
+ * the horns and the grin tilt with it; the eyes shut when the person's do, the mouth opens with theirs.
+ */
+function drawMonster(g: CanvasRenderingContext2D, rig: Rig, look: MonsterLook): void {
+  const w = rig.width;
   const horn = `hsl(${look.hue} 85% 58%)`;
   const hornDark = `hsl(${look.hue} 70% 30%)`;
   g.lineJoin = "round";
   g.lineCap = "round";
-  // Horns: curved, leaning out, with a darker rim.
+
+  // Horns: curved, leaning out, with a darker rim, growing from the forehead.
+  g.save();
+  g.translate(rig.brow.x, rig.brow.y);
+  g.rotate(rig.angle);
+  const hornH = w * 0.42;
   for (const side of [-1, 1]) {
-    const bx = cx + side * b.w * 0.27;
-    const by = b.y + b.h * 0.08;
+    const bx = side * w * 0.27;
     g.beginPath();
-    g.moveTo(bx - side * b.w * 0.09, by + hornH * 0.12);
-    g.quadraticCurveTo(bx + side * b.w * 0.06, by - hornH * 0.55, bx + side * b.w * 0.2, by - hornH);
-    g.quadraticCurveTo(bx + side * b.w * 0.12, by - hornH * 0.25, bx + side * b.w * 0.1, by + hornH * 0.12);
+    g.moveTo(bx - side * w * 0.09, hornH * 0.12);
+    g.quadraticCurveTo(bx + side * w * 0.06, -hornH * 0.55, bx + side * w * 0.2, -hornH);
+    g.quadraticCurveTo(bx + side * w * 0.12, -hornH * 0.25, bx + side * w * 0.1, hornH * 0.12);
     g.closePath();
     g.fillStyle = horn;
     g.fill();
-    g.lineWidth = Math.max(2, b.w * 0.018);
+    g.lineWidth = Math.max(2, w * 0.018);
     g.strokeStyle = hornDark;
     g.stroke();
   }
-  // Googly eyes.
-  for (let i = 0; i < 2; i++) {
-    const ex = cx + (i ? 1 : -1) * b.w * 0.2;
-    const ey = b.y + b.h * 0.4;
+  g.restore();
+
+  // Googly eyes: a white dish, a loose pupil, and a lid that comes down when the person blinks.
+  rig.eyes.forEach((eye, i) => {
+    const { x: ex, y: ey } = eye.at;
+    const er = eye.r;
     g.beginPath();
     g.arc(ex, ey, er, 0, Math.PI * 2);
     g.fillStyle = "#fffdf7";
     g.fill();
+    const p = look.pupils[i]!;
+    if (eye.shut < 0.85) {
+      g.beginPath();
+      g.arc(ex + p.x * er, ey + p.y * er, er * 0.44, 0, Math.PI * 2);
+      g.fillStyle = "#1b1026";
+      g.fill();
+      g.beginPath();
+      g.arc(ex + p.x * er - er * 0.14, ey + p.y * er - er * 0.16, er * 0.12, 0, Math.PI * 2);
+      g.fillStyle = "#ffffff";
+      g.fill();
+    }
+    if (eye.shut > 0.05) {
+      // The lid: the monster's colour, from the top of the eye down to how shut it is.
+      g.save();
+      g.beginPath();
+      g.arc(ex, ey, er, 0, Math.PI * 2);
+      g.clip();
+      g.translate(ex, ey);
+      g.rotate(rig.angle);
+      const edge = -er + eye.shut * er * 2.1;
+      g.fillStyle = horn;
+      g.fillRect(-er - 1, -er - 1, er * 2 + 2, edge + er + 1);
+      g.beginPath();
+      g.moveTo(-er, edge);
+      g.lineTo(er, edge);
+      g.lineWidth = Math.max(2, er * 0.14);
+      g.strokeStyle = hornDark;
+      g.stroke();
+      g.restore();
+    }
+    g.beginPath();
+    g.arc(ex, ey, er, 0, Math.PI * 2);
     g.lineWidth = Math.max(2, er * 0.12);
     g.strokeStyle = "#1b1026";
     g.stroke();
-    const p = look.pupils[i]!;
-    g.beginPath();
-    g.arc(ex + p.x * er, ey + p.y * er, er * 0.44, 0, Math.PI * 2);
-    g.fillStyle = "#1b1026";
-    g.fill();
-    g.beginPath();
-    g.arc(ex + p.x * er - er * 0.14, ey + p.y * er - er * 0.16, er * 0.12, 0, Math.PI * 2);
-    g.fillStyle = "#ffffff";
-    g.fill();
-  }
-  // A grin with two fangs.
-  const my = b.y + b.h * 0.78;
-  const mw = b.w * 0.34;
-  g.beginPath();
-  g.moveTo(cx - mw, my);
-  g.quadraticCurveTo(cx, my + b.h * 0.16, cx + mw, my);
-  g.quadraticCurveTo(cx, my + b.h * 0.07, cx - mw, my);
-  g.closePath();
+  });
+
+  // A grin with two fangs, on the person's mouth, opening as theirs does — a tongue when it is wide.
+  g.save();
+  g.translate(rig.mouth.at.x, rig.mouth.at.y);
+  g.rotate(rig.angle);
+  const mw = rig.mouth.w / 2;
+  const open = rig.mouth.open;
+  const drop = w * (0.16 + open * 0.34);
+  const lift = w * (0.07 - open * 0.1);
+  const lips = new Path2D();
+  lips.moveTo(-mw, 0);
+  lips.quadraticCurveTo(0, drop, mw, 0);
+  lips.quadraticCurveTo(0, lift, -mw, 0);
+  lips.closePath();
   g.fillStyle = "#3a0d24";
-  g.fill();
-  g.lineWidth = Math.max(2, b.w * 0.016);
-  g.strokeStyle = hornDark;
-  g.stroke();
-  for (const side of [-1, 1]) {
-    const fx = cx + side * mw * 0.45;
-    const fy = my + b.h * 0.035;
+  g.fill(lips);
+  if (open > 0.35) {
+    // The tongue, inside the mouth only.
+    g.save();
+    g.clip(lips);
     g.beginPath();
-    g.moveTo(fx - b.w * 0.035, fy);
-    g.lineTo(fx + b.w * 0.035, fy);
-    g.lineTo(fx, fy + b.h * 0.075);
+    g.ellipse(0, drop * 0.48, mw * 0.5, drop * 0.22, 0, 0, Math.PI * 2);
+    g.fillStyle = "#e0507a";
+    g.fill();
+    g.restore();
+  }
+  g.lineWidth = Math.max(2, w * 0.016);
+  g.strokeStyle = hornDark;
+  g.stroke(lips);
+  for (const side of [-1, 1]) {
+    const fx = side * mw * 0.45;
+    const fy = Math.max(0, lift * 0.5) + w * 0.02;
+    g.beginPath();
+    g.moveTo(fx - w * 0.035, fy);
+    g.lineTo(fx + w * 0.035, fy);
+    g.lineTo(fx, fy + w * 0.075);
     g.closePath();
     g.fillStyle = "#fffdf7";
     g.fill();
   }
+  g.restore();
 }
 
 // ---- the mirror ----
@@ -362,6 +425,11 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
   let Hpx = 480;
   let dpr = 1;
   let face: Box = { ...RESTING };
+  /** The person's face, when the camera found one this frame (video pixels); the blob stands in when not. */
+  let person: Face | null = null;
+  let rig: Rig | null = null;
+  let toldNoFaces = false;
+  let split = 0.5;
   let lastCentre = { x: 0, y: 0 };
   let lastVel = { x: 0, y: 0 };
   let pupils: [Pupil, Pupil] = [
@@ -453,7 +521,7 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     const vw = video.videoWidth || 640;
     const vh = video.videoHeight || 480;
     const still = reducedMotion();
-    const centre = { x: face.x + face.w / 2, y: face.y + face.h * 0.45 };
+    const centre = person ? { x: person.nose.x / vw, y: person.nose.y / vh } : { x: face.x + face.w / 2, y: face.y + face.h * 0.45 };
     const s = sample(t, centre, vw, vh, still);
     wg.setTransform(1, 0, 0, 1, 0, 0);
     wg.clearRect(0, 0, wedge.width, wedge.height);
@@ -486,10 +554,17 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     }
   };
 
-  const drawFrame = (video: HTMLVideoElement, time: number) => {
+  const drawFrame = (video: HTMLVideoElement, info: LiveFrameInfo) => {
+    const time = info.time;
     const dt = lastTime ? Math.max(1, Math.min(100, time - lastTime)) : 33;
     lastTime = time;
     t += dt;
+    person = info.faces?.[0] ?? null;
+    if (info.facesFailed && !toldNoFaces) {
+      // Said once: the monster still works, on the skin-tone blob.
+      toldNoFaces = true;
+      ctx.ui.toast(ctx.t(W.noFaces));
+    }
     // The thumbnail every analysis reads, unmirrored.
     tg.drawImage(video, 0, 0, THUMB_W, THUMB_H);
     const small = tg.getImageData(0, 0, THUMB_W, THUMB_H).data;
@@ -512,7 +587,7 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     }
 
     if (mode === "kaleido") {
-      face = follow(face, findFace(small, THUMB_W, THUMB_H), dt);
+      if (!person) face = follow(face, findFace(small, THUMB_W, THUMB_H), dt);
       drawKaleido(video);
       return;
     }
@@ -520,13 +595,17 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     drawCamera(video);
 
     if (mode === "twin") {
-      // The left half, as it is on screen, mirrored onto the right: one face, two left sides.
+      // The left side, as it is on screen, mirrored onto the right: one face, two left sides. Split
+      // down the person's nose when the camera finds their face, so it stays one face as they move.
+      const nose = person ? stageMapper(video.videoWidth, video.videoHeight, Wpx, Hpx, facing === "user")(person.nose).x / Wpx : 0.5;
+      split += (Math.min(0.75, Math.max(0.25, nose)) - split) * (1 - Math.exp(-dt / 90));
+      const sx = Math.round(split * Wpx);
       g.save();
-      g.setTransform(-dpr, 0, 0, dpr, canvas.width, 0);
-      g.drawImage(canvas, 0, 0, canvas.width / 2, canvas.height, 0, 0, Wpx / 2, Hpx);
+      g.setTransform(-dpr, 0, 0, dpr, 2 * sx * dpr, 0);
+      g.drawImage(canvas, 0, 0, sx * dpr, canvas.height, 0, 0, sx, Hpx);
       g.restore();
       g.fillStyle = "rgba(255,255,255,0.18)";
-      g.fillRect(Wpx / 2 - 0.5, 0, 1, Hpx);
+      g.fillRect(sx - 0.5, 0, 1, Hpx);
       return;
     }
 
@@ -551,19 +630,24 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
       return;
     }
 
-    // Monster: follow the face, wobble the eyes with how it moved.
-    face = follow(face, findFace(small, THUMB_W, THUMB_H), dt);
-    const box = toStage(face, video);
-    const centre = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+    // Monster: on the person's eyes and mouth (or the blob), the eyes wobbling with how it moved.
+    let target: Rig;
+    if (person) target = rigFromFace(person, stageMapper(video.videoWidth, video.videoHeight, Wpx, Hpx, facing === "user"));
+    else {
+      face = follow(face, findFace(small, THUMB_W, THUMB_H), dt);
+      target = rigFromBox(toStage(face, video));
+    }
+    rig = easeRig(rig, target, dt);
+    const centre = { x: (rig.eyes[0].at.x + rig.eyes[1].at.x) / 2, y: (rig.eyes[0].at.y + rig.eyes[1].at.y) / 2 };
     const s = dt / 1000;
     const vel = { x: (centre.x - lastCentre.x) / s, y: (centre.y - lastCentre.y) / s };
-    const er = Math.max(8, box.w * 0.17);
+    const er = Math.max(8, rig.eyes[0].r);
     const clamp = (v: number) => Math.max(-400, Math.min(400, v));
     const shove = { x: clamp((vel.x - lastVel.x) / s / er), y: clamp((vel.y - lastVel.y) / s / er) };
     lastCentre = centre;
     lastVel = vel;
     pupils = [wobble(pupils[0], shove, dt), wobble(pupils[1], shove, dt)];
-    drawMonster(g, box, { hue, pupils });
+    drawMonster(g, rig, { hue, pupils });
   };
 
   // ---- before the camera: the monster waits in the dark ----
@@ -583,7 +667,7 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     const box: Box = { x: Wpx / 2 - bw / 2 + sway, y: Hpx * 0.14 + Math.cos(t * 0.0021) * bw * 0.03, w: bw, h: bw * 1.15 };
     const shove = reducedMotion() ? { x: 0, y: 0 } : { x: -Math.sin(t * 0.0016) * 30, y: 0 };
     pupils = [wobble(pupils[0], shove, dt), wobble(pupils[1], shove, dt)];
-    drawMonster(g, box, { hue, pupils });
+    drawMonster(g, rigFromBox(box), { hue, pupils });
     if (!reducedMotion()) idle = requestAnimationFrame(idleLoop);
   };
   const startIdle = () => {
@@ -624,7 +708,8 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     starting = true;
     start.disabled = resume.disabled = true;
     try {
-      const next = await live({ facing, width: 960, height: 720 });
+      // Faces too: the monster sits on the person's own eyes and mouth (docs/25 §Faces).
+      const next = await live({ facing, width: 960, height: 720, faces: true });
       if (!alive) {
         next.stop();
         return;
@@ -638,7 +723,8 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
       showCard(null);
       setLive(true);
       next.onStop(onStopped);
-      offFrame = next.onFrame((video, info) => drawFrame(video, info.time));
+      rig = null;
+      offFrame = next.onFrame((video, info) => drawFrame(video, info));
       if (!startedBefore) {
         startedBefore = true;
         savePrefs();
@@ -720,6 +806,7 @@ function mountMirror(el: HTMLElement, props: ViewProps): () => void {
     measure();
     if (before[0] !== Wpx || before[1] !== Hpx) {
       face = { ...RESTING };
+      rig = null;
       if (!cam) startIdle();
     }
   });
