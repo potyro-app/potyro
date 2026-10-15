@@ -1,0 +1,19 @@
+{
+  "name": "@potyro/share-links",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "description": "The share service for demo links (docs/24 §4): holds each link's encrypted app package beside the title and preview image its sharer made public, and serves the link's page with Open Graph / Twitter meta so chats can show a preview. Never runs app code, cannot read a package. Depends on no Potyro package. Deployment: docs/16.",
+  "exports": {
+    ".": "./src/wire.ts",
+    "./handler": "./src/handler.ts",
+    "./disk": "./src/disk.ts"
+  },
+  "types": "./src/wire.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --experimental-strip-types src/server.ts"
+  }
+}

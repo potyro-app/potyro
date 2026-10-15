@@ -1506,6 +1506,16 @@ msgstr "Ejemplos incluidos"
 msgid "button"
 msgstr "botón"
 
+#. Under an app's name on its link preview
+#: ../shell/src/demo-share.ts
+msgid "by {by}"
+msgstr "de {by}"
+
+#. A shared app's link preview, under its name
+#: ../shell/src/demo-share.ts
+msgid "By {by}. Try it in your browser: no account, nothing to install."
+msgstr "De {by}. Pruébala en tu navegador: sin cuenta, nada que instalar."
+
 #: ../shell/src/launcher-order.ts
 msgid "By name"
 msgstr "Por nombre"
@@ -3321,6 +3331,8 @@ msgid "made by the app"
 msgstr "creado por la app"
 
 #. Demo bar: links to Potyro itself
+#. Demo bar: links to Potyro itself
+#: ../shell/src/demo-share.ts
 #: ../shell/src/demo.tsx
 msgid "Made with Potyro"
 msgstr "Hecho con Potyro"
@@ -5125,6 +5137,10 @@ msgstr "La app y los archivos que trae, en un solo archivo"
 msgid "the app changed since this text was read — try again"
 msgstr "la app cambió desde que se leyó este texto; inténtalo de nuevo"
 
+#: ../shell/src/demo.tsx
+msgid "The app could not be fetched. Check the connection and try again."
+msgstr "No se pudo descargar la app. Revisa la conexión e inténtalo de nuevo."
+
 #: ../shell/src/studio.tsx
 msgid "the app, not its data"
 msgstr "la app, no sus datos"
@@ -5492,10 +5508,6 @@ msgstr "Esto es el principio de {name}. Guarda una copia para leerlo entero."
 msgid "this item"
 msgstr "este elemento"
 
-#: ../shell/src/demo.tsx
-msgid "This kind of link cannot be opened here yet."
-msgstr "Este tipo de enlace todavía no se puede abrir aquí."
-
 #: ../shell/src/app-source.ts
 msgid "this label is not written as a translation map"
 msgstr "esta etiqueta no está escrita como un mapa de traducciones"
@@ -5509,8 +5521,14 @@ msgid "This link is a package zip, which this device can only fetch from a host 
 msgstr "Este enlace es un paquete zip, que este dispositivo solo puede descargar de un servidor que lo permita. Descárgalo y añádelo como archivo."
 
 #: ../shell/src/demo.tsx
+#: ../shell/src/demo.tsx
+#: ../shell/src/demo.tsx
 msgid "This link is damaged: the app in it could not be read. Ask whoever sent it for a new one."
 msgstr "Este enlace está dañado: no se pudo leer la app que contiene. Pide uno nuevo a quien te lo envió."
+
+#: ../shell/src/demo.tsx
+msgid "This link no longer works: whoever shared it took it down, or it was never made."
+msgstr "Este enlace ya no funciona: quien lo compartió lo retiró, o nunca llegó a existir."
 
 #: ../views/src/timeline.tsx
 msgid "This month"
@@ -5631,6 +5649,16 @@ msgstr "Las apps de confianza se ejecutan <0>directamente</0> con acceso total, 
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Intentar de nuevo"
+
+#. Footer of a shared app's link preview picture
+#: ../shell/src/demo-share.ts
+msgid "Try it in your browser — no account"
+msgstr "Pruébala en tu navegador, sin cuenta"
+
+#. A shared app's link preview, under its name
+#: ../shell/src/demo-share.ts
+msgid "Try it in your browser: no account, nothing to install."
+msgstr "Pruébala en tu navegador: sin cuenta, nada que instalar."
 
 #: ../shell/src/platform-request-card.tsx
 msgid "Try sending again"
