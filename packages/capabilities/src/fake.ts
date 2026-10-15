@@ -3,7 +3,7 @@
 // invariant (docs/09 #4) unless a fetch impl is injected.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
+import type { AiCall, AiCap, AiReply, Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
 
 export interface FakeOptions {
   camera?: boolean;
@@ -20,6 +20,8 @@ export interface FakeOptions {
   fetch?: (input: string, init?: RequestInit) => Promise<Response>;
   /** notifications.supportsExactScheduling (default false — web-like). */
   supportsExactScheduling?: boolean;
+  /** The AI service; none (`null`) when absent. `FakeAi` scripts one. */
+  ai?: AiCap;
 }
 
 /** A recording notification cap so tests can assert scheduling. */
@@ -44,6 +46,46 @@ export class FakeNotifications implements NotificationCap {
   }
 }
 
+/**
+ * A scripted AI service for tests: each `complete` takes the next reply (a string, or an Error to
+ * throw), and every call is recorded so a test can see exactly what would have left the device.
+ */
+export class FakeAi implements AiCap {
+  readonly service = "FakeAI";
+  readonly calls: AiCall[] = [];
+  readonly language?: string;
+  private choice: "on" | "off" | undefined;
+
+  constructor(
+    private readonly replies: Array<string | Error> = [],
+    opts: { language?: string; standing?: "on" | "off" } = {},
+  ) {
+    this.language = opts.language;
+    this.choice = opts.standing;
+  }
+
+  async complete(call: AiCall): Promise<AiReply> {
+    this.calls.push(call);
+    const next = this.replies.shift();
+    if (next === undefined) throw new Error("FakeAi: no reply scripted");
+    if (next instanceof Error) throw next;
+    return { text: next, via: "free" };
+  }
+
+  standing(): "on" | "off" | undefined {
+    return this.choice;
+  }
+
+  allow(): void {
+    this.choice = "on";
+  }
+
+  /** Turn AI off for this app, as Edit tile does. */
+  turnOff(): void {
+    this.choice = "off";
+  }
+}
+
 export class FakeCapabilities implements Capabilities {
   camera: CameraCap | null;
   notifications: FakeNotifications | null;
@@ -51,6 +93,7 @@ export class FakeCapabilities implements Capabilities {
   haptics: HapticsCap | null;
   filesystem: FileCap;
   network: NetworkCap;
+  ai: AiCap | null;
 
   private saved = new Map<string, Blob>();
   /** Recorded vibration patterns, for assertions. */
@@ -86,6 +129,8 @@ export class FakeCapabilities implements Capabilities {
         throw new Error(`FakeCapabilities: offline (no fetch configured) for ${input}`);
       },
     };
+    // None unless a test brings one: a device with no AI is the default, as offline is for network.
+    this.ai = opts.ai ?? null;
   }
 
   /** Files "written" via filesystem.save(), for assertions. */
