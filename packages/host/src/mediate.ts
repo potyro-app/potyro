@@ -3,9 +3,66 @@
 // manifest requested, each behind a one-time consent prompt and (where relevant) a scoping
 // wrapper. App code sees the same `ctx.caps` interface either way — authority is what differs.
 
-import type { Caps, NetworkPermission, PermissionManifest } from "potyro";
-import type { Capabilities } from "@potyro/capabilities";
+import type { AiCapability, Caps, NetworkPermission, PermissionManifest } from "potyro";
+import type { AiCall, AiCap, Capabilities } from "@potyro/capabilities";
+import { AiError, makeAi, type AiDeps } from "./ai.js";
 import type { Provenance, UiBridge } from "./types.js";
+
+/** What `ctx.caps.ai` needs from the ctx it lives on: the language and the app's own pictures. */
+export type AiContext = Omit<AiDeps, "before">;
+
+/** No ctx to read pictures from (a caps-only test): a Blob is the only picture there is. */
+const BLOBS_ONLY: AiContext = {
+  language: "en",
+  image: async (img) => {
+    if (img instanceof Blob) return img;
+    throw new Error("ctx.caps.ai: this picture cannot be read here");
+  },
+};
+
+function englishConsent(appName: string, sends: "photo" | "text", service: string) {
+  return {
+    message: sends === "photo" ? `“${appName}” wants to send a photo to an AI service (${service}) to read it.` : `“${appName}” wants to send some text to an AI service (${service}).`,
+    detail: `Only what the app sends goes: this ${sends} and its question — nothing else in the app. Free while this month's allowance lasts; then your own ${service} key, usually under 1¢.`,
+    ok: "Allow",
+    cancel: "Not now",
+  };
+}
+
+/**
+ * A sealed app's AI: asked once per app on this device, with words that name the service and what
+ * goes. "Allow" is remembered by the shell (`AiCap.allow`); "Not now" refuses this call and is asked
+ * again on the next — never remembered as a no, because the person may simply not have been ready.
+ */
+function sealedAi(cap: AiCap, ui: UiBridge, appName: string, ai: AiContext): AiCapability {
+  let asking: Promise<boolean> | null = null;
+  const before = async (call: AiCall): Promise<void> => {
+    if (cap.standing?.() === "on") return;
+    const sends = call.parts.some((p) => "image" in p) ? "photo" : "text";
+    // Two calls at once ask one question.
+    asking ??= (async () => {
+      const w = cap.consentWords?.(appName, sends) ?? englishConsent(appName, sends, cap.service);
+      try {
+        return await ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel });
+      } finally {
+        asking = null;
+      }
+    })();
+    if (!(await asking)) throw new AiError(`Permission denied: ${appName} → AI`, "denied");
+    cap.allow?.();
+  };
+  return makeAi(cap, { ...ai, before });
+}
+
+/** A trusted app's AI: no question, but the off switch still holds, and first use shows the switch. */
+function trustedAi(cap: AiCap, ai: AiContext): AiCapability {
+  return makeAi(cap, {
+    ...ai,
+    before: async () => {
+      if (cap.standing?.() === undefined) cap.allow?.();
+    },
+  });
+}
 
 /** A once-per-capability consent gate backed by the shell's confirm dialog. */
 function makeConsentGate(ui: UiBridge, appName: string) {
@@ -131,8 +188,15 @@ export function mediateCaps(args: {
   permissions: PermissionManifest;
   ui: UiBridge;
   appName: string;
+  /** For `ctx.caps.ai`: the ctx's language and how it reads the app's own pictures. */
+  ai?: AiContext;
 }): Caps {
-  return args.provenance === "trusted"
-    ? adaptFull(args.caps)
-    : adaptMediated(args.caps, args.permissions, args.ui, args.appName);
+  const trusted = args.provenance === "trusted";
+  const out = trusted ? adaptFull(args.caps) : adaptMediated(args.caps, args.permissions, args.ui, args.appName);
+  // AI: on the device or not at all; for a sealed app only when its manifest asked (docs/23).
+  const cap = args.caps.ai;
+  if (cap && (trusted || args.permissions.ai === true)) {
+    out.ai = trusted ? trustedAi(cap, args.ai ?? BLOBS_ONLY) : sealedAi(cap, args.ui, args.appName, args.ai ?? BLOBS_ONLY);
+  }
+  return out;
 }
