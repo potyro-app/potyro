@@ -98,7 +98,10 @@ describe("SYSTEM_PROMPT", () => {
     // into, the picture types and the two calls, plus one example line, which is what makes a receipt
     // or a poster app buildable at all. Trimmed first: every comment is one line, and the answer's
     // inferred type (`AiValue`) lives in infer.ts, outside the reference. ~400 cached tokens.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(82_500);
+    // Raised 82.5k -> 83.6k on 2026-10-15 (docs/25) for `ctx.caps.camera.live`, the live camera a camera
+    // toy draws from: `LiveCamera`, its options, stop and failure types, one comment each (~1k
+    // characters). The last raise for a capability: #341 moves capability docs out of the prompt.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(83_600);
   });
 
   it("tells the model the exact things the catalogue got wrong (#130)", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createFakeLiveCamera } from "@potyro/capabilities";
 import {
   CapacitorCapabilities,
   stableNotificationId,
@@ -118,6 +119,24 @@ describe("asking for camera permission", () => {
     await caps.camera.capture({ source: "library" });
     expect(plugins.Camera.requestPermissions).not.toHaveBeenCalled();
     expect(plugins.Camera.getPhoto).toHaveBeenCalledWith({ resultType: "uri", source: "PHOTOS" });
+  });
+});
+
+describe("the live camera (docs/25)", () => {
+  it("is the WebView's getUserMedia session, not the camera plugin — the plugin takes photos, it does not stream", async () => {
+    const live = createFakeLiveCamera();
+    const { plugins } = fakePlugins();
+    const caps = new CapacitorCapabilities(plugins, { ...helpers, liveCamera: live.cap });
+    expect(caps.liveCamera).toBe(live.cap);
+    const cam = await caps.liveCamera!.start({ facing: "environment" });
+    expect(cam.facing).toBe("environment");
+    expect(live.asked[0]!.audio).toBe(false); // never the microphone: the manifest has no RECORD_AUDIO
+    expect(plugins.Camera.getPhoto).not.toHaveBeenCalled();
+  });
+
+  it("is absent outside a page that has getUserMedia (no DOM here)", () => {
+    const { plugins } = fakePlugins();
+    expect(new CapacitorCapabilities(plugins, helpers).liveCamera).toBeNull();
   });
 });
 

@@ -103,7 +103,10 @@ function stash(req, res) {
   // `type: "opaque"` is a cross-origin response we cannot inspect; `ok` is false for it, which is
   // the conservative answer.
   if (!res.ok) return res;
-  const copy = res.clone();
+  // The face finder's runtime and model (docs/25 §Faces) are versioned in their path and the same for
+  // every origin; the runtime's loader is a module script, asked for with an `Origin` header, so a
+  // `Vary: Origin` kept on the copy would make it miss offline (see `withoutVary`).
+  const copy = new URL(req.url).pathname.includes("/potyro-faces/") ? withoutVary(res.clone()) : res.clone();
   caches
     .open(CACHE)
     .then((c) => c.put(req, copy))

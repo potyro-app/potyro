@@ -1573,6 +1573,11 @@ msgstr "vino con la app"
 msgid "camera"
 msgstr "cámara"
 
+#. The shell's sign that an app is using the camera live
+#: ../shell/src/camera-indicator.ts
+msgid "Camera on"
+msgstr "Cámara activada"
+
 #. People panel: a person's role in a shared app
 #. People panel: invite someone who can change the app
 #: ../shell/src/people-panel.tsx
@@ -5863,6 +5868,11 @@ msgstr "Intentar arreglarla"
 #: ../views/src/date-input.tsx
 msgid "Tu"
 msgstr "Ma"
+
+#. Button on the camera-on sign: stops the live camera
+#: ../shell/src/camera-indicator.ts
+msgid "Turn off"
+msgstr "Apagar"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Turn off Ask for this app"
