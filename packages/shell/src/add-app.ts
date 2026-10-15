@@ -19,7 +19,7 @@ import { capabilityWords } from "./capability-words.js";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Words } from "potyro";
 import { languagePrefs } from "./locale.js";
-import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { fileSpace, isReservedPath, isZip, MODULES_DIR, readAppPackage, sourcePackage, type AppCredit, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
 import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
@@ -172,6 +172,8 @@ export interface Inspected {
   failsToOpenSealed: boolean;
   /** Its top level threw in the sealed box for another reason: it could not be tried there. */
   trialProblem?: string;
+  /** Who made it, when its package says (docs/24 §6). */
+  credit?: AppCredit;
 }
 
 
@@ -280,6 +282,7 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
     missing: trial?.missing ?? [],
     failsToOpenSealed: !!trial?.loadFailed,
     ...(trial?.loadFailed && !trial.missing.length && !trial.libraryProblem && preview !== "unavailable" ? { trialProblem: trial.loadFailed } : {}),
+    ...(pkg.credit ? { credit: pkg.credit } : {}),
   };
 }
 
@@ -344,6 +347,11 @@ export interface InstallOptions extends PackageDeps {
   /** When the app is already installed. */
   mode: "replace" | "copy";
   link?: string;
+  /**
+   * A remix (docs/24 §6): the person's own copy to change, so its credit is "a remix of" the app it
+   * came from, not that app's. Trust is the same as any app from a link: sealed.
+   */
+  remix?: boolean;
   /** Where its data opens. Injected in tests. */
   openStore?: (app: UserApp, opts: { sync: boolean }) => Promise<Store>;
   now?: string;
@@ -389,6 +397,9 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
       origin: "imported",
+      // Who made it travels with it; a remix says what it remixed instead (docs/24 §6). An update keeps
+      // what the app already said about itself.
+      ...(update ? {} : opts.remix ? (pkg.credit ? { remixOf: pkg.credit } : {}) : pkg.credit ? { credit: pkg.credit } : {}),
       // A library upgrade may change no line of the source: the note says what it did change.
       note: [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
     },

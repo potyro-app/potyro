@@ -37,10 +37,13 @@ export function previewMeta(name: string, by: string | undefined): { title: stri
   };
 }
 
-async function hosted(app: UserApp, demo: DemoPackage, by: string | undefined): Promise<string> {
+async function hosted(app: UserApp, demo: DemoPackage): Promise<string> {
+  // The maker the link names, which for a kept app is its maker, not the person passing it on.
+  const by = demo.credit.by;
+  const name = demo.credit.name;
   const [{ hostDemo }] = await Promise.all([import("./share-service.js")]);
   const image = await renderPreviewCard({
-    name: app.name,
+    name,
     icon: demo.icon,
     accent: demo.accent,
     by: by ? t({ message: `by ${by}`, comment: "Under an app's name on its link preview" }) : undefined,
@@ -48,7 +51,7 @@ async function hosted(app: UserApp, demo: DemoPackage, by: string | undefined): 
     made: t({ message: "Made with Potyro", comment: "Demo bar: links to Potyro itself" }),
     tryIt: t({ message: "Try it in your browser — no account", comment: "Footer of a shared app's link preview picture" }),
   }).catch(() => null);
-  return hostDemo({ appId: app.id, zip: demo.zip, meta: previewMeta(app.name, by), ...(image ? { image } : {}) });
+  return hostDemo({ appId: app.id, zip: demo.zip, meta: previewMeta(name, by), ...(image ? { image } : {}) });
 }
 
 export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Promise<MadeDemoLink> {
@@ -56,7 +59,7 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   const up = opts.serviceUp ?? (async () => (await import("./share-service.js")).shareServiceUp());
   if (await up()) {
     try {
-      const link = await hosted(app, demo, opts.by);
+      const link = await hosted(app, demo);
       shareEvent("demo-link-made");
       return { link, hosted: true };
     } catch (e) {
