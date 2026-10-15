@@ -122,6 +122,12 @@ importers:
         specifier: ^10.7.18
         version: 10.7.18
 
+  apps/palette-catcher:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
   apps/photo-garden:
     dependencies:
       potyro:
