@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The checklist view renders UNTRUSTED (#106): the Groceries app runs in the QuickJS-WASM isolate,
 // its `sort` and bindings cross the bridge as values, and a tick still patches the record.

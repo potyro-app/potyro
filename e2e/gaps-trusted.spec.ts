@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // Three things that were true but unproven in a real browser:

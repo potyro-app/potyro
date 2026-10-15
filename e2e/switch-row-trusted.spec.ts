@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // A boolean field is a switch row (#97). In the Plants form, "Needs Direct Sun" and "Active" used
 // to be a grey caption over a 13px browser checkbox. Now each is one row: the label, a toggle, the

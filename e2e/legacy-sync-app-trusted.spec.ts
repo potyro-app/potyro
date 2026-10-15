@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // A synced app created BEFORE the cojson database was renamed must still open (regression).

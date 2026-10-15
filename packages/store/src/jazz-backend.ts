@@ -28,10 +28,11 @@
 // `jazz-backend.test.ts > data written before a reload is still there afterwards` fail immediately.
 // `whenDurable` is still exposed on the handle so the shell can also flush on `beforeunload`.
 
-import { LocalNode, getSqliteStorageAsync } from "cojson";
+import { LocalNode, getSqliteStorageAsync, logger as cojsonLogger } from "cojson";
 import { JazzStore } from "./jazz-store.js";
 import { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
+import { isStorageElsewhere } from "./storage-owner.js";
 
 /** Where the ids above are remembered. `localStorage` in the browser; a Map in tests. */
 export interface JazzKeyStore {
@@ -247,6 +248,24 @@ async function loadAccountThroughRelay<T>(
     temporary.disable();
   }
 }
+
+// cojson logs `console.error("Error withLoadedAccount", …)` for every account load that fails, and
+// then throws. One failure is expected on every device's first sync: `openAccountNode` loads the
+// account from local storage first and creates it when it is not there yet ("unavailable"), which
+// is the designed path, not an error. Left alone it put an error in the console of every first
+// sync (found by e2e/console-guard.ts). Only that one message is dropped, and only for
+// "unavailable": every other failure is still logged, and an unavailable account that is NOT
+// created reaches the caller as the error it is.
+cojsonLogger.setLogSystem({
+  debug: (message, attributes) => console.debug(message, attributes),
+  info: (message, attributes) => console.info(message, attributes),
+  warn: (message, attributes) => console.warn(message, attributes),
+  error: (message, attributes) => {
+    const err = (attributes as { err?: unknown } | undefined)?.err;
+    if (message === "Error withLoadedAccount" && /unavailable/i.test(err instanceof Error ? err.message : String(err))) return;
+    console.error(message, attributes);
+  },
+});
 
 /** The storage opening in progress, if any: the next one waits for it. */
 let lastStorageOpening: Promise<unknown> = Promise.resolve();
@@ -534,7 +553,10 @@ export async function openAccountNodeInBrowser(opts?: {
     if (workersAvailable()) {
       try {
         driver = (await openWorkerSqlite(dbName)).driver;
-      } catch {
+      } catch (err) {
+        // Another tab has the storage: reading a second copy of the account here would be reading
+        // the wrong one. The tab says so in words (onStorageElsewhere); there is nothing to offer.
+        if (isStorageElsewhere(err)) return null;
         driver = undefined;
       }
     }
@@ -632,7 +654,10 @@ export async function openJazzStore(
     try {
       driver = (await openWorkerSqlite(dbName)).driver;
     } catch (err) {
-      // No worker, no OPFS, or another tab holding the pool. Sync matters more than speed.
+      // Another tab owns the storage. Falling back would open a second, stale copy of the device's
+      // database and write to it — the split this refuses (storage-owner.ts).
+      if (isStorageElsewhere(err)) throw err;
+      // No worker, or no OPFS. Sync matters more than speed.
       console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
       driver = undefined;
     }

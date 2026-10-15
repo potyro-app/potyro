@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 
 // Libraries by URL (#266), in a real browser. esm.sh is never reached: every request to it is
