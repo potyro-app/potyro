@@ -7,7 +7,7 @@
 // their callback params are contextually typed rather than implicit-any.
 
 import type { Field } from "./fields.js";
-import type { Ctx } from "./ctx.js";
+import type { AiLeaf, Ctx } from "./ctx.js";
 import type { FileRef, Geo, Id, MediaRef, Value } from "./core.js";
 
 /** Identity + timestamps present on every record. */
@@ -106,3 +106,22 @@ export type FilterIn<R> = (record: R, ctx: Ctx) => boolean;
 export type SortIn<R> = (a: R, b: R) => number;
 export type BindingIn<R, T = Value> = string | ((record: R, ctx: Ctx) => T);
 export type ReminderWhenIn<R> = (record: R, ctx: Ctx) => Date | null;
+
+// ---- `ctx.caps.ai.extract` (docs/23) ----
+
+type AiLeafValue<L> = L extends "text" ? string : L extends "number" ? number : L extends "boolean" ? boolean : L extends "date" ? string : never;
+
+/** What `extract` gives back for a shape: `"number?"` is `number | null`, `[{ name: "text" }]` is `{ name: string }[]`. */
+export type AiValue<S> = S extends `${infer L}?`
+  ? AiLeafValue<L> | null
+  : S extends AiLeaf
+    ? AiLeafValue<S>
+    : S extends { readonly oneOf: readonly (infer O)[]; readonly optional: true }
+      ? O | null
+      : S extends { readonly oneOf: readonly (infer O)[] }
+        ? O
+        : S extends readonly [infer E]
+          ? AiValue<E>[]
+          : S extends object
+            ? { -readonly [K in keyof S]: AiValue<S[K]> }
+            : never;
