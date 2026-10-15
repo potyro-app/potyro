@@ -8,9 +8,21 @@
 // module graph. `scripts/build-reference.ts` writes `reference.generated.ts`; a test regenerates
 // and compares, so a schema change without a regeneration fails CI instead of quietly narrowing
 // what the model believes is possible.
+//
+// #341 split it in two. The CORE — defineApp, entities, fields, views, pages and the `ctx` every app
+// uses — goes into every system prompt. Each capability an app reaches for only sometimes (the
+// camera, AI, the app's folder, sharing, formats…) is listed in `CAPABILITIES`: its declarations
+// leave the core and are read on demand, through `lookup` (discovery-tools.ts), through the passages
+// put beside a request that names it (`capabilityNotes`, for every engine — including the ones that
+// cannot call a tool), and through a one-line index the prompt keeps for each, so the model knows
+// it exists and how to fetch it. The core stopped growing with every capability; a test
+// (reference.test.ts) proves every `ctx` member is still reachable one way or the other.
 
-/** The type files, in reading order: primitives and words, then fields, then `ctx`, then the app shape. */
+/** The type files of the core, in reading order: primitives and words, then fields, then `ctx`, then the app shape. */
 export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
+
+/** Type files that are never in the core: read only through `lookup` and the capability passages. */
+export const LOOKUP_ONLY_FILES = ["faces.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 
@@ -22,4 +34,353 @@ export function buildReference(sources: Readonly<Record<string, string>>): strin
     parts.push(`// ===== ${file} =====\n${body}`);
   }
   return parts.join("\n\n");
+}
+
+// ---- declarations ----
+
+export interface Declaration {
+  name: string;
+  /** The doc comment (if any) and the declaration itself. */
+  text: string;
+  /** 0-based line range in the text it was read from, inclusive. */
+  from: number;
+  to: number;
+}
+
+const START = /^export (?:interface|type) (\w+)\b/;
+
+/** Brackets opened minus closed on a line, strings and comments not counted. */
+function depthOf(line: string): number {
+  let d = 0;
+  for (const c of line.replace(/\/\/.*$/, "").replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, "")) {
+    if (c === "{" || c === "(" || c === "[") d += 1;
+    else if (c === "}" || c === ")" || c === "]") d -= 1;
+  }
+  return d;
+}
+
+/** The first line of the doc comment that ends on line `i - 1`, or `i` when there is none. */
+function docStart(lines: readonly string[], i: number): number {
+  if (i === 0 || !lines[i - 1]!.trimEnd().endsWith("*/")) return i;
+  let j = i - 1;
+  while (j > 0 && !lines[j]!.trimStart().startsWith("/**")) j -= 1;
+  return lines[j]!.trimStart().startsWith("/**") ? j : i;
+}
+
+/**
+ * Every top-level declaration, line by line: the doc comment right above it (if any), then
+ * `export interface X { … }` up to its closing brace at column 0, or `export type X = …` up to the
+ * line where its brackets close and it ends with `;`. A regex used to do this and, on a one-line
+ * `export type X = A | B;` or a doc comment not followed by a declaration, ran on and swallowed the
+ * declarations after it — `lookup("Reminder")` answered "it does not exist" (#262 phase 3).
+ */
+export function declarations(reference: string): Declaration[] {
+  const lines = reference.split("\n");
+  const out: Declaration[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = START.exec(lines[i]!);
+    if (!m) continue;
+    const from = docStart(lines, i);
+    let end = i;
+    if (/^export interface/.test(lines[i]!)) {
+      while (end < lines.length - 1 && !/^\}/.test(lines[end]!) && !(end === i && /\}\s*$/.test(lines[i]!) && depthOf(lines[i]!) === 0)) end += 1;
+    } else {
+      let depth = 0;
+      for (; end < lines.length; end += 1) {
+        depth += depthOf(lines[end]!);
+        if (depth <= 0 && /;\s*(\/\/.*)?$/.test(lines[end]!)) break;
+        if (end > i && START.test(lines[end + 1] ?? "")) break;
+      }
+    }
+    out.push({ name: m[1]!, text: lines.slice(from, end + 1).join("\n"), from, to: end });
+    i = end;
+  }
+  return out;
+}
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** The line a member of an interface starts on: `name:`, `name?:`, `name(`, `name<`, `readonly name`. */
+export const memberLine = (name: string): RegExp => new RegExp(`^\\s+(?:readonly\\s+)?${escapeRe(name)}\\??\\s*[:(<]`);
+
+/** A member's lines inside a declaration's text — its doc comment and the signature up to its `;`. */
+function memberRange(lines: readonly string[], name: string): [number, number] | null {
+  const re = memberLine(name);
+  const at = lines.findIndex((l) => re.test(l));
+  if (at < 0) return null;
+  let end = at;
+  let depth = 0;
+  for (; end < lines.length; end += 1) {
+    depth += depthOf(lines[end]!);
+    if (depth <= 0 && /;\s*(\/\/.*)?$/.test(lines[end]!)) break;
+  }
+  return [docStart(lines, at), Math.min(end, lines.length - 1)];
+}
+
+// ---- capabilities: what leaves the core ----
+
+export interface Capability {
+  /** What the model looks up, and what the index names: `ctx.caps.ai`, `Face`. */
+  key: string;
+  /** The index line: what it is for and the call that does it, in one line. */
+  summary: string;
+  /** Declarations that leave the core (or were never in it) and are read with this capability. */
+  declarations: readonly string[];
+  /** Single members cut out of a core declaration — `ctx.ui.share` from `CtxUi`. */
+  members?: ReadonlyArray<{ of: string; name: string }>;
+  /**
+   * Its members are capabilities of their own (`ctx.caps`): each one needs its own entry, and the
+   * reachability test (reference.test.ts) does not let this entry stand in for them.
+   */
+  container?: true;
+  /** What the prompt used to say about using it beyond the declarations; read with them. */
+  notes?: string;
+  /**
+   * When a request needs it: words a person would use, in the languages the Studio speaks. A miss
+   * costs one lookup for a model with tools, and leaves the index line for one without; a false hit
+   * costs a passage.
+   */
+  cues: RegExp;
+  /** When the app being changed already uses it: the code that does (never its words — labels say anything). */
+  uses: RegExp;
+}
+
+/**
+ * Every capability whose declarations are read on demand. A new `ctx` member that should not be in
+ * every prompt is added HERE (with its index line and cues) — the reachability test fails until it
+ * is, because a capability that is neither in the core nor in this list is invisible to the model.
+ */
+export const CAPABILITIES: readonly Capability[] = [
+  {
+    key: "ctx.caps",
+    summary:
+      "native capabilities; EVERY member is optional (undefined when not granted), so guard: `if (!ctx.caps.geo) { ctx.ui.toast(\"Location unavailable\"); return; }`, and declare what the app needs: `permissions: { geo: true, camera: true }`",
+    declarations: ["Caps"],
+    container: true,
+    cues: /\bctx\.caps\b|\bpermissions\b/i,
+    uses: /\bctx\.caps\b|\bpermissions\s*:/,
+  },
+  {
+    key: "ctx.caps.camera",
+    summary:
+      "`capture(opts?)` → Blob (then `await ctx.media.put(blob)` for a media field); `live(opts?)` → live frames for a custom view (a camera toy, a mirror), `faces: true` adds eyes and mouth (see `Face`)",
+    declarations: ["CameraCapability", "LiveCameraOptions", "LiveCameraStop", "LiveCameraFailure", "LiveFrameInfo", "LiveCamera"],
+    cues: /caps\.camera|\b(camera|cameras|webcam|selfie|mirror|snap|photograph\w*|take (?:a )?(?:photo|picture)|scan\w*|live video|kamer\w*|aparat\w*|câmera|cámara|kamera)\b/i,
+    uses: /caps\.camera\b/,
+  },
+  {
+    key: "Face",
+    summary: "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn — `live({ faces: true })`",
+    declarations: ["FacePoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
+    uses: /\bfaces\s*:|\.faces\b/,
+  },
+  {
+    key: "ctx.caps.ai",
+    summary:
+      "read a photo or text into a typed shape: `await ctx.caps.ai.extract({ image, instructions, schema: { shop: \"text?\", items: [{ name: \"text\", price: \"number\" }] } })`; `ask(question, { image })` → words (`permissions: { ai: true }`)",
+    declarations: ["AiLeaf", "AiShape", "AiImage", "AiExtractRequest", "AiCapability"],
+    notes: "Send only what the task needs: the call sends exactly what it names, nothing else of the app's.",
+    cues: /caps\.ai\b|\b(ai|a\.i\.|artificial intelligence|llm|gpt|ocr|scan\w*|receipts?|invoices?|extract\w*|recogni[sz]\w*|identify|classif\w*|read (?:the |a |my )?(?:photo|picture|image|label|text)|paragon\w*|rachun\w*|recibo\w*|nota fiscal|beleg\w*|quittung\w*|rechnung\w*|factura\w*|ticket de caja)\b/i,
+    uses: /caps\.ai\b/,
+  },
+  {
+    key: "ctx.caps.geo",
+    summary: "`current()` → { lat, lng }, where the device is (the key is `geo`, NOT `geolocation`)",
+    declarations: ["GeoCapability"],
+    cues: /caps\.geo\b|\b(where i am|my location|current location|near me|nearby|gps|lokalizac\w*|localiza\w*|standort)\b/i,
+    uses: /caps\.geo\b/,
+  },
+  {
+    key: "ctx.caps.notifications",
+    summary: "`schedule({ id, at, title, body? })` / `cancel(id)`: a notification at a time (a declarative entity `reminders` entry is usually enough)",
+    declarations: ["NotificationCapability"],
+    cues: /caps\.notifications\b|\b(notif\w*|push|alarm\w*|powiadom\w*|notifica\w*|benachrichtig\w*)\b/i,
+    uses: /caps\.notifications\b/,
+  },
+  {
+    key: "ctx.caps.filesystem",
+    summary: "`pick()` → Blob / `save(name, blob)`: a file from or to outside the app (`ctx.files` is the app's own folder)",
+    declarations: ["FileCapability"],
+    cues: /caps\.filesystem\b|\b(save to (?:disk|device)|download\w*)\b/i,
+    uses: /caps\.filesystem\b/,
+  },
+  {
+    key: "ctx.caps.haptics",
+    summary: "`vibrate(pattern?)`: a buzz on a phone",
+    declarations: ["HapticsCapability"],
+    cues: /caps\.haptics\b|\b(vibrat\w*|haptic\w*|buzz\w*|wibr\w*|vibra\w*)\b/i,
+    uses: /caps\.haptics\b/,
+  },
+  {
+    key: "ctx.caps.network",
+    summary: "`fetch(url, init?)`: the internet, only to the hosts in `permissions: { network: { hosts } }`",
+    declarations: ["NetworkCapability"],
+    cues: /caps\.network\b|\b(fetch|api|http|https|internet|online|weather|exchange rate|from the web|download\w*)\b/i,
+    uses: /caps\.network\b/,
+  },
+  {
+    key: "ctx.media",
+    summary: "`put(blob)` → MediaRef for a `media` field, `url(ref)` → a URL to show it",
+    declarations: ["CtxMedia"],
+    cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*)\b/i,
+    uses: /ctx\.media\b/,
+  },
+  {
+    key: "ctx.files",
+    summary:
+      "the app's own folder: `text`/`json`/`bytes`/`url`/`write`/`list`/`import` (the person picks; no permission). `null` = not on this device yet, never empty; a `file` field stores `{ id, path, name, mime }`; starting data is a shipped JSON, `ctx.files.json(\"plan.json\")`",
+    declarations: ["FileOrigin", "FileInfo", "CtxFiles"],
+    cues: /ctx\.files\b|type:\s*["']file["']|\b(files?|folder|documents?|pdfs?|csv|json|import\w*|export\w*|attach\w*|upload\w*|plik\w*|arquivo\w*|datei\w*|archivo\w*)\b/i,
+    uses: /ctx\.files\b|type:\s*["']file["']/,
+  },
+  {
+    key: "ctx.ui.share",
+    summary: "`await ctx.ui.share({ text, url })`: hand a result or a link on (share sheet / Copy); no permission",
+    declarations: [],
+    members: [{ of: "CtxUi", name: "share" }],
+    cues: /\bshare\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir)\b/i,
+    uses: /\.share\(/,
+  },
+  {
+    key: "ctx.space",
+    summary: "the people the app's data is shared with: `ctx.space?.members ?? [ctx.me]` (each `{ id, name, role }`); undefined for a solo app",
+    declarations: ["SpaceRole", "Member", "Space"],
+    cues: /\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|wspóln\w*|rodzin\w*|família|familia|partilh\w*|gemeinsam\w*)\b/i,
+    uses: /ctx\.space\b/,
+  },
+  {
+    key: "ctx.views",
+    summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()`: move a map that is on screen, from a page action (\"Centre on me\")",
+    declarations: ["MapViewControl", "CtxViews"],
+    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er))\b/i,
+    uses: /ctx\.views\b/,
+  },
+  {
+    key: "ctx.format",
+    summary: "`ctx.format.date/number/money/relative/list` in the person's locale, for text the app composes (return a Date or a number where a view formats it)",
+    declarations: ["FormatDateOptions", "FormatNumberOptions", "CtxFormat"],
+    cues: /ctx\.format\b|\b(format\w*|locale|currency)\b/i,
+    uses: /ctx\.format\b/,
+  },
+  {
+    key: "languages",
+    summary: "an app's words in several languages: `languages`, `Words` maps, `ctx.t` with plurals, enum `labels`",
+    declarations: [],
+    notes: [
+      "An app's words become maps once it has several languages — `label: { en: \"Quantity\", pl: \"Ilość\" }` —",
+      "and `languages: [\"en\", \"pl\"]` lists every language, the app's own first. Every map has the app's own `language`.",
+      "Inside functions: `ctx.t({ en: \"Due now\", pl: \"Do podlania\" })`, with `vars` for plurals",
+      "(`{n, plural, one {# plant} other {# plants}}`), and `ctx.format` for formats (lookup(\"ctx.format\")).",
+      "Records are never translated. An enum's options are stored values and stay as they are; their words",
+      "go in `labels: { todo: { en: \"To do\", pl: \"Do zrobienia\" } }`.",
+    ].join("\n"),
+    cues: /\blanguages\s*:|\bctx\.t\(|\b(translat\w*|languages?|multilingual|bilingual|in (?:english|polish|german|portuguese|spanish|french|italian)|tłumacz\w*|języ\w*|tradu\w*|idioma\w*|sprache\w*|übersetz\w*)\b/i,
+    uses: /\blanguages\s*:|\bctx\.t\(/,
+  },
+];
+
+const CAPABILITY_BY_DECL = new Map(CAPABILITIES.flatMap((c) => c.declarations.map((d) => [d, c] as const)));
+
+/** The capability a lookup query names: its key, with or without `ctx.`, any case. */
+export function capabilityNamed(query: string): Capability | undefined {
+  const q = query.trim().toLowerCase().replace(/^ctx\./, "");
+  return CAPABILITIES.find((c) => c.key.toLowerCase().replace(/^ctx\./, "") === q);
+}
+
+export interface SplitReference {
+  /** What every system prompt carries. */
+  core: string;
+  /** Each capability's declarations, by key, in `CAPABILITIES` order. */
+  capabilities: Record<string, string>;
+}
+
+/**
+ * Split the full reference (core files + lookup-only files) into the core and the capability
+ * sections. Throws when `CAPABILITIES` names a declaration or a member the types do not have — a
+ * rename in the schema must not leave a capability that silently says nothing.
+ */
+export function splitReference(coreSources: Readonly<Record<string, string>>, lookupOnlySources: Readonly<Record<string, string>>): SplitReference {
+  const full = buildReference(coreSources);
+  const lines = full.split("\n");
+  const drop = new Set<number>();
+  const found = new Map<string, string>();
+  for (const d of declarations(full)) {
+    if (!CAPABILITY_BY_DECL.has(d.name)) continue;
+    found.set(d.name, d.text);
+    for (let i = d.from; i <= d.to; i += 1) drop.add(i);
+    if ((lines[d.to + 1] ?? "x").trim() === "") drop.add(d.to + 1);
+  }
+  for (const d of declarations(buildReference(lookupOnlySources))) found.set(d.name, d.text);
+
+  const fragments = new Map<string, string>();
+  const decls = declarations(full);
+  for (const c of CAPABILITIES) {
+    for (const m of c.members ?? []) {
+      const host = decls.find((d) => d.name === m.of);
+      if (!host) throw new Error(`CAPABILITIES: ${c.key} cuts ${m.name} out of ${m.of}, which is not declared`);
+      const own = lines.slice(host.from, host.to + 1);
+      const range = memberRange(own, m.name);
+      if (!range) throw new Error(`CAPABILITIES: ${m.of} has no member ${m.name} (${c.key})`);
+      for (let i = range[0]; i <= range[1]; i += 1) drop.add(host.from + i);
+      const head = own.find((l) => START.test(l))!.replace(/\{.*$/, "{");
+      fragments.set(c.key, `// ${m.of}, continued (${c.key}):\n${head}\n${own.slice(range[0], range[1] + 1).join("\n")}\n}`);
+    }
+  }
+
+  const capabilities: Record<string, string> = {};
+  for (const c of CAPABILITIES) {
+    const parts: string[] = [];
+    for (const name of c.declarations) {
+      const text = found.get(name);
+      if (text === undefined) throw new Error(`CAPABILITIES: ${c.key} lists ${name}, which no type file declares`);
+      parts.push(text);
+    }
+    const fragment = fragments.get(c.key);
+    if (fragment) parts.push(fragment);
+    capabilities[c.key] = parts.join("\n\n");
+  }
+  const core = lines
+    .filter((_, i) => !drop.has(i))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+  return { core, capabilities };
+}
+
+// ---- what the prompt and the first message say about them ----
+
+/** The prompt's index: one line per capability, with how to read it. */
+export function capabilityIndex(): string {
+  return CAPABILITIES.map((c) => `- \`${c.key}\` — ${c.summary}. lookup("${c.key}")`).join("\n");
+}
+
+/** A capability's passage: its notes, then its declarations. */
+export function capabilityBlock(c: Capability, declared: Readonly<Record<string, string>>): string {
+  const body = [c.notes, declared[c.key]].filter((p): p is string => Boolean(p && p.trim())).join("\n\n");
+  return `// ===== ${c.key} =====\n${body}`;
+}
+
+const NOTES_MAX_CHARS = 9000;
+
+/**
+ * The capability passages a request needs, for the first message — so an engine that cannot call
+ * `lookup` (claude -p, a one-turn API call) still reads the declarations of what it is asked to use,
+ * and one that can starts with them. Matched on the request and on the app being changed (an app
+ * that already reads `ctx.caps.ai` gets its declaration back). Empty when nothing matches.
+ */
+export function capabilityNotes(declared: Readonly<Record<string, string>>, request: string, source = ""): string {
+  let picked = CAPABILITIES.filter((c) => c.cues.test(request) || (source !== "" && c.uses.test(source)));
+  // A capability under ctx.caps brings the guard-and-permissions rule with it.
+  if (picked.some((c) => c.key.startsWith("ctx.caps.")) && !picked.some((c) => c.key === "ctx.caps")) {
+    picked = [CAPABILITIES.find((c) => c.key === "ctx.caps")!, ...picked];
+  }
+  if (!picked.length) return "";
+  let out = "";
+  for (const c of picked) {
+    const block = capabilityBlock(c, declared);
+    if (out.length + block.length > NOTES_MAX_CHARS) continue;
+    out += `${out ? "\n\n" : ""}${block}`;
+  }
+  if (!out) return "";
+  return `The declarations of the capabilities this request may need (the CAPABILITIES index in your instructions lists the rest; with tools, lookup reads any of them):\n\`\`\`ts\n${out}\n\`\`\``;
 }

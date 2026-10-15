@@ -6,6 +6,9 @@ code, the QuickJS isolate, or the capability seam changes — the composition ro
 (`packages/native/src/index.ts` → `maybeCreateNativeCapabilities()`). The payoff is the one thing web
 can't do: an **exact, offline reminder that fires with the app closed**.
 
+**iOS** is the same target with a different shell: see [docs/27](27-ios.md) (handoff for the iOS
+developer — build, signing, the WKWebView audit and its device checklist).
+
 The generated `android/` project is **git-ignored** — it's reproduced deterministically from
 `capacitor.config.ts` + the plugins, so you regenerate it rather than commit it.
 

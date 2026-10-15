@@ -1,8 +1,8 @@
 // Faces in the live camera's frames (docs/25 §Faces): `ctx.caps.camera.live({ faces: true })`.
 //
-// Outside the model's reference on purpose (packages/generator/src/reference.ts): the prompt carries
-// only the two members `ctx.ts` adds (`faces` in the options and in each frame's info), and this
-// file's shapes are documented for people and the Studio's search in docs/25 (#341).
+// Outside the CORE of the model's reference (packages/generator/src/reference.ts, #341): the prompt
+// carries one index line for `Face`; these declarations reach the model through `lookup("Face")`
+// and beside a request that asks for faces, like every other capability's.
 //
 // Every point is in the VIDEO's pixels, not mirrored — the frame's own convention: a selfie view that
 // mirrors the picture mirrors these points the same way. Left and right are the PERSON's: their left

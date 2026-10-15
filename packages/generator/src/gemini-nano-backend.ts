@@ -7,7 +7,10 @@
 // so it's unit-testable without Chrome; `createGeminiNanoBackend` resolves the real global.
 
 import type { GenPrompt, ModelBackend } from "./backend.js";
-import { SYSTEM_PROMPT_COMPACT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource } from "./prompt.js";
+import { SYSTEM_PROMPT_COMPACT, buildModifyMessage, buildRepairMessage, buildUserMessage, extractSource, type TurnOptions } from "./prompt.js";
+
+/** Nano's context cannot hold capability declarations either: it keeps their index line (#341). */
+const ON_DEVICE: TurnOptions = { capabilities: false };
 import type { ModifyContext } from "./prompt.js";
 
 /** A live prompting session (Chrome's `LanguageModel` session). */
@@ -48,13 +51,13 @@ export class GeminiNanoBackend implements ModelBackend {
 
   async generate(prompt: GenPrompt): Promise<string> {
     const session = await this.newSession();
-    return once(session, async (s) => extractSource(await s.prompt(buildUserMessage(prompt))));
+    return once(session, async (s) => extractSource(await s.prompt(buildUserMessage(prompt, ON_DEVICE))));
   }
 
   async repair(source: string, errors: string[], prompt: GenPrompt): Promise<string> {
     // The Prompt API turn is a single string, so fold the prior attempt + errors into one message.
     const message = [
-      buildUserMessage(prompt),
+      buildUserMessage(prompt, ON_DEVICE),
       "",
       "The previous attempt:",
       "```ts",
@@ -69,14 +72,14 @@ export class GeminiNanoBackend implements ModelBackend {
 
   async modify(source: string, instruction: string, prompt: GenPrompt, ctx?: ModifyContext): Promise<string> {
     const message = [
-      buildUserMessage(prompt),
+      buildUserMessage(prompt, ON_DEVICE),
       "",
       "The current app:",
       "```ts",
       source,
       "```",
       "",
-      buildModifyMessage(instruction, ctx),
+      buildModifyMessage(instruction, ctx, ON_DEVICE),
     ].join("\n");
     const session = await this.newSession();
     return once(session, (s) => s.prompt(message));

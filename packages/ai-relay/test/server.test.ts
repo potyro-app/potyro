@@ -9,11 +9,11 @@ let server: Server | null = null;
 afterEach(() => new Promise<void>((done) => (server ? server.close(() => done()) : done())));
 
 describe("the AI relay's HTTP side", () => {
-  it("passes the request through, with the proxy's prefix taken off and the forwarded address", async () => {
+  it("passes the request through, with the proxy's prefix taken off and the address the proxy appended, not one the client sent (#348)", async () => {
     const seen: RelayRequest[] = [];
     server = await startServer({ handle: async (r) => (seen.push(r), { status: 200, body: { ok: true } }), port: 0, host: "127.0.0.1" });
     const { port } = server.address() as AddressInfo;
-    const res = await fetch(`http://127.0.0.1:${port}/ai/complete`, { method: "POST", body: "{}", headers: { "x-forwarded-for": "9.9.9.9, 10.0.0.1" } });
+    const res = await fetch(`http://127.0.0.1:${port}/ai/complete`, { method: "POST", body: "{}", headers: { "x-forwarded-for": "6.6.6.6, 9.9.9.9" } });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(seen[0]).toMatchObject({ method: "POST", path: "/complete", body: "{}", ip: "9.9.9.9" });

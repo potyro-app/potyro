@@ -202,7 +202,7 @@ async function firstMessage(deps: ModifyLoopDeps, tool: boolean): Promise<string
     ...(recap ? [recap] : []),
     buildModifyOpener(),
     `\`\`\`ts\n${deps.source}\n\`\`\``,
-    buildModifyMessage(deps.instruction, { ...deps.context, language }),
+    buildModifyMessage(deps.instruction, { ...deps.context, language }, { source: deps.source }),
   ];
   if (deps.corpus) {
     const primed = primeCorpus(await deps.corpus(), deps.instruction, deps.source);
