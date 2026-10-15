@@ -118,7 +118,7 @@ cam.stop();
 
 The front camera as a mirror with a monster in it: googly eyes and horns that find the warm-skinned
 blob in the frame (no ML: a skin-tone mask on a 64-px thumbnail, smoothed), a mirror-twin face,
-a kaleidoscope and neon motion trails. **Snap** keeps the composite as a PNG in the app's folder and
+a kaleidoscope, neon motion trails and an 8-bit pixel monster. **Snap** keeps the composite as a PNG in the app's folder and
 a record in the Gallery. Six languages, phone-first, trusted only (it draws on a page).
 
 These are new optional members: no existing app changes, so `schemaVersion` is not bumped.
