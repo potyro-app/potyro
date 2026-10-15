@@ -89,6 +89,7 @@ export interface Capabilities {
   haptics: HapticsCap | null;              // vibration; null where unsupported
   filesystem: FileCap;                     // always present
   network: NetworkCap;                     // always present at platform level; gated per app by host
+  liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
   ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
 }
 /** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
@@ -104,6 +105,17 @@ export interface AiCap {
   consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>; // { message; detail; ok; cancel }, saying who pays now
 }
 export interface CameraCap { capture(o?: { source?: "camera"|"library" }): Promise<Blob>; }
+export interface LiveCameraCap {
+  start(o?: LiveCameraOptions): Promise<LiveCamera>;   // LiveCamera is the app-facing handle (docs/04)
+  current(): LiveCamera | null;                        // what is running, for the shell's indicator
+  subscribe(fn: (on: LiveCamera | null) => void): () => void;
+  stopAll(why: LiveCameraStop): void;                  // the shell: leaving an app, "Turn off"
+  useFaces(loader: FaceLoader | null): void;           // the shell's face finder, for live({ faces }) (docs/25 §Faces)
+}
+export type FaceLoader = () => Promise<FaceFinder>;    // loads once per page; rejects with code "unsupported" | "failed"
+export interface FaceFinder {                          // one call at a time per session; frames skip while it runs
+  find(video: HTMLVideoElement, time: number, opts: { max: number; points: boolean }): Promise<Face[]>;
+}
 export interface NotificationCap {
   schedule(n: { id: string; at: string; title: string; body?: string }): Promise<void>;
   cancel(id: string): Promise<void>; list(): Promise<{ id: string; at: string }[]>;
@@ -123,6 +135,18 @@ app (`app-ai.ts`, `capsWithAi`) — the free relay first, then the person's own 
 the host turns it into `ctx.caps.ai` (`host/src/ai.ts`: the shape check, the prompt, the answer's
 validation, the pictures read from the app's own store; `mediate.ts`: the sealed app's consent and
 everyone's off switch). The host never sends anything and the shell never sees a shape.
+
+`liveCamera` is ONE object per page (`sharedLiveCamera()`), not one per `Capabilities`: the shell's
+indicator watches it, and a second instance (the Studio's preview builds its own capabilities) would
+be a camera the indicator could not see. It stops itself when the page is hidden or goes away. The
+host puts it on `ctx.caps.camera.live` for trusted apps only (docs/25); `createLiveCamera(deps)` takes
+every browser dependency as an argument, which is how its tests run without one.
+
+Faces: the capability owns the rule (one find in flight per session, every frame carrying the latest
+faces, `facesFailed` on a loader or finder that fails) and the arithmetic (`faceFrom`: the landmarker's
+raw mesh → `Face`); the SHELL owns the finding (`packages/shell/src/faces/`: MediaPipe's Face
+Landmarker in a worker, loaded from files the shell serves itself) and hands it over with `useFaces` at
+boot. `createFakeLiveCamera({ faces })` scripts faces for tests; `sketchFace` draws a believable one.
 
 ## Host (packages/host) — loading, execution, trust  **[central, new]**
 

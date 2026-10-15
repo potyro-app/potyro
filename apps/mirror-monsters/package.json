@@ -1,0 +1,15 @@
+{
+  "name": "@potyro/app-mirror-monsters",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mirror Monsters: the live camera as a mirror with a monster in it — googly eyes, twins, kaleidoscope, trails, pixels (docs/25)",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs mirror-monsters.app.ts -o dist/mirror-monsters.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  }
+}

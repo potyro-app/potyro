@@ -86,7 +86,13 @@ function adaptFull(caps: Capabilities): Caps {
     filesystem: { pick: () => caps.filesystem.pick(), save: (name, data) => caps.filesystem.save(name, data) },
     network: { fetch: (input, init) => caps.network.fetch(input, init) },
   };
-  if (caps.camera) out.camera = { capture: (o) => caps.camera!.capture(o) };
+  if (caps.camera) {
+    const cam = caps.camera;
+    const live = caps.liveCamera;
+    out.camera = live
+      ? { capture: (o) => cam.capture(o), live: (o) => live.start(o) }
+      : { capture: (o) => cam.capture(o) };
+  }
   if (caps.geolocation) out.geo = { current: () => caps.geolocation!.current() };
   if (caps.haptics) out.haptics = { vibrate: (p) => caps.haptics!.vibrate(p) };
   if (caps.notifications) {
@@ -148,6 +154,9 @@ function adaptMediated(caps: Capabilities, perms: PermissionManifest, ui: UiBrid
 
   if (perms.camera && caps.camera) {
     const cam = caps.camera;
+    // A still only. The live camera is for trusted apps until sealed custom views exist (docs/25):
+    // a sealed app's logic runs in the realm, which has nothing to draw frames on and no op that
+    // streams. `live` is absent rather than a refusing stub, so `camera.live` tells the app.
     out.camera = {
       capture: async (o) => {
         await gate("the camera");

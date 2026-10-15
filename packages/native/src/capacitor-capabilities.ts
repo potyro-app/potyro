@@ -8,8 +8,8 @@
 // composition root swaps this in for WebCapabilities when running under Capacitor.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "@potyro/capabilities";
-import { pickFilesFromInput } from "@potyro/capabilities";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap } from "@potyro/capabilities";
+import { pickFilesFromInput, sharedLiveCamera } from "@potyro/capabilities";
 
 // --- Minimal plugin shapes (a subset of the real @capacitor/* APIs we actually use) -------------
 
@@ -68,6 +68,8 @@ export interface CapacitorHostHelpers {
   fetchImpl: (input: string) => Promise<{ blob(): Promise<Blob> }>;
   blobToBase64: (blob: Blob) => Promise<string>;
   pickFile: () => Promise<Blob>;
+  /** The live camera; the page's shared one by default. */
+  liveCamera: LiveCameraCap | null;
 }
 
 // --- Helpers ------------------------------------------------------------------------------------
@@ -121,6 +123,12 @@ export class CapacitorCapabilities implements Capabilities {
   readonly haptics: HapticsCap;
   readonly filesystem: FileCap;
   readonly network: NetworkCap;
+  /**
+   * The live camera is the WebView's own getUserMedia — the same one-per-page session as on the web
+   * (docs/25). The camera plugin takes photos; it does not stream. Capacitor's BridgeWebChromeClient
+   * answers the WebView's VIDEO_CAPTURE request by asking for CAMERA, which the manifest declares.
+   */
+  readonly liveCamera: LiveCameraCap | null;
 
   constructor(plugins: CapacitorPlugins, helpers?: Partial<CapacitorHostHelpers>) {
     const fetchImpl = helpers?.fetchImpl ?? ((input: string) => globalThis.fetch(input));
@@ -198,6 +206,7 @@ export class CapacitorCapabilities implements Capabilities {
     };
 
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
+    this.liveCamera = helpers?.liveCamera !== undefined ? helpers.liveCamera : sharedLiveCamera();
   }
 }
 

@@ -25,6 +25,8 @@ describe("the manifest patch", () => {
     // No storage permission: the adapter asks the camera plugin for the one alias a capture needs,
     // rather than declaring access to every photo on the phone (capacitor-capabilities.ts).
     expect(xml).not.toContain("READ_EXTERNAL_STORAGE");
+    // Nor the microphone: the live camera asks getUserMedia for video only (docs/25).
+    expect(xml).not.toContain("RECORD_AUDIO");
     expect(names(xml)).toContain("INTERNET"); // what was there already stays
     expect(xml.trimEnd().endsWith("</manifest>")).toBe(true);
     expect(PERMS).toHaveLength(5);
