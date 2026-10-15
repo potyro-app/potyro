@@ -1173,7 +1173,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       ) : null}
 
       {shareOpen && appId && getUserApp(appId) ? (
-        <ShareSheet app={getUserApp(appId)!} onClose={() => setShareOpen(false)} onInvite={sync ? () => setPeopleOpen(true) : undefined} />
+        <ShareSheet app={getUserApp(appId)!} onClose={() => setShareOpen(false)} onInvite={sync ? () => setPeopleOpen(true) : undefined} clipRoot={() => document.querySelector(".k-app")} />
       ) : null}
       {peopleOpen && appId ? (
         <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />

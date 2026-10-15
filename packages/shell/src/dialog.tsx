@@ -180,7 +180,7 @@ type CopyState = "idle" | "copied" | "failed";
  * is told, and the link is left selected so that the recourse — copy it by hand — is one keystroke
  * rather than a 200-character drag on a phone.
  */
-export function ShareBody({ link, onDone }: { link: string; onDone: () => void }) {
+export function ShareBody({ link, onDone, onShared, text }: { link: string; onDone: () => void; onShared?: (how: "copy" | "native") => void; text?: string }) {
   const { t } = useLingui();
   const [state, setState] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -200,6 +200,7 @@ export function ShareBody({ link, onDone }: { link: string; onDone: () => void }
       if (!navigator.clipboard) throw new Error("No clipboard in this context");
       await navigator.clipboard.writeText(link);
       setState("copied");
+      onShared?.("copy");
     } catch {
       setState("failed");
       selectLink();
@@ -208,7 +209,8 @@ export function ShareBody({ link, onDone }: { link: string; onDone: () => void }
 
   const shareNative = async (): Promise<void> => {
     try {
-      await navigator.share({ url: link });
+      await navigator.share({ url: link, ...(text ? { text } : {}) });
+      onShared?.("native");
     } catch (e) {
       // Closing the sheet without choosing anything is not a failure.
       if (e instanceof DOMException && e.name === "AbortError") return;

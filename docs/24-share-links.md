@@ -142,6 +142,11 @@ Where neither exists — Safari, phones, the Android WebView — the sheet says 
 browser cannot record and suggests the phone's own screen recorder. The clip is saved as a file;
 nothing is uploaded.
 
+Details: the clip is offered only inside an app (the launcher has none on screen). While it records,
+the sheet steps aside for a small "Recording · 12 s · Stop" bar. A tab recording is cropped to the
+app where the browser has Region Capture. MP4 is written where the browser can (every network takes
+it), WebM otherwise. Saving waits for a tap on "Save the clip", because a browser's save dialog needs one.
+
 ## 9. What this does not do
 
 - No public gallery, feed, search or listing of share links (Phase 1 is a curated showcase, later).

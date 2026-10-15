@@ -1,7 +1,9 @@
 // Share (docs/24 §1): two ways, said plainly, the one most people want first.
 //
 //   A link anyone can try — the app, running, with sample records. Nothing of yours goes with it.
-//   Use it together     — an invite into the app AND its records (the existing #join= link, sync on).
+//                           Sent by copying it, through WhatsApp or Telegram, or the device's own sheet.
+//   A 15-second clip      — only where the app is on screen: a video of it, to post (docs/24 §8).
+//   Use it together       — an invite into the app AND its records (the existing #join= link, sync on).
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
@@ -9,19 +11,37 @@ import { ShareBody } from "./dialog.js";
 import type { UserApp } from "./user-apps.js";
 import type { MadeDemoLink } from "./demo-share.js";
 import { creditLine } from "./credit-words.js";
+import { shareEvent } from "./share-events.js";
+import { networkLinks } from "./share-networks.js";
+import { CLIP_SECONDS, clipEnvFor, clipWay, startClip, type Recording } from "./clip.js";
+import { shellCaps } from "./shell-caps.js";
 
 type State = { kind: "choose" } | { kind: "making" } | { kind: "made"; made: MadeDemoLink } | { kind: "failed"; why: string };
+
+type Clip =
+  | { kind: "idle" }
+  | { kind: "starting" }
+  | { kind: "recording"; left: number; recording: Recording }
+  | { kind: "ready"; blob: Blob; ext: "mp4" | "webm" }
+  | { kind: "saved"; file: string }
+  | { kind: "failed"; why: string };
 
 export interface ShareSheetProps {
   app: UserApp;
   onClose: () => void;
   /** Use it together: the invite. Absent where it cannot start from here; the sheet then says where it can. */
   onInvite?: () => void;
+  /** The app on screen, when it is: what a clip records. Absent from the launcher, where no app is open. */
+  clipRoot?: () => Element | null;
 }
 
-export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
+const WHATSAPP = "WhatsApp"; // i18n-ignore — a name
+const TELEGRAM = "Telegram"; // i18n-ignore — a name
+
+export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps) {
   const { t } = useLingui();
   const [state, setState] = useState<State>({ kind: "choose" });
+  const [clip, setClip] = useState<Clip>({ kind: "idle" });
   const me = peekIdentity();
   // A kept app is passed on as its maker's (docs/24 §6): there is no "by me" to offer for it.
   const kept = Boolean(app.credit && !app.remixOf);
@@ -29,6 +49,7 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
   const madeBy = kept ? creditLine(app.credit) : null;
   const [showName, setShowName] = useState(Boolean(myName));
   const name = app.name;
+  const busy = state.kind === "making" || clip.kind === "starting";
 
   const make = async (): Promise<void> => {
     setState({ kind: "making" });
@@ -40,15 +61,63 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
     }
   };
 
+  const record = async (): Promise<void> => {
+    setClip({ kind: "starting" });
+    try {
+      let rec: Recording | null = null;
+      rec = await startClip(clipRoot?.() ?? null, { onTick: (left) => rec && setClip({ kind: "recording", left, recording: rec }) });
+      setClip({ kind: "recording", left: CLIP_SECONDS, recording: rec });
+      const { blob, ext } = await rec.done;
+      setClip({ kind: "ready", blob, ext });
+    } catch (e) {
+      // Declining the browser's "share this tab?" is not a failure worth a sentence.
+      if (e instanceof DOMException && e.name === "NotAllowedError") return setClip({ kind: "idle" });
+      setClip({ kind: "failed", why: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const saveClip = async (blob: Blob, ext: string): Promise<void> => {
+    const file = `${app.id}-clip.${ext}`;
+    try {
+      await shellCaps().filesystem.save(file, blob);
+      shareEvent("clip-recorded");
+      setClip({ kind: "saved", file });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setClip({ kind: "failed", why: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  // While it records, the app is what is on screen: the sheet steps aside for a small bar with Stop.
+  if (clip.kind === "recording") {
+    const left = clip.left;
+    return (
+      <div className="k-clip-pill" role="status" aria-live="polite">
+        <span className="k-clip-dot" aria-hidden />
+        <span>
+          <Trans comment="While a clip of the app is recorded; left is seconds">Recording · {left} s</Trans>
+        </span>
+        <button type="button" className="k-add" onClick={() => clip.recording.stop()}>
+          <Trans comment="Stop recording the clip">Stop</Trans>
+        </button>
+      </div>
+    );
+  }
+
+  const way = clipRoot ? clipWay(clipEnvFor(clipRoot())) : null;
+  const file = clip.kind === "saved" ? clip.file : "";
+  const why = clip.kind === "failed" ? clip.why : "";
+  const shareText = t({ message: `Try ${name}, made with Potyro`, comment: "The words sent with a demo link in a chat" });
+
   return (
-    <div className="k-modal-scrim" onClick={state.kind === "making" ? undefined : onClose}>
+    <div className="k-modal-scrim" onClick={busy ? undefined : onClose}>
       <div
         className="k-modal k-share-sheet"
         role="dialog"
         aria-modal="true"
         aria-label={t({ message: `Share ${name}`, comment: "The share sheet's title" })}
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === "Escape" && state.kind !== "making" && onClose()}
+        onKeyDown={(e) => e.key === "Escape" && !busy && onClose()}
       >
         <header className="k-share-sheet-head">
           <p className="k-ask-eyebrow">
@@ -71,7 +140,8 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
                   <Trans>This link carries the whole app, so chats show it without a preview picture.</Trans>
                 </p>
               )}
-              <ShareBody link={state.made.link} onDone={onClose} />
+              <NetworkRow link={state.made.link} text={shareText} />
+              <ShareBody link={state.made.link} text={shareText} onDone={onClose} onShared={(how) => shareEvent(`share-network:${how}`)} />
             </>
           ) : (
             <>
@@ -89,12 +159,57 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
                   {state.why}
                 </p>
               ) : null}
-              <button type="button" className="k-add k-primary-action k-share-make" data-share="demo" disabled={state.kind === "making"} onClick={() => void make()}>
+              <button type="button" className="k-add k-primary-action k-share-make" data-share="demo" disabled={busy} onClick={() => void make()}>
                 {state.kind === "making" ? t`Making the link…` : t`Make the link`}
               </button>
             </>
           )}
         </section>
+
+        {way ? (
+          <section className="k-share-way k-share-way-clip" aria-labelledby="k-share-clip-title">
+            <h3 id="k-share-clip-title">
+              <Trans>A 15-second clip</Trans>
+            </h3>
+            <p className="k-muted">
+              <Trans>Record the app as it is on your screen, to post as a video. Nothing is uploaded: you get a file.</Trans>
+            </p>
+            {way === "none" ? (
+              <p className="k-share-note" data-clip="unsupported">
+                <Trans>This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds.</Trans>
+              </p>
+            ) : clip.kind === "ready" ? (
+              <>
+                <p className="k-share-note" role="status">
+                  <Trans>The clip is ready.</Trans>
+                </p>
+                <button type="button" className="k-add k-primary-action" data-clip="save" onClick={() => void saveClip(clip.blob, clip.ext)}>
+                  <Trans>Save the clip</Trans>
+                </button>
+              </>
+            ) : clip.kind === "saved" ? (
+              <p className="k-share-note" role="status">
+                <Trans>Saved {file}.</Trans>
+              </p>
+            ) : (
+              <>
+                {way === "tab" ? (
+                  <p className="k-share-note">
+                    <Trans>Your browser will ask what to record: choose this tab.</Trans>
+                  </p>
+                ) : null}
+                {clip.kind === "failed" ? (
+                  <p className="k-add-app-error" role="alert">
+                    <Trans>The clip could not be recorded: {why}</Trans>
+                  </p>
+                ) : null}
+                <button type="button" className="k-add" data-clip="record" disabled={busy} onClick={() => void record()}>
+                  <Trans>Record a clip</Trans>
+                </button>
+              </>
+            )}
+          </section>
+        ) : null}
 
         <section className="k-share-way k-share-way-together" aria-labelledby="k-share-together-title">
           <h3 id="k-share-together-title">
@@ -108,7 +223,7 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
               type="button"
               className="k-add"
               data-share="invite"
-              disabled={state.kind === "making"}
+              disabled={busy}
               onClick={() => {
                 onClose();
                 onInvite();
@@ -123,6 +238,26 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+/** Straight into a chat: each network's own share address, opened by the person's tap. */
+function NetworkRow({ link, text }: { link: string; text: string }) {
+  const { t } = useLingui();
+  const nets = networkLinks(link, text);
+  return (
+    <div className="k-share-networks" role="group" aria-label={t({ message: "Send it with", comment: "Share sheet: the chat apps a link can be sent with" })}>
+      <a className="k-share-net" data-net="whatsapp" href={nets.whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => shareEvent("share-network:whatsapp")}>
+        <span className="k-share-net-mark" aria-hidden />
+        {WHATSAPP}
+      </a>
+      {nets.telegram ? (
+        <a className="k-share-net" data-net="telegram" href={nets.telegram} target="_blank" rel="noopener noreferrer" onClick={() => shareEvent("share-network:telegram")}>
+          <span className="k-share-net-mark" aria-hidden />
+          {TELEGRAM}
+        </a>
+      ) : null}
     </div>
   );
 }
