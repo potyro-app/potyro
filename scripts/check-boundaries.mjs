@@ -47,6 +47,13 @@ const rules = [
     note: "platform-requests depends on no Potyro package; the shell depends on it",
   },
   {
+    // The share service for demo links runs on the server, alone (docs/24 §4): it must not pull any
+    // of the app into it, and the shell imports only its browser-safe wire format.
+    pkg: "packages/share-links/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "share-links depends on no Potyro package; the shell depends on it",
+  },
+  {
     // The free AI allowance's relay (docs/23) runs on the server with Potyro's key: the same rule.
     pkg: "packages/ai-relay/src",
     forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
