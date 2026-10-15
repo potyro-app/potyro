@@ -170,6 +170,11 @@ export interface CtxUi {
   form<T = Record<string, unknown>>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
   /** A progress bar for a long action. */
   progress(label: Words): UiProgress;
+  /**
+   * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
+   * picks where, so no permission. `true` when copied or shared, `false` when closed.
+   */
+  share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
 }
 
 /**
