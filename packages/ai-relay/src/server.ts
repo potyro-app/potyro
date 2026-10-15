@@ -8,7 +8,7 @@
 //   AI_PER_DEVICE_MONTH    default 100
 //   AI_PER_ADDRESS_DAY     default 60
 //   AI_LEDGER              default ./ai-ledger.json — the month's spend and counts, so a restart keeps them
-//   PORT                   default 4203
+//   PORT                   default 4204
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
 // Behind Apache on the site's origin (`/ai/` → here), like the platform-request relay: the site's gate
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   );
   const model = process.env.AI_MODEL || AI_MODEL;
   const relay = createAiRelay({ upstream: openRouter(key), now: Date.now, ledger, limits, model, onError: (e) => console.error("[ai-relay]", e instanceof Error ? e.message : e) });
-  const port = Number(process.env.PORT ?? 4203);
+  const port = Number(process.env.PORT ?? 4204);
   const host = process.env.HOST ?? "127.0.0.1";
   await startServer({ handle: relay.handle, port, host });
   console.log(`[ai-relay] ${model}, cap $${limits.monthlyUsd ?? 10} a month, listening on ${host}:${port}`);
