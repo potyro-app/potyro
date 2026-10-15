@@ -29,6 +29,7 @@
     "@potyro/native": "workspace:*",
     "@potyro/platform-requests": "workspace:*",
     "@potyro/runtime": "workspace:*",
+    "@potyro/share-links": "workspace:*",
     "@potyro/store": "workspace:*",
     "@potyro/views": "workspace:*",
     "esbuild-wasm": "^0.28.1",

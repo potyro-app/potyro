@@ -94,10 +94,20 @@ export function packDemo(input: DemoPackageInput): Uint8Array {
   });
 }
 
+/** A demo package, and what a preview of it may show: the app's look and its demo records. */
+export interface DemoPackage {
+  zip: Uint8Array;
+  entities: string[];
+  seed?: DemoSeed;
+  icon?: string;
+  accent?: string;
+}
+
 /** Everything `packDemo` needs, read from this device for a saved app. */
-export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): Promise<Uint8Array> {
+export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): Promise<DemoPackage> {
   const [{ inspect }, { appCode, modulesOf }] = await Promise.all([import("./app-source.js"), import("./app-modules.js")]);
-  const entities = (await inspect(app.source)).entities.map((e) => e.key);
+  const shape = await inspect(app.source);
+  const entities = shape.entities.map((e) => e.key);
   let files: PackagedFile[] = [];
   let code: Array<{ path: string; data: Uint8Array }> = [];
   const needsStore = Boolean(app.shipped?.length) || Boolean(app.lock && Object.keys(app.lock).length);
@@ -112,5 +122,9 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
     }
   }
   const credit: AppCredit = { name: app.name, ...(opts.by ? { by: opts.by } : {}) };
-  return packDemo({ app, entities, code, files, seed: await demoSeed(app.id, entities), credit });
+  const seed = await demoSeed(app.id, entities);
+  // What its first screens show come first: that is what the app is for, at a glance (preview-card.ts).
+  const shown = shape.pages.filter((p) => !p.hidden && p.entity).map((p) => p.entity!);
+  const byScreen = [...new Set([...shown, ...entities])];
+  return { zip: packDemo({ app, entities, code, files, seed, credit }), entities: byScreen, seed, icon: shape.icon, accent: shape.accent };
 }

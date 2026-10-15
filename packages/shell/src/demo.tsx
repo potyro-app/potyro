@@ -44,7 +44,20 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
       throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
     }
   }
-  throw new Error(t`This kind of link cannot be opened here yet.`);
+  const { fetchHostedPackage, GoneError } = await import("./share-service.js");
+  let zip: Uint8Array;
+  try {
+    zip = await fetchHostedPackage(link.id, link.key);
+  } catch (e) {
+    if (e instanceof GoneError) throw new Error(t`This link no longer works: whoever shared it took it down, or it was never made.`);
+    if (e instanceof TypeError) throw new Error(t`The app could not be fetched. Check the connection and try again.`);
+    throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
+  }
+  try {
+    return readAppPackage(zip);
+  } catch {
+    throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
+  }
 }
 
 /** The app's name, as the link says it, before any of its code has run. */
