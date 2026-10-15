@@ -211,7 +211,10 @@ person — which is why it may be synchronous inside a `filter`. The host checks
 items, 10,000 characters), and formats in its own locale; host time counts against the call's
 deadline. `mediate.ts` is unchanged: formatting is not a capability. `ctx.ui` takes `Words`
 everywhere it takes words, and `ctx` resolves them before the `UiBridge` sees them, so the shell only
-ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`).
+ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`). `UiBridge.share`
+(`ctx.ui.share`) receives `{ text?, url?, title? }` already checked — something to send, an http(s)
+link only, at most 10,000 characters — and answers whether it was copied or handed to the share
+sheet; a headless bridge leaves it out and `ctx` answers `false`.
 
 Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
 surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app

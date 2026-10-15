@@ -420,7 +420,8 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
   const SEQUENCE_BUNDLE = `globalThis.__potyroApp = { id: "x", name: "X", version: "1.0.0", schemaVersion: 1,
     entities: { n: { fields: { t: { type: "text" }, k: { type: "number" } }, actions: {
       two: async function(r, ctx){ var a = await ctx.get("n", r.id); var b = await ctx.patch("n", r.id, { k: 1 }); var c = await ctx.patch("n", r.id, { k: 2 }); ctx.ui.toast("k=" + c.k); },
-      askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); }
+      askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); },
+      shareIt: async function(r, ctx){ var ok = await ctx.ui.share({ title: { en: "Send it" }, text: { en: "Daily #3 4/6" }, url: "https://example.org/x" }); ctx.ui.toast("shared=" + ok); }
     } } }, pages: [{ id: "p", title: "P", view: { type: "list", entity: "n" } }], reminders: [] };`;
 
   describe("host calls as promises", () => {
@@ -441,6 +442,20 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
       await loaded.callAction("n", "two", { ...rec } as never, ctx);
       expect(toasts).toEqual(["k=2"]);
       loaded.dispose();
+    });
+
+    it("ctx.ui.share crosses as plain words, and answers what the shell answered", async () => {
+      const seen: unknown[] = [];
+      const { loaded, ctx, toasts, rec } = await sequence({ share: async (o) => (seen.push(o), true) });
+      await loaded.callAction("n", "shareIt", { ...rec } as never, ctx);
+      expect(seen).toEqual([{ title: "Send it", text: "Daily #3 4/6", url: "https://example.org/x" }]);
+      expect(toasts).toEqual(["shared=true"]);
+      // Headless (no share in the bridge): nothing was sent.
+      const headless = await sequence({});
+      await headless.loaded.callAction("n", "shareIt", { ...headless.rec } as never, headless.ctx);
+      expect(headless.toasts).toEqual(["shared=false"]);
+      loaded.dispose();
+      headless.loaded.dispose();
     });
 
     it("an action waits on a person past its budget while other calls run, then writes", async () => {
