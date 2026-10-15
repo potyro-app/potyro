@@ -707,7 +707,8 @@ export interface AppDefinition {
    *  several entities, tabs when few. */
   nav?: "grid" | "tabs";
   /** Prominent create triggers shown in the action bar / grid home. When omitted, the shell
-   *  auto-derives a "New <Entity>" per top-level entity. */
+   *  auto-derives an "Add: <Entity>" per top-level entity; `[]` says nothing is added by hand (records
+   *  the app makes itself, like a live feed's): no floating add, and a map has no place button. */
   quickActions?: QuickAction[];
   entities: Record<string, EntityDef>;
   pages: Page[];
