@@ -44,6 +44,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
 
+  apps/draw-guess:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
   apps/markdown-notes:
     dependencies:
       potyro:
