@@ -5,11 +5,13 @@
 // demo records (preview-card.ts). The key goes in the link's fragment, which never reaches a server.
 import { canSeal, openPackage, sealPackage, toBase64, type ShareCreated, type ShareMeta } from "@potyro/share-links";
 import { siteBase } from "./demo-link.js";
+import { currentSite } from "./site.js";
 
 /** Where the service is: beside the site (`/share-api`), or where the build says. */
 export function shareServiceUrl(): string {
   const configured = (import.meta.env.VITE_POTYRO_SHARE as string | undefined)?.replace(/\/+$/, "");
-  return configured || `${location.origin}${siteBase(location.pathname)}share-api`;
+  const site = currentSite();
+  return configured || (site ? `${site.origin}${site.path}share-api` : `${location.origin}${siteBase(location.pathname)}share-api`);
 }
 
 /** Whether the service answers here, within a moment. A static site without it answers with its page, or not at all. */

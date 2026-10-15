@@ -45,12 +45,13 @@ pnpm i
 pnpm --filter @potyro/shell exec vite build     # → packages/shell/dist  (~33 MB)
 ```
 
-Two build-time knobs, both optional:
+Build-time knobs, all optional:
 
 | Variable | Default | When to set it |
 |---|---|---|
 | `VITE_POTYRO_RELAY` | same origin, `/sync` | Only if the relay is on a different host. |
 | `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
+| `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://apps.vaz.io`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
 
 `apps.vaz.io` sets **neither**. The build derives `wss://apps.vaz.io/sync` from the origin it is
 served from, which is the whole point of the default: proxy one path and sync works with no
