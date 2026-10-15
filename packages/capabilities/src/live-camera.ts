@@ -13,7 +13,8 @@
 //     track ("ended"), when a newer `start` takes over ("replaced"), and when the shell says so;
 //   - it never restarts by itself — the app hears `onStop` and asks the person.
 
-import type { LiveCamera, LiveCameraFailure, LiveCameraOptions, LiveCameraStop, LiveFrameInfo } from "potyro";
+import type { Face, FacesFailure, LiveCamera, LiveCameraFailure, LiveCameraOptions, LiveCameraStop, LiveFrameInfo } from "potyro";
+import { facesFailureOf, type FaceFinder, type FaceLoader, type FindOptions } from "./faces.js";
 
 /** The platform half of `ctx.caps.camera.live` (docs/05). */
 export interface LiveCameraCap {
@@ -25,6 +26,11 @@ export interface LiveCameraCap {
   subscribe(fn: (on: LiveCamera | null) => void): () => void;
   /** Stop whatever runs — the shell's Turn off ("person"), leaving an app ("closed"). */
   stopAll(why: LiveCameraStop): void;
+  /**
+   * How faces are found when a session asks for them (`live({ faces: true })`): the shell's loader,
+   * called the first time a session wants faces. With none, those frames say `"unsupported"`.
+   */
+  useFaces(loader: FaceLoader | null): void;
 }
 
 /** What the live camera needs from a browser. `createLiveCamera` is given these; tests give fakes. */
@@ -42,6 +48,8 @@ export interface LiveCameraDeps {
   nextFrame(cb: () => void): () => void;
   /** How long to wait for the first frame's size. */
   metadataTimeoutMs?: number;
+  /** How faces are found, until `useFaces` says otherwise. */
+  faces?: FaceLoader;
 }
 
 export const LIVE_MIN = 160;
@@ -62,6 +70,14 @@ export function liveConstraints(opts: LiveCameraOptions = {}): MediaStreamConstr
       height: { ideal: clampSize(opts.height, DEFAULT_SIZE.height) },
     },
   };
+}
+
+/** What `live({ faces })` asked for, or `null` for no faces. */
+export function faceOptions(opt: LiveCameraOptions["faces"]): FindOptions | null {
+  if (!opt) return null;
+  const o = typeof opt === "object" ? opt : {};
+  const max = typeof o.max === "number" && Number.isFinite(o.max) ? Math.round(Math.min(4, Math.max(1, o.max))) : 1;
+  return { max, points: o.points === true };
 }
 
 /** An error an app can tell apart by `code`; the message is for the log. */
@@ -126,6 +142,11 @@ class Session implements LiveCamera {
   private readonly stopFns = new Set<(why: LiveCameraStop) => void>();
   private cancelFrame: (() => void) | null = null;
   private lastTime = -1;
+  // Faces, when asked for: the finder once loaded, the last faces found, and whether one is being found.
+  private finder: FaceFinder | null = null;
+  private faces: Face[] = [];
+  private facesFailed: FacesFailure | undefined;
+  private finding = false;
 
   constructor(
     readonly video: FrameVideo,
@@ -133,8 +154,24 @@ class Session implements LiveCamera {
     readonly facing: "user" | "environment",
     private readonly deps: LiveCameraDeps,
     private readonly ended: (s: Session) => void,
+    private readonly wantFaces: FindOptions | null = null,
+    loadFaces: FaceLoader | null = null,
   ) {
     for (const track of stream.getVideoTracks()) track.addEventListener("ended", () => this.halt("ended"));
+    if (!wantFaces) return;
+    if (!loadFaces) {
+      this.facesFailed = "unsupported";
+      return;
+    }
+    // Loaded once per page by the shell; the camera's frames flow (with no faces yet) meanwhile.
+    loadFaces().then(
+      (f) => {
+        if (this.alive) this.finder = f;
+      },
+      (e) => {
+        this.facesFailed = facesFailureOf(e);
+      },
+    );
   }
 
   get width(): number {
@@ -236,7 +273,42 @@ class Session implements LiveCamera {
     });
   }
 
-  private emit(info: LiveFrameInfo): void {
+  /**
+   * Find faces in this frame unless a find is still running — never more than one at a time, so a
+   * slow device skips frames instead of queueing them, and drawing never waits: each frame carries
+   * the latest faces found (a frame or two old while one is being found).
+   */
+  private findFaces(time: number): void {
+    const finder = this.finder;
+    if (!finder || this.finding || !this.wantFaces) return;
+    this.finding = true;
+    let pending: Promise<Face[]>;
+    try {
+      pending = finder.find(this.video, time, this.wantFaces);
+    } catch (e) {
+      pending = Promise.reject(e);
+    }
+    pending.then(
+      (found) => {
+        this.finding = false;
+        if (this.alive) this.faces = found;
+      },
+      (e) => {
+        this.finding = false;
+        this.finder = null;
+        this.faces = [];
+        this.facesFailed = facesFailureOf(e);
+      },
+    );
+  }
+
+  private emit(frame: LiveFrameInfo): void {
+    let info = frame;
+    if (this.wantFaces) {
+      this.findFaces(frame.time);
+      info = { ...frame, faces: this.faces };
+      if (this.facesFailed) info.facesFailed = this.facesFailed;
+    }
     for (const fn of [...this.frameFns]) {
       if (!this.alive) return;
       try {
@@ -251,6 +323,7 @@ class Session implements LiveCamera {
 export function createLiveCamera(deps: LiveCameraDeps): LiveCameraCap {
   let current: Session | null = null;
   let seq = 0;
+  let loadFaces: FaceLoader | null = deps.faces ?? null;
   const watchers = new Set<(on: LiveCamera | null) => void>();
   const tell = () => {
     for (const fn of [...watchers]) {
@@ -287,6 +360,9 @@ export function createLiveCamera(deps: LiveCameraDeps): LiveCameraCap {
       };
     },
     stopAll,
+    useFaces(loader) {
+      loadFaces = loader;
+    },
     async start(opts = {}) {
       if (deps.doc.hidden) throw liveCameraError("hidden", "The camera only starts while the app is on screen");
       const mine = ++seq;
@@ -329,7 +405,7 @@ export function createLiveCamera(deps: LiveCameraDeps): LiveCameraCap {
       const requested = constraints.video as { facingMode: { ideal: "user" | "environment" } };
       const said = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
       const facing = said === "environment" || said === "user" ? said : requested.facingMode.ideal;
-      const session = new Session(video, stream, facing, deps, ended);
+      const session = new Session(video, stream, facing, deps, ended, faceOptions(opts.faces), loadFaces);
       current = session;
       // A track that ended while we were starting (a camera unplugged mid-prompt) ends the session now.
       if (stream.getVideoTracks().some((t) => t.readyState === "ended")) session.halt("ended");

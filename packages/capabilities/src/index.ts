@@ -8,10 +8,24 @@ export {
   liveConstraints,
   liveCameraError,
   failureOf,
+  faceOptions,
   LIVE_MIN,
   LIVE_MAX,
   type LiveCameraCap,
   type LiveCameraDeps,
 } from "./live-camera.js";
+export {
+  faceFrom,
+  facesFailureOf,
+  scriptedFinder,
+  sketchFace,
+  MESH,
+  SHAPES,
+  type FaceFinder,
+  type FaceLoader,
+  type FaceSketch,
+  type FindOptions,
+  type RawFace,
+} from "./faces.js";
 export { createFakeLiveCamera, type FakeLiveCamera, type FakeLiveCameraOptions } from "./fake-live-camera.js";
 export { CONFORMANCE_CHECKS, type ConformanceCheck, type TargetExpectations } from "./conformance.js";

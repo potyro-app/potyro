@@ -10,6 +10,7 @@ import type { FileInfo, FileRef, Geo, Id, MediaRef, Resolved, Value } from "./co
 import type { Field } from "./fields.js";
 import type { Language, Words } from "./words.js";
 import type { AiValue } from "./infer.js";
+import type { Face, FaceOptions, FacesFailure } from "./faces.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -25,10 +26,10 @@ export interface CameraCapability {
   live?(opts?: LiveCameraOptions): Promise<LiveCamera>;
 }
 
-export type LiveCameraOptions = { facing?: "user" | "environment"; width?: number; height?: number };  // ideal px, 640×480
+export type LiveCameraOptions = { facing?: "user" | "environment"; width?: number; height?: number; faces?: boolean | FaceOptions };  // ideal px, 640×480
 export type LiveCameraStop = "app" | "person" | "hidden" | "closed" | "ended" | "replaced";
 export type LiveCameraFailure = "denied" | "missing" | "busy" | "hidden" | "failed";
-export type LiveFrameInfo = { time: number; width: number; height: number };
+export type LiveFrameInfo = { time: number; width: number; height: number; faces?: Face[]; facesFailed?: FacesFailure };
 
 /** A running live camera. Frames are not mirrored; it stops when the page is hidden or the app is left. */
 export interface LiveCamera {

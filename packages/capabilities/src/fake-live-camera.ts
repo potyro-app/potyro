@@ -2,6 +2,8 @@
 // page can be hidden or closed, the device can end the track, a refusal can be scripted, and frames
 // are pushed by hand — so a test says exactly which frame an app saw.
 
+import type { Face, FacesFailure } from "potyro";
+import { scriptedFinder } from "./faces.js";
 import { createLiveCamera, type LiveCameraCap } from "./live-camera.js";
 
 class FakeTrack extends EventTarget {
@@ -87,6 +89,13 @@ export interface FakeLiveCameraOptions {
   hidden?: boolean;
   /** Refuse the next `getUserMedia` with a DOMException of this name ("NotAllowedError"…). */
   refuse?: string;
+  /**
+   * Faces, scripted: what every frame of a `live({ faces: true })` session finds (change it with
+   * `setFaces`). Absent, faces are `"unsupported"` — as on a Potyro with no face finder.
+   */
+  faces?: Face[];
+  /** Make loading the face finder fail with this code. */
+  facesFail?: FacesFailure;
 }
 
 export interface FakeLiveCamera {
@@ -105,6 +114,10 @@ export interface FakeLiveCamera {
   refuseNext(name: string): void;
   /** Hold the next `getUserMedia` until `release()` — a prompt the person has not answered yet. */
   holdNext(): { release(): void };
+  /** What the scripted face finder finds from now on. */
+  setFaces(faces: Face[]): void;
+  /** How many times the face finder was loaded, and asked. */
+  faceCalls: { loads: number; finds: number };
 }
 
 export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLiveCamera {
@@ -116,6 +129,12 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
   const videos: FakeVideo[] = [];
   let refuse = opts.refuse;
   let hold: Promise<void> | null = null;
+  let faces = opts.faces;
+  const faceCalls = { loads: 0, finds: 0 };
+  const finder = scriptedFinder(() => {
+    faceCalls.finds++;
+    return faces ?? [];
+  });
 
   const cap = createLiveCamera({
     getUserMedia: async (c) => {
@@ -154,6 +173,15 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
       return () => clearTimeout(t);
     },
     metadataTimeoutMs: 50,
+    ...(opts.faces || opts.facesFail
+      ? {
+          faces: async () => {
+            faceCalls.loads++;
+            if (opts.facesFail) throw Object.assign(new Error("no faces"), { code: opts.facesFail });
+            return finder;
+          },
+        }
+      : {}),
   });
 
   return {
@@ -171,6 +199,10 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
     refuseNext(name) {
       refuse = name;
     },
+    setFaces(next) {
+      faces = next;
+    },
+    faceCalls,
     holdNext() {
       let release!: () => void;
       hold = new Promise<void>((r) => (release = r));

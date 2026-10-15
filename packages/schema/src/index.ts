@@ -93,6 +93,7 @@ export type {
   AiImage,
   AiExtractRequest,
 } from "./types/ctx.js";
+export type { Face, FaceEye, FaceExpressions, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
 
 // ---- app definition ----
 export type {

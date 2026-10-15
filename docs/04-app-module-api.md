@@ -125,7 +125,7 @@ interface Ctx {
   // ---- native capabilities (may be denied/scoped for untrusted apps) ----
   caps: {
     camera?:        { capture(opts?: { source?: "camera"|"library" }): Promise<Blob>;
-                      live?(opts?: { facing?: "user"|"environment"; width?: number; height?: number }): Promise<LiveCamera>; };  // trusted only, below
+                      live?(opts?: { facing?: "user"|"environment"; width?: number; height?: number; faces?: boolean | { max?: number; points?: boolean } }): Promise<LiveCamera>; };  // trusted only, below
     notifications?: { schedule(n: { id: string; at: Date; title: string; body?: string }): Promise<void>;
                       cancel(id: string): Promise<void>; supportsExactScheduling: boolean; };
     geo?:           { current(): Promise<{ lat: number; lng: number }>; };
@@ -253,7 +253,7 @@ interface LiveCamera {
   readonly video: HTMLVideoElement;  readonly stream: MediaStream;   // playing, muted, not in the page
   readonly width: number;  readonly height: number;  readonly facing: "user" | "environment";
   readonly active: boolean;
-  onFrame(cb: (video: HTMLVideoElement, info: { time: number; width: number; height: number }) => void): () => void;
+  onFrame(cb: (video: HTMLVideoElement, info: { time: number; width: number; height: number; faces?: Face[]; facesFailed?: "unsupported" | "failed" }) => void): () => void;
   snap(opts?: { type?: string; quality?: number }): Promise<Blob>;   // the current frame
   onStop(cb: (why: "app" | "person" | "hidden" | "closed" | "ended" | "replaced") => void): () => void;
   stop(): void;
@@ -266,6 +266,16 @@ not mirrored. A failure rejects with an `Error` whose `code` is `"denied" | "mis
 the app cannot hide it — and the camera **always stops** when the page is hidden, when the person
 leaves the app, or when the device ends it; it never restarts by itself (`onStop` says why, the app
 offers to resume). Frames go nowhere unless the app passes them to a capability that sends.
+
+**Faces** (`live({ faces: true })`, docs/25 §Faces): each frame's `info.faces` holds the faces Potyro
+found in it, on the device — per face its `box`, `eyes.left`/`eyes.right` (centre, pupil, outline,
+width, `open`), `mouth` (corners, top, bottom, outlines), `nose`, `brows`, `expressions` (`mouthOpen`,
+`jawOpen`, `smile`, `blinkLeft`, `blinkRight`, `browUp`, `browDown`, `pucker`, `puff`, each 0–1) and
+`turn` (`roll`, `yaw`, `pitch`, radians). Points are in the video's pixels, not mirrored; left and right
+are the person's own. `faces: { max: 2, points: true }` finds up to four faces and adds all 478 mesh
+points. Where faces cannot be found `info.facesFailed` says why and the camera carries on. The types
+(`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceOptions`, `FacesFailure`) are exported by
+`potyro` from `types/faces.ts`, which sits outside the model's reference (#341).
 
 **Trusted apps only, for now.** In a shared app `live` is `undefined` (its logic runs in the browser
 realm, which has no surface to draw on and no streaming op; docs/25 has the reasons and the path).
