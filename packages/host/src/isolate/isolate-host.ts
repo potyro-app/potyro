@@ -206,7 +206,8 @@ class IsolateLoadedApp implements LoadedApp {
       case "ui.pick":
       case "ui.sheet":
       case "ui.menu":
-      case "ui.form": {
+      case "ui.form":
+      case "ui.share": {
         const ctx = this.ctxHost;
         if (!ctx) return nul;
         this.openQuestion();
@@ -225,8 +226,10 @@ class IsolateLoadedApp implements LoadedApp {
                     ? await ctx.ui.sheet(opts)
                     : kind === "ui.menu"
                       ? await ctx.ui.menu(opts)
-                      : await ctx.ui.form(opts);
-          return serialize((answer ?? (kind === "ui.confirm" ? false : null)) as Value);
+                      : kind === "ui.share"
+                        ? await ctx.ui.share(opts)
+                        : await ctx.ui.form(opts);
+          return serialize((answer ?? (kind === "ui.confirm" || kind === "ui.share" ? false : null)) as Value);
         } finally {
           this.closeQuestion();
         }

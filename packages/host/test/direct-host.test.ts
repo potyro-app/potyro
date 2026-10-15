@@ -297,4 +297,17 @@ describe("ctx.ui questions", () => {
     await ctx.ui.form({ title: "T", fields: { thing: { type: "relation", to: "thing" } } });
     expect(form).toHaveBeenCalledOnce();
   });
+
+  it("share hands on checked words and an http(s) link, and is `false` headless", async () => {
+    expect(await (await base({})).ui.share({ text: "hi" })).toBe(false);
+    const share = vi.fn(async () => true);
+    const ctx = await base({ share });
+    expect(await ctx.ui.share({ text: { en: "Daily #1 3/6" }, title: "Share", url: "https://potyro.app/a b" })).toBe(true);
+    expect(share).toHaveBeenLastCalledWith({ text: "Daily #1 3/6", title: "Share", url: "https://potyro.app/a%20b" });
+    await expect(ctx.ui.share({})).rejects.toThrow(/needs \{ text \} or \{ url \}/);
+    await expect(ctx.ui.share({ url: "javascript:alert(1)" })).rejects.toThrow(/http\(s\)/);
+    await expect(ctx.ui.share({ url: "not a link" })).rejects.toThrow(/whole http\(s\) address/);
+    await expect(ctx.ui.share({ text: "x".repeat(10_001) })).rejects.toThrow(/longer than/);
+    expect(share).toHaveBeenCalledOnce();
+  });
 });

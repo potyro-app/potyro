@@ -80,6 +80,7 @@ export const OPS = [
   "ui.menu",
   "ui.form",
   "ui.progress",
+  "ui.share",
   "navigate",
   "views.call",
   "caps.camera.capture",
