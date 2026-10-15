@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 import AxeBuilder from "@axe-core/playwright";
 
 // First run and the create action (#90). A device that has never opened an app is told what Potyro is

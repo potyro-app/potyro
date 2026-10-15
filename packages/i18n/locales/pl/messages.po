@@ -2620,6 +2620,10 @@ msgstr "Nadaj mu nazwę."
 msgid "Go back"
 msgstr "Wróć"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Go back to that tab, or use Potyro here — the other tab will step aside."
+msgstr "Wróć do tamtej karty albo używaj Potyro tutaj — tamta karta ustąpi."
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Go back to this"
 msgstr "Wróć do tego"
@@ -4107,6 +4111,10 @@ msgstr "Potyro nie potrafi pokazać tego rodzaju pliku. Zapisz kopię, aby otwor
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Złoto Potyro"
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Potyro is open in another tab"
+msgstr "Potyro jest otwarte w innej karcie"
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -5656,6 +5664,10 @@ msgstr "zaktualizowana przez współpracownika"
 msgid "Updated your data from {was} to {to}."
 msgstr "Zaktualizowano twoje dane z {was} do {to}."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Use it here"
+msgstr "Używaj tutaj"
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Używany przez ekran aplikacji i Studio oraz przez każdą aplikację, która nie dostała własnego koloru — kolor aplikacji jest na jej kafelku, w <0>Edytuj kafelek</0>."
@@ -5950,6 +5962,10 @@ msgstr "Twoje aplikacje i dane są tutaj. Dodaj kolejne urządzenie, aby używa�
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Twoje aplikacje są na przekaźniku. Wszystko, co zrobisz później, też tam trafi."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
+msgstr "Twoje aplikacje są otwarte w jednej karcie naraz, żeby nic, co zmienisz w jednej, nie zniknęło w drugiej."
 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"

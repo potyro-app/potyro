@@ -10,7 +10,8 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
-import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageElsewhere, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
@@ -264,7 +265,8 @@ function mount(root: HTMLElement, node: ReactNode): void {
 // source runs as a real module. A trusted load that fails (e.g. an edited, invalid version) falls
 // back to untrusted so the app still opens. Either way it has its own durable store.
 /** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
-async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
+/** The app joined, null when there was no invite, false when joining failed and said so. */
+async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | false> {
   const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
   // Web: the address bar. Device COLD start: the app was launched by the link, so nothing has
   // listened yet and the URL must be fetched. (Warm starts are handled by the listener below.)
@@ -311,8 +313,10 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
     return id;
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e);
-    root.textContent = t`Could not join: ${why}`;
-    return null;
+    // Through React, on the screen that was joining: emptying the root by hand left React rendering
+    // into a container it no longer owned ("root container was removed without using React").
+    mount(root, <Splash name={invite.name} source={invite.source} verb="Joining" failed={t`Could not join: ${why}`} />);
+    return false;
   }
 }
 
@@ -419,6 +423,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
     }
   } catch (e) {
+    // Another tab owns the storage: the whole tab already says so, with "Use it here".
+    if (isStorageElsewhere(e)) return null;
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
     return null;
   }
@@ -619,6 +625,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       // Writes still on their way land first — a tick then Home used to close the store under its
       // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
       await composed!.runtime.settle();
+      // From here a read that fails is the app going away, not the app failing.
+      composed!.runtime.close();
       composed!.loaded.dispose();
       await rawStore.close();
     },
@@ -871,6 +879,9 @@ async function boot(): Promise<void> {
   // device's, else English. English needs no fetch; another language is one small chunk, from the
   // service worker's cache when offline. The pseudo-language is offered in dev builds only.
   await startI18n({ pseudo: import.meta.env.DEV });
+  // Right after the language, before anything opens storage: if another tab has it, that is said
+  // in words — whether it is known now or only once that tab takes it over later.
+  watchStorageOwner();
   // On Android the OS can say more than the WebView does (a per-app language, say). Not awaited:
   // it only matters when it disagrees, and then the switch is live.
   void systemLanguages()
@@ -889,6 +900,8 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
+  // Joining failed and the screen says why, with the way back to the apps.
+  if (joined === false) return;
 
   // Apps your ACCOUNT knows about that this device does not (KA-16 follow-up). This is what typing
   // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
@@ -993,6 +1006,8 @@ function registerServiceWorker(): void {
 }
 
 boot().catch((err: unknown) => {
+  // Not a boot error: the screen saying another tab has the storage is already up.
+  if (isStorageElsewhere(err)) return;
   const root = document.getElementById("root");
   if (root) {
     const why = err instanceof Error ? err.message : String(err);

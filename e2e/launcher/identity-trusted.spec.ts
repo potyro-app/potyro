@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "../console-guard";
 import { openHome, seed } from "./fixture.js";
 
 // Tiles show the app's real identity (#82). Every tile used to be the first letter of its name in

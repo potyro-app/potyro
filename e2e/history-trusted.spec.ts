@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 
 // App history: what a change did to an app, and the way back from it.

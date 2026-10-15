@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // Asking before a sandboxed app's data leaves this device (KA-23, #64).

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { chooseOpenRouter, currentCard, openSource } from "./studio-helpers.js";
 

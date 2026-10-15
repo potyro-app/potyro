@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 import { openApp, openHome, seed } from "./fixture.js";
 
 // Launcher search (#85): past a handful of apps a grid is scanned, not read. On a desktop, typing

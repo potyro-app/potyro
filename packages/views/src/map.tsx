@@ -13,6 +13,7 @@ import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
 import { DetailView } from "./builtins.js";
+import { loadMapLibre } from "./maplibre.js";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -277,8 +278,7 @@ export function MapView(props: BuiltinViewProps) {
     const el = containerRef.current;
     if (!el) return;
     void (async () => {
-      const maplibre = await import("maplibre-gl");
-      await import("maplibre-gl/dist/maplibre-gl.css");
+      const maplibre = await loadMapLibre();
       if (disposed || !el) return;
 
       // Resolve the opening camera BEFORE constructing: handing it to the constructor means the map
@@ -385,7 +385,7 @@ export function MapView(props: BuiltinViewProps) {
     if (!map) return;
     let cancelled = false;
     void (async () => {
-      const maplibre = await import("maplibre-gl");
+      const maplibre = await loadMapLibre();
       if (cancelled || !mapRef.current) return;
       for (const m of markerObjs.current) m.remove();
       markerObjs.current = [];

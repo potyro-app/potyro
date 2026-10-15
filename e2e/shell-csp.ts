@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { startProbe, type Probe } from "./realm.js";
 
 // The shell's `frame-src 'none'` (#272, docs/22 §3.2), checked where it is served. A sandboxed srcdoc
@@ -37,7 +37,8 @@ export function shellCspTests(): void {
     await probe.close();
   });
 
-  test("the shell is served with frame-src 'none', and a sandboxed frame cannot navigate itself out", async ({ page }) => {
+  test("the shell is served with frame-src 'none', and a sandboxed frame cannot navigate itself out", async ({ page, consoleGuard }) => {
+    consoleGuard.allow(/^Framing 'http:\/\/127\.0\.0\.1:\d+\/' violates the following Content Security Policy directive: "frame-src 'none'"/, "the test frames a page on purpose to prove the CSP refuses it");
     probe.hits.length = 0;
     const res = await page.goto("/");
     if (process.env.POTYRO_CSP_HEADER !== "0") expect(res?.headers()["content-security-policy"]).toBe("frame-src 'none'");

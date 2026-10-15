@@ -18,6 +18,15 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 /** @type {{ pkg: string; forbidden: RegExp[]; note: string }[]} */
 const rules = [
   {
+    // The console guard (e2e/console-guard.ts) only watches specs that take `test` from it. A spec
+    // taking `test` from Playwright directly is a spec whose console errors nobody sees — which is
+    // how nine errors per load went unnoticed (fix/opfs-access-handles). The guard itself is the one
+    // file that may: it imports `test as base`.
+    pkg: "e2e",
+    forbidden: [/^import\s*\{[^}]*\btest\b(?!\s+as\s+base)[^}]*\}\s*from\s*["']@playwright\/test["']/m],
+    note: "e2e takes `test` from ./console-guard, so the console guard sees it",
+  },
+  {
     pkg: "packages/views/src",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/shell/],
     note: "views may only depend on the runtime API + schema types (+ @potyro/i18n for its own words)",

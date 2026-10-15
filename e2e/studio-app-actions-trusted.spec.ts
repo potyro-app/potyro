@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // Managing an app from inside the Studio, and calling it what you called it.
