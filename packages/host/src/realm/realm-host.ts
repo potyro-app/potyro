@@ -365,6 +365,8 @@ export class RealmLoadedApp implements LoadedApp {
         return this.question(() => ctx.ui.menu(x(0)));
       case "ui.form":
         return this.question(() => ctx.ui.form(x(0)));
+      case "ui.share":
+        return this.question(() => ctx.ui.share(x(0)));
       case "ui.progress": {
         const [pid, what, arg, detail] = [s(0), s(1), a[2], a[3]];
         const bar = this.progress.get(pid);
