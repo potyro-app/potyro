@@ -77,7 +77,7 @@ test("a shared app's file is listed for the other member, arrives when opened, a
   await ctxB.addInitScript(() => localStorage.setItem("potyro:space-budget", "200"));
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b);
   await expect(b.locator("h1").first()).toHaveText("Shelf", { timeout: 60_000 });
 

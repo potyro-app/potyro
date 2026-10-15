@@ -64,9 +64,9 @@ test("tiles carry a sandbox shield and a sync mark, and no provenance pill", asy
   const tile = (name: string) => home.locator(".k-launch-tile", { hasText: name });
   // Garden: trusted and synced → a sync mark, no shield.
   await expect(tile("Garden").getByLabel("Synced to your other devices")).toBeVisible();
-  await expect(tile("Garden").getByRole("img", { name: "Runs in a sandbox" })).toHaveCount(0);
+  await expect(tile("Garden").getByRole("img", { name: "Runs sealed" })).toHaveCount(0);
   // Budget: sandboxed and synced → both marks.
-  await expect(tile("Budget").getByRole("img", { name: "Runs in a sandbox" })).toBeVisible();
+  await expect(tile("Budget").getByRole("img", { name: "Runs sealed" })).toBeVisible();
   await expect(tile("Budget").getByLabel("Synced to your other devices")).toBeVisible();
   // Groceries: trusted and local → nothing at all.
   await expect(tile("Groceries").locator(".k-launch-mark, .k-launch-shield")).toHaveCount(0);

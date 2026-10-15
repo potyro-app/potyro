@@ -58,7 +58,7 @@ test("a message arrives as a balloon on the Chat button, showing what was said",
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 }, colorScheme: "dark" });
   const bo = await device(ctxB);
   await bo.goto(link);
-  await bo.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
   await expect(bo.locator("h1").first()).toHaveText("Talk", { timeout: 60_000 });
   await bo.locator(".k-chat-btn").click();

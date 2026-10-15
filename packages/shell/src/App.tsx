@@ -910,9 +910,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
-        label: provenance === "trusted" ? t`Runs directly` : t`Runs in a sandbox`,
+        label: provenance === "trusted" ? t`Runs as yours` : t`Runs sealed`,
         icon: "🛡",
-        hint: provenance === "trusted" ? t({ message: "review", comment: "Trust menu hint: look at how a trusted app runs" }) : t`allow direct`,
+        hint: provenance === "trusted" ? t({ message: "review", comment: "Trust menu hint: look at how an app that runs as yours runs" }) : t({ message: "run as yours", comment: "Trust menu hint: let a sealed app run as yours" }),
         className: `k-prov-btn k-prov-${provenance}`,
         onSelect: () => setTrustPrompt(true),
       }
@@ -971,11 +971,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
               <button
                 type="button"
                 className="k-prov k-prov-untrusted"
-                aria-label={t`Runs in a sandbox: review`}
-                title={t`Runs in a sandbox. Tap to let it run as yours.`}
+                aria-label={t`Runs sealed: review`}
+                title={t`Runs in the sealed box. Tap to let it run as yours.`}
                 onClick={() => setTrustPrompt(true)}
               >
-                🛡 <Trans comment="A small mark in the header of an app that runs sealed">sandbox</Trans>
+                🛡 <Trans comment="A small mark in the header of an app that runs sealed">sealed</Trans>
               </button>
             ) : null}
             <SyncStatus sync={sync} />

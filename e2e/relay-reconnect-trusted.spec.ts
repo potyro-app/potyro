@@ -165,7 +165,7 @@ test("two peers keep syncing after the relay dies and comes back", async ({ brow
   const ctxB = await browser.newContext();
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b);
   await expect(b.locator(".k-list-row", { hasText: "before" })).toBeVisible({ timeout: 60_000 });
 

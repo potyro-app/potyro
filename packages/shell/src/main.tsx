@@ -295,10 +295,10 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | f
   const invited = invite.name;
   const trust = await shellDialogs.confirm(t`“${invited}” was shared with you.`, {
     detail: custom
-      ? t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header.`
-      : t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header.`,
-    ok: t`Join and trust`,
-    cancel: t`Join, keep sandboxed`,
+      ? t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run as yours to show them. You can change this later from the app header.`
+      : t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header.`,
+    ok: t`Join, run it as yours`,
+    cancel: t`Join, keep it sealed`,
   });
 
   // Asked after trust and before joining. After, because "do you trust this app?" is the question
@@ -604,7 +604,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       if (e instanceof ModuleError) return failed(e);
       const name = saved.name;
       const why = e instanceof Error ? e.message : "";
-      toaster.push((why ? t`Couldn't run "${name}" trusted; opening safely. ${why}` : t`Couldn't run "${name}" trusted; opening safely.`).trim());
+      toaster.push((why ? t`Couldn’t run “${name}” as yours, so it opens sealed. ${why}` : t`Couldn’t run “${name}” as yours, so it opens sealed.`).trim());
     }
   }
   if (provenance === "untrusted") {

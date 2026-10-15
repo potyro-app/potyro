@@ -89,7 +89,7 @@ test("joining a shared app you already have leaves your own data alone", async (
 
   // ---- and then opens the link ----
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b);
 
   // The shared app opens on the OWNER's data. Not the guest's own rows — those belong to the app
