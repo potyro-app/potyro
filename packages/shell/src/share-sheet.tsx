@@ -67,7 +67,7 @@ export function ShareSheet({ app, onClose, onInvite }: ShareSheetProps) {
                   <Trans>This link carries the whole app, so chats show it without a preview picture.</Trans>
                 </p>
               )}
-              <ShareBody link={state.made.link} onDone={onClose} />
+              <ShareBody link={state.made.link} onDone={onClose} onHanded={() => {}} />
             </>
           ) : (
             <>
