@@ -15,6 +15,7 @@ import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
+import { capsWithAi } from "./app-ai-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
@@ -521,6 +522,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       });
     })().catch((e: unknown) => console.warn("[potyro] could not record this app on your account:", e));
   }
+  // This app's AI service (docs/23): its own switch, consent and spend. Only the app's runtime gets it.
+  const appCaps = capsWithAi(caps, id);
   const picker = new PickerHost();
   const questions = new UiHost();
   const ui = createUiBridge(toaster.push, picker, shellDialogs, questions);
@@ -552,7 +555,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     try {
       const { loadTrustedModule } = await import("./trusted-loader.js");
       const app = await loadTrustedModule(saved.source, modules); // real defineApp validates or throws
-      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me, space });
+      composed = await compose({ provenance: "trusted", app, store, caps: appCaps, ui, nav, me, space });
       provenance = "trusted";
     } catch (e) {
       // A library or module that does not match its lock is not a reason to try the sealed box.
@@ -569,7 +572,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     ]);
     try {
       appSource = await (await createAppBundler())(saved.source, modules);
-      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
+      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps: appCaps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
     } catch (e) {
       return failed(e);
     }

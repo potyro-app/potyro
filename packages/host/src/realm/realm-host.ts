@@ -422,6 +422,18 @@ export class RealmLoadedApp implements LoadedApp {
         const data = a[1];
         return this.question(() => fs.save(s(0), data));
       }
+      // AI (docs/23): `mediateCaps` put it here only if the manifest asked; the shape is checked, the
+      // person asked and the answer validated in ai.ts. The wait is the network's, not the app's.
+      case "caps.ai.extract": {
+        const ai = ctx.caps.ai;
+        if (!ai) throw new Error("Permission denied: AI");
+        return this.question(() => ai.extract(x(0)));
+      }
+      case "caps.ai.ask": {
+        const ai = ctx.caps.ai;
+        if (!ai) throw new Error("Permission denied: AI");
+        return this.question(() => ai.ask(s(0), x(1)));
+      }
       case "caps.network.fetch": {
         // `mediateCaps` decides: the manifest, the host allow-list, the person's consent.
         const network = ctx.caps.network;
