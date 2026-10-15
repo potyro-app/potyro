@@ -8,8 +8,9 @@
 // composition root swaps this in for WebCapabilities when running under Capacitor.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap } from "@potyro/capabilities";
-import { pickFilesFromInput, sharedLiveCamera } from "@potyro/capabilities";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap, SocketCap } from "@potyro/capabilities";
+import { pickFilesFromInput, sharedLiveCamera, sharedWebSockets } from "@potyro/capabilities";
+import { localOpenerOver, type LocalSocketPlugin } from "./local-sockets.js";
 
 // --- Minimal plugin shapes (a subset of the real @capacitor/* APIs we actually use) -------------
 
@@ -75,6 +76,10 @@ export interface CapacitorHostHelpers {
    * iOS keeps 64 and silently drops the rest (IOS_PENDING_LIMIT); Android's limit is in the hundreds.
    */
   maxPendingNotifications: number | null;
+  /** Live connections; the page's shared set by default (docs/28). */
+  sockets: SocketCap | null;
+  /** Android's `PotyroLocalSocket` plugin, for ws:// to the local network (docs/28 §6). */
+  localSockets: LocalSocketPlugin;
 }
 
 /**
@@ -165,6 +170,11 @@ export class CapacitorCapabilities implements Capabilities {
    * answers the WebView's VIDEO_CAPTURE request by asking for CAMERA, which the manifest declares.
    */
   readonly liveCamera: LiveCameraCap | null;
+  /**
+   * Live connections (docs/28): the WebView's own WebSocket — wss://, which the rooms relay lets in from
+   * https://localhost — and, on Android, ws:// to the local network over Potyro's own plugin.
+   */
+  readonly sockets: SocketCap | null;
 
   constructor(plugins: CapacitorPlugins, helpers?: Partial<CapacitorHostHelpers>) {
     const fetchImpl = helpers?.fetchImpl ?? ((input: string) => globalThis.fetch(input));
@@ -253,6 +263,7 @@ export class CapacitorCapabilities implements Capabilities {
 
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
     this.liveCamera = helpers?.liveCamera !== undefined ? helpers.liveCamera : sharedLiveCamera();
+    this.sockets = helpers?.sockets !== undefined ? helpers.sockets : sharedWebSockets(helpers?.localSockets ? localOpenerOver(helpers.localSockets) : undefined);
   }
 }
 
@@ -278,5 +289,8 @@ export async function createCapacitorCapabilities(): Promise<Capabilities> {
     Haptics: Haptics as unknown as HapticsPlugin,
   };
   // getPlatform() is a plain function on the core object, not a plugin proxy, so nothing awaits a plugin.
-  return new CapacitorCapabilities(plugins, { maxPendingNotifications: Capacitor.getPlatform() === "ios" ? IOS_PENDING_LIMIT : null });
+  // ws:// to the local network is Android's own plugin (docs/28 §6); iOS connects to wss:// only for now.
+  // Held in the helpers, never returned or awaited: an awaited plugin hangs (deep-links.ts).
+  const localSockets = Capacitor.getPlatform() === "android" ? Capacitor.registerPlugin<LocalSocketPlugin>("PotyroLocalSocket") : undefined;
+  return new CapacitorCapabilities(plugins, { maxPendingNotifications: Capacitor.getPlatform() === "ios" ? IOS_PENDING_LIMIT : null, ...(localSockets ? { localSockets } : {}) });
 }
