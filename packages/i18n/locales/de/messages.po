@@ -2666,6 +2666,10 @@ msgstr "Gib ihr einen Namen."
 msgid "Go back"
 msgstr "Zurück"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Go back to that tab, or use Potyro here — the other tab will step aside."
+msgstr "Geh zurück zu diesem Tab oder nutze Potyro hier — der andere Tab tritt dann zur Seite."
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Go back to this"
 msgstr "Hierhin zurück"
@@ -4171,6 +4175,10 @@ msgstr "Potyro kann diese Art von Datei nicht anzeigen. Speichere eine Kopie, um
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Potyro-Gold"
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Potyro is open in another tab"
+msgstr "Potyro ist in einem anderen Tab geöffnet"
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -5752,6 +5760,10 @@ msgstr "von einer Person aktualisiert, mit der du teilst"
 msgid "Updated your data from {was} to {to}."
 msgstr "Deine Daten wurden von {was} auf {to} aktualisiert."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Use it here"
+msgstr "Hier verwenden"
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Wird von der Übersicht und dem Studio genutzt, und von jeder App, die keine eigene Farbe hat — die Farbe einer App steht auf ihrer Kachel, unter <0>Kachel bearbeiten</0>."
@@ -6050,6 +6062,10 @@ msgstr "Deine Apps und Daten sind hier. Füge ein weiteres Gerät hinzu, um sie 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Deine Apps sind auf dem Relay. Alles, was du später machst, kommt auch dorthin."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
+msgstr "Deine Apps sind immer nur in einem Tab geöffnet, damit nichts, was du in einem änderst, im anderen fehlt."
 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"

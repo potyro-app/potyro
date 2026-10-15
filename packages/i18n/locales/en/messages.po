@@ -2666,6 +2666,10 @@ msgstr "Give it a name."
 msgid "Go back"
 msgstr "Go back"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Go back to that tab, or use Potyro here — the other tab will step aside."
+msgstr "Go back to that tab, or use Potyro here — the other tab will step aside."
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Go back to this"
 msgstr "Go back to this"
@@ -4171,6 +4175,10 @@ msgstr "Potyro can’t show this kind of file. Save a copy to open it with anoth
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Potyro gold"
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Potyro is open in another tab"
+msgstr "Potyro is open in another tab"
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -5752,6 +5760,10 @@ msgstr "updated by a collaborator"
 msgid "Updated your data from {was} to {to}."
 msgstr "Updated your data from {was} to {to}."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Use it here"
+msgstr "Use it here"
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
@@ -6050,6 +6062,10 @@ msgstr "Your apps and data live here. Add another device to use them there too."
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Your apps are on the relay. Anything you make later goes too."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
+msgstr "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"

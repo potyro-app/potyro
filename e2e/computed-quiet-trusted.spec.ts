@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The owner, on apps.vaz.io: Places showed "This part of the app hit a problem: “Open Now” could not
 // be worked out for some records: can't access property "some", hours is undefined" — over the map.

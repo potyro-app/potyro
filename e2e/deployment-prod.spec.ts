@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // What a DEPLOYED Potyro does — run against `vite build` + `vite preview`, not the dev server.
 //

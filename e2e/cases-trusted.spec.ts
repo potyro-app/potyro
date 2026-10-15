@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // Recording is the product feature that turns "it doesn't work" into a reproducible fact. This
 // drives the whole loop with no model involved: record a path, annotate it, replay it, read what

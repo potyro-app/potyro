@@ -76,6 +76,8 @@ const SETTLE_LIMIT_MS = 5_000;
 export class RuntimeCore {
   /** Writes started and not yet landed (or failed). */
   private readonly inFlight = new Set<Promise<unknown>>();
+  /** Set by `close()`: the app is being put away. */
+  closed = false;
   readonly app: LoadedApp;
   readonly host: Host;
   readonly store: Store;
@@ -265,6 +267,11 @@ export class RuntimeCore {
         return (...args: unknown[]) => this.track((value as (...a: unknown[]) => Promise<unknown>).apply(target, args));
       },
     });
+  }
+
+  /** The app is being put away (see `PotyroRuntime.close`). */
+  close(): void {
+    this.closed = true;
   }
 
   /** Remember `work` until it settles. Returns it unchanged, rejection included. */

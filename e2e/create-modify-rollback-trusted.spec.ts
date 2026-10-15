@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The recovery promise, end to end: make an app, put real notes in it, change it twice, and get back.
 //

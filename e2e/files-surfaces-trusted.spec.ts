@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 
 // The shell's file surfaces (#254), in a real browser: an app's Files on the Data page (reached from

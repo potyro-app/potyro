@@ -18,6 +18,7 @@ import { MediaInput } from "./media-input.js";
 import { FileInput } from "./file-input.js";
 import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
+import { loadMapLibre } from "./maplibre.js";
 
 export interface FieldInputProps {
   runtime: PotyroRuntime;
@@ -188,8 +189,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     if (!el) return;
     void (async () => {
       try {
-      const maplibre = await import("maplibre-gl");
-      await import("maplibre-gl/dist/maplibre-gl.css");
+      const maplibre = await loadMapLibre();
       if (disposed || !el) return;
       const hasPoint = value.lat !== 0 || value.lng !== 0;
       const map = new maplibre.Map({
