@@ -66,10 +66,24 @@ export interface RoomsRelay {
   stop(): Promise<void>;
 }
 
+/**
+ * How to start the relay with the Node running these tests. The deployed way, type stripping, needs
+ * Node 22.6+; on an older Node (vazio's CI runs 20) the same source is bundled with the shell's
+ * esbuild into dist/, next to the relay's own node_modules, and run as plain JavaScript.
+ */
+async function relayArgs(): Promise<string[]> {
+  const [major, minor] = process.versions.node.split(".").map(Number) as [number, number];
+  if (major > 22 || (major === 22 && minor >= 6)) return ["--experimental-strip-types", "--no-warnings", "packages/rooms/src/server.ts"];
+  const { build } = createRequire(new URL("../packages/shell/package.json", import.meta.url))("esbuild") as typeof import("esbuild");
+  const outfile = fileURLToPath(new URL("../packages/rooms/dist/e2e-server.mjs", import.meta.url));
+  await build({ entryPoints: [fileURLToPath(new URL("../packages/rooms/src/server.ts", import.meta.url))], bundle: true, platform: "node", format: "esm", packages: "external", outfile, logLevel: "silent" });
+  return [outfile];
+}
+
 /** The real relay, as a process, letting browsers in only from `allowOrigin` (the shell's page). */
 export async function startRoomsRelay(allowOrigin: string): Promise<RoomsRelay> {
   const port = await freePort();
-  const child = spawn(process.execPath, ["--experimental-strip-types", "--no-warnings", "packages/rooms/src/server.ts"], {
+  const child = spawn(process.execPath, await relayArgs(), {
     cwd: repoRoot,
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", ROOMS_ORIGINS: allowOrigin, ROOMS_TRUST_PROXY: "0" },
     stdio: ["ignore", "pipe", "pipe"],
