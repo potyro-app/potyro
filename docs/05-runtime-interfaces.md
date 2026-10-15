@@ -101,7 +101,7 @@ export interface AiCap {
   complete(call: AiCall): Promise<AiReply>; // throws words for the person: offline, off, nobody pays
   standing?(): "on" | "off" | undefined;    // this app's answer on this device
   allow?(): void;
-  consentWords?(appName: string, sends: "photo" | "text"): { message; detail; ok; cancel };
+  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>; // { message; detail; ok; cancel }, saying who pays now
 }
 export interface CameraCap { capture(o?: { source?: "camera"|"library" }): Promise<Blob>; }
 export interface NotificationCap {

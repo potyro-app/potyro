@@ -69,7 +69,11 @@ permissions: { ai: true }
   > Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢.
   > [Not now] [Allow]
 
-  A text-only call says "some text" instead of "a photo". *Allow* is remembered for that app;
+  The last sentence says who would pay **as things are now**, and never promises what the device
+  cannot keep. "Free while…" only when the free relay answered recently (a request, or a look at its
+  `/health`, which sends nothing); otherwise "It uses your own OpenRouter key from Model settings,
+  usually under 1¢ a request.", or, with no key either, "AI isn't available until you add your own
+  OpenRouter key in Model settings." A text-only call says "some text" instead of "a photo". *Allow* is remembered for that app;
   *Not now* refuses this call and asks again next time.
 - **Per app on/off.** Edit tile has "AI" for any app that has used it: off, every call refuses
   ("AI is turned off for this app") — for trusted apps too, because it is the person's money and

@@ -74,8 +74,18 @@ export interface AiCap {
   standing?(): "on" | "off" | undefined;
   /** Remember that the person allowed it. */
   allow?(): void;
-  /** The consent question in the person's language; the host has an English one when absent. */
-  consentWords?(appName: string, sends: "photo" | "text"): { message: string; detail: string; ok: string; cancel: string };
+  /**
+   * The consent question in the person's language, saying who would pay as things stand now (it may
+   * look first: is the free allowance reachable?). The host has a neutral English one when absent.
+   */
+  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>;
+}
+
+export interface AiConsentWords {
+  message: string;
+  detail: string;
+  ok: string;
+  cancel: string;
 }
 
 export interface Capabilities {
