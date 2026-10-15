@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The app's own folder (#252), in a real browser, trusted and in the sealed box.
 //

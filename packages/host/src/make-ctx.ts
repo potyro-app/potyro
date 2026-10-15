@@ -2,7 +2,7 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
+import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
 import { checkFormFields, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
@@ -27,6 +27,33 @@ function checkItems<T>(opts: { title?: Words; items: UiItem<T>[] }, say: (w: Wor
     ...(opts.title === undefined ? {} : { title: say(opts.title) }),
     items: items.map((it): ShownUiItem<T> => ({ ...it, label: say(it.label), detail: it.detail === undefined ? undefined : say(it.detail) })),
   };
+}
+
+/** The longest text `ui.share` hands on: a result, a message — never a document. */
+const SHARE_MAX = 10_000;
+
+/**
+ * What `ui.share` hands the shell, checked: something to send, a link only if it is http(s) — the
+ * share sheet opens it, so a `javascript:` or `file:` address must never get there — and words in
+ * the language the app is shown in.
+ */
+export function checkShare(opts: { text?: Words; url?: string; title?: Words } | undefined, say: (w: Words | undefined) => string): { text?: string; url?: string; title?: string } {
+  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text } or { url }");
+  const text = opts.text === undefined || opts.text === null ? undefined : say(opts.text);
+  let url: string | undefined;
+  if (opts.url !== undefined && opts.url !== null) {
+    let parsed: URL;
+    try {
+      parsed = new URL(String(opts.url));
+    } catch {
+      throw new Error("ui.share: `url` must be a whole http(s) address");
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("ui.share: `url` must be http(s)");
+    url = parsed.href;
+  }
+  if (!text && !url) throw new Error("ui.share needs { text } or { url }");
+  if (text && text.length > SHARE_MAX) throw new Error(`ui.share: \`text\` is longer than ${SHARE_MAX} characters`);
+  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
 }
 
 /** The base language of a tag: "pt-BR" → "pt". */
@@ -163,6 +190,42 @@ export function filesFor(store: Store, caps: Capabilities): CtxFiles {
       await caps.filesystem.save(e.name, bytes);
     },
   };
+}
+
+/**
+ * A picture for `ctx.caps.ai` (docs/23), as bytes: a Blob as it is; bytes; a media field's value
+ * from this app's store; a `file` field's value or a path from this app's folder. Only this app's own
+ * store is reachable, so a sealed app cannot name another app's picture.
+ */
+async function aiImage(store: Store, img: AiImage): Promise<Blob> {
+  if (img instanceof Blob) return img;
+  if (img instanceof Uint8Array) return new Blob([img as BlobPart], { type: sniffImage(img) });
+  if (typeof img === "string" || (img && typeof img === "object" && ("id" in img || "path" in img) && !("key" in img))) {
+    const ref = img as FileRef;
+    // By id when it has one (it survives a rename), else by path — plain fields, never a getter.
+    const target: FileTarget = typeof img === "string" ? img : typeof ref.id === "string" ? { id: ref.id } : String(ref.path);
+    const f = await appFolder(fileSpace(store)).find(target);
+    if (!f) throw new Error(`No file ${typeof img === "string" ? `"${img}"` : "for that picture"} in this app`);
+    const b = await fileSpace(store).read({ id: f.id });
+    if (!b) throw new Error(`"${f.name}" has not reached this device yet`);
+    return b.type ? b : new Blob([b], { type: f.mime });
+  }
+  if (img && typeof img === "object" && typeof (img as MediaRef).key === "string") {
+    const ref = img as MediaRef;
+    const b = await store.getBlob({ key: ref.key, mime: String(ref.mime ?? "") });
+    if (!b) throw new Error("That picture is not on this device");
+    return b.type ? b : new Blob([b], { type: ref.mime });
+  }
+  throw new Error("ctx.caps.ai: an image is a Blob, bytes, a file (path or file field) or a photo field's value");
+}
+
+/** The picture type from its first bytes, for bytes that arrive without one. */
+function sniffImage(b: Uint8Array): string {
+  if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  return "image/jpeg";
 }
 
 export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
@@ -321,6 +384,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       permissions: app.permissions,
       ui,
       appName: say(app.definition.name),
+      ai: { language: locale, image: (img) => aiImage(store, img) },
     }),
 
     media: {
@@ -354,6 +418,10 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         return ((await ui.form?.(form)) ?? null) as T | null;
       },
       progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
+      share: async (opts) => {
+        const shared = checkShare(opts, say);
+        return ui.share ? ui.share(shared) : false;
+      },
     },
 
     // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is

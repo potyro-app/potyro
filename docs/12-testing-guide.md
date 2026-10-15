@@ -58,6 +58,20 @@ dies on `Boot error: Missing required OPFS APIs.`; at one worker it passes.
 `POTYRO_PARALLEL=4 pnpm e2e` is available for a quick local sweep; confirm anything it reports at one
 worker before believing it.
 
+### A test that leaves an error in the console fails
+
+Every spec takes `test` and `expect` from `e2e/console-guard.ts` (`pnpm lint:boundaries` refuses
+`test` from `@playwright/test`). On the trusted and sandbox projects it collects `console.error` and
+uncaught page errors from every page the test opens, its own contexts included, and fails a test
+that otherwise passed on any it was not told to expect. A test that fails on purpose says so:
+`consoleGuard.allow(/pattern/, "why")`. The guard's own allow-list holds noise that is nobody's
+fault, each entry with its reason. It exists because two tabs of Potyro printed nine
+`NoModificationAllowedError`s per load while the suite stayed green (fix/opfs-access-handles).
+
+Two tabs of one origin: one owns the storage (`packages/store/src/storage-owner.ts`), the other
+says "Potyro is open in another tab" — `e2e/storage-owner-trusted.spec.ts`, also in Firefox and
+WebKit with `POTYRO_STORAGE_BROWSERS=1 pnpm e2e --project=storage-firefox --project=storage-webkit`.
+
 ### Known intermittent: `export-import-trusted.spec.ts`
 
 It still fails occasionally at one worker, and it is **not a test-isolation problem** — running it

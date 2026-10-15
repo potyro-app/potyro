@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Two map regressions that no amount of editing an app module could fix, because both live in the
 // built-in map view (packages/views/src/map.tsx):

@@ -7,6 +7,12 @@ import { join } from "node:path";
 import react from "@vitejs/plugin-react";
 import { linguiBabelPlugin, linguiVitePlugins } from "@potyro/i18n/build.mjs";
 import { realmWorkerPlugin } from "@potyro/host/realm-build.mjs";
+import { readFile } from "node:fs/promises";
+import type { IncomingMessage, ServerResponse } from "node:http";
+// Relative, so the config's own bundler compiles them: the share service is plain Node + TypeScript.
+import { createShareHandler, type ShareRequest } from "../share-links/src/handler.ts";
+import { memoryShareStore } from "../share-links/src/store.ts";
+import { LIMITS as SHARE_LIMITS } from "../share-links/src/wire.ts";
 
 /**
  * The shell's own CSP (#272, docs/22 §3.2): it embeds no frame that fetches, so `frame-src 'none'`.
@@ -131,6 +137,46 @@ function claudeCliPlugin(): Plugin {
   };
 }
 
+/**
+ * The share service (docs/24 §4) inside the dev server and `vite preview`, so hosted demo links and
+ * their preview pages work where the browser tests run. Shares live in memory for the server's life;
+ * the deployed service keeps them on disk (packages/share-links, docs/16).
+ */
+function shareLinksPlugin(): Plugin {
+  const store = memoryShareStore();
+  const middleware = (indexHtml: (path: string) => Promise<string>) => {
+    const handle = createShareHandler({ store, indexHtml, limits: { perAddress: 100_000, windowMs: 60_000 } });
+    return (req: IncomingMessage, res: ServerResponse, next: () => void): void => {
+      const path = (req.url ?? "/").split("?")[0]!;
+      if (!/\/share-api\/|\/s\/[A-Za-z0-9_-]{22}(\/|$)/.test(path)) return next();
+      const chunks: Buffer[] = [];
+      let size = 0;
+      req.on("data", (c: Buffer) => {
+        size += c.length;
+        if (size <= SHARE_LIMITS.requestBytes) chunks.push(c);
+      });
+      req.on("end", () => {
+        const headers: Record<string, string | undefined> = {};
+        for (const [k, v] of Object.entries(req.headers)) headers[k] = Array.isArray(v) ? v[0] : v;
+        const request: ShareRequest = { method: req.method ?? "GET", path, headers, body: new Uint8Array(Buffer.concat(chunks)), ip: req.socket.remoteAddress ?? "local" };
+        void handle(size > SHARE_LIMITS.requestBytes ? { ...request, body: new Uint8Array(SHARE_LIMITS.requestBytes + 1) } : request).then((r) => {
+          res.writeHead(r.status, r.headers);
+          res.end(r.body);
+        });
+      });
+    };
+  };
+  return {
+    name: "potyro-share-links",
+    configureServer(server) {
+      server.middlewares.use(middleware(async (path) => server.transformIndexHtml(path, await readFile(here("./index.html"), "utf8"))));
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware(() => readFile(here("./dist/index.html"), "utf8")));
+    },
+  };
+}
+
 /** Where the service worker finds the list of language chunks to precache (public/sw.js reads it). */
 const CATALOG_MANIFEST = "i18n-precache.json";
 
@@ -167,7 +213,7 @@ export default defineConfig({
   // The Lingui macros compile in plugin-react's Babel pass, and `.po` catalogs load as compiled JS
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
   // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin()],
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), shareLinksPlugin()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.

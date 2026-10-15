@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { chosenFilter } from "./filters.js";
 
 // M1 DoD, trusted path: browse recipes, open the custom cook-along view and tick a step, see

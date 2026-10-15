@@ -620,6 +620,8 @@ export interface PermissionManifest {
   geo?: boolean;
   haptics?: boolean;
   network?: NetworkPermission;
+  /** `ctx.caps.ai` (docs/23): send what a call names to an AI service. A shared app asks the person first. */
+  ai?: boolean;
 }
 
 export interface Theme {

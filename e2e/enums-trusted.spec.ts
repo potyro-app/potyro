@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Choosing one of a set (#98). Recipes' "Diet" has three options, so the form shows all three as a
 // row of buttons. Places' "Kind" has six, so it opens a searchable list — a popover on a wide

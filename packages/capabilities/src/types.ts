@@ -42,6 +42,53 @@ export interface HapticsCap {
   vibrate(pattern?: number | number[]): Promise<void>;
 }
 
+/** One request to an AI service (docs/23): what the host built from an app's `ctx.caps.ai` call. */
+export interface AiCall {
+  system: string;
+  /** What goes, in order: the app's words and its pictures. */
+  parts: Array<{ text: string } | { image: Blob }>;
+  /** A JSON Schema the answer must follow; absent = words back. */
+  json?: Record<string, unknown>;
+  maxTokens: number;
+}
+
+export interface AiReply {
+  text: string;
+  /** Who paid: the free allowance, or the person's own key. */
+  via: "free" | "own-key";
+  /** US dollars the person's own key was charged, when it was. */
+  cost?: number;
+}
+
+/**
+ * Sends AI requests for apps. Not a device feature, so no target implements it: the shell composes
+ * one per app (it holds the key and the person's choices) and leaves it out where there is none.
+ */
+export interface AiCap {
+  /** The service a request goes to, named for the person: "OpenRouter". */
+  readonly service: string;
+  /** The person's own language, when the shell knows it: what the model writes in. */
+  readonly language?: string;
+  /** Send it. Throws, in words for the person, when it cannot (offline, turned off, nobody can pay). */
+  complete(call: AiCall): Promise<AiReply>;
+  /** This app's standing answer on this device: allowed, turned off, or not asked yet. */
+  standing?(): "on" | "off" | undefined;
+  /** Remember that the person allowed it. */
+  allow?(): void;
+  /**
+   * The consent question in the person's language, saying who would pay as things stand now (it may
+   * look first: is the free allowance reachable?). The host has a neutral English one when absent.
+   */
+  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>;
+}
+
+export interface AiConsentWords {
+  message: string;
+  detail: string;
+  ok: string;
+  cancel: string;
+}
+
 export interface Capabilities {
   camera: CameraCap | null;
   notifications: NotificationCap | null;
@@ -57,4 +104,6 @@ export interface Capabilities {
    * (`sharedLiveCamera()`), however many `Capabilities` exist. The host gives it to trusted apps only.
    */
   liveCamera?: LiveCameraCap | null;
+  /** AI for apps (docs/23), composed by the shell; absent or `null` = this device offers none. */
+  ai?: AiCap | null;
 }

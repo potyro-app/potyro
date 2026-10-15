@@ -28,6 +28,16 @@ msgstr "…sta pensando"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "“{0}” non è scritto come un oggetto semplice, quindi le sue proprietà non si possono impostare qui"
 
+#. Asked before a shared app first uses AI on a picture
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
+msgstr "«{appName}» vuole inviare una foto a un servizio di IA (OpenRouter) per leggerla."
+
+#. Asked before a shared app first uses AI on words
+#: ../shell/src/app-ai.ts
+msgid "“{appName}” wants to send some text to an AI service (OpenRouter)."
+msgstr "«{appName}» vuole inviare un testo a un servizio di IA (OpenRouter)."
+
 #: ../shell/src/main.tsx
 msgid "“{invited}” was shared with you."
 msgstr "Hanno condiviso “{invited}” con te."
@@ -58,6 +68,10 @@ msgstr "“{name}” è stata aggiornata a una versione più recente."
 msgid "\"{name}\" is synced; a data import would overwrite what others share."
 msgstr "“{name}” è sincronizzata; importare dati sovrascriverebbe ciò che condividono gli altri."
 
+#: ../shell/src/demo-share.ts
+msgid "“{name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package."
+msgstr "“{name}” è troppo grande per stare da sola in un link. Invia invece il suo pacchetto: nello Studio, File → Salva come pacchetto."
+
 #: ../shell/src/open-libraries.ts
 msgid "“{name}” needs {what} on this device."
 msgstr "“{name}” ha bisogno di {what} su questo dispositivo."
@@ -75,8 +89,8 @@ msgid "“{name}” was just updated to a newer version."
 msgstr "“{name}” è appena stata aggiornata a una versione più recente."
 
 #: ../shell/src/sync-consent.ts
-msgid "“{name}” was made by someone else, so it runs in a sandbox."
-msgstr "“{name}” l’ha fatta qualcun altro, quindi viene eseguita in un ambiente isolato."
+msgid "“{name}” was made by someone else, so it runs in the sealed box."
+msgstr "“{name}” l’ha fatta qualcun altro, quindi viene eseguita nella scatola sigillata."
 
 #: ../shell/src/add-app.ts
 msgid "“{name}” was not added: its files could not be saved. {why}"
@@ -806,8 +820,8 @@ msgid "<0>{doneName}</0> is updated, with your data as it was."
 msgstr "<0>{doneName}</0> è stata aggiornata, con i tuoi dati com’erano."
 
 #: ../shell/src/trust-dialog.tsx
-msgid "<0>{name}</0> runs directly on this device (not sandboxed). Revoke to run it in the isolate again."
-msgstr "<0>{name}</0> viene eseguita direttamente su questo dispositivo (non isolata). Revoca per eseguirla di nuovo nell’ambiente isolato."
+msgid "<0>{name}</0> runs like the apps you made, with the same reach. Put it back in the sealed box to keep it away from the rest of Potyro again."
+msgstr "<0>{name}</0> funziona come le app che hai fatto tu, con la stessa portata. Rimettila nella scatola sigillata per tenerla di nuovo lontana dal resto di Potyro."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>It only works when it runs as yours.</0> Only let it if you know who made it. Otherwise it stays sealed, and it will not open."
@@ -834,6 +848,10 @@ msgstr "<0>Questa parte dell’app ha avuto un problema:</0> {text}"
 msgid "📍 Use my location"
 msgstr "📍 Usa la mia posizione"
 
+#: ../shell/src/share-sheet.tsx
+msgid "A 15-second clip"
+msgstr "Una clip di 15 secondi"
+
 #: ../shell/src/studio-engine.ts
 msgid "A change passed the check."
 msgstr "Una modifica ha superato il controllo."
@@ -849,6 +867,11 @@ msgstr "un database in un worker (quello veloce)"
 #: ../shell/src/storage-report.tsx
 msgid "a database on the main thread"
 msgstr "un database nel thread principale"
+
+#. Demo bar: nothing done in the demo is kept
+#: ../shell/src/demo.tsx
+msgid "A demo: nothing you do here is kept"
+msgstr "Una demo: niente di ciò che fai qui viene salvato"
 
 #: ../shell/src/language-picker.tsx
 msgid "A draft translation was written by a model and may read oddly in places. It is being improved."
@@ -869,6 +892,14 @@ msgstr "una pagina web completa"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A header named…"
 msgstr "Un’intestazione chiamata…"
+
+#: ../shell/src/App.tsx
+msgid "a link anyone can try"
+msgstr "un link che chiunque può provare"
+
+#: ../shell/src/share-sheet.tsx
+msgid "A link anyone can try"
+msgstr "Un link che chiunque può provare"
 
 #: ../shell/src/backup-switch.tsx
 msgid "A new device signed in with your words can bring them all back."
@@ -936,6 +967,11 @@ msgstr "A circa {distance} dalla zona sulla tua mappa."
 #: ../shell/src/add-app-dialog.tsx
 msgid "About {name}"
 msgstr "Informazioni su {name}"
+
+#. The bar above an app opened from a shared link
+#: ../shell/src/demo.tsx
+msgid "About this demo"
+msgstr "Informazioni su questa demo"
 
 #. The colour the shell wears
 #: ../shell/src/look-panel.tsx
@@ -1153,6 +1189,28 @@ msgstr "ritoccata"
 msgid "Advanced — sync relay, identity id"
 msgstr "Avanzate — relay di sincronizzazione, id dell’identità"
 
+#. Tile editor: the app's own use of AI (ctx.caps.ai)
+#: ../shell/src/tile-editor.tsx
+msgid "AI"
+msgstr "IA"
+
+#: ../shell/src/tile-editor.tsx
+msgid "AI in this app has used {aiSpentWords} of your OpenRouter credit on this device."
+msgstr "L'IA di questa app ha usato {aiSpentWords} del tuo credito OpenRouter su questo dispositivo."
+
+#: ../shell/src/app-ai.ts
+msgid "AI is turned off for this app. Turn it on again in Edit tile."
+msgstr "L'IA è disattivata per questa app. Riattivala in «Modifica riquadro»."
+
+#: ../shell/src/app-ai.ts
+msgid "AI isn't available until you add your own OpenRouter key in Model settings."
+msgstr "L'IA non è disponibile finché non aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
+#. What an app asks this device for, lower case; AI = an online AI service (ctx.caps.ai)
+#: ../shell/src/capability-words.ts
+msgid "AI, for the photos and text it sends"
+msgstr "IA, per le foto e i testi che invia"
+
 #: ../shell/src/chrome.tsx
 msgid "All apps"
 msgstr "Tutte le app"
@@ -1170,13 +1228,11 @@ msgstr "Tutti i dettagli e le fonti"
 msgid "All done."
 msgstr "Tutto fatto."
 
+#. Button: let a shared app use AI
+#: ../shell/src/app-ai.ts
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Consenti"
-
-#: ../shell/src/App.tsx
-msgid "allow direct"
-msgstr "consenti diretta"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Allow this address?"
@@ -1479,6 +1535,21 @@ msgstr "Esempi inclusi"
 msgid "button"
 msgstr "pulsante"
 
+#. Under an app's name on its link preview
+#: ../shell/src/demo-share.ts
+msgid "by {by}"
+msgstr "di {by}"
+
+#. Who made an app
+#: ../shell/src/credit-words.ts
+msgid "By {by}"
+msgstr "Di {by}"
+
+#. A shared app's link preview, under its name
+#: ../shell/src/demo-share.ts
+msgid "By {by}. Try it in your browser: no account, nothing to install."
+msgstr "Di {by}. Provala nel browser: nessun account, niente da installare."
+
 #: ../shell/src/launcher-order.ts
 msgid "By name"
 msgstr "Per nome"
@@ -1724,6 +1795,10 @@ msgstr "Scegli dalla libreria"
 msgid "Choose one on the left."
 msgstr "Scegline uno a sinistra."
 
+#: ../shell/src/share-sheet.tsx
+msgid "Choose Share on its tile in your apps to invite someone: that turns on sync for it."
+msgstr "Per invitare qualcuno, scegli Condividi sul suo riquadro tra le tue app: così si attiva la sincronizzazione."
+
 #: ../shell/src/studio.tsx
 msgid "Choose which model writes and edits your app"
 msgstr "Scegli quale modello scrive e modifica la tua app"
@@ -1893,6 +1968,8 @@ msgstr "copiata da “{name}”"
 msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
 msgstr "Copiata in “{copyName}”. Parte vuota: l’app, non i dati."
 
+#. Share dialog: copy an app's words (and link)
+#: ../shell/src/dialog.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "Copy"
 msgstr "Copia"
@@ -1991,17 +2068,26 @@ msgstr "Non è stato possibile caricarlo: {failed}"
 msgid "Couldn't copy — select the link and copy it yourself."
 msgstr "Non è stato possibile copiare: seleziona il link e copialo tu."
 
+#. Share dialog: copying an app's words failed
+#: ../shell/src/dialog.tsx
+msgid "Couldn't copy — select the text and copy it yourself."
+msgstr "Non è stato possibile copiare: seleziona il testo e copialo tu."
+
 #: ../shell/src/data-page.tsx
 msgid "Couldn’t open {name}’s data: {failed}"
 msgstr "Non è stato possibile aprire i dati di {name}: {failed}"
 
-#: ../shell/src/main.tsx
-msgid "Couldn't run \"{name}\" trusted; opening safely."
-msgstr "Non è stato possibile eseguire “{name}” come attendibile; si apre in modo sicuro."
+#: ../shell/src/app-ai.ts
+msgid "Couldn't reach the AI service. Check your connection and try again."
+msgstr "Impossibile raggiungere il servizio di IA. Controlla la connessione e riprova."
 
 #: ../shell/src/main.tsx
-msgid "Couldn't run \"{name}\" trusted; opening safely. {why}"
-msgstr "Non è stato possibile eseguire “{name}” come attendibile; si apre in modo sicuro. {why}"
+msgid "Couldn’t run “{name}” as yours, so it opens sealed."
+msgstr "Non è stato possibile eseguire “{name}” come tua, quindi si apre sigillata."
+
+#: ../shell/src/main.tsx
+msgid "Couldn’t run “{name}” as yours, so it opens sealed. {why}"
+msgstr "Non è stato possibile eseguire “{name}” come tua, quindi si apre sigillata. {why}"
 
 #: ../views/src/record-form.tsx
 msgid "Couldn't save: {saveError}"
@@ -2553,6 +2639,14 @@ msgstr "Trovato su {sites}"
 msgid "Fr"
 msgstr "Ve"
 
+#: ../shell/src/app-ai.ts
+msgid "Free AI isn't available yet — add your own key in Model settings."
+msgstr "L'IA gratuita non è ancora disponibile: aggiungi la tua chiave nelle impostazioni del modello."
+
+#: ../shell/src/app-ai.ts
+msgid "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+msgstr "Gratis finché dura la quota di questo mese; poi la tua chiave OpenRouter, di solito meno di 1 ¢."
+
 #. Ask review: where a proposed record was confirmed, e.g. From Wikidata
 #: ../shell/src/ask-verdicts.ts
 msgid "From {via}"
@@ -2624,6 +2718,10 @@ msgstr "Dalle un nome."
 #: ../shell/src/studio.tsx
 msgid "Go back"
 msgstr "Torna indietro"
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Go back to that tab, or use Potyro here — the other tab will step aside."
+msgstr "Torna a quella scheda, oppure usa Potyro qui: l’altra scheda si farà da parte."
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "Go back to this"
@@ -2881,6 +2979,14 @@ msgstr "Indagine in corso…"
 msgid "Investigation finished"
 msgstr "Indagine terminata"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Invite people into this app and its records. What one of you changes, the others see."
+msgstr "Invita altre persone in questa app e nei suoi dati. Quello che cambia uno di voi, lo vedono gli altri."
+
+#: ../shell/src/share-sheet.tsx
+msgid "Invite people…"
+msgstr "Invita persone…"
+
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
 msgid "Invite someone"
@@ -2939,13 +3045,29 @@ msgstr "È già qui"
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "Viene rimossa anche dall’app e non si può recuperare."
 
+#: ../shell/src/trust-dialog.tsx
+msgid "It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
+msgstr "Esce dalla scatola sigillata e funziona come le app che hai fatto tu, con la stessa portata. Fallo solo se l’hai fatta tu, o se conosci e ti fidi di chi l’ha fatta. <0>{name}</0> chiede:"
+
+#: ../shell/src/main.tsx
+msgid "It needs a library from the internet to open, and you said not now."
+msgstr "Per aprirsi le serve una libreria da internet, e hai detto non ora."
+
 #: ../shell/src/ask-panel.tsx
 msgid "It needs to know one thing"
 msgstr "Deve sapere una cosa"
 
+#: ../shell/src/share-sheet.tsx
+msgid "It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it."
+msgstr "Apre subito l’app in qualsiasi browser, con dati di esempio. Nessun account, niente da installare. Nessuno dei tuoi dati viene inviato."
+
 #: ../shell/src/fix-panel.tsx
 msgid "It replayed clean against the app as it is — {detail}"
 msgstr "La ripetizione è andata liscia sull’app così com’è — {detail}"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "It runs as yours"
+msgstr "Funziona come tua"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It runs as yours, as it did before."
@@ -2963,21 +3085,25 @@ msgstr "Viene eseguita nella scatola sigillata e le sue librerie hanno bisogno d
 msgid "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
 msgstr "Viene eseguita nella scatola sigillata: può raggiungere solo ciò che permetti, quando lo chiede. Se sai chi l’ha fatta, una volta aggiunta puoi lasciarla eseguire come tua, dall’app o dal suo menu ⋯ tra le tue app."
 
+#: ../shell/src/app-ai.ts
+msgid "It uses your own OpenRouter key from Model settings, usually under 1¢ a request."
+msgstr "Usa la tua chiave OpenRouter dalle impostazioni del modello, di solito meno di 1 ¢ a richiesta."
+
 #: ../shell/src/sync-consent.ts
-msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
-msgstr "L’ha fatta qualcun altro e viene eseguita in un ambiente isolato. Condividerla permetterebbe al suo codice di scrivere dati che lasciano questo dispositivo, cosa di cui dice di non aver bisogno. Puoi condividerla comunque."
+msgid "It was made by someone else and runs in the sealed box. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
+msgstr "L’ha fatta qualcun altro e viene eseguita nella scatola sigillata. Condividerla lascerebbe al suo codice scrivere in dati che escono da questo dispositivo, cosa di cui non dice di aver bisogno. Puoi condividerla comunque."
 
 #: ../shell/src/shipped-files.ts
 msgid "It was not added from a link, so its files can only come back from its package: add it again, and choose “Replace it, keep its data”."
 msgstr "Non è stata aggiunta da un link, quindi i suoi file possono tornare solo dal suo pacchetto: aggiungila di nuovo e scegli «Sostituiscila, tieni i suoi dati»."
 
 #: ../shell/src/main.tsx
-msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header."
-msgstr "I suoi dati si sincronizzano con le persone che la condividono: ciò che l’app scrive su questo dispositivo, loro possono leggerlo. Le app di altre persone vengono eseguite isolate per impostazione predefinita. Puoi cambiarlo più tardi dall’intestazione dell’app."
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header."
+msgstr "I suoi dati si sincronizzano con le persone che la condividono: quello che l’app scrive su questo dispositivo, loro lo possono leggere. Le app di altre persone vengono eseguite nella scatola sigillata, a meno che tu non decida diversamente. Puoi cambiarlo più tardi dall’intestazione dell’app."
 
 #: ../shell/src/main.tsx
-msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header."
-msgstr "I suoi dati si sincronizzano con le persone che la condividono: ciò che l’app scrive su questo dispositivo, loro possono leggerlo. Le sue schermate sono costruite con il suo codice, quindi deve essere eseguita come attendibile per mostrarle. Puoi cambiarlo più tardi dall’intestazione dell’app."
+msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run as yours to show them. You can change this later from the app header."
+msgstr "I suoi dati si sincronizzano con le persone che la condividono: quello che l’app scrive su questo dispositivo, loro lo possono leggere. Le sue schermate sono fatte con il suo codice, quindi deve essere eseguita come tua per mostrarle. Puoi cambiarlo più tardi dall’intestazione dell’app."
 
 #: ../shell/src/add-app.ts
 msgid "Its description says it is “{said}”, and its code says “{code}”, so it was not added."
@@ -3002,12 +3128,12 @@ msgid "Its sources say otherwise."
 msgstr "Le sue fonti dicono altro."
 
 #: ../shell/src/main.tsx
-msgid "Join and trust"
-msgstr "Entra e fidati"
+msgid "Join, keep it sealed"
+msgstr "Unisciti, tienila sigillata"
 
 #: ../shell/src/main.tsx
-msgid "Join, keep sandboxed"
-msgstr "Entra, resta isolata"
+msgid "Join, run it as yours"
+msgstr "Unisciti, eseguila come tua"
 
 #: ../shell/src/splash.tsx
 msgid "Joining…"
@@ -3052,6 +3178,11 @@ msgstr "Tienilo solo su questo dispositivo"
 #: ../views/src/checklist.tsx
 msgid "Keep them"
 msgstr "Tienili"
+
+#. Demo bar: add this app to your own apps
+#: ../shell/src/demo.tsx
+msgid "Keep this app"
+msgstr "Tieni questa app"
 
 #: ../shell/src/backup-switch.tsx
 msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
@@ -3161,6 +3292,14 @@ msgstr "Permettere ad Ask di leggere da {host}?"
 #: ../shell/src/trust-dialog.tsx
 msgid "Let it run as yours"
 msgstr "Lasciala eseguire come tua"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "Let it run as yours?"
+msgstr "Lasciarla eseguire come tua?"
+
+#: ../shell/src/tile-editor.tsx
+msgid "Let this app send what it asks about — a photo, some text — to an AI service."
+msgstr "Consenti a questa app di inviare ciò su cui chiede (una foto, un testo) a un servizio di IA."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Libraries"
@@ -3273,15 +3412,35 @@ msgstr "Creata “{name}”."
 msgid "made by the app"
 msgstr "creato dall’app"
 
+#. Demo bar: links to Potyro itself
+#. Demo bar: links to Potyro itself
+#: ../shell/src/demo-share.ts
+#: ../shell/src/demo.tsx
+msgid "Made with Potyro"
+msgstr "Fatto con Potyro"
+
+#. What the Studio starts with after Remix this
+#: ../shell/src/add-app-dialog.tsx
+msgid "Make me a version of {name} that…"
+msgstr "Fammi una versione di {name} che…"
+
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Crea l’app che ti serve"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Make the link"
+msgstr "Crea il link"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 msgid "Making it via {label}… {elapsed}"
 msgstr "Creazione tramite {label}… {elapsed}"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Making the link…"
+msgstr "Creo il link…"
 
 #. Launcher sort: your own order
 #: ../shell/src/launcher-order.ts
@@ -3639,6 +3798,8 @@ msgstr "Non nelle sue fonti:"
 msgid "not known until it runs"
 msgstr "non si sa finché non viene eseguita"
 
+#. Button: refuse a shared app's AI request this time
+#: ../shell/src/app-ai.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
@@ -3931,6 +4092,14 @@ msgstr "Solo la persona che ha creato quest’app può invitare o rimuovere pers
 msgid "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
 msgstr "Al team di Potyro arrivano solo queste parole e la tua proposta — niente su di te o sulle tue app."
 
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this photo and its question — nothing else in the app."
+msgstr "Viene inviato solo ciò che l'app invia: questa foto e la sua domanda, nient'altro dell'app."
+
+#: ../shell/src/app-ai.ts
+msgid "Only what the app sends goes: this text and its question — nothing else in the app."
+msgstr "Viene inviato solo ciò che l'app invia: questo testo e la sua domanda, nient'altro dell'app."
+
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"
 msgstr "solo finché è attivo il server di sviluppo"
@@ -4113,6 +4282,10 @@ msgstr "Potyro non può mostrare questo tipo di file. Salvane una copia per apri
 msgid "Potyro gold"
 msgstr "Oro Potyro"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Potyro is open in another tab"
+msgstr "Potyro è aperto in un’altra scheda"
+
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
 msgstr "tempi precisi"
@@ -4131,17 +4304,13 @@ msgstr "Generazione precedente, per un test di regressione"
 msgid "Previous month"
 msgstr "Mese precedente"
 
-#: ../shell/src/trust-dialog.tsx
-msgid "Promote to trusted"
-msgstr "Rendi attendibile"
-
-#: ../shell/src/trust-dialog.tsx
-msgid "Promote to trusted?"
-msgstr "Renderla attendibile?"
-
 #: ../views/src/checklist.tsx
 msgid "Put {pendingName} in {heading}"
 msgstr "Metti {pendingName} in {heading}"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "Put it back in the sealed box"
+msgstr "Rimetti nella scatola sigillata"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
@@ -4192,9 +4361,17 @@ msgstr "Recenti"
 msgid "Recommended balance"
 msgstr "Equilibrio consigliato"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Record a clip"
+msgstr "Registra una clip"
+
 #: ../views/src/media-input.tsx
 msgid "Record audio"
 msgstr "Registra audio"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Record the app as it is on your screen, to post as a video. Nothing is uploaded: you get a file."
+msgstr "Registra l’app così com’è sul tuo schermo, da pubblicare come video. Non viene caricato nulla: ottieni un file."
 
 #. Status: a bug report is being recorded
 #. Status: a bug report is being recorded
@@ -4202,6 +4379,11 @@ msgstr "Registra audio"
 #: ../shell/src/chrome.tsx
 msgid "Recording"
 msgstr "Registrazione"
+
+#. While a clip of the app is recorded; left is seconds
+#: ../shell/src/share-sheet.tsx
+msgid "Recording · {left} s"
+msgstr "Registrazione · {left} s"
 
 #: ../shell/src/main.tsx
 msgid "Reinstall its files"
@@ -4214,6 +4396,33 @@ msgstr "Rifiuta"
 #: ../shell/src/ask-review-parts.tsx
 msgid "Reject {name}"
 msgstr "Rifiuta {name}"
+
+#. The Add-an-app dialog, opened from Remix this
+#. The Add-an-app dialog, opened from Remix this
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/add-app-dialog.tsx
+msgid "Remix an app"
+msgstr "Fai un remix di un’app"
+
+#. Add-an-app card button, opened from Remix this
+#: ../shell/src/add-app-dialog.tsx
+msgid "Remix it"
+msgstr "Fanne un remix"
+
+#. The app a remix came from, when its maker did not say who they are
+#: ../shell/src/credit-words.ts
+msgid "Remix of {name}"
+msgstr "Remix di {name}"
+
+#. Who made the app a remix came from
+#: ../shell/src/credit-words.ts
+msgid "Remix of {name} by {by}"
+msgstr "Remix di {name} di {by}"
+
+#. Demo bar: make your own version of this app in the Studio
+#: ../shell/src/demo.tsx
+msgid "Remix this"
+msgstr "Fanne un remix"
 
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
@@ -4374,14 +4583,10 @@ msgstr "ripristinata"
 msgid "Restoring…"
 msgstr "Ripristino…"
 
-#. Trust menu hint: look at how a trusted app runs
+#. Trust menu hint: look at how an app that runs as yours runs
 #: ../shell/src/App.tsx
 msgid "review"
 msgstr "rivedi"
-
-#: ../shell/src/trust-dialog.tsx
-msgid "Revoke trust"
-msgstr "Revoca la fiducia"
 
 #: ../shell/src/studio.tsx
 msgid "Rewrote the app instead of editing it."
@@ -4415,6 +4620,11 @@ msgstr "esegui {runsN}"
 msgid "Run ▶"
 msgstr "Esegui ▶"
 
+#. Trust menu hint: let a sealed app run as yours
+#: ../shell/src/App.tsx
+msgid "run as yours"
+msgstr "esegui come tua"
+
 #: ../views/src/custom.tsx
 msgid "Run it as mine…"
 msgstr "Eseguila come mia…"
@@ -4428,22 +4638,22 @@ msgid "running now"
 msgstr "in uso ora"
 
 #: ../shell/src/App.tsx
-msgid "Runs directly"
-msgstr "Eseguita direttamente"
+msgid "Runs as yours"
+msgstr "Funziona come tua"
+
+#: ../shell/src/App.tsx
+msgid "Runs in the sealed box. Tap to let it run as yours."
+msgstr "Viene eseguita nella scatola sigillata. Tocca per eseguirla come tua."
 
 #: ../shell/src/App.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
-msgid "Runs in a sandbox"
-msgstr "Eseguita in un ambiente isolato"
+msgid "Runs sealed"
+msgstr "Funziona sigillata"
 
 #: ../shell/src/App.tsx
-msgid "Runs in a sandbox: review"
-msgstr "Eseguita in un ambiente isolato: rivedi"
-
-#: ../shell/src/App.tsx
-msgid "Runs in a sandbox. Tap to let it run as yours."
-msgstr "Eseguita in un ambiente isolato. Tocca per lasciarla eseguire come tua."
+msgid "Runs sealed: review"
+msgstr "Funziona sigillata: controlla"
 
 #. Calendar column head: Saturday, as short as your language writes it
 #: ../views/src/date-input.tsx
@@ -4454,11 +4664,6 @@ msgstr "Sa"
 #: ../views/src/stats.tsx
 msgid "same as {label}"
 msgstr "uguale a {label}"
-
-#. A small mark in the header of an app that runs sealed
-#: ../shell/src/App.tsx
-msgid "sandbox"
-msgstr "isolata"
 
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
@@ -4497,6 +4702,14 @@ msgstr "Salva la nota"
 msgid "Save one thing"
 msgstr "Salva una cosa"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Save the clip"
+msgstr "Salva la clip"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Saved {file}."
+msgstr "Salvato {file}."
+
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "{packed} salvato. Mandalo a qualcuno, e lo aggiungerà con “Aggiungi un’app”."
@@ -4506,9 +4719,18 @@ msgstr "{packed} salvato. Mandalo a qualcuno, e lo aggiungerà con “Aggiungi u
 msgid "Saving…"
 msgstr "Salvataggio…"
 
+#: ../shell/src/share-sheet.tsx
+msgid "Say it is by {myName}"
+msgstr "Dire che è di {myName}"
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Dillo come lo diresti a una persona: “aggiungi un voto”, “metti prima i più recenti”, “una pagina per la lista della spesa”."
+
+#. A small mark in the header of an app that runs sealed
+#: ../shell/src/App.tsx
+msgid "sealed"
+msgstr "sigillata"
 
 #. The search box at the top of a list to pick from
 #: ../views/src/pick-list.tsx
@@ -4568,6 +4790,11 @@ msgstr "Invia"
 msgid "Send answer"
 msgstr "Invia la risposta"
 
+#. Share sheet: the chat apps a link can be sent with
+#: ../shell/src/share-sheet.tsx
+msgid "Send it with"
+msgstr "Invialo con"
+
 #: ../shell/src/people-panel.tsx
 msgid "Send this link. Whoever opens it can see your app, but not change it."
 msgstr "Invia questo link. Chi lo apre può vedere la tua app, ma non modificarla."
@@ -4612,8 +4839,14 @@ msgstr "Inviato con la tua richiesta"
 msgid "Set a name"
 msgstr "Imposta un nome"
 
+#. App menu: share this app
 #. Button: share the app (turns sync on)
+#. Share dialog title when an app gives none
+#. Share sheet eyebrow
+#: ../shell/src/App.tsx
+#: ../shell/src/dialog.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/share-sheet.tsx
 #: ../shell/src/sync-consent.ts
 msgid "Share"
 msgstr "Condividi"
@@ -4621,6 +4854,11 @@ msgstr "Condividi"
 #: ../shell/src/launcher.tsx
 msgid "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
 msgstr "Condividere “{name}”? Questo attiva la sincronizzazione e copia i suoi dati nell’archivio sincronizzato. Puoi disattivarla di nuovo più tardi."
+
+#. The share sheet's title
+#: ../shell/src/share-sheet.tsx
+msgid "Share {name}"
+msgstr "Condividi {name}"
 
 #: ../shell/src/sync-consent.ts
 msgid "Share anyway"
@@ -4652,6 +4890,13 @@ msgstr "condivisa"
 #: ../shell/src/data-page.tsx
 msgid "Shared — edits here reach everyone in it"
 msgstr "Condivisa: le modifiche fatte qui arrivano a tutti"
+
+#. A demo app whose name could not be read
+#. A demo app whose name could not be read
+#: ../shell/src/demo.tsx
+#: ../shell/src/main.tsx
+msgid "Shared app"
+msgstr "App condivisa"
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "Shared costs with my flatmates"
@@ -4790,8 +5035,10 @@ msgstr "Passi"
 
 #. Ask: stop the request
 #. Button: stop the fix agent
+#. Stop recording the clip
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
+#: ../shell/src/share-sheet.tsx
 msgid "Stop"
 msgstr "Ferma"
 
@@ -5037,6 +5284,18 @@ msgstr "Non è stato possibile inviare il messaggio."
 msgid "the \"{shownTitle}\" page"
 msgstr "la pagina “{shownTitle}”"
 
+#: ../shell/src/app-ai.ts
+msgid "The AI service could not answer this time. Try again."
+msgstr "Il servizio di IA questa volta non ha potuto rispondere. Riprova."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service is busy. Try again in a minute."
+msgstr "Il servizio di IA è occupato. Riprova tra un minuto."
+
+#: ../shell/src/app-ai.ts
+msgid "The AI service took too long to answer. Try again."
+msgstr "Il servizio di IA ha impiegato troppo a rispondere. Riprova."
+
 #: ../shell/src/studio-files.tsx
 msgid "The app and the files it comes with, as one file"
 msgstr "L’app e i file che porta con sé, in un unico file"
@@ -5044,6 +5303,10 @@ msgstr "L’app e i file che porta con sé, in un unico file"
 #: ../shell/src/app-source.ts
 msgid "the app changed since this text was read — try again"
 msgstr "l’app è cambiata da quando questo testo è stato letto: riprova"
+
+#: ../shell/src/demo.tsx
+msgid "The app could not be fetched. Check the connection and try again."
+msgstr "Non è stato possibile scaricare l’app. Controlla la connessione e riprova."
 
 #: ../shell/src/studio.tsx
 msgid "the app, not its data"
@@ -5061,6 +5324,14 @@ msgstr "Il codice sorgente dell’app"
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
 msgstr "Le app già lì restano lì: non è un’eliminazione. Disattiva la sincronizzazione di una singola app per toglierla dal relay."
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip could not be recorded: {why}"
+msgstr "Non è stato possibile registrare la clip: {why}"
+
+#: ../shell/src/share-sheet.tsx
+msgid "The clip is ready."
+msgstr "La clip è pronta."
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "The conversation about this app"
@@ -5097,6 +5368,10 @@ msgstr "Il file con cui è arrivata, {list}, non è su questo dispositivo, quind
 #: ../shell/src/shipped-files.ts
 msgid "The files it came with — {list} — are not on this device, so it cannot run."
 msgstr "I file con cui è arrivata — {list} — non sono su questo dispositivo, quindi non può funzionare."
+
+#: ../shell/src/app-ai.ts
+msgid "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
+msgstr "Il servizio di IA gratuito non ha risposto. Riprova tra un minuto o aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
 
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
@@ -5309,6 +5584,14 @@ msgstr ""
 "\n"
 "Salvare comunque?"
 
+#: ../shell/src/app-ai.ts
+msgid "This app has used $1 of your OpenRouter credit on AI this month, the most one app may. It can use AI again next month."
+msgstr "Questa app ha usato 1 $ del tuo credito OpenRouter per l'IA questo mese, il massimo consentito a un'app. Potrà usare di nuovo l'IA il mese prossimo."
+
+#: ../shell/src/app-ai.ts
+msgid "This app is asking the AI too often. Wait a minute and try again."
+msgstr "Questa app interroga l'IA troppo spesso. Aspetta un minuto e riprova."
+
 #: ../shell/src/app-words.ts
 msgid "This app is in {language}."
 msgstr "Quest’app è in {language}."
@@ -5341,6 +5624,10 @@ msgstr "le pagine di quest’app non sono un array semplice"
 #: ../views/src/board.tsx
 msgid "This board needs an enum field for its columns."
 msgstr "Questa bacheca ha bisogno di un campo a scelta per le sue colonne."
+
+#: ../shell/src/share-sheet.tsx
+msgid "This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds."
+msgstr "Questo browser non può registrare l’app. La registrazione schermo del telefono sì: registra l’app, poi tagliala a 15 secondi."
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "This browser has no secure store, so keys are kept only until you close this page."
@@ -5416,13 +5703,31 @@ msgstr "questo elemento"
 msgid "this label is not written as a translation map"
 msgstr "questa etichetta non è scritta come mappa di traduzioni"
 
+#: ../shell/src/share-sheet.tsx
+msgid "This link carries the whole app, so chats show it without a preview picture."
+msgstr "Questo link contiene l’intera app, quindi le chat lo mostrano senza immagine di anteprima."
+
 #: ../shell/src/add-app.ts
 msgid "This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file."
 msgstr "Questo link è un pacchetto zip, che questo dispositivo può scaricare solo da un server che lo permette. Scaricalo e aggiungilo come file."
 
+#: ../shell/src/demo.tsx
+#: ../shell/src/demo.tsx
+#: ../shell/src/demo.tsx
+msgid "This link is damaged: the app in it could not be read. Ask whoever sent it for a new one."
+msgstr "Questo link è danneggiato: non è stato possibile leggere l’app che contiene. Chiedine uno nuovo a chi te l’ha mandato."
+
+#: ../shell/src/demo.tsx
+msgid "This link no longer works: whoever shared it took it down, or it was never made."
+msgstr "Questo link non funziona più: chi l’ha condiviso l’ha ritirato, oppure non è mai esistito."
+
 #: ../views/src/timeline.tsx
 msgid "This month"
 msgstr "Questo mese"
+
+#: ../shell/src/app-ai.ts
+msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di questo mese è esaurita: aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
 
 #: ../shell/src/fix-panel.tsx
 msgid "This one isn’t in your app"
@@ -5435,6 +5740,10 @@ msgstr "Non è stato possibile mostrare questa pagina"
 #: ../shell/src/app-source.ts
 msgid "this page's title is not written as a translation map"
 msgstr "il titolo di questa pagina non è scritto come mappa di traduzioni"
+
+#: ../shell/src/app-ai.ts
+msgid "This picture's format can't be read. Try a JPEG or PNG photo."
+msgstr "Il formato di questa immagine non è leggibile. Prova con una foto JPEG o PNG."
 
 #: ../shell/src/data-table.tsx
 #: ../views/src/builtins.tsx
@@ -5526,18 +5835,26 @@ msgstr "Traduci in {into}"
 msgid "Translate this app into {intoName} ({intoTag})."
 msgstr "Traduci quest’app in {intoName} ({intoTag})."
 
-#: ../shell/src/trust-dialog.tsx
-msgid "Trusted app"
-msgstr "App attendibile"
+#. The words sent with a demo link in a chat
+#: ../shell/src/share-sheet.tsx
+msgid "Try {name}, made with Potyro"
+msgstr "Prova {name}, fatta con Potyro"
 
-#: ../shell/src/trust-dialog.tsx
-msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
-msgstr "Le app attendibili vengono eseguite <0>direttamente</0> con accesso completo, senza ambiente isolato. Rendi attendibile solo un’app che hai scritto tu o di cui ti fidi del tutto. <1>{name}</1> dichiara:"
-
+#: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Riprova"
+
+#. Footer of a shared app's link preview picture
+#: ../shell/src/demo-share.ts
+msgid "Try it in your browser — no account"
+msgstr "Provala nel browser, senza account"
+
+#. A shared app's link preview, under its name
+#: ../shell/src/demo-share.ts
+msgid "Try it in your browser: no account, nothing to install."
+msgstr "Provala nel browser: nessun account, niente da installare."
 
 #: ../shell/src/platform-request-card.tsx
 msgid "Try sending again"
@@ -5666,6 +5983,14 @@ msgstr "aggiornata da un collaboratore"
 msgid "Updated your data from {was} to {to}."
 msgstr "I tuoi dati sono stati aggiornati da {was} a {to}."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Use it here"
+msgstr "Usalo qui"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Use it together"
+msgstr "Usarla insieme"
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Usato dalla schermata delle app e dallo Studio, e da ogni app che non ha un colore suo: il colore di un’app è sul suo riquadro, in <0>Modifica riquadro</0>."
@@ -5786,6 +6111,8 @@ msgstr "Come devono vederti le persone con cui condividi?"
 msgid "What to add"
 msgstr "Cosa aggiungere"
 
+#. Share dialog: the words an app hands over, read-only
+#: ../shell/src/dialog.tsx
 #: ../shell/src/platform-request-card.tsx
 msgid "What will be sent"
 msgstr "Cosa verrà inviato"
@@ -5877,6 +6204,10 @@ msgstr "sì"
 msgid "Yes"
 msgstr "Sì"
 
+#: ../shell/src/trust-dialog.tsx
+msgid "Yes, run it as yours"
+msgstr "Sì, eseguila come tua"
+
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx
 msgid "Yesterday"
@@ -5890,8 +6221,10 @@ msgstr "tu"
 #. Chat: a message you wrote
 #. Chat: a message you wrote
 #. Heading of the panel about the person using Potyro and their devices
+#. The person trying a demo app
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/chat-panel.tsx
+#: ../shell/src/demo.tsx
 #: ../shell/src/identity-panel.tsx
 msgid "You"
 msgstr "Tu"
@@ -5922,6 +6255,10 @@ msgstr "L’hai interrotto prima che finisse."
 msgid "You expected: {expectation}"
 msgstr "Ti aspettavi: {expectation}"
 
+#: ../shell/src/add-app-dialog.tsx
+msgid "You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it."
+msgstr "Ricevi una copia tutta tua da modificare. Appena aggiunta, lo Studio si apre su di essa e ti chiede cosa vuoi farne."
+
 #: ../shell/src/activity-panel.tsx
 msgid "You set {field} to {to}"
 msgstr "Hai impostato {field} su {to}"
@@ -5933,6 +6270,10 @@ msgstr "Hai impostato {field} su {to} in {record}"
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."
 msgstr "L’hai fermato prima che finisse."
+
+#: ../shell/src/app-ai.ts
+msgid "You're offline. AI needs the internet — try again when you're connected."
+msgstr "Sei offline. L'IA ha bisogno di internet: riprova quando sei connesso."
 
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/fix-panel.tsx
@@ -5961,9 +6302,17 @@ msgstr "Le tue app e i tuoi dati stanno qui. Aggiungi un altro dispositivo per u
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Le tue app sono sul relay. Anche tutto ciò che crei dopo ci va."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
+msgstr "Le tue app sono aperte in una scheda alla volta, così niente di ciò che cambi in una manca nell’altra."
+
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Le tue app su questo account"
+
+#: ../shell/src/share-sheet.tsx
+msgid "Your browser will ask what to record: choose this tab."
+msgstr "Il browser ti chiederà cosa registrare: scegli questa scheda."
 
 #: ../shell/src/launcher.tsx
 msgid "Your data"
@@ -5984,6 +6333,14 @@ msgstr "I tuoi dati usano ancora la versione precedente. Aggiornali per continua
 #: ../shell/src/identity-panel.tsx
 msgid "Your devices"
 msgstr "I tuoi dispositivi"
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter account is out of credit."
+msgstr "Il tuo account OpenRouter ha esaurito il credito."
+
+#: ../shell/src/app-ai.ts
+msgid "Your OpenRouter key was refused. Check it in Model settings."
+msgstr "La tua chiave OpenRouter è stata rifiutata. Controllala nelle impostazioni del modello."
 
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"

@@ -87,6 +87,11 @@ export type {
   HapticsCapability,
   FileCapability,
   NetworkCapability,
+  AiCapability,
+  AiShape,
+  AiLeaf,
+  AiImage,
+  AiExtractRequest,
 } from "./types/ctx.js";
 
 // ---- app definition ----
@@ -159,6 +164,7 @@ export type {
   ResolvedFields,
   LogicRecord,
   RecordFor,
+  AiValue,
 } from "./types/infer.js";
 
 export { LAYOUT_TYPES } from "./types/app.js";

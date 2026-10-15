@@ -10,10 +10,12 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
-import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageElsewhere, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
+import { capsWithAi } from "./app-ai-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
@@ -51,6 +53,7 @@ import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
 import { watchLiveCamera } from "./camera-indicator.js";
+import { readDemoLink, type DemoLink } from "./demo-link.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -265,7 +268,8 @@ function mount(root: HTMLElement, node: ReactNode): void {
 // source runs as a real module. A trusted load that fails (e.g. an edited, invalid version) falls
 // back to untrusted so the app still opens. Either way it has its own durable store.
 /** A `#join=…` link means someone shared a synced app. Accept it, then open it as a normal app. */
-async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
+/** The app joined, null when there was no invite, false when joining failed and said so. */
+async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | false> {
   const { pendingInvite, acceptInvite, usesCustomViews } = await import("./share-sync.js");
   // Web: the address bar. Device COLD start: the app was launched by the link, so nothing has
   // listened yet and the URL must be fetched. (Warm starts are handled by the listener below.)
@@ -292,10 +296,10 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
   const invited = invite.name;
   const trust = await shellDialogs.confirm(t`“${invited}” was shared with you.`, {
     detail: custom
-      ? t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run trusted to display them. You can change this later from the app header.`
-      : t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run sandboxed by default. You can change this later from the app header.`,
-    ok: t`Join and trust`,
-    cancel: t`Join, keep sandboxed`,
+      ? t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run as yours to show them. You can change this later from the app header.`
+      : t`Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header.`,
+    ok: t`Join, run it as yours`,
+    cancel: t`Join, keep it sealed`,
   });
 
   // Asked after trust and before joining. After, because "do you trust this app?" is the question
@@ -312,8 +316,51 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null> {
     return id;
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e);
-    root.textContent = t`Could not join: ${why}`;
-    return null;
+    // Through React, on the screen that was joining: emptying the root by hand left React rendering
+    // into a container it no longer owned ("root container was removed without using React").
+    mount(root, <Splash name={invite.name} source={invite.source} verb="Joining" failed={t`Could not join: ${why}`} />);
+    return false;
+  }
+}
+
+/**
+ * A demo link (docs/24): the app in it, running straight away — sealed, on records in memory, with
+ * nothing installed and no question asked before it is on screen. Nothing here touches this device's
+ * apps, identity or storage; "Keep this app" is the ordinary Add-an-app card.
+ */
+async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
+  const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
+  setShellCaps(caps);
+  const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath }, { shareEvent }] = await Promise.all([import("./demo.js"), import("./share-events.js")]);
+  // Anywhere a demo goes next — home, an app it was kept as — is the shell at the site's root, by a
+  // page load: the demo's runtime is not one the router knows how to put away.
+  setRouteHandler(() => {
+    leaveDemoPath();
+    return false;
+  });
+  const shared = t({ message: "Shared app", comment: "A demo app whose name could not be read" });
+  let pkg: Awaited<ReturnType<typeof loadDemoPackage>>;
+  mount(root, <Splash name={shared} />);
+  try {
+    pkg = await loadDemoPackage(link);
+  } catch (e) {
+    mount(root, <Splash name={shared} failed={e instanceof Error ? e.message : String(e)} />);
+    return;
+  }
+  const name = demoName(pkg);
+  mount(root, <Splash name={name} source={pkg.source} />);
+  try {
+    const session = await openDemo(pkg, caps);
+    shareEvent("demo-opened");
+    mount(root, <DemoScreen session={session} pkg={pkg} />);
+  } catch (e) {
+    const why =
+      e instanceof DemoDeclined
+        ? t`It needs a library from the internet to open, and you said not now.`
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    mount(root, <Splash name={name} source={pkg.source} failed={why} action={{ label: t`Try again`, run: async () => location.reload() }} />);
   }
 }
 
@@ -420,6 +467,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
     }
   } catch (e) {
+    // Another tab owns the storage: the whole tab already says so, with "Use it here".
+    if (isStorageElsewhere(e)) return null;
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
     return null;
   }
@@ -516,6 +565,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       });
     })().catch((e: unknown) => console.warn("[potyro] could not record this app on your account:", e));
   }
+  // This app's AI service (docs/23): its own switch, consent and spend. Only the app's runtime gets it.
+  const appCaps = capsWithAi(caps, id);
   const picker = new PickerHost();
   const questions = new UiHost();
   const ui = createUiBridge(toaster.push, picker, shellDialogs, questions);
@@ -547,14 +598,14 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     try {
       const { loadTrustedModule } = await import("./trusted-loader.js");
       const app = await loadTrustedModule(saved.source, modules); // real defineApp validates or throws
-      composed = await compose({ provenance: "trusted", app, store, caps, ui, nav, me, space });
+      composed = await compose({ provenance: "trusted", app, store, caps: appCaps, ui, nav, me, space });
       provenance = "trusted";
     } catch (e) {
       // A library or module that does not match its lock is not a reason to try the sealed box.
       if (e instanceof ModuleError) return failed(e);
       const name = saved.name;
       const why = e instanceof Error ? e.message : "";
-      toaster.push((why ? t`Couldn't run "${name}" trusted; opening safely. ${why}` : t`Couldn't run "${name}" trusted; opening safely.`).trim());
+      toaster.push((why ? t`Couldn’t run “${name}” as yours, so it opens sealed. ${why}` : t`Couldn’t run “${name}” as yours, so it opens sealed.`).trim());
     }
   }
   if (provenance === "untrusted") {
@@ -564,7 +615,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     ]);
     try {
       appSource = await (await createAppBundler())(saved.source, modules);
-      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
+      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps: appCaps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
     } catch (e) {
       return failed(e);
     }
@@ -620,6 +671,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       // Writes still on their way land first — a tick then Home used to close the store under its
       // patch, and the tick was gone. Before the isolate goes too: an untrusted action writes from it.
       await composed!.runtime.settle();
+      // From here a read that fails is the app going away, not the app failing.
+      composed!.runtime.close();
       composed!.loaded.dispose();
       await rawStore.close();
     },
@@ -875,6 +928,9 @@ async function boot(): Promise<void> {
   // device's, else English. English needs no fetch; another language is one small chunk, from the
   // service worker's cache when offline. The pseudo-language is offered in dev builds only.
   await startI18n({ pseudo: import.meta.env.DEV });
+  // Right after the language, before anything opens storage: if another tab has it, that is said
+  // in words — whether it is known now or only once that tab takes it over later.
+  watchStorageOwner();
   // On Android the OS can say more than the WebView does (a per-app language, say). Not awaited:
   // it only matters when it disagrees, and then the switch is live.
   void systemLanguages()
@@ -885,6 +941,10 @@ async function boot(): Promise<void> {
   // waits on it, and every read of a secret performs the same move if this has not finished.
   void secureIdentitySecrets().catch((e: unknown) => console.warn("[potyro] could not secure identity keys:", e));
 
+  // A demo link opens its app and nothing else: no examples seeded, no account read, no launcher.
+  const demo = readDemoLink(location.pathname, location.hash);
+  if (demo) return bootDemo(root, demo);
+
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
   // isolate. Before routing, because routing asks the registry whether an app exists.
@@ -893,6 +953,8 @@ async function boot(): Promise<void> {
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
   const joined = await bootInviteIfPresent(root);
+  // Joining failed and the screen says why, with the way back to the apps.
+  if (joined === false) return;
 
   // Apps your ACCOUNT knows about that this device does not (KA-16 follow-up). This is what typing
   // the recovery words is supposed to get you: a device that is not only you, but yours. Offered,
@@ -999,6 +1061,8 @@ function registerServiceWorker(): void {
 }
 
 boot().catch((err: unknown) => {
+  // Not a boot error: the screen saying another tab has the storage is already up.
+  if (isStorageElsewhere(err)) return;
   const root = document.getElementById("root");
   if (root) {
     const why = err instanceof Error ? err.message : String(err);

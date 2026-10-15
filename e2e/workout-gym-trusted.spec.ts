@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -115,6 +115,6 @@ test("the launcher reports a saved app's real provenance", async ({ page }) => {
   await page.goto("/");
   const tile = page.locator(".k-launch-usertile").filter({ hasText: "Workout Sessions" });
   await expect(tile).toBeVisible({ timeout: 30_000 });
-  await expect(tile.getByRole("img", { name: "Runs in a sandbox" })).toHaveCount(0);
+  await expect(tile.getByRole("img", { name: "Runs sealed" })).toHaveCount(0);
   await expect(tile.locator(".k-prov")).toHaveCount(0);
 });

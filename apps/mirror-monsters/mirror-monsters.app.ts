@@ -135,12 +135,12 @@ const W = {
     it: "La fotocamera non è partita. Riprova.",
   },
   sealed: {
-    en: "The live camera works only in apps you run as your own. Add Mirror Monsters with “I wrote this. Run it as mine.” ticked.",
-    "pt-BR": "A câmera ao vivo só funciona em apps que você roda como seus. Adicione o Monstros no Espelho marcando “Eu escrevi isto. Rodar como meu.”",
-    de: "Die Live-Kamera gibt es nur in Apps, die du als deine eigenen ausführst. Füge Spiegelmonster mit „Das habe ich geschrieben. Als meine ausführen.“ hinzu.",
-    es: "La cámara en vivo solo funciona en las apps que ejecutas como tuyas. Añade Monstruos del Espejo marcando «Lo escribí yo. Ejecutar como mía».",
-    pl: "Kamera na żywo działa tylko w aplikacjach uruchamianych jako własne. Dodaj Potwory z Lustra z zaznaczonym „Napisałem to. Uruchom jako moją”.",
-    it: "La fotocamera dal vivo funziona solo nelle app che esegui come tue. Aggiungi Mostri allo Specchio spuntando “L'ho scritta io. Eseguila come mia.”",
+    en: "The live camera isn’t here. It needs a Potyro that has it, and Mirror Monsters running as yours: add it with “I wrote this. Run it as mine.” ticked, or tap “Let it run as yours” in its menu.",
+    "pt-BR": "A câmera ao vivo não está disponível. Ela precisa de um Potyro que a tenha e do Monstros no Espelho rodando como seu: adicione-o marcando “Eu escrevi isto. Rodar como meu.” ou toque em “Deixar rodar como seu” no menu dele.",
+    de: "Die Live-Kamera ist hier nicht da. Sie braucht ein Potyro, das sie hat, und Spiegelmonster als deine eigene App: Füge sie mit „Das habe ich geschrieben. Als meine ausführen.“ hinzu oder tippe in ihrem Menü auf „Als deine eigene laufen lassen“.",
+    es: "La cámara en vivo no está disponible. Necesita un Potyro que la tenga y Monstruos del Espejo ejecutándose como tuya: añádela marcando «Lo escribí yo. Ejecutar como mía» o toca «Dejar que se ejecute como tuya» en su menú.",
+    pl: "Kamery na żywo tu nie ma. Potrzebny jest Potyro, który ją ma, i Potwory z Lustra uruchamiane jako twoje: dodaj je z zaznaczonym „Napisałem to. Uruchom jako moją” albo dotknij „Pozwól działać jako twoja” w ich menu.",
+    it: "La fotocamera dal vivo qui non c’è. Serve un Potyro che ce l’abbia e Mostri allo Specchio eseguita come tua: aggiungila spuntando “L’ho scritta io. Eseguila come mia.” o tocca “Lasciala eseguire come tua” nel suo menu.",
   },
   snap: { en: "Snap", "pt-BR": "Fotografar", de: "Knipsen", es: "Hacer foto", pl: "Pstryknij", it: "Scatta" },
   flip: {

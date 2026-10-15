@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // M2 DoD, trusted path: browse plants, see the overdue plant on the Due page, water it (action →
 // patches lastWatered → clears overdue → leaves Due), and see the Schedule calendar render events.

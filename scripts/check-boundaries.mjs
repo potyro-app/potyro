@@ -18,6 +18,15 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 /** @type {{ pkg: string; forbidden: RegExp[]; note: string }[]} */
 const rules = [
   {
+    // The console guard (e2e/console-guard.ts) only watches specs that take `test` from it. A spec
+    // taking `test` from Playwright directly is a spec whose console errors nobody sees — which is
+    // how nine errors per load went unnoticed (fix/opfs-access-handles). The guard itself is the one
+    // file that may: it imports `test as base`.
+    pkg: "e2e",
+    forbidden: [/^import\s*\{[^}]*\btest\b(?!\s+as\s+base)[^}]*\}\s*from\s*["']@playwright\/test["']/m],
+    note: "e2e takes `test` from ./console-guard, so the console guard sees it",
+  },
+  {
     pkg: "packages/views/src",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/shell/],
     note: "views may only depend on the runtime API + schema types (+ @potyro/i18n for its own words)",
@@ -36,6 +45,19 @@ const rules = [
     pkg: "packages/platform-requests/src",
     forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
     note: "platform-requests depends on no Potyro package; the shell depends on it",
+  },
+  {
+    // The share service for demo links runs on the server, alone (docs/24 §4): it must not pull any
+    // of the app into it, and the shell imports only its browser-safe wire format.
+    pkg: "packages/share-links/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "share-links depends on no Potyro package; the shell depends on it",
+  },
+  {
+    // The free AI allowance's relay (docs/23) runs on the server with Potyro's key: the same rule.
+    pkg: "packages/ai-relay/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "ai-relay depends on no Potyro package; the shell depends on it",
   },
   {
     pkg: "examples",

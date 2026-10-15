@@ -11,6 +11,57 @@
 
 import type { SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
+import { ELSEWHERE, StorageElsewhereError } from "./storage-owner.js";
+
+export { isStorageElsewhere, StorageElsewhereError } from "./storage-owner.js";
+
+// ---- one tab owns the storage (storage-owner.ts) ------------------------------------------------
+
+/** Set once this tab learns another one owns the storage. Never unset: the way back is a reload. */
+let elsewhere = false;
+const elsewhereListeners = new Set<() => void>();
+
+function markElsewhere(): void {
+  if (elsewhere) return;
+  elsewhere = true;
+  for (const l of [...elsewhereListeners]) l();
+}
+
+/**
+ * Be told when another tab has the storage — at boot, or later when another tab takes it over.
+ * Called at once if that is already so. Returns the way to stop listening.
+ */
+export function onStorageElsewhere(listener: () => void): () => void {
+  elsewhereListeners.add(listener);
+  if (elsewhere) listener();
+  return () => elsewhereListeners.delete(listener);
+}
+
+/** Said in this tab's session storage, read by the next page load's first open. */
+const TAKEOVER_KEY = "potyro:storage:takeover";
+
+/**
+ * "Use it here": the next load of this tab takes the storage from whichever tab has it. The caller
+ * reloads; a page that has been told it lost its storage has nothing in memory worth keeping.
+ */
+export function takeOverStorageOnNextLoad(): void {
+  try {
+    globalThis.sessionStorage?.setItem(TAKEOVER_KEY, "1");
+  } catch {
+    /* without session storage the reload simply waits its turn like any other open */
+  }
+}
+
+/** Whether this load was asked to take the storage over. Read once: a later reload asks again. */
+function takeoverAsked(): boolean {
+  try {
+    const asked = globalThis.sessionStorage?.getItem(TAKEOVER_KEY) === "1";
+    if (asked) globalThis.sessionStorage.removeItem(TAKEOVER_KEY);
+    return asked;
+  } catch {
+    return false;
+  }
+}
 
 export interface WorkerSqlite {
   driver: SqliteDriverAsync;
@@ -41,6 +92,8 @@ export function workersAvailable(): boolean {
  * is worse than losing the fast path.
  */
 export function openWorkerSqlite(name: string, factory?: WorkerFactory): Promise<WorkerSqlite> {
+  // Not an error to fall back from: opening anything else would be a second copy of the same apps.
+  if (elsewhere && !factory) return Promise.reject(new StorageElsewhereError());
   // ONE worker for everything, holding one pool and a database per name.
   //
   // The SAH pool takes exclusive sync access handles over its directory, so a second worker over
@@ -106,12 +159,24 @@ function connect(factory?: WorkerFactory): { worker: ReturnType<WorkerFactory>; 
   const waiting = new Map<number, { resolve: (rows?: Record<string, unknown>[]) => void; reject: (e: Error) => void }>();
 
   worker.onmessage = (event: { data: unknown }) => {
-    const reply = event.data as { id: number; ok: boolean; rows?: Record<string, unknown>[]; error?: string };
+    if ((event.data as { event?: unknown }).event === "lost") {
+      // Another tab took the storage over. Whatever is still waiting will not be answered here.
+      markElsewhere();
+      const dead = [...waiting.values()];
+      waiting.clear();
+      for (const p of dead) p.reject(new StorageElsewhereError());
+      return;
+    }
+    const reply = event.data as { id: number; ok: boolean; rows?: Record<string, unknown>[]; error?: string; code?: string };
     const pending = waiting.get(reply.id);
     if (!pending) return;
     waiting.delete(reply.id);
-    if (reply.ok) pending.resolve(reply.rows);
-    else pending.reject(new Error(reply.error ?? "the storage worker failed"));
+    if (reply.ok) return pending.resolve(reply.rows);
+    if (reply.code === ELSEWHERE) {
+      markElsewhere();
+      return pending.reject(new StorageElsewhereError());
+    }
+    pending.reject(new Error(reply.error ?? "the storage worker failed"));
   };
   if ("onerror" in worker) {
     worker.onerror = (event: unknown) => {
@@ -141,7 +206,8 @@ async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlit
   const { worker, send: post } = connect(factory);
   const send: Sender = (message) => post({ ...message, db: name });
 
-  await send({ op: "open" });
+  // The first open of this load carries "Use it here", if that is why the page was reloaded.
+  await send({ op: "open", ...(!factory && takeoverAsked() ? { takeover: true } : {}) });
 
   // One transaction at a time, across everyone using this database. Per database, not per worker:
   // two apps writing at once are two SQLite connections and have nothing to serialise between them.

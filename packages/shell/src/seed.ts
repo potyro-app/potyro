@@ -9,6 +9,11 @@ export async function seedIfEmpty(store: Store, appId = "recipes", me?: string):
   if (seeder) await seeder(store, me);
 }
 
+/** Whether this app has first-run sample records of its own: what a demo link shows (docs/24 §3). */
+export function hasSeeder(appId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(SEEDERS, appId);
+}
+
 /** `me` is this device's account id — what a seeded row can say about who paid, or did, something. */
 const SEEDERS: Record<string, (store: Store, me?: string) => Promise<void>> = {
   recipes: seedRecipes,

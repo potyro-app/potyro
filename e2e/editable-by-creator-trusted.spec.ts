@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 
@@ -69,7 +69,7 @@ test("on someone else's row, Edit and Delete are inactive and say who can change
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(b, "Bo");
   await expect(b.locator("h1").first()).toHaveText("Trip Costs", { timeout: 60_000 });
   await expect(b.locator(".k-list-row", { hasText: "Dinner" })).toBeVisible({ timeout: 60_000 });

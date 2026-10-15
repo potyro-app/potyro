@@ -1,5 +1,5 @@
 import { chooseFilter } from "./filters.js";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // KA-24, sandbox path: a page summary's `value` FUNCTION computed by an app running UNTRUSTED in
 // the QuickJS-WASM isolate.

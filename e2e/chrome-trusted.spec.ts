@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
 // a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide
@@ -26,7 +26,7 @@ test.describe("phone", () => {
     // The ⋯ menu holds the other quick action, the tools, and the report / trust lines.
     await page.getByRole("button", { name: "More", exact: true }).tap();
     const menu = page.getByRole("menu", { name: "More" });
-    await expect(menu.getByRole("menuitem")).toHaveText([/Add: Ingredient/, /Ask/, /Studio/, /Edit mode/, /History/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs directly/]);
+    await expect(menu.getByRole("menuitem")).toHaveText([/Add: Ingredient/, /Ask/, /Studio/, /Edit mode/, /History/, /Share/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs as yours/]);
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
 
@@ -93,7 +93,7 @@ test.describe("desktop", () => {
     await expect(side.locator(".k-sidenav .k-tab")).toHaveCount(8);
     await expect(side.locator(".k-quickbar .k-quick")).toHaveText([/Add: Recipe/, /Add: Ingredient/]);
     await expect(side.locator(".k-quickbar .k-primary-action")).toHaveText(/Add: Recipe/);
-    await expect(side.locator(".k-tools .k-tool")).toHaveText([/Ask/, /Studio/, /Edit mode/, /History/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs directly/, /All apps/]);
+    await expect(side.locator(".k-tools .k-tool")).toHaveText([/Ask/, /Studio/, /Edit mode/, /History/, /Share/, /Data/, /Import/, /Export/, /Something's wrong/, /Runs as yours/, /All apps/]);
     await expect(page.locator(".k-topbar")).toHaveCount(0);
     await expect(page.locator(".k-page-title")).toHaveText("Recipes");
     // The primary quick action follows the page.
