@@ -131,7 +131,9 @@ interface Ctx {
     geo?:           { current(): Promise<{ lat: number; lng: number }>; };
     haptics?:       { vibrate(pattern?: number | number[]): Promise<void>; };  // non-sensitive
     filesystem?:    { pick(): Promise<Blob>; save(name: string, data: Blob): Promise<void>; };
-    network?:       { fetch(input: string, init?: RequestInit): Promise<Response>; };  // gated
+    network?:       { fetch(input: string, init?: RequestInit): Promise<Response>;   // gated
+                      socket(url: string, opts?: { protocols?: string | string[] }): Promise<Socket>;  // docs/28
+                      room(id?: string, opts?: { name?: string }): Promise<Room>; };   // Potyro's rooms, docs/26
     ai?: {                                                                  // docs/23; permissions: { ai: true }
       // Read a picture or a text into a plain shape. The answer is checked against it by the host.
       extract<const S extends AiShape>(req: { schema: S; instructions?: string;
@@ -280,6 +282,51 @@ points. Where faces cannot be found `info.facesFailed` says why and the camera c
 **Trusted apps only, for now.** In a shared app `live` is `undefined` (its logic runs in the browser
 realm, which has no surface to draw on and no streaming op; docs/25 has the reasons and the path).
 `permissions: { camera: true }` covers both `capture()` and `live()`.
+
+### Live connections (`ctx.caps.network.socket` / `.room`, docs/28)
+
+For things that change while you look — a price, a home hub's sensors, a game with friends. A
+`Socket` is open when `socket()` resolves; it carries text (a string) and bytes (a `Uint8Array`) both
+ways, and every app holds at most 4:
+
+```ts
+let prices: Socket | null = null;   // module level: it outlives the action that opens it
+
+actions: [{ label: "Follow BTC", run: async (ctx) => {
+  try {
+    prices = await ctx.caps.network!.socket("wss://stream.binance.com:9443/ws/btcusdt@trade");
+  } catch (e) {
+    ctx.ui.toast((e as { code?: string }).code === "offline" ? "You're offline" : "Couldn't connect");
+    return;
+  }
+  prices.onMessage((d) => { if (typeof d === "string") void ctx.create("tick", { price: Number(JSON.parse(d).p) }); });
+  prices.onClose((c) => ctx.ui.toast(c.why === "left" ? "" : `Stopped: ${c.why}`));
+} }],
+// permissions: { network: { hosts: ["stream.binance.com"] } }   // a host without a port: any port
+```
+
+`send(data)` resolves once the message is on its way and rejects with a `code` — `"closed"`,
+`"too-big"` (over 1 MiB; a room's 64 KiB) or `"full"` (1 MiB still waiting to go). `onClose` hears
+`{ code, reason, why }`, `why` being `"app" | "server" | "network" | "left" | "hidden" | "too-big" |
+"slow" | "stopped"`. A refused connect rejects with a `code`: `"offline" | "denied" | "refused" |
+"unreachable" | "not-allowed-host" | "insecure" | "too-many"`. **Potyro closes every connection when
+the person leaves the app or Potyro has been in the background 30 s, and never reconnects by itself**
+(docs/28 §5 has the five-line reconnect pattern). Messages that arrive before `onMessage` are held and
+handed to the first callback. Inside a callback `ctx` works; `ctx.now()` is the opening call's time.
+
+`room(id?, { name })` joins a room on Potyro's own relay (docs/26) — no address to know: `room()` makes
+a new id (put it in a share link), `room(id)` joins one. `room.me`, `room.members` (the others, oldest
+first, kept current) and `onPresence(e => …)` (`{ type: "join" | "leave", member }`) come from the
+relay's envelope; `onMessage` hears only the other members, exactly as they sent it. A shared app
+needs `permissions: { network: { rooms: true } }` (`{ rooms: true }` alone allows no other host).
+
+The same API for every app; what differs is authority (below). A shared app reaches only the hosts it
+declares — any other is refused at once, nobody asked — and is asked once per app and host on this
+device: "“Price Board” wants a live connection to stream.binance.com." ("…to Potyro’s rooms." for a
+room). The socket is the shell's, never the sealed frame's: messages cross the realm's port and the
+QuickJS bridge (bytes as base64 there). Plain `ws://` works only where it can: the device itself, a
+page served over http (development), and the Android app to the local network (docs/28 §6). A new
+optional member: no app's `schemaVersion` changes.
 
 ### How `ctx` differs by trust
 

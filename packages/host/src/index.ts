@@ -29,4 +29,19 @@ export { buildCtx } from "./make-ctx.js";
 export { mediateCaps, type AiContext } from "./mediate.js";
 export { makeAi, checkShape, fitShape, jsonSchemaFor, parseJsonReply, numberIn, languageName, AiError, AI_LIMITS, type AiDeps, type AiErrorCode, type Fit } from "./ai.js";
 export { resolveRecord, type ResolveDeps } from "./resolve.js";
+export {
+  makeLiveNetwork,
+  closeAppSockets,
+  openSocketsOf,
+  permittedHosts,
+  socketHostAllowed,
+  roomsAllowed,
+  englishSocketConsent,
+  SocketError,
+  SOCKET_LIMITS,
+  HostSocket,
+  HostRoom,
+  type LiveNetwork,
+  type LiveNetworkArgs,
+} from "./sockets.js";
 export { onAppFailure, reportAppFailure, activeFailureListeners, type AppFailure } from "./failures.js";

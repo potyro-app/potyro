@@ -15,7 +15,7 @@ import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
-import { capsWithAi } from "./app-ai-caps.js";
+import { capsForApp } from "./app-ai-caps.js";
 import { guardedStore } from "./read-only-store.js";
 import { AppLock } from "./app-lock.js";
 import { migrateOnLoad } from "./migrate-on-load.js";
@@ -566,8 +566,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       });
     })().catch((e: unknown) => console.warn("[potyro] could not record this app on your account:", e));
   }
-  // This app's AI service (docs/23): its own switch, consent and spend. Only the app's runtime gets it.
-  const appCaps = capsWithAi(caps, id);
+  // This app's AI service (docs/23): its own switch, consent and spend; and the person's answers
+  // about its live connections (docs/28). Only the app's runtime gets them.
+  const appCaps = capsForApp(caps, id);
   const picker = new PickerHost();
   const questions = new UiHost();
   const ui = createUiBridge(toaster.push, picker, shellDialogs, questions);
@@ -736,6 +737,8 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   // Leaving an app turns its camera off, whatever the app did or forgot to do (docs/25). First, so
   // not one frame of it reaches the next screen.
   caps.liveCamera?.stopAll("closed");
+  // And every live connection it opened (docs/28): the app hears `why: "left"`.
+  caps.sockets?.closeAll("left");
   const seq = ++routeSeq;
   const isCurrent = (): boolean => seq === routeSeq;
   const prev = current;
