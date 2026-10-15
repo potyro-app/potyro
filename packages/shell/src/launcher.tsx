@@ -947,6 +947,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           {history ? <History appId={history.id} appName={history.name} onClose={() => setHistory(null)} onRestored={() => openUserApp(history.id)} /> : null}
           {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
           {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
+          {/* The switcher is its own tree: Share from a tile here needs its sheet here too (docs/24). */}
+          {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
         </div>
       </div>
     );
