@@ -88,9 +88,14 @@ test("Mirror Monsters: the live camera draws on the canvas, the shell says Camer
   // Twin: the camera's picture, its left half mirrored onto the right, moving from frame to frame.
   await page.getByRole("button", { name: /Twin/ }).click();
   await expect.poll(() => symmetry(page), { timeout: 10_000 }).toBeGreaterThan(0.97);
-  const a = await pixelsOf(canvas(page));
-  await page.waitForTimeout(600);
-  expect(changed(a, await pixelsOf(canvas(page)))).toBeGreaterThan(0.002);
+  // Polled, over most of a second: the fake camera's pattern turns slowly, and sometimes holds still.
+  await expect
+    .poll(async () => {
+      const a = await pixelsOf(canvas(page));
+      await page.waitForTimeout(800);
+      return changed(a, await pixelsOf(canvas(page)));
+    })
+    .toBeGreaterThan(0.002);
 
   // Monster: googly eyes (their whites are the app's own #fffdf7) over the camera's picture.
   await page.getByRole("button", { name: /Monster/ }).first().click();
@@ -125,14 +130,16 @@ test("Mirror Monsters: the live camera draws on the canvas, the shell says Camer
   await page.waitForTimeout(400);
   expect(await live(page)).toBe(0);
 
-  // Back on — the pixel monster moving with the camera again — then the shell's Turn off.
+  // Back on — the camera's picture moving again (in Twin: the pixel monster turns both of the fake
+  // camera's greens into one palette colour, so it cannot show it moving) — then the shell's Turn off.
   await page.getByRole("button", { name: "Turn it back on" }).click();
   await expect(sign(page)).toBeVisible();
   await expect.poll(() => live(page)).toBe(1);
+  await page.getByRole("button", { name: /Twin/ }).click();
   await expect
     .poll(async () => {
       const one = await pixelsOf(canvas(page));
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(800);
       return changed(one, await pixelsOf(canvas(page)));
     })
     .toBeGreaterThan(0.002);

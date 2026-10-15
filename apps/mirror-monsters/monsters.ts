@@ -1,6 +1,9 @@
-// The arithmetic of Mirror Monsters, in plain functions with tests: where the face-ish blob is, how a
-// googly eye wobbles, where the camera moved, which colour a pixel becomes, what a snap is called.
-// No canvas, no DOM — the app draws; this decides.
+// The arithmetic of Mirror Monsters, in plain functions with tests: where the monster's features go
+// (on the person's own eyes and mouth when the camera finds a face, on the face-ish blob when it does
+// not), how a googly eye wobbles, where the camera moved, which colour a pixel becomes, what a snap is
+// called. No canvas, no DOM — the app draws; this decides.
+
+import type { Face, FacePoint } from "potyro";
 
 export const MODES = ["monster", "twin", "kaleido", "trails", "pixel"] as const;
 export type Mode = (typeof MODES)[number];
@@ -94,6 +97,105 @@ export function follow(prev: Box, found: Box | null, dt: number): Box {
     y: prev.y + (t.y - prev.y) * k,
     w: prev.w + (t.w - prev.w) * k,
     h: prev.h + (t.h - prev.h) * k,
+  };
+}
+
+// ---- the monster's rig: where its eyes, mouth and horns go, on the stage ----
+
+/** A point on the stage (CSS pixels). */
+export interface Pt {
+  x: number;
+  y: number;
+}
+
+/** What the monster is drawn from, in stage pixels: everything the drawing needs and nothing else. */
+export interface Rig {
+  /** The eyes, left to right ON SCREEN: centre, radius, and how shut (0 open … 1 shut). */
+  eyes: [{ at: Pt; r: number; shut: number }, { at: Pt; r: number; shut: number }];
+  /** The mouth's middle, its width, and how open (0 … 1). */
+  mouth: { at: Pt; w: number; open: number };
+  /** The middle of the forehead, where the horns grow from, and the face's width. */
+  brow: Pt;
+  width: number;
+  /** The tilt of the head on screen, radians, clockwise. */
+  angle: number;
+}
+
+/**
+ * A point of the camera's picture (video pixels, unmirrored) → the stage, through the same crop as
+ * `cover` and the same mirror the selfie view draws with.
+ */
+export function stageMapper(vw: number, vh: number, w: number, h: number, mirrored: boolean): (p: FacePoint) => Pt {
+  const c = cover(vw, vh, w, h);
+  const k = w / c.sw;
+  return (p) => {
+    const x = (p.x - c.sx) * k;
+    return { x: mirrored ? w - x : x, y: (p.y - c.sy) * k };
+  };
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** The rig on a face the camera found: the monster's eyes on the person's eyes, its mouth on theirs. */
+export function rigFromFace(face: Face, map: (p: FacePoint) => Pt): Rig {
+  const eye = (e: Face["eyes"]["left"], blink: number) => {
+    const at = map(e.center);
+    const corner = map({ x: e.center.x + e.width / 2, y: e.center.y });
+    const half = Math.hypot(corner.x - at.x, corner.y - at.y);
+    // Shut by the blendshape — which reads a squint or a downward look as a third shut, so only past
+    // that — or by the lids' own gap, which a shut eye closes to about a tenth of its width.
+    const shut = clamp01(Math.max((blink - 0.35) / 0.4, (0.13 - e.open) / 0.07));
+    return { at, r: Math.max(6, half * 1.25), shut };
+  };
+  const a = eye(face.eyes.right, face.expressions.blinkRight);
+  const b = eye(face.eyes.left, face.expressions.blinkLeft);
+  const [l, r] = a.at.x <= b.at.x ? [a, b] : [b, a];
+  const angle = Math.atan2(r.at.y - l.at.y, r.at.x - l.at.x);
+  const ml = map(face.mouth.left);
+  const mr = map(face.mouth.right);
+  const mouth = { at: { x: (ml.x + mr.x) / 2, y: (ml.y + mr.y) / 2 }, w: Math.hypot(mr.x - ml.x, mr.y - ml.y) * 1.25, open: clamp01(face.expressions.mouthOpen * 1.3) };
+  const across = Math.hypot(r.at.x - l.at.x, r.at.y - l.at.y);
+  const width = Math.max(across * 2.2, 40);
+  // Up the face from between the eyes, a little more than the eyes are apart.
+  const brow = { x: (l.at.x + r.at.x) / 2 + Math.sin(angle) * across * 0.75, y: (l.at.y + r.at.y) / 2 - Math.cos(angle) * across * 0.75 };
+  return { eyes: [l, r], mouth, brow, width, angle };
+}
+
+/** The rig on the skin-tone blob (stage pixels), when no face was found: the old monster, level. */
+export function rigFromBox(b: Box): Rig {
+  const cx = b.x + b.w / 2;
+  const er = b.w * 0.17;
+  const ey = b.y + b.h * 0.4;
+  return {
+    eyes: [
+      { at: { x: cx - b.w * 0.2, y: ey }, r: er, shut: 0 },
+      { at: { x: cx + b.w * 0.2, y: ey }, r: er, shut: 0 },
+    ],
+    mouth: { at: { x: cx, y: b.y + b.h * 0.78 }, w: b.w * 0.68, open: 0 },
+    brow: { x: cx, y: b.y + b.h * 0.08 },
+    width: b.w,
+    angle: 0,
+  };
+}
+
+/** Ease one rig toward another: quick enough to stay on a moving face, slow enough not to shiver. */
+export function easeRig(prev: Rig | null, next: Rig, dt: number, rate = 22): Rig {
+  if (!prev) return next;
+  const k = 1 - Math.exp((-rate * Math.min(dt, 100)) / 1000);
+  const n = (a: number, b: number) => a + (b - a) * k;
+  const p = (a: Pt, b: Pt): Pt => ({ x: n(a.x, b.x), y: n(a.y, b.y) });
+  // Blinks and the mouth snap faster than the face moves: a blink lasts a tenth of a second.
+  const k2 = 1 - Math.exp((-rate * 2.5 * Math.min(dt, 100)) / 1000);
+  const f = (a: number, b: number) => a + (b - a) * k2;
+  return {
+    eyes: [
+      { at: p(prev.eyes[0].at, next.eyes[0].at), r: n(prev.eyes[0].r, next.eyes[0].r), shut: f(prev.eyes[0].shut, next.eyes[0].shut) },
+      { at: p(prev.eyes[1].at, next.eyes[1].at), r: n(prev.eyes[1].r, next.eyes[1].r), shut: f(prev.eyes[1].shut, next.eyes[1].shut) },
+    ],
+    mouth: { at: p(prev.mouth.at, next.mouth.at), w: n(prev.mouth.w, next.mouth.w), open: f(prev.mouth.open, next.mouth.open) },
+    brow: p(prev.brow, next.brow),
+    width: n(prev.width, next.width),
+    angle: n(prev.angle, next.angle),
   };
 }
 

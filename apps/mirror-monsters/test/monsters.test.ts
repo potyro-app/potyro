@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Face, FacePoint } from "potyro";
 import {
   MAX_SPARKS,
   PALETTE,
@@ -20,6 +21,10 @@ import {
   placed,
   sample,
   segment,
+  easeRig,
+  rigFromBox,
+  rigFromFace,
+  stageMapper,
   wobble,
   type Box,
 } from "../monsters.js";
@@ -210,6 +215,77 @@ describe("the kaleidoscope", () => {
       expect(s.cy + s.radius).toBeLessThanOrEqual(480);
     }
     expect(sample(5_000, null, 640, 480).turn).not.toBe(sample(0, null, 640, 480).turn);
+  });
+});
+
+/**
+ * A face as Potyro's live camera gives one, from a few numbers (video pixels, unmirrored: the person's
+ * right eye on the picture's left). The app imports `potyro` only, so it is built here.
+ */
+function sketchFace(f: { x: number; y: number; size: number; roll?: number; expressions?: Partial<Face["expressions"]> }): Face {
+  const ex: Face["expressions"] = { mouthOpen: 0, jawOpen: 0, smile: 0, blinkLeft: 0, blinkRight: 0, browUp: 0, browDown: 0, pucker: 0, puff: 0, ...f.expressions };
+  const roll = f.roll ?? 0;
+  const at = (u: number, v: number): FacePoint => ({
+    x: f.x + (u * Math.cos(roll) - v * Math.sin(roll)) * f.size,
+    y: f.y + (u * Math.sin(roll) + v * Math.cos(roll)) * f.size,
+  });
+  const eye = (u: number, blink: number) => ({ center: at(u, -0.1), pupil: at(u, -0.1), outline: [], width: 0.18 * f.size, open: 0.3 * (1 - blink) });
+  return {
+    box: { x: f.x - f.size / 2, y: f.y - f.size * 0.65, w: f.size, h: f.size * 1.3 },
+    eyes: { right: eye(-0.2, ex.blinkRight), left: eye(0.2, ex.blinkLeft) },
+    mouth: { right: at(-0.18, 0.32), left: at(0.18, 0.32), top: at(0, 0.28), bottom: at(0, 0.36), outer: [], inner: [] },
+    nose: at(0, 0.12),
+    brows: { left: [], right: [] },
+    expressions: ex,
+    turn: { roll, yaw: 0, pitch: 0 },
+  };
+}
+
+describe("the monster on a face", () => {
+  // A 640×480 camera on a 400×600 stage, the selfie view mirrored.
+  const map = stageMapper(640, 480, 400, 600, true);
+
+  it("maps the picture to the stage through the cover crop and the mirror", () => {
+    // The middle stays the middle; the picture's left lands on the stage's right when mirrored.
+    expect(map({ x: 320, y: 240 })).toEqual({ x: expect.closeTo(200), y: expect.closeTo(300) });
+    expect(map({ x: 300, y: 240 }).x).toBeGreaterThan(200);
+    expect(stageMapper(640, 480, 400, 600, false)({ x: 300, y: 240 }).x).toBeLessThan(200);
+  });
+
+  it("puts the monster's eyes on the person's eyes and its mouth on their mouth", () => {
+    const f = sketchFace({ x: 320, y: 240, size: 200 });
+    const rig = rigFromFace(f, map);
+    const eyes = [map(f.eyes.left.center), map(f.eyes.right.center)].sort((a, b) => a.x - b.x);
+    expect(rig.eyes[0].at).toEqual(eyes[0]);
+    expect(rig.eyes[1].at).toEqual(eyes[1]);
+    expect(rig.eyes[0].at.x).toBeLessThan(rig.eyes[1].at.x);
+    const ml = map(f.mouth.left);
+    const mr = map(f.mouth.right);
+    expect(rig.mouth.at.x).toBeCloseTo((ml.x + mr.x) / 2);
+    expect(rig.brow.y).toBeLessThan(rig.eyes[0].at.y);
+    expect(rig.angle).toBeCloseTo(0);
+    expect(rig.eyes[0].shut).toBe(0);
+    expect(rig.mouth.open).toBe(0);
+  });
+
+  it("opens its mouth with theirs, blinks with them, and tilts with the head — mirrored on screen", () => {
+    const rig = rigFromFace(sketchFace({ x: 320, y: 240, size: 200, roll: 0.3, expressions: { mouthOpen: 0.8, blinkLeft: 1, blinkRight: 1 } }), map);
+    expect(rig.mouth.open).toBeGreaterThan(0.9);
+    expect(rig.eyes.every((e) => e.shut > 0.9)).toBe(true);
+    // A clockwise tilt in the picture is anticlockwise in a mirror.
+    expect(rig.angle).toBeCloseTo(-0.3, 1);
+    expect(rigFromFace(sketchFace({ x: 320, y: 240, size: 200, roll: 0.3 }), stageMapper(640, 480, 400, 600, false)).angle).toBeCloseTo(0.3, 1);
+  });
+
+  it("falls back to the blob, level and open-eyed, and eases between the two", () => {
+    const box = rigFromBox({ x: 100, y: 100, w: 200, h: 260 });
+    expect(box.eyes[0].at.x).toBeLessThan(box.eyes[1].at.x);
+    expect(box.angle).toBe(0);
+    const face = rigFromFace(sketchFace({ x: 320, y: 240, size: 200 }), map);
+    const half = easeRig(box, face, 30);
+    expect(half.eyes[0].at.x).toBeGreaterThan(Math.min(box.eyes[0].at.x, face.eyes[0].at.x) - 1e-9);
+    expect(half.eyes[0].at.x).toBeLessThan(Math.max(box.eyes[0].at.x, face.eyes[0].at.x) + 1e-9);
+    expect(easeRig(null, face, 30)).toBe(face);
   });
 });
 

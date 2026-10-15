@@ -40,6 +40,84 @@ cam.stop();
   not on screen — a camera never starts behind the person's back), `"failed"` (anything else). The
   message is English, for the log; an app says it in its own words from `code`.
 
+## Faces — `live({ faces: true })`
+
+Owner decision 2026-10-15: finding faces is a Potyro capability, not something each app does. An app
+asks for it when it starts the camera; every frame's `info` then carries the faces found in it.
+
+```ts
+const cam = await ctx.caps.camera!.live!({ facing: "user", faces: true });   // or { faces: { max: 2, points: true } }
+cam.onFrame((video, { faces, facesFailed }) => {
+  const f = faces?.[0];
+  if (!f) return;                       // none in this frame (or not loaded yet, or facesFailed says why)
+  f.eyes.left.center; f.eyes.left.pupil; f.eyes.left.outline; f.eyes.left.width; f.eyes.left.open;
+  f.mouth.left; f.mouth.right; f.mouth.top; f.mouth.bottom; f.mouth.outer; f.mouth.inner;
+  f.nose; f.brows.left; f.box;          // { x, y } points / { x, y, w, h }, in the video's pixels
+  f.expressions.mouthOpen;              // and jawOpen, smile, blinkLeft, blinkRight, browUp, browDown, pucker, puff: 0..1
+  f.turn.roll;                          // and yaw, pitch: radians
+});
+```
+
+- **Coordinates** are the video's own pixels, **not mirrored** — the frame's convention. A selfie view
+  that mirrors the picture mirrors the points the same way. **Left and right are the person's**: their
+  left eye is on the right of an unmirrored picture.
+- **`turn.roll`** is the eye line's tilt in the picture (clockwise positive); `yaw` is positive when the
+  person turns to their left, `pitch` when they nod down — both read from the mesh's depth, so they are
+  approximate.
+- **`expressions`** are MediaPipe's blendshapes, the handful a toy needs, each 0..1. `mouthOpen` also
+  reads the lips' own gap, so a mouth open without the jaw dropping counts.
+- **`faces: { max, points }`**: up to `max` faces (1–4, default 1); `points: true` adds `Face.points`,
+  all 478 mesh points in MediaPipe's numbering.
+- **Timing.** Finding runs at most once per frame and never holds a frame back: while one find is
+  running, frames go by with the latest faces found (a frame or two old). A slow device finds faces
+  less often; it never draws less often. The first frames carry `faces: []` while the finder loads.
+- **Failure** never stops the camera. `info.facesFailed` is `"unsupported"` (this device or Potyro
+  cannot find faces: no Worker or WebAssembly SIMD, or no finder at all) or `"failed"` (the model
+  would not load, or the finder broke); `faces` is then `[]`. Say it once in your own words and carry on.
+- **The types** (`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceOptions`, `FacesFailure`) are
+  exported by `potyro`, from `packages/schema/src/types/faces.ts` — outside the model's reference on
+  purpose (#341): the prompt carries only `faces` in the options and in the frame info.
+
+### How Potyro finds them
+
+- **MediaPipe Tasks Vision Face Landmarker** (Apache-2.0): a face detector, the 478-point mesh with
+  irises, and 52 blendshapes, in one model, run in VIDEO mode (it tracks across frames).
+- **Pinned and shipped by Potyro, never fetched from a CDN** (rule 6): `@mediapipe/tasks-vision` 1.1.0,
+  and Google's `face_landmarker.task` float16 v1 in `packages/shell/faces/` (3,758,596 bytes, sha256
+  `64184e22…0bc9ff`). The shell serves them at `/potyro-faces/mp1.1.0-fl1/` — the dev server from the
+  package and that folder, a build by emitting them into `dist/`, which is also what the Capacitor
+  APK carries. The worker is a module worker, so it loads the runtime's module build
+  (`vision_wasm_module_internal.js` 335 KB + `.wasm` 13.0 MB); nothing else of the package is shipped.
+- **Sizes on the wire** (first use only): the runtime ≈ 3.9 MB gzipped (13.3 MB raw), the model ≈ 3.3 MB
+  gzipped (3.8 MB raw), the worker's own script ≈ 160 KB.
+- **Loaded lazily, cached on use.** Nothing is fetched until an app asks for faces. The shell's
+  service worker caches what the page fetches (cache-first for every non-navigation, `public/sw.js`),
+  so after the first use faces work offline; nothing is precached for people who never use them.
+- **Off the page's thread.** The landmarker runs in a worker (`packages/shell/src/faces/`); each frame
+  crosses as an `ImageBitmap` shrunk to 640 px on its long side (transferred, not copied), and the
+  mesh comes back as two small typed arrays. The page turns them into `Face`s (`faceFrom` in
+  `@potyro/capabilities`).
+- **GPU, then CPU.** The worker uses the GPU delegate where its WebGL is a real GPU, and the CPU
+  (XNNPACK) where it is a software one (SwiftShader, llvmpipe: VMs, headless browsers, blocklisted
+  drivers) — which is many times slower than the CPU and holds up the page's own drawing while it
+  grinds. A real GPU whose first finds take over 45 ms is moved to the CPU as well.
+- **Its console is quiet.** MediaPipe's runtime logs its start-up on every level, `console.error`
+  included; the worker drops that chatter and keeps only its errors, as warnings.
+- **Measured** (desktop Chromium, headless — so the CPU path — Mirror Monsters on a 412 px phone
+  screen, the Mona Lisa fixture at 30 fps): drawing 30 fps (the camera's own rate) and faces 29–30 fps
+  in Monster, Kaleido and Twin; with the page's CPU throttled 4× (DevTools; it does not slow the
+  worker) drawing still 30 fps and faces 26–28 fps. A find takes ~21 ms on that CPU. **Not yet
+  measured on a phone**, where the GPU path is the one that runs.
+
+### Tests without the model
+
+`createFakeLiveCamera({ faces: [sketchFace({ x, y, size, roll, expressions })] })` makes every frame
+find those faces (`setFaces` changes them; `facesFail` makes loading fail). In the browser the dev
+server takes `localStorage["potyro:faces"] = "script"` and reads the faces from
+`localStorage["potyro:faces-script"]` (sketches in fractions of the frame), or `"fail"` to fail — so
+e2e specs say exactly where a face is. One spec (`mirror-faces-model-trusted`) runs the real model on
+a fixture video of Leonardo's Mona Lisa (public domain) and checks the monster's eyes land on hers.
+
 ## Who gets it
 
 - **Your own (trusted) apps: all of it.** `live()` is on `ctx.caps.camera` wherever the device has
@@ -102,6 +180,9 @@ cam.stop();
 | `LiveCameraCap` — one session per page, frame loop, `snap`, stop rules, `subscribe` | `@potyro/capabilities` `live-camera.ts` | DOM-only, every dependency injectable; one per page (`sharedLiveCamera()`), shared by every `Capabilities` instance, so the Studio's preview is covered by the same indicator |
 | `ctx.caps.camera.live` for trusted apps, absent for sealed | `@potyro/host` `mediate.ts` | the realm and the isolate never see it |
 | the indicator, and stopping on leaving an app | `@potyro/shell` `camera-indicator.ts`, `main.tsx` `show()` | the shell owns the screen |
+| `Face`, `FaceOptions`, `FacesFailure` | `potyro` (schema types, `types/faces.ts`) | outside the model's reference (#341) |
+| faces in a session: one find at a time, `facesFailed`, `faceFrom`, `sketchFace`, the fake's scripted faces | `@potyro/capabilities` `faces.ts`, `live-camera.ts` | pure, tested without a browser |
+| the face finder: worker, loading, the files | `@potyro/shell` `src/faces/`, `vite.config.ts` `facesAssets`, `faces/face_landmarker.task` | handed over with `liveCamera.useFaces` at boot |
 | Android | `@potyro/native` | `CapacitorCapabilities.liveCamera` is the same web session: the WebView's `getUserMedia`, asked through Capacitor's `BridgeWebChromeClient` (CAMERA, already in the manifest) |
 
 ## Android notes
@@ -117,9 +198,12 @@ cam.stop();
 
 ## The demo: Mirror Monsters (`apps/mirror-monsters`)
 
-The front camera as a mirror with a monster in it: googly eyes and horns that find the warm-skinned
-blob in the frame (no ML: a skin-tone mask on a 64-px thumbnail, smoothed), a mirror-twin face,
-a kaleidoscope, neon motion trails and an 8-bit pixel monster. **Snap** keeps the composite as a PNG in the app's folder and
+The front camera as a mirror with a monster in it: googly eyes on the person's own eyes (they shut
+when the person blinks, the pupils still wobble), a fanged mouth on theirs that opens with it, horns
+that tilt with the head — from `live({ faces: true })`, falling back to the warm-skinned blob in the
+frame (a skin-tone mask on a 64-px thumbnail, smoothed) when there is no face or faces cannot be
+found. A mirror-twin face split down the nose, a kaleidoscope centred on the face, neon motion trails
+and an 8-bit pixel monster. **Snap** keeps the composite as a PNG in the app's folder and
 a record in the Gallery. Six languages, phone-first, trusted only (it draws on a page).
 
 These are new optional members: no existing app changes, so `schemaVersion` is not bumped.
