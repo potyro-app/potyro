@@ -398,21 +398,54 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const me = await ensureIdentity();
 
   let rawStore: Store;
-  const pending = sessionStorage.getItem(IMPORT_KEY);
-  if (pending && !(syncAllowed && saved.sync)) {
-    sessionStorage.removeItem(IMPORT_KEY);
-    rawStore = await openStore(`user:${id}`, { sync: false });
-    try {
-      await replaceWithBundle(rawStore, pending, id);
-      const name = saved.name;
-      toaster.push(t`Imported data into ${name}.`);
-    } catch (e) {
-      const why = e instanceof Error ? e.message : String(e);
-      toaster.push(t`Could not import that data: ${why}`);
+  // Its data, from where it is — never from a stand-in (open-store.ts `StoreBusyError`): an app opened
+  // on another store would run without its records and its files. The screen says why, and Try again
+  // opens it once the other tab has let go.
+  const retry = { label: t`Try again`, run: async () => location.reload() };
+  try {
+    const pending = sessionStorage.getItem(IMPORT_KEY);
+    if (pending && !(syncAllowed && saved.sync)) {
+      rawStore = await openStore(`user:${id}`, { sync: false });
+      sessionStorage.removeItem(IMPORT_KEY);
+      try {
+        await replaceWithBundle(rawStore, pending, id);
+        const name = saved.name;
+        toaster.push(t`Imported data into ${name}.`);
+      } catch (e) {
+        const why = e instanceof Error ? e.message : String(e);
+        toaster.push(t`Could not import that data: ${why}`);
+      }
+    } else {
+      // Seeded when empty, never when joined — the same open the Data panel uses (app-store.ts).
+      rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
     }
-  } else {
-    // Seeded when empty, never when joined — the same open the Data panel uses (app-store.ts).
-    rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
+  } catch (e) {
+    mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
+    return null;
+  }
+
+  // The files it shipped with (`levels.json`), before any of its code runs: one that is not here
+  // would fail the app in its own words, which read like its bug. The screen says what is missing,
+  // and puts it back from the link it came from when there is one.
+  {
+    const { missingShipped, describeMissingShipped, reinstallShipped } = await import("./shipped-files.js");
+    const missing = await missingShipped(rawStore, saved);
+    if (missing.length) {
+      const store = rawStore;
+      const reinstall = saved.link
+        ? {
+            label: t`Reinstall its files`,
+            run: async () => {
+              const still = await reinstallShipped(saved, store);
+              if (still.length) throw new Error(describeMissingShipped(still));
+              location.reload();
+            },
+          }
+        : undefined;
+      const how = saved.link ? "" : ` ${t`Add it again from its package, and choose “Replace it, keep its data”: its records stay.`}`;
+      mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={`${describeMissingShipped(missing)}${how}`} action={reinstall} />);
+      return null;
+    }
   }
 
   // `ctx.me` is always present, which is what lets app code stop branching on whether identity

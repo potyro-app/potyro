@@ -42,6 +42,8 @@ vi.mock("../src/app-trial.js", () => ({
     if (source.includes("SYNTAX")) return { issues: [], missing: [], unreadable: "Expected \";\" but found \"}\"" };
     // A computed that formats dates: it loads, and the smoke run meets the missing feature.
     if (source.includes("USES_INTL") && opts.smoke) return { ...inspected(source), missing: ["date and number formatting (Intl)"] };
+    // An app in two languages: its name and its entity's label are maps (#302).
+    if (source.includes("TWO_LANGUAGES")) return { definition: { id: "piano", name: { en: "Piano", pl: "Pianino" }, language: "en", languages: ["en", "pl"], entities: { session: { label: { en: "Session", pl: "Sesja" } } } }, issues: [], missing: [] };
     if (source.includes("OTHER_ID")) return { ...inspected(source), definition: { ...inspected(source).definition, id: "not-piano" }, missing: [] };
     return { ...inspected(source), missing: [] };
   },
@@ -202,6 +204,66 @@ describe("installing", () => {
     const inspected = await inspectPackage(pkg);
     await expect(installPackage(pkg, inspected, { source: "file", mine: false, mode: "replace", openStore: openFor })).rejects.toThrow(/at least one page/);
     expect(getUserApp("piano")).toBeUndefined();
+  });
+
+  it("remembers the files it shipped, so opening it can tell when one is missing", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("levels.json", "{}"), file("seed.json", "{}")]);
+    const done = await installPackage(pkg, await inspectPackage(pkg), { source: "file", mine: true, mode: "replace", openStore: openFor });
+    expect(done.app.shipped).toEqual(["levels.json"]);
+    expect(getUserApp("piano")?.shipped).toEqual(["levels.json"]);
+    const { missingShipped } = await import("../src/shipped-files.js");
+    const store = byApp.get("piano")!;
+    expect(await missingShipped(store, done.app)).toEqual([]);
+    await fileSpace(store).remove("levels.json");
+    expect(await missingShipped(store, done.app)).toEqual(["levels.json"]);
+  });
+
+  it("a store that cannot be opened (its data held in another tab) fails the install loudly, leaves no app, and a retry installs it", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("levels.json", '{"levels":[1]}')]);
+    const inspected = await inspectPackage(pkg);
+    const busy = async (): Promise<Store> => {
+      throw new Error("This app’s data is open in another Potyro tab or window, so it cannot be opened here as well.");
+    };
+    await expect(installPackage(pkg, inspected, { source: "file", mine: true, mode: "replace", openStore: busy })).rejects.toThrow(/“Piano” was not added: its files could not be saved\. This app’s data is open in another Potyro tab/);
+    expect(getUserApp("piano")).toBeUndefined();
+
+    const done = await installPackage(pkg, inspected, { source: "file", mine: true, mode: "replace", openStore: openFor });
+    expect(await (await fileSpace(byApp.get("piano")!).read("levels.json"))!.text()).toBe('{"levels":[1]}');
+    expect(done.app.shipped).toEqual(["levels.json"]);
+  });
+
+  it("files that do not land are not taken for installed: the install fails and says which", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("levels.json", "{}")]);
+    // A store whose writes vanish — what a store that is not the app's own looks like from here.
+    const leaky = async (): Promise<Store> => {
+      const s = new MemoryStore();
+      await s.open("piano");
+      s.setFile = async () => {};
+      return s;
+    };
+    await expect(installPackage(pkg, await inspectPackage(pkg), { source: "file", mine: true, mode: "replace", openStore: leaky })).rejects.toThrow(/was not added: its files could not be saved\. These files did not land in its folder: levels\.json\./);
+    expect(getUserApp("piano")).toBeUndefined();
+  });
+
+  it("an update whose files cannot be saved keeps the app, says so, and trying again writes them", async () => {
+    const v1 = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("levels.json", '{"v":1}')]);
+    await installPackage(v1, await inspectPackage(v1), { source: "file", mine: true, mode: "replace", openStore: openFor });
+    const v2 = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("levels.json", '{"v":2}')]);
+    const inspected = await inspectPackage(v2);
+    const busy = async (): Promise<Store> => {
+      throw new Error("busy");
+    };
+    await expect(installPackage(v2, inspected, { source: "file", mine: true, mode: "replace", openStore: busy })).rejects.toThrow(/was not fully updated/);
+    expect(getUserApp("piano")).toBeDefined();
+    await installPackage(v2, inspected, { source: "file", mine: true, mode: "replace", openStore: openFor });
+    expect(await (await fileSpace(byApp.get("piano")!).read("levels.json"))!.text()).toBe('{"v":2}');
+  });
+
+  it("the card shows an app's words in the person's language, never a map of them", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE + "TWO_LANGUAGES")]);
+    const card = await inspectPackage(pkg);
+    expect(card.name).toBe("Piano");
+    expect(card.keeps).toEqual(["Session"]);
   });
 });
 
