@@ -28,6 +28,7 @@ import { shellDialogs } from "./dialog.js";
 import { Toaster } from "./toaster.js";
 import { siteBase, type DemoLink } from "./demo-link.js";
 import { shareEvent } from "./share-events.js";
+import { creditLine } from "./credit-words.js";
 
 /** The person using a demo: nobody in particular, and never this device's identity. */
 const demoPerson = (): Person => ({ id: "demo-viewer", name: t({ message: "You", comment: "The person trying a demo app" }) });
@@ -125,9 +126,10 @@ export function leaveDemoPath(): void {
 
 export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPackage }) {
   const { t } = useLingui();
-  const [keeping, setKeeping] = useState(false);
+  // Keep and Remix are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
+  const [adding, setAdding] = useState<"keep" | "remix" | null>(null);
   const name = demoName(pkg);
-  const by = pkg.credit?.by;
+  const credit = creditLine(pkg.credit);
   return (
     <div className="k-demo">
       <aside className="k-demo-bar" aria-label={t({ message: "About this demo", comment: "The bar above an app opened from a shared link" })}>
@@ -138,16 +140,16 @@ export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPac
           <Trans comment="Demo bar: links to Potyro itself">Made with Potyro</Trans>
         </a>
         <p className="k-demo-note">
-          {by ? (
-            <Trans comment="Demo bar: who shared the app; nothing done in the demo is kept">
-              {name} by {by} · a demo: nothing you do here is kept
-            </Trans>
-          ) : (
+          {credit ? <span className="k-demo-credit">{credit}</span> : null}
+          <span>
             <Trans comment="Demo bar: nothing done in the demo is kept">A demo: nothing you do here is kept</Trans>
-          )}
+          </span>
         </p>
         <div className="k-demo-actions">
-          <button type="button" className="k-demo-keep" onClick={() => setKeeping(true)}>
+          <button type="button" className="k-demo-remix" onClick={() => setAdding("remix")}>
+            <Trans comment="Demo bar: make your own version of this app in the Studio">Remix this</Trans>
+          </button>
+          <button type="button" className="k-demo-keep" onClick={() => setAdding("keep")}>
             <Trans comment="Demo bar: add this app to your own apps">Keep this app</Trans>
           </button>
         </div>
@@ -161,12 +163,14 @@ export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPac
         toaster={session.toaster}
         name={name}
       />
-      {keeping ? (
+      {adding ? (
         <AddAppDialog
+          key={adding}
           initialPackage={pkg}
-          onClose={() => setKeeping(false)}
+          remix={adding === "remix"}
+          onClose={() => setAdding(null)}
           onAdded={() => {
-            shareEvent("demo-kept");
+            shareEvent(adding === "remix" ? "demo-remixed" : "demo-kept");
             leaveDemoPath();
           }}
         />

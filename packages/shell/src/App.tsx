@@ -49,6 +49,7 @@ import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ShareSheet } from "./share-sheet.js";
+import { takeStudioHandoff } from "./studio-handoff.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
 import { isRtl, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
@@ -760,6 +761,15 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     setStudioAppId(appId);
     openStudio();
   };
+
+  // A remix opens here with the Studio asking what to change (docs/24 §6): left by the demo it came from.
+  useEffect(() => {
+    if (!generator || currentKind !== "user") return;
+    const prompt = takeStudioHandoff(appId);
+    if (prompt) askStudioAbout(prompt);
+    // once, on arrival
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const shownTitle = titles[pageId] ?? pageId;
   // Said to the person (the error boundary, the start of a Studio message from edit mode).

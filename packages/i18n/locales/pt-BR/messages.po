@@ -627,11 +627,6 @@ msgstr "{n} MB"
 msgid "{name} (shared)"
 msgstr "{name} (compartilhado)"
 
-#. Demo bar: who shared the app; nothing done in the demo is kept
-#: ../shell/src/demo.tsx
-msgid "{name} by {by} · a demo: nothing you do here is kept"
-msgstr "{name} de {by} · uma demonstração: nada do que você fizer aqui fica salvo"
-
 #: ../shell/src/ask-material.tsx
 msgid "{name} has no text in it."
 msgstr "{name} não tem texto."
@@ -1510,6 +1505,11 @@ msgstr "botão"
 #: ../shell/src/demo-share.ts
 msgid "by {by}"
 msgstr "de {by}"
+
+#. Who made an app
+#: ../shell/src/credit-words.ts
+msgid "By {by}"
+msgstr "De {by}"
 
 #. A shared app's link preview, under its name
 #: ../shell/src/demo-share.ts
@@ -3337,6 +3337,11 @@ msgstr "criado pelo app"
 msgid "Made with Potyro"
 msgstr "Feito com Potyro"
 
+#. What the Studio starts with after Remix this
+#: ../shell/src/add-app-dialog.tsx
+msgid "Make me a version of {name} that…"
+msgstr "Faça uma versão de {name} que…"
+
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Crie o app de que você precisa"
@@ -4286,6 +4291,33 @@ msgstr "Rejeitar"
 #: ../shell/src/ask-review-parts.tsx
 msgid "Reject {name}"
 msgstr "Rejeitar {name}"
+
+#. The Add-an-app dialog, opened from Remix this
+#. The Add-an-app dialog, opened from Remix this
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/add-app-dialog.tsx
+msgid "Remix an app"
+msgstr "Remixar um app"
+
+#. Add-an-app card button, opened from Remix this
+#: ../shell/src/add-app-dialog.tsx
+msgid "Remix it"
+msgstr "Remixar"
+
+#. The app a remix came from, when its maker did not say who they are
+#: ../shell/src/credit-words.ts
+msgid "Remix of {name}"
+msgstr "Remix de {name}"
+
+#. Who made the app a remix came from
+#: ../shell/src/credit-words.ts
+msgid "Remix of {name} by {by}"
+msgstr "Remix de {name} de {by}"
+
+#. Demo bar: make your own version of this app in the Studio
+#: ../shell/src/demo.tsx
+msgid "Remix this"
+msgstr "Remixar"
 
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
@@ -6043,6 +6075,10 @@ msgstr "Você encerrou isto antes de terminar."
 #: ../shell/src/case-report.tsx
 msgid "You expected: {expectation}"
 msgstr "Você esperava: {expectation}"
+
+#: ../shell/src/add-app-dialog.tsx
+msgid "You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it."
+msgstr "Você ganha sua própria cópia para mudar. Assim que ela for adicionada, o Studio se abre nela e pergunta o que você quer fazer dela."
 
 #: ../shell/src/activity-panel.tsx
 msgid "You set {field} to {to}"
