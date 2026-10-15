@@ -316,6 +316,16 @@ importers:
 
   packages/platform-requests: {}
 
+  packages/rooms:
+    dependencies:
+      ws:
+        specifier: 8.21.1
+        version: 8.21.1
+    devDependencies:
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
+
   packages/runtime:
     dependencies:
       '@potyro/capabilities':

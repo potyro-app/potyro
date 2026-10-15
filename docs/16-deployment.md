@@ -19,9 +19,11 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
-Two optional services sit beside them, neither deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet)
-and the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps. Without them requests
-wait on the device, and apps' AI runs on the person's own key.
+Optional services sit beside them, none deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
+the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
+and the [rooms relay](#rooms-for-multiplayer-apps-docs26-not-deployed-yet) for multiplayer apps.
+Without them requests wait on the device, apps' AI runs on the person's own key, links carry the
+whole app, and multiplayer apps cannot meet.
 
 ## The live deployment, as configured
 
@@ -611,6 +613,113 @@ notice-and-action path). The folder and the `rm` above are that path's mechanism
 
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
 `du -sh /var/lib/potyro/shares` to watch it.
+
+## Rooms for multiplayer apps (docs/26): NOT deployed yet
+
+Real-time multiplayer apps (the first is a draw-and-guess game whose rooms are joined by a share
+link) need a server that passes messages between the people in a room. `packages/rooms` is that
+server: `wss://apps.vaz.io/rooms/<roomId>`, every frame one member sends goes as-is to the others,
+plus a small presence envelope (who is here, who joined, who left). The protocol, written for app
+authors, is [docs/26](26-rooms-relay.md). Apps reach it through `ctx.caps.network.socket(url)`,
+which is not built yet; **until then nothing uses it**, and until it runs nothing breaks.
+
+What it accepts and does, so you know what you are putting on the internet:
+
+| | |
+|---|---|
+| Routes | A websocket on `/rooms/<roomId>` (22–64 base64url characters, the app's random id), and `GET /rooms/health`. Nothing else: any other path is a 404, a room path without the upgrade a 426. |
+| What it holds | Only what is live, in memory: the rooms that have members, each member's random id and display name, and per-address counts. **Nothing on disk.** A room is gone when its last member leaves. |
+| What it reads | Each frame's size and rate, and whether a text frame begins with the envelope's reserved prefix. Never the payload. |
+| Limits | 64 KiB a message, 16 members a room, 8 rooms and 64 connections at once per address, 30 messages/s (bursts of 60) and 64 KiB/s (bursts of 256 KiB) per connection, 1 MiB queued for a slow member, 2000 rooms and 5000 connections in all; a room with no message for 30 minutes is closed. Each one closes with its own code (docs/26 §3). |
+| Address | The **last** `X-Forwarded-For` entry — the one Apache appends. The first entry is whatever the client sent, so it is never used for limits. |
+| Origins | Browsers only from `https://apps.vaz.io`, `https://localhost` (the Android app) and `capacitor://localhost`; anything else gets HTTP 403 on the upgrade. |
+| Keepalive | A ping every 30 s; a member that has not answered the last one is dropped. That also keeps Apache's `ProxyTimeout 600` from cutting a quiet room. |
+| Logs | Its own start and stop. Never a payload, a room id, a name or an address. |
+
+### 1. Run it
+
+Port **4205**: 4201 is the sync relay, 4202 the request relay, 4203 the share links, 4204 the AI
+relay. Unlike those three, this package has **one dependency**, the `ws` websocket library (pinned
+in its `package.json`), so it needs one `npm install`, the way the sync relay does. Everything else
+is the same container shape:
+
+```bash
+# from a checkout of the commit you are deploying
+ssh e@vaz.io 'sudo mkdir -p /opt/potyro-rooms && sudo chown -R "$USER": /opt/potyro-rooms'
+rsync -az --delete --exclude node_modules packages/rooms/ e@vaz.io:/opt/potyro-rooms/
+
+# on the server: install ws (once, and again whenever package.json changes)
+docker run --rm -v /opt/potyro-rooms:/app -w /app node:22-bookworm npm install --omit=dev --no-package-lock
+
+docker run -d --name potyro-rooms --restart unless-stopped \
+  -p 127.0.0.1:4205:4205 \
+  -e HOST=0.0.0.0 -e PORT=4205 \
+  -v /opt/potyro-rooms:/app:ro -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-rooms   # "[rooms] origins https://apps.vaz.io https://localhost capacitor://localhost, listening on 0.0.0.0:4205"
+```
+
+No secrets, so no env file. `-p 127.0.0.1:…` keeps it reachable only through Apache, for the same
+reason as the sync relay: published on `0.0.0.0` it would be an open websocket relay on the public
+internet with no gate in front of it. `--exclude node_modules` keeps the server's installed `ws`
+(and keeps the laptop's pnpm links off the server).
+
+Every limit is an environment variable (`ROOMS_MAX_MEMBERS`, `ROOMS_MESSAGES_PER_SECOND`, …, the
+full list at the top of `src/server.ts`); a value that is not a positive number stops it starting.
+`ROOMS_ORIGINS` replaces the origin list (comma-separated, or `*`). Add `-e NAME=value` to the
+`docker run` and re-create the container to change one.
+
+### 2. Put it behind the site's gate, with the upgrade
+
+In `deploy/apps.vaz.io.conf`, next to the `/sync` rules and **before** the SPA rule (or `/rooms/…`
+is answered with `index.html`). Like `/sync`, an upgrade is proxied as a websocket and anything else
+goes to the same place over http, so `/rooms/health` works and a misrouted request says so:
+
+```apache
+    # Rooms for multiplayer apps (docs/26): a websocket per room, and its health check.
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteRule ^/rooms/(.*)$ ws://127.0.0.1:4205/rooms/$1 [P,L]
+    RewriteRule ^/rooms/(.*)$ http://127.0.0.1:4205/rooms/$1 [P,L]
+```
+
+`proxy_wstunnel` is already enabled for `/sync`; the query string (`?name=`) is passed on as it is.
+`ProxyPreserveHost On` and `ProxyTimeout 600` from the `/sync` block already apply. Then
+`sudo apache2ctl configtest`, `sudo systemctl reload apache2` (§6), and copy the vhost back into
+`deploy/` so the repository says what runs.
+
+**The basic-auth gate** covers `/rooms/` from the site itself: same origin, so the browser replays
+the credentials on the upgrade, exactly as for `/sync`. It does **not** work for the Android app
+(origin `https://localhost`, another origin: no credentials are sent, and the upgrade gets a 401). To
+let the APK in before the site goes public, exempt exactly this route; the relay's own limits are
+then its only guard:
+
+```apache
+    <LocationMatch "^/rooms/">
+        Require all granted
+    </LocationMatch>
+```
+
+### 3. Check it
+
+```bash
+curl -su USER:PASS https://apps.vaz.io/rooms/health        # {"ok":true,"rooms":0,"connections":0}
+
+# a real upgrade: expect "HTTP/1.1 101 Switching Protocols", then the welcome frame's text
+ROOM=$(head -c16 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=')
+curl -su USER:PASS --http1.1 -i -N --max-time 3 \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
+  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://apps.vaz.io' \
+  "https://apps.vaz.io/rooms/$ROOM?name=check"
+```
+
+The second should print `{"potyro-rooms":1,"type":"welcome",…}` after the headers. A `200` with HTML
+instead means the SPA rule answered first; a `403` means the `Origin` is not on the list.
+
+**Updating it:** rsync the package again (with `--exclude node_modules`), run the `npm install`
+container again if `package.json` changed, and `docker restart potyro-rooms`. A restart closes every
+member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
+but the current member ids.
 
 ## What this does NOT protect
 

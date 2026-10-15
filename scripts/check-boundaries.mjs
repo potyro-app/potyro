@@ -60,6 +60,13 @@ const rules = [
     note: "ai-relay depends on no Potyro package; the shell depends on it",
   },
   {
+    // The rooms relay for multiplayer apps (docs/26) runs on the server, alone: the same rule. Its
+    // protocol module is browser-safe so the socket capability can import it later.
+    pkg: "packages/rooms/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "rooms depends on no Potyro package",
+  },
+  {
     pkg: "examples",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
     note: "app modules reach host power only via ctx; import `potyro` only",
