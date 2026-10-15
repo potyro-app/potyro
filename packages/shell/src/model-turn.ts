@@ -57,7 +57,7 @@ export async function modifyTurn(opts: {
 }): Promise<string> {
   const { engine, source, instruction, ctx, onProgress } = opts;
   if (engine.engine === "cli") {
-    const prompt = ["The current app:", "```ts", source, "```", "", buildModifyMessage(instruction, ctx)].join("\n");
+    const prompt = ["The current app:", "```ts", source, "```", "", buildModifyMessage(instruction, ctx, { source })].join("\n");
     return generateViaCli({ system: SYSTEM_PROMPT, prompt, onProgress: (s) => onProgress?.("Working", s) });
   }
   if (!engineReady(engine)) throw new Error(t`this engine needs its API key — add it in the Studio's Model settings.`);
