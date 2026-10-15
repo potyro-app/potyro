@@ -198,6 +198,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         sheet: function(o){ return bridge({op:"ui.sheet", opts:o}); },
         menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
         form: function(o){ return bridge({op:"ui.form", opts:o}); },
+        share: function(o){ return bridge({op:"ui.share", opts:o}); },
         progress: function(label){
           var id = "p" + (++progressSeq);
           bridgeSync({op:"ui.progress", id:id, label:words(label)});
