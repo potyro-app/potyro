@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // The owner's report: in PPL Log, delete an exercise from Program (Bench Press) and Program sat on
 // "Loading…" for good — after a reload too, and Train with it. Past sessions still mention the

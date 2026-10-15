@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 

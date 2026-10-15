@@ -44,6 +44,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@sqlite.org/sqlite-wasm@3.53.0-build1": "patches/@sqlite.org__sqlite-wasm@3.53.0-build1.patch"
+    }
   }
 }

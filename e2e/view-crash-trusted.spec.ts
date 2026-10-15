@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 
 // THE PATH `fix-this-trusted.spec.ts` DELIBERATELY DODGES, exercised directly. That spec's header
 // comment explains why its broken action calls `ctx.navigate("map")` immediately followed by
@@ -63,7 +63,8 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("navigating to a missing page crashes only the view — the shell and the recorder survive", async ({ page }) => {
+test("navigating to a missing page crashes only the view — the shell and the recorder survive", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/page nowhere not found|^The above error occurred in the <ViewHost> component/, "the test navigates to a page that does not exist, on purpose");
   await page.goto(`/?user=${APP_ID}`);
   await expect(page.locator("h1").first()).toHaveText(APP_NAME);
 

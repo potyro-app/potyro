@@ -123,6 +123,16 @@ export async function getEsbuild(): Promise<EsbuildLike> {
   return esbuildReady;
 }
 
+/**
+ * The `potyro` a sealed app imports: the stub, and the money helpers the real package exports as
+ * values. They are pure functions, and an app's arithmetic: without them the example Split, shared
+ * with someone, could not open sealed at all ("No matching export in potyro-stub:potyro for import
+ * splitByShares" — found by the console smoke on a production build, fix/opfs-access-handles).
+ */
+export function potyroStub(stub: string, money: string): string {
+  return `${stub}\n${money}`;
+}
+
 /** Bundles a source for the isolate; `modules` is the app's package, when it has one. */
 export type AppBundler = (source: string, modules?: ModuleSource, opts?: BundleOptions) => Promise<string>;
 
@@ -132,11 +142,14 @@ export type AppBundler = (source: string, modules?: ModuleSource, opts?: BundleO
  */
 export async function createAppBundler(): Promise<AppBundler> {
   const esbuild = await getEsbuild();
-  const [potyro, react] = await Promise.all([
+  const [potyro, money, react] = await Promise.all([
     import("./isolate-stubs/potyro.ts?raw"),
+    // The schema's own file, so the sealed app's arithmetic is the same code as the trusted app's.
+    import("../../schema/src/money.ts?raw"),
     import("./isolate-stubs/react.ts?raw"),
   ]);
-  return (source, modules, opts) => bundleAppSource(source, esbuild, { potyro: potyro.default, react: react.default }, modules, opts);
+  const stubs = { potyro: potyroStub(potyro.default, money.default), react: react.default };
+  return (source, modules, opts) => bundleAppSource(source, esbuild, stubs, modules, opts);
 }
 
 /** `bundleTrustedModule`'s core, with esbuild injected (tests run it on the native one). */

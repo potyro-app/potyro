@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Shell chrome regressions found by actually looking at a running app rather than by reasoning about
 // it. Each of these was live and none was caught by the existing suite:

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Every example in Polish (#303): a Polish browser opens each one and reads the app's own words in
 // Polish, as rendered — the name in the header, the tabs, a heading or a button the app declares, and

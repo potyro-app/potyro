@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { currentCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The Studio's History tab surfaces cases reported against a SAVED app (app-cases.ts: `listCases`
