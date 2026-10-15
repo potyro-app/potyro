@@ -116,7 +116,7 @@ test.describe("device language", () => {
     await seed(page);
     const home = await openHome(page);
     await expect(page.locator("html")).toHaveAttribute("lang", "pl");
-    await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", "Znajdź aplikację");
+    await expect(home.locator(".k-metro-find")).toHaveAttribute("aria-label", "Znajdź aplikację");
 
     const panel = await openYou(page);
     // Following the device is the choice made, and it says which language that is.
@@ -151,7 +151,7 @@ test.describe("switching", () => {
     await expect(picker).toHaveValue(PSEUDO);
     // The options re-render in the new language too: the name in the current language is accented.
     await expect(picker.locator('option[value="pl"]')).toHaveText(/Polski — Þöļîšĥ \(ðŕåƒţ\)/);
-    await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", /^⟦Ƒîñð åñ åþþ ·+⟧$/);
+    await expect(home.locator(".k-metro-find")).toHaveAttribute("aria-label", /^⟦Ƒîñð åñ åþþ ·+⟧$/);
     expect(await page.evaluate(() => (window as unknown as { __stillHere?: boolean }).__stillHere)).toBe(true);
     expect(await page.evaluate(() => localStorage.getItem("potyro:locale"))).toBe(PSEUDO);
 
@@ -159,7 +159,7 @@ test.describe("switching", () => {
     await picker.selectOption("en");
     await expect(panel.getByRole("heading", { level: 2 })).toHaveText("You");
     await page.reload();
-    await expect(page.locator(".k-launcher-home").getByRole("searchbox")).toHaveAttribute("placeholder", "Find an app");
+    await expect(page.locator(".k-launcher-home").locator(".k-metro-find")).toHaveAttribute("aria-label", "Find an app");
   });
 });
 
@@ -172,9 +172,12 @@ test.describe("guard: no English on extracted surfaces in the pseudo-language", 
   test("the home launcher, a tile's menu and the You panel", async ({ page }) => {
     const home = await openHome(page);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(home.getByRole("searchbox")).toHaveAttribute("placeholder", /^⟦/);
+    await expect(home.locator(".k-metro-find")).toHaveAttribute("aria-label", /^⟦/);
     expect(await englishIn(home)).toEqual([]);
 
+    // All apps (#96), where each app's menu is: its words too.
+    await home.locator("#k-pivot-all").click();
+    expect(await englishIn(home)).toEqual([]);
     // A sealed app's menu: it has every item a trusted one has, plus "Let it run as yours".
     await home.getByRole("button", { name: /Gym log/ }).and(home.locator(".k-tile-menu-btn")).click();
     const menu = page.locator(".k-tile-menu");

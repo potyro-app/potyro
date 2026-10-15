@@ -51,8 +51,9 @@ test.describe("desktop", () => {
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("the field is there but does not take focus on load", async ({ page }) => {
+  test("the field is one tap away, in All apps, and does not take focus by itself", async ({ page }) => {
     const home = await openHome(page);
+    await home.getByRole("tab", { name: "All apps" }).tap();
     const field = home.getByRole("searchbox", { name: "Find an app" });
     await expect(field).toBeVisible();
     await expect(field).not.toBeFocused();

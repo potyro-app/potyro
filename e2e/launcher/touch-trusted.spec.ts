@@ -34,6 +34,10 @@ test("open an app from home, then switch to another from inside it", async ({ pa
 
 test("a tile's actions are reachable by touch, at 44px, with Delete kept apart", async ({ page }) => {
   await openHome(page);
+  // Every app's menu is on its row in All apps (#96): one tap on the pivot, then the 44px button.
+  const tab = page.getByRole("tab", { name: "All apps" });
+  await expectTappable(tab);
+  await tab.tap();
   const menuButton = page.getByRole("button", { name: "Actions for Groceries" });
   await expect(menuButton).toBeVisible();
   await expectTappable(menuButton);

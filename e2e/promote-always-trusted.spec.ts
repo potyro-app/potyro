@@ -132,6 +132,7 @@ test("the card's button promotes too, and a sealed app is promoted from its tile
   const second = await addFromLink(page, two, "Painter Two");
   await expect(second.getByRole("alert")).toContainText("It only works when it runs as yours.", { timeout: 30_000 });
   await page.goto("/");
+  await page.getByRole("tab", { name: "All apps" }).click(); // where each app's menu is (#96)
   const menuButton = page.getByRole("button", { name: "Actions for Painter Two" });
   await menuButton.focus();
   await page.keyboard.press("Enter");

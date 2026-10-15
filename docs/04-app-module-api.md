@@ -16,7 +16,51 @@ export default defineApp({ id, name, icon, version, schemaVersion, language, lan
 
 `name`, `icon` (one emoji) and `theme.accent` are the app's identity: the launcher tile shows them
 without running the app (they are read from the source), and falls back to a monogram of the name
-in a colour derived from the app when `icon` or `accent` is absent.
+in a colour derived from the app when `icon` or `accent` is absent. The tile is the accent darkened,
+in OKLCH, until white text on it reaches WCAG AA (4.5:1); an accent that already does is used as
+written. `category` (one lowercase word: `"games"`, `"camera"`, `"everyday"`) is where the launcher
+puts the app on Start: in the group for that word, made when the first app of the kind arrives.
+
+### Tile — the app's live launcher tile (#96)
+
+```ts
+tile?: (ctx: Ctx) => TileContent | Promise<TileContent>;
+
+interface TileContent {               // packages/schema/src/types/tile.ts
+  count?: number;                     // what is waiting: "3 to water" is 3; a small tile shows only this
+  title?: Words;                      // the live face's headline
+  lines?: Words[];                    // up to three short lines under it
+  image?: MediaRef | FileRef | string; // a media field's value, a file field's value, or a path in ctx.files
+}
+```
+
+A medium or wide tile turns over every few seconds between the app's own face (its icon and name)
+and this live face — Windows Phone's live tile; a small one shows the count. The function reads the
+app's data through `ctx` like any other and **returns data**, like an `aggregate`'s `rows`: a trusted
+app's runs directly, a sealed app's runs in its box (`LoadedApp.callTile`, docs/05) and only the
+answer comes out. Plain and serialisable on purpose — the launcher caches it beside the tile, and a
+phone's home-screen widget will read the same object.
+
+```ts
+tile: async (ctx) => {
+  const due = (await ctx.query("plant")).filter((p) => p.active && nextWatering(p) <= ctx.now());
+  return {
+    count: due.length,
+    title: ctx.t({ en: "{n, plural, =0 {All watered} other {# to water}}", pl: "…" }, { n: due.length }),
+    lines: due.slice(0, 3).map((p) => p.name),
+    image: due.find((p) => p.photo)?.photo,
+  };
+},
+```
+
+When it runs: while the app is open, again a moment after any of its records changes (so home shows
+what you just did); from the home screen, after the wall has painted with plain faces, for any app
+whose face is missing, from another version of the app, or older than 15 minutes — opening the app's
+store read-only, without showing it, one app at a time. It has 1.5 s. A tile that throws, runs out of
+time, writes, or returns something that is not a tile shows the plain face, silently: no toast, no
+error. The launcher keeps what it can show (`checkTileContent`: a whole count up to 9,999, a title up
+to 60 characters, three lines of 80, a picture reference — never an address) and makes a picture
+small (240 px) before keeping it.
 
 ## Function signatures
 
