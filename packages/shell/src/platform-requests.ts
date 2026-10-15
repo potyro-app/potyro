@@ -18,6 +18,7 @@ import { t } from "@lingui/core/macro";
 import { REQUEST_FORMAT, type PlatformRequestPayload } from "@potyro/platform-requests";
 import { appStructure } from "@potyro/generator/agent";
 import type { PlatformAsk } from "./studio-chat.js";
+import { deviceId, randomId } from "./device-id.js";
 
 export type { PlatformAsk };
 
@@ -25,7 +26,6 @@ export type { PlatformAsk };
 export type SendResult = { state: "sent"; url?: string } | { state: "saved" } | { state: "refused" };
 
 const OUTBOX = "potyro:platform-requests:outbox";
-const DEVICE = "potyro:device-id";
 /** Kept at most: a device that never reaches the relay does not fill its storage with requests. */
 const MAX_SAVED = 20;
 
@@ -34,25 +34,12 @@ interface Saved {
   payload: PlatformRequestPayload;
 }
 
-const randomId = (): string =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-
 export function newRequestId(): string {
   return `req-${randomId()}`;
 }
 
 /** A random id for this device, kept: the relay's rate limit counts per device. Says nothing about the person. */
-export function deviceId(): string {
-  try {
-    const known = globalThis.localStorage?.getItem(DEVICE);
-    if (known) return known;
-    const made = randomId();
-    globalThis.localStorage?.setItem(DEVICE, made);
-    return made;
-  } catch {
-    return "unknown-device";
-  }
-}
+export { deviceId };
 
 /** Where requests go: the build's own address for them, or the relay next to the site. */
 export function requestsEndpoint(): string {
