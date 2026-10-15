@@ -48,6 +48,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/generator
 
+  apps/daily-puzzle:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
   apps/draw-guess:
     dependencies:
       potyro:
@@ -73,12 +79,6 @@ importers:
       intl-messageformat:
         specifier: ^10.7.18
         version: 10.7.18
-
-  apps/daily-puzzle:
-    dependencies:
-      potyro:
-        specifier: workspace:*
-        version: link:../../packages/schema
 
   apps/markdown-notes:
     dependencies:
@@ -133,6 +133,16 @@ importers:
       potyro:
         specifier: workspace:*
         version: link:../../packages/schema
+
+  apps/pantry:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
 
   apps/photo-garden:
     dependencies:
