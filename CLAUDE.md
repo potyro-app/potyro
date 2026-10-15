@@ -104,7 +104,9 @@ pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic fr
 pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io
 
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
-# generated from them, and test/reference.test.ts fails while it is stale (#130)
+# generated from them, and test/reference.test.ts fails while it is stale (#130). The system prompt
+# carries only the CORE; a new capability (ctx.caps.*, a ctx member most apps don't need) is added to
+# CAPABILITIES in packages/generator/src/reference.ts — never by raising the core's budget (#341)
 pnpm --filter @potyro/generator gen:reference
 
 # after ANY change to examples/, apps/, docs/04, docs/05 or the schema types: the corpus the

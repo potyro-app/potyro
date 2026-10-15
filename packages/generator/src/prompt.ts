@@ -5,7 +5,8 @@
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
 import { changeLanguageInstruction, createLanguageInstruction, type TurnLanguage } from "./language.js";
-import { SCHEMA_REFERENCE } from "./reference.generated.js";
+import { CAPABILITY_REFERENCE, SCHEMA_REFERENCE } from "./reference.generated.js";
+import { capabilityIndex, capabilityNotes } from "./reference.js";
 import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "potyro";
 
 export const EXAMPLE_TODO = `import { defineApp } from "potyro";
@@ -128,11 +129,13 @@ export default defineApp({
  * (#130). Now what the model is told exists is, byte for byte, what the validator enforces.
  */
 function fullReferenceSection(): string {
-  return `REFERENCE — THE \`potyro\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the complete and authoritative
-surface: every field type, every view type and each option it accepts, every member of \`ctx\`, with the
-doc comment that says what it does. If an option is declared here, it works; if it is not declared
-here, it does not exist — do not invent one and do not assume one is missing without reading the
-declaration. Before saying something cannot be done, find the type it would live on and read it.
+  return `REFERENCE — THE \`potyro\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the authoritative surface: every
+field type, every view type and each option it accepts, every member of \`ctx\`, with the doc comment that
+says what it does. The capabilities in the CAPABILITIES index further down (\`Caps\`, \`CtxFiles\`, \`CtxMedia\`…)
+are declared outside this text: read one with lookup, or in the passages beside the request. If an option
+is declared here or there, it works; if it is declared nowhere, it does not exist — do not invent one and
+do not assume one is missing without reading the declaration. Before saying something cannot be done,
+find the type it would live on and read it.
 
 \`\`\`ts
 ${SCHEMA_REFERENCE}
@@ -197,15 +200,9 @@ LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
 - Write a new app in ONE language: the person's, the one their request is written in, and declare it
   — \`language: "pl"\` with Polish words. Every app declares \`language\`, even when all its strings are plain.
 - Add a language only when the person asks for one ("also in German"), and then with the \`translate\`
-  tool, not by hand. Its words become maps — \`label: { en: "Quantity", pl: "Ilość" }\` — and
-  \`languages: ["en", "pl"]\` lists every language, the app's own first.
-- Every map has the app's own \`language\`. In an app with several languages, everything you add or
-  change carries all of them: a new field gets every label; a renamed one is renamed in each.
-  Inside functions: \`ctx.t({ en: "Due now", pl: "Do podlania" })\`, with \`vars\` for plurals
-  (\`{n, plural, one {# plant} other {# plants}}\`), and \`ctx.format.date/number/money/relative/list\`
-  for formats — but return a Date or a number where a view formats it.
-- Records are never translated. An enum's options are stored values and stay as they are; their words
-  go in \`labels: { todo: { en: "To do", pl: "Do zrobienia" } }\`.
+  tool, not by hand. In an app with several languages (\`languages: ["en", "pl"]\`, words as maps
+  \`{ en: "Quantity", pl: "Ilość" }\`), everything you add or change carries all of them: a new field
+  gets every label; a renamed one is renamed in each. The rest: lookup("languages").
 - Words and languages are not data: a translation moves \`version\` but never \`schemaVersion\`, and
   needs no migration.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`). A computed a page
@@ -289,24 +286,11 @@ migrations: [
    the migration, or keep a page that lists everything ungrouped.
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
-- \`ctx.caps\` — native capabilities. EVERY ONE IS OPTIONAL and may be undefined when not granted, so
-  guard before use: \`if (!ctx.caps.geo) { ctx.ui.toast("Location unavailable"); return; }\`
-    \`ctx.caps.geo.current()\`            → { lat, lng }        (the key is \`geo\`, NOT \`geolocation\`)
-    \`ctx.caps.camera.capture(opts?)\`    → Blob  (then \`await ctx.media.put(blob)\` for a media field)
-    \`ctx.caps.notifications.schedule({ id, at, title, body? })\`
-    \`ctx.caps.filesystem.pick()\` / \`.save(name, blob)\`, \`ctx.caps.haptics\`, \`ctx.caps.network\`
-    \`await ctx.caps.ai.extract({ image, instructions, schema: { shop: "text?", items: [{ name: "text", price: "number" }] } })\`
-      reads a photo into that shape (\`ask(question, { image })\` → words); send only what the task needs.
-  Declare what the app needs at the top level: \`permissions: { geo: true, camera: true }\`.
-- \`ctx.media\` — \`put(blob)\`, \`url(ref)\`
-- \`ctx.files\` — the app's own folder. \`null\` from \`text\`/\`json\` = not here
-  yet, never empty. \`import()\` = the person picks; a \`file\` field stores \`{ id, path, name, mime }\`.
-  Starting data is a shipped JSON: \`ctx.files.json("plan.json")\`.
 - \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg, { ok, destructive })\`, \`await prompt(msg)\`, \`await pick(items)\`,
   \`await sheet({ title, items: [{ id, label, detail, destructive }] })\` / \`menu(...)\` for a short choice,
   \`await form({ title, fields: { kg: { type: "number", unit: "kg" } }, initial, submit })\` when an action needs
-  several values (null = cancelled), \`progress(label)\` → \`{ update(0..1), done() }\`,
-  \`await share({ text, url })\` to hand a result or a link on (share sheet / Copy). Nothing else — no \`alert\`.
+  several values (null = cancelled), \`progress(label)\` → \`{ update(0..1), done() }\`, and \`share\` (below).
+  Nothing else — no \`alert\`.
 - \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
 - A page has \`id\`, \`title\`, and a \`view\` — or a \`layout\` of several views (\`PageLayout\` in the
@@ -339,6 +323,11 @@ Because reads are async, a computed that queries other records MUST be \`async\`
   \`render\` is SYNCHRONOUS and MUST return JSX; do async work in \`useEffect\`, never in the body.
   Prefer a built-in view unless the ask genuinely needs bespoke interaction. There is NO chart/graph
   view type — do not invent one; build it from JSX (e.g. sized \`div\`s) inside a custom view.
+
+CAPABILITIES — what an app reaches for only sometimes. Each is real and declared; its declarations are
+not in the REFERENCE above but come with a request that needs it, and lookup("<name>") reads any of
+them. Read the declaration before you write the call:
+${capabilityIndex()}
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
 - Give every entity a \`label\` and an \`icon\` (a single emoji), and the app itself a top-level \`icon\`
@@ -431,11 +420,30 @@ export const SYSTEM_PROMPT = assembleSystemPrompt(fullReferenceSection());
 export const SYSTEM_PROMPT_COMPACT = assembleSystemPrompt(compactReferenceSection());
 
 
+/**
+ * How a turn carries the capabilities the request names (#341). The system prompt keeps only their
+ * index, so every engine — the tool loops and the one-shot ones alike (claude -p, a one-turn API or
+ * OpenRouter call) — gets the declarations of what the request needs in its first message.
+ * `capabilities: false` is for on-device engines, whose few thousand tokens of context cannot hold
+ * them; they keep the index line.
+ */
+export interface TurnOptions {
+  capabilities?: boolean;
+}
+
+/** The capability passages for a request (and the app it changes), or "" — see `TurnOptions`. */
+export function capabilityPassages(request: string, source = "", opts: TurnOptions = {}): string {
+  return opts.capabilities === false ? "" : capabilityNotes(CAPABILITY_REFERENCE, request, source);
+}
+
 /** The create turn. A non-English `prompt.language` adds one line (#301); English is unchanged. */
-export function buildUserMessage(prompt: GenPrompt): string {
-  const message = `Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`;
+export function buildUserMessage(prompt: GenPrompt, opts: TurnOptions = {}): string {
+  const parts = [`Create a Potyro app for this request:\n\n"${prompt.description}"\n\nReturn only the .app.ts source in one \`\`\`ts block.`];
   const language = createLanguageInstruction(prompt.language);
-  return language ? `${message}\n\n${language}` : message;
+  if (language) parts.push(language);
+  const passages = capabilityPassages(prompt.description, "", opts);
+  if (passages) parts.push(passages);
+  return parts.join("\n\n");
 }
 
 /**
@@ -528,7 +536,7 @@ export function parseNotDone(prose: string): string[] {
  * whatever function looked closest, and each attempt's rationalisation becomes the next attempt's
  * premise.
  */
-export function buildModifyMessage(instruction: string, ctx?: ModifyContext): string {
+export function buildModifyMessage(instruction: string, ctx?: ModifyContext, opts: TurnOptions & { source?: string } = {}): string {
   const lines: string[] = [
     "Apply this change to the app above, keeping everything else intact:",
     "",
@@ -601,6 +609,9 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext): st
 
   const language = changeLanguageInstruction(ctx?.language);
   if (language) lines.push("", language);
+
+  const passages = capabilityPassages(instruction, opts.source ?? "", opts);
+  if (passages) lines.push("", passages);
 
   return lines.join("\n");
 }

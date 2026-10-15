@@ -5,7 +5,8 @@ export { scoreSource, type ScoreResult } from "./score.js";
 export { runEval, formatReport, type EvalReport, type PromptOutcome } from "./run-eval.js";
 export { PROMPTS } from "./prompts.js";
 export { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT, buildUserMessage, buildRepairMessage, buildModifyMessage, extractSource, questionIn, parseModifyReply, NOT_IN_APP } from "./prompt.js";
-export { SCHEMA_REFERENCE } from "./reference.generated.js";
+export { SCHEMA_REFERENCE, CAPABILITY_REFERENCE } from "./reference.generated.js";
+export { CAPABILITIES, capabilityNotes, type Capability } from "./reference.js";
 export type { ModifyContext, ModifyReply } from "./prompt.js";
 export {
   ClaudeBackend,
