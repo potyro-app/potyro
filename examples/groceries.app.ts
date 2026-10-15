@@ -14,11 +14,31 @@ export default defineApp({
   id: "groceries",
   name: { en: "Groceries", "pt-BR": "Compras", de: "Einkäufe", es: "Compras", pl: "Zakupy", it: "Spesa" },
   icon: "🛒",
-  version: "2.2.0",
+  version: "2.3.0",
   schemaVersion: 2,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#5B9C5B" },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): what is still to buy, in the order the list has it.
+  tile: async (ctx) => {
+    const left = (await ctx.query("item")).filter((i) => !i.bought).sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
+    return {
+      count: left.length,
+      title: ctx.t(
+        {
+          en: "{n, plural, =0 {All bought} one {# to buy} other {# to buy}}",
+          "pt-BR": "{n, plural, =0 {Tudo comprado} one {# para comprar} other {# para comprar}}",
+          de: "{n, plural, =0 {Alles gekauft} one {# zu kaufen} other {# zu kaufen}}",
+          es: "{n, plural, =0 {Todo comprado} one {# por comprar} other {# por comprar}}",
+          pl: "{n, plural, =0 {Wszystko kupione} one {# do kupienia} few {# do kupienia} many {# do kupienia} other {# do kupienia}}",
+          it: "{n, plural, =0 {Tutto comprato} one {# da comprare} other {# da comprare}}",
+        },
+        { n: left.length },
+      ),
+      lines: left.slice(0, 3).map((i) => String(i.name)),
+    };
+  },
 
   entities: {
     // The aisles of the shop you actually go to — so the list comes out in walking order.
