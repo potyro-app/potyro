@@ -10,6 +10,7 @@ import { shellDialogs } from "./dialog.js";
 import { removeUserApp, type UserApp } from "./user-apps.js";
 import { recordLeft } from "./account-offer.js";
 import { setAiStanding } from "./ai-setting.js";
+import { forgetSocketStanding } from "./app-sockets.js";
 
 /**
  * Ask, then delete. Answers whether it happened.
@@ -38,6 +39,8 @@ export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sy
   await removeUserApp(app.id);
   // The person allowed THIS app's AI (docs/23): another app arriving later under the same id asks again.
   setAiStanding(app.id, undefined);
+  // And the hosts it was let connect to (docs/28), for the same reason.
+  forgetSocketStanding(app.id);
   return true;
 }
 

@@ -28,6 +28,16 @@ msgstr "…myśli"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "„{0}” nie jest zapisane jako zwykły obiekt, więc nie da się tu ustawić jego właściwości"
 
+#. Asked before a shared app first opens a live connection (WebSocket) to a server; {host} is its address
+#: ../shell/src/app-sockets.ts
+msgid "“{appName}” wants a live connection to {host}."
+msgstr "„{appName}” chce połączyć się na żywo z {host}."
+
+#. Asked before a shared app first joins a room on Potyro's rooms relay (multiplayer)
+#: ../shell/src/app-sockets.ts
+msgid "“{appName}” wants a live connection to Potyro’s rooms."
+msgstr "„{appName}” chce połączyć się na żywo z pokojami Potyro."
+
 #. Asked before a shared app first uses AI on a picture
 #: ../shell/src/app-ai.ts
 msgid "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
@@ -1228,8 +1238,12 @@ msgstr "Wszystkie szczegóły i źródła"
 msgid "All done."
 msgstr "Wszystko zrobione."
 
+#. Button: let a shared app open a live connection
+#. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
 #: ../shell/src/app-ai.ts
+#: ../shell/src/app-sockets.ts
+#: ../shell/src/app-sockets.ts
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Zezwól"
@@ -2453,6 +2467,11 @@ msgstr "Na początku każdy nazywa się „Me”, przez co udostępniona aplikac
 #: ../shell/src/people-panel.tsx
 msgid "Everyone who can open “{appName}”."
 msgstr "Wszyscy, którzy mogą otworzyć „{appName}”."
+
+#. Detail of the question before a shared app joins Potyro's rooms
+#: ../shell/src/app-sockets.ts
+msgid "Everyone with the room’s link sees what the app sends there. Potyro closes the connection when you leave the app."
+msgstr "Każdy, kto ma link do pokoju, widzi, co aplikacja tam wysyła. Potyro zamyka połączenie, gdy wychodzisz z aplikacji."
 
 #: ../shell/src/launcher.tsx
 msgid "Everything else"
@@ -3799,7 +3818,11 @@ msgid "not known until it runs"
 msgstr "nieznane, dopóki nie zadziała"
 
 #. Button: refuse a shared app's AI request this time
+#. Button: refuse a shared app's live connection this time
+#. Button: refuse a shared app's live connection this time
 #: ../shell/src/app-ai.ts
+#: ../shell/src/app-sockets.ts
+#: ../shell/src/app-sockets.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
@@ -6169,6 +6192,11 @@ msgstr "Którego przekaźnika ma używać to urządzenie?"
 #: ../shell/src/suggest-wording.tsx
 msgid "Which words read wrong?"
 msgstr "Które słowa brzmią źle?"
+
+#. Detail of the question before a shared app opens a live connection
+#: ../shell/src/app-sockets.ts
+msgid "While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app."
+msgstr "Dopóki aplikacja jest otwarta, może tam wysyłać i odbierać cokolwiek. Potyro zamyka połączenie, gdy wychodzisz z aplikacji."
 
 #: ../shell/src/ask-panel.tsx
 msgid "Working on it…"
