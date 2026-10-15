@@ -972,6 +972,7 @@ export default defineApp({
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#b44fd8" },
+  category: "camera",
   nav: "tabs",
   permissions: { camera: true, haptics: true },
   entities: {

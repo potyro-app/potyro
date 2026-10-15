@@ -49,6 +49,7 @@ export default defineApp({
   schemaVersion: 1,
   language: "en",
   permissions: { ai: true },
+  category: "ai",
   entities: {
     item: {
       label: "Item",

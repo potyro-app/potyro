@@ -36,11 +36,35 @@ export default defineApp({
   id: "plants",
   name: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },
   icon: "🌱",
-  version: "1.2.1",
+  version: "1.3.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#7FCF8E" },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): how many plants want water now, which ones, and one's photo.
+  tile: async (ctx) => {
+    const now = ctx.now().getTime();
+    const due = (await ctx.query("plant"))
+      .filter((p) => p.active !== false && nextWatering(p as unknown as Plant).getTime() <= now)
+      .sort((a, b) => nextWatering(a as unknown as Plant).getTime() - nextWatering(b as unknown as Plant).getTime());
+    return {
+      count: due.length,
+      title: ctx.t(
+        {
+          en: "{n, plural, =0 {All watered} one {# to water} other {# to water}}",
+          "pt-BR": "{n, plural, =0 {Tudo regado} one {# para regar} other {# para regar}}",
+          de: "{n, plural, =0 {Alles gegossen} one {# zu gießen} other {# zu gießen}}",
+          es: "{n, plural, =0 {Todo regado} one {# que regar} other {# que regar}}",
+          pl: "{n, plural, =0 {Wszystko podlane} one {# do podlania} few {# do podlania} many {# do podlania} other {# do podlania}}",
+          it: "{n, plural, =0 {Tutto annaffiato} one {# da annaffiare} other {# da annaffiare}}",
+        },
+        { n: due.length },
+      ),
+      lines: due.slice(0, 3).map((p) => String(p.name)),
+      ...(due.find((p) => p.photo) ? { image: due.find((p) => p.photo)!.photo as never } : {}),
+    };
+  },
   permissions: { camera: true, notifications: true },
 
   entities: {
