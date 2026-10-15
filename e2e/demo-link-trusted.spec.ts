@@ -16,8 +16,9 @@ test("a stranger opens a demo link: the app runs at once, sealed, demo records o
   await page.keyboard.press("Enter");
   await expect(page.getByRole("checkbox", { name: SECRET })).toBeVisible();
 
-  // Without the share service (a static site): the link carries the app itself.
-  await page.route("**/share-api/health", (route) => route.fulfill({ status: 404, body: "" }));
+  // Without the share service (a static site, whose SPA rule answers every path with its page): the
+  // link carries the app itself.
+  await page.route("**/share-api/health", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><div id=\"root\"></div>" }));
   const link = await makeDemoLink(page, "Groceries");
   expect(link).toMatch(/\/#try=/);
   expect(decodeURIComponent(link)).not.toContain(SECRET);
