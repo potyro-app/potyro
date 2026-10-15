@@ -19,7 +19,58 @@ export interface QuerySpec {
 }
 
 export interface CameraCapability {
+  /** One photo: the camera, or one chosen from the device's photos. */
   capture(opts?: { source?: "camera" | "library" }): Promise<Blob>;
+  /**
+   * The camera, live, for a custom view to draw from (docs/25): camera toys, mirror effects, games.
+   * TRUSTED APPS ONLY for now — `undefined` in a shared app, whose logic runs in the sealed realm.
+   * One session per device: calling it again replaces the running one (how to flip cameras). The
+   * shell shows "Camera on" while it runs, and it stops when the page is hidden or the app is left.
+   * Rejects with an `Error` whose `code` is a `LiveCameraFailure`.
+   */
+  live?(opts?: LiveCameraOptions): Promise<LiveCamera>;
+}
+
+export interface LiveCameraOptions {
+  /** `"user"` (the selfie camera, the default) or `"environment"` (the one on the back). */
+  facing?: "user" | "environment";
+  /** Ideal frame size in pixels, clamped to 160–1920; 640×480 when absent. The camera may differ. */
+  width?: number;
+  height?: number;
+}
+
+/** Why a live camera stopped: the app, the person (the shell's Turn off), the page hidden, the app
+ *  left or the page closed, the device ending it, or a newer `live()` taking over. */
+export type LiveCameraStop = "app" | "person" | "hidden" | "closed" | "ended" | "replaced";
+
+/** What a refused `live()` carries in its error's `code`. */
+export type LiveCameraFailure = "denied" | "missing" | "busy" | "hidden" | "failed";
+
+export interface LiveFrameInfo {
+  /** The frame's presentation time, in milliseconds. */
+  time: number;
+  width: number;
+  height: number;
+}
+
+/** A running live camera (docs/25). Frames are NOT mirrored; a selfie toy flips them itself. */
+export interface LiveCamera {
+  /** Playing, muted, not in the page: `drawImage` it, or put it on the page yourself. */
+  readonly video: HTMLVideoElement;
+  readonly stream: MediaStream;
+  readonly facing: "user" | "environment";
+  /** What the camera really gives, now. */
+  readonly width: number;
+  readonly height: number;
+  /** `false` once stopped, for any reason. */
+  readonly active: boolean;
+  /** Called once per new frame while the camera runs. Returns the way to stop listening. */
+  onFrame(cb: (video: HTMLVideoElement, info: LiveFrameInfo) => void): () => void;
+  /** The current frame as a picture, at the camera's own size (JPEG at 0.92 by default). */
+  snap(opts?: { type?: "image/jpeg" | "image/png" | "image/webp"; quality?: number }): Promise<Blob>;
+  /** Called once, when it stops. Returns the way to stop listening. */
+  onStop(cb: (why: LiveCameraStop) => void): () => void;
+  stop(): void;
 }
 
 export interface NotificationCapability {

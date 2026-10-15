@@ -4,6 +4,7 @@
 
 import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
+import type { LiveCameraCap } from "./live-camera.js";
 
 export interface FakeOptions {
   camera?: boolean;
@@ -20,6 +21,8 @@ export interface FakeOptions {
   fetch?: (input: string, init?: RequestInit) => Promise<Response>;
   /** notifications.supportsExactScheduling (default false — web-like). */
   supportsExactScheduling?: boolean;
+  /** A live camera — `createFakeLiveCamera().cap` — or none (the default). */
+  liveCamera?: LiveCameraCap;
 }
 
 /** A recording notification cap so tests can assert scheduling. */
@@ -51,6 +54,7 @@ export class FakeCapabilities implements Capabilities {
   haptics: HapticsCap | null;
   filesystem: FileCap;
   network: NetworkCap;
+  liveCamera: LiveCameraCap | null;
 
   private saved = new Map<string, Blob>();
   /** Recorded vibration patterns, for assertions. */
@@ -61,6 +65,7 @@ export class FakeCapabilities implements Capabilities {
     const position = opts.position ?? { lat: 52.52, lng: 13.405, label: "Berlin" };
 
     this.camera = opts.camera === false ? null : { capture: async () => blob };
+    this.liveCamera = opts.camera === false ? null : (opts.liveCamera ?? null);
     this.notifications = opts.notifications === false ? null : new FakeNotifications(opts.supportsExactScheduling ?? false);
     this.geolocation = opts.geolocation === false ? null : { current: async () => position };
     this.haptics =

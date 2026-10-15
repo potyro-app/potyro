@@ -7,7 +7,7 @@
 // refusal.
 
 import { describe, expect, it, vi } from "vitest";
-import { FakeCapabilities } from "@potyro/capabilities";
+import { FakeCapabilities, createFakeLiveCamera } from "@potyro/capabilities";
 import type { PermissionManifest } from "potyro";
 import type { UiBridge } from "../src/index.js";
 import { mediateCaps } from "../src/index.js";
@@ -95,6 +95,39 @@ describe("the camera and your location", () => {
     expect(asked).toHaveLength(2);
     expect(asked.some((m) => m.includes("the camera"))).toBe(true);
     expect(asked.some((m) => m.includes("your location"))).toBe(true);
+  });
+});
+
+describe("the live camera (docs/25)", () => {
+  it("is not given to an app someone else wrote, even one that declared and was allowed the camera", async () => {
+    const live = createFakeLiveCamera();
+    const caps = new FakeCapabilities({ liveCamera: live.cap });
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    const mediated = mediateCaps({ caps, provenance: "untrusted", permissions: { camera: true }, ui, appName: "X" });
+    expect(mediated.camera).toBeDefined();
+    expect(mediated.camera!.live).toBeUndefined();
+    expect("live" in mediated.camera!).toBe(false);
+    await mediated.camera!.capture();
+    expect(live.asked).toEqual([]); // the device's camera was never opened live
+  });
+
+  it("is the platform's live camera for your own app, with no prompt of Potyro's", async () => {
+    const live = createFakeLiveCamera();
+    const caps = new FakeCapabilities({ liveCamera: live.cap });
+    const asked: string[] = [];
+    const ui: UiBridge = { toast: () => {}, confirm: async (m) => (asked.push(m), true), prompt: async () => null, pick: async () => null };
+    const full = mediateCaps({ caps, provenance: "trusted", permissions: {}, ui, appName: "Mine" });
+    const cam = await full.camera!.live!({ facing: "environment", width: 320 });
+    expect(cam.active).toBe(true);
+    expect(live.cap.current()).toBe(cam); // the shell's indicator sees it
+    expect(live.asked[0]!.video).toMatchObject({ facingMode: { ideal: "environment" }, width: { ideal: 320 } });
+    expect(asked).toEqual([]);
+  });
+
+  it("is absent where the device has no live camera", () => {
+    const caps = new FakeCapabilities();
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    expect(mediateCaps({ caps, provenance: "trusted", permissions: {}, ui, appName: "Mine" }).camera!.live).toBeUndefined();
   });
 });
 
