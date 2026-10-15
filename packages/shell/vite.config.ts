@@ -1,7 +1,8 @@
 import { defineConfig, type Plugin } from "vite";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import react from "@vitejs/plugin-react";
@@ -13,6 +14,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createShareHandler, type ShareRequest } from "../share-links/src/handler.ts";
 import { memoryShareStore } from "../share-links/src/store.ts";
 import { LIMITS as SHARE_LIMITS } from "../share-links/src/wire.ts";
+import { FACES_DIR, FACES_MODEL, FACES_RUNTIME } from "./src/faces/faces-assets.ts";
 
 /**
  * The shell's own CSP (#272, docs/22 §3.2): it embeds no frame that fetches, so `frame-src 'none'`.
@@ -207,13 +209,45 @@ function precacheCatalogs(): Plugin {
   };
 }
 
+/**
+ * The face finder's files (docs/25 §Faces), served from Potyro's own origin and never a CDN: MediaPipe's
+ * Wasm runtime from the pinned @mediapipe/tasks-vision, and the model from packages/shell/faces/. The
+ * worker is a module worker in dev and in a build alike (`{ type: "module" }`), so it loads the module
+ * build of the runtime; a build emits that and the model under `dist/potyro-faces/<version>/` — which
+ * is also what the Capacitor APK carries. Fetched only when an app asks for faces; the service worker
+ * caches them then.
+ */
+function facesAssets(): Plugin {
+  const require = createRequire(import.meta.url);
+  const source = (name: string): string =>
+    name === FACES_MODEL ? here(`./faces/${FACES_MODEL}`) : require.resolve(`@mediapipe/tasks-vision/${name}`);
+  const types: Record<string, string> = { js: "text/javascript", wasm: "application/wasm", task: "application/octet-stream" };
+  const served = new Set<string>([FACES_MODEL, ...FACES_RUNTIME.module]);
+  return {
+    name: "potyro-faces-assets",
+    configureServer(server) {
+      server.middlewares.use(`/${FACES_DIR}`, (req, res, next) => {
+        const name = (req.url ?? "").split("?")[0]!.replace(/^\/+/, "");
+        if (!served.has(name)) return next();
+        res.setHeader("content-type", types[name.split(".").pop()!] ?? "application/octet-stream");
+        res.setHeader("cache-control", "no-cache");
+        res.end(readFileSync(source(name)));
+      });
+    },
+    generateBundle() {
+      for (const name of [FACES_MODEL, ...FACES_RUNTIME.module])
+        this.emitFile({ type: "asset", fileName: `${FACES_DIR}${name}`, source: readFileSync(source(name)) });
+    },
+  };
+}
+
 // `pnpm dev` runs trusted; `pnpm dev:sandbox` (mode "sandbox") runs the examples untrusted, in the
 // browser realm (or in QuickJS with VITE_POTYRO_SANDBOX=quickjs: `pnpm dev:sandbox:quickjs`).
 export default defineConfig({
   // The Lingui macros compile in plugin-react's Babel pass, and `.po` catalogs load as compiled JS
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
   // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), shareLinksPlugin()],
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), shareLinksPlugin(), facesAssets()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.
@@ -226,7 +260,9 @@ export default defineConfig({
     // .vite/deps and fails to serve the sibling .wasm with the correct MIME → dev boot aborts with
     // "expected magic word 00 61 73 6d"), and maplibre-gl (its worker .mjs isn't emitted into
     // .vite/deps). Excluding them lets Vite serve those assets directly.
-    exclude: ["quickjs-emscripten", "@sqlite.org/sqlite-wasm", "maplibre-gl"],
+    // @mediapipe/tasks-vision (the face finder's worker) is one plain ES module: served as it is, it is
+    // never discovered mid-session, which made the dev server reload the page under a running camera.
+    exclude: ["quickjs-emscripten", "@sqlite.org/sqlite-wasm", "maplibre-gl", "@mediapipe/tasks-vision"],
   },
   server: {
     port: 5173,

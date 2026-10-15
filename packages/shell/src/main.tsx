@@ -53,6 +53,7 @@ import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
 import { watchLiveCamera } from "./camera-indicator.js";
+import { loadFaces } from "./faces/faces-loader.js";
 import { readDemoLink, type DemoLink } from "./demo-link.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
@@ -985,6 +986,9 @@ async function boot(): Promise<void> {
   setShellCaps(caps);
   // "Camera on" whenever an app sees through the camera live; the shell's, not the app's (docs/25).
   if (caps.liveCamera) watchLiveCamera(caps.liveCamera);
+  // Faces in its frames, when an app asks (`live({ faces: true })`): the shell loads the finder, the
+  // first time it is wanted, from files it ships itself (faces/, docs/25 §Faces).
+  caps.liveCamera?.useFaces(loadFaces);
 
   // Opening an app, going home and Back switch in place from here on (#89).
   setRouteHandler((next) => {
