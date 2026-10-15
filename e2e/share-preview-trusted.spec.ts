@@ -76,7 +76,9 @@ test("a hosted link: preview meta and picture for chats, nothing of the sharer's
   await context.close();
 });
 
-test("a link its sharer took down says so, in plain words", async ({ page, browser, baseURL }) => {
+test("a link its sharer took down says so, in plain words", async ({ page, browser, baseURL, consoleGuard }) => {
+  // The service answers a taken-down link's package with 404, on purpose; the browser logs that fetch.
+  consoleGuard.allow(/Failed to load resource: the server responded with a status of 404/, "the link was taken down on purpose: its package is gone");
   const link = await makeDemoLink(page, "Groceries");
   const id = new URL(link).pathname.split("/").pop()!;
   const token = await page.evaluate((i) => (JSON.parse(localStorage.getItem("potyro:shares") ?? "[]") as Array<{ id: string; deleteToken: string }>).find((s) => s.id === i)?.deleteToken, id);
