@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../console-guard";
 import { openHome, seed } from "./fixture.js";
 
 // The launcher from a keyboard (#94), at desktop width: Tab reaches every tile and every menu

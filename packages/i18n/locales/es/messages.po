@@ -2661,6 +2661,10 @@ msgstr "Ponle un nombre."
 msgid "Go back"
 msgstr "Volver"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Go back to that tab, or use Potyro here — the other tab will step aside."
+msgstr "Vuelve a esa pestaña o usa Potyro aquí: la otra pestaña se hará a un lado."
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Go back to this"
 msgstr "Volver a esto"
@@ -4189,6 +4193,10 @@ msgstr "Potyro no puede mostrar este tipo de archivo. Guarda una copia para abri
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Oro Potyro"
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Potyro is open in another tab"
+msgstr "Potyro está abierto en otra pestaña"
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -5814,6 +5822,10 @@ msgstr "actualizada por un colaborador"
 msgid "Updated your data from {was} to {to}."
 msgstr "Tus datos se actualizaron de {was} a {to}."
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Use it here"
+msgstr "Usarlo aquí"
+
 #: ../shell/src/share-sheet.tsx
 msgid "Use it together"
 msgstr "Usarla juntos"
@@ -6118,6 +6130,10 @@ msgstr "Tus apps y datos viven aquí. Añade otro dispositivo para usarlos tambi
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Tus apps están en el relay. Todo lo que hagas después también va."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
+msgstr "Tus apps se abren en una sola pestaña a la vez, para que nada de lo que cambies en una falte en la otra."
 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, openFromCard, openNewStudio } from "./studio-helpers.js";
 
 // "Potyro can't do this yet" (#263), end to end with a scripted OpenRouter: the agent looks a
@@ -15,7 +15,8 @@ type Body = { messages: Msg[]; tool_choice?: string };
 const reply = (message: Record<string, unknown>) => ({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }] }) });
 const lookup = { content: "", tool_calls: [{ id: "l1", type: "function", function: { name: "lookup", arguments: JSON.stringify({ query: "barcodeScanner" }) } }] };
 
-test("a request to the Potyro team: shown in plain words, reviewed, kept while the relay is away, then sent", async ({ page }) => {
+test("a request to the Potyro team: shown in plain words, reviewed, kept while the relay is away, then sent", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/^Failed to load resource: the server responded with a status of 404/, "the team's endpoint answers 404 on purpose while the relay is 'away'");
   const model: Body[] = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as Body;

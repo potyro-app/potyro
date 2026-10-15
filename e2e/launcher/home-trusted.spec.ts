@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../console-guard";
 import { openApp, openHome, seed } from "./fixture.js";
 
 // The launcher: with no app selected, the shell opens a home screen listing apps by provenance —

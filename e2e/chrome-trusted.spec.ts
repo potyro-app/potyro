@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
 // a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide

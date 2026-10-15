@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,8 +10,8 @@ import { fileURLToPath } from "node:url";
 // The bug (2026-10-15, apps.vaz.io): Breakout, added from its package in one tab, worked there; in a
 // second tab it said "No file "levels.json" in this app". The first tab held the app's database, so
 // the second could not open it — and opened a fresh, empty localStorage store in its place, without
-// a word. The app then ran on that store: no records, no files. Now the second tab says its data is
-// open in the other tab and offers Try again; an app whose shipped file is missing says so before
+// a word. The app then ran on that store: no records, no files. Now the second tab says Potyro is
+// open in the other tab and offers Use it here; an app whose shipped file is missing says so before
 // any of its code runs, and puts it back from the link it came from.
 
 const PACK = fileURLToPath(new URL("../scripts/pack-app.mjs", import.meta.url));
@@ -40,7 +40,10 @@ async function addPackage(page: Page, name: string, zip: Buffer, mine: boolean):
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
-test("Breakout open in one tab: a second tab says its data is open there, never opens an empty stand-in, and Try again opens it once the first is closed", async ({ context }) => {
+// One tab owns the storage (storage-owner.ts): the second tab never reaches the app's store at all.
+// It says Potyro is open in the other tab, and "Use it here" moves Potyro over — with the app's
+// records and its shipped file, because it is the same store.
+test("Breakout open in one tab: a second tab says Potyro is open there, never opens an empty stand-in, and Use it here opens it with its files", async ({ context }) => {
   const a = await context.newPage();
   await addPackage(a, "Breakout", pack(BREAKOUT, ["breakout.app.ts", "levels.json"]), true);
 
@@ -50,16 +53,15 @@ test("Breakout open in one tab: a second tab says its data is open there, never 
     if (/Using local storage for "user:breakout"/.test(m.text())) fellBack.push(m.text());
   });
   await b.goto("/?user=breakout");
-  const splash = b.getByRole("alert");
-  await expect(splash).toContainText("It could not open.", { timeout: 30_000 });
-  await expect(splash).toContainText("open in another Potyro tab or window");
-  await expect(splash).not.toContainText("No file");
+  const elsewhere = (page: Page) => page.getByRole("alertdialog", { name: "Potyro is open in another tab" });
+  await expect(elsewhere(b)).toBeVisible({ timeout: 30_000 });
+  await expect(b.locator("body")).not.toContainText("No file");
   expect(fellBack).toEqual([]);
 
-  await a.close();
-  await b.getByRole("button", { name: "Try again" }).click();
+  await elsewhere(b).getByRole("button", { name: "Use it here" }).click();
   await expect(b.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
   await expect(b.getByRole("alert")).toHaveCount(0);
+  await expect(elsewhere(a)).toBeVisible({ timeout: 15_000 });
   // Its shipped file is in its folder, on its own store.
   await b.goto("/?data=breakout&files");
   await expect(b.getByText("levels.json").first()).toBeVisible({ timeout: 30_000 });

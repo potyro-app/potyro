@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Rows under headings and sections that fold (#108). Places' "All places" shows every category at
 // once, in the enum's order, each heading with a count and folding its group away; the fold is
