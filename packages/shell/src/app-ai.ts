@@ -153,10 +153,16 @@ async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<
 const isAbort = (e: unknown): boolean => (e as { name?: string } | null)?.name === "AbortError";
 
 let relayMissingUntil = 0;
+/** When the free relay last answered as itself (a reply, or "used up"), and whether it still gave. */
+let relaySeen: { at: number; gives: boolean } | null = null;
+/** How long what the relay said is believed, for the consent question. */
+const SEEN_FOR_MS = 10 * 60_000;
+const HEALTH_MS = 3_000;
 
-/** Test seam: forget that the relay was missing. */
+/** Test seam: forget everything about the relay. */
 export function resetRelayMemory(): void {
   relayMissingUntil = 0;
+  relaySeen = null;
 }
 
 export function createAppAi(deps: AppAiDeps): AiCap {
@@ -175,17 +181,50 @@ export function createAppAi(deps: AppAiDeps): AiCap {
         const body = (await res.json().catch(() => null)) as { ok?: boolean; text?: unknown; error?: string } | null;
         // Not there: a site with no relay answers with its own page, or with a 404 / 405 of its own.
         if (body === null || typeof body !== "object" || res.status === 404 || res.status === 405) {
-          relayMissingUntil = now() + MISSING_FOR_MS;
+          markMissing();
           return { tried: "missing" as const };
         }
-        if (res.ok && body.ok && typeof body.text === "string") return { tried: "free-ok" as const, text: body.text };
-        if (res.status === 429 && body.error === "allowance") return { tried: "used-up" as const };
+        if (res.ok && body.ok && typeof body.text === "string") {
+          relaySeen = { at: now(), gives: true };
+          return { tried: "free-ok" as const, text: body.text };
+        }
+        if (res.status === 429 && body.error === "allowance") {
+          relaySeen = { at: now(), gives: false };
+          return { tried: "used-up" as const };
+        }
         return { tried: "failed" as const };
       });
     } catch (e) {
       // Unreachable or too slow: the person's own key is next; an unreachable relay is not asked again for a while.
-      if (!isAbort(e)) relayMissingUntil = now() + MISSING_FOR_MS;
+      if (!isAbort(e)) markMissing();
       return { tried: isAbort(e) ? "failed" : "missing" };
+    }
+  };
+
+  const markMissing = (): void => {
+    relayMissingUntil = now() + MISSING_FOR_MS;
+    relaySeen = { at: now(), gives: false };
+  };
+
+  /**
+   * Would the free allowance pay right now? What the relay last said, when that was recent; else a
+   * look at its `/health` (no AI, nothing sent). Only a relay that answered may be promised as free.
+   */
+  const freeNow = async (): Promise<boolean> => {
+    if (relaySeen && now() - relaySeen.at < SEEN_FOR_MS) return relaySeen.gives;
+    if (now() < relayMissingUntil || !online()) return false;
+    try {
+      const ok = await withTimeout(HEALTH_MS, async (signal) => {
+        const res = await doFetch(relay.replace(/\/complete$/, "/health"), { method: "GET", signal });
+        const body = (await res.json().catch(() => null)) as { ok?: unknown } | null;
+        return res.ok && body?.ok === true;
+      });
+      if (ok) relaySeen = { at: now(), gives: true };
+      else markMissing();
+      return ok;
+    } catch {
+      markMissing();
+      return false;
     }
   };
 
@@ -246,17 +285,29 @@ export function createAppAi(deps: AppAiDeps): AiCap {
     standing: () => aiStanding(deps.appId),
     allow: () => setAiStanding(deps.appId, "on"),
 
-    consentWords: (appName, sends) => ({
-      message:
+    // Says who would pay as things are now: free only when the relay has answered; else the person's
+    // own key; else that it cannot run until they add one. Never a promise the device cannot keep.
+    consentWords: async (appName, sends) => {
+      const free = await freeNow();
+      const hasKey = deps.ownKey().trim().length > 0;
+      const what =
         sends === "photo"
-          ? t({ message: `“${appName}” wants to send a photo to an AI service (OpenRouter) to read it.`, comment: "Asked before a shared app first uses AI on a picture" })
-          : t({ message: `“${appName}” wants to send some text to an AI service (OpenRouter).`, comment: "Asked before a shared app first uses AI on words" }),
-      detail:
-        sends === "photo"
-          ? t`Only what the app sends goes: this photo and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢.`
-          : t`Only what the app sends goes: this text and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢.`,
-      ok: t({ message: "Allow", comment: "Button: let a shared app use AI" }),
-      cancel: t({ message: "Not now", comment: "Button: refuse a shared app's AI request this time" }),
-    }),
+          ? t`Only what the app sends goes: this photo and its question — nothing else in the app.`
+          : t`Only what the app sends goes: this text and its question — nothing else in the app.`;
+      const pays = free
+        ? t`Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢.`
+        : hasKey
+          ? t`It uses your own OpenRouter key from Model settings, usually under 1¢ a request.`
+          : t`AI isn't available until you add your own OpenRouter key in Model settings.`;
+      return {
+        message:
+          sends === "photo"
+            ? t({ message: `“${appName}” wants to send a photo to an AI service (OpenRouter) to read it.`, comment: "Asked before a shared app first uses AI on a picture" })
+            : t({ message: `“${appName}” wants to send some text to an AI service (OpenRouter).`, comment: "Asked before a shared app first uses AI on words" }),
+        detail: `${what} ${pays}`,
+        ok: t({ message: "Allow", comment: "Button: let a shared app use AI" }),
+        cancel: t({ message: "Not now", comment: "Button: refuse a shared app's AI request this time" }),
+      };
+    },
   };
 }

@@ -23,7 +23,8 @@ const BLOBS_ONLY: AiContext = {
 function englishConsent(appName: string, sends: "photo" | "text", service: string) {
   return {
     message: sends === "photo" ? `“${appName}” wants to send a photo to an AI service (${service}) to read it.` : `“${appName}” wants to send some text to an AI service (${service}).`,
-    detail: `Only what the app sends goes: this ${sends} and its question — nothing else in the app. Free while this month's allowance lasts; then your own ${service} key, usually under 1¢.`,
+    // Who pays is the platform's to say (AiCap.consentWords): this fallback promises nothing about it.
+    detail: `Only what the app sends goes: this ${sends} and its question — nothing else in the app.`,
     ok: "Allow",
     cancel: "Not now",
   };
@@ -41,8 +42,8 @@ function sealedAi(cap: AiCap, ui: UiBridge, appName: string, ai: AiContext): AiC
     const sends = call.parts.some((p) => "image" in p) ? "photo" : "text";
     // Two calls at once ask one question.
     asking ??= (async () => {
-      const w = cap.consentWords?.(appName, sends) ?? englishConsent(appName, sends, cap.service);
       try {
+        const w = (await cap.consentWords?.(appName, sends)) ?? englishConsent(appName, sends, cap.service);
         return await ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel });
       } finally {
         asking = null;

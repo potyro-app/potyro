@@ -1176,6 +1176,10 @@ msgstr "La IA de esta app ha usado {aiSpentWords} de tu crédito de OpenRouter e
 msgid "AI is turned off for this app. Turn it on again in Edit tile."
 msgstr "La IA está desactivada para esta app. Vuelve a activarla en «Editar mosaico»."
 
+#: ../shell/src/app-ai.ts
+msgid "AI isn't available until you add your own OpenRouter key in Model settings."
+msgstr "La IA no estará disponible hasta que añadas tu propia clave de OpenRouter en los ajustes del modelo."
+
 #. What an app asks this device for, lower case; AI = an online AI service (ctx.caps.ai)
 #: ../shell/src/capability-words.ts
 msgid "AI, for the photos and text it sends"
@@ -2586,6 +2590,10 @@ msgstr "Vi"
 msgid "Free AI isn't available yet — add your own key in Model settings."
 msgstr "La IA gratuita aún no está disponible: añade tu propia clave en los ajustes del modelo."
 
+#: ../shell/src/app-ai.ts
+msgid "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
+msgstr "Gratis mientras dure la cuota de este mes; después, tu propia clave de OpenRouter, normalmente menos de 1 ¢."
+
 #. Ask review: where a proposed record was confirmed, e.g. From Wikidata
 #: ../shell/src/ask-verdicts.ts
 msgid "From {via}"
@@ -2995,6 +3003,10 @@ msgstr "Se ejecuta en la caja sellada y sus bibliotecas necesitan una página we
 #: ../shell/src/add-app-dialog.tsx
 msgid "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
 msgstr "Se ejecuta en la caja sellada: solo puede usar lo que permitas, cuando lo pida. Si sabes quién la hizo, podrás dejar que se ejecute como tuya una vez añadida, desde la app o desde su menú ⋯ en tus apps."
+
+#: ../shell/src/app-ai.ts
+msgid "It uses your own OpenRouter key from Model settings, usually under 1¢ a request."
+msgstr "Usa tu propia clave de OpenRouter de los ajustes del modelo, normalmente menos de 1 ¢ por solicitud."
 
 #: ../shell/src/sync-consent.ts
 msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
@@ -3971,12 +3983,12 @@ msgid "Only these words and yours are sent to the Potyro team — nothing about 
 msgstr "Al equipo de Potyro solo le llegan estas palabras y tu propuesta — nada sobre ti ni tus apps."
 
 #: ../shell/src/app-ai.ts
-msgid "Only what the app sends goes: this photo and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
-msgstr "Solo se envía lo que la app envía: esta foto y su pregunta, nada más de la app. Gratis mientras dure la cuota de este mes; después, tu propia clave de OpenRouter, normalmente menos de 1 ¢."
+msgid "Only what the app sends goes: this photo and its question — nothing else in the app."
+msgstr "Solo se envía lo que la app envía: esta foto y su pregunta, nada más de la app."
 
 #: ../shell/src/app-ai.ts
-msgid "Only what the app sends goes: this text and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
-msgstr "Solo se envía lo que la app envía: este texto y su pregunta, nada más de la app. Gratis mientras dure la cuota de este mes; después, tu propia clave de OpenRouter, normalmente menos de 1 ¢."
+msgid "Only what the app sends goes: this text and its question — nothing else in the app."
+msgstr "Solo se envía lo que la app envía: este texto y su pregunta, nada más de la app."
 
 #: ../shell/src/engine-settings.tsx
 msgid "only while the dev server runs"

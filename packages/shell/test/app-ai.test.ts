@@ -13,17 +13,18 @@ import { setAiStanding } from "../src/ai-setting.js";
 import { spentIn } from "../src/ask-spend.js";
 
 const RELAY = "https://apps.test/ai/complete";
+const HEALTH = "https://apps.test/ai/health";
 const PHOTO = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 1])], { type: "image/jpeg" });
 const CALL: AiCall = { system: "Answer with JSON.", parts: [{ text: "A receipt." }, { image: PHOTO }], json: { type: "object" }, maxTokens: 4000 };
 
 type Route = (init: RequestInit & { url: string }) => Response | Promise<Response>;
 
-function setup(routes: { relay?: Route; openrouter?: Route }, over: Partial<AppAiDeps> = {}) {
+function setup(routes: { relay?: Route; openrouter?: Route; health?: Route }, over: Partial<AppAiDeps> = {}) {
   const seen: Array<{ url: string; body: Record<string, unknown>; headers: Record<string, string> }> = [];
   const fetchFake = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = String(input);
-    seen.push({ url, body: JSON.parse(String(init.body)), headers: init.headers as Record<string, string> });
-    const route = url === RELAY ? routes.relay : url === OPENROUTER_URL ? routes.openrouter : undefined;
+    seen.push({ url, body: init.body ? JSON.parse(String(init.body)) : {}, headers: init.headers as Record<string, string> });
+    const route = url === RELAY ? routes.relay : url === OPENROUTER_URL ? routes.openrouter : url === HEALTH ? routes.health : undefined;
     if (!route) throw new TypeError("Failed to fetch");
     return route({ ...init, url });
   }) as typeof fetch;
@@ -145,10 +146,34 @@ describe("when the service fails", () => {
 });
 
 describe("the consent words and the switch", () => {
-  it("name the service and what goes, in the person's language; Allow is remembered per app", () => {
+  it("promise free AI only when the relay answers; else name the person's key, or say a key is needed", async () => {
+    const answering = setup({ health: () => json(200, { ok: true }) });
+    const free = await answering.ai.consentWords!("Receipt Split", "photo");
+    expect(free.message).toBe("“Receipt Split” wants to send a photo to an AI service (OpenRouter) to read it.");
+    expect(free.detail).toBe("Only what the app sends goes: this photo and its question — nothing else in the app. Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢.");
+    expect(answering.seen.map((s) => s.url)).toEqual(["https://apps.test/ai/health"]); // a look, no AI request
+
+    resetRelayMemory();
+    const withKey = setup({ health: html }, { ownKey: () => "sk-or-mine" });
+    const own = await withKey.ai.consentWords!("Receipt Split", "text");
+    expect(own.detail).toBe("Only what the app sends goes: this text and its question — nothing else in the app. It uses your own OpenRouter key from Model settings, usually under 1¢ a request.");
+    expect(own.detail).not.toMatch(/Free/);
+
+    resetRelayMemory();
+    const none = setup({});
+    expect((await none.ai.consentWords!("Receipt Split", "photo")).detail).toMatch(/AI isn't available until you add your own OpenRouter key in Model settings\.$/);
+  });
+
+  it("remember what the relay last said: a used-up allowance is not promised as free", async () => {
+    const { ai, seen } = setup({ relay: () => json(429, { ok: false, error: "allowance", reason: "device-month" }), openrouter: openRouterOk("x"), health: () => json(200, { ok: true }) }, { ownKey: () => "sk-or-mine" });
+    await ai.complete(CALL);
+    expect((await ai.consentWords!("Receipt Split", "photo")).detail).toMatch(/It uses your own OpenRouter key/);
+    expect(seen.some((s) => s.url.endsWith("/health"))).toBe(false);
+  });
+
+  it("name the service and what goes; Allow is remembered per app", async () => {
     const { ai } = setup({});
-    const w = ai.consentWords!("Receipt Split", "photo");
-    expect(w.message).toBe("“Receipt Split” wants to send a photo to an AI service (OpenRouter) to read it.");
+    const w = await ai.consentWords!("Receipt Split", "photo");
     expect(w.detail).toMatch(/nothing else in the app/);
     expect(ai.standing!()).toBeUndefined();
     ai.allow!();

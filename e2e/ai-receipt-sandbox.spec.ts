@@ -4,8 +4,8 @@ import { installShared } from "./realm.js";
 
 // `ctx.caps.ai` in a shared app (docs/23): Receipt Split, sealed, reads a photo of a receipt into
 // items. What is checked is what a person sees and what leaves the browser: the app asks first,
-// naming the service and what goes; nothing is sent before Allow; the free relay is tried first and,
-// not being there, the person's own OpenRouter key pays; the request carries the photo and the
+// naming the service, what goes and — the free relay not being there — that the person's own key
+// pays, never "free"; no AI request is sent before Allow; the person's own OpenRouter key pays; the request carries the photo and the
 // app's instructions and nothing from the app's records; and the items the model read appear as rows.
 //
 // OpenRouter is a mocked route — no real model is called, nothing is spent. Run in the realm and,
@@ -32,6 +32,10 @@ async function prepare(page: Page, sandbox: "realm" | "quickjs") {
     [sandbox] as const,
   );
   // The free relay is not deployed: the site answers with a 404 of its own.
+  await page.route("**/ai/health", async (route) => {
+    sent.push({ url: route.request().url(), body: {}, auth: route.request().headers().authorization });
+    await route.fulfill({ status: 404, contentType: "text/html", body: "<!doctype html><title>Not found</title>" });
+  });
   await page.route("**/ai/complete", async (route) => {
     sent.push({ url: route.request().url(), body: route.request().postDataJSON() as Record<string, unknown>, auth: undefined });
     await route.fulfill({ status: 404, contentType: "text/html", body: "<!doctype html><title>Not found</title>" });
@@ -67,7 +71,11 @@ for (const sandbox of ["realm", "quickjs"] as const) {
     const dialog = page.locator(".k-dialog");
     await expect(dialog).toContainText("“Receipt Split” wants to send a photo to an AI service (OpenRouter) to read it.");
     await expect(dialog).toContainText("nothing else in the app");
-    expect(sent).toEqual([]);
+    // The free relay is not there, so nothing is promised free: it says whose key pays.
+    await expect(dialog).toContainText("It uses your own OpenRouter key from Model settings");
+    await expect(dialog).not.toContainText("Free while");
+    // Before Allow, only the look at /health — no AI request.
+    expect(sent.map((s) => new URL(s.url).pathname)).toEqual(["/ai/health"]);
     await dialog.getByRole("button", { name: "Allow" }).click();
 
     // The items the model read, as rows — the price fitted to a number on the way ("6,50" → 6.50).
@@ -76,8 +84,9 @@ for (const sandbox of ["realm", "quickjs"] as const) {
     await expect(page.getByText(/6[.,]50/).first()).toBeVisible();
     await expect(page.getByText("Added 2 items")).toBeVisible();
 
-    // Free first, then the person's own key — and what went is the photo and the app's words.
-    expect(sent.map((s) => s.url.replace(/^https?:\/\/[^/]+/, ""))).toEqual(["/ai/complete", "/api/v1/chat/completions"]);
+    // The free relay was looked for first (its /health, which carries nothing) and is not there, so
+    // the request went straight to the person's own key — and what went is the photo and the app's words.
+    expect(sent.map((s) => s.url.replace(/^https?:\/\/[^/]+/, ""))).toEqual(["/ai/health", "/api/v1/chat/completions"]);
     const call = sent[1]!;
     expect(call.auth).toBe("Bearer sk-or-test-key");
     expect(call.body.model).toBe("google/gemini-2.5-flash-lite");
@@ -85,8 +94,8 @@ for (const sandbox of ["realm", "quickjs"] as const) {
     expect(user.map((p) => p.type)).toEqual(["text", "image_url"]);
     expect(user[0]!.text).toContain("A shop or restaurant receipt");
     expect(user[1]!.image_url!.url).toMatch(/^data:image\/(png|jpeg);base64,/);
-    // The free relay's payload never carried the key.
-    expect(JSON.stringify(sent[0]!.body)).not.toContain("sk-or-test-key");
+    // The look at the relay never carried the key.
+    expect(sent[0]!.auth).toBeUndefined();
 
     // Asked once: the next receipt goes without a question.
     await readReceipt(page, "receipt-2.png");
@@ -102,5 +111,6 @@ test("Not now sends nothing and adds nothing (realm)", async ({ page }) => {
   await dialog.getByRole("button", { name: "Not now" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText(/Tap “Read a receipt”/)).toBeVisible();
-  expect(sent).toEqual([]);
+  // Only the look at the relay's /health, which carries nothing; no AI request at all.
+  expect(sent.map((s) => new URL(s.url).pathname)).toEqual(["/ai/health"]);
 });
