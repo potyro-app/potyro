@@ -458,24 +458,25 @@ sudoedit /etc/potyro/ai.env
 #   AI_MONTHLY_CAP_USD=10
 #   AI_LEDGER=/data/ai-ledger.json
 #   HOST=0.0.0.0          # inside the container; published to loopback only, below
-#   PORT=4203
+#   PORT=4204
 ```
 
 ### 2. Run it
 
-No dependencies, like the request relay:
+No dependencies, like the request relay. Port **4204**: 4201 is the sync relay, 4202 the request
+relay and 4203 the share links (docs/24).
 
 ```bash
 rsync -az --delete packages/ai-relay/ e@vaz.io:/opt/potyro-ai/
 sudo mkdir -p /var/lib/potyro-ai
 
 docker run -d --name potyro-ai --restart unless-stopped \
-  -p 127.0.0.1:4203:4203 \
+  -p 127.0.0.1:4204:4204 \
   --env-file /etc/potyro/ai.env \
   -v /opt/potyro-ai:/app:ro -v /var/lib/potyro-ai:/data -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
-docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite, cap $10 a month, listening on 0.0.0.0:4203"
+docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite, cap $10 a month, listening on 0.0.0.0:4204"
 ```
 
 Without `OPENROUTER_API_KEY` it refuses to start.
@@ -486,7 +487,7 @@ In the vhost, next to `/requests/` and **before** the SPA rule:
 
 ```apache
     # The free AI allowance for apps (docs/23).
-    RewriteRule ^/ai/(.*)$ http://127.0.0.1:4203/$1 [P,L]
+    RewriteRule ^/ai/(.*)$ http://127.0.0.1:4204/$1 [P,L]
 ```
 
 `configtest`, reload, and copy the vhost into `deploy/`, as for the request relay. The site's
