@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
 
 // Stats and a chart (#109). Workout's Progress page: tiles for this week against last week, and a

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // A page that asks for the whole screen gets it — no top bar, no tabs — and the shell keeps the way
 // out: its ✕, Escape, and back. Trusted and sealed alike: an app can ask for the screen, not keep it.

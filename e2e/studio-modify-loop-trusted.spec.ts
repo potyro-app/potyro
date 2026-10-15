@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./console-guard";
 import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
 
 // The modify LOOP (#131), end to end in the Studio with a scripted OpenRouter: the model refuses

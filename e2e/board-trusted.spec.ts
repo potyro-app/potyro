@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // The board (#107). Recipes' Cookbook puts every recipe in a column by where it stands with you —
 // want to try, tried, keeper. Dragging a card to another column moves it; so does "Move to…" in the

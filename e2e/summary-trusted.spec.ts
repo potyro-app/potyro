@@ -1,5 +1,5 @@
 import { chooseFilter } from "./filters.js";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 
 // Summary figures — the shape no built-in view could express. `computed` is per-record and every
 // view renders rows, so a number derived from many records had nowhere to go; three of the

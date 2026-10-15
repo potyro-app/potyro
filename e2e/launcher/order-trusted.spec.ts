@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "../console-guard";
 import { tileAction } from "../launcher-actions.js";
 import { openApp, openHome, seed } from "./fixture.js";
 

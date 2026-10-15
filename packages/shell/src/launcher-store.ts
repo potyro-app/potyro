@@ -327,8 +327,14 @@ export function subscribe(cb: () => void): () => void {
 let snapshot: { raw: string; apps: InstalledApp[] } | null = null;
 function getSnapshot(): InstalledApp[] {
   // The person's languages are part of it: a translated app's tile name follows them (#302).
-  const raw = `${globalThis.localStorage?.getItem(KEY) ?? ""} ${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""} ${languagePrefs().join(",")}`;
-  if (!snapshot || snapshot.raw !== raw) snapshot = { raw, apps: listInstalledApps() };
+  const fingerprint = () =>
+    `${globalThis.localStorage?.getItem(KEY) ?? ""}\u0000${globalThis.localStorage?.getItem("potyro:user-apps") ?? ""}\u0000${languagePrefs().join(",")}`;
+  if (snapshot?.raw === fingerprint()) return snapshot.apps;
+  const apps = listInstalledApps();
+  // Fingerprinted AFTER listing: listing can write the entries (an app deleted a moment ago loses
+  // its entry), and a fingerprint taken before that write made the very next call build a new
+  // array, which React reports as "The result of getSnapshot should be cached" (e2e/console-guard.ts).
+  snapshot = { raw: fingerprint(), apps };
   return snapshot.apps;
 }
 
