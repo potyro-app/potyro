@@ -13,11 +13,44 @@ import { t } from "@lingui/core/macro";
 import type { LiveCameraCap } from "@potyro/capabilities";
 
 const CLASS = "k-camera-on";
+/** The app's top bar on a phone: the sign sits just under it, never on the app's name (#338). */
+const BAR = ".k-topbar";
+/** Where the bar ends, for the stylesheet; set on the root, because the sign's own style is the shell's. */
+const TOP_VAR = "--k-camera-on-top";
 
 /** Keep the indicator on screen while `cap` runs. Returns the way to stop watching. */
 export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): () => void {
   let el: HTMLElement | null = null;
   let guard: MutationObserver | null = null;
+  let bar: Element | null = null;
+  let barSize: ResizeObserver | null = null;
+  let recheck: ReturnType<typeof setInterval> | null = null;
+  const win = doc.defaultView;
+
+  /**
+   * Under the app's top bar when there is one, at its right — out of the way of the app's name and
+   * the bar's buttons, and still in reach of a thumb; centred at the top of the screen when there is
+   * none. The bar comes and goes as the person moves between screens, so it is looked for again.
+   */
+  const place = () => {
+    if (!el) return;
+    const found = doc.querySelector(BAR);
+    if (found !== bar) {
+      barSize?.disconnect();
+      bar = found;
+      if (bar && typeof ResizeObserver !== "undefined") {
+        barSize = new ResizeObserver(place);
+        barSize.observe(bar);
+      }
+    }
+    const rect = bar?.getBoundingClientRect();
+    if (rect && rect.height > 0 && rect.bottom > 0) {
+      doc.documentElement.style.setProperty(TOP_VAR, `${Math.round(rect.bottom)}px`);
+      if (el.dataset.under !== "bar") el.dataset.under = "bar";
+    } else if (el.dataset.under) {
+      delete el.dataset.under;
+    }
+  };
 
   const build = (): HTMLElement => {
     const box = doc.createElement("div");
@@ -52,9 +85,14 @@ export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): (
     if (el) return;
     el = build();
     doc.body.append(el);
+    place();
+    win?.addEventListener("resize", place);
+    doc.addEventListener("scroll", place, { capture: true, passive: true });
+    recheck = setInterval(place, 700);
     guard = new MutationObserver(() => {
       guard?.disconnect();
       assert();
+      place();
       watch();
     });
     watch();
@@ -67,6 +105,14 @@ export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): (
   const hide = () => {
     guard?.disconnect();
     guard = null;
+    barSize?.disconnect();
+    barSize = null;
+    bar = null;
+    if (recheck) clearInterval(recheck);
+    recheck = null;
+    win?.removeEventListener("resize", place);
+    doc.removeEventListener("scroll", place, { capture: true });
+    doc.documentElement.style.removeProperty(TOP_VAR);
     el?.remove();
     el = null;
   };
