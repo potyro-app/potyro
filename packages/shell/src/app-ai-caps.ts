@@ -9,7 +9,7 @@ import type { Capabilities } from "@potyro/capabilities";
 import { createAppAi } from "./app-ai.js";
 import { getEngineConfig } from "./engine-store.js";
 import { currentLocale } from "./locale.js";
-import { deviceId } from "./platform-requests.js";
+import { deviceId } from "./device-id.js";
 
 export function capsWithAi(caps: Capabilities, appId: string): Capabilities {
   const ai = createAppAi({ appId, ownKey: () => getEngineConfig().openrouterKey, device: deviceId, language: currentLocale });
