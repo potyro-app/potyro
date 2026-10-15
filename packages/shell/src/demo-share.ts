@@ -1,7 +1,12 @@
 // Making a demo link for one of your apps (docs/24 §2): the app, its demo records, and nothing of yours.
+//
+// Hosted first — a short link with a preview card in chats — when the share service answers; else the
+// inline link, which needs nothing but a static site and shows no preview.
 import { t } from "@lingui/core/macro";
-import { demoPackageFor } from "./demo-package.js";
+import { i18n } from "@lingui/core";
+import { demoPackageFor, type DemoPackage } from "./demo-package.js";
 import { inlineDemoLink } from "./demo-link.js";
+import { previewLines, renderPreviewCard } from "./preview-card.js";
 import { shareEvent } from "./share-events.js";
 import type { UserApp } from "./user-apps.js";
 
@@ -14,14 +19,52 @@ export interface MadeDemoLink {
 export interface DemoLinkOptions {
   /** The sharer's name, when they chose to show it. */
   by?: string;
-  /** Where the site is, for the link. Defaults to this page's. */
+  /** Where the site is, for an inline link. Defaults to this page's. */
   origin?: string;
   pathname?: string;
+  /** Test seams. */
+  serviceUp?: () => Promise<boolean>;
+}
+
+/** What a chat shows for the link: the app's name, and one line in the sharer's language. Never a record. */
+export function previewMeta(name: string, by: string | undefined): { title: string; description: string; lang: string } {
+  return {
+    title: name,
+    description: by
+      ? t({ message: `By ${by}. Try it in your browser: no account, nothing to install.`, comment: "A shared app's link preview, under its name" })
+      : t({ message: "Try it in your browser: no account, nothing to install.", comment: "A shared app's link preview, under its name" }),
+    lang: i18n.locale || "en",
+  };
+}
+
+async function hosted(app: UserApp, demo: DemoPackage, by: string | undefined): Promise<string> {
+  const [{ hostDemo }] = await Promise.all([import("./share-service.js")]);
+  const image = await renderPreviewCard({
+    name: app.name,
+    icon: demo.icon,
+    accent: demo.accent,
+    by: by ? t({ message: `by ${by}`, comment: "Under an app's name on its link preview" }) : undefined,
+    lines: previewLines(demo.seed, demo.entities),
+    made: t({ message: "Made with Potyro", comment: "Demo bar: links to Potyro itself" }),
+    tryIt: t({ message: "Try it in your browser — no account", comment: "Footer of a shared app's link preview picture" }),
+  }).catch(() => null);
+  return hostDemo({ appId: app.id, zip: demo.zip, meta: previewMeta(app.name, by), ...(image ? { image } : {}) });
 }
 
 export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Promise<MadeDemoLink> {
-  const zip = await demoPackageFor(app, { by: opts.by });
-  const link = inlineDemoLink(zip, opts.origin ?? location.origin, opts.pathname ?? location.pathname);
+  const demo = await demoPackageFor(app, { by: opts.by });
+  const up = opts.serviceUp ?? (async () => (await import("./share-service.js")).shareServiceUp());
+  if (await up()) {
+    try {
+      const link = await hosted(app, demo, opts.by);
+      shareEvent("demo-link-made");
+      return { link, hosted: true };
+    } catch (e) {
+      // The service is there and said no (too many today, say): the inline link still works.
+      console.warn("[potyro] the share service did not take this link; making one that carries the app:", e);
+    }
+  }
+  const link = inlineDemoLink(demo.zip, opts.origin ?? location.origin, opts.pathname ?? location.pathname);
   if (!link) {
     const name = app.name;
     throw new Error(t`“${name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package.`);

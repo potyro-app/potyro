@@ -416,6 +416,104 @@ lifted or the route is exempted from it (with the rate limit as its only guard).
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
 
+## Demo links and their previews (docs/24): NOT deployed yet
+
+A demo link opens an app running in the browser with sample records, and a chat shows a preview
+card for it (title, one line, a picture). The site is static, so the preview needs a small service
+beside the relay: `packages/share-links`. **Until it runs, nothing breaks:** the shell sees no
+`/share-api/health` and makes the *inline* form of the link (`/#try=…`). That form carries the
+whole app in the fragment, works on the static site as it is, and has no preview. Each link is
+10–20 KB, and some messengers cut a link that long (Telegram stops at 4096 characters).
+
+What the service accepts and does:
+
+| | |
+|---|---|
+| Routes | `POST /share-api/shares`, `GET /share-api/shares/<id>/payload`, `DELETE /share-api/shares/<id>` (with `x-delete-token`), `GET /share-api/health`, `GET /s/<id>` (the shell's `index.html` with the link's Open Graph and Twitter meta written in), `GET /s/<id>/preview.jpg`. |
+| What it holds | Per link: the **sealed** app package (AES-GCM, ≤ 2 MiB). The key is in the link's fragment and never reaches the service. Beside it, what the sharer's device made public for the preview: a title (the app's name), one line, a language, and a 1200×630 JPEG or PNG of ≤ 300 KB drawn from **demo** records. It also keeps the sha256 of the token that takes the link down. |
+| Checks | Body size before parsing, then each part. The picture is checked by its first bytes (JPEG/PNG only). Meta text is cleaned and capped, and HTML-escaped where it goes into the page. Ids are 128 random bits. |
+| Rate limit | 30 links a day per address (the first `X-Forwarded-For` entry), in memory. |
+| Pages | `noindex, nofollow` (header and meta). A link is for whoever it was sent to. |
+| It never | runs app code or reads a package. It has no accounts and no list of links. |
+
+### 1. Run it
+
+Node 22 runs the TypeScript as it is, and the package has no dependencies. Same container shape as
+the relay and the requests relay. It reads the built shell's `index.html` (read-only) on every
+request, so a deploy shows at once.
+
+```bash
+sudo mkdir -p /var/lib/potyro/shares && sudo chown -R "$USER": /var/lib/potyro/shares
+rsync -az --delete packages/share-links/ e@vaz.io:/opt/potyro-share-links/
+
+docker run -d --name potyro-share-links --restart unless-stopped \
+  -p 127.0.0.1:4203:4203 \
+  -e HOST=0.0.0.0 -e PORT=4203 \
+  -e POTYRO_SHARES_DIR=/data -e POTYRO_SHELL_INDEX=/site/index.html \
+  -e POTYRO_PUBLIC_ORIGIN=https://apps.vaz.io \
+  -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /var/www/karta:/site:ro -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-share-links   # "[share-links] keeping shares in /data, page from /site/index.html, listening on 0.0.0.0:4203"
+```
+
+`POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
+and Apache does not tell the service which scheme it was reached by.
+
+### 2. Route it, before the SPA rule
+
+In `deploy/apps.vaz.io.conf`, next to `/sync`:
+
+```apache
+    # Demo links (docs/24): the link's page, its preview picture, and the share API.
+    RewriteRule ^/s/([A-Za-z0-9_-]{22})(/preview\.(jpg|png))?/?$ http://127.0.0.1:4203/s/$1$2 [P,L]
+    RewriteRule ^/share-api/(.*)$ http://127.0.0.1:4203/share-api/$1 [P,L]
+```
+
+Then `sudo apache2ctl configtest`, `sudo systemctl reload apache2` (§6), and copy the vhost back
+into `deploy/`.
+
+### 3. The gate
+
+**Previews cannot work behind basic auth.** WhatsApp, Telegram, iMessage, Discord and X fetch
+`/s/<id>` and the picture without credentials. While `apps.vaz.io` is a private test, the gate
+stays. Invited people still get the short link and the demo, but chats show no card. When the site
+goes public, or to test previews before then, exempt exactly these paths:
+
+```apache
+    <LocationMatch "^/s/[A-Za-z0-9_-]{22}(/preview\.(jpg|png))?/?$">
+        Require all granted
+    </LocationMatch>
+```
+
+That alone shows the **preview**. Opening the demo also needs the shell's assets (`/assets/`,
+`/sw.js`, the manifest, the icons) and `GET /share-api/shares/<id>/payload` reachable without the
+gate. Exempting those is deciding to make the site public, so take that decision on purpose and not
+as a side effect of this section.
+
+### 4. Check it
+
+```bash
+curl -s https://apps.vaz.io/share-api/health                                   # {"ok":true}
+```
+
+Then make a link from a tile (*Share → Make the link*). It should look like `/s/<id>#k=…`, and the
+sheet should not say "without a preview picture". Check:
+
+- `curl -s https://apps.vaz.io/s/<id> | grep og:` shows the title and the image URL.
+- The image URL answers `image/jpeg`.
+- Pasting the link into a chat shows the card, once the gate allows it (§3).
+
+**Taking a link down** (a notice, a takedown, or the sharer's own request):
+`sudo rm -rf /var/lib/potyro/shares/<first two characters of id>/<id>`. The page then still loads
+the shell, which tells the person the link no longer works. The sharer's device keeps each link's
+delete token (`potyro:shares`); `DELETE /share-api/shares/<id>` with `x-delete-token` does the same.
+Before opening this to the public, see the research note on the DSA (a hosting service must have a
+notice-and-action path). The folder and the `rm` above are that path's mechanism, not the whole of it.
+
+**Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
+`du -sh /var/lib/potyro/shares` to watch it.
+
 ## What this does NOT protect
 
 Be straight with anyone you invite:

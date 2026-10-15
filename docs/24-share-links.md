@@ -25,7 +25,7 @@ fetched only after the person says yes — both through the prompts every sealed
 promoted later). "Remix" goes through the same card and then opens the Studio on the kept copy,
 prefilled with "Make me a version of <app> that…". Nothing about trust changes.
 
-Sharing from the sharer's side is one sheet: **Send a link anyone can try** (the demo link) above
+Sharing from the sharer's side is one sheet: **A link anyone can try** (the demo link) above
 **Use it together** (the existing invite). The sheet offers copy, WhatsApp, Telegram and the
 device's own share sheet.
 
@@ -90,7 +90,7 @@ A small Node process beside the relay, same shape as `platform-requests` (#263):
 | `GET /share-api/shares/<id>/payload` | the ciphertext |
 | `DELETE /share-api/shares/<id>` | with `x-delete-token`: removes it (the sharer's "stop sharing", and the operator's takedown) |
 | `GET /s/<id>` | the shell's `index.html` with Open Graph and Twitter meta for the link written in |
-| `GET /s/<id>/preview` | the preview image |
+| `GET /s/<id>/preview.jpg` (or `.png`) | the preview image |
 | `GET /share-api/health` | `{ ok: true }` |
 
 Caps: payload ≤ 2 MiB, image ≤ 300 KB (JPEG or PNG, checked by magic bytes), title ≤ 80 and
@@ -102,7 +102,7 @@ The shell at `/s/<id>` is the ordinary SPA: it reads `<id>` from the path and `k
 fetches the payload, decrypts it and opens the demo. Built-in asset paths are absolute, so the same
 `index.html` works at any path.
 
-In dev and `vite preview` the same handler is mounted by a Vite plugin (with a temporary folder), so
+In dev and `vite preview` the same handler is mounted by a Vite plugin (shares kept in memory), so
 the hosted form is what the dev server and the browser tests exercise. Deploying it is docs/16.
 
 ## 5. The preview image
@@ -119,7 +119,7 @@ their records.
 `manifest.json` gains `credit`: `{ name, by?, remixOf?: credit }`, at most five deep.
 
 - `name` is the app's name; `by` is the sharer's name, only when they have set one (You → name)
-  and leave "Show my name" ticked on the share sheet.
+  and leave "Say it is by <name>" ticked on the share sheet.
 - Keeping an app keeps its credit on the saved app (`UserApp.credit`).
 - Remixing saves the copy with `credit: { remixOf: <the shared app's credit> }`; when that copy is
   shared, its credit is `{ name, by, remixOf }` — a chain.
