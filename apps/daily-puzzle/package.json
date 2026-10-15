@@ -1,0 +1,15 @@
+{
+  "name": "@potyro/app-daily-puzzle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Potyro Daily: one colour code a day, the same for everyone, shared as the grid everyone knows",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs daily-puzzle.app.ts -o dist/daily-puzzle.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  }
+}
