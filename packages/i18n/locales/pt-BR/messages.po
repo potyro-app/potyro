@@ -89,8 +89,8 @@ msgid "“{name}” was just updated to a newer version."
 msgstr "“{name}” acabou de ser atualizado para uma versão mais nova."
 
 #: ../shell/src/sync-consent.ts
-msgid "“{name}” was made by someone else, so it runs in a sandbox."
-msgstr "“{name}” foi feito por outra pessoa, então roda em um ambiente isolado."
+msgid "“{name}” was made by someone else, so it runs in the sealed box."
+msgstr "“{name}” foi feito por outra pessoa, então roda na caixa lacrada."
 
 #: ../shell/src/add-app.ts
 msgid "“{name}” was not added: its files could not be saved. {why}"
@@ -820,8 +820,8 @@ msgid "<0>{doneName}</0> is updated, with your data as it was."
 msgstr "<0>{doneName}</0> foi atualizado, com seus dados como estavam."
 
 #: ../shell/src/trust-dialog.tsx
-msgid "<0>{name}</0> runs directly on this device (not sandboxed). Revoke to run it in the isolate again."
-msgstr "<0>{name}</0> roda diretamente neste dispositivo (sem isolamento). Revogue para que ele volte a rodar isolado."
+msgid "<0>{name}</0> runs like the apps you made, with the same reach. Put it back in the sealed box to keep it away from the rest of Potyro again."
+msgstr "<0>{name}</0> roda como os apps que você fez, com o mesmo alcance. Coloque de volta na caixa lacrada para mantê-lo de novo longe do resto do Potyro."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>It only works when it runs as yours.</0> Only let it if you know who made it. Otherwise it stays sealed, and it will not open."
@@ -1233,10 +1233,6 @@ msgstr "Tudo feito."
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Permitir"
-
-#: ../shell/src/App.tsx
-msgid "allow direct"
-msgstr "permitir direto"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Allow this address?"
@@ -3044,6 +3040,10 @@ msgstr "Ele já está aqui"
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "Ele também é removido do app e não pode ser recuperado."
 
+#: ../shell/src/trust-dialog.tsx
+msgid "It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
+msgstr "Ele sai da caixa lacrada e roda como os apps que você fez, com o mesmo alcance. Só faça isso se você o fez, ou se conhece e confia em quem fez. <0>{name}</0> pede:"
+
 #: ../shell/src/main.tsx
 msgid "It needs a library from the internet to open, and you said not now."
 msgstr "Ele precisa de uma biblioteca da internet para abrir, e você disse agora não."
@@ -3059,6 +3059,10 @@ msgstr "Abre o app na hora em qualquer navegador, com registros de exemplo. Sem 
 #: ../shell/src/fix-panel.tsx
 msgid "It replayed clean against the app as it is — {detail}"
 msgstr "A repetição passou limpa no app como ele está — {detail}"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "It runs as yours"
+msgstr "Roda como seu"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It runs as yours, as it did before."
@@ -3081,8 +3085,8 @@ msgid "It uses your own OpenRouter key from Model settings, usually under 1¢ a 
 msgstr "Usa sua própria chave do OpenRouter das configurações do modelo, normalmente menos de 1 ¢ por pedido."
 
 #: ../shell/src/sync-consent.ts
-msgid "It was made by someone else and runs in a sandbox. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
-msgstr "Ele foi feito por outra pessoa e roda em um ambiente isolado. Compartilhar deixaria o código dele gravar em dados que saem deste dispositivo, algo que ele não diz precisar. Você pode compartilhar mesmo assim."
+msgid "It was made by someone else and runs in the sealed box. Sharing it would let its code write into data that leaves this device — something it does not say it needs. You can share it anyway."
+msgstr "Foi feito por outra pessoa e roda na caixa lacrada. Compartilhar deixaria o código dele escrever em dados que saem deste aparelho — algo que ele não diz precisar. Você pode compartilhar mesmo assim."
 
 #: ../shell/src/shipped-files.ts
 msgid "It was not added from a link, so its files can only come back from its package: add it again, and choose “Replace it, keep its data”."
@@ -3283,6 +3287,10 @@ msgstr "Deixar o Ask ler de {host}?"
 #: ../shell/src/trust-dialog.tsx
 msgid "Let it run as yours"
 msgstr "Deixar rodar como seu"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "Let it run as yours?"
+msgstr "Deixar rodar como seu?"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Let this app send what it asks about — a photo, some text — to an AI service."
@@ -4291,17 +4299,13 @@ msgstr "Geração anterior, para um teste de regressão"
 msgid "Previous month"
 msgstr "Mês anterior"
 
-#: ../shell/src/trust-dialog.tsx
-msgid "Promote to trusted"
-msgstr "Tornar confiável"
-
-#: ../shell/src/trust-dialog.tsx
-msgid "Promote to trusted?"
-msgstr "Tornar confiável?"
-
 #: ../views/src/checklist.tsx
 msgid "Put {pendingName} in {heading}"
 msgstr "Colocar {pendingName} em {heading}"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "Put it back in the sealed box"
+msgstr "Colocar de volta na caixa lacrada"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
@@ -4574,14 +4578,10 @@ msgstr "restaurado"
 msgid "Restoring…"
 msgstr "Restaurando…"
 
-#. Trust menu hint: look at how a trusted app runs
+#. Trust menu hint: look at how an app that runs as yours runs
 #: ../shell/src/App.tsx
 msgid "review"
 msgstr "revisar"
-
-#: ../shell/src/trust-dialog.tsx
-msgid "Revoke trust"
-msgstr "Revogar confiança"
 
 #: ../shell/src/studio.tsx
 msgid "Rewrote the app instead of editing it."
@@ -4615,6 +4615,11 @@ msgstr "executar {runsN}"
 msgid "Run ▶"
 msgstr "Rodar ▶"
 
+#. Trust menu hint: let a sealed app run as yours
+#: ../shell/src/App.tsx
+msgid "run as yours"
+msgstr "rodar como seu"
+
 #: ../views/src/custom.tsx
 msgid "Run it as mine…"
 msgstr "Rodar como meu…"
@@ -4628,22 +4633,22 @@ msgid "running now"
 msgstr "rodando agora"
 
 #: ../shell/src/App.tsx
-msgid "Runs directly"
-msgstr "Roda diretamente"
+msgid "Runs as yours"
+msgstr "Roda como seu"
+
+#: ../shell/src/App.tsx
+msgid "Runs in the sealed box. Tap to let it run as yours."
+msgstr "Roda na caixa lacrada. Toque para deixar rodar como seu."
 
 #: ../shell/src/App.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
-msgid "Runs in a sandbox"
-msgstr "Roda em um ambiente isolado"
+msgid "Runs sealed"
+msgstr "Roda lacrado"
 
 #: ../shell/src/App.tsx
-msgid "Runs in a sandbox: review"
-msgstr "Roda em um ambiente isolado: revisar"
-
-#: ../shell/src/App.tsx
-msgid "Runs in a sandbox. Tap to let it run as yours."
-msgstr "Roda em um ambiente isolado. Toque para deixá-lo rodar como seu."
+msgid "Runs sealed: review"
+msgstr "Roda lacrado: revisar"
 
 #. Calendar column head: Saturday, as short as your language writes it
 #: ../views/src/date-input.tsx
@@ -4654,11 +4659,6 @@ msgstr "Sáb"
 #: ../views/src/stats.tsx
 msgid "same as {label}"
 msgstr "igual a {label}"
-
-#. A small mark in the header of an app that runs sealed
-#: ../shell/src/App.tsx
-msgid "sandbox"
-msgstr "isolado"
 
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
@@ -4721,6 +4721,11 @@ msgstr "Dizer que é de {myName}"
 #: ../shell/src/studio-thread-view.tsx
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Diga como diria a uma pessoa: “adicione uma avaliação”, “coloque os mais novos primeiro”, “uma página para a lista de compras”."
+
+#. A small mark in the header of an app that runs sealed
+#: ../shell/src/App.tsx
+msgid "sealed"
+msgstr "lacrado"
 
 #. The search box at the top of a list to pick from
 #: ../views/src/pick-list.tsx
@@ -5825,14 +5830,6 @@ msgstr "Traduzir para {into}"
 msgid "Translate this app into {intoName} ({intoTag})."
 msgstr "Traduza este app para {intoName} ({intoTag})."
 
-#: ../shell/src/trust-dialog.tsx
-msgid "Trusted app"
-msgstr "App confiável"
-
-#: ../shell/src/trust-dialog.tsx
-msgid "Trusted apps run <0>directly</0> with full access — no sandbox. Only promote an app you wrote or fully trust. <1>{name}</1> declares:"
-msgstr "Apps confiáveis rodam <0>diretamente</0> com acesso total, sem isolamento. Só torne confiável um app que você escreveu ou em que confia totalmente. <1>{name}</1> declara:"
-
 #. The words sent with a demo link in a chat
 #: ../shell/src/share-sheet.tsx
 msgid "Try {name}, made with Potyro"
@@ -6196,6 +6193,10 @@ msgstr "sim"
 #: ../views/src/summary.ts
 msgid "Yes"
 msgstr "Sim"
+
+#: ../shell/src/trust-dialog.tsx
+msgid "Yes, run it as yours"
+msgstr "Sim, rodar como seu"
 
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx

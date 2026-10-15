@@ -89,7 +89,7 @@ function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity:
         </span>
       ) : null}
       {!app.trusted ? (
-        <span className="k-launch-shield" role="img" aria-label={t`Runs in a sandbox`} title={t`Runs in a sandbox`}>
+        <span className="k-launch-shield" role="img" aria-label={t`Runs sealed`} title={t`Runs sealed`}>
           🛡
         </span>
       ) : null}
