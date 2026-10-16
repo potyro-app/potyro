@@ -109,7 +109,8 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities): Promise<Dem
     ui: createUiBridge(toaster.push, picker, shellDialogs, questions),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
     me: demoPerson(),
-    loadIsolated: await createSharedAppLoader(store),
+    // Its custom views draw in their own sealed frames, as any shared app's do (#267).
+    loadIsolated: await createSharedAppLoader(store, undefined, { source: pkg.source, modules, appKey: `demo:${pkg.declared?.id ?? "app"}`, name }),
   });
   // The demo records, once the app has said which entities it keeps. Never anyone's real records:
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).

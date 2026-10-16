@@ -617,7 +617,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     ]);
     try {
       appSource = await (await createAppBundler())(saved.source, modules);
-      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps: appCaps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store) });
+      composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps: appCaps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store, undefined, { source: saved.source, modules, appKey: id, name: saved.name }) });
     } catch (e) {
       return failed(e);
     }

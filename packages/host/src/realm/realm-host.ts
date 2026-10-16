@@ -12,9 +12,13 @@
 // next call starts a fresh realm (40–60 ms measured).
 
 import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, Value } from "potyro";
-import type { BindingRef, LoadedApp, Provenance } from "../types.js";
-import { OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost } from "./protocol.js";
+import type { BindingRef, LoadedApp, Provenance, SealedView } from "../types.js";
+import { OPS, VIEW_OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost, type ViewOp } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
+import type { Channel } from "./channel.js";
+import { SealedViewController } from "./sealed-view.js";
+import type { ViewGuard } from "./view-guard.js";
+import type { ViewWatchdogOptions } from "./view-watchdog.js";
 
 /**
  * The realm itself could not start on this browser — the frame did not load, or could not make its
@@ -30,6 +34,26 @@ export interface RealmHandle {
   port: MessagePort;
   /** End the realm now. Idempotent. */
   kill(): void;
+  /**
+   * Whether the frame's own thread answers within `timeoutMs`. After a stopped view, a frame sharing
+   * the view's process answers only once that view's loop has let go of it (docs/22 §4.2, §11).
+   * Absent where there is no frame (the Node tests' thread spawner).
+   */
+  probe?(timeoutMs: number): Promise<boolean>;
+}
+
+/** Custom views of sealed apps, drawn in their own sandboxed frames (#267). */
+export interface RealmViewOptions {
+  /** The app, as the shell names it: what the crash-loop guard keys on. Default: the app's declared id. */
+  appKey?: string;
+  /** The view bundle (`bundleViewSource` in the shell): asked for once, when the first view mounts. */
+  code(): Promise<string>;
+  /** The bundled view runtime (`virtual:potyro-realm-view`). */
+  runtimeSource(): Promise<string>;
+  guard: ViewGuard;
+  /** The frame's accessible name for a page (default: the app's and the page's names). */
+  title?(pageRef: string): string;
+  watchdog?: ViewWatchdogOptions;
 }
 
 /**
@@ -51,6 +75,8 @@ export interface RealmLoaderOptions {
   heartbeatTimeoutMs?: number;
   /** Told every time the watchdog stops this app (for the shell's "this app stopped" and for tests). */
   onKill?: (reason: string) => void;
+  /** Its custom views, sealed (#267). Absent: they stay off, and the views fall back to built-ins. */
+  views?: RealmViewOptions;
 }
 
 const DEFAULT_TIMEOUT = 1000;
@@ -74,6 +100,7 @@ export function createRealmLoader(opts: RealmLoaderOptions) {
     loadTimeoutMs: opts.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT,
     heartbeatTimeoutMs: opts.heartbeatTimeoutMs ?? DEFAULT_HEARTBEAT_TIMEOUT,
     onKill: opts.onKill,
+    views: opts.views,
   };
   return async function loadRealm(args: { code: string; provenance: Provenance }): Promise<LoadedApp> {
     if (args.provenance !== "untrusted") throw new Error("the realm runner is for untrusted apps");
@@ -90,6 +117,27 @@ interface ResolvedOptions {
   loadTimeoutMs: number;
   heartbeatTimeoutMs: number;
   onKill?: (reason: string) => void;
+  views?: RealmViewOptions;
+}
+
+/** Every realm that is up, in this page: what the shared-process escalation tears down. */
+const LIVE = new Set<RealmLoadedApp>();
+/** How long a realm's frame has to answer after a view was stopped. */
+const PROBE_MS = 1000;
+
+/**
+ * A stopped view's frame was out of process (it went silent while the shell ran on) — in Chromium,
+ * every sandboxed frame of the page shares ONE such process, so a view still spinning there freezes
+ * every other realm frame and keeps a core busy for as long as any of them lives (docs/22 §4.2). Ask
+ * each realm's frame whether its thread is free; if one does not answer, end every realm, so the
+ * process has no frame left and exits. They start again, fresh, on their next call (40–60 ms).
+ */
+export async function releaseSharedProcess(reason: string): Promise<boolean> {
+  const realms = [...LIVE];
+  const answers = await Promise.all(realms.map((r) => r.probe(PROBE_MS)));
+  if (answers.every(Boolean)) return false;
+  for (const r of realms) r.kill(`the sandbox's process was still busy after a screen was stopped (${reason})`);
+  return true;
 }
 
 interface Pending {
@@ -143,6 +191,11 @@ export class RealmLoadedApp implements LoadedApp {
   );
   /** A ctx a connection was opened through stays nameable while it is open: its callbacks still use it. */
   private pinnedBy = new Map<number, number>();
+  /** The logic's port as `answer` sees it; null while no realm is up. */
+  private logic: Channel | null = null;
+  /** The app's custom views, one controller per page reference (#267). */
+  private views = new Map<string, SealedViewController>();
+  private viewBundle: Promise<string> | null = null;
 
   constructor(
     private readonly code: string,
@@ -188,6 +241,8 @@ export class RealmLoadedApp implements LoadedApp {
       this.permissions = this.definition.permissions ?? {};
       this.realm = realm;
       this.port = port;
+      this.logic = this.logicChannel(port);
+      LIVE.add(this);
       port.onmessage = (e: MessageEvent) => this.onMessage(e.data as RealmToHost);
       this.lastBeat = this.lastCheck = now();
       this.watch = setInterval(() => this.check(), CHECK_MS);
@@ -211,7 +266,26 @@ export class RealmLoadedApp implements LoadedApp {
     this.pending.clear();
   }
 
+  /** Whether this realm's frame thread answers (see `releaseSharedProcess`). No realm up: nothing to hold. */
+  probe(timeoutMs: number): Promise<boolean> {
+    return this.realm?.probe ? this.realm.probe(timeoutMs) : Promise.resolve(true);
+  }
+
+  /** The logic's port, as a channel for `answer`: its ctx ids are the ones `idFor` issued. */
+  private logicChannel(port: MessagePort): Channel {
+    return {
+      post: (m) => port.postMessage(m),
+      alive: () => this.port === port,
+      ctx: (id) => this.ctxById.get(id),
+      sockets: this.sockets,
+      pinnedBy: this.pinnedBy,
+      progress: "",
+    };
+  }
+
   private teardown(): void {
+    LIVE.delete(this);
+    this.logic = null;
     if (this.watch) clearInterval(this.watch);
     this.watch = null;
     const realm = this.realm;
@@ -279,34 +353,41 @@ export class RealmLoadedApp implements LoadedApp {
       else p.reject(new Error(`realm app error: ${String(m.error)}`));
       return;
     }
-    if (m.t === "op") void this.answer(m);
+    if (m.t === "op" && this.logic) void this.answer(m, this.logic);
   }
 
-  /** One op from the realm, answered through the ctx it names. */
-  private async answer(m: Extract<RealmToHost, { t: "op" }>): Promise<void> {
-    const port = this.port;
+  /**
+   * One op, from the logic's port or a view's (#267), answered through the ctx it names. Both go
+   * through this one table: a view's `ctx.create` is the same method call, on the same kind of ctx,
+   * with the same checks inside, as the logic's — host-side the two cannot be told apart.
+   */
+  private async answer(m: { id: number; ctxId: number; op: string; args: unknown[] }, ch: Channel): Promise<void> {
     const id = Number(m.id) || 0;
     const reply = (ok: boolean, value?: unknown, error?: string, code?: string) => {
-      if (!id || !port || port !== this.port) return; // fire-and-forget, or the realm is gone
+      if (!id || !ch.alive()) return; // fire-and-forget, or the port is gone
       try {
-        port.postMessage({ t: "reply", id, ok, value, error, ...(code ? { code } : {}) });
+        ch.post({ t: "reply", id, ok, value, error, ...(code ? { code } : {}) });
       } catch (e) {
-        port.postMessage({ t: "reply", id, ok: false, error: `the answer cannot be sent into the app: ${message(e)}` });
+        ch.post({ t: "reply", id, ok: false, error: `the answer cannot be sent into the app: ${message(e)}` });
       }
     };
     try {
-      if (typeof m.op !== "string" || !(OPS as readonly string[]).includes(m.op)) throw new Error(`op not allowed: ${String(m.op).slice(0, 40)}`);
+      const op = typeof m.op === "string" ? m.op : "";
+      const isView = Boolean(ch.viewOp) && (VIEW_OPS as readonly string[]).includes(op);
+      if (!isView && !(OPS as readonly string[]).includes(op)) throw new Error(`op not allowed: ${String(m.op).slice(0, 40)}`);
       const ctxId = Number(m.ctxId);
-      const ctx = this.ctxById.get(ctxId);
+      const ctx = ch.ctx(ctxId);
       if (!ctx) throw new Error("no such ctx");
-      const value = await this.route(ctx, m.op as Op, Array.isArray(m.args) ? m.args : []);
-      const opened = (m.op === "caps.network.socket" || m.op === "caps.network.room") && port === this.port ? (value as BoxSocketInfo) : null;
-      if (opened) this.pinnedBy.set(opened.sid, ctxId);
+      const args = Array.isArray(m.args) ? m.args : [];
+      let value = isView ? await ch.viewOp!(op as ViewOp, args) : await this.route(ctx, op as Op, args, ch);
+      if (!isView && ch.adapt) value = await ch.adapt(op as Op, value);
+      const opened = (op === "caps.network.socket" || op === "caps.network.room") && ch.alive() ? (value as BoxSocketInfo) : null;
+      if (opened) ch.pinnedBy.set(opened.sid, ctxId);
       reply(true, value);
       // Only now, after the realm has its number, may the connection's events follow.
       if (opened) {
-        if (id) this.sockets.ready(opened.sid);
-        else this.sockets.close(opened.sid);
+        if (id) ch.sockets.ready(opened.sid);
+        else ch.sockets.close(opened.sid);
       }
     } catch (e) {
       const code = (e as { code?: unknown } | null)?.code;
@@ -329,7 +410,7 @@ export class RealmLoadedApp implements LoadedApp {
    * app holds, with mediated caps. No check is repeated here, so there is nothing here to keep in step.
    * Arguments are untrusted values; each is coerced to the type the method takes.
    */
-  private async route(ctx: Ctx, op: Op, a: unknown[]): Promise<unknown> {
+  private async route(ctx: Ctx, op: Op, a: unknown[], ch: Channel): Promise<unknown> {
     const s = (i: number) => String(a[i]);
     const opt = (i: number) => (a[i] == null ? undefined : String(a[i]));
     const x = (i: number) => a[i] as never;
@@ -402,7 +483,7 @@ export class RealmLoadedApp implements LoadedApp {
       case "ui.share":
         return this.question(() => ctx.ui.share(x(0)));
       case "ui.progress": {
-        const [pid, what, arg, detail] = [s(0), s(1), a[2], a[3]];
+        const [pid, what, arg, detail] = [`${ch.progress}${s(0)}`, s(1), a[2], a[3]];
         const bar = this.progress.get(pid);
         if (what === "open" && !bar) this.progress.set(pid, ctx.ui.progress(arg as never));
         else if (bar && what === "update") bar.update(Number(arg), detail == null ? undefined : String(detail));
@@ -473,13 +554,13 @@ export class RealmLoadedApp implements LoadedApp {
       // Live connections (docs/28): `mediateCaps` decides as for fetch — the manifest's hosts, the
       // person's consent once — and the host holds the connection. Asking waits on the person.
       case "caps.network.socket":
-        return this.question(() => this.sockets.open(ctx, s(0), x(1)));
+        return this.question(() => ch.sockets.open(ctx, s(0), x(1)));
       case "caps.network.room":
-        return this.question(() => this.sockets.room(ctx, opt(0), x(1)));
+        return this.question(() => ch.sockets.room(ctx, opt(0), x(1)));
       case "caps.network.socket.send":
-        return this.sockets.send(Number(a[0]), a[1]);
+        return ch.sockets.send(Number(a[0]), a[1]);
       case "caps.network.socket.close":
-        this.sockets.close(Number(a[0]), a[1], a[2]);
+        ch.sockets.close(Number(a[0]), a[1], a[2]);
         return null;
       case "caps.network.fetch": {
         // `mediateCaps` decides: the manifest, the host allow-list, the person's consent.
@@ -519,9 +600,9 @@ export class RealmLoadedApp implements LoadedApp {
     return id;
   }
 
-  private baseOf(ctx: Ctx): CtxBase {
+  private baseOf(ctx: Ctx, ctxId: number = this.idFor(ctx)): CtxBase {
     return {
-      ctxId: this.idFor(ctx),
+      ctxId,
       params: { ...ctx.params },
       nowIso: ctx.now().toISOString(),
       me: { id: ctx.me.id, name: ctx.me.name },
@@ -593,8 +674,56 @@ export class RealmLoadedApp implements LoadedApp {
     const v = await this.invoke("reminderWhen", [id, record], ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));
   }
-  /** docs/05: custom views of shared apps stay off in phase 1; the views fall back to built-ins. */
+  /** Never the app's own component in the shell's realm (docs/05): a sealed view is `sealedView`. */
   customView(): null {
     return null;
   }
+
+  /**
+   * The page's custom view, drawn in its own sandboxed frame (#267). `null` when the page's view is not
+   * custom, or the shell gave no way to bundle views (then the views show their fallback card).
+   */
+  sealedView(pageRef: string): SealedView | null {
+    const views = this.o.views;
+    if (!views || this.disposed || !this.definition) return null;
+    if (pageViewType(this.definition, pageRef) !== "custom") return null;
+    let controller = this.views.get(pageRef);
+    if (!controller) {
+      const appKey = views.appKey ?? this.definition.id;
+      controller = new SealedViewController({
+        appKey,
+        pageRef,
+        title: views.title?.(pageRef) ?? `${String(this.definition.name ?? appKey)}: ${pageRef}`,
+        guard: views.guard,
+        viewCode: () => (this.viewBundle ??= views.code().catch((e: unknown) => {
+          this.viewBundle = null; // a bundle that failed may build next time (a library fetched since)
+          throw e;
+        })),
+        runtimeSource: () => views.runtimeSource(),
+        newCtxId: () => ++this.ctxSeq,
+        baseOf: (ctx, id) => this.baseOf(ctx, id),
+        answer: (m, ch) => void this.answer(m, ch),
+        stopped: (kind, reason) => {
+          // Out of process and silent: the view may still spin there, holding every realm frame of the
+          // page with it (docs/22 §4.2). Free that process if it is not free by itself.
+          if (kind !== "silent") return;
+          void releaseSharedProcess(reason).then((released) => {
+            if (released) console.warn(`[potyro] every sealed box was restarted: a stopped screen was still holding their process (${reason})`);
+          });
+        },
+        watchdog: views.watchdog,
+      });
+      this.views.set(pageRef, controller);
+    }
+    return controller;
+  }
+}
+
+/** The type of the view a page reference names, on a definition read as data. */
+function pageViewType(def: AppDefinition, pageRef: string): string | undefined {
+  const at = pageRef.indexOf("#");
+  const page = def.pages.find((p) => p.id === (at < 0 ? pageRef : pageRef.slice(0, at)));
+  if (!page) return undefined;
+  const view = at < 0 ? (page.view ?? page.layout?.items[0]?.view) : page.layout?.items[Number(pageRef.slice(at + 1))]?.view;
+  return view?.type;
 }

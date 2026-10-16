@@ -56,7 +56,19 @@ function safeString(v: unknown): string {
   }
 }
 
-export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
+export interface RealmCtxOptions {
+  /** Prefix of this side's progress ids, so a view's bars and the logic's never share a name. */
+  progressPrefix?: string;
+}
+
+/**
+ * A URL the host gave for a file or a picture. A view's frame is another origin: the shell's own
+ * `blob:` URLs do not load there, so for a view the host sends the bytes (a Blob) and the frame makes
+ * its own URL for them, which only it can use.
+ */
+const localUrl = (v: unknown): string | null => (typeof Blob !== "undefined" && v instanceof Blob ? URL.createObjectURL(v) : (v as string | null));
+
+export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions = {}): Ctx {
   const id = base.ctxId;
   const call = <T = unknown>(op: Op, ...args: unknown[]): Promise<T> => tx.call(id, op, args) as Promise<T>;
   const send = (op: Op, ...args: unknown[]): void => tx.send(id, op, args);
@@ -84,7 +96,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       }
     },
     bytes: (f) => call("files.bytes", fileArg(f)),
-    url: (f) => call("files.url", fileArg(f)),
+    url: async (f) => localUrl(await call("files.url", fileArg(f))) as string,
     write: (path, data, opts) => call("files.write", String(path), data, opts ? { mime: opts.mime } : undefined),
     rename: (f, to) => call("files.rename", fileArg(f), String(to)),
     remove: async (f) => {
@@ -192,7 +204,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
     caps,
     media: {
       put: (bytes) => call<MediaRef>("media.put", bytes),
-      url: (ref) => call("media.url", ref ? { key: ref.key, mime: ref.mime } : ref),
+      url: async (ref) => localUrl(await call("media.url", ref ? { key: ref.key, mime: ref.mime } : ref)) as string,
     },
     files,
     ui: {
@@ -206,7 +218,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       form: (o) => call("ui.form", o),
       share: (o) => call("ui.share", o),
       progress: (label): UiProgress => {
-        const pid = `p${++progressSeq}`;
+        const pid = `${opts.progressPrefix ?? "p"}${++progressSeq}`;
         send("ui.progress", pid, "open", label);
         return {
           update: (f, d) => send("ui.progress", pid, "update", Number(f), d == null ? undefined : String(d)),
