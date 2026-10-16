@@ -153,8 +153,14 @@ async function saveHere(ctx: Ctx): Promise<void> {
     title: { en: "Save this spot", "pt-BR": "Salvar este lugar", de: "Diesen Ort speichern", es: "Guardar este sitio", pl: "Zapisz to miejsce", it: "Salva questo posto" },
     fields: {
       name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-      kind: { type: "enum", options: KINDS, default: "cafe", label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" } },
-      status: { type: "enum", options: ["want to go", "been", "favourite"], default: "been", label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" } },
+      kind: { type: "enum", options: KINDS, default: "cafe", labels: Object.fromEntries(KINDS.map((k) => [k, kindName(k, ctx)])), label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" } },
+      status: {
+        type: "enum",
+        options: ["want to go", "been", "favourite"],
+        default: "been",
+        labels: Object.fromEntries(["want to go", "been", "favourite"].map((s) => [s, statusName(s, ctx)])),
+        label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" },
+      },
       notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },
     },
     initial: { kind: "cafe", status: "been" },
@@ -165,24 +171,6 @@ async function saveHere(ctx: Ctx): Promise<void> {
   ctx.navigate("detail", { placeId: place.id });
 }
 
-const KIND_LABELS = {
-  restaurant: { en: "restaurant", "pt-BR": "restaurante", de: "Restaurant", es: "restaurante", pl: "restauracja", it: "ristorante" },
-  bar: { en: "bar", "pt-BR": "bar", de: "Bar", es: "bar", pl: "bar", it: "bar" },
-  cafe: { en: "cafe", "pt-BR": "café", de: "Café", es: "cafetería", pl: "kawiarnia", it: "caffè" },
-  pizza: { en: "pizza", "pt-BR": "pizzaria", de: "Pizzeria", es: "pizzería", pl: "pizzeria", it: "pizzeria" },
-  bakery: { en: "bakery", "pt-BR": "padaria", de: "Bäckerei", es: "panadería", pl: "piekarnia", it: "panetteria" },
-  museum: { en: "museum", "pt-BR": "museu", de: "Museum", es: "museo", pl: "muzeum", it: "museo" },
-  park: { en: "park", "pt-BR": "parque", de: "Park", es: "parque", pl: "park", it: "parco" },
-  viewpoint: { en: "viewpoint", "pt-BR": "mirante", de: "Aussichtspunkt", es: "mirador", pl: "punkt widokowy", it: "belvedere" },
-  shop: { en: "shop", "pt-BR": "loja", de: "Laden", es: "tienda", pl: "sklep", it: "negozio" },
-  stay: { en: "place to stay", "pt-BR": "hospedagem", de: "Unterkunft", es: "alojamiento", pl: "nocleg", it: "alloggio" },
-  other: { en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" },
-};
-const STATUS_LABELS = {
-  "want to go": { en: "want to go", "pt-BR": "quero ir", de: "will hin", es: "quiero ir", pl: "chcę iść", it: "voglio andarci" },
-  been: { en: "been", "pt-BR": "já fui", de: "war schon da", es: "ya fui", pl: "byłem", it: "ci sono stato" },
-  favourite: { en: "favourite", "pt-BR": "favorito", de: "Lieblingsort", es: "favorito", pl: "ulubione", it: "preferito" },
-};
 
 // `visited` (a yes/no) became `status` in 2.0.0: visited → been, not yet → want to go. One migration
 // from every earlier version, so a device that last opened any of them lands in the same place.
@@ -263,14 +251,30 @@ export default defineApp({
           options: ["want to go", "been", "favourite"],
           default: "been",
           colors: { "want to go": "yellow", been: "teal", favourite: "pink" },
-          labels: STATUS_LABELS,
+          labels: {
+            "want to go": { en: "want to go", "pt-BR": "quero ir", de: "will hin", es: "quiero ir", pl: "chcę iść", it: "voglio andarci" },
+            been: { en: "been", "pt-BR": "já fui", de: "war schon da", es: "ya fui", pl: "byłem", it: "ci sono stato" },
+            favourite: { en: "favourite", "pt-BR": "favorito", de: "Lieblingsort", es: "favorito", pl: "ulubione", it: "preferito" },
+          },
           label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" },
         },
         kind: {
           type: "enum",
           label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" },
           options: KINDS,
-          labels: KIND_LABELS,
+          labels: {
+            restaurant: { en: "restaurant", "pt-BR": "restaurante", de: "Restaurant", es: "restaurante", pl: "restauracja", it: "ristorante" },
+            bar: { en: "bar", "pt-BR": "bar", de: "Bar", es: "bar", pl: "bar", it: "bar" },
+            cafe: { en: "cafe", "pt-BR": "café", de: "Café", es: "cafetería", pl: "kawiarnia", it: "caffè" },
+            pizza: { en: "pizza", "pt-BR": "pizzaria", de: "Pizzeria", es: "pizzería", pl: "pizzeria", it: "pizzeria" },
+            bakery: { en: "bakery", "pt-BR": "padaria", de: "Bäckerei", es: "panadería", pl: "piekarnia", it: "panetteria" },
+            museum: { en: "museum", "pt-BR": "museu", de: "Museum", es: "museo", pl: "muzeum", it: "museo" },
+            park: { en: "park", "pt-BR": "parque", de: "Park", es: "parque", pl: "park", it: "parco" },
+            viewpoint: { en: "viewpoint", "pt-BR": "mirante", de: "Aussichtspunkt", es: "mirador", pl: "punkt widokowy", it: "belvedere" },
+            shop: { en: "shop", "pt-BR": "loja", de: "Laden", es: "tienda", pl: "sklep", it: "negozio" },
+            stay: { en: "place to stay", "pt-BR": "hospedagem", de: "Unterkunft", es: "alojamiento", pl: "nocleg", it: "alloggio" },
+            other: { en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" },
+          },
         },
         notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },
         mustOrder: { type: "text", label: { en: "Order this", "pt-BR": "Peça isto", de: "Unbedingt bestellen", es: "Pide esto", pl: "Zamów to", it: "Da ordinare" }, placeholder: { en: "The cardamom bun", "pt-BR": "O pão de cardamomo", de: "Die Kardamomschnecke", es: "El bollo de cardamomo", pl: "Bułka kardamonowa", it: "Il panino al cardamomo" } },
