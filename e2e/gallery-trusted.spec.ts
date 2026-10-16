@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { publish } from "../gallery/src/publish.mjs";
 import { buildGallery } from "../gallery/src/build.mjs";
 
-// The gallery (docs/24 §9). `gallery:publish` makes each ready app's demo link the way a person does,
+// The gallery (docs/24 §10). `gallery:publish` makes each ready app's demo link the way a person does,
 // against a site — here, this dev server, never potyro.app — and checks each opens for a stranger;
 // `gallery:build` turns the data into a static page that asks nothing of anyone else.
 

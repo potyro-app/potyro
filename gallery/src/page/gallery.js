@@ -1,4 +1,4 @@
-// The gallery page's only script (docs/24 §9): the language — the browser's, or the one chosen here —
+// The gallery page's only script (docs/24 §10): the language — the browser's, or the one chosen here —
 // the theme, and the category filter. The page is whole without it, in English. It sends nothing
 // anywhere; what it remembers (a chosen language or theme) stays in this browser.
 (function () {
