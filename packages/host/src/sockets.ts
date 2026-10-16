@@ -17,7 +17,7 @@
 // realm's worker, or QuickJS) that reaches these through `SocketBridge` (socket-bridge.ts).
 
 import type { NetworkPermission, Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "potyro";
-import { SocketOpenError, type ConsentWords, type PlatformCloseWhy, type PlatformSocket, type SocketCap, type SocketTarget } from "@potyro/capabilities";
+import { HIDDEN_KEEP_MAX_MS, SocketOpenError, parseLocalAddress, type ConsentNote, type ConsentWords, type PlatformCloseWhy, type PlatformSocket, type SocketCap, type SocketTarget } from "@potyro/capabilities";
 import { ROOM_ID, SERVER_PREFIX, cleanName, newRoomId, readServerEvent } from "@potyro/rooms";
 import type { UiBridge } from "./types.js";
 
@@ -86,6 +86,10 @@ interface AppSockets {
   allowedHere: Set<string>;
   /** The app was closed: nothing new opens for it (a retry timer of a trusted app outlives it). */
   closed?: boolean;
+  /** Listening for the person turning a target off in Edit tile: while the app holds a connection. */
+  offSub?: () => void;
+  /** The person is being asked for a home device's address: two connects at once ask once. */
+  askingAddress?: Promise<string | null>;
 }
 
 const byOwner = new WeakMap<object, AppSockets>();
@@ -107,6 +111,8 @@ function stateOf(owner: object): AppSockets {
 export function retireAppSockets(owner: object): void {
   const state = stateOf(owner);
   state.closed = true;
+  state.offSub?.();
+  state.offSub = undefined;
   for (const s of [...state.open]) s.end(1001, "the app was closed", "left");
 }
 
@@ -120,18 +126,41 @@ export function openSocketsOf(owner: object): number {
   return stateOf(owner).open.size;
 }
 
-const targetKey = (t: SocketTarget): string => ("rooms" in t ? "rooms" : `host:${t.host}`);
+const targetKey = (t: SocketTarget): string => ("rooms" in t ? "rooms" : "local" in t ? `local:${t.local.toLowerCase()}` : `host:${t.host.toLowerCase()}`);
 
-export function englishSocketConsent(appName: string, target: SocketTarget): ConsentWords {
-  const rooms = "rooms" in target;
+/** The host an app writes for "a device on the person's home network" (`hosts: ["local"]`, docs/28 §6). */
+export const LOCAL_HOST = "local";
+
+export function englishSocketConsent(appName: string, target: SocketTarget, note?: ConsentNote): ConsentWords {
+  const secure = note?.secureOnly ? " In a browser it connects only if the device offers a secure (wss://) connection; the Potyro app for Android connects either way." : "";
+  if ("rooms" in target) {
+    return {
+      message: `“${appName}” wants a live connection to Potyro’s rooms.`,
+      detail: "Everyone with the room’s link sees what the app sends there. Potyro closes the connection when you leave the app.",
+      ok: "Allow",
+      cancel: "Not now",
+    };
+  }
   return {
-    message: rooms ? `“${appName}” wants a live connection to Potyro’s rooms.` : `“${appName}” wants a live connection to ${target.host}.`,
-    detail: rooms
-      ? "Everyone with the room’s link sees what the app sends there. Potyro closes the connection when you leave the app."
-      : "While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app.",
+    message: "local" in target ? `“${appName}” wants a live connection to ${target.local} on your home network.` : `“${appName}” wants a live connection to ${target.host}.`,
+    detail: `While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app.${"local" in target ? secure : ""}`,
     ok: "Allow",
     cancel: "Not now",
   };
+}
+
+export function englishLocalAddressAsk(appName: string, retry: string | null): string {
+  const again = retry ? `“${retry.slice(0, 60)}” is not an address on your home network. ` : "";
+  return `${again}“${appName}” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local`;
+}
+
+/** `keepWhileHidden: "90s" | "5m"` in milliseconds, held to 15 minutes; `undefined` for the default. */
+export function keepWhileHiddenMs(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const m = /^\s*(\d+(?:\.\d+)?)\s*(s|m)\s*$/.exec(String(value));
+  if (!m) throw new TypeError(`keepWhileHidden is seconds or minutes, like "90s" or "5m" — not "${String(value).slice(0, 20)}"`);
+  const ms = Number(m[1]) * (m[2] === "m" ? 60_000 : 1000);
+  return Math.min(Math.round(ms), HIDDEN_KEEP_MAX_MS);
 }
 
 // ---------------------------------------------------------------- sizes
@@ -170,12 +199,23 @@ export class HostSocket implements Socket {
   private heldBytes = 0;
   private closedWith: SocketClose | null = null;
   protected maxMessage: number = SOCKET_LIMITS.messageBytes;
+  /** Whom it goes to, as the person's switches name it (`targetKey`): turning that off ends it. */
+  target = "";
 
   constructor(
-    readonly url: string,
+    private address: string,
     private readonly state: AppSockets,
   ) {
     state.open.add(this);
+  }
+
+  get url(): string {
+    return this.address;
+  }
+
+  /** Before it opens: where it really goes (`ws://local:…` → the address the person gave). */
+  retarget(href: string): void {
+    if (!this.ps) this.address = href;
   }
 
   /** The platform's events for this connection. */
@@ -230,6 +270,10 @@ export class HostSocket implements Socket {
     this.closedWith = c;
     this.readyState = "closed";
     this.state.open.delete(this);
+    if (this.state.open.size === 0) {
+      this.state.offSub?.();
+      this.state.offSub = undefined;
+    }
     this.held = [];
     this.heldBytes = 0;
     for (const cb of this.closeCbs.splice(0)) {
@@ -412,8 +456,25 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
   const { cap, trusted, permission, ui, appName } = args;
   const state = stateOf(args.owner);
 
+  // The person turning a target off in Edit tile ends this app's connections there at once. Heard
+  // while the app holds one (or is opening one); the last to end stops listening (HostSocket.finish).
+  const watchSwitches = (): void => {
+    if (state.offSub || !cap?.onTurnedOff) return;
+    state.offSub = cap.onTurnedOff((target) => {
+      const key = targetKey(target);
+      for (const s of [...state.open]) if (s.target === key) s.end(1000, "turned off in Edit tile", "off");
+    });
+  };
+
+  const refuseIfOff = (target: SocketTarget): void => {
+    if (cap?.turnedOff?.(target)) {
+      throw new SocketError(`Live connections from “${appName}” to ${describe(target)} are turned off. Turn them on again in Edit tile.`, "off");
+    }
+  };
+
   /** Ask once per target, on this device, for a sealed app; a trusted app is not asked. */
   const consent = async (target: SocketTarget): Promise<void> => {
+    refuseIfOff(target);
     if (trusted) return;
     const key = targetKey(target);
     if (cap?.allowed?.(target) || state.allowedHere.has(key)) return;
@@ -421,7 +482,8 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
     if (!asking) {
       asking = (async () => {
         try {
-          const w = cap?.consentWords?.(appName, target) ?? englishSocketConsent(appName, target);
+          const note: ConsentNote = { secureOnly: "local" in target && cap?.plainLocal === false };
+          const w = cap?.consentWords?.(appName, target, note) ?? englishSocketConsent(appName, target, note);
           return await ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel });
         } finally {
           state.asking.delete(key);
@@ -429,9 +491,42 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
       })();
       state.asking.set(key, asking);
     }
-    if (!(await asking)) throw new SocketError(`Permission denied: ${appName} → ${"rooms" in target ? "Potyro’s rooms" : target.host}`, "denied");
+    if (!(await asking)) throw new SocketError(`Permission denied: ${appName} → ${describe(target)}`, "denied");
     state.allowedHere.add(key);
     cap?.allow?.(target);
+  };
+
+  /**
+   * `ws://local:…`: which device on the home network. The one the person gave this app before, or
+   * they are asked for it (once at a time, however many connects wait) — an address on the local
+   * network, or they are asked again; cancelling is Not now.
+   */
+  const localAddress = async (): Promise<string> => {
+    const known = cap?.localAddress?.();
+    if (known) return known;
+    let asking = state.askingAddress;
+    if (!asking) {
+      asking = (async (): Promise<string | null> => {
+        try {
+          let retry: string | null = null;
+          for (let i = 0; i < 5; i++) {
+            const words = cap?.localAddressWords?.(appName, retry) ?? englishLocalAddressAsk(appName, retry);
+            const typed = await ui.prompt(words, { default: "" });
+            if (typed === null || typed === undefined || !String(typed).trim()) return null;
+            const address = parseLocalAddress(String(typed));
+            if (address) return address;
+            retry = String(typed).trim();
+          }
+          return null;
+        } finally {
+          state.askingAddress = undefined;
+        }
+      })();
+      state.askingAddress = asking;
+    }
+    const address = await asking;
+    if (!address) throw new SocketError(`Permission denied: ${appName} → a device on your home network`, "denied");
+    return address;
   };
 
   const roomOrSlot = (): void => {
@@ -439,10 +534,10 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
     if (state.open.size >= SOCKET_LIMITS.perApp) throw new SocketError(`An app may hold ${SOCKET_LIMITS.perApp} live connections at once; close one first`, "too-many");
   };
 
-  const connect = async <S extends HostSocket>(s: S, protocols: string[] | undefined): Promise<S> => {
+  const connect = async <S extends HostSocket>(s: S, protocols: string[] | undefined, keep: number | undefined): Promise<S> => {
     try {
       if (!cap) throw new SocketError("This device cannot open live connections", "offline");
-      s.attach(await cap.open(s.url, { protocols }, s.events()));
+      s.attach(await cap.open(s.url, { protocols, ...(keep === undefined ? {} : { keepWhileHiddenMs: keep }) }, s.events()));
       return s;
     } catch (e) {
       s.end(1006, "", "network");
@@ -460,24 +555,46 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
       }
       if (u.protocol !== "wss:" && u.protocol !== "ws:") throw new TypeError(`ctx.caps.network.socket needs a wss:// address, not ${u.protocol}//`);
       const protocols = protocolsOf(opts);
+      const keep = keepWhileHiddenMs(opts?.keepWhileHidden);
       if (!trusted && !socketHostAllowed(permission, u)) {
         throw new SocketError(`“${appName}” may not connect to ${u.host}: its permissions.network.hosts do not name it`, "not-allowed-host");
+      }
+      const home = u.hostname.toLowerCase() === LOCAL_HOST;
+      // An https web page cannot open ws:// to the home network (mixed content): say so before asking
+      // the person for an address that could not work.
+      if (home && u.protocol === "ws:" && cap?.plainLocal === false) {
+        throw new SocketError("ws:// to a device on your home network works in the Potyro app for Android, not on this website: use wss:// there", "insecure");
       }
       roomOrSlot();
       // The slot is held while the person is asked: four questions at once cannot become five sockets.
       const s = new HostSocket(u.href, state);
+      watchSwitches();
+      let target: SocketTarget = { host: u.host };
       try {
-        await consent({ host: u.host });
+        if (home) {
+          const address = await localAddress();
+          target = { local: address };
+          refuseIfOff(target);
+          // The port the person typed wins; without one, the app's stays (URL's host setter keeps it).
+          const real = new URL(u.href);
+          real.host = address;
+          s.retarget(real.href);
+          // A trusted app is not asked, but the address is remembered (and listed in Edit tile).
+          if (trusted && !cap?.allowed?.(target)) cap?.allow?.(target);
+        }
+        s.target = targetKey(target);
+        await consent(target);
       } catch (e) {
         s.end(1000, "", "app");
         throw e;
       }
-      return connect(s, protocols);
+      return connect(s, protocols, keep);
     },
 
     async room(id, opts) {
       const roomId = id === undefined || id === null ? newRoomId() : String(id);
       if (!ROOM_ID.test(roomId)) throw new TypeError("A room id is 22–64 characters of A–Z a–z 0–9 _ - (room() without one makes one)");
+      const keep = keepWhileHiddenMs(opts?.keepWhileHidden);
       if (!trusted && !roomsAllowed(permission)) throw new SocketError(`“${appName}” may not join rooms: its permissions.network does not say rooms: true`, "not-allowed-host");
       const base = cap?.roomsUrl;
       if (!base) throw new SocketError("This build of Potyro has no rooms relay", "unreachable");
@@ -485,6 +602,8 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
       const name = cleanName(opts?.name);
       const url = `${base.replace(/\/+$/, "")}/${roomId}${name ? `?name=${encodeURIComponent(name)}` : ""}`;
       const r = new HostRoom(url, state, roomId);
+      watchSwitches();
+      r.target = targetKey({ rooms: true });
       try {
         await consent({ rooms: true });
       } catch (e) {
@@ -494,7 +613,7 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
       const welcomed = r.welcome();
       const ended: { close: SocketClose | null } = { close: null };
       const stopListening = r.onClose((c) => (ended.close = c));
-      await connect(r, undefined);
+      await connect(r, undefined, keep);
       // The relay's first frame is the welcome; one that never comes is a relay that is not there.
       let timer: ReturnType<typeof setTimeout> | undefined;
       const late = new Promise<"late">((resolve) => (timer = setTimeout(() => resolve("late"), WELCOME_TIMEOUT_MS)));
@@ -510,3 +629,5 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
     },
   };
 }
+
+const describe = (t: SocketTarget): string => ("rooms" in t ? "Potyro’s rooms" : "local" in t ? `${t.local} (your home network)` : t.host);

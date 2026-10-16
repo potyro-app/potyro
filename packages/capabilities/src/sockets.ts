@@ -47,25 +47,54 @@ export interface PlatformSocket {
 /** The words of a consent question, in the person's language. */
 export type ConsentWords = AiConsentWords;
 
-/** Who a connection goes to, for the consent question and its memory: a host, or Potyro's rooms. */
-export type SocketTarget = { host: string } | { rooms: true };
+/**
+ * Who a connection goes to, for the consent question and its memory: a host, Potyro's rooms, or a
+ * device on the person's home network at the address they gave (`local`: `192.168.1.20`,
+ * `homeassistant.local:8123` — a shared app that declared `hosts: ["local"]`, docs/28 §6).
+ */
+export type SocketTarget = { host: string } | { rooms: true } | { local: string };
+
+/** What the consent question should add: this page reaches the home network only over wss://. */
+export interface ConsentNote {
+  secureOnly?: boolean;
+}
+
+/** How a connection is opened: its subprotocols, and how long it may stay open while Potyro is hidden. */
+export interface PlatformOpenOptions {
+  protocols?: string[];
+  /** Milliseconds this connection survives the page being hidden (default `HIDDEN_CLOSE_MS`, at most `HIDDEN_KEEP_MAX_MS`). */
+  keepWhileHiddenMs?: number;
+}
 
 export interface SocketCap {
   /** Resolves once the connection is open; rejects with a `SocketOpenError`. */
-  open(url: string, opts: { protocols?: string[] }, events: PlatformSocketEvents): Promise<PlatformSocket>;
+  open(url: string, opts: PlatformOpenOptions, events: PlatformSocketEvents): Promise<PlatformSocket>;
   /** Potyro's rooms relay, `wss://apps.vaz.io/rooms` — absent when this build knows none. */
   readonly roomsUrl?: string;
   /** End every open connection now ("left": the person left the app; "hidden": the page was hidden a while). */
   closeAll(why: "left" | "hidden"): void;
   /** How many connections are open on this page. */
   readonly openCount: number;
+  /**
+   * Can this page open plain `ws://` to the home network? The Android app can (its plugin); a page
+   * served over http can; an https web page cannot (mixed content) — only `wss://` reaches it there.
+   */
+  readonly plainLocal?: boolean;
   // ---- per app, added by the shell (like AiCap's): the person's standing answer and the words ----
   /** Did the person allow this app to connect there, on this device? */
   allowed?(target: SocketTarget): boolean;
-  /** Remember that they did. */
+  /** Remember that they did (for `local`, also the address). */
   allow?(target: SocketTarget): void;
+  /** The person turned this off in Edit tile: refused without asking (`"off"`) until they turn it on. */
+  turnedOff?(target: SocketTarget): boolean;
+  /** Hear the person turn a target off: its open connections end at once (`why: "off"`). Returns the unsubscribe. */
+  onTurnedOff?(cb: (target: SocketTarget) => void): () => void;
+  /** The home-network address the person gave this app (`hosts: ["local"]`), remembered on this device. */
+  localAddress?(): string | undefined;
   /** The consent question for a shared app, in the person's language. The host has English ones. */
-  consentWords?(appName: string, target: SocketTarget): ConsentWords;
+  consentWords?(appName: string, target: SocketTarget, note?: ConsentNote): ConsentWords;
+  /** The question asking for a home device's address, in the person's language (`retry`: the last answer was not one). */
+  localAddressWords?(appName: string, retry: string | null): string;
 }
 
 // ---------------------------------------------------------------- addresses
@@ -93,12 +122,42 @@ export function isLocalAddress(hostname: string): boolean {
   return false;
 }
 
+/**
+ * What the person typed as a home device's address — `192.168.1.20`, `192.168.1.20:8123`,
+ * `homeassistant.local`, `[fd00::1]` or a bare `fd00::1` — as the `host` of a URL (with its port, if
+ * they gave one), or `null` when it is not an address on the local network. Only a host: no scheme,
+ * path, or user.
+ */
+export function parseLocalAddress(input: string): string | null {
+  let s = String(input ?? "").trim().toLowerCase();
+  if (!s || s.length > 255) return null;
+  s = s.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+  // A bare IPv6 address has colons a URL would read as a port.
+  if (!s.startsWith("[") && (s.match(/:/g)?.length ?? 0) > 1) s = `[${s}]`;
+  if (/[/?#@\s]/.test(s)) return null;
+  let u: URL;
+  try {
+    u = new URL(`ws://${s}`);
+  } catch {
+    return null;
+  }
+  if (u.username || u.password || u.pathname !== "/" || u.search || u.hash) return null;
+  if (u.hostname === "local" || !isLocalAddress(u.hostname)) return null;
+  return u.host;
+}
+
 // ---------------------------------------------------------------- the web's
 
 /** How long a connection may take to open before it is given up as unreachable. */
 export const CONNECT_TIMEOUT_MS = 15_000;
-/** How long the page may be hidden before every connection is closed ("hidden"). */
+/** How long the page may be hidden before a connection is closed ("hidden"), unless the app asked for longer. */
 export const HIDDEN_CLOSE_MS = 30_000;
+/**
+ * The longest an app may keep a connection while Potyro is hidden (`keepWhileHidden`): 15 minutes.
+ * Long enough for a chat to survive a look at another app; short enough that a connection the person
+ * walked away from does not run all afternoon on their battery and data.
+ */
+export const HIDDEN_KEEP_MAX_MS = 15 * 60_000;
 
 type WebSocketCtor = new (url: string, protocols?: string | string[]) => WebSocket;
 
@@ -121,6 +180,10 @@ export interface WebSocketsDeps {
 interface Tracked {
   /** End it now, as the platform: the event is delivered at once and the browser's is ignored. */
   end(why: "left" | "hidden"): void;
+  /** How long it survives the page being hidden. */
+  readonly grace: number;
+  /** Set while the page is hidden: ends it ("hidden") when its grace is over. */
+  timer?: ReturnType<typeof setTimeout>;
 }
 
 /** The page's live connections over the browser's `WebSocket` (and, on Android, the native local one). */
@@ -131,25 +194,30 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
   const connectTimeout = deps.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
   const hiddenClose = deps.hiddenCloseMs ?? HIDDEN_CLOSE_MS;
   const live = new Set<Tracked>();
-  let hiddenTimer: ReturnType<typeof setTimeout> | null = null;
 
   const closeAll = (why: "left" | "hidden"): void => {
     for (const t of [...live]) t.end(why);
   };
   const doc = deps.doc ?? (typeof document !== "undefined" ? document : undefined);
-  const armHidden = (): void => {
-    if (hiddenTimer || !doc?.hidden || live.size === 0) return;
-    hiddenTimer = setTimeout(() => {
-      hiddenTimer = null;
-      if (doc.hidden) closeAll("hidden");
-    }, hiddenClose);
+  // Each connection has its own grace (`keepWhileHidden`): a chat's may outlast a price stream's.
+  const armHidden = (t: Tracked): void => {
+    if (t.timer || !doc?.hidden) return;
+    t.timer = setTimeout(() => {
+      t.timer = undefined;
+      if (doc.hidden) t.end("hidden");
+    }, t.grace);
+  };
+  const disarm = (t: Tracked): void => {
+    if (t.timer) clearTimeout(t.timer);
+    t.timer = undefined;
   };
   doc?.addEventListener("visibilitychange", () => {
-    if (!doc.hidden) {
-      if (hiddenTimer) clearTimeout(hiddenTimer);
-      hiddenTimer = null;
-    } else armHidden();
+    for (const t of [...live]) {
+      if (doc.hidden) armHidden(t);
+      else disarm(t);
+    }
   });
+  const graceOf = (ms: number | undefined): number => (typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? Math.min(ms, HIDDEN_KEEP_MAX_MS) : hiddenClose);
 
   /**
    * Count one connection — from the moment it starts opening — and let `closeAll` end it. `stop` ends
@@ -157,21 +225,23 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
    * it is closed and its own close event is not passed on (the platform's is delivered at once).
    * `forget` drops one that never opened, without an event: its open says what happened.
    */
-  const track = (events: PlatformSocketEvents) => {
+  const track = (events: PlatformSocketEvents, keepWhileHiddenMs?: number) => {
     let ended = false;
     let stop: (code: number, reason: string) => void = () => {};
     const tracked: Tracked = {
+      grace: graceOf(keepWhileHiddenMs),
       end(why) {
         if (ended) return;
         ended = true;
         live.delete(tracked);
+        disarm(tracked);
         // 1000 on the wire: a page may not send 1001 (WebSocket.close throws on it). The app hears 1001.
         stop(1000, why === "left" ? "the person left the app" : "Potyro was in the background");
         events.close(1001, why === "left" ? "left the app" : "in the background", why);
       },
     };
     live.add(tracked);
-    armHidden();
+    armHidden(tracked);
     return {
       get ended() {
         return ended;
@@ -180,6 +250,7 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
       forget: () => {
         ended = true;
         live.delete(tracked);
+        disarm(tracked);
       },
       events: {
         message: (d: string | Uint8Array) => {
@@ -189,6 +260,7 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
           if (ended) return;
           ended = true;
           live.delete(tracked);
+          disarm(tracked);
           events.close(code, reason, why);
         },
       } satisfies PlatformSocketEvents,
@@ -198,7 +270,7 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
   /** Refused because Potyro ended it while it was still opening (the person left, or the page hid). */
   const endedWhileOpening = (): SocketOpenError => new SocketOpenError("Potyro closed the connection before it opened", "refused");
 
-  const browserOpen = (url: string, protocols: string[] | undefined, events: PlatformSocketEvents): Promise<PlatformSocket> =>
+  const browserOpen = (url: string, protocols: string[] | undefined, keepWhileHiddenMs: number | undefined, events: PlatformSocketEvents): Promise<PlatformSocket> =>
     new Promise<PlatformSocket>((resolve, reject) => {
       if (!WS) return reject(new SocketOpenError("This device cannot open live connections", "refused"));
       let ws: WebSocket;
@@ -209,7 +281,7 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
         return reject(new SocketOpenError(e instanceof Error ? e.message : String(e), "refused"));
       }
       ws.binaryType = "arraybuffer";
-      const t = track(events);
+      const t = track(events, keepWhileHiddenMs);
       let opened = false;
       let byApp = false;
       const abandon = (): void => {
@@ -281,11 +353,11 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
     });
 
   /** ws:// to the local network, natively (the Android app): counted and ended like the browser's. */
-  const localOpen = async (open: LocalOpener, url: string, opts: { protocols?: string[] }, events: PlatformSocketEvents): Promise<PlatformSocket> => {
-    const t = track(events);
+  const localOpen = async (open: LocalOpener, url: string, opts: PlatformOpenOptions, events: PlatformSocketEvents): Promise<PlatformSocket> => {
+    const t = track(events, opts.keepWhileHiddenMs);
     let s: PlatformSocket;
     try {
-      s = await open(url, opts, t.events);
+      s = await open(url, { protocols: opts.protocols }, t.events);
     } catch (e) {
       t.forget();
       throw e;
@@ -303,6 +375,9 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
     roomsUrl: deps.roomsUrl,
     get openCount() {
       return live.size;
+    },
+    get plainLocal() {
+      return deps.local !== undefined || pageProtocol() === "http:";
     },
     closeAll,
     async open(url, opts, events) {
@@ -327,7 +402,7 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
           throw new SocketOpenError(`ws://${u.host} is not encrypted: this device only connects to wss:// addresses`, "insecure");
         }
       }
-      return browserOpen(u.href, opts.protocols, events);
+      return browserOpen(u.href, opts.protocols, opts.keepWhileHiddenMs, events);
     },
   };
 }

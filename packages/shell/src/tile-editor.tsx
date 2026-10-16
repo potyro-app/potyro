@@ -13,6 +13,7 @@ import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
 import { askEnabled, setAskEnabled } from "./ask-setting.js";
 import { aiStanding, setAiStanding, type AiStanding } from "./ai-setting.js";
 import { formatSpend, spentIn } from "./ask-spend.js";
+import { LiveConnectionsSetting, liveRows, saveLiveRows, type LiveRow } from "./live-connections-setting.js";
 import { fmt } from "@potyro/i18n";
 
 const hueNumber = (h: number): string => fmt.number(h);
@@ -38,6 +39,8 @@ export function TileEditor({ app, onClose }: Props) {
   const [ai, setAi] = useState<AiStanding | undefined>(() => aiStanding(app.id));
   const aiSpent = spentIn(app.id, "ai");
   const aiSpentWords = formatSpend(aiSpent);
+  // Live connections (docs/28): shown once the app was allowed one, with a switch each.
+  const [live, setLive] = useState<LiveRow[]>(() => liveRows(app.id));
 
   const appName = app.name;
   const preview = tileIdentity({ key: app.key, name: name.trim() || declaredName, icon: icon.trim() || declaredIcon, accent: app.accent, hue });
@@ -50,6 +53,7 @@ export function TileEditor({ app, onClose }: Props) {
     });
     setAskEnabled(app.id, ask);
     if (ai !== undefined) setAiStanding(app.id, ai);
+    saveLiveRows(app.id, live);
     onClose();
   };
 
@@ -158,6 +162,8 @@ export function TileEditor({ app, onClose }: Props) {
             </span>
           </label>
         ) : null}
+
+        <LiveConnectionsSetting rows={live} onChange={setLive} />
 
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={onClose}>

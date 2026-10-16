@@ -49,6 +49,8 @@ export interface FakeSocketsOptions {
   deps?: Pick<WebSocketsDeps, "connectTimeoutMs" | "hiddenCloseMs" | "doc" | "local">;
   /** The per-app standing answer the shell keeps (default: nothing allowed yet). */
   allowed?: string[];
+  /** The home-network address this app was given before (`hosts: ["local"]`). */
+  localAddress?: string;
 }
 
 export interface FakeSockets {
@@ -60,8 +62,12 @@ export interface FakeSockets {
   setOnline(online: boolean): void;
   /** What `bufferedAmount` reports for every connection (default 0). */
   buffered: number;
-  /** Targets the person allowed, as the shell remembers them: a host, or "rooms". */
+  /** Targets the person allowed, as the shell remembers them: a host, "rooms", or "local:<address>". */
   readonly allowedTargets: Set<string>;
+  /** The person turns a target off in Edit tile (its open connections hear `why: "off"`). */
+  turnOff(key: string): void;
+  /** …and on again. */
+  turnOn(key: string): void;
   /** Join a room from outside, as another member. */
   joinRoom(roomId: string, name?: string): FakeRoomPeer;
   /** The members of a room now, oldest first. */
@@ -226,7 +232,11 @@ export function createFakeSockets(opts: FakeSocketsOptions = {}): FakeSockets {
   }
 
   const allowedTargets = new Set<string>(opts.allowed ?? []);
-  const keyOf = (t: SocketTarget): string => ("rooms" in t ? "rooms" : t.host);
+  const offTargets = new Set<string>();
+  const offListeners = new Set<(t: SocketTarget) => void>();
+  const local = { address: opts.localAddress };
+  const keyOf = (t: SocketTarget): string => ("rooms" in t ? "rooms" : "local" in t ? `local:${t.local}` : t.host);
+  const targetOf = (key: string): SocketTarget => (key === "rooms" ? { rooms: true } : key.startsWith("local:") ? { local: key.slice(6) } : { host: key });
   const base = createWebSockets({
     WebSocket: FakeWebSocket as unknown as WebSocketsDeps["WebSocket"],
     online: () => online,
@@ -244,8 +254,20 @@ export function createFakeSockets(opts: FakeSocketsOptions = {}): FakeSockets {
     get openCount() {
       return base.openCount;
     },
-    allowed: (t) => allowedTargets.has(keyOf(t)),
-    allow: (t) => void allowedTargets.add(keyOf(t)),
+    get plainLocal() {
+      return base.plainLocal;
+    },
+    allowed: (t) => allowedTargets.has(keyOf(t)) && !offTargets.has(keyOf(t)),
+    allow: (t) => {
+      allowedTargets.add(keyOf(t));
+      if ("local" in t) local.address = t.local;
+    },
+    turnedOff: (t) => offTargets.has(keyOf(t)),
+    onTurnedOff: (cb) => {
+      offListeners.add(cb);
+      return () => void offListeners.delete(cb);
+    },
+    localAddress: () => local.address,
   };
 
   return {
@@ -260,6 +282,14 @@ export function createFakeSockets(opts: FakeSocketsOptions = {}): FakeSockets {
       state.buffered = n;
     },
     allowedTargets,
+    turnOff(key) {
+      offTargets.add(key);
+      for (const cb of [...offListeners]) cb(targetOf(key));
+    },
+    turnOn(key) {
+      offTargets.delete(key);
+      allowedTargets.add(key);
+    },
     joinRoom(roomId, name = "") {
       const received: Array<string | Uint8Array> = [];
       let gone = false;
