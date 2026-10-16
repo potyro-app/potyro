@@ -58,3 +58,22 @@ cropped, resized and re-encoded as WebP for the example apps.
 | `photos/vinothek.webp` | [File:Parkside Wine Bar - July 2024 - Sarah Stierch.jpg](https://commons.wikimedia.org/wiki/File:Parkside_Wine_Bar_-_July_2024_-_Sarah_Stierch.jpg) | Missvain | CC0 |
 | `photos/morning-glory.webp` | [File:Garden breakfast - Garden Café Brighton 2023-12-30.jpg](https://commons.wikimedia.org/wiki/File:Garden_breakfast_-_Garden_Caf%C3%A9_Brighton_2023-12-30.jpg) | Andy Li | CC0 |
 | `art/city.webp` | [File:Tempelhofer Feld in june 2019 04.jpg](https://commons.wikimedia.org/wiki/File:Tempelhofer_Feld_in_june_2019_04.jpg) | Leonhard Lenz | CC0 |
+
+## groceries (43 KB)
+
+| File | Source | Author | License |
+|---|---|---|---|
+| `art/market.webp` | [File:WIC Environments in Michigan (20230621-USDA-FNS-UNK-0035).jpg](https://commons.wikimedia.org/wiki/File:WIC_Environments_in_Michigan_(20230621-USDA-FNS-UNK-0035).jpg) | USDAgov | public domain |
+
+## split (43 KB)
+
+| File | Source | Author | License |
+|---|---|---|---|
+| `art/lisbon.webp` | [File:December 10, 2006, Lisbon 89.jpg](https://commons.wikimedia.org/wiki/File:December_10,_2006,_Lisbon_89.jpg) | Syced | CC0 |
+| `receipts/tasca-da-esquina.webp` | Drawn for Potyro: a receipt whose lines are the sample expense's, set in DejaVu Sans Mono on a generated table | Potyro | CC0 |
+
+## workout (11 KB)
+
+| File | Source | Author | License |
+|---|---|---|---|
+| `art/plates.webp` | [File:2025 Skelton Gym Powerlifting Competition (9326219).jpg](https://commons.wikimedia.org/wiki/File:2025_Skelton_Gym_Powerlifting_Competition_(9326219).jpg) | U.S. Air Force photo by Senior Airman Haiden Morris | public domain |
