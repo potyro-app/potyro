@@ -136,7 +136,7 @@ export function DetailView(props: BuiltinViewProps) {
       <header className="k-detail-hero">
         {pictured ? (
           <span className="k-detail-photo" aria-hidden>
-            {coverUrl ? <img src={coverUrl} alt="" decoding="async" /> : null}
+            {coverUrl ? <img src={coverUrl} alt="" decoding="async" draggable={false} /> : null}
           </span>
         ) : null}
         <div className="k-detail-hero-body">

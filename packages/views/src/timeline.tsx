@@ -179,7 +179,7 @@ export function TimelineView(props: BuiltinViewProps) {
               const when = whenText(date, groupBy, withTime);
               const body = (
                 <>
-                  {cell.mediaUrl ? <img className="k-tl-thumb" src={cell.mediaUrl} alt="" width={44} height={44} /> : null}
+                  {cell.mediaUrl ? <img className="k-tl-thumb" src={cell.mediaUrl} alt="" width={44} height={44} draggable={false} /> : null}
                   <span className="k-tl-text">
                     <span className="k-primary">{cell.primary ?? " "}</span>
                     {cell.secondary ? <span className="k-secondary">{cell.secondary}</span> : null}
