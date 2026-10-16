@@ -7,12 +7,14 @@
 // it is predictable: the override is the tile's, and only the tile's.
 
 import { useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { updateEntry, type InstalledApp } from "./launcher-store.js";
 import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
 import { askEnabled, setAskEnabled } from "./ask-setting.js";
 import { aiStanding, setAiStanding, type AiStanding } from "./ai-setting.js";
 import { formatSpend, spentIn } from "./ask-spend.js";
+import { LiveConnectionsSetting, liveRows, saveLiveRows, type LiveRow } from "./live-connections-setting.js";
 import { fmt } from "@potyro/i18n";
 
 const hueNumber = (h: number): string => fmt.number(h);
@@ -38,6 +40,8 @@ export function TileEditor({ app, onClose }: Props) {
   const [ai, setAi] = useState<AiStanding | undefined>(() => aiStanding(app.id));
   const aiSpent = spentIn(app.id, "ai");
   const aiSpentWords = formatSpend(aiSpent);
+  // Live connections (docs/28): shown once the app was allowed one, with a switch each.
+  const [live, setLive] = useState<LiveRow[]>(() => liveRows(app.id));
 
   const appName = app.name;
   const preview = tileIdentity({ key: app.key, name: name.trim() || declaredName, icon: icon.trim() || declaredIcon, accent: app.accent, hue });
@@ -50,11 +54,14 @@ export function TileEditor({ app, onClose }: Props) {
     });
     setAskEnabled(app.id, ask);
     if (ai !== undefined) setAiStanding(app.id, ai);
+    saveLiveRows(app.id, live);
     onClose();
   };
 
-  return (
-    <div className="k-modal-scrim" onClick={onClose}>
+  // On the page itself: opened from the switcher (a drawer over an open app), it must not be placed —
+  // or clipped — by the drawer.
+  return createPortal(
+    <div className="k-modal-scrim k-tile-editor-scrim" onClick={onClose}>
       <div className="k-modal k-tile-editor" role="dialog" aria-modal="true" aria-label={t`Edit tile: ${appName}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.key === "Escape" && onClose()}>
         <header className="k-tile-editor-head">
           <div>
@@ -159,6 +166,8 @@ export function TileEditor({ app, onClose }: Props) {
           </label>
         ) : null}
 
+        <LiveConnectionsSetting rows={live} onChange={setLive} />
+
         <div className="k-form-actions">
           <button type="button" className="k-add" onClick={onClose}>
             <Trans>Cancel</Trans>
@@ -168,6 +177,7 @@ export function TileEditor({ app, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
