@@ -69,6 +69,12 @@ change it in every message of that language, not only the one you are looking at
 | Edit mode | Modo de edição | Bearbeitungsmodus | Modo edición | Tryb edycji | Modalità modifica |
 | launcher (the apps screen) | tela de apps | App-Übersicht | pantalla de apps | ekran aplikacji | schermata delle app |
 | tile | bloco | Kachel | mosaico | kafelek | riquadro |
+| Home screen (the launcher's style, in Look) | Tela inicial | Startbildschirm | Pantalla de inicio | Ekran główny | Schermata principale |
+| Classic (the default home screen style) | Clássica | Klassisch | Clásica | Klasyczny | Classica |
+| Tiles (the tile-wall home screen style, #96) | Blocos | Kacheln | Mosaicos | Kafelki | Riquadri |
+| Start (the Tiles style's wall pane) | Iniciar | Start | Inicio | Start | Start |
+| pin to Start / unpin | fixar no Iniciar / desafixar | an Start anheften / loslösen | anclar a Inicio / desfijar | przypnij do Startu / odepnij | aggiungi a Start / stacca |
+| group (of tiles) | grupo | Gruppe | grupo | grupa | gruppo |
 | Model settings | Configurações do modelo | Modelleinstellungen | Ajustes del modelo | Ustawienia modelu | Impostazioni del modello |
 | engine (a model provider) | motor | Engine | motor | silnik | motore |
 | API key | chave de API | API-Schlüssel | clave de API | klucz API | chiave API |
