@@ -16,7 +16,7 @@ import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { ActionMenu, type MenuEntry } from "./menu.js";
 import { enumSwatch } from "./enum.js";
 import { Fold, foldKey } from "./fold.js";
-import { editLockFor } from "./edit-lock.js";
+import { byPeople, editLockFor } from "./edit-lock.js";
 import { mediaFieldFor } from "./lead.js";
 import { pictureOf, usePictureUrl } from "./picture.js";
 import { backdropImage, pageOf } from "./backdrop.js";
@@ -44,8 +44,12 @@ const DEFAULT_FACTS = 3;
 
 export function DetailView(props: BuiltinViewProps) {
   const { t } = useLingui();
-  const { runtime, pageId, params, navigate, onEdit, onCreate } = props;
+  const { runtime, pageId, params, navigate, onEdit: editByHand, onCreate: createByHand } = props;
   const view = getView(runtime, pageId) as DetailViewDef;
+  // A feed's records (`editableBy: "app"`) are the app's: no Edit, no Delete, no Add by hand.
+  const people = byPeople(runtime, view.entity);
+  const onEdit = people ? editByHand : undefined;
+  const onCreate = people ? createByHand : undefined;
   const id = String((view.param && params[view.param]) ?? "");
   const { record, loading } = runtime.useRecord(view.entity, id);
   const remove = useDeleteRecord(runtime, view.entity);
@@ -128,7 +132,7 @@ export function DetailView(props: BuiltinViewProps) {
           spec={group.related}
           navigate={navigate}
           onEdit={onEdit}
-          onCreate={onCreate}
+          onCreate={createByHand}
         />
       </>
     ) : (
@@ -215,7 +219,7 @@ export function DetailView(props: BuiltinViewProps) {
             <Trans>Edit</Trans>
           </button>
         ) : null}
-        {locked ? (
+        {!people ? null : locked ? (
           // Edit and Delete are all this menu holds; someone else's record offers neither, so the
           // menu is inactive rather than a list of things that would each refuse.
           <button type="button" className="k-menu-btn" aria-label={t`More actions`} aria-disabled onClick={explain}>

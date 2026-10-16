@@ -1,0 +1,10 @@
+{
+  "item": [
+    { "name": "Sourdough loaf", "price": 420, "shop": "Corner bakery", "who": "Ana" },
+    { "name": "Olive oil, 1 l", "price": 980, "shop": "Market", "who": "Ana" },
+    { "name": "Tomatoes", "price": 315, "shop": "Market", "who": "Bruno" },
+    { "name": "Mozzarella", "price": 260, "shop": "Market", "who": "Bruno" },
+    { "name": "Basil", "price": 150, "shop": "Market", "who": "Carla" },
+    { "name": "Sparkling water, 6 ×", "price": 390, "shop": "Market", "who": "Carla" }
+  ]
+}

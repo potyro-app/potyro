@@ -37,6 +37,7 @@ import { RowActions, mapOnOpen } from "./builtins.js";
 import { createDefaults } from "./record-form.js";
 import { useRowGroups } from "./row-groups.js";
 import { useReorder } from "./reorder.js";
+import { byPeople } from "./edit-lock.js";
 
 /**
  * How long a ticked row stays where it is before it sinks.
@@ -258,7 +259,11 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const fail = (e: unknown, fallback: string): void => runtime.ctx.ui.toast(e instanceof Error ? e.message : fallback);
 
+  // A feed's records (`editableBy: "app"`): shown, never ticked, added, renamed or moved by hand.
+  const people = byPeople(runtime, view.entity);
+
   const toggle = async (row: Resolved): Promise<void> => {
+    if (!people) return;
     const id = String(row.id);
     const was = isDone(row);
     let next: unknown = !was;
@@ -353,7 +358,7 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const add = async (): Promise<void> => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || !people) return;
     // Typed again, word for word, while it is still on the list ticked: it comes back, not twice.
     if (quick && quick.suggest !== false) {
       const back = newestFirst(everything.rows).find((r) => sameText(r, text) && isDone(r));
@@ -514,7 +519,7 @@ export function ChecklistView(props: BuiltinViewProps) {
     names: nameOf,
     onReorder: () => {},
     onDrop: (key, over) => void (key.startsWith("g:") ? moveGroup(key, over) : moveRow(key, over)),
-    enabled: canDragRows || canDragGroups,
+    enabled: people && (canDragRows || canDragGroups),
     handle: ".k-check-grip, .k-check-heading-grip",
     ignore: ".k-check, .k-check-open, .k-inline-edit, .k-check-del",
     keyboard: "alt",
@@ -604,6 +609,7 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const renameRow = async (row: Resolved, text: string): Promise<void> => {
     setEditingRow(null);
+    if (!people) return;
     try {
       await runtime.patch(view.entity, String(row.id), { [textField]: text });
     } catch (e) {
@@ -790,7 +796,7 @@ export function ChecklistView(props: BuiltinViewProps) {
           </button>
         </p>
       ) : null}
-      {view.quickAdd ? (
+      {view.quickAdd && people ? (
         <form
           className="k-check-add"
           onSubmit={(e) => {

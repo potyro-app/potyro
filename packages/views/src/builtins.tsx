@@ -13,7 +13,7 @@ import { useDynamicText } from "./dynamic.js";
 import { enumSwatch } from "./enum.js";
 import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
-import { editLockFor } from "./edit-lock.js";
+import { byPeople, editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
 import { useReportCount } from "./page-count.js";
@@ -85,6 +85,8 @@ export function RowActions({
 }) {
   const { t } = useLingui();
   const explain = (): void => runtime.ctx.ui.toast(locked!);
+  // A feed's records (`editableBy: "app"`) are not people's to delete; the app's own actions stay.
+  if (!byPeople(runtime, entity)) onDelete = undefined;
   if (!actions?.length && !onEdit && !onDelete) return null;
   return (
     <span className="k-row-actions" onClick={(e) => e.stopPropagation()}>
@@ -232,7 +234,7 @@ export function ListView(props: BuiltinViewProps) {
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
-  if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={onCreate} />;
+  if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={byPeople(runtime, view.entity) ? onCreate : undefined} />;
 
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
   // lives on the detail page (#111). Only a row with nowhere to open keeps its Delete.
@@ -246,7 +248,7 @@ export function ListView(props: BuiltinViewProps) {
   // A short, ungrouped list offers the next one in its own shape, so two rows are not two rows and a
   // screen of nothing.
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
-  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderRows = (list: Resolved[]) => (
     <ul className="k-list" data-lead={lead}>
       {list.map((row) => {
@@ -373,12 +375,12 @@ export function GalleryView(props: BuiltinViewProps) {
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
-  if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={onCreate} />;
+  if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={byPeople(runtime, view.entity) ? onCreate : undefined} />;
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
-  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderCards = (list: Resolved[]) => (
     <div className="k-gallery" data-aspect={view.aspect ?? "landscape"}>
       {list.map((row) => {
@@ -425,9 +427,11 @@ export function GalleryView(props: BuiltinViewProps) {
 
 export function TableView(props: BuiltinViewProps) {
   const { t } = useLingui();
-  const { runtime, pageId, params, onEdit } = props;
+  const { runtime, pageId, params } = props;
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const view = getView(runtime, pageId) as { entity: string; display?: { columns: string[] }; group?: unknown; collapsible?: boolean };
+  // A feed's records (`editableBy: "app"`) are not edited by hand.
+  const onEdit = byPeople(runtime, view.entity) ? props.onEdit : undefined;
   const columns = view.display?.columns ?? [];
   const groups = useRowGroups(runtime, pageId, rows, view);
   // An enum or tags column reads as its options' words (`labels`, #302), not their stored values;

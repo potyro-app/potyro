@@ -11,6 +11,7 @@ ones**; what differs is the authority behind it (§3). The types are in
 
 ```ts
 const s = await ctx.caps.network.socket("wss://stream.binance.com:9443/ws/btcusdt@trade", { protocols: ["v1"] });
+// options: protocols, and keepWhileHidden: "90s" | "5m" (§5) — rooms take it too
 s.readyState;                      // "open" — socket() resolves only once it is
 s.protocol;                        // the subprotocol the server chose, or ""
 await s.send("text");              // or a Uint8Array; resolves once on its way
@@ -31,6 +32,7 @@ s.close();                         // code 1000 unless given (or the app's own 3
 | `"insecure"` | `ws://` where only `wss://` can work (§6) |
 | `"too-many"` | this app already holds 4 connections |
 | `"hidden"` | Potyro is in the background, where nothing opens — try again; the first try after the person comes back opens (§5) |
+| `"off"` | the person turned this connection off for the app in Edit tile (§3) — nobody is asked; it stays off until they turn it on there. Do not retry |
 
 `send` rejects with `"closed"`, `"too-big"` (one message over 1 MiB; a room's own limit, 64 KiB) or
 `"full"` (more than 1 MiB still waiting to go out — slow down). A bad address or a non-ws scheme is a
@@ -38,8 +40,9 @@ s.close();                         // code 1000 unless given (or the app's own 3
 
 `onClose`'s `why`: `"app"` (it closed it), `"server"` (with the server's `code` and `reason`),
 `"network"` (dropped, 1006), `"left"` (the person left the app), `"hidden"` (Potyro was in the
-background 30 s), `"too-big"` (the server sent one message over 1 MiB: 1009), `"slow"` (messages piled
-up faster than the app took them: 1008), `"stopped"` (a shared app's box was stopped by its watchdog).
+background 30 s, or the `keepWhileHidden` the app asked for), `"too-big"` (the server sent one message
+over 1 MiB: 1009), `"slow"` (messages piled up faster than the app took them: 1008), `"stopped"` (a
+shared app's box was stopped by its watchdog), `"off"` (the person turned it off in Edit tile).
 An `onClose` registered after the end is called at once with how it ended.
 
 Messages that arrive before `onMessage` is called are held and handed to the first callback, so none is
@@ -86,11 +89,27 @@ app passes one — `ctx.me.name` is the person's, and sending it is the app's ch
 | Potyro's rooms | yes | with `permissions: { network: { rooms: true } }` (or `network: true`); `{ rooms: true }` alone allows no other host, for `fetch` either |
 | Question | none | once per app and host (or the rooms), on this device: “**“Price Board” wants a live connection to stream.binance.com.**” / “…**to Potyro’s rooms.**” — *While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app.* / *Everyone with the room’s link sees what the app sends there. …* — **Allow** / **Not now** |
 | The answer | — | kept per app on this device (`potyro:sockets:<appId>`, never `ctx.storage`, which the app can write), forgotten when the app is deleted; Not now is never kept |
+| Taking it back | — | Edit tile → **Live connections**: a switch per place it was allowed (below) |
 | Limits | 4 connections, 1 MiB a message, 1 MiB waiting each way | the same |
 | Where the socket lives | the shell's page | the shell's page — never the sealed frame (§4) |
 
 Two connects at once ask one question; the slot is held while the person is asked, so four questions
 cannot become five connections.
+
+**Taking it back: Edit tile's "Live connections".** Once an app has been allowed somewhere, its Edit
+tile (on the launcher, or from the switcher while the app is open) lists each place — the host, "Potyro’s
+rooms", or the home device's address — with a switch, the way the AI switch works there. On Save:
+
+- **off** closes the app's open connections there **at once** (`onClose` hears `why: "off"`) and
+  refuses the next with `"off"`, without a question — the switch is the answer, so an app retrying in
+  a loop does not bring the question back again and again;
+- **on again** lets it connect without a question;
+- a home device also has **Change address**, which forgets it: the next connection asks for the
+  address again (and closes what is open now).
+
+The stored answer is `{ on: [...], off: [...] }` (the list of allowed targets it replaced is still read).
+The shell tells the host through `SocketCap.onTurnedOff`, which the host listens to only while the app
+holds a connection. A trusted app is never asked, so it is listed only for a home device it was given.
 
 ## 4. Where the connection lives
 
@@ -119,6 +138,18 @@ Every connection ends when the person **leaves the app** (the shell, like the li
 Potyro has been **hidden for 30 s** (`HIDDEN_CLOSE_MS`; coming back sooner cancels it), when the device
 goes away, or when a connection still opening is overtaken by either — it never opens behind the
 person's back. The app hears why.
+
+**A longer grace for a chat: `keepWhileHidden`.** `socket(url, { keepWhileHidden: "5m" })` (and
+`room(id, { keepWhileHidden: "5m" })`) keeps that one connection open for up to that long while Potyro
+is hidden — seconds (`"90s"`) or minutes (`"5m"`), **at most 15 minutes** (`HIDDEN_KEEP_MAX_MS`; a
+longer one is held to 15 min, a value that is neither is a `TypeError`). Each connection has its own
+timer, so a chat's room can outlast a price stream opened by the same app. Why a cap and not "until the
+person comes back": a connection the person walked away from should not run all afternoon on their
+battery and data, and "it never runs behind the person's back" still holds — it is this connection,
+for a bounded while. Why allow it at all: thirty seconds is less than a look at a message in another
+app, and a chat dropped every time costs the person their place (a new member id, the others seeing a
+leave and a join). It is "at most": a phone may stop a backgrounded app's network sooner (Android
+pauses a WebView in the background), and the app hears `"network"` or `"hidden"` either way.
 
 There is no `reconnect: true`. A reconnect is a new connection: in a room it is a new member id (the
 others see a leave and a join), a server's subscriptions must be sent again, and whether to come back
@@ -163,10 +194,16 @@ live.onClose(({ why }) => {
 timer it set can fire after the app was closed; the host refuses that app's `socket()` and `room()`
 from then on (`"refused"`, `retireAppSockets` on close). A sealed app's box is gone with it anyway.
 
-**Long work from a button.** A sealed app's box gives each call about a second (its watchdog), the time
-spent on a question to the person aside. Filling in a day of data, or a demo's backlog, takes longer:
-the button starts the work and returns, and the work goes on (with the ctx of that call) and says how
-it is going through records — the hero apps' status line is an aggregate view over one record.
+**Long work from a button.** A sealed app's box gives each call about a second (its watchdog) of the
+app's **own** time. Waiting is not counted: a question to the person, the AI, and the network — a
+`fetch`, a `socket()` or `room()` connecting (and the question before it), however long the server
+takes — pause the call's budget, in the realm and in QuickJS alike (the same `question()` /
+`openQuestion()` accounting; `host/test/network-budget.test.ts` proves a connect and a fetch slower
+than the whole budget finish, and that spinning is still stopped). QuickJS has no `fetch` at all
+(`network fetch is not marshalable`); only the realm's pauses for it. Filling in a day of data, or a
+demo's backlog, is the app's own time and takes longer: the button starts the work and returns, and
+the work goes on (with the ctx of that call) and says how it is going through records — the hero apps'
+status line is an aggregate view over one record.
 
 ## 6. `ws://` — where it can work
 
@@ -188,9 +225,36 @@ it is going through records — the hero apps' status line is an aggregate view 
   socket (`LocalWebSocket.java`, no OkHttp), only to checked addresses. Its handshake sends
   `Origin: https://localhost`. `wss://` on Android is the WebView's own WebSocket, as on the web.
 - **iOS**: `wss://` only for now (docs/27).
-- A shared app on Android reaches a local address only if its manifest names it — and a local
-  address differs per home, so a shared Home Assistant app is in practice a trusted app (open
-  question for the owner, §8).
+
+**A device on the person's home network: the host `"local"`.** A local address differs in every home,
+so a shared app cannot name it. It names `"local"` instead and connects to the host `local`:
+
+```ts
+permissions: { network: { hosts: ["local"] } }
+const hub = await ctx.caps.network.socket("ws://local:8123/api/websocket");
+```
+
+- The first time, Potyro asks the person for the address — “**“Lights” wants to connect to a device on
+  your home network.**” *What is the device’s address? For example 192.168.1.20 or homeassistant.local —
+  it is in the device’s own settings or app.* [192.168.1.20] **Continue** / **Not now** — then asks the
+  consent naming it: “**“Lights” wants a live connection to 192.168.1.20 on your home network.**” Allow /
+  Not now. (The shell's prompt dialog takes a detail line, button words and a placeholder for this —
+  `UiBridge.prompt`; an app's own `ctx.ui.prompt` still passes only `default`.)
+- Only a local address is taken (loopback, 10/8, 172.16/12, 192.168/16, link-local, IPv6 unique-local,
+  a `.local` name — `parseLocalAddress`); anything else is asked again, naming what was typed.
+  Cancelling is Not now (`"denied"`). A port they type wins over the app's (`homeassistant.local:9000`).
+- The address is remembered for the app on this device (`local:<address>` in its answer; one home
+  device per app — a new address replaces the old) and listed in Edit tile with its switch and
+  **Change address**. The app's socket's `url` is the real address.
+- A trusted app may use `local` too: it is asked for the address (never the consent).
+- `local` is for `socket()` only (a `fetch` to `local` goes nowhere).
+- **The web's limit.** An https page cannot open `ws://` to the home network (mixed content), and most
+  home devices offer no `wss://` with a certificate a browser accepts. So on the website, `ws://local…`
+  is refused at once with `"insecure"` — before anyone is asked for an address that could not work —
+  and `wss://local…` asks with a sentence added to the question: “*In a browser it connects only if the
+  device offers a secure (wss://) connection; the Potyro app for Android connects either way.*” The
+  Android app reaches it over `PotyroLocalSocket`; a page served over http (development) reaches it
+  directly. `SocketCap.plainLocal` says which.
 
 `LocalWebSocket` is tested on a desktop JVM against real servers (`packages/native/test/
 local-websocket.test.ts`, skipped without a JDK); the APK builds with it. It has not yet been run on a
@@ -215,10 +279,12 @@ phone against a Home Assistant.
 
 ## 8. Open questions
 
-- **Local addresses for shared apps.** A shared app must name its hosts, and `192.168.1.20` is
-  different in every home. Should a manifest be able to say `hosts: ["local"]` — any local address,
-  with the question naming the actual one? Not built; owner's call.
-- **Revoking.** The answer is kept per app on the device and forgotten on delete; there is no switch in
-  Edit tile yet, as there is for AI.
-- **Background.** 30 s hidden closes everything; a chat app may want longer. One constant
-  (`HIDDEN_CLOSE_MS`).
+Decided 2026-10-16 (owner-approved follow-ups): local addresses for shared apps (`hosts: ["local"]`,
+§6), revoking (Edit tile's Live connections, §3), a longer background grace (`keepWhileHidden`, at most
+15 min, §5), and network waits not counting against a sealed call's budget (§5).
+
+- **More than one home device per app.** `local` is one address per app; an app that drives a hub and
+  a speaker would need two. Not built: no app asks for it yet.
+- **Concurrent calls and the paused budget.** The pause is counted per box, not per call: while one
+  call waits on the network, a second call running at the same time in the same box is not charged
+  either. The same is true of a question to the person, and has been since the budget was made.

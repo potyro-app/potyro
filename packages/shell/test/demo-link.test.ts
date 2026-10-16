@@ -74,6 +74,24 @@ describe("the demo package", () => {
     expect(await demoSeed("someones-own-app", ["thing"])).toBeUndefined();
   });
 
+  it("an app added from a package carries the seed its package came with, for the entities it keeps", async () => {
+    const kept = { checkin: [{ date: "2026-09-21", hours: 7.25 }], gone: [{ x: 1 }] };
+    expect(await demoSeed("mood-sleep", ["checkin"], kept)).toEqual({ checkin: [{ date: "2026-09-21", hours: 7.25 }] });
+    expect(await demoSeed("mood-sleep", ["checkin"], { checkin: [] })).toBeUndefined();
+  });
+
+  it("a demo link of an app added from a package opens on the package's seed (Sleep & Mood, Notes…)", async () => {
+    const source = `import { defineApp } from "potyro";
+export default defineApp({ id: "mood-sleep", name: "Sleep & Mood", version: "1.0.0", schemaVersion: 1, entities: { checkin: { fields: { date: { type: "date" } } } }, pages: [{ id: "all", title: "All", view: { type: "list", entity: "checkin" } }] });
+`;
+    const { demoPackageFor } = await import("../src/demo-package.js");
+    const demo = await demoPackageFor({ id: "mood-sleep", name: "Sleep & Mood", source, updatedAt: "2026-10-16", seed: { checkin: [{ date: "2026-09-21" }] } });
+    expect(readAppPackage(demo.zip).seed).toEqual({ checkin: [{ date: "2026-09-21" }] });
+    // And the app without them, for an inline link that would be too long with them.
+    expect(demo.bare).toBeDefined();
+    expect(readAppPackage(demo.bare!).seed).toBeUndefined();
+  });
+
   it("packs the source, its own modules, shipped files, demo records and credit — never library bytes", () => {
     const zip = packDemo({
       app: { id: "groceries", name: "Groceries", source: SOURCE, lock: undefined },

@@ -138,6 +138,8 @@ export default defineApp({
       },
     },
     post: {
+      // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
+      editableBy: "app",
       label: { en: "Post", "pt-BR": "Post", de: "Beitrag", es: "Publicación", pl: "Wpis", it: "Post" },
       icon: "💬",
       displayField: "text",
@@ -161,6 +163,7 @@ export default defineApp({
       },
     },
     minute: {
+      editableBy: "app",
       label: { en: "Minute", "pt-BR": "Minuto", de: "Minute", es: "Minuto", pl: "Minuta", it: "Minuto" },
       displayField: "word",
       fields: {
@@ -172,6 +175,7 @@ export default defineApp({
       },
     },
     feed: {
+      editableBy: "app",
       label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
       displayField: "state",
       fields: {
