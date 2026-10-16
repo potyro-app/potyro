@@ -1270,7 +1270,7 @@ export default defineApp({
         name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
         muscles: {
           type: "tags",
-          options: [...MUSCLES],
+          options: ["chest", "back", "shoulders", "biceps", "triceps", "quads", "hamstrings", "glutes", "calves", "core"],
           label: { en: "Muscles", "pt-BR": "Músculos", de: "Muskeln", es: "Músculos", pl: "Mięśnie", it: "Muscoli" },
           labels: {
             chest: { en: "chest", "pt-BR": "peito", de: "Brust", es: "pecho", pl: "klatka", it: "petto" },
@@ -1763,18 +1763,17 @@ export default defineApp({
                     const n = working(entry.sets ?? []).length;
                     for (const m of (ex?.muscles as string[] | undefined) ?? []) count.set(m, (count.get(m) ?? 0) + n);
                   }
-                const words = ctx.t;
                 const name: Record<string, string> = {
-                  chest: words({ en: "chest", "pt-BR": "peito", de: "Brust", es: "pecho", pl: "klatka", it: "petto" }),
-                  back: words({ en: "back", "pt-BR": "costas", de: "Rücken", es: "espalda", pl: "plecy", it: "schiena" }),
-                  shoulders: words({ en: "shoulders", "pt-BR": "ombros", de: "Schultern", es: "hombros", pl: "barki", it: "spalle" }),
-                  biceps: words({ en: "biceps", "pt-BR": "bíceps", de: "Bizeps", es: "bíceps", pl: "biceps", it: "bicipiti" }),
-                  triceps: words({ en: "triceps", "pt-BR": "tríceps", de: "Trizeps", es: "tríceps", pl: "triceps", it: "tricipiti" }),
-                  quads: words({ en: "quads", "pt-BR": "quadríceps", de: "Quadrizeps", es: "cuádriceps", pl: "czworogłowe", it: "quadricipiti" }),
-                  hamstrings: words({ en: "hamstrings", "pt-BR": "posteriores", de: "Beinbeuger", es: "isquios", pl: "dwugłowe", it: "femorali" }),
-                  glutes: words({ en: "glutes", "pt-BR": "glúteos", de: "Gesäß", es: "glúteos", pl: "pośladki", it: "glutei" }),
-                  calves: words({ en: "calves", "pt-BR": "panturrilhas", de: "Waden", es: "gemelos", pl: "łydki", it: "polpacci" }),
-                  core: words({ en: "core", "pt-BR": "core", de: "Rumpf", es: "core", pl: "core", it: "core" }),
+                  chest: ctx.t({ en: "chest", "pt-BR": "peito", de: "Brust", es: "pecho", pl: "klatka", it: "petto" }),
+                  back: ctx.t({ en: "back", "pt-BR": "costas", de: "Rücken", es: "espalda", pl: "plecy", it: "schiena" }),
+                  shoulders: ctx.t({ en: "shoulders", "pt-BR": "ombros", de: "Schultern", es: "hombros", pl: "barki", it: "spalle" }),
+                  biceps: ctx.t({ en: "biceps", "pt-BR": "bíceps", de: "Bizeps", es: "bíceps", pl: "biceps", it: "bicipiti" }),
+                  triceps: ctx.t({ en: "triceps", "pt-BR": "tríceps", de: "Trizeps", es: "tríceps", pl: "triceps", it: "tricipiti" }),
+                  quads: ctx.t({ en: "quads", "pt-BR": "quadríceps", de: "Quadrizeps", es: "cuádriceps", pl: "czworogłowe", it: "quadricipiti" }),
+                  hamstrings: ctx.t({ en: "hamstrings", "pt-BR": "posteriores", de: "Beinbeuger", es: "isquios", pl: "dwugłowe", it: "femorali" }),
+                  glutes: ctx.t({ en: "glutes", "pt-BR": "glúteos", de: "Gesäß", es: "glúteos", pl: "pośladki", it: "glutei" }),
+                  calves: ctx.t({ en: "calves", "pt-BR": "panturrilhas", de: "Waden", es: "gemelos", pl: "łydki", it: "polpacci" }),
+                  core: ctx.t({ en: "core", "pt-BR": "core", de: "Rumpf", es: "core", pl: "core", it: "core" }),
                 };
                 return MUSCLES.map((m) => ({
                   label: name[m]!,
