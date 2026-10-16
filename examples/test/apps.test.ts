@@ -73,7 +73,7 @@ describe("every example speaks the six languages (#303)", () => {
       const plain = wordSlots(app)
         .filter((s) => typeof s.value === "string")
         .map((s) => s.value as string);
-      for (const p of plain) expect(p, p).toMatch(/^(\S{1,5}|\$\/kg|Wiki|Shakshuka|2 × 1 l)$/);
+      for (const p of plain) expect(p, p).toMatch(/^(\S{1,5}|\$\/kg|Wiki|Shakshuka|Monstera deliciosa|2 × 1 l)$/);
     });
   }
 });
