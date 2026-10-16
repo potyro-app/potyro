@@ -1,5 +1,6 @@
 import { test, expect } from "./console-guard";
 import { foreignHosts, makeDemoLink, stranger } from "./share-demo";
+import { addAsMine, packApp } from "./library-demos";
 
 // Every shared link is a working demo (docs/24). Someone who has never used Potyro opens the link and
 // is using the app within seconds: sealed, on its sample records — never the sharer's — in their own
@@ -51,6 +52,36 @@ test("a stranger opens a demo link: the app runs at once, sealed, demo records o
   expect(JSON.parse(stored.counts ?? "{}")).toEqual({ "demo-opened": 1 });
 
   expect(foreign).toEqual([]);
+  await context.close();
+});
+
+test("a demo of an app shown for one group at a time opens on one of the demo's groups, never on “choose a group”", async ({ page, browser, baseURL }) => {
+  // Split has a required app-wide selection (docs/03 `scope`): a first run of the empty app asks
+  // which group; a demo has groups of its own, so it opens on one.
+  const link = await makeDemoLink(page, "Split");
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  await viewer.goto(link);
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
+  const chip = viewer.locator(".k-scope");
+  await expect(chip).toBeVisible();
+  await expect(chip).not.toHaveAttribute("data-empty", "true");
+  await expect(chip).not.toContainText("Choose");
+  // Given a moment to ask, it still has not.
+  await viewer.waitForTimeout(500);
+  await expect(viewer.getByRole("dialog", { name: "Choose" })).toHaveCount(0);
+  await context.close();
+});
+
+test("a demo of an app added from a package opens on the sample records its package came with", async ({ page, browser, baseURL }) => {
+  // Receipt Split ships a seed.json (#253): it is the app's own sample data, and its demo shows it.
+  await addAsMine(page, "receipt-split.potyro-app.zip", packApp("receipt-split", "receipt-split.app.ts", ["--seed", "seed.json"]));
+  await expect(page.getByText("Sourdough loaf")).toBeVisible();
+  const link = await makeDemoLink(page, "Receipt Split");
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  await viewer.goto(link);
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
+  await expect(viewer.getByText("Sourdough loaf")).toBeVisible();
+  await expect(viewer.getByText("Mozzarella")).toBeVisible();
   await context.close();
 });
 

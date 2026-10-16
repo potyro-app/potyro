@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // "What changed while I was away", end to end, in two browsers (KA-36).
 //
@@ -37,9 +38,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

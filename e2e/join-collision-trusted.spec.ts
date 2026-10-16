@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { answerNamePrompt } from "./name-prompt.js";
 import { tileAction } from "./launcher-actions.js";
+import { E2E_RELAY } from "./ports";
 
 // Joining someone's app when you ALREADY have an app of that id — reported from a real session.
 //
@@ -39,9 +40,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     (source) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

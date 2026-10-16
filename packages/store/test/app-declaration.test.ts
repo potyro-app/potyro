@@ -40,6 +40,15 @@ describe("what an app declares, in the manifest", () => {
     expect(declareApp(null)).toBeUndefined();
   });
 
+  it("an app named in several languages (#302) is a declaration, and travels in the manifest", () => {
+    const name = { en: "Mirror Monsters", de: "Spiegelmonster" };
+    const declared = declareApp({ ...definition, name })!;
+    expect(declared.name).toEqual(name);
+    const pkg = readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], declared }));
+    expect(pkg.declared?.name).toEqual(name);
+    expect(declareApp({ ...definition, name: { en: 1 } })).toBeUndefined();
+  });
+
   it("round-trips through a package and through an export bundle", () => {
     const declared = declareApp(definition)!;
     expect(readAppPackage(packAppPackage({ source: SOURCE, sourceName: "app.tsx", files: [], declared })).declared).toEqual(declared);

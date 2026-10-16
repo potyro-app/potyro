@@ -22,9 +22,14 @@ export interface EchoServer {
   close(): Promise<void>;
 }
 
-/** Sends every message back as it came: text as text, binary as binary. */
-export async function startEcho(): Promise<EchoServer> {
-  const wss = new WebSocketServer({ port: 0, host: "127.0.0.1" });
+/** Sends every message back as it came: text as text, binary as binary. `delayMs` holds each handshake that long. */
+export async function startEcho(opts: { delayMs?: number } = {}): Promise<EchoServer> {
+  const delay = opts.delayMs ?? 0;
+  const wss = new WebSocketServer({
+    port: 0,
+    host: "127.0.0.1",
+    ...(delay > 0 ? { verifyClient: (_info: unknown, done: (ok: boolean) => void) => void setTimeout(() => done(true), delay) } : {}),
+  });
   await new Promise<void>((resolve) => wss.once("listening", () => resolve()));
   const live = new Set<unknown>();
   const paths: string[] = [];
@@ -75,7 +80,9 @@ async function relayArgs(): Promise<string[]> {
   const [major, minor] = process.versions.node.split(".").map(Number) as [number, number];
   if (major > 22 || (major === 22 && minor >= 6)) return ["--experimental-strip-types", "--no-warnings", "packages/rooms/src/server.ts"];
   const { build } = createRequire(new URL("../packages/shell/package.json", import.meta.url))("esbuild") as typeof import("esbuild");
-  const outfile = fileURLToPath(new URL("../packages/rooms/dist/e2e-server.mjs", import.meta.url));
+  // One file per process: ci-local runs several copies of the suite at once from one checkout, and a
+  // shard overwriting the bundle another shard is starting would hand it half a file.
+  const outfile = fileURLToPath(new URL(`../packages/rooms/dist/e2e-server-${process.pid}.mjs`, import.meta.url));
   await build({ entryPoints: [fileURLToPath(new URL("../packages/rooms/src/server.ts", import.meta.url))], bundle: true, platform: "node", format: "esm", packages: "external", outfile, logLevel: "silent" });
   return [outfile];
 }

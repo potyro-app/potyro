@@ -10,13 +10,16 @@
 // when a definition crosses out of it. A reader that finds no declaration (an older package, pasted
 // source) falls back to reading the app in the sealed box.
 
+import type { Words } from "potyro";
+
 /** Where a function stood in the definition: the isolate's marker, so one validator reads both. */
 export const FN_MARKER = "__potyro_fn__";
 
 /** An app's declarative parts, as JSON. Functions are FN_MARKER; everything else is as written. */
 export interface AppDeclaration {
   id: string;
-  name?: string;
+  /** One name, or the name per language (#302). */
+  name?: Words;
   icon?: string;
   entities: Record<string, unknown>;
   pages: unknown[];
@@ -32,6 +35,15 @@ const NOT_DECLARED = new Set(["__potyroApp"]);
  * JSON cannot hold is left out. Undefined when it is not an app (no id, no entities, no pages).
  */
 export function declareApp(definition: unknown): AppDeclaration | undefined {
+  return describeApp(definition).declared;
+}
+
+/**
+ * `declareApp`, and when the definition is not a declaration, why — in words for whoever packs it
+ * (`pack:app`), so "it does not export an app" is said only when it does not.
+ */
+export function describeApp(definition: unknown): { declared?: AppDeclaration; problem?: string } {
+  if (definition === undefined || definition === null) return { problem: "it does not export an app (`export default defineApp({ … })`)" };
   const ancestors = new Set<object>();
   const walk = (v: unknown): unknown => {
     if (typeof v === "function") return FN_MARKER;
@@ -55,7 +67,9 @@ export function declareApp(definition: unknown): AppDeclaration | undefined {
       ancestors.delete(v);
     }
   };
-  return parseDeclaration(walk(definition));
+  const raw = walk(definition);
+  const problem = declarationProblem(raw);
+  return problem ? { problem } : { declared: raw as AppDeclaration };
 }
 
 /**
@@ -64,13 +78,23 @@ export function declareApp(definition: unknown): AppDeclaration | undefined {
  * same validator that checks a loaded definition.
  */
 export function parseDeclaration(raw: unknown): AppDeclaration | undefined {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  return declarationProblem(raw) ? undefined : (raw as AppDeclaration);
+}
+
+/** A name as an app may write it (#302): one text, or a text per language. */
+const isWords = (v: unknown): boolean =>
+  typeof v === "string" ||
+  (!!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length > 0 && Object.values(v).every((w) => typeof w === "string"));
+
+/** Why `raw` is not a declaration's outline, in words; undefined when it is one. */
+export function declarationProblem(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return "its default export is not an app definition";
   const d = raw as Record<string, unknown>;
-  if (typeof d.id !== "string" || !d.id) return undefined;
-  if (!d.entities || typeof d.entities !== "object" || Array.isArray(d.entities)) return undefined;
-  if (!Array.isArray(d.pages)) return undefined;
-  if (d.name !== undefined && typeof d.name !== "string") return undefined;
-  if (d.icon !== undefined && typeof d.icon !== "string") return undefined;
-  if (d.permissions !== undefined && (!d.permissions || typeof d.permissions !== "object" || Array.isArray(d.permissions))) return undefined;
-  return d as AppDeclaration;
+  if (typeof d.id !== "string" || !d.id) return "it has no `id`";
+  if (!d.entities || typeof d.entities !== "object" || Array.isArray(d.entities)) return "its `entities` is not an object";
+  if (!Array.isArray(d.pages)) return "its `pages` is not a list";
+  if (d.name !== undefined && !isWords(d.name)) return "its `name` is neither a text nor a text per language";
+  if (d.icon !== undefined && typeof d.icon !== "string") return "its `icon` is not a text";
+  if (d.permissions !== undefined && (!d.permissions || typeof d.permissions !== "object" || Array.isArray(d.permissions))) return "its `permissions` is not an object";
+  return undefined;
 }
