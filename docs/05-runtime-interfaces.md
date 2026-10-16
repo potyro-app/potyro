@@ -417,3 +417,10 @@ A view's full-screen layer (a form sheet) is portalled to `usePortalRoot()`, whi
 `document.body` unless a host frames the app in a screen of its own (`PortalRootContext`, #261):
 the Studio shows an app beside its conversation, and the app's forms belong to that screen, not
 to the page. Popovers anchored to a control keep the page — they are placed by page coordinates.
+
+A view that lists records reports how many it shows through `PageCountContext` (`useReportCount`),
+which the shell's page header provides; the header never runs the page's query a second time to
+count. Inside a page `layout` the items report to nobody (`null` provider) except a `split`'s list.
+The views also export the presentation helpers the shell's header shares with them: `backdropOf` /
+`backdropImage` / `backdropKind` / `pageOf` (a page's ground) and `usePictureUrl` (a photo, a file,
+or a path in the app's files, as a URL).

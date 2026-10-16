@@ -12,7 +12,7 @@ import type { MapCamera, Resolved } from "potyro";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
-import { DetailView } from "./builtins.js";
+import { DetailView } from "./detail.js";
 import { loadMapLibre } from "./maplibre.js";
 
 /**

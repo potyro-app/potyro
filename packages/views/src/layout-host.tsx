@@ -13,12 +13,13 @@
 
 import { fmt } from "@potyro/i18n";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useContext, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { Localized, PageLayout, View } from "potyro";
 import type { ShownLayoutItem as LayoutItem } from "./shown.js";
 import { layoutItemId } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { ViewHost } from "./host.js";
+import { PageCountContext } from "./page-count.js";
 
 export interface LayoutHostProps extends BuiltinViewProps {
   layout: Localized<PageLayout>;
@@ -65,8 +66,13 @@ export function LayoutHost(props: LayoutHostProps) {
   const wide = useWide(ref);
   const [tab, setTab] = useState(0);
 
-  const item = (_it: LayoutItem, i: number, extra: Partial<BuiltinViewProps> = {}): ReactNode => (
-    <ViewHost {...props} {...extra} pageId={layoutItemId(pageId, i)} registry={registry} />
+  // A layout's items each count their own rows; the page header's count is for a page of ONE view,
+  // so none of them reports to it — except a split's list, which IS the page's list.
+  const parentCount = useContext(PageCountContext);
+  const item = (_it: LayoutItem, i: number, extra: Partial<BuiltinViewProps> = {}, counts = false): ReactNode => (
+    <PageCountContext.Provider value={counts ? parentCount : null}>
+      <ViewHost {...props} {...extra} pageId={layoutItemId(pageId, i)} registry={registry} />
+    </PageCountContext.Provider>
   );
   const titled = (it: LayoutItem, i: number, body: ReactNode, span?: number): ReactNode => (
     <section key={i} className="k-layout-item" data-span={span} aria-label={it.title || undefined}>
@@ -92,14 +98,16 @@ export function LayoutHost(props: LayoutHostProps) {
     };
     return (
       <div ref={ref} className="k-layout k-layout-split" data-wide={wide || undefined}>
-        {titled(left, 0, item(left, 0, { navigate: fill }))}
+        {titled(left, 0, item(left, 0, { navigate: fill }, true))}
         {wide
           ? titled(
               right,
               1,
-              selected ? item(right, 1) : <p className="k-layout-empty">
-                <Trans>Choose one on the left.</Trans>
-              </p>,
+              selected ? item(right, 1) : (
+                <p className="k-layout-empty">
+                  <Trans>Choose one on the left.</Trans>
+                </p>
+              ),
             )
           : null}
       </div>

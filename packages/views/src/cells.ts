@@ -1,13 +1,15 @@
 // Resolve display bindings (which may be functions → async host calls) for a batch of rows,
 // outside of render. Keeps the view components synchronous.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import { computedInfo, type EntityDef, type MediaRef, type Resolved } from "potyro";
+import { computedInfo, type EntityDef, type Resolved } from "potyro";
 import type { DisplayCell } from "./types.js";
 import { formatDateValue, getView, toBadges } from "./format.js";
 import { releaseMediaUrl } from "./media-input.js";
 import { optionLabel } from "./shown.js";
+import { firstPhotoField } from "./lead.js";
+import { pictureOf, pictureUrl } from "./picture.js";
 
 function str(v: unknown): string {
   if (v == null) return "";
@@ -16,7 +18,19 @@ function str(v: unknown): string {
 }
 
 export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): DisplayCell[] {
-  const [cells, setCells] = useState<DisplayCell[]>([]);
+  const [shown, setShown] = useState<{ cells: DisplayCell[]; minted: string[] }>({ cells: [], minted: [] });
+  // The photo URLs the cells ON SCREEN point at. They are freed only once other cells have replaced
+  // them (or the view has gone) — never when the rows merely change. Freed on a change, every picture
+  // on screen pointed at a dead URL until the new batch arrived, and a lazy one that had not loaded
+  // yet never did: a gallery showed blank cards and the console "ERR_FILE_NOT_FOUND".
+  const onScreen = useRef<string[]>([]);
+  useEffect(() => {
+    const before = onScreen.current;
+    onScreen.current = shown.minted;
+    const keep = new Set(shown.minted);
+    before.filter((u) => !keep.has(u)).forEach(releaseMediaUrl);
+  }, [shown]);
+  useEffect(() => () => onScreen.current.forEach(releaseMediaUrl), []);
 
   useEffect(() => {
     let alive = true;
@@ -24,10 +38,22 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
     const ctx = runtime.ctx;
     const view = getView(runtime, pageId) as { display?: Record<string, unknown>; entity?: string };
     const display = view.display;
+    const entityDef = runtime.definition.entities[view.entity ?? ""];
+    // The record's photo leads its row even when the page did not name one: a list of plants with
+    // their pictures is the list, and one without is a list of words about plants.
+    const media = typeof display?.media === "string" ? display.media : firstPhotoField(entityDef);
 
     void Promise.all(
       rows.map(async (row): Promise<DisplayCell> => {
         const cell: DisplayCell = {};
+        if (media) {
+          const picture = pictureOf(row[media]);
+          // A photo's URL is minted for this list, which frees it when the rows change — a long
+          // scroll otherwise holds every thumbnail it ever drew. A file's belongs to the app's folder.
+          const got = picture ? await pictureUrl(ctx, picture) : null;
+          if (got) cell.mediaUrl = got.url;
+          if (got?.owned) minted.push(got.url);
+        }
         if (!display) return cell;
         if (display.primary !== undefined) {
           cell.primary = str(await runtime.resolveBinding({ kind: "view", page: pageId, path: "display.primary" }, row, ctx));
@@ -36,14 +62,6 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
           cell.secondary = str(
             await runtime.resolveBinding({ kind: "view", page: pageId, path: "display.secondary" }, row, ctx),
           );
-        }
-        if (typeof display.media === "string") {
-          const ref = row[display.media] as MediaRef | MediaRef[] | undefined;
-          const one = Array.isArray(ref) ? ref[0] : ref;
-          // Each call mints a fresh object URL, so this list owns the ones it asked for and frees
-          // them when the rows change — a long scroll otherwise holds every thumbnail it ever drew.
-          if (one) cell.mediaUrl = await ctx.media.url(one);
-          if (cell.mediaUrl) minted.push(cell.mediaUrl);
         }
         if (Array.isArray(display.badges)) {
           // An enum badge keeps its field, so the row shows the value in the colour it wears in the
@@ -60,15 +78,16 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
         return cell;
       }),
     ).then((cs) => {
-      if (alive) setCells(cs);
+      // Overtaken by newer rows: these cells will never be shown, so their URLs are freed now.
+      if (alive) setShown({ cells: cs, minted });
+      else minted.forEach(releaseMediaUrl);
     });
 
     return () => {
       alive = false;
-      minted.forEach(releaseMediaUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime, pageId, rows]);
 
-  return cells;
+  return shown.cells;
 }
