@@ -28,12 +28,12 @@ async function openList(page: Page): Promise<void> {
 test("a summary value function computes inside the isolate", async ({ page }) => {
   await openList(page);
 
-  // "Visited" is `value: (rows) => rows.filter((p) => p.visited).length` in places.app.ts — the
-  // function form. Two of the three seeded places are visited. Before `callSummary` this read "–".
-  await expect(figure(page, "Visited")).toHaveText("2");
+  // "Visited" is `value: (rows) => rows.filter((p) => visited(p)).length` in places.app.ts — the
+  // function form. Eight of the thirteen seeded places are been to. Before `callSummary` this read "–".
+  await expect(figure(page, "Visited")).toHaveText("8");
 
   // The declarative forms were never broken; asserting them here pins the parity claim.
-  await expect(figure(page, "Places")).toHaveText("3");
+  await expect(figure(page, "Places")).toHaveText("13");
   await expect(figure(page, "Average rating")).toHaveText("4.5");
 });
 
@@ -43,17 +43,17 @@ test("the isolate-computed figure tracks the filter chips", async ({ page }) => 
   // Each chip toggle re-runs the function across the marshalling boundary with the newly filtered
   // rows. A figure that went stale here would disagree with the rows beneath it.
   await chooseFilter(page, "cafe");
-  await expect(page.locator(".k-list-row")).toHaveCount(1);
-  await expect(figure(page, "Visited")).toHaveText("1");
+  await expect(page.locator(".k-list-row")).toHaveCount(2);
+  await expect(figure(page, "Visited")).toHaveText("2");
 
   await chooseFilter(page, "cafe");
-  await expect(figure(page, "Visited")).toHaveText("2");
+  await expect(figure(page, "Visited")).toHaveText("8");
 });
 
 test("an empty set still distinguishes a true zero from an unanswerable average", async ({ page }) => {
   await openList(page);
 
-  await chooseFilter(page, "pizza");
+  await chooseFilter(page, "museum");
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
   // Zero visited places is true; an average rating over nothing is not zero, it is unanswerable.

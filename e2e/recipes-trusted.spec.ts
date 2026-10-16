@@ -16,38 +16,44 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   // Provenance: the user's own app runs directly (trusted), not in the isolate.
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
-  // List renders with rows, and the secondary line shows a COMPUTED macro ("… kcal · …").
-  const rows = page.locator(".k-list-row");
-  await expect(rows.first()).toBeVisible();
-  expect(await rows.count()).toBeGreaterThan(0);
-  await expect(page.locator(".k-secondary").filter({ hasText: "kcal" }).first()).toBeVisible();
+  // The cookbook is a gallery of photo cards, and the secondary line shows a COMPUTED macro.
+  const cards = page.locator(".k-card");
+  await expect(cards.first()).toBeVisible();
+  await expect(page.locator(".k-card .k-secondary").filter({ hasText: "kcal" }).first()).toBeVisible();
 
-  // Open a recipe detail, then launch the custom cook-along view via its "Cook" action.
-  await rows.first().click();
+  // Open a recipe, then launch the custom cook view from the page's one big button.
+  await cards.first().click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-  await page.getByRole("button", { name: "Cook", exact: true }).click();
+  await page.getByRole("button", { name: /Start cooking/ }).click();
 
-  // Custom view (full React component) — tick the first step's checkbox.
+  // Custom view (full React component): one step at a time, and every step's tick underneath.
   await expect(page.locator("#cook-heading")).toContainText("Cooking:");
+  await expect(page.getByText(/Step 1 of \d+/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Next step" }).click();
+  await expect(page.getByText(/Step 2 of \d+/).first()).toBeVisible();
   const firstStep = page.locator("ol li input[type=checkbox]").first();
-  await firstStep.check();
-  await expect(firstStep).toBeChecked();
+  await expect(firstStep).toBeChecked(); // "Next step" ticked the step it left
+  const secondStep = page.locator("ol li input[type=checkbox]").nth(1);
+  await secondStep.check();
+  await expect(secondStep).toBeChecked();
 
-  // Add a recipe through the generated form and confirm it appears in the list.
-  await page.getByRole("button", { name: /Recipes/ }).click(); // back to the list tab
+  // Add a recipe from the cookbook's own button — "Type it in" — and confirm it appears there.
+  await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the cookbook tab
   const unique = `E2E Test Dish ${Date.now()}`;
-  await page.locator(".k-quickbar").getByRole("button", { name: /Add: Recipe/ }).click();
-  const modal = page.locator(".k-modal");
-  await expect(modal).toBeVisible();
-  await modal.getByRole("textbox").first().fill(unique);
-  await modal.getByRole("button", { name: "Create" }).click();
-  // Quick-create opens the new record (create-and-open); return to the list to see it.
-  await page.getByRole("button", { name: /Recipes/ }).click();
-  await expect(page.locator(".k-list-row", { hasText: unique })).toBeVisible();
+  await page.getByRole("button", { name: /Add a recipe/ }).first().click();
+  await page.getByRole("menuitem", { name: /Type it in/ }).click();
+  const form = page.getByRole("dialog", { name: "New recipe" });
+  await expect(form).toBeVisible();
+  await form.getByRole("textbox").first().fill(unique);
+  await form.getByRole("button", { name: "Add recipe" }).click();
+  // It opens the new recipe; return to the cookbook to see it.
+  await expect(page.locator("article.k-detail")).toContainText(unique);
+  await page.getByRole("button", { name: /Recipes/ }).first().click();
+  await expect(page.locator(".k-card", { hasText: unique })).toBeVisible();
 
   // Durability: the added recipe survives a full reload (persisted store).
   await page.reload();
-  await expect(page.locator(".k-list-row", { hasText: unique })).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: unique })).toBeVisible();
 
   // "Ingredients I have" JS predicate filter: the pantry chrome + chips drive an app filter fn.
   // The options sit behind one Filter button now rather than a row of chips across the page, so the
@@ -73,12 +79,12 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
 
 test("edits an existing record in place from the list (universal edit)", async ({ page }) => {
   await openRecipes(page);
-  const firstRow = page.locator(".k-list-row").first();
+  const firstRow = page.locator(".k-card").first();
   await expect(firstRow).toBeVisible();
 
   // Edit lives on the record's page (#111): the row opens it, and Edit is behind "More actions"
   // there, next to Delete — never inline on every row.
-  await firstRow.locator(".k-list-text").click();
+  await firstRow.click();
   await expect(page.locator("article.k-detail")).toBeVisible();
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Edit" }).click();
@@ -93,12 +99,12 @@ test("edits an existing record in place from the list (universal edit)", async (
 
   await expect(modal).toBeHidden();
   await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the list
-  await expect(page.locator(".k-list-row", { hasText: "Edited Dish E2E" })).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: "Edited Dish E2E" })).toBeVisible();
 });
 
 test("captures responsive screenshots of the recipes list", async ({ page }) => {
   await openRecipes(page);
-  await expect(page.locator(".k-list-row").first()).toBeVisible();
+  await expect(page.locator(".k-card").first()).toBeVisible();
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `test-results/recipes-${width}.png`, fullPage: true });
@@ -112,7 +118,9 @@ test("a table wider than the phone scrolls itself, and the page does not", async
   // that is wider than a phone; it has to scroll inside itself.
   await page.setViewportSize({ width: 390, height: 780 });
   await openRecipes(page);
-  await page.getByRole("button", { name: /High protein/ }).first().click();
+  // Four pages fit the phone's bar; High protein is behind More.
+  await page.locator(".k-tabbar").getByRole("button", { name: "More pages" }).click();
+  await page.getByRole("menuitem", { name: /High protein/ }).click();
   await expect(page.locator(".k-table")).toBeVisible();
 
   const overflow = await page.evaluate(() => ({

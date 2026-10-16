@@ -34,13 +34,11 @@ test.describe("desktop", () => {
   test("columns are the status options with counts; dragging a card moves it and it stays moved", async ({ page }) => {
     await openCookbook(page);
     await expect(page.locator(".k-board-col-title")).toContainText(["want to try", "tried", "keeper"]);
-    // The empty column says so and offers to add a recipe that starts there.
-    const want = column(page, "want to try");
-    await expect(want.getByText("Nothing here")).toBeVisible();
-    await expect(want.getByRole("button", { name: /Add/ })).toBeVisible();
-
+    // The sample cookbook has a card in every column (an empty column's words are the views' unit
+    // tests' to check: packages/views/test/board.test.tsx).
     const card = column(page, "tried").locator(".k-board-card", { hasText: "Chicken Caesar" });
     await expect(card).toBeVisible();
+    const tried = await column(page, "tried").locator(".k-board-card").count();
     const from = (await card.boundingBox())!;
     const to = (await column(page, "keeper").boundingBox())!;
     await page.mouse.move(from.x + 40, from.y + from.height / 2);
@@ -50,7 +48,7 @@ test.describe("desktop", () => {
     await page.mouse.up();
 
     await expect(column(page, "keeper").locator(".k-board-card", { hasText: "Chicken Caesar" })).toBeVisible();
-    await expect(column(page, "tried").locator(".k-board-card")).toHaveCount(0);
+    await expect(column(page, "tried").locator(".k-board-card")).toHaveCount(tried - 1);
     // A drop is not a click: the record did not open.
     await expect(page.locator("article.k-detail")).toHaveCount(0);
     await page.reload();
@@ -64,7 +62,7 @@ test.describe("desktop", () => {
   test("a card with a photo moves when it is dragged BY the photo", async ({ page }) => {
     await page.goto("/?user=recipes");
     await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
-    await page.locator(".k-list-row", { hasText: "Chicken Caesar" }).first().locator(".k-list-text").click();
+    await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
     await expect(page.locator("article.k-detail")).toBeVisible();
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
@@ -108,9 +106,11 @@ test.describe("phone", () => {
 
     const tried = column(page, "tried");
     await tried.scrollIntoViewIfNeeded();
+    await expect(tried.locator(".k-board-card", { hasText: "Chicken Caesar" })).toBeAttached();
+    const before = await tried.locator(".k-board-card").count();
     await tried.getByRole("button", { name: "Chicken Caesar: more" }).tap();
     await page.getByRole("menuitem", { name: /Move to want to try/ }).tap();
     await expect(column(page, "want to try").locator(".k-board-card", { hasText: "Chicken Caesar" })).toBeAttached();
-    await expect(tried.locator(".k-board-card")).toHaveCount(0);
+    await expect(tried.locator(".k-board-card")).toHaveCount(before - 1);
   });
 });

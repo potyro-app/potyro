@@ -150,7 +150,7 @@ describe("hiding a field", () => {
 describe("reordering fields", () => {
   it("moves a field and keeps everything else intact", async () => {
     const before = (await inspect(PLACES)).entities.find((e) => e.key === "place")!.fields.map((f) => f.key);
-    const moved = [before[0]!, before[7]!, ...before.slice(1, 7), before[8]!];
+    const moved = [before[0]!, before[7]!, ...before.slice(1, 7), ...before.slice(8)];
 
     const next = await apply(PLACES, { kind: "field-order", entity: "place", order: moved });
     const after = (await inspect(next)).entities.find((e) => e.key === "place")!.fields.map((f) => f.key);
@@ -321,7 +321,7 @@ export default defineApp({
   it("reads the groups and the computed keys of the real Recipes app", async () => {
     const recipe = (await inspect(RECIPES)).entities.find((e) => e.key === "recipe")!;
     // Titles in six languages (#303): read as maps, one entry per language.
-    expect(recipe.groups?.map((g) => g.titles?.en)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    expect(recipe.groups?.map((g) => g.titles?.en)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
     expect(recipe.groups?.[0]?.titles?.pl).toBe("Przegląd");
     expect(recipe.groups?.[3]?.fields).toContain("caloriesPerServing");
     expect(recipe.computed).toContain("caloriesPerServing");

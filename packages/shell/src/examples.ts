@@ -74,21 +74,31 @@ function fingerprint(source: string): string {
   return (h >>> 0).toString(36);
 }
 
+/**
+ * The definition's own text: from `defineApp(` on. A `name:` or `version:` above it belongs to the
+ * app's own code — a form's field, an AI schema — and was being read as the app's name.
+ */
+function definitionText(source: string): string {
+  const at = source.indexOf("defineApp(");
+  return at >= 0 ? source.slice(at) : source;
+}
+
 /** The app's declared name, read from the source the cheap way — these are our own files. */
-function declaredName(source: string, fallback: string): string {
-  const plain = /^\s*name:\s*"([^"]+)"/m.exec(source)?.[1];
-  if (plain) return plain;
+export function declaredName(source: string, fallback: string): string {
+  const body = definitionText(source);
+  const plain = /^\s*name:\s*"([^"]+)"/m.exec(body);
   // A translated name (#302): `name: { en: "Groceries", pl: "Zakupy" }` — saved in the app's own language.
-  const map = /^\s*name:\s*\{([^}]*)\}/m.exec(source)?.[1];
-  const own = /^\s*language:\s*"([^"]+)"/m.exec(source)?.[1];
+  const map = /^\s*name:\s*\{([^}]*)\}/m.exec(body);
+  if (plain && (!map || plain.index < map.index)) return plain[1]!;
+  const own = /^\s*language:\s*"([^"]+)"/m.exec(body)?.[1];
   if (!map) return fallback;
-  const entries = [...map.matchAll(/["']?([A-Za-z-]+)["']?\s*:\s*"([^"]+)"/g)].map((m) => [m[1]!, m[2]!] as const);
+  const entries = [...map[1]!.matchAll(/["']?([A-Za-z-]+)["']?\s*:\s*"([^"]+)"/g)].map((m) => [m[1]!, m[2]!] as const);
   return entries.find(([l]) => l === own)?.[1] ?? entries[0]?.[1] ?? fallback;
 }
 
 /** Its declared version, same reasoning. */
 function declaredVersion(source: string): string {
-  return /^\s*version:\s*"([^"]+)"/m.exec(source)?.[1] ?? "0.0.0";
+  return /^\s*version:\s*"([^"]+)"/m.exec(definitionText(source))?.[1] ?? "0.0.0";
 }
 
 /** Is `a` a later version than `b`? Plain numeric compare, part by part. */

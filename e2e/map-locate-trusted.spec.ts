@@ -55,7 +55,7 @@ test("the map has a button that centres it on where you are", async ({ page }) =
   const tiles = await captureTiles(page);
   await openMap(page);
   // The seeded places are in Berlin; the device says Reykjavík. Nothing near it is on screen yet.
-  await expect(page.locator(".maplibregl-marker")).toHaveCount(3);
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
 
   const locate = page.locator(".k-map-locate");
   await expect(locate).toBeVisible();

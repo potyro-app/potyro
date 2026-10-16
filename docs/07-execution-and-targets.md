@@ -131,7 +131,11 @@ per app id, and the realm (or the isolate) only receives a `ctx` bound to that a
 - **A package** is a zip: `app.ts`/`app.tsx`, `files/…` it ships with, an optional `seed.json`
   (`{ entity: [records] }`) and a `manifest.json` (`potyro-app/1`). A bare source is a package with
   no files; an export bundle installs as one too. `pnpm pack:app <app.tsx> [file …] [--files dir]
-  [--seed seed.json]` makes one.
+  [--seed seed.json]` makes one. A seed record's photo is the path of a file the package ships,
+  `"photo": { "file": "photos/pancakes.webp" }` (or a list of those for a field of several photos):
+  installing it gives the record its own copy of that file (`shell/src/seed-files.ts`). The bundled
+  examples ship their files from `examples/files/<id>/` (credits in `CREDITS.md` there), written into
+  the app's folder as `shipped` when its store first opens (`shell/src/example-files.ts`).
 - **Add an app** (launcher) takes a package or the app's file with the files it uses from this
   device, a link, or pasted source. It shows a card — name, what it keeps, what it asks for, what it
   ships — before anything is saved.
