@@ -214,7 +214,7 @@ export function MediaTile({
   const pending = !url && (isImage || isVideo) ? state : null;
   return (
     <div className="k-media-tile" data-kind={isImage ? "image" : isVideo ? "video" : "other"}>
-      {url && isImage ? <img src={url} alt="" /> : null}
+      {url && isImage ? <img src={url} alt="" draggable={false} /> : null}
       {url && isVideo ? <video src={url} muted playsInline /> : null}
       {pending === "waiting" ? (
         <span className="k-media-pending" data-state="waiting" role="status">
