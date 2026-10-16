@@ -215,6 +215,7 @@ export default defineApp({
   icon: "📝",
   version: "1.0.0",
   schemaVersion: 1,
+  category: "notes",
   entities: {
     note: {
       label: "Note",
