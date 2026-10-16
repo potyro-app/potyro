@@ -2501,11 +2501,13 @@ th.k-data-raw {
   inset: 0;
   z-index: -1;
 }
+/* The header's words run its whole height (title at the top, figures and the button below), so its
+   shade does too: never lighter than most of the tile shade, darkest at the bottom. */
 .k-page-hero-photo::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--cover-shade);
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--tile-shade) 80%, transparent) 0%, var(--tile-shade) 70%);
 }
 .k-page-hero-photo img,
 .k-detail-photo img {
