@@ -71,6 +71,7 @@ export type {
   CtxUi,
   UiItem,
   UiProgress,
+  ShareFile,
   CtxMedia,
   CtxFiles,
   CtxFormat,

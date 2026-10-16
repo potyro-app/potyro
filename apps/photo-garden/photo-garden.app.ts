@@ -627,6 +627,11 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     const opener = document.activeElement as HTMLElement | null;
     const deleteWord = ctx.t({ en: "Delete", "pt-BR": "Excluir", de: "Löschen", es: "Eliminar", pl: "Usuń", it: "Elimina" });
+    const share = h(
+      "button",
+      { class: "pg-btn pg-primary", type: "button" },
+      ctx.t({ en: "Share", "pt-BR": "Compartilhar", de: "Teilen", es: "Compartir", pl: "Udostępnij", it: "Condividi" }),
+    );
     const save = h(
       "button",
       { class: "pg-btn", type: "button" },
@@ -646,7 +651,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
           "div",
           { class: "pg-lightbox-meta" },
           h("div", {}, h("h3", {}, String(r.title)), h("p", {}, `${styleName(r.style, ctx)}${when ? ` · ${shortDate(when, ctx)}` : ""}`)),
-          h("div", { class: "pg-row" }, save, del, shut),
+          h("div", { class: "pg-row" }, share, save, del, shut),
         ),
       ),
     );
@@ -661,6 +666,12 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
       it: "Non è stato possibile salvarlo qui.",
     });
     save.addEventListener("click", () => void ctx.files.export(r.image as FileRef).catch(() => ctx.ui.toast(notHere)));
+    // The picture itself, through Potyro's share dialog: the person sees it and picks where it goes.
+    share.addEventListener("click", () =>
+      void ctx.ui.share({ title: String(r.title), files: [r.image as FileRef] }).catch(() =>
+        ctx.ui.toast(ctx.t({ en: "It could not be shared.", "pt-BR": "Não deu para compartilhar.", de: "Es ließ sich nicht teilen.", es: "No se pudo compartir.", pl: "Nie udało się udostępnić.", it: "Non è stato possibile condividerlo." })),
+      ),
+    );
     del.addEventListener("click", async () => {
       const sure = await ctx.ui.confirm(
         ctx.t(

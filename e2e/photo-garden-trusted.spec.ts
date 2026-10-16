@@ -103,6 +103,13 @@ test("Photo Garden: p5 comes from esm.sh, a photo grows into a living picture th
   const box = page.getByRole("dialog", { name: "Rose Tessera" });
   await expect(box.locator("img")).toHaveJSProperty("complete", true);
   await expect.poll(() => box.locator("img").evaluate((el) => (el as HTMLImageElement).naturalHeight)).toBeGreaterThan(500);
+  // Share hands the picture itself to Potyro's share dialog, which shows it before it goes.
+  await box.getByRole("button", { name: "Share" }).click();
+  const share = page.locator(".k-share-dialog");
+  const preview = share.getByRole("img", { name: /\.png$/ });
+  await expect.poll(() => preview.evaluate((el) => (el as HTMLImageElement).naturalHeight)).toBeGreaterThan(500);
+  await share.getByRole("button", { name: "Done" }).click();
+  await expect(share).toHaveCount(0);
   await box.getByRole("button", { name: "Close" }).click();
   await expect(box).toHaveCount(0);
 });

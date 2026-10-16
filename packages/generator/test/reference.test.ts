@@ -226,7 +226,7 @@ describe("capabilities outside the core", () => {
     ["ctx.caps.ai.extract", ["export interface AiCapability", "export interface AiExtractRequest"]],
     ["ctx.files.import", ["export interface CtxFiles", "import(opts?:", "export interface FileInfo"]],
     ["ctx.files", ["export interface CtxFiles", "export interface FileInfo"]],
-    ["ctx.ui.share", ["share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;"]],
+    ["ctx.ui.share", ["share(opts: { text?: Words; url?: string; title?: Words; files?: ShareFile[] }): Promise<boolean>;", "export type ShareFile ="]],
     ["share", ["share(opts:"]],
     ["ctx.caps.network.socket", ["export interface Socket {", "onMessage(cb: (data: SocketData) => void): () => void;", "export interface Room extends Socket", "export type SocketFailure", "never reconnects by itself"]],
     ["ctx.caps.network.room", ["room(id?: string, opts?: RoomOptions): Promise<Room>;"]],

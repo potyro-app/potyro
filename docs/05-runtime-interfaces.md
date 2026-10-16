@@ -92,6 +92,8 @@ export interface Capabilities {
   liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
   ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
   sockets?: SocketCap | null;              // docs/28 — one per page; the shell wraps it per app
+  share?: ShareCap | null;                 // the device's share sheet: { canShare(p), share(p) } for the share dialog
+                                           // (web: Web Share API + canShare({ files }); native: @capacitor/share)
 }
 /** Live connections: the page owns the WebSockets (the shell's realm, never a sealed frame). */
 export interface SocketCap {

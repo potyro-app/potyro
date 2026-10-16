@@ -421,7 +421,8 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
     entities: { n: { fields: { t: { type: "text" }, k: { type: "number" } }, actions: {
       two: async function(r, ctx){ var a = await ctx.get("n", r.id); var b = await ctx.patch("n", r.id, { k: 1 }); var c = await ctx.patch("n", r.id, { k: 2 }); ctx.ui.toast("k=" + c.k); },
       askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); },
-      shareIt: async function(r, ctx){ var ok = await ctx.ui.share({ title: { en: "Send it" }, text: { en: "Daily #3 4/6" }, url: "https://example.org/x" }); ctx.ui.toast("shared=" + ok); }
+      shareIt: async function(r, ctx){ var ok = await ctx.ui.share({ title: { en: "Send it" }, text: { en: "Daily #3 4/6" }, url: "https://example.org/x" }); ctx.ui.toast("shared=" + ok); },
+      shareFiles: async function(r, ctx){ var f = await ctx.files.write("cards/card.png", new Uint8Array([137, 80, 78, 71]), { mime: "image/png" }); var ok = await ctx.ui.share({ files: [f, new Uint8Array([1, 2, 3])] }); ctx.ui.toast("shared=" + ok); }
     } } }, pages: [{ id: "p", title: "P", view: { type: "list", entity: "n" } }], reminders: [] };`;
 
   describe("host calls as promises", () => {
@@ -456,6 +457,18 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
       expect(headless.toasts).toEqual(["shared=false"]);
       loaded.dispose();
       headless.loaded.dispose();
+    });
+
+    it("ctx.ui.share's files cross the isolate as data: a file of its folder by reference, bytes as bytes", async () => {
+      const seen: Array<{ files?: File[] }> = [];
+      const { loaded, ctx, toasts, rec } = await sequence({ share: async (o) => (seen.push(o), true) });
+      await loaded.callAction("n", "shareFiles", { ...rec } as never, ctx);
+      expect(toasts).toEqual(["shared=true"]);
+      const files = seen[0]!.files!;
+      expect(files.map((f) => f.name)).toEqual(["card.png", "file-2"]);
+      expect(new Uint8Array(await files[0]!.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+      expect(new Uint8Array(await files[1]!.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+      loaded.dispose();
     });
 
     it("an action waits on a person past its budget while other calls run, then writes", async () => {

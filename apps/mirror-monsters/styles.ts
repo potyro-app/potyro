@@ -155,6 +155,7 @@ export const STYLES = `
 .mm-plain { min-height: 44px; padding: 0 1rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--ink); font: 600 0.92rem var(--font-ui); cursor: pointer; }
 .mm-plain:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mm-plain.mm-danger { color: var(--danger); }
+.mm-plain.mm-share { background: var(--accent); border-color: transparent; color: var(--on-accent); }
 
 .mm-lightbox { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: var(--space-4); background: var(--scrim); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: mm-fade var(--dur) var(--ease); }
 @keyframes mm-fade { from { opacity: 0; } }

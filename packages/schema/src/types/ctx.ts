@@ -202,11 +202,19 @@ export interface CtxUi {
   /** A progress bar for a long action. */
   progress(label: Words): UiProgress;
   /**
-   * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
-   * picks where, so no permission. `true` when copied or shared, `false` when closed.
+   * Hand words, an http(s) link and/or files on: share sheet, Copy or Save a copy, after showing what
+   * goes (pictures previewed). The person picks where, so no permission. `true` when copied, shared
+   * or saved, `false` when closed. At most 10 files, 25 MB together.
    */
-  share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
+  share(opts: { text?: Words; url?: string; title?: Words; files?: ShareFile[] }): Promise<boolean>;
 }
+
+/**
+ * A file for `ctx.ui.share`: a picture or file the app made (a Blob — `cam.snap()`, `canvas.toBlob` — bytes, or
+ * a File, which keeps its name), a file in the app's folder (a `file` field's value, a `FileInfo`), or
+ * a photo field's value.
+ */
+export type ShareFile = Blob | Uint8Array | FileRef | MediaRef;
 
 /**
  * A map that is on screen right now.
