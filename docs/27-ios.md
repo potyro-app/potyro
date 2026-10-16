@@ -231,6 +231,16 @@ extension). It declares UserDefaults (CA92.1, 1C8F.1) and file timestamps (C617.
 its own manifest for the APIs it calls. Check the merged report in Xcode's archive (Generate
 Privacy Report) before the first upload.
 
+### 4.7 Voice input (optional, docs/29)
+
+The app already listens through the WebView's own speech recognition (Apple's), with
+`NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` added by `patch-plist.mjs`.
+For on-device recognition where iOS supports it (`requiresOnDeviceRecognition`), add
+`packages/native/ios-templates/SpeechPlugin.swift` to the App target and register it in a
+`CAPBridgeViewController` subclass (`bridge?.registerPluginInstance(SpeechPlugin())` in
+`capacitorDidLoad()`). The JS side uses it as soon as `Capacitor.isPluginAvailable("PotyroSpeech")`
+says so. **Uncompiled** — check: the Studio's microphone strip says "On this device" for English.
+
 ## 5. Device checklist
 
 What the owner checked on Android (docs/13), plus what only iOS can break. Use a **debug build on
@@ -323,7 +333,7 @@ directly instead of filing it publicly. A fix to the generated project goes into
 |---|---|
 | `packages/native/capacitor.config.ts` | pinned schemes, `contentInset: "never"`, the App Group for the share plugin |
 | `packages/native/scripts/patch-plist.mjs` (+ `test/patch-plist.test.ts`) | Info.plist keys, deployment target, AppDelegate opened-file copy |
-| `packages/native/ios-templates/` | Share Extension, its `NSExtension` plist, the privacy manifest — **uncompiled** |
+| `packages/native/ios-templates/` | Share Extension, its `NSExtension` plist, the privacy manifest, the `PotyroSpeech` plugin (§4.7) — **uncompiled** |
 | `packages/native/src/capacitor-capabilities.ts` | `makeRoom` / `IOS_PENDING_LIMIT` (+ `test/pending-limit.test.ts`) |
 | `packages/native/src/keep-storage.ts` | `navigator.storage.persist()` on native start |
 | `packages/shell/src/site.ts` | `VITE_POTYRO_SITE`: the site a native build belongs to |

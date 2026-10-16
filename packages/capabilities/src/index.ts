@@ -54,6 +54,7 @@ export {
   speechLanguage,
   joinPieces,
   pickEngine,
+  mayAskLocal,
   browserService,
   recognitionCtor,
   SpeechError,

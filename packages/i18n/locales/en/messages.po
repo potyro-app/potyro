@@ -6416,6 +6416,16 @@ msgstr "vibration"
 msgid "view"
 msgstr "view"
 
+#. Model settings: where the microphone's words are made; {words} = 'On this device'
+#: ../shell/src/engine-settings.tsx
+msgid "Voice: {words}. Nothing you say leaves it."
+msgstr "Voice: {words}. Nothing you say leaves it."
+
+#. Model settings: where the microphone's words are made; {words} names the service
+#: ../shell/src/engine-settings.tsx
+msgid "Voice: {words}. What you say leaves your device."
+msgstr "Voice: {words}. What you say leaves your device."
+
 #: ../shell/src/history.tsx
 msgid "vs previous"
 msgstr "vs previous"
