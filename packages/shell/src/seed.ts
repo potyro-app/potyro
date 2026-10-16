@@ -5,6 +5,7 @@ import { mediaFromFile } from "./seed-files.js";
 import { seedPlaces } from "./seeds/places.js";
 import { seedPlants } from "./seeds/plants.js";
 import { seedRecipes } from "./seeds/recipes.js";
+import { seedWorkout } from "./seeds/workout.js";
 
 const DAY = 86_400_000;
 
@@ -102,62 +103,3 @@ async function seedGroceries(store: Store): Promise<void> {
   await item("Dish soap", household);
 }
 
-async function seedWorkout(store: Store): Promise<void> {
-  const existing = await store.all("exercise");
-  if (existing.length > 0) return;
-
-  // `restSec` per exercise: the tracker counts it down after each set, and a heavy compound asks
-  // for longer than an accessory.
-  const ex = (name: string, day: string, order: number, extra: Record<string, unknown> = {}) =>
-    store.insert("exercise", { name, day, order, targetSets: 3, repRange: "8–12", bodyweight: false, restSec: 90, ...extra });
-
-  const bench = await ex("Bench Press", "push", 0, { repRange: "6–10", restSec: 150 });
-  const ohp = await ex("Overhead Press", "push", 1, { restSec: 120 });
-  const row = await ex("Barbell Row", "pull", 0, { repRange: "6–10", restSec: 120 });
-  const pullup = await ex("Pull-up", "pull", 1, { bodyweight: true, repRange: "AMRAP", restSec: 120 });
-  const squat = await ex("Squat", "legs", 0, { targetSets: 4, repRange: "5–8", restSec: 180 });
-  void pullup;
-
-  // A little history so `history`, `totalVolume`, and the async `lastBest` have data.
-  const now = Date.now();
-  // Eight weeks of lighter, older sessions for Progress (#109). None outscores the recent ones below,
-  // so each exercise's rolling best still comes from the last week.
-  for (const [daysAgo, day, kg, minutes] of [
-    [10, "pull", 50, 52], [12, "legs", 80, 61], [15, "push", 55, 55], [17, "legs", 85, 58], [19, "pull", 50, 49],
-    [22, "push", 55, 57], [26, "legs", 80, 63], [29, "push", 50, 54], [31, "pull", 45, 50], [33, "legs", 80, 60],
-    [36, "push", 50, 52], [40, "legs", 75, 59], [43, "push", 50, 51], [45, "pull", 45, 47], [47, "legs", 75, 62],
-    [50, "push", 45, 50], [54, "legs", 70, 58],
-  ] as const) {
-    const lift = day === "push" ? bench.id : day === "legs" ? squat.id : row.id;
-    await store.insert("session", {
-      day,
-      date: new Date(now - daysAgo * DAY),
-      durationSec: minutes * 60,
-      entries: [{ exercise: lift, sets: [{ kg, reps: 5 }, { kg, reps: 5 }, { kg, reps: 4 }] }],
-    });
-  }
-  await store.insert("session", {
-    day: "push",
-    date: new Date(now - 7 * DAY),
-    durationSec: 62 * 60,
-    entries: [
-      { exercise: bench.id, sets: [{ kg: 60, reps: 10 }, { kg: 70, reps: 8 }, { kg: 80, reps: 5 }] },
-      { exercise: ohp.id, sets: [{ kg: 40, reps: 8 }, { kg: 40, reps: 7 }] },
-    ],
-  });
-  await store.insert("session", {
-    day: "legs",
-    date: new Date(now - 4 * DAY),
-    durationSec: 55 * 60,
-    entries: [{ exercise: squat.id, sets: [{ kg: 100, reps: 5 }, { kg: 110, reps: 5 }, { kg: 120, reps: 3 }] }],
-  });
-  await store.insert("session", {
-    day: "push",
-    date: new Date(now - 1 * DAY),
-    durationSec: 58 * 60,
-    entries: [
-      { exercise: bench.id, sets: [{ kg: 65, reps: 10 }, { kg: 75, reps: 8 }, { kg: 85, reps: 4 }] },
-      { exercise: ohp.id, sets: [{ kg: 42.5, reps: 8 }, { kg: 42.5, reps: 6 }] },
-    ],
-  });
-}
