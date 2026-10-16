@@ -295,7 +295,6 @@ function Train(props: ViewProps) {
   const { runtime, navigate } = props;
   const ctx = runtime.ctx;
   const routinesQ = runtime.useQuery("routine");
-  const exercisesQ = runtime.useQuery("exercise");
   const sessionsQ = runtime.useQuery("session");
 
   const [active, setActive] = useState<Active | null>(null);
@@ -306,13 +305,13 @@ function Train(props: ViewProps) {
   const hydrated = useRef(false);
   const adopted = useRef(false);
 
-  // v1 data: make its routines once (see adoptLegacyDays).
+  // v1 data: make its routines once (see adoptLegacyDays). Only asked when there are none at all.
   useEffect(() => {
-    if (adopted.current || routinesQ.loading || exercisesQ.loading) return;
+    if (adopted.current || routinesQ.loading) return;
     adopted.current = true;
-    if (routinesQ.rows.length === 0 && exercisesQ.rows.some((e) => e.day)) void adoptLegacyDays(ctx);
+    if (routinesQ.rows.length === 0) void adoptLegacyDays(ctx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routinesQ.loading, exercisesQ.loading]);
+  }, [routinesQ.loading]);
 
   // Rehydrate a workout in progress (survives tab switches and reloads).
   useEffect(() => {
@@ -349,7 +348,18 @@ function Train(props: ViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restLeft]);
 
-  const exById = useMemo(() => new Map(exercisesQ.rows.map((e) => [e.id, e] as const)), [exercisesQ.rows]);
+  // The exercises this screen needs are the ones in routines and in sessions, which arrive with them
+  // (a relation is read with its record): no third query, and none of an exercise's own figures,
+  // which read its whole history and are for its page, not for this one.
+  const exById = useMemo(() => {
+    const m = new Map<string, Resolved>();
+    const keep = (e: unknown): void => {
+      if (e && typeof e === "object" && typeof (e as Resolved).id === "string") m.set((e as Resolved).id, e as Resolved);
+    };
+    for (const s of sessionsQ.rows) for (const entry of (s.entries as { exercise?: unknown }[] | undefined) ?? []) keep(entry.exercise);
+    for (const r of routinesQ.rows) for (const row of (r.exercises as { exercise?: unknown }[] | undefined) ?? []) keep(row.exercise);
+    return m;
+  }, [routinesQ.rows, sessionsQ.rows]);
   const sessions = sessionsQ.rows;
   const next = useMemo(() => nextRoutine(routinesQ.rows, sessions), [routinesQ.rows, sessions]);
   const routine = routinesQ.rows.find((r) => r.id === chosen) ?? next;
@@ -358,7 +368,7 @@ function Train(props: ViewProps) {
     loading: ctx.t({ en: "Loading…", "pt-BR": "Carregando…", de: "Wird geladen…", es: "Cargando…", pl: "Wczytywanie…", it: "Caricamento…" }),
     reps: ctx.t({ en: "reps", "pt-BR": "reps", de: "Wdh.", es: "reps", pl: "powt.", it: "rip." }),
   };
-  if (routinesQ.loading || exercisesQ.loading || sessionsQ.loading) return <div className="wk-load">{say.loading}</div>;
+  if (routinesQ.loading || sessionsQ.loading) return <div className="wk-load">{say.loading}</div>;
 
   // ---------- SUMMARY ----------
   if (summary) {
