@@ -103,7 +103,7 @@ export class SealedViewController implements SealedView {
     this.d.guard.retry(this.d.appKey);
   }
 
-  mount(el: HTMLElement, props: ViewProps, events: SealedViewEvents): () => void {
+  mount(el: HTMLElement, props: ViewProps, events: SealedViewEvents, label?: string): () => void {
     const d = this.d;
     const doc = el.ownerDocument;
     const win = doc.defaultView!;
@@ -294,7 +294,7 @@ export class SealedViewController implements SealedView {
       const spawned = await spawnViewFrame({
         el,
         runtimeSource,
-        title: d.title,
+        title: label ?? d.title,
         init: {
           code,
           pageRef: d.pageRef,
