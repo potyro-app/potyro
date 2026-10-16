@@ -91,3 +91,14 @@ export async function pinFonts(page: Page): Promise<void> {
     content: `:root { --font-display: "DejaVu Serif", serif !important; --font-ui: "DejaVu Sans", sans-serif !important; --font-mono: "DejaVu Sans Mono", monospace !important; }`,
   });
 }
+
+/**
+ * The Tiles home screen (#96): the Start screen, chosen in Look. Classic is the default, so a spec
+ * about Start says so — stored the way Look stores it, before the page's first script runs.
+ */
+export async function useStart(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const look = JSON.parse(localStorage.getItem("potyro:look") ?? "{}") as Record<string, unknown>;
+    if (!look.launcher) localStorage.setItem("potyro:look", JSON.stringify({ appearance: "system", ...look, launcher: "start" }));
+  });
+}

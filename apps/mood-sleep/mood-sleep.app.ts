@@ -696,11 +696,31 @@ export default defineApp({
   id: "mood-sleep",
   name: { en: "Sleep & Mood", "pt-BR": "Sono e humor", de: "Schlaf & Stimmung", es: "Sueño y ánimo", pl: "Sen i nastrój", it: "Sonno e umore" },
   icon: "🌙",
-  version: "1.1.0",
+  version: "1.2.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#7c6cf0" },
+  category: "health",
+  // The launcher tile (docs/04 §Tile): last night, and the week's average.
+  tile: async (ctx) => {
+    const nights = (await ctx.query("checkin")).sort((a, b) => new Date(String(b.date)).getTime() - new Date(String(a.date)).getTime());
+    const last = nights[0];
+    if (!last) return {};
+    const face = ["", "😣", "😕", "😐", "🙂", "😄"][Number(last.mood)] ?? "";
+    const hours = (h: number): string => ctx.format.number(h, { style: "unit", unit: "hour", maximumFractionDigits: 1 });
+    const week = nights.filter((n) => ctx.now().getTime() - new Date(String(n.date)).getTime() < 7 * 86_400_000);
+    const average = week.length ? week.reduce((sum, n) => sum + Number(n.hours ?? 0), 0) / week.length : 0;
+    return {
+      title: `${hours(Number(last.hours ?? 0))} ${face}`.trim(),
+      lines: [
+        ctx.t({ en: "Last night", "pt-BR": "Última noite", de: "Letzte Nacht", es: "Anoche", pl: "Ostatnia noc", it: "La notte scorsa" }),
+        ...(week.length > 1
+          ? [ctx.t({ en: "Week: {avg} a night", "pt-BR": "Semana: {avg} por noite", de: "Woche: {avg} pro Nacht", es: "Semana: {avg} por noche", pl: "Tydzień: {avg} na noc", it: "Settimana: {avg} a notte" }, { avg: hours(average) })]
+          : []),
+      ],
+    };
+  },
   nav: "tabs",
   quickActions: [
     {

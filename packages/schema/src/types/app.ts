@@ -7,6 +7,7 @@ import type { PotyroRecord, Resolved, Value } from "./core.js";
 import type { Field } from "./fields.js";
 import type { ViewProps } from "./runtime.js";
 import type { Language, Words } from "./words.js";
+import type { TileContent } from "./tile.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logic function signatures (docs/04). The record param is `Resolved` — the permissive
@@ -700,6 +701,10 @@ export interface AppDefinition {
   /** Every language it carries, its own first: `["en", "pl"]`. Added only when asked (`translate`). */
   languages?: Language[];
   theme?: Theme;
+  /** Live launcher tile (docs/04 §Tile). */
+  tile?: (ctx: Ctx) => TileContent | Promise<TileContent>;
+  /** Launcher group: "games". */
+  category?: string;
   permissions?: PermissionManifest;
   /** An app-wide selected record ("current trip") that every function can read as `ctx.scope`. */
   scope?: ScopeDef;
