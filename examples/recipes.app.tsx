@@ -1089,7 +1089,15 @@ export default defineApp({
         text: "name",
         detail: (b) => [b.quantity, b.forRecipe].filter(Boolean).join(" · "),
         hideDone: "collapse",
-        quickAdd: true,
+        // Typing a thing you bought before offers it again with its quantity; typing one of your
+        // ingredients links it, so "Put away" marks it in stock.
+        quickAdd: {
+          remember: ["quantity", "ingredient"],
+          defaults: async (text, ctx) => {
+            const found = (await ctx.query("ingredient")).find((i) => String(i.name).toLowerCase() === text.trim().toLowerCase());
+            return found ? { ingredient: found.id } : {};
+          },
+        },
         emptyText: {
           en: "The list is empty. On a recipe, “Add to shopping” puts what's missing here.",
           "pt-BR": "A lista está vazia. Numa receita, “Pôr na lista de compras” traz o que falta para cá.",

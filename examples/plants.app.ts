@@ -416,6 +416,9 @@ export default defineApp({
       },
       computed: {
         title: (c, ctx) => `${careName(c.kind, ctx)} · ${String(c.plant?.name ?? "—")}`,
+        // On the plant's own page the plant goes without saying: what was done, and its glyph.
+        what: (c, ctx) => careName(c.kind, ctx),
+        glyph: (c) => ({ water: "💧", fertilize: "🌱", mist: "💨", repot: "🪴", prune: "✂️" } as Record<string, string>)[String(c.kind)] ?? "📝",
         picture: (c) => c.plant?.photo ?? null,
       },
     },
@@ -584,7 +587,31 @@ export default defineApp({
       id: "plant",
       title: { en: "Plant", "pt-BR": "Planta", de: "Pflanze", es: "Planta", pl: "Roślina", it: "Pianta" },
       hidden: true,
-      view: { type: "detail", entity: "plant", param: "plantId", cover: "banner", facts: ["nextText", "rhythm", "sun"], primaryAction: "water", actions: ["snooze", "logCare"] },
+      view: {
+        type: "detail",
+        entity: "plant",
+        param: "plantId",
+        cover: "banner",
+        facts: ["nextText", "rhythm", "sun"],
+        primaryAction: "water",
+        actions: ["snooze", "logCare"],
+        sections: [
+          {
+            title: { en: "Watering", "pt-BR": "Rega", de: "Gießen", es: "Riego", pl: "Podlewanie", it: "Annaffiatura" },
+            fields: ["lastWatered", "wateringIntervalDays", "seasonalCare"],
+          },
+          {
+            // The plant's history, on its own page: every watering, feed and repot, newest first.
+            title: { en: "Care log", "pt-BR": "Diário", de: "Pflegebuch", es: "Diario", pl: "Dziennik", it: "Diario" },
+            related: { entity: "care", via: "plant", view: "timeline", date: "at", display: { primary: "what", secondary: "note", icon: "glyph" }, limit: 12 },
+          },
+          {
+            title: { en: "About", "pt-BR": "Sobre", de: "Info", es: "Información", pl: "Informacje", it: "Info" },
+            fields: ["species", "labels", "tip", "lastFertilized", "feedText", "wiki", "active"],
+            collapsible: true,
+          },
+        ],
+      },
     },
   ],
 

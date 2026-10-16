@@ -398,6 +398,9 @@ export default defineApp({
       },
       computed: {
         title: (v) => String(v.place?.name ?? "—"),
+        // On the place's own page the place goes without saying: what you had, and who with.
+        what: (v, ctx) => String(v.dish || ctx.t({ en: "A visit", "pt-BR": "Uma visita", de: "Ein Besuch", es: "Una visita", pl: "Wizyta", it: "Una visita" })),
+        company: (v, ctx) => [v.with ? ctx.t({ en: "with {who}", "pt-BR": "com {who}", de: "mit {who}", es: "con {who}", pl: "z: {who}", it: "con {who}" }, { who: String(v.with) }) : "", v.note ?? ""].filter(Boolean).join(" · "),
         // The visit's own photo, else the place's.
         picture: (v) => v.photo ?? (Array.isArray(v.place?.photo) ? v.place.photo[0] : v.place?.photo) ?? null,
       },
@@ -424,13 +427,15 @@ export default defineApp({
         type: "map",
         entity: "place",
         geo: "location",
-        title: (p) => `${KIND_GLYPH[String(p.kind)] ?? "📍"} ${p.name}`,
+        title: (p) => p.name,
         // A pin's colour is its kind, so a glance at the map says "coffee here, a bar there".
         color: (p) => KIND_COLOR[String(p.kind)] ?? "#5FB0E4",
         // What a pin says when you tap it. The photo comes first: it, not the name, is what tells
         // you whether this is the place you meant. "Details" opens the record's own page over the
         // map, so reading one never costs you the view you navigated to.
         display: {
+          // The pin itself is the kind's emoji: ☕ here, 🍸 there.
+          icon: (p) => KIND_GLYPH[String(p.kind)] ?? "📍",
           primary: "name",
           secondary: (p, ctx) => placeLine(p, ctx),
           media: "photo",
@@ -637,6 +642,11 @@ export default defineApp({
         primaryAction: "logVisit",
         sections: [
           { title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" }, fields: ["mustOrder", "notes", "vibes", "rating", "lists"] },
+          {
+            // Every time you were there, on the place's own page: what you had, who with.
+            title: { en: "Visits", "pt-BR": "Visitas", de: "Besuche", es: "Visitas", pl: "Wizyty", it: "Visite" },
+            related: { entity: "visit", via: "place", view: "timeline", date: "at", display: { primary: "what", secondary: "company" }, limit: 10 },
+          },
           { title: { en: "Hours", "pt-BR": "Horários", de: "Öffnungszeiten", es: "Horario", pl: "Godziny", it: "Orari" }, fields: ["openingHours"], collapsible: true },
           { title: { en: "Location", "pt-BR": "Localização", de: "Standort", es: "Ubicación", pl: "Lokalizacja", it: "Posizione" }, fields: ["location", "directions"] },
         ],
