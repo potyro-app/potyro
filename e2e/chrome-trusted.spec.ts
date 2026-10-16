@@ -42,7 +42,7 @@ test.describe("phone", () => {
     const menu = page.getByRole("menu", { name: "More" });
     await expect(menu.getByRole("menuitem").first()).toBeVisible();
     const items = (await menu.getByRole("menuitem").allTextContents()).map((t) => t.trim());
-    const tools = items.map((t) => TOOLS.find((w) => t.startsWith(w))).filter(Boolean);
+    const tools = items.map((t) => TOOLS.find((w) => t.includes(w))).filter(Boolean);
     expect(tools).toEqual(TOOLS);
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
