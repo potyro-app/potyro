@@ -48,6 +48,9 @@ const dateOf = (v: unknown): Date => (v instanceof Date ? v : new Date(String(v 
 /** Warm-ups are for getting ready: they never count towards records or the next target. */
 const working = (sets: readonly LoggedSet[]): LoggedSet[] => sets.filter((s) => s.kind !== "warmup" && num(s.reps) > 0);
 
+/** An exercise's sessions, newest first, as `exercise.history` keeps them. */
+type History = { date: string; sets: { kg: number; reps: number }[] }[];
+
 // scoring: bodyweight lifts progress on reps; loaded lifts on volume (kg × reps)
 const setScore = (bw: boolean, s: LoggedSet): number => (bw ? num(s.reps) : num(s.kg) * num(s.reps));
 
@@ -106,7 +109,7 @@ function suggest(exercise: Resolved, last: { sets: LoggedSet[] } | null, range: 
   const kg = Math.max(...sets.map((s) => num(s.kg)));
   const best = Math.max(...hit);
   if (range && sets.every((s) => num(s.reps) >= range.hi)) {
-    return exercise.bodyweight ? { kg, reps: range.hi + 1, why: "reps", hit, step } : { kg: kg + step, reps: range.lo, why: "up", hit, step };
+    return exercise.bodyweight ? { kg, reps: best + 1, why: "reps", hit, step } : { kg: kg + step, reps: range.lo, why: "up", hit, step };
   }
   if (!range) return { kg, reps: best + 1, why: "same", hit, step };
   return { kg, reps: Math.min(range.hi, best + 1), why: "reps", hit, step };
@@ -730,7 +733,7 @@ function Train(props: ViewProps) {
         exercise: id,
         sets: (plan[id] ?? [])
           .filter((r) => r.done && Number(r.reps) > 0)
-          .map((r) => ({ kg: Number(r.kg) || 0, reps: Number(r.reps) || 0, kind: r.kind })),
+          .map((r) => ({ kg: Number(r.kg) || 0, reps: Number(r.reps) || 0, ...(r.kind === "work" ? {} : { kind: r.kind }) })),
       }))
       .filter((en) => en.sets.length > 0);
     if (entries.length === 0) {
@@ -747,7 +750,7 @@ function Train(props: ViewProps) {
       return;
     }
     const records = recordsIn(entries, sessions, exById);
-    await runtime.create("session", { routine: active.routine, date: new Date(active.startedAt), durationSec: elapsed, entries });
+    await runtime.create("session", { routine: active.routine, date: new Date(active.startedAt), durationSec: elapsed, entries, records: records.map((r) => ({ exercise: r.exercise, kind: r.kind, value: r.value })) });
     const done: Summary = {
       name: active.name,
       durationSec: elapsed,
@@ -1366,7 +1369,14 @@ export default defineApp({
         { title: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["cue"] },
       ],
       computed: {
-        // ASYNC computed that reads history: the best set of the last N sessions that had this exercise.
+        // ASYNC computed that reads history, ONCE: every session this exercise was in, newest first,
+        // as its date and working sets. The values below are worked out from it, so an exercise
+        // costs one query rather than one per figure.
+        history: async (e, ctx) =>
+          newestFirst(await ctx.query("session"))
+            .map((s) => ({ date: dateOf(s.date).toISOString(), sets: working(setsIn(s, e.id) ?? []).map((x) => ({ kg: num(x.kg), reps: num(x.reps) })) }))
+            .filter((h) => h.sets.length > 0),
+        // The best set of the last N sessions that had this exercise.
         lastBest: {
           label: { en: "Rolling best", "pt-BR": "Melhor recente", de: "Aktueller Bestwert", es: "Mejor reciente", pl: "Ostatni rekord", it: "Record recente" },
           // The best set is an object (the Train screen reads it), so the page says it through a
@@ -1379,40 +1389,28 @@ export default defineApp({
             pl: "{kg, plural, =0 {{reps} powt.} other {{kg, number} kg × {reps}}}",
             it: "{kg, plural, =0 {{reps} rip.} other {{kg, number} kg × {reps}}}",
           },
-          value: async (e, ctx) => {
-            const sessions = await ctx.query("session", {
-              filter: (s) => setsIn(s, e.id) !== undefined,
-              sort: (a, b) => dateOf(b.date).getTime() - dateOf(a.date).getTime(),
-              limit: LOOKBACK,
-            });
-            let best: { kg?: number; reps?: number; score: number } | null = null;
-            for (const s of sessions) {
-              for (const set of working(setsIn(s, e.id) ?? [])) {
+          value: (e) => {
+            let best: { kg: number; reps: number; score: number } | null = null;
+            for (const h of ((e.history as History | undefined) ?? []).slice(0, LOOKBACK)) {
+              for (const set of h.sets) {
                 const score = setScore(Boolean(e.bodyweight), set);
-                if (score > 0 && (!best || score > best.score)) best = { kg: num(set.kg), reps: num(set.reps), score };
+                if (score > 0 && (!best || score > best.score)) best = { kg: set.kg, reps: set.reps, score };
               }
             }
             return best;
           },
         },
-        // Estimated 1RM per session, oldest first: what the chart on the exercise's page draws.
-        progress: async (e, ctx) => {
-          const sessions = (await ctx.query("session")).filter((s) => setsIn(s, e.id) !== undefined);
-          return newestFirst(sessions)
+        // Estimated 1RM per session (reps, for a bodyweight lift), oldest first: the chart on its page.
+        progress: (e) =>
+          [...((e.history as History | undefined) ?? [])]
             .reverse()
-            .map((s) => {
-              const sets = working(setsIn(s, e.id) ?? []);
-              const top = e.bodyweight ? Math.max(0, ...sets.map((x) => num(x.reps))) : Math.max(0, ...sets.map((x) => e1rm(num(x.kg), num(x.reps))));
-              return { date: dateOf(s.date).toISOString(), value: top };
-            })
-            .filter((p) => p.value > 0);
-        },
+            .map((h) => ({ date: h.date, value: Math.max(0, ...h.sets.map((x) => (e.bodyweight ? x.reps : e1rm(x.kg, x.reps)))) }))
+            .filter((p) => p.value > 0),
         best: {
           label: { en: "Best estimated 1RM", "pt-BR": "Melhor 1RM estimado", de: "Bestes geschätztes 1RM", es: "Mejor 1RM estimado", pl: "Najlepszy szacowany 1RM", it: "Miglior 1RM stimato" },
-          value: async (e, ctx) => {
+          value: (e, ctx) => {
             if (e.bodyweight) return "—";
-            let top = 0;
-            for (const s of await ctx.query("session")) for (const set of working(setsIn(s, e.id) ?? [])) top = Math.max(top, e1rm(num(set.kg), num(set.reps)));
+            const top = Math.max(0, ...((e.history as History | undefined) ?? []).flatMap((h) => h.sets.map((x) => e1rm(x.kg, x.reps))));
             return top > 0 ? `${kgText(ctx, top)} kg` : "—";
           },
         },
@@ -1463,17 +1461,36 @@ export default defineApp({
                 },
                 kind: {
                   type: "enum",
-                  options: ["work", "warmup", "drop"],
-                  default: "work",
+                  options: ["warmup", "drop"],
                   label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" },
                   labels: {
-                    work: { en: "work", "pt-BR": "normal", de: "Arbeitssatz", es: "normal", pl: "robocza", it: "allenante" },
                     warmup: { en: "warm-up", "pt-BR": "aquecimento", de: "Aufwärmen", es: "calentamiento", pl: "rozgrzewka", it: "riscaldamento" },
                     drop: { en: "drop", "pt-BR": "drop", de: "Dropsatz", es: "descendente", pl: "zrzutowa", it: "a scalare" },
                   },
                 },
               },
             },
+          },
+        },
+        // The personal records it broke, worked out when it was finished — a fact about that day, so a
+        // later edit to an older session does not quietly rewrite it.
+        records: {
+          type: "list",
+          hidden: true,
+          label: { en: "Personal records", "pt-BR": "Recordes pessoais", de: "Persönliche Bestwerte", es: "Récords personales", pl: "Rekordy osobiste", it: "Record personali" },
+          of: {
+            exercise: { type: "relation", to: "exercise", label: { en: "Exercise", "pt-BR": "Exercício", de: "Übung", es: "Ejercicio", pl: "Ćwiczenie", it: "Esercizio" } },
+            kind: {
+              type: "enum",
+              options: ["heaviest", "e1rm", "reps"],
+              label: { en: "Record", "pt-BR": "Recorde", de: "Bestwert", es: "Récord", pl: "Rekord", it: "Record" },
+              labels: {
+                heaviest: { en: "heaviest", "pt-BR": "mais pesado", de: "schwerster", es: "más pesado", pl: "najcięższy", it: "più pesante" },
+                e1rm: { en: "estimated 1RM", "pt-BR": "1RM estimado", de: "geschätztes 1RM", es: "1RM estimado", pl: "szacowany 1RM", it: "1RM stimato" },
+                reps: { en: "most reps", "pt-BR": "mais repetições", de: "meiste Wdh.", es: "más repeticiones", pl: "najwięcej powtórzeń", it: "più ripetizioni" },
+              },
+            },
+            value: { type: "number", min: 0, label: { en: "Value", "pt-BR": "Valor", de: "Wert", es: "Valor", pl: "Wartość", it: "Valore" } },
           },
         },
         note: { type: "text", multiline: true, label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
@@ -1499,7 +1516,7 @@ export default defineApp({
           value: (s, ctx) => String(s.routine?.name ?? "") || dayName(s.day, ctx) || ctx.t({ en: "Workout", "pt-BR": "Treino", de: "Training", es: "Entreno", pl: "Trening", it: "Allenamento" }),
         },
         label: (s, ctx) =>
-          `${String(s.routine?.name ?? "") || dayName(s.day, ctx) || ctx.t({ en: "Workout", "pt-BR": "Treino", de: "Training", es: "Entreno", pl: "Trening", it: "Allenamento" })} — ${ctx.format.date(dateOf(s.date), { day: "numeric", month: "numeric", year: "numeric" })}`,
+          `${String(s.routine?.name ?? "") || dayName(s.day, ctx) || ctx.t({ en: "Workout", "pt-BR": "Treino", de: "Training", es: "Entreno", pl: "Trening", it: "Allenamento" })} · ${ctx.format.date(dateOf(s.date), { weekday: "short", day: "numeric", month: "short" })}`,
         duration: {
           label: { en: "Duration", "pt-BR": "Duração", de: "Dauer", es: "Duración", pl: "Czas trwania", it: "Durata" },
           value: (s, ctx) => (num(s.durationSec) ? ctx.format.number(Math.round(num(s.durationSec) / 60), { style: "unit", unit: "minute" }) : "—"),
@@ -1513,22 +1530,17 @@ export default defineApp({
           value: (s) =>
             ((s.entries as { sets?: LoggedSet[] }[] | undefined) ?? []).reduce((v, e) => v + working(e.sets ?? []).reduce((a, x) => a + num(x.kg) * num(x.reps), 0), 0),
         },
-        /** The personal records this session broke, against every session before it. */
-        records: {
+        /** The records it broke, as the summary said them: "🏆 Bench Press: 67.5 kg, heaviest yet". */
+        prs: {
           label: { en: "Personal records", "pt-BR": "Recordes pessoais", de: "Persönliche Bestwerte", es: "Récords personales", pl: "Rekordy osobiste", it: "Record personali" },
-          value: async (s, ctx) => {
-            const all = await ctx.query("session");
-            const earlier = all.filter((x) => dateOf(x.date).getTime() < dateOf(s.date).getTime());
-            const exercises = new Map((await ctx.query("exercise")).map((e) => [e.id, e] as const));
-            const found = recordsIn((s.entries as { exercise?: unknown; sets?: LoggedSet[] }[] | undefined) ?? [], earlier, exercises);
-            return found.length ? found.map((r) => `🏆 ${r.name}: ${recordWords(r, ctx)}`).join("\n") : "—";
-          },
-        },
-        recordCount: async (s, ctx) => {
-          const all = await ctx.query("session");
-          const earlier = all.filter((x) => dateOf(x.date).getTime() < dateOf(s.date).getTime());
-          const exercises = new Map((await ctx.query("exercise")).map((e) => [e.id, e] as const));
-          return recordsIn((s.entries as { exercise?: unknown; sets?: LoggedSet[] }[] | undefined) ?? [], earlier, exercises).length;
+          value: (s, ctx) =>
+            ((s.records as { exercise?: { name?: string } | string | null; kind?: Record_["kind"]; value?: number }[] | undefined) ?? [])
+              .map((r) => {
+                const name = typeof r.exercise === "object" && r.exercise ? String(r.exercise.name ?? "") : "";
+                return name ? `🏆 ${name}: ${recordWords({ exercise: "", name, kind: r.kind ?? "heaviest", value: num(r.value) }, ctx)}` : "";
+              })
+              .filter(Boolean)
+              .join(" · ") || "—",
         },
       },
       actions: {
@@ -1569,7 +1581,7 @@ export default defineApp({
             });
             if (!set) return;
             const entry = entries.find((e) => e.exercise === set.exercise);
-            const row = { kg: set.kg ?? 0, reps: set.reps, kind: "work" as SetKind };
+            const row = { kg: set.kg ?? 0, reps: set.reps };
             if (entry) entry.sets.push(row);
             else entries.push({ exercise: set.exercise, sets: [row] });
             await ctx.patch("session", s.id, { entries });
@@ -1628,7 +1640,7 @@ export default defineApp({
               // "1,410" in English, "1410" in Polish: the person's own way of writing a number.
               { sets: num(s.totalSets), volume: ctx.format.number(Math.round(num(s.totalVolume))), duration: String(s.duration) },
             );
-            const prs = num(s.recordCount);
+            const prs = ((s.records as unknown[] | undefined) ?? []).length;
             return prs
               ? `${line} · ${ctx.t({ en: "🏆 {n}", "pt-BR": "🏆 {n}", de: "🏆 {n}", es: "🏆 {n}", pl: "🏆 {n}", it: "🏆 {n}" }, { n: prs })}`
               : line;
@@ -1923,12 +1935,13 @@ export default defineApp({
         param: "sessionId",
         actions: ["logSet"],
         facts: [],
+        cover: "band",
         sections: [
           {
             title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" },
             fields: ["title", "date", "duration", "totalSets", "totalVolume"],
           },
-          { title: { en: "Personal records", "pt-BR": "Recordes pessoais", de: "Persönliche Bestwerte", es: "Récords personales", pl: "Rekordy osobiste", it: "Record personali" }, fields: ["records"] },
+          { title: { en: "Personal records", "pt-BR": "Recordes pessoais", de: "Persönliche Bestwerte", es: "Récords personales", pl: "Rekordy osobiste", it: "Record personali" }, fields: ["prs"] },
           // nested list rendered in the detail view
           { title: { en: "Entries", "pt-BR": "Exercícios", de: "Übungen", es: "Ejercicios", pl: "Ćwiczenia", it: "Esercizi" }, fields: ["entries"] },
           { title: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["note"] },
@@ -1949,21 +1962,14 @@ export default defineApp({
       from: "1.3.0",
       to: "2.0.0",
       // Routines are records now. A session gets a link to its routine (empty until the Train screen
-      // makes the routines from the old days, `adoptLegacyDays`); an exercise gets muscles and a
-      // weight step; a set gets its kind. The old `day` stays on both, hidden, so nothing is lost.
+      // makes the routines from the old days, `adoptLegacyDays`) and no records yet; an exercise gets
+      // muscles and a weight step. A set with no kind is a working set, which is what every v1 set
+      // was, so the sets stay as they are. The old `day` stays on both, hidden, so nothing is lost.
       steps: [
         { op: "addField", entity: "session", field: "routine", default: null },
+        { op: "addField", entity: "session", field: "records", default: [] },
         { op: "addField", entity: "exercise", field: "muscles", default: [] },
         { op: "addField", entity: "exercise", field: "step", default: 2.5 },
-        {
-          transform: (record) =>
-            Array.isArray(record.entries)
-              ? {
-                  ...record,
-                  entries: (record.entries as { sets?: LoggedSet[] }[]).map((e) => ({ ...e, sets: (e.sets ?? []).map((s) => ({ kind: "work", ...s })) })),
-                }
-              : record,
-        },
       ],
     },
   ],
