@@ -7,6 +7,15 @@
 import { t } from "@lingui/core/macro";
 import type { PotyroRuntime } from "@potyro/runtime";
 
+/**
+ * Whether people add, change and delete this entity's records by hand. `editableBy: "app"` says only
+ * the app's own code does — a live feed's records — so no view or form offers Add, Edit or Delete for
+ * them, and nothing in them changes in place. The app's code, and its actions, still write through ctx.
+ */
+export function byPeople(runtime: Pick<PotyroRuntime, "definition">, entity: string): boolean {
+  return runtime.definition.entities[entity]?.editableBy !== "app";
+}
+
 /** Why this device may not change `record`, in words for a person — or `null` when it may. */
 export function editLockFor(runtime: PotyroRuntime, entity: string, record: Record<string, unknown> | null | undefined): string | null {
   if (!record || runtime.definition.entities[entity]?.editableBy !== "creator") return null;

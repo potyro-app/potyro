@@ -1,6 +1,7 @@
 import { test, expect, type Page, type BrowserContext } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Two people actually talking (KA-35, part 2).
 //
@@ -52,9 +53,9 @@ export default defineApp({
  * `sync-two-peers-trusted.spec.ts`.
  */
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
