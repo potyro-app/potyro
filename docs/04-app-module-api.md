@@ -431,6 +431,14 @@ A custom view is a normal React component. It can call `props.runtime.ctx` for t
 render anything, keep local state, and use hooks. There is no ceiling — if a screen needs
 bespoke logic, it's just a component.
 
+The shell lays some of its own chrome over the app's screen, and says how much as CSS custom
+properties a custom view reads instead of guessing:
+
+| Property | What it is |
+|---|---|
+| `--k-chrome-bottom` | The room the shell's tab bar (and the phone's gesture bar) takes at the bottom. A view with its own bottom bar sits above it: `bottom: var(--k-chrome-bottom, 0px)`. |
+| `--k-chrome-top` | The room the shell's chrome takes at the top of the app's screen, under its top bar — the "Camera on" sign while the live camera runs (docs/25), `0px` otherwise. A stage with something of its own at its top (a badge, a score) keeps it below: `padding-top: var(--k-chrome-top, 0px)`. It changes while the view is open; a view that sizes itself in script measures again when it does. |
+
 ## Design rules for `ctx`
 
 - **Everything the host can do reaches app code only through `ctx`.** No app function imports
