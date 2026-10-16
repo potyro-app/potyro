@@ -497,7 +497,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       toast: (msg) => ui.toast(say(msg)),
       confirm: (msg, opts) =>
         ui.confirm(say(msg), opts && { ...opts, detail: opts.detail === undefined ? undefined : say(opts.detail), ok: opts.ok === undefined ? undefined : say(opts.ok), cancel: opts.cancel === undefined ? undefined : say(opts.cancel) }),
-      prompt: (msg, opts) => ui.prompt(say(msg), opts),
+      prompt: (msg, opts) => ui.prompt(say(msg), opts && { default: opts.default }),
       pick: (items, opts) => ui.pick(items, opts),
       sheet: async <T,>(opts: { title?: Words; items: UiItem<T>[] }) => (ui.sheet ? ui.sheet(checkItems(opts, say)) : null),
       menu: async <T,>(opts: { title?: Words; items: UiItem<T>[] }) => (ui.menu ? ui.menu(checkItems(opts, say)) : null),

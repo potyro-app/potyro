@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { E2E_RELAY } from "./ports";
 
 // The share dialog (#79). It used to copy the link silently before opening, swallow the failure,
 // and offer a generic prompt with an OK button. Now: the link read-only, a Copy button that says
@@ -14,9 +15,9 @@ export default defineApp({
 `;
 
 async function openLauncher(page: Page, initScript?: () => void): Promise<void> {
+  await page.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

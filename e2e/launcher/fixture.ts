@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { E2E_RELAY } from "../ports";
 
 // The launcher harness (#94): one seeded library, one way to reach each launcher surface, and the
 // touch-target rule, shared by every spec in this directory.
@@ -37,9 +38,9 @@ export const SEED_NAMES = SEED.map((a) => a.name);
 
 /** Seed the library once per page. Pass `[]` for an empty one. */
 export async function seed(page: Page, apps: readonly unknown[] = SEED): Promise<void> {
+  await page.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await page.addInitScript(
     ([list]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem("potyro:user-apps", JSON.stringify(list));
     },

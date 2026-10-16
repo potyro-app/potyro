@@ -11,8 +11,11 @@
 //   - what waits beyond that window is bounded by `SOCKET_LIMITS.receiveBufferBytes`: an app that
 //     does not keep up has its connection closed (`"slow"`) rather than the page's memory filled.
 
-import type { Ctx, Room, RoomMember, RoomOptions, Socket, SocketCloseWhy, SocketData, SocketOptions } from "potyro";
+import type { Ctx, KeepWhileHidden, Room, RoomMember, RoomOptions, Socket, SocketCloseWhy, SocketData, SocketOptions } from "potyro";
 import { HostRoom, HostSocket, SOCKET_LIMITS, SocketError } from "./sockets.js";
+
+/** `keepWhileHidden` from the box, as a string (the host parses and caps it). */
+const keepOf = (o: { keepWhileHidden?: unknown }): { keepWhileHidden?: KeepWhileHidden } => (o.keepWhileHidden == null ? {} : { keepWhileHidden: String(o.keepWhileHidden) as KeepWhileHidden });
 
 export type BoxSocketEvent =
   | { sid: number; kind: "message"; data: SocketData }
@@ -66,13 +69,13 @@ export class SocketBridge {
   async open(ctx: Ctx, url: string, opts?: SocketOptions): Promise<BoxSocketInfo> {
     const net = ctx.caps.network;
     if (!net?.socket) throw new SocketError("Permission denied: network", "not-allowed-host");
-    return this.adopt(await net.socket(String(url), opts && { protocols: opts.protocols }));
+    return this.adopt(await net.socket(String(url), opts && { protocols: opts.protocols, ...keepOf(opts) }));
   }
 
   async room(ctx: Ctx, id: string | undefined, opts?: RoomOptions): Promise<BoxSocketInfo> {
     const net = ctx.caps.network;
     if (!net?.room) throw new SocketError("Permission denied: network", "not-allowed-host");
-    return this.adopt(await net.room(id == null ? undefined : String(id), opts && { name: opts.name == null ? undefined : String(opts.name) }));
+    return this.adopt(await net.room(id == null ? undefined : String(id), opts && { name: opts.name == null ? undefined : String(opts.name), ...keepOf(opts) }));
   }
 
   private adopt(s: Socket | Room): BoxSocketInfo {

@@ -2,7 +2,9 @@
 // picture reads best on dark, whatever the shell's theme, so the stage is its own deep violet and
 // everything around it follows light and dark.
 export const STYLES = `
-.mm { position: relative; color: var(--ink); font-family: var(--font-ui); padding-bottom: var(--space-3); --mm-night: oklch(20% 0.06 300); --mm-glow: oklch(72% 0.19 330); }
+/* The stage starts below whatever the shell lays over the top of the screen — "Camera on" while the
+   camera runs (--k-chrome-top, docs/04) — so the sign never sits on the picture. */
+.mm { position: relative; color: var(--ink); font-family: var(--font-ui); padding-top: var(--k-chrome-top, 0px); padding-bottom: var(--space-3); --mm-night: oklch(20% 0.06 300); --mm-glow: oklch(72% 0.19 330); }
 
 /* ---- the mirror ---- */
 .mm-stage {

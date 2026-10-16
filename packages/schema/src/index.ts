@@ -97,7 +97,7 @@ export type {
 } from "./types/ctx.js";
 export type { Face, FaceEye, FaceExpressions, FaceMeshPoint, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
 export type { TileContent } from "./types/tile.js";
-export type { Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "./types/sockets.js";
+export type { KeepWhileHidden, Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "./types/sockets.js";
 export type { SpeechCapability, SpeechEngine, SpeechFailure, SpeechOptions, SpeechSession } from "./types/speech.js";
 
 // ---- app definition ----

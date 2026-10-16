@@ -80,6 +80,21 @@ export interface UserApp {
   line?: string;
   /** A remix's: the line of the app it remixed, so a link to that app opens the remix when it is all there is. */
   lineOf?: string;
+  /**
+   * The sample records its package came with (`seed.json`, #253): the app's own demo data, never the
+   * person's. Kept so a demo link of it opens on them, as the package did (docs/24 §3). Only a small
+   * one is kept (`MAX_KEPT_SEED`): this record lives in the device's settings.
+   */
+  seed?: Record<string, Array<Record<string, unknown>>>;
+}
+
+/** The largest package seed kept beside an app, as JSON: a demo link has to carry it. */
+export const MAX_KEPT_SEED = 64 * 1024;
+
+/** A package's seed, when it is worth keeping beside its app: rows in it, and small enough. */
+export function seedToKeep(seed: UserApp["seed"]): UserApp["seed"] {
+  if (!seed || !Object.values(seed).some((rows) => rows.length > 0)) return undefined;
+  return JSON.stringify(seed).length <= MAX_KEPT_SEED ? seed : undefined;
 }
 
 function read(): UserApp[] {
@@ -139,6 +154,7 @@ export async function saveUserApp(
     remixOf?: AppCredit;
     line?: string;
     lineOf?: string;
+    seed?: UserApp["seed"];
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
@@ -195,6 +211,8 @@ export async function saveUserApp(
     // And which app it is: an edit is the same app, so links to it keep opening it.
     line: prev?.line ?? input.line,
     lineOf: prev?.lineOf ?? input.lineOf,
+    // And the sample records its package came with: a demo of it still opens on them.
+    seed: input.seed ?? prev?.seed,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
