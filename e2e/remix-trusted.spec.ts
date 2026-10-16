@@ -6,6 +6,12 @@ import { makeDemoLink, stranger } from "./share-demo";
 // the original, sealed like anything from someone else, credited ("Remix of Groceries by Ana"), and
 // opens with the Studio greeting it and suggesting changes drawn from the app.
 
+/** Pictures of the flow for a review, only when asked (`POTYRO_REMIX_SHOTS=<dir>`). */
+const shot = async (p: Page, name: string): Promise<void> => {
+  const dir = process.env.POTYRO_REMIX_SHOTS;
+  if (dir) await p.screenshot({ path: `${dir}/${name}.png` });
+};
+
 type Saved = { id: string; name: string; source: string; trusted?: boolean; remixOf?: unknown; credit?: unknown };
 const savedApps = (p: Page) => p.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Saved[]);
 
@@ -29,6 +35,7 @@ async function expectGreeted(viewer: Page): Promise<void> {
   const chips = hello.getByRole("list", { name: "Changes to start from" }).getByRole("button");
   await expect(chips).toHaveCount(4, { timeout: 30_000 });
   await expect(chips.first()).toHaveText("Add a photo to each “Item”");
+  await shot(viewer, "remix-2-studio-greeting");
   await chips.first().click();
   await expect(studio.getByRole("textbox", { name: "Describe the app" })).toHaveValue("Add a photo to each “Item”");
 }
@@ -49,6 +56,7 @@ test("from a demo link: Make it mine is your own sealed copy, credited, with the
   await expect(card.getByText("I wrote this. Run it as mine.")).toHaveCount(0);
   const samples = card.getByRole("checkbox", { name: /Start with its \d+ sample records/ });
   await expect(samples).toBeChecked();
+  await shot(viewer, "remix-1-card");
   await card.getByRole("button", { name: "Make it mine" }).click();
 
   await expectGreeted(viewer);
@@ -131,6 +139,7 @@ test("from a sealed app on this device: Make it mine from its tile; the original
   await viewer.goto("/");
   await viewer.getByRole("button", { name: "Actions for Groceries (remix)" }).click();
   await expect(viewer.getByRole("menu")).toContainText("Remix of Groceries by Ana");
+  await shot(viewer, "remix-3-tile-credit");
   await expect(viewer.getByRole("menu").locator('[data-action="remix"]')).toHaveCount(0);
   await context.close();
 });
