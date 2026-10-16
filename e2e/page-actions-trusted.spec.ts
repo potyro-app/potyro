@@ -31,7 +31,7 @@ test("an app's own button on a page can move the map", async ({ page }) => {
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");
   await page.locator(".k-tab", { hasText: "Map" }).click();
-  await expect(page.locator(".maplibregl-marker")).toHaveCount(3);
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
 
   // The app declared it, so it is in the page's chrome with the app's own label — not a prettified
   // identifier, which is all a key-named action could ever show.
@@ -43,16 +43,16 @@ test("an app's own button on a page can move the map", async ({ page }) => {
   if (!box) throw new Error("map canvas has no box");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -400);
-  await expect.poll(() => (zooms.length ? Math.max(...zooms) : 0), { timeout: 15_000 }).toBeGreaterThan(9);
+  await expect.poll(() => (zooms.length ? Math.max(...zooms) : 0), { timeout: 15_000 }).toBeGreaterThan(12);
 
   zooms.length = 0;
   await showAll.click();
 
-  // Back out to a view that holds three places in three countries, from a street. Polled rather than
+  // Back out to a view that holds a city of places and Potsdam beside it, from a street. Polled rather than
   // measured once: `fitBounds` animates, so tiles arrive from the zoom it left through the ones it
   // passes on the way. Not pinned to an exact level — the same fit lands a step apart depending on
-  // the canvas size when it runs — but z8-from-z12 is not a rounding difference.
-  await expect.poll(() => (zooms.length ? Math.min(...zooms) : 99), { timeout: 25_000 }).toBeLessThanOrEqual(8);
-  // And all three are on screen — the point of the button.
-  await expect(page.locator(".maplibregl-marker")).toHaveCount(3);
+  // the canvas size when it runs — but z11-from-z13 is not a rounding difference.
+  await expect.poll(() => (zooms.length ? Math.min(...zooms) : 99), { timeout: 25_000 }).toBeLessThanOrEqual(11);
+  // And all of them are on screen — the point of the button.
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
 });
