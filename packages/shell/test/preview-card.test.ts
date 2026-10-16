@@ -8,7 +8,7 @@ import { demoSeed } from "../src/demo-package.js";
 describe("preview lines", () => {
   it("come from the first screen's records, by their naming field, three at most", async () => {
     const seed = await demoSeed("groceries", ["aisle", "item"]);
-    expect(previewLines(seed, ["item", "aisle"])).toEqual(["Apples", "Spinach", "Sourdough"]);
+    expect(previewLines(seed, ["item", "aisle"])).toEqual(["Apples", "Bananas", "Spinach"]);
   });
 
   it("fall back to a short text field, skip dates and ids, and shorten long ones", () => {

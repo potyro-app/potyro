@@ -50,7 +50,7 @@ describe("eval:translate scorer", async () => {
 
   it("an answer that bumps schemaVersion for a translation fails", async () => {
     const c = cases.find((x) => x.case.id === "translate-groceries-fr")!;
-    const bumped = (await c.good()).replace("schemaVersion: 2,", "schemaVersion: 3,");
+    const bumped = (await c.good()).replace("schemaVersion: 3,", "schemaVersion: 4,");
     const score = await scoreTranslate(c.case, c.case.app, bumped, load);
     expect(score.checks.find((x) => x.name === "schemaVersion did not move")?.ok).toBe(false);
   }, 30_000);
