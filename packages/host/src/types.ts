@@ -209,8 +209,8 @@ export interface SealedView {
   state(): "ready" | "off";
   /** The person chose "Try its screen again". */
   retry(): void;
-  /** Mount it into `el`, a frame the shell sizes; returns the teardown. */
-  mount(el: HTMLElement, props: ViewProps, events: SealedViewEvents): () => void;
+  /** Mount it into `el`, a place the shell sizes; `label` is the frame's accessible name (the page's title). Returns the teardown. */
+  mount(el: HTMLElement, props: ViewProps, events: SealedViewEvents, label?: string): () => void;
 }
 
 export interface Host {

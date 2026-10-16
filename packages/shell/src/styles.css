@@ -2408,6 +2408,47 @@ th.k-data-raw {
   color: var(--ink-soft);
 }
 
+/* A sealed app's own screen (#267): its sandboxed frame fills the page's content area. The frame's
+   height is set by the host (the room below it, or the view's own height when that is more), so the
+   page scrolls and the frame never does. A thin focus ring says where the keys go. */
+.k-sealed-view {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+}
+.k-sealed-view:focus-within {
+  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+/* Its plain version: calm, not an error. The app's other pages are one tap away, and so is trying
+   the screen again. */
+.k-sealed-notice {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 4px);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--ink);
+  max-width: 44rem;
+}
+.k-sealed-notice p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+.k-sealed-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-sealed-retry {
+  margin-left: auto;
+}
+
 /* States */
 .k-loading,
 .k-empty,
