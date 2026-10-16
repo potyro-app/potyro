@@ -141,5 +141,14 @@ local model may work with **no extra native code**.
 
 - Everything above runs on **your** machine (the SDK/Studio live here). CI only builds/tests the web
   packages; it never compiles the Android project.
+- **Potyro's own Java** lives in `packages/native/android-templates/` (android/ is generated):
+  `scripts/patch-android.mjs` — run by `cap:add:android` and `cap:sync` — copies the
+  `PotyroLocalSocket` plugin into MainActivity's package and registers it. It is plain `ws://` to the
+  local network only (Home Assistant-style), for `ctx.caps.network.socket` (docs/28 §6): the WebView
+  refuses ws:// from `https://localhost`. Nothing about cleartext is changed in the manifest or the
+  network security config; the plugin checks every address a name resolves to is local and speaks the
+  protocol itself. To try it on a phone: a trusted app with
+  `await ctx.caps.network!.socket("ws://<your Home Assistant>:8123/api/websocket")` should get
+  `{"type":"auth_required"…}` as its first message.
 - `CapacitorCapabilities` is unit-tested against fake plugins (`packages/native/test`), so the adapter
   logic is verified without a device — the device run validates the *native* half.

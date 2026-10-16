@@ -7,6 +7,7 @@ import type { AiCapability, Caps, NetworkPermission, PermissionManifest } from "
 import type { AiCall, AiCap, Capabilities } from "@potyro/capabilities";
 import { AiError, makeAi, type AiDeps } from "./ai.js";
 import type { Provenance, UiBridge } from "./types.js";
+import { makeLiveNetwork, permittedHosts } from "./sockets.js";
 
 /** What `ctx.caps.ai` needs from the ctx it lives on: the language and the app's own pictures. */
 export type AiContext = Omit<AiDeps, "before">;
@@ -81,10 +82,12 @@ function makeConsentGate(ui: UiBridge, appName: string) {
 }
 
 /** Direct 1:1 adaptation of platform Capabilities → the app-facing `ctx.caps` shape. */
-function adaptFull(caps: Capabilities): Caps {
+function adaptFull(caps: Capabilities, ui: UiBridge, appName: string, owner: object): Caps {
+  // Live connections are mediated for every app (limits, closing on leave); a trusted one is not asked.
+  const live = makeLiveNetwork({ cap: caps.sockets, trusted: true, permission: true, ui, appName, owner });
   const out: Caps = {
     filesystem: { pick: () => caps.filesystem.pick(), save: (name, data) => caps.filesystem.save(name, data) },
-    network: { fetch: (input, init) => caps.network.fetch(input, init) },
+    network: { fetch: (input, init) => caps.network.fetch(input, init), socket: live.socket, room: live.room },
   };
   if (caps.camera) {
     const cam = caps.camera;
@@ -115,16 +118,17 @@ function hostOf(input: string): string | null {
 }
 
 function networkAllowed(perm: NetworkPermission | undefined, input: string): boolean {
-  if (!perm) return false;
-  if (perm === true) return true;
-  if (!perm.hosts || perm.hosts.length === 0) return true;
+  const hosts = permittedHosts(perm);
+  if (hosts === "any") return true;
   const host = hostOf(input);
-  return host != null && perm.hosts.includes(host);
+  return host != null && hosts.includes(host);
 }
 
 /** Build the mediated `ctx.caps` for an untrusted app from its permission manifest. */
-function adaptMediated(caps: Capabilities, perms: PermissionManifest, ui: UiBridge, appName: string): Caps {
+function adaptMediated(caps: Capabilities, perms: PermissionManifest, ui: UiBridge, appName: string, owner: object): Caps {
   const gate = makeConsentGate(ui, appName);
+  // Hosts from the manifest, asked once per app and host and remembered on this device (docs/28).
+  const live = makeLiveNetwork({ cap: caps.sockets, trusted: false, permission: perms.network, ui, appName, owner });
   const out: Caps = {
     // Untrusted filesystem is denied unless requested; when granted, scoped + consented.
     filesystem: {
@@ -149,6 +153,8 @@ function adaptMediated(caps: Capabilities, perms: PermissionManifest, ui: UiBrid
         await gate("the network");
         return caps.network.fetch(input, init);
       },
+      socket: live.socket,
+      room: live.room,
     },
   };
 
@@ -200,9 +206,15 @@ export function mediateCaps(args: {
   appName: string;
   /** For `ctx.caps.ai`: the ctx's language and how it reads the app's own pictures. */
   ai?: AiContext;
+  /**
+   * Whose live connections these are — the loaded app — so its count of open connections and its
+   * consent questions outlive one pass's ctx. The platform caps when absent.
+   */
+  owner?: object;
 }): Caps {
   const trusted = args.provenance === "trusted";
-  const out = trusted ? adaptFull(args.caps) : adaptMediated(args.caps, args.permissions, args.ui, args.appName);
+  const owner = args.owner ?? args.caps;
+  const out = trusted ? adaptFull(args.caps, args.ui, args.appName, owner) : adaptMediated(args.caps, args.permissions, args.ui, args.appName, owner);
   // AI: on the device or not at all; for a sealed app only when its manifest asked (docs/23).
   const cap = args.caps.ai;
   if (cap && (trusted || args.permissions.ai === true)) {

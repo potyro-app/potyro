@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@potyro/capabilities": "workspace:*",
+    "@potyro/rooms": "workspace:*",
     "@potyro/store": "workspace:*",
     "intl-messageformat": "^10.7.18",
     "potyro": "workspace:*",

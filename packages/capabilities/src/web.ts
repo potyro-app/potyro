@@ -10,6 +10,7 @@
 import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
 import { sharedLiveCamera, type LiveCameraCap } from "./live-camera.js";
+import { sharedWebSockets, type SocketCap } from "./sockets.js";
 
 // Minimal shapes for the File System Access API (not in older lib.dom typings).
 interface WritableFileStream {
@@ -165,6 +166,8 @@ export class WebCapabilities implements Capabilities {
   readonly network: NetworkCap;
   /** getUserMedia, one session per page (docs/25). */
   readonly liveCamera: LiveCameraCap | null;
+  /** The browser's WebSocket, one set per page (docs/28). */
+  readonly sockets: SocketCap | null;
 
   constructor() {
     this.camera = makeCamera();
@@ -173,6 +176,7 @@ export class WebCapabilities implements Capabilities {
     this.filesystem = makeFilesystem();
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
     this.liveCamera = sharedLiveCamera();
+    this.sockets = sharedWebSockets();
   }
 }
 

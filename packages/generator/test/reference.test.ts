@@ -228,6 +228,10 @@ describe("capabilities outside the core", () => {
     ["ctx.files", ["export interface CtxFiles", "export interface FileInfo"]],
     ["ctx.ui.share", ["share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;"]],
     ["share", ["share(opts:"]],
+    ["ctx.caps.network.socket", ["export interface Socket {", "onMessage(cb: (data: SocketData) => void): () => void;", "export interface Room extends Socket", "export type SocketFailure", "never reconnects by itself"]],
+    ["ctx.caps.network.room", ["room(id?: string, opts?: RoomOptions): Promise<Room>;"]],
+    ["Room", ["export interface Room extends Socket", "onPresence("]],
+    ["ctx.caps.network", ["socket(url: string, opts?: SocketOptions): Promise<Socket>;"]],
     ["ctx.caps.geo", ["current(): Promise<{ lat: number; lng: number }>"]],
     ["ctx.caps.notifications.schedule", ["schedule(n: { id: string; at: Date; title: string; body?: string }): Promise<void>;"]],
     ["ctx.caps", ["export interface Caps", "ai?: AiCapability;"]],
@@ -260,6 +264,14 @@ describe("capabilityNotes: the passages beside a request (every engine, tools or
     expect(out).toContain("export interface AiCapability");
     expect(out).toContain("export interface CameraCapability");
     expect(out).toContain("export interface Caps");
+  });
+
+  it("brings the live-connection declarations for a request for something live", () => {
+    for (const ask of ["a live bitcoin price ticker", "a multiplayer drawing game with friends", "show my Home Assistant sensors in real time", "um placar ao vivo"]) {
+      const out = capabilityNotes(CAPABILITY_REFERENCE, ask);
+      expect(out, ask).toContain("export interface Socket {");
+      expect(out, ask).toContain("export interface Caps");
+    }
   });
 
   it("matches the app being changed by its code, not by its words", () => {

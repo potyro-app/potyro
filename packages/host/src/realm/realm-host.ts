@@ -14,6 +14,7 @@
 import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, Value } from "potyro";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost } from "./protocol.js";
+import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
 
 /**
  * The realm itself could not start on this browser — the frame did not load, or could not make its
@@ -126,6 +127,22 @@ export class RealmLoadedApp implements LoadedApp {
   private questionsOpen = 0;
   private questionSince = 0;
   private questionMs = 0;
+  /**
+   * Live connections (docs/28): the host holds them, the realm a number for each. A message goes in
+   * as `{ t: "sock" }` and the worker acks it once the app's callback has it, so at most the bridge's
+   * window is ever in the realm untaken.
+   */
+  private readonly sockets = new SocketBridge(
+    (ev) => {
+      const port = this.port;
+      if (!port) return true; // the realm is gone: nothing to hold it for
+      port.postMessage({ t: "sock", ev });
+      return ev.kind !== "message";
+    },
+    (sid) => this.unpin(sid),
+  );
+  /** A ctx a connection was opened through stays nameable while it is open: its callbacks still use it. */
+  private pinnedBy = new Map<number, number>();
 
   constructor(
     private readonly code: string,
@@ -187,6 +204,8 @@ export class RealmLoadedApp implements LoadedApp {
   kill(reason: string): void {
     if (!this.realm) return;
     this.o.onKill?.(reason);
+    // The new realm will not know these connections' numbers: they end with the old one.
+    this.sockets.endAll("stopped", "the app was stopped");
     this.teardown();
     for (const [, p] of this.pending) p.reject(new Error(`stopped: ${reason}`));
     this.pending.clear();
@@ -207,6 +226,7 @@ export class RealmLoadedApp implements LoadedApp {
 
   dispose(): void {
     this.disposed = true;
+    this.sockets.endAll("left", "the app was closed");
     this.teardown();
     for (const [, p] of this.pending) p.reject(new Error("this app was closed"));
     this.pending.clear();
@@ -247,6 +267,10 @@ export class RealmLoadedApp implements LoadedApp {
       this.lastBeat = now();
       return;
     }
+    if (m.t === "sockack") {
+      this.sockets.ack(Number(m.sid), Number(m.n), Number(m.bytes));
+      return;
+    }
     if (m.t === "result") {
       const p = this.pending.get(m.id);
       if (!p) return;
@@ -262,21 +286,31 @@ export class RealmLoadedApp implements LoadedApp {
   private async answer(m: Extract<RealmToHost, { t: "op" }>): Promise<void> {
     const port = this.port;
     const id = Number(m.id) || 0;
-    const reply = (ok: boolean, value?: unknown, error?: string) => {
+    const reply = (ok: boolean, value?: unknown, error?: string, code?: string) => {
       if (!id || !port || port !== this.port) return; // fire-and-forget, or the realm is gone
       try {
-        port.postMessage({ t: "reply", id, ok, value, error });
+        port.postMessage({ t: "reply", id, ok, value, error, ...(code ? { code } : {}) });
       } catch (e) {
         port.postMessage({ t: "reply", id, ok: false, error: `the answer cannot be sent into the app: ${message(e)}` });
       }
     };
     try {
       if (typeof m.op !== "string" || !(OPS as readonly string[]).includes(m.op)) throw new Error(`op not allowed: ${String(m.op).slice(0, 40)}`);
-      const ctx = this.ctxById.get(Number(m.ctxId));
+      const ctxId = Number(m.ctxId);
+      const ctx = this.ctxById.get(ctxId);
       if (!ctx) throw new Error("no such ctx");
-      reply(true, await this.route(ctx, m.op as Op, Array.isArray(m.args) ? m.args : []));
+      const value = await this.route(ctx, m.op as Op, Array.isArray(m.args) ? m.args : []);
+      const opened = (m.op === "caps.network.socket" || m.op === "caps.network.room") && port === this.port ? (value as BoxSocketInfo) : null;
+      if (opened) this.pinnedBy.set(opened.sid, ctxId);
+      reply(true, value);
+      // Only now, after the realm has its number, may the connection's events follow.
+      if (opened) {
+        if (id) this.sockets.ready(opened.sid);
+        else this.sockets.close(opened.sid);
+      }
     } catch (e) {
-      reply(false, undefined, message(e));
+      const code = (e as { code?: unknown } | null)?.code;
+      reply(false, undefined, message(e), typeof code === "string" ? code : undefined);
     }
   }
 
@@ -436,6 +470,17 @@ export class RealmLoadedApp implements LoadedApp {
         if (!ai) throw new Error("Permission denied: AI");
         return this.question(() => ai.ask(s(0), x(1)));
       }
+      // Live connections (docs/28): `mediateCaps` decides as for fetch — the manifest's hosts, the
+      // person's consent once — and the host holds the connection. Asking waits on the person.
+      case "caps.network.socket":
+        return this.question(() => this.sockets.open(ctx, s(0), x(1)));
+      case "caps.network.room":
+        return this.question(() => this.sockets.room(ctx, opt(0), x(1)));
+      case "caps.network.socket.send":
+        return this.sockets.send(Number(a[0]), a[1]);
+      case "caps.network.socket.close":
+        this.sockets.close(Number(a[0]), a[1], a[2]);
+        return null;
       case "caps.network.fetch": {
         // `mediateCaps` decides: the manifest, the host allow-list, the person's consent.
         const network = ctx.caps.network;
@@ -451,13 +496,25 @@ export class RealmLoadedApp implements LoadedApp {
 
   // ---------------------------------------------------------------- calls
 
+  private unpin(sid: number): void {
+    this.pinnedBy.delete(sid);
+  }
+
   private idFor(ctx: Ctx): number {
     let id = this.ctxIds.get(ctx);
     if (id === undefined) {
       id = ++this.ctxSeq;
       this.ctxIds.set(ctx, id);
       this.ctxById.set(id, ctx);
-      if (this.ctxById.size > CTX_WINDOW) this.ctxById.delete(this.ctxById.keys().next().value as number);
+      if (this.ctxById.size > CTX_WINDOW) {
+        // The oldest that no open connection still uses.
+        const pinned = new Set(this.pinnedBy.values());
+        for (const k of this.ctxById.keys()) {
+          if (pinned.has(k)) continue;
+          this.ctxById.delete(k);
+          break;
+        }
+      }
     }
     return id;
   }

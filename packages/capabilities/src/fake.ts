@@ -5,6 +5,7 @@
 import type { Geo } from "potyro";
 import type { AiCall, AiCap, AiReply, Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
 import type { LiveCameraCap } from "./live-camera.js";
+import type { SocketCap } from "./sockets.js";
 
 export interface FakeOptions {
   camera?: boolean;
@@ -25,6 +26,8 @@ export interface FakeOptions {
   liveCamera?: LiveCameraCap;
   /** The AI service; none (`null`) when absent. `FakeAi` scripts one. */
   ai?: AiCap;
+  /** Live connections — `createFakeSockets().cap`, a server in memory — or none (the default, offline). */
+  sockets?: SocketCap;
 }
 
 /** A recording notification cap so tests can assert scheduling. */
@@ -98,6 +101,7 @@ export class FakeCapabilities implements Capabilities {
   network: NetworkCap;
   liveCamera: LiveCameraCap | null;
   ai: AiCap | null;
+  sockets: SocketCap | null;
 
   private saved = new Map<string, Blob>();
   /** Recorded vibration patterns, for assertions. */
@@ -136,6 +140,7 @@ export class FakeCapabilities implements Capabilities {
     };
     // None unless a test brings one: a device with no AI is the default, as offline is for network.
     this.ai = opts.ai ?? null;
+    this.sockets = opts.sockets ?? null;
   }
 
   /** Files "written" via filesystem.save(), for assertions. */

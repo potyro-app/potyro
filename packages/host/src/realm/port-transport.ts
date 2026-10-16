@@ -5,6 +5,8 @@ import type { HostToRealm, Op } from "./protocol.js";
 export interface Transport {
   call(ctxId: number, op: Op, args: unknown[]): Promise<unknown>;
   send(ctxId: number, op: Op, args: unknown[]): void;
+  /** Socket events were handed to the app (docs/28): room for more. */
+  ack(sid: number, n: number, bytes: number): void;
 }
 
 export function portTransport(port: MessagePort): Transport & { onReply(msg: HostToRealm): boolean } {
@@ -31,13 +33,16 @@ export function portTransport(port: MessagePort): Transport & { onReply(msg: Hos
         // fire-and-forget: an argument that cannot be copied is simply not sent
       }
     },
+    ack(sid: number, n: number, bytes: number) {
+      port.postMessage({ t: "sockack", sid, n, bytes });
+    },
     onReply(msg: HostToRealm): boolean {
       if (msg.t !== "reply") return false;
       const p = pending.get(msg.id);
       if (!p) return true;
       pending.delete(msg.id);
       if (msg.ok) p.resolve(msg.value);
-      else p.reject(new Error(msg.error ?? "the host refused"));
+      else p.reject(Object.assign(new Error(msg.error ?? "the host refused"), typeof msg.code === "string" ? { code: msg.code } : {}));
       return true;
     },
   };

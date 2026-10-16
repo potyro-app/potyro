@@ -5,6 +5,8 @@
 interface ImportMetaEnv {
   /** Websocket URL of the sync relay. Overrides the same-origin `/sync` default. */
   readonly VITE_POTYRO_RELAY?: string;
+  /** Websocket URL of the rooms relay for multiplayer apps (docs/26, docs/28). Overrides the site's `/rooms`. */
+  readonly VITE_POTYRO_ROOMS?: string;
   /** The site a NATIVE build belongs to (`https://apps.vaz.io`): its relay, services and links (site.ts, docs/27). */
   readonly VITE_POTYRO_SITE?: string;
   /** Set when this deployment can actually reach a model — see `canGenerate`. */

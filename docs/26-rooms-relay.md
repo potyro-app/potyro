@@ -1,8 +1,8 @@
 # Rooms: a relay for real-time multiplayer apps
 
 Status: built (`packages/rooms`), **not deployed yet** — see docs/16 "Rooms for multiplayer apps".
-Owner decision 2026-10-15: apps get WebSockets through `ctx.caps.network.socket(url)` (a separate
-piece of work, not built yet), and real-time multiplayer apps — the first is a draw-and-guess game
+Owner decision 2026-10-15: apps get WebSockets through `ctx.caps.network.socket(url)` (built:
+docs/28, which also gives apps `ctx.caps.network.room(id)` over this relay), and real-time multiplayer apps — the first is a draw-and-guess game
 whose rooms are joined by a share link — need a server nobody has to run themselves. This is that
 server. The socket capability will point here; this document is what an app author needs.
 
@@ -147,7 +147,9 @@ high-rate input (pointer moves) into one message per animation frame or two.
 
 ## 5. Notes for the socket capability
 
-For whoever builds `ctx.caps.network.socket(url)`:
+Built as described (docs/28): `ctx.caps.network.room(id?)` opens `<roomsUrl>/<id>?name=` from the
+shell, reads the envelope with `readServerEvent`, and gives the app `me`, `members` and
+`onPresence`, with peers' frames as plain messages. What was written for it:
 
 - **Open the socket from the shell's realm, not from the sealed app's frame.** A shared app's logic
   runs in an opaque-origin sandboxed iframe (docs/22); a websocket opened there sends

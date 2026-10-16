@@ -91,7 +91,20 @@ export interface Capabilities {
   network: NetworkCap;                     // always present at platform level; gated per app by host
   liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
   ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
+  sockets?: SocketCap | null;              // docs/28 — one per page; the shell wraps it per app
 }
+/** Live connections: the page owns the WebSockets (the shell's realm, never a sealed frame). */
+export interface SocketCap {
+  open(url: string, opts: { protocols?: string[] }, events: PlatformSocketEvents): Promise<PlatformSocket>; // rejects SocketOpenError{code}
+  readonly roomsUrl?: string;              // wss://<site>/rooms (VITE_POTYRO_ROOMS overrides)
+  closeAll(why: "left" | "hidden"): void;  // the shell, leaving an app; itself, after 30 s hidden
+  readonly openCount: number;
+  allowed?(t: SocketTarget): boolean; allow?(t: SocketTarget): void;   // per app: the person's answer, kept on the device
+  consentWords?(appName: string, t: SocketTarget): AiConsentWords;     // { message; detail; ok; cancel }
+}
+export type SocketTarget = { host: string } | { rooms: true };
+export interface PlatformSocketEvents { message(d: string | Uint8Array): void; close(code: number, reason: string, why: "app" | "server" | "network" | "left" | "hidden"): void; }
+export interface PlatformSocket { readonly protocol: string; readonly bufferedAmount: number; send(d: string | Uint8Array): void; close(code?: number, reason?: string): void; }
 /** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
 export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob }>;
                           json?: Record<string, unknown>; maxTokens: number; }
@@ -131,10 +144,20 @@ Implementations: `WebCapabilities`, `CapacitorCapabilities`, `FakeCapabilities` 
 scripts an AI service).
 
 `ai` is the one member no target implements: it is not a device feature. The shell composes one per
-app (`app-ai.ts`, `capsWithAi`) — the free relay first, then the person's own OpenRouter key — and
+app (`app-ai.ts`, `capsForApp`) — the free relay first, then the person's own OpenRouter key — and
 the host turns it into `ctx.caps.ai` (`host/src/ai.ts`: the shape check, the prompt, the answer's
 validation, the pictures read from the app's own store; `mediate.ts`: the sealed app's consent and
 everyone's off switch). The host never sends anything and the shell never sees a shape.
+
+`sockets` is ONE object per page too (`sharedWebSockets()`; the fake is `createFakeSockets()`, a server
+in memory with an echo, refusals and the rooms envelope). The page owns every WebSocket, so the sealed
+frame — which connects nowhere, and would send `Origin: null` — never does; leaving an app closes them
+all. The host's `sockets.ts` is the mediation for every app (the manifest's hosts and `rooms`, the
+question once per app and host, 4 per app, 1 MiB a message, 1 MiB waiting each way), and
+`socket-bridge.ts` carries a sealed app's connections into its box: four ops (`caps.network.socket`,
+`.room`, `.socket.send`, `.socket.close`), a `{ t: "sock" }` message per event and a `sockack` for
+each one the app takes — at most 64 events / 1 MiB untaken in the box, then the connection closes
+`"slow"`. The Android app adds ws:// to the local network through its own plugin (docs/28 §6).
 
 `liveCamera` is ONE object per page (`sharedLiveCamera()`), not one per `Capabilities`: the shell's
 indicator watches it, and a second instance (the Studio's preview builds its own capabilities) would

@@ -607,8 +607,12 @@ export interface Migration {
 // Top-level app definition
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Network permission: on/off, or scoped to an allow-list of hosts. */
-export type NetworkPermission = boolean | { hosts?: string[] };
+/**
+ * Network permission: on/off, or scoped to an allow-list of hosts (`"api.example.com"`, with
+ * `":port"` when it is not the usual one) — for `fetch` and `socket` alike. `rooms: true` adds
+ * Potyro's rooms relay (`ctx.caps.network.room`); `{ rooms: true }` alone allows nothing else.
+ */
+export type NetworkPermission = boolean | { hosts?: string[]; rooms?: boolean };
 
 export interface PermissionManifest {
   /** This app writes to a document that leaves the device (ADR D8, KA-23). The shell asks before an

@@ -6,6 +6,7 @@
 
 import type { Geo } from "potyro";
 import type { LiveCameraCap } from "./live-camera.js";
+import type { SocketCap } from "./sockets.js";
 
 export interface CameraCap {
   capture(o?: { source?: "camera" | "library" }): Promise<Blob>;
@@ -106,4 +107,9 @@ export interface Capabilities {
   liveCamera?: LiveCameraCap | null;
   /** AI for apps (docs/23), composed by the shell; absent or `null` = this device offers none. */
   ai?: AiCap | null;
+  /**
+   * Live connections (docs/28): one per page (`sharedWebSockets()`), however many `Capabilities`
+   * exist; the shell wraps it per app. Absent or `null` = this target cannot open any.
+   */
+  sockets?: SocketCap | null;
 }
