@@ -126,6 +126,8 @@ export interface PageShape {
 export interface AppShape {
   entities: EntityShape[];
   pages: PageShape[];
+  /** The app's declared `id`, when written literally: part of which app it is across devices (app-link.ts). */
+  id?: string;
   /** The app's declared identity, when written literally: what a launcher tile shows without
    *  running the app (#82). */
   name?: string;
@@ -394,11 +396,13 @@ export async function inspect(source: string): Promise<AppShape> {
   // `tile: (ctx) => …` and `tile(ctx) { … }` alike: only whether it is there matters.
   const tile = asArray(def.properties).some((p) => (p.type === "ObjectProperty" || p.type === "ObjectMethod") && p.computed !== true && keyOf(p) === "tile");
   const category = literalString(propValue(def, "category"));
+  const declaredId = literalString(propValue(def, "id"));
   const langs = literalLanguages(def);
   const name = typeof words === "string" ? words : words && langs.language ? words[langs.language] : undefined;
   return {
     entities,
     pages,
+    ...(declaredId ? { id: declaredId } : {}),
     ...(name ? { name } : {}),
     ...(words && typeof words === "object" ? { names: words } : {}),
     ...langs,

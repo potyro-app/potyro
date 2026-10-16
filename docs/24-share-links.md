@@ -45,7 +45,7 @@ Both carry the same thing: a **demo package**, an ordinary `potyro-app/1` zip (#
   digest is checked as on any install);
 - the files it ships with (`files/`, `origin: shipped` only — never files the person added);
 - `seed.json`: **demo records** (§3);
-- `manifest.json` with `credit` (§6).
+- `manifest.json` with `credit` (§6) and the app's `line` (§11).
 
 The inline form puts the zip, base64url, in the fragment. A fragment never reaches a server. It
 works on any static deployment with nothing new to run, which is why it stays as the fallback — but
@@ -242,3 +242,70 @@ leaves the page's origin, languages).
 In the app, the gallery is one tap from Add an app ("From the gallery"), the Classic launcher's ＋ menu
 and the Tiles launcher's app bar (`gallery-link.ts`; a build may point elsewhere with
 `VITE_POTYRO_GALLERY`).
+
+## 11. Links to a page of an app
+
+A demo link opens an app. Some sharing needs more: a game's invite has to open **the game** at **its
+join page** with **the code filled in**, on the friend's own copy if they have one. That link is made by
+the app (`ctx.ui.share({ app: { page, params } })`, docs/04 "Params from links") and carries where to
+land beside the demo:
+
+| Form | Looks like |
+|---|---|
+| Hosted demo + target | `https://apps.vaz.io/s/<id>#k=<key>&app=<line>&to=<page>&p.<name>=<value>…` |
+| Inline demo + target | `https://apps.vaz.io/#try=<package>&app=<line>&to=<page>&p.<name>=<value>…` |
+| Target only | `https://apps.vaz.io/#app=<line>&to=<page>&p.<name>=<value>…` — when no demo could be made |
+
+All of it is in the fragment, so no server sees a game's code. `remix=1` still means Make it mine and
+may stand beside a target.
+
+### Which app: its line
+
+A device-local id cannot say which app a link is for: a friend's copy is `draw-guess-2`, a remix
+`draw-guess-remix`. Every app has a **line** (`UserApp.line`, `manifest.json` `line`):
+
+- an app **made here** (the Studio), a **Duplicate** and a **remix** get a line of their own, 128 random
+  bits: they are other apps from then on;
+- a **kept** copy takes the line its package carries — every demo package and every package the Studio
+  saves writes the app's line — so the copy opens from the same links as the original;
+- an app with no line of its own — an example, anything from a package that did not say (every
+  package built from `apps/`), anything older — is known by its declared id: `id:<id>`;
+- a remix remembers what it remixed (`UserApp.lineOf`), and is opened by a link to that app when it is
+  the only copy on the device.
+
+Matching (`app-link-find.ts`) prefers a copy of that app, the most recently changed, then a remix. A
+line is a hint, not a credential: any package can claim any line. That is acceptable because of what a
+link can do (below): a wrong match shows the wrong app with some text in it, and nothing runs.
+
+### What happens when one is opened
+
+1. **The person has the app:** the address becomes the app's own (`?user=<id>`, the fragment gone) and
+   it opens on that page with those params. Not the demo, even when the link carries one.
+2. **They do not:** the demo the link carries, opened on that page. **Keep this app** (or Make it mine)
+   goes through the ordinary card, and the copy opens on that page with those params (`holdArrival`,
+   for that app only, taken once). Letting it run as theirs reloads it, and the page and its params
+   come back with it.
+3. **They do not, and the link carries no demo:** "This link opens an app you don't have here", with
+   the way to their apps. Nothing is installed, ever, by a link.
+4. **`&remix=1`:** the demo with the Make it mine card, as in §6, whether or not they have the app.
+
+### What a page gets
+
+Only what it declares (`link: { params: ["code"] }`), as text of at most 200 characters, at most 8
+names. The shell cuts what it reads from a fragment (a name that is not a plain identifier, a value
+over the cap, a second value for a name, everything past 32), and the page's declaration cuts the rest
+(`acceptLinkParams`). Nothing is said about what was cut: anyone can write a link. A page the app does
+not have is no page; the app opens where it always does.
+
+The page only **receives** them, as `ctx.params` (and a custom view's `ViewProps.param`). No action
+runs because of a link: Draw & Guess fills in the code and waits for Join.
+
+### Making one
+
+`ctx.ui.share({ text, title, app: { page, params } })` opens the share dialog at once — "Making the
+link…" — while the shell makes the address: the app's demo link (made once per version of the app and
+kept on the device, `app-link-make.ts`; a new one when the app changes or its link was taken down from
+the share sheet), with the target on it. When no demo link can be made (no share service and too big to
+be inline), the target-only form: it still opens the app for whoever has it. From inside a demo the
+link is that demo's own, so a person trying a game can invite a friend into it. A sealed app makes links
+the same way; the address reveals nothing but the params it chose.
