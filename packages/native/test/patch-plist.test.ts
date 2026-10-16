@@ -38,6 +38,8 @@ describe("the Info.plist patch", () => {
       "NSPhotoLibraryAddUsageDescription",
       "NSLocationWhenInUseUsageDescription",
       "NSLocationAlwaysAndWhenInUseUsageDescription",
+      "NSMicrophoneUsageDescription",
+      "NSSpeechRecognitionUsageDescription",
       "UIFileSharingEnabled",
       "LSSupportsOpeningDocumentsInPlace",
       "CFBundleURLTypes",
@@ -45,8 +47,7 @@ describe("the Info.plist patch", () => {
     ]) {
       expect(keys(xml)).toContain(k);
     }
-    // The live camera is video only (docs/25), and nothing runs in the background.
-    expect(xml).not.toContain("NSMicrophoneUsageDescription");
+    // The microphone is for voice input (docs/29) only; nothing runs in the background.
     expect(xml).not.toContain("UIBackgroundModes");
     // The share extension opens the app with potyro://share — the scheme must be registered.
     expect(xml).toMatch(/<key>CFBundleURLSchemes<\/key>\s*<array>\s*<string>potyro<\/string>/);
