@@ -14,6 +14,7 @@ import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
 import { SocketBridge, type BoxSocketEvent, type BoxSocketInfo } from "../socket-bridge.js";
+import { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "../speech-bridge.js";
 
 const KV_PREFIX = "kv:";
 
@@ -106,6 +107,15 @@ class IsolateLoadedApp implements LoadedApp {
    * box (no `onMessage` yet) is acked when the app takes it, so the bridge's window bounds the box.
    */
   private readonly sockets = new SocketBridge((ev) => this.socketIn(ev));
+  /** Listenings (docs/29): the host holds the microphone; what it hears goes in through `__potyro.speech`. */
+  private readonly speech = new SpeechBridge(
+    (ev) => this.speechIn(ev),
+    (lid) => {
+      if (this.listening.delete(lid)) this.closeQuestion();
+    },
+  );
+  /** Listenings that are on: the person speaking, which — like a question — pauses a call's budget. */
+  private readonly listening = new Set<number>();
 
   constructor(
     private readonly vm: QuickJSAsyncContextLike,
@@ -305,6 +315,20 @@ class IsolateLoadedApp implements LoadedApp {
           this.closeQuestion();
         }
       }
+      // Voice (docs/29): `mediateCaps` decides — the manifest, the person's consent once. Asking waits on the person.
+      case "cap.speech.listen": {
+        await null; // out of the VM's turn before anything can call back into it
+        const ctx = this.ctxHost;
+        if (!ctx) throw new Error("no call is running");
+        const o = (op.opts ?? null) as { language?: string | null; interim?: boolean | null } | null;
+        this.openQuestion();
+        try {
+          const info = await this.speech.listen(ctx, o ? { ...(o.language == null ? {} : { language: String(o.language) }), ...(o.interim == null ? {} : { interim: o.interim !== false }) } : undefined);
+          return serialize(info as unknown as Value);
+        } finally {
+          this.closeQuestion();
+        }
+      }
       case "cap.socket.send": {
         await null;
         const d = (op.data ?? {}) as { t?: string; b?: string };
@@ -409,11 +433,18 @@ class IsolateLoadedApp implements LoadedApp {
         const id = op.id as string;
         const req = op.req as Record<string, unknown>;
         const opens = req?.op === "cap.socket.open" || req?.op === "cap.socket.room";
+        const listens = req?.op === "cap.speech.listen";
         this.handleOp(req).then(
           (json) => {
             this.settle(id, true, json);
             // The box has the connection's number now: its events may follow.
             if (opens) this.sockets.ready(deserialize<BoxSocketInfo>(json).sid);
+            if (listens) {
+              const lid = deserialize<BoxSpeechInfo>(json).lid;
+              this.listening.add(lid);
+              this.openQuestion();
+              this.speech.ready(lid);
+            }
           },
           (e: unknown) => this.settle(id, false, errorForBox(e)),
         );
@@ -425,6 +456,9 @@ class IsolateLoadedApp implements LoadedApp {
         return;
       case "cap.socket.close":
         setTimeout(() => this.sockets.close(Number(op.sid), op.code ?? undefined, op.reason ?? undefined), 0);
+        return;
+      case "cap.speech.stop":
+        setTimeout(() => this.speech.stop(Number(op.lid)), 0);
         return;
       case "ui.progress": {
         // A bar is a handle inside the VM; out here it is an id, opened on first sight.
@@ -520,6 +554,19 @@ class IsolateLoadedApp implements LoadedApp {
       console.warn(`[${this.definition.id}] a socket callback failed:`, e);
     }
     return ev.kind !== "message" || taken !== "0";
+  }
+
+  /** One listening event into the box. */
+  private speechIn(ev: BoxSpeechEvent): void {
+    if (this.disposed) return;
+    try {
+      this.enter(() => {
+        const h = this.vm.unwrapResult(this.vm.evalCode(`globalThis.__potyro.speech(${JSON.stringify(JSON.stringify(ev))})`));
+        h.dispose();
+      });
+    } catch (e) {
+      console.warn(`[${this.definition.id}] a speech callback failed:`, e);
+    }
   }
 
   /** A host call's answer, handed back to the promise waiting for it inside the VM. */
@@ -659,6 +706,7 @@ class IsolateLoadedApp implements LoadedApp {
   }
   dispose(): void {
     this.sockets.endAll("left", "the app was closed");
+    this.speech.endAll();
     this.disposed = true;
     this.vm.dispose();
   }

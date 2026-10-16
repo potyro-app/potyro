@@ -124,10 +124,14 @@ export function leaveDemoPath(): void {
   if (location.pathname !== base || location.hash) history.replaceState(null, "", base);
 }
 
-export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPackage }) {
+/**
+ * `startRemix`: the link asked for Make it mine (`&remix=1`, the gallery's second button) — the card is
+ * already open over the running app, so the person sees what they are making their own.
+ */
+export function DemoScreen({ session, pkg, startRemix }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean }) {
   const { t } = useLingui();
-  // Keep and Remix are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
-  const [adding, setAdding] = useState<"keep" | "remix" | null>(null);
+  // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
+  const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
   const name = demoName(pkg);
   const credit = creditLine(pkg.credit);
   return (
@@ -147,7 +151,7 @@ export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPac
         </p>
         <div className="k-demo-actions">
           <button type="button" className="k-demo-remix" onClick={() => setAdding("remix")}>
-            <Trans comment="Demo bar: make your own version of this app in the Studio">Remix this</Trans>
+            <Trans comment="Demo bar: make your own copy of this app, to change in the Studio">Make it mine</Trans>
           </button>
           <button type="button" className="k-demo-keep" onClick={() => setAdding("keep")}>
             <Trans comment="Demo bar: add this app to your own apps">Keep this app</Trans>

@@ -66,6 +66,38 @@ describe("the request format", () => {
   });
 });
 
+describe("a recording to write down (voice input, docs/29)", () => {
+  const WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+  const voice = (data = WAV): AiPayload => payload({ system: "Write down what is said.", parts: [{ type: "text", text: "Language: pl-PL" }, { type: "audio", data }], json: undefined, maxTokens: 1000 });
+
+  it("accepts one WAV recording, and refuses anything else", () => {
+    expect(readAiPayload(voice()).ok).toBe(true);
+    expect(readAiPayload(voice("data:audio/ogg;base64,T2dnUw=="))).toEqual({ ok: false, error: "audio" });
+    expect(readAiPayload(voice(`data:audio/wav;base64,${"A".repeat(2_700_000)}`))).toEqual({ ok: false, error: "audio" });
+    expect(readAiPayload(payload({ parts: [{ type: "audio", data: WAV }, { type: "audio", data: WAV }] }))).toEqual({ ok: false, error: "too many recordings" });
+    expect(readAiPayload(payload({ parts: [{ type: "audio", data: WAV }, { type: "image", data: JPEG }] }))).toEqual({ ok: false, error: "a recording goes alone" });
+    expect(readAiPayload(payload({ parts: [{ type: "audio", data: WAV, format: "mp3" } as never] }))).toEqual({ ok: false, error: "part" });
+  });
+
+  it("goes to OpenRouter as input_audio, base64 without the prefix", () => {
+    const body = openRouterBody(voice()) as { messages: Array<{ content: unknown }> };
+    expect(body.messages[1]!.content).toEqual([
+      { type: "text", text: "Language: pl-PL" },
+      { type: "input_audio", input_audio: { data: WAV.slice(WAV.indexOf(",") + 1), format: "wav" } },
+    ]);
+  });
+
+  it("is counted on the same ledger as every other request", async () => {
+    const up = upstream([{ ok: true, text: "kup mleko", cost: 0.0004 }]);
+    const ledger = memoryLedger();
+    const relay = createAiRelay({ upstream: up.fn, now: () => NOW, ledger });
+    const res = await relay.handle(post(voice()));
+    expect(res).toMatchObject({ status: 200, body: { ok: true, text: "kup mleko" } });
+    expect(ledger.spent("2026-10")).toBeCloseTo(0.0004);
+    expect(ledger.count("2026-10", "device-0001")).toBe(1);
+  });
+});
+
 describe("the relay", () => {
   it("answers a request with the model's words and what is left this month", async () => {
     const up = upstream();

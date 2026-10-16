@@ -11,6 +11,7 @@ import type { Geo } from "potyro";
 import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap, ShareCap } from "./types.js";
 import { sharedLiveCamera, type LiveCameraCap } from "./live-camera.js";
 import { sharedWebSockets, type SocketCap } from "./sockets.js";
+import { sharedWebSpeech, type SpeechCap } from "./speech.js";
 
 // Minimal shapes for the File System Access API (not in older lib.dom typings).
 interface WritableFileStream {
@@ -170,6 +171,8 @@ export class WebCapabilities implements Capabilities {
   readonly sockets: SocketCap | null;
   /** The Web Share API, where the browser has it. */
   readonly share: ShareCap = webShare();
+  /** SpeechRecognition, or a recording to write down where there is none (docs/29). */
+  readonly speech: SpeechCap | null;
 
   constructor() {
     this.camera = makeCamera();
@@ -179,6 +182,7 @@ export class WebCapabilities implements Capabilities {
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
     this.liveCamera = sharedLiveCamera();
     this.sockets = sharedWebSockets();
+    this.speech = sharedWebSpeech();
   }
 }
 
