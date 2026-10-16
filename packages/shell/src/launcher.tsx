@@ -760,6 +760,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
       {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {remixing ? <RemixDialog app={remixing} onClose={() => setRemixing(null)} /> : null}
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
       {history ? (
         <History
