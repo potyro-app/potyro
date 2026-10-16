@@ -106,7 +106,7 @@ async function declarationOf(entry) {
   try {
     await build({
       stdin: {
-        contents: `import app from ${JSON.stringify(entry)};\nimport { declareApp } from ${JSON.stringify(declare)};\nexport default declareApp(app);\n`,
+        contents: `import app from ${JSON.stringify(entry)};\nimport { describeApp } from ${JSON.stringify(declare)};\nexport default describeApp(app);\n`,
         resolveDir: dirname(entry),
         loader: "ts",
       },
@@ -130,11 +130,15 @@ async function declarationOf(entry) {
       ],
     });
     const mod = await import(pathToFileURL(join(dir, "declared.mjs")).href);
-    if (!mod.default) throw new Error("it does not export an app (`export default defineApp({ … })`)");
-    return mod.default;
+    // The real reason when it is not a declaration: "it does not export an app" only when it does not.
+    const { declared, problem } = mod.default ?? {};
+    if (!declared) throw new Error(problem ?? "it does not export an app (`export default defineApp({ … })`)");
+    return declared;
   } catch (e) {
     const why = e?.errors?.[0]?.text ?? e?.message ?? String(e);
-    console.warn(`pack:app: packed without a description of the app, so Add an app will read it from its code (${why.split("\n")[0]})`);
+    // A validation error's first line is only its heading ("Invalid app definition:"): the reason is under it.
+    const said = why.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 3).join(" ");
+    console.warn(`pack:app: packed without a description of the app, so Add an app will read it from its code (${said})`);
     return undefined;
   } finally {
     rmSync(dir, { recursive: true, force: true });
