@@ -285,6 +285,7 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
     when: ctx.now(),
     split: "items",
     items,
+    group: ctx.scope.group?.id,
     category: guessCategory(filled.description) === "other" ? "food" : guessCategory(filled.description),
     ...(photo ? { receipt: photo } : {}),
   });

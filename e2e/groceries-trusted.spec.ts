@@ -89,7 +89,7 @@ test.describe("desktop", () => {
     const spinach = page.locator(".k-list-row", { hasText: "Spinach" });
     await expect(spinach).toContainText("5 times, last today");
     await spinach.getByRole("button", { name: /Add/ }).click();
-    await expect(page.locator(".k-toast")).toContainText("Spinach is on the list");
+    await expect(page.locator(".k-toast").last()).toContainText("Spinach is on the list");
     await expect(spinach).toHaveCount(0);
     await page.locator(".k-sidenav .k-tab", { hasText: "List" }).click();
     const back = page.getByRole("checkbox", { name: "Spinach" });

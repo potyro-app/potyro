@@ -41,7 +41,7 @@ export async function seedGroceries(store: Store, _me: string | undefined, _phot
   await onList("Milk", dairy, { quantity: "2 × 1 l", ...before(11, 6) });
   await onList("Yoghurt", dairy, before(6, 13));
   await onList("Eggs", dairy, { quantity: "12", ...before(5, 13) });
-  await onList("Oat milk", pantry, { note: "The oat one, not barista", ...before(3, 20) });
+  await onList("Oat drink", pantry, { note: "The oat one, not barista", ...before(3, 20) });
   await onList("Rice", pantry, { quantity: "1 kg", bought: true, ...before(2, 34) });
   await onList("Frozen peas", frozen);
   await onList("Dish soap", household, before(2, 41));
