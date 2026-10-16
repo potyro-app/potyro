@@ -92,6 +92,7 @@ export interface Capabilities {
   liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
   ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
   sockets?: SocketCap | null;              // docs/28 — one per page; the shell wraps it per app
+  speech?: SpeechCap | null;               // docs/29 — the page's microphone; the shell wraps it per app
 }
 /** Live connections: the page owns the WebSockets (the shell's realm, never a sealed frame). */
 export interface SocketCap {
@@ -106,7 +107,17 @@ export type SocketTarget = { host: string } | { rooms: true };
 export interface PlatformSocketEvents { message(d: string | Uint8Array): void; close(code: number, reason: string, why: "app" | "server" | "network" | "left" | "hidden"): void; }
 export interface PlatformSocket { readonly protocol: string; readonly bufferedAmount: number; send(d: string | Uint8Array): void; close(code?: number, reason?: string): void; }
 /** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
-export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob }>;
+/** Voice input: one listening per page; `where` says which engine and whose service. */
+export interface SpeechCap {
+  where(language: string): Promise<{ engine: "device" | "browser" | "cloud"; service?: string } | null>;
+  listen(o: { language: string; interim: boolean; maxMs?: number },
+         ev: { onText(text: string, final: boolean): void; onWorking?(): void;
+               onEnd(e: { why: SpeechEndWhy; text: string; code?: SpeechFailure; message?: string }): void }): Promise<{ stop(): void; abort(why: SpeechEndWhy): void }>;
+  stopAll(why: SpeechEndWhy): void;  readonly listening: boolean;
+  withTranscriber?(t: { service: string; transcribe(wav: Blob, language: string): Promise<string> }): SpeechCap; // the cloud engine
+  allowed?(engine): boolean; allow?(engine): void; consentWords?(appName: string, where): AiConsentWords;   // per app, the shell's
+}
+export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob } | { audio: Blob }>;
                           json?: Record<string, unknown>; maxTokens: number; }
 export interface AiReply { text: string; via: "free" | "own-key"; cost?: number; }
 export interface AiCap {
@@ -158,6 +169,15 @@ question once per app and host, 4 per app, 1 MiB a message, 1 MiB waiting each w
 `.room`, `.socket.send`, `.socket.close`), a `{ t: "sock" }` message per event and a `sockack` for
 each one the app takes — at most 64 events / 1 MiB untaken in the box, then the connection closes
 `"slow"`. The Android app adds ws:// to the local network through its own plugin (docs/28 §6).
+
+`speech` is ONE microphone per page (`sharedWebSpeech()`, or `speechOverPlugin` in the Android app;
+the fake is `createFakeSpeech()`). It picks the engine (docs/29 §2), and where the browser has none
+the shell's per-app wrapper (`app-speech.ts`) adds the cloud engine with `withTranscriber`, writing a
+16 kHz WAV down through the app's own AI service (`AiCall` with one `{ audio }` part). The host's
+`speech.ts` is the mediation for every app (the manifest's `speech`, the question once per app and
+way of listening, the limits) and `speech-bridge.ts` carries a sealed app's listening into its box:
+two ops (`caps.speech.listen`, `.stop`) and a `{ t: "speech" }` message per event; a listening that
+is on pauses the box's call budget like a question.
 
 `liveCamera` is ONE object per page (`sharedLiveCamera()`), not one per `Capabilities`: the shell's
 indicator watches it, and a second instance (the Studio's preview builds its own capabilities) would
@@ -263,9 +283,16 @@ items, 10,000 characters), and formats in its own locale; host time counts again
 deadline. `mediate.ts` is unchanged: formatting is not a capability. `ctx.ui` takes `Words`
 everywhere it takes words, and `ctx` resolves them before the `UiBridge` sees them, so the shell only
 ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`). `UiBridge.share`
-(`ctx.ui.share`) receives `{ text?, url?, title? }` already checked — something to send, an http(s)
-link only, at most 10,000 characters — and answers whether it was copied or handed to the share
-sheet; a headless bridge leaves it out and `ctx` answers `false`.
+(`ctx.ui.share`) receives `ShownShare` — `{ text?, url?, title?, app? }` — already checked: something
+to send, an http(s) link only, at most 10,000 characters — and answers whether it was copied or handed
+to the share sheet; a headless bridge leaves it out and `ctx` answers `false`. `app` is
+`{ page, params }`, a link to one of the app's own pages that the shell makes (docs/24 §11): the page is
+one the app declares and the params are only those its `link.params` names, text of at most
+`LINK_LIMITS.chars` (`checkLinkRequest`, from `potyro`; a mistake throws in the app's action). The app
+never sees the address. The shell's bridge (`createUiBridge(…, makeLink)`) opens the share dialog at
+once and puts the link in when it is made; a bridge with no `makeLink` (the Studio's preview) sends the
+words alone. An `AppPackage` carries the app's `line` (`manifest.json`), which is what such a link
+matches on the receiving device.
 
 **The shell's own services: the screen kept on and countdowns (docs/04).** Two more optional members
 of `UiBridge`, given only to an OPEN app (`createUiBridge(…, { keepAwake, timers })` in main.tsx), since

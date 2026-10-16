@@ -75,6 +75,7 @@ export type {
   UiTimer,
   UiTimerOptions,
   CtxGuests,
+  ShareAppLink,
   CtxMedia,
   CtxFiles,
   CtxFormat,
@@ -100,6 +101,7 @@ export type {
 export type { Face, FaceEye, FaceExpressions, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
 export type { TileContent } from "./types/tile.js";
 export type { Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "./types/sockets.js";
+export type { SpeechCapability, SpeechEngine, SpeechFailure, SpeechOptions, SpeechSession } from "./types/speech.js";
 
 // ---- app definition ----
 export type {
@@ -112,6 +114,7 @@ export type {
   PageInput,
   AppInput,
   Page,
+  PageLink,
   View,
   ViewType,
   ListView,
@@ -175,6 +178,7 @@ export type {
 } from "./types/infer.js";
 
 export { LAYOUT_TYPES } from "./types/app.js";
+export { LINK_LIMITS, LINK_PARAM_NAME, linkParamsOf, acceptLinkParams, checkLinkRequest } from "./links.js";
 export { resolveView, basePageId, layoutItemId } from "./layout.js";
 
 // ---- names from before the rename (#114) ----

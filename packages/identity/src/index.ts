@@ -6,11 +6,15 @@ export {
   identityAccount,
   recoveryPassphrase,
   signInWithPassphrase,
+  portableIdentity,
+  adoptPortableIdentity,
   secureIdentitySecrets,
   IdentityKeysMissingError,
   DEFAULT_NAME,
   type Identity,
   type IdentityAccount,
   type IdentityKeys,
+  type PortableIdentity,
+  type AdoptOutcome,
 } from "./identity.js";
 export { browserVault, currentVault, deferredVault, memoryVault, setSecretVault, type SecretVault } from "./vault.js";

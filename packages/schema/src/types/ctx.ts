@@ -12,6 +12,7 @@ import type { Language, Words } from "./words.js";
 import type { AiValue } from "./infer.js";
 import type { Face, FaceOptions, FacesFailure } from "./faces.js";
 import type { Room, RoomOptions, Socket, SocketOptions } from "./sockets.js";
+import type { SpeechCapability } from "./speech.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -108,6 +109,8 @@ export interface Caps {
   network?: NetworkCapability;
   /** AI for the app's own work (docs/23). Needs `permissions: { ai: true }`. */
   ai?: AiCapability;
+  /** Voice input, live words as the person speaks (docs/29). Needs `permissions: { speech: true }`. */
+  speech?: SpeechCapability;
 }
 
 /**
@@ -255,8 +258,13 @@ export interface CtxUi {
   /**
    * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
    * picks where, so no permission. `true` when copied or shared, `false` when closed.
+   *
+   * `app` instead of `url`: a link to THIS app, opening `page` with `params` (docs/24 §11) — on the
+   * other person's own copy when they have one, else as a demo they can keep, which then lands there.
+   * The page must declare the params (`link: { params: [...] }`); values are text. A link only opens
+   * the page: nothing runs because of it.
    */
-  share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
+  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink }): Promise<boolean>;
   /**
    * Keep the screen on while a page needs watching — a recipe being cooked, a workout under way —
    * until `release()`, or until the person leaves the app. No permission: it only stops the screen
@@ -270,6 +278,12 @@ export interface CtxUi {
   timer(opts: UiTimerOptions): Promise<UiTimer>;
   /** This app's timers that are running or paused, soonest first. */
   timers(): Promise<UiTimer[]>;
+}
+
+/** A link to the app making it: which page it opens, and with what (docs/24 §11). */
+export interface ShareAppLink {
+  page: string;
+  params?: Record<string, string>;
 }
 
 /**

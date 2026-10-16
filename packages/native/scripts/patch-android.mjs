@@ -1,7 +1,7 @@
 // Put Potyro's own Android code into the generated project (android/ is gitignored and regenerated):
-// the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — and the
-// `PotyroKeepAwake` plugin — the screen kept on for `ctx.ui.keepAwake`, docs/04 — copied from
-// android-templates/ into MainActivity's package, and registered in MainActivity. Idempotent.
+// the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — the voice
+// plugin (docs/29), and `PotyroKeepAwake` — the screen kept on for `ctx.ui.keepAwake`, docs/04 —
+// copied from android-templates/ into MainActivity's package, and registered in MainActivity. Idempotent.
 //
 // Nothing here touches the network security config or `usesCleartextTraffic`: the app's cleartext
 // policy stays "no" for every HTTP stack. The plugin speaks ws:// itself, over a plain socket, and
@@ -11,9 +11,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "KeepAwakePlugin.java"];
-/** The plugin classes MainActivity registers, in order. */
-export const PLUGINS = ["LocalSocketPlugin", "KeepAwakePlugin"];
+export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java", "KeepAwakePlugin.java"];
+
+/** Potyro's own plugins, registered in MainActivity in this order. */
+export const PLUGINS = ["LocalSocketPlugin", "SpeechPlugin", "KeepAwakePlugin"];
 
 /** The package a MainActivity.java declares, or null. Pure. */
 export function packageOf(source) {
@@ -28,14 +29,14 @@ export function packageOf(source) {
  */
 export function withPluginRegistered(source, plugins = PLUGINS) {
   const missing = plugins.filter((p) => !source.includes(`registerPlugin(${p}.class)`));
-  if (!missing.length) return { source, added: false };
-  const calls = missing.map((p) => `        registerPlugin(${p}.class);`).join("\n");
+  if (missing.length === 0) return { source, added: false };
+  const lines = missing.map((p) => `registerPlugin(${p}.class);`).join("\n        ");
   let out = source;
   if (!/import\s+android\.os\.Bundle\s*;/.test(out)) out = out.replace(/(^\s*package\s+[\w.]+\s*;\s*\n)/m, "$1\nimport android.os.Bundle;\n");
   if (/void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{/.test(out)) {
-    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, `$1\n${calls}`);
+    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, `$1\n        ${lines}`);
   } else {
-    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // Potyro's own plugins (scripts/patch-android.mjs): docs/28 §6 local sockets, docs/04 keep awake.\n${calls}\n        super.onCreate(savedInstanceState);\n    }\n}`;
+    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // Potyro's own plugins (scripts/patch-android.mjs): ws:// to the local network (docs/28 §6), voice (docs/29), the screen kept on (docs/04).\n        ${lines}\n        super.onCreate(savedInstanceState);\n    }\n}`;
     out = out.replace(/extends\s+BridgeActivity\s*\{\s*\}/, `extends BridgeActivity ${body}`);
   }
   return { source: out, added: out !== source };

@@ -4,7 +4,7 @@ import { readReferenceSources } from "../src/reference-files.js";
 import { CAPABILITY_REFERENCE, SCHEMA_REFERENCE } from "../src/reference.generated.js";
 import { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT, buildModifyMessage, buildUserMessage } from "../src/prompt.js";
 import { LOOKUP_REFERENCE, lookupReference } from "../src/agent/discovery-tools.js";
-import { FIELD_TYPES, VIEW_FIELDS } from "potyro";
+import { FIELD_TYPES, VIEW_FIELDS, VIEW_TYPES } from "potyro";
 
 // The model's reference is the schema's own type declarations, generated from
 // `packages/schema/src/types`. The hand-written catalogue it replaces drifted from the schema (issue
@@ -67,8 +67,15 @@ describe("SYSTEM_PROMPT", () => {
     // So a NEW CAPABILITY DOES NOT RAISE THIS NUMBER: add it to `CAPABILITIES` (an index line, its
     // declarations, its cues) — the next test fails until it is reachable. Only a change to the
     // core itself (a field type, a view, a rule every app needs) may raise it, with a note here.
-    // 75.6k at the split; the ceiling leaves ~1k for that.
-    expect(SYSTEM_PROMPT.length).toBeLessThan(76_600);
+    // 75.6k at the split.
+    //
+    // #370: it was full again (76,593 of 76,600) after voice, app links and the view looks had each
+    // trimmed their own words to fit. The rarer views and options left the core the same way —
+    // board, timeline, stats (and page `summary`), chart, steps, aggregate, the checklist's drag and
+    // rename options, `mount`, `scope`, `sources`, `ctx.ui.form/sheet/menu/progress`, the permission
+    // manifest — chosen by how often example and generated apps use them. 66.0k after; the ceiling
+    // leaves ~1.5k. A NEW FEATURE GOES INTO `CAPABILITIES`, NEVER INTO A RAISE OF THIS NUMBER.
+    expect(SYSTEM_PROMPT.length).toBeLessThan(67_500);
   });
 
   it("is smaller than the full reference by what moved out, and the index names every capability", () => {
@@ -79,6 +86,8 @@ describe("SYSTEM_PROMPT", () => {
     const core = new Set(declarations(SCHEMA_REFERENCE).map((d) => d.name));
     for (const c of CAPABILITIES) for (const d of c.declarations) expect(core.has(d), `${d} is still in the core`).toBe(false);
     expect(SCHEMA_REFERENCE).not.toMatch(memberLine("share"));
+    // #370: members cut out of core declarations are not in the core either.
+    for (const c of CAPABILITIES) for (const m of c.members ?? []) expect(SCHEMA_REFERENCE, `${m.of}.${m.name}`).not.toMatch(memberLine(m.name));
   });
 
   // History of the budget before #341, kept for the reasoning:
@@ -189,22 +198,21 @@ describe("capabilities outside the core", () => {
     for (const p of ["ctx.query", "ctx.caps.camera", "ctx.caps.camera.live", "ctx.caps.ai.extract", "ctx.files.import", "ctx.ui.share", "ctx.ui.toast", "ctx.views.map", "ctx.format.date"]) expect(paths).toContain(p);
   });
 
+  /** The capability entries that answer for a `ctx` path: by key, by an `also` name, or (unless a container) as a prefix. */
+  const coveringPath = (path: string): Array<(typeof CAPABILITIES)[number]> =>
+    CAPABILITIES.filter((c) => [c.key, ...(c.also ?? [])].some((k) => path === k || (!c.container && path.startsWith(`${k}.`))));
+
   it("every ctx member is in the core, or indexed in the prompt AND resolved by lookup to its declaration", () => {
     const unreachable: string[] = [];
     for (const path of ctxPaths()) {
       const name = path.split(".").pop()!;
       const parent = path.split(".").slice(0, -1).join(".");
-      const inCore = SCHEMA_REFERENCE.split("\n").some((l) => memberLine(name).test(l)) && !CAPABILITIES.some((c) => path === c.key || path.startsWith(`${c.key}.`) || parent === c.key);
+      const inCore =
+        SCHEMA_REFERENCE.split("\n").some((l) => memberLine(name).test(l)) &&
+        !CAPABILITIES.some((c) => [c.key, ...(c.also ?? [])].some((k) => path === k || path.startsWith(`${k}.`) || parent === k));
       if (inCore) continue;
       // A container (`ctx.caps`) does not stand in for its members: `ctx.caps.nfc` needs its own line.
-      // …and one that cuts members out of a declaration covers each of them beside its key (`ctx.ui.timers`).
-      const beside = (c: (typeof CAPABILITIES)[number]): boolean =>
-        (c.members ?? []).some((m) => {
-          const at = `${c.key.split(".").slice(0, -1).join(".")}.${m.name}`;
-          return path === at || path.startsWith(`${at}.`);
-        });
-      const covers = (c: (typeof CAPABILITIES)[number]): boolean => path === c.key || (!c.container && path.startsWith(`${c.key}.`)) || beside(c);
-      const indexed = CAPABILITIES.some((c) => covers(c) && SYSTEM_PROMPT.includes(`lookup("${c.key}")`));
+      const indexed = coveringPath(path).some((c) => SYSTEM_PROMPT.includes(`lookup("${c.key}")`));
       // Its declaration: the member's own line, or — for a capability's index name — the whole capability.
       const answer = lookupReference(LOOKUP_REFERENCE, path);
       const key = CAPABILITIES.find((c) => c.key === path)?.key;
@@ -212,6 +220,56 @@ describe("capabilities outside the core", () => {
       if (!indexed || !found) unreachable.push(`${path} (indexed: ${indexed}, lookup: ${found})`);
     }
     expect(unreachable).toEqual([]);
+  });
+
+  // #370: views, their options, field options and the app's own parts left the core too. Each must be
+  // in the core, or in a capability the prompt indexes, whose declaration lookup returns.
+  const ROOTS = ["AppDefinition", "Page", "PageLayout", "LayoutItem", "EntityDef", "FieldCommon", "FilterChip", "QuickAction", "OnOpen", "ListDisplay"];
+  const unionMembers = (name: string): string[] => {
+    const d = declarations(LOOKUP_REFERENCE).find((x) => x.name === name)!;
+    return [...d.text.matchAll(/\|\s*(\w+)/g)].map((m) => m[1]!);
+  };
+  const indexedBy = (c: (typeof CAPABILITIES)[number] | undefined): boolean => c !== undefined && SYSTEM_PROMPT.includes(`lookup("${c.key}")`);
+
+  it("every view type, field type and their options are in the core, or indexed AND resolved by lookup", () => {
+    const core = declarations(SCHEMA_REFERENCE);
+    const all = declarations(LOOKUP_REFERENCE);
+    const viewDecls = unionMembers("View");
+    const fieldDecls = unionMembers("Field");
+    expect(viewDecls).toContain("BoardView");
+    expect(fieldDecls).toContain("MediaField");
+    const unreachable: string[] = [];
+    for (const decl of [...ROOTS, ...viewDecls, ...fieldDecls]) {
+      const inCore = core.find((d) => d.name === decl);
+      if (!inCore) {
+        // Moved whole: a capability owns it, the prompt indexes it, lookup returns it by name.
+        const owner = CAPABILITIES.find((c) => c.declarations.includes(decl));
+        const text = all.find((d) => d.name === decl)?.text ?? "";
+        if (!indexedBy(owner) || !text || !lookupReference(LOOKUP_REFERENCE, decl).includes(text.trim())) unreachable.push(`${decl} (moved; owner ${owner?.key ?? "none"})`);
+        continue;
+      }
+      // In the core: each member is still there, or was cut by an indexed capability whose lookup has it.
+      const members = all
+        .filter((d) => d.name === decl)
+        .flatMap((d) => d.text.split("\n"))
+        .map((l) => /^ {2}(?:readonly\s+)?(\w+)\??\s*[:(<]/.exec(l)?.[1])
+        .filter((m): m is string => Boolean(m));
+      for (const m of new Set(members)) {
+        if (inCore.text.split("\n").some((l) => memberLine(m).test(l))) continue;
+        const owner = CAPABILITIES.find((c) => c.members?.some((x) => x.of === decl && x.name === m));
+        const answer = owner ? lookupReference(LOOKUP_REFERENCE, owner.key) : "";
+        if (!indexedBy(owner) || !answer.split("\n").some((l) => memberLine(m).test(l))) unreachable.push(`${decl}.${m} (cut; owner ${owner?.key ?? "none"})`);
+      }
+    }
+    expect(unreachable).toEqual([]);
+  });
+
+  it("every view type answers lookup by its short name: its declaration and what the validator accepts", () => {
+    for (const type of VIEW_TYPES) {
+      const out = lookupReference(LOOKUP_REFERENCE, type);
+      expect(out, type).toContain(`type: "${type}";`);
+      expect(out, type).toContain(`\`${type}\` view — what the validator accepts:`);
+    }
   });
 
   it("lists only declarations the schema has, and claims every lookup-only declaration", () => {
@@ -232,10 +290,12 @@ describe("capabilities outside the core", () => {
     ["ctx.caps.ai.extract", ["export interface AiCapability", "export interface AiExtractRequest"]],
     ["ctx.files.import", ["export interface CtxFiles", "import(opts?:", "export interface FileInfo"]],
     ["ctx.files", ["export interface CtxFiles", "export interface FileInfo"]],
-    ["ctx.ui.share", ["share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;"]],
+    ["ctx.ui.share", ["share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink }): Promise<boolean>;", "export interface ShareAppLink", "export interface PageLink"]],
     ["share", ["share(opts:"]],
     ["ctx.caps.network.socket", ["export interface Socket {", "onMessage(cb: (data: SocketData) => void): () => void;", "export interface Room extends Socket", "export type SocketFailure", "never reconnects by itself"]],
     ["ctx.caps.network.room", ["room(id?: string, opts?: RoomOptions): Promise<Room>;"]],
+    ["ctx.caps.speech", ["export interface SpeechSession", "onText(cb: (text: string, final: boolean) => void): () => void;", "export type SpeechFailure", "listen(opts?: SpeechOptions): Promise<SpeechSession>;"]],
+    ["SpeechSession", ["readonly result: Promise<string>;"]],
     ["Room", ["export interface Room extends Socket", "onPresence("]],
     ["ctx.caps.network", ["socket(url: string, opts?: SocketOptions): Promise<Socket>;"]],
     ["ctx.caps.geo", ["current(): Promise<{ lat: number; lng: number }>"]],
@@ -246,6 +306,27 @@ describe("capabilities outside the core", () => {
     ["ctx.format.date", ["export interface CtxFormat", "export interface FormatDateOptions"]],
     ["ctx.space", ["export interface Space", "invite(): Promise<string>;"]],
     ["languages", ["labels:", "ctx.t("]],
+    // #370: the rarer views, options and app parts.
+    ["board", ["`board` view — what the validator accepts:", "export interface BoardView", "column: string;"]],
+    ["BoardView", ["export interface BoardView"]],
+    ["timeline", ["export interface TimelineView", "groupBy?:"]],
+    ["stats", ["export interface StatsView", "export interface StatItem", "export interface SummaryValue", "export type SummaryOp"]],
+    ["SummaryValue", ["export interface SummaryValue"]],
+    ["chart", ["export interface ChartView", "export interface ChartPoint"]],
+    ["steps", ["export interface StepsView", "onFinish?: string;"]],
+    ["aggregate", ["export interface AggregateView", "export interface AggregateRow", "tone?:"]],
+    ["checklist", ["`checklist` view — what the validator accepts:", "export interface ChecklistView", "done: string;", "reorder?: string;", "donePlacement?:"]],
+    ["donePlacement", ["donePlacement?: \"sink\" | \"stay\";"]],
+    ["mount", ["mount?: (el: HTMLElement, props: ViewProps) => () => void;", "watchQuery(", "watchRecord(", "export type CustomViewMount"]],
+    ["watchQuery", ["watchQuery("]],
+    ["ctx.scope", ["export interface ScopeDef", "scope: Readonly<Record<string, Resolved | undefined>>;"]],
+    ["scope", ["export interface ScopeDef"]],
+    ["sources", ["export interface SourceDef", "sources?: Record<string, SourceDef>;"]],
+    ["ctx.ui.form", ["form<T = Record<string, unknown>>(", "sheet<T = string>(", "menu<T = string>(", "progress(label: Words): UiProgress;", "export interface UiItem"]],
+    ["ctx.ui.menu", ["menu<T = string>("]],
+    ["ctx.ui.progress", ["export interface UiProgress"]],
+    ["PermissionManifest", ["export interface PermissionManifest", "sync?: boolean;"]],
+    ["NetworkPermission", ["export type NetworkPermission"]],
   ])("lookup(%j) answers with the real declaration and its doc comment", (query, expected) => {
     const out = lookupReference(LOOKUP_REFERENCE, query);
     expect(out).not.toMatch(/^Nothing in the potyro module/);
@@ -278,6 +359,35 @@ describe("capabilityNotes: the passages beside a request (every engine, tools or
       expect(out, ask).toContain("export interface Socket {");
       expect(out, ask).toContain("export interface Caps");
     }
+  });
+
+  it("brings the voice declarations for a request to speak, in several languages", () => {
+    for (const ask of ["a shopping list I can dictate to", "add items by voice", "speak a note and save it", "lista de compras por voz", "notatki głosowe", "Einkaufsliste per Sprache", "una lista que puedo dictar", "appunti a voce"]) {
+      const out = capabilityNotes(CAPABILITY_REFERENCE, ask);
+      expect(out, ask).toContain("export interface SpeechSession");
+      expect(out, ask).toContain("export interface Caps");
+    }
+  });
+
+  it("brings the rarer views a request names (#370), in several languages", () => {
+    const cases: Array<[string, string]> = [
+      ["split the rent and bills with my flatmates and show who owes whom", "export interface AggregateView"],
+      ["a kanban board for my job applications", "export interface BoardView"],
+      ["a mood journal I can scroll back through", "export interface TimelineView"],
+      ["a chart of my runs per week", "export interface ChartView"],
+      ["how many books did I read this month, with totals", "export interface StatsView"],
+      ["cook-along mode that walks me through a recipe step by step", "export interface StepsView"],
+      ["plan my trips: places and expenses for each trip", "export interface ScopeDef"],
+      ["a shopping list I can drag to reorder", "reorder?: string;"],
+      ["a drawing toy written with p5", "mount?: (el: HTMLElement"],
+      ["kto komu ile jest winien — rozliczenie wspólnych wydatków", "export interface AggregateView"],
+      ["um quadro com as etapas das minhas candidaturas", "export interface BoardView"],
+      ["ein Tagebuch für meine Pflanzen", "export interface TimelineView"],
+    ];
+    for (const [ask, expected] of cases) expect(capabilityNotes(CAPABILITY_REFERENCE, ask), ask).toContain(expected);
+    // An app that already uses one gets it back when it is changed, whatever the request says.
+    expect(capabilityNotes(CAPABILITY_REFERENCE, "add a due date", 'view: { type: "board", entity: "task", column: "stage" }')).toContain("export interface BoardView");
+    expect(capabilityNotes(CAPABILITY_REFERENCE, "add a due date", "const choice = await ctx.ui.menu({ items })")).toContain("menu<T = string>(");
   });
 
   it("matches the app being changed by its code, not by its words", () => {

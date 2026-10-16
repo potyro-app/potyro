@@ -22,7 +22,7 @@
 export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
 
 /** Type files that are never in the core: read only through `lookup` and the capability passages. */
-export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts"] as const;
+export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts", "speech.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 
@@ -128,6 +128,8 @@ export interface Capability {
   declarations: readonly string[];
   /** Single members cut out of a core declaration — `ctx.ui.share` from `CtxUi`. */
   members?: ReadonlyArray<{ of: string; name: string }>;
+  /** Other names lookup answers with this entry, and `ctx` paths it covers (`ctx.ui.menu` under `ctx.ui.form`). */
+  also?: readonly string[];
   /**
    * Its members are capabilities of their own (`ctx.caps`): each one needs its own entry, and the
    * reachability test (reference.test.ts) does not let this entry stand in for them.
@@ -146,18 +148,19 @@ export interface Capability {
 }
 
 /**
- * Every capability whose declarations are read on demand. A new `ctx` member that should not be in
- * every prompt is added HERE (with its index line and cues) — the reachability test fails until it
- * is, because a capability that is neither in the core nor in this list is invisible to the model.
+ * Every capability, view and option whose declarations are read on demand. A new `ctx` member, view
+ * or option that should not be in every prompt is added HERE (with its index line and cues) — the
+ * reachability tests fail until it is, because what is neither in the core nor in this list is
+ * invisible to the model. The core's budget (reference.test.ts) is never raised for a new feature.
  */
 export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.caps",
     summary:
       "native capabilities; EVERY member is optional (undefined when not granted), so guard: `if (!ctx.caps.geo) { ctx.ui.toast(\"Location unavailable\"); return; }`, and declare what the app needs: `permissions: { geo: true, camera: true }`",
-    declarations: ["Caps"],
+    declarations: ["Caps", "PermissionManifest"],
     container: true,
-    cues: /\bctx\.caps\b|\bpermissions\b/i,
+    cues: /\bctx\.caps\b|\bpermissions\b|\bsync\b/i,
     uses: /\bctx\.caps\b|\bpermissions\s*:/,
   },
   {
@@ -215,7 +218,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.caps.network",
     summary: "`fetch(url, init?)`: the internet, only to the hosts in `permissions: { network: { hosts } }`",
-    declarations: ["NetworkCapability"],
+    declarations: ["NetworkCapability", "NetworkPermission"],
     cues: /caps\.network\b|\b(fetch|api|http|https|internet|online|weather|exchange rate|from the web|download\w*)\b/i,
     uses: /caps\.network\b/,
   },
@@ -236,6 +239,22 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /caps\.network\.(?:socket|room)\b/,
   },
   {
+    key: "ctx.caps.speech",
+    summary:
+      "voice input, live words",
+    declarations: ["SpeechEngine", "SpeechFailure", "SpeechOptions", "SpeechSession", "SpeechCapability"],
+    notes: [
+      "Declare `permissions: { speech: true }`. Start it from a button the person presses (an action or a custom view), keep the",
+      "session in a module-level variable, and",
+      "do NOT await `result` inside that action: while an action runs the app's other buttons wait, so a Stop button could",
+      "never be pressed — use `s.result.then(text => ctx.create(…))`. `text` is everything heard so far: show it as it is.",
+      "It listens in the person's language unless `language` says another. A failure's `e.code` is one of SpeechFailure; word",
+      "it (\"denied\" → \"Allow the microphone to talk to it\").",
+    ].join("\n"),
+    cues: /caps\.speech\b|\b(voice|speak\w*|spoken|speech|dicta\w*|talk to it|say it|hands[- ]free|microphone|mic|transcri\w*|głos\w*|mów\w*|dyktu\w*|mikrofon\w*|voz|falar|fala|dita[rd]\w*|hablar|hablad\w*|stimm\w*|sprechen|sprach\w*|diktier\w*|voce|parlar\w*|dettat\w*)\b/i,
+    uses: /caps\.speech\b/,
+  },
+  {
     key: "ctx.media",
     summary: "`put(blob)` → MediaRef for a `media` field, `url(ref)` → a URL to show it",
     declarations: ["CtxMedia"],
@@ -252,36 +271,65 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    // The shell's own services an app asks for with no permission. One line for three (#341's budget):
-    // a timer and the screen kept on are found here, and `lookup` shows each one's declaration.
-    summary: "`share({ text, url })` hands a result on; `timer({ label, seconds })` is a countdown that outlives the page; `keepAwake()` keeps the screen on",
-    declarations: ["UiKeepAwake", "UiTimerOptions", "UiTimer"],
+    summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
+    declarations: ["ShareAppLink", "PageLink"],
+    members: [{ of: "CtxUi", name: "share" }],
+    notes: [
+      "A link to one of the app's pages: the page declares what a link may hand it, `link: { params: [\"code\"] }`, and",
+      "`ctx.ui.share({ text, app: { page: \"play\", params: { code } } })` makes it. It opens the friend's own copy of the app",
+      "there (or a demo they can keep, which lands there). The page reads `ctx.params.code` (a custom view: `props.param?.code`):",
+      "text, at most 200 characters, possibly typed by a stranger. Never act on it by itself — fill a box, and let the person tap.",
+    ].join("\n"),
+    cues: /\bshare\(|link:\s*\{\s*params|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|invit\w*|deep ?links?|udostępni\w*|zapros\w*|compartilh\w*|convid\w*|teilen|einlad\w*|compartir|invitar\w*)\b/i,
+    uses: /\.share\(|link:\s*\{\s*params/,
+  },
+  {
+    key: "ctx.ui.keepAwake",
+    summary: "`const awake = ctx.ui.keepAwake()` … `awake.release()`: keep the screen on while a page is followed (cooking, a workout); let go when the app is left; no permission",
+    declarations: ["UiKeepAwake"],
+    members: [{ of: "CtxUi", name: "keepAwake" }],
+    notes: "Hold it from a custom view while it is on screen (release on unmount), or from an action that starts something to follow; never on every page.",
+    cues: /keepAwake|\b(keep (?:the )?screen (?:on|awake)|screen (?:on|awake)|wake ?lock|cook(?:ing)? mode|hands[- ]free|tela ligada|pantalla encendida|ekran nie gaśnie|schermo acceso|bildschirm an)\b/i,
+    uses: /\.keepAwake\(/,
+  },
+  {
+    key: "ctx.ui.timer",
+    summary:
+      "`await ctx.ui.timer({ label, seconds, id? })`: a countdown the shell keeps on a chip across pages, ringing with the screen locked; `ctx.ui.timers()` lists this app's; `pause()`/`resume()`/`cancel()`; no permission",
+    declarations: ["UiTimerOptions", "UiTimer"],
     members: [
-      { of: "CtxUi", name: "share" },
-      { of: "CtxUi", name: "keepAwake" },
       { of: "CtxUi", name: "timer" },
       { of: "CtxUi", name: "timers" },
     ],
+    also: ["ctx.ui.timers"],
     notes: [
       "A countdown a person waits on (a rest between sets, a step in a recipe) is `ctx.ui.timer`, never setInterval in a view:",
       "a view's state is gone when the page changes, and the shell's timer goes on with the screen locked. Give a repeating one an",
-      "`id` (\"rest\") so starting it again restarts it; read `ctx.ui.timers()` for what is running. Hold `keepAwake()` while a",
-      "page is followed hands-free (a custom view: release on unmount), never on every page.",
+      "`id` (\"rest\") so starting it again restarts it; read `ctx.ui.timers()` again for what is running.",
     ].join("\n"),
-    cues: /\b(?:share|timers?|keepAwake)\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir|timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|keep (?:the )?screen (?:on|awake)|wake ?lock|cook(?:ing)? mode|hands[- ]free|tela ligada|pantalla encendida|ekran nie gaśnie|schermo acceso|bildschirm an)\b/i,
-    uses: /\.(?:share|timers?|keepAwake)\(/,
+    cues: /ui\.timers?\(|\b(timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|egg timer|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|zeitschaltuhr)\b/i,
+    uses: /ui\.timers?\(/,
   },
   {
-    key: "ctx.space",
-    summary: "who is in the app: `ctx.people` (members, and guests not joined yet: `ctx.guests.add(name)`); `ctx.space` (roles) is undefined solo",
-    declarations: ["SpaceRole", "Member", "Space", "CtxGuests"],
+    key: "ctx.guests",
+    summary:
+      "people not joined yet (\"Tom\"): `await ctx.guests.add(name)` → a Person for a `member` field; `ctx.people` is everyone a member field can name (members and guests, `guest: true`); whoever joins claims one, and records naming it name them",
+    declarations: ["CtxGuests"],
     members: [
       { of: "Ctx", name: "people" },
       { of: "Ctx", name: "guests" },
     ],
-    notes: "For \"everyone in the group\" (a split, a rota) read `ctx.people`: it has the guests, whom `ctx.space?.members` leaves out. A guest's `id` goes in a `member` field like anyone's; compare people by `id`.",
-    cues: /\bctx\.(?:people|guests)\b|\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|guests?|participants?|not joined yet|wspóln\w*|rodzin\w*|uczestni\w*|família|familia|partilh\w*|convidad\w*|gemeinsam\w*|teilnehmer\w*|invitad\w*|partecipant\w*)\b/i,
-    uses: /ctx\.(?:space|people|guests)\b/,
+    also: ["ctx.people"],
+    notes: "For \"everyone in the group\" (a split, a rota) read `ctx.people`, not `ctx.space?.members ?? [ctx.me]`, which leaves the guests out. Compare people by `id`.",
+    cues: /ctx\.(?:guests|people)\b|\b(guests?|placeholders?|not (?:joined|signed up) yet|before they join|participants?|tricount|splitwise|convidad\w*|gość\w*|uczestni\w*|gäste?|teilnehmer\w*|invitad\w*|partecipant\w*)\b/i,
+    uses: /ctx\.(?:guests|people)\b/,
+  },
+  {
+    key: "ctx.space",
+    summary: "the people the app's data is shared with: `ctx.space?.members` (each `{ id, name, role }`); undefined for a solo app. Everyone a field can name, guests included: `ctx.people`",
+    declarations: ["SpaceRole", "Member", "Space"],
+    cues: /\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|wspóln\w*|rodzin\w*|família|familia|partilh\w*|gemeinsam\w*)\b/i,
+    uses: /ctx\.space\b/,
   },
   {
     key: "ctx.views",
@@ -312,6 +360,112 @@ export const CAPABILITIES: readonly Capability[] = [
     cues: /\blanguages\s*:|\bctx\.t\(|\b(translat\w*|languages?|multilingual|bilingual|in (?:english|polish|german|portuguese|spanish|french|italian)|tłumacz\w*|języ\w*|tradu\w*|idioma\w*|sprache\w*|übersetz\w*)\b/i,
     uses: /\blanguages\s*:|\bctx\.t\(/,
   },
+
+  // #370: the rarer views, options and app parts left the core too, by how often apps use them (the
+  // counts are in the PR). Each is still declared in full — a lookup, or a passage beside a request
+  // that names it, away — and its index line carries the shape a one-shot engine writes from.
+  {
+    key: "board",
+    summary: "records with a stage or status (tasks, applications, \"want to try / tried\") in columns: `{ type: \"board\", entity, column: \"<enum field>\" }`; dragging a card moves it",
+    declarations: ["BoardView"],
+    cues: /type:\s*["']board["']|\b(boards?|kanban|stages?|status(?:es)?|pipeline|columns?|workflow|to do.{0,12}doing|quadro|etap\w*|tablic\w*|estado|tablero|spalte\w*|fase|colonn\w*)\b/i,
+    uses: /type:\s*["']board["']/,
+  },
+  {
+    key: "timeline",
+    summary: "records read back by when (a journal, a workout or care log): `{ type: \"timeline\", entity, date: \"<datetime field>\", groupBy: \"week\", color: \"<enum field>\" }`",
+    declarations: ["TimelineView"],
+    cues: /type:\s*["']timeline["']|\b(timeline|journal|diary|logs?|logbook|history|when did i|last time|dziennik\w*|histori\w*|diário|diario|tagebuch|verlauf|cronolog\w*)\b/i,
+    uses: /type:\s*["']timeline["']/,
+  },
+  {
+    key: "stats",
+    summary:
+      "\"how am I doing\" figures (this week vs last, totals): `{ type: \"stats\", entity, items: [{ label, op: \"sum\", field }] }`, or `value: (rows, ctx) => …` and `compare`; a page's `summary: [...]` takes the same items. Stack it with a `chart` in a page `layout`",
+    declarations: ["SummaryOp", "SummaryValue", "StatItem", "StatsView"],
+    cues: /type:\s*["']stats["']|\bsummary\s*:|\b(stats|statistics?|totals?|averages?|sum|how (?:much|many|often)|per (?:day|week|month|year)|this (?:week|month)|streaks?|dashboard|overview|figures?|progress|statystyk\w*|suma|średni\w*|estatístic\w*|média|total\w*|statistik\w*|summe|durchschnitt|estadístic\w*|promedio|statistich\w*|media)\b/i,
+    uses: /type:\s*["']stats["']|\bsummary\s*:\s*\[/,
+  },
+  {
+    key: "chart",
+    summary: "a bar chart folded out of the page's rows: `{ type: \"chart\", entity, series: (rows, ctx) => [{ label: \"Mon\", value: 3 }] }`",
+    declarations: ["ChartPoint", "ChartView"],
+    cues: /type:\s*["']chart["']|\b(charts?|graphs?|plot|bars?|trends?|over time|by (?:week|month)|wykres\w*|gráfic\w*|grafic\w*|diagramm\w*|grafik\w*)\b/i,
+    uses: /type:\s*["']chart["']/,
+  },
+  {
+    key: "steps",
+    summary: "walk one record's ordered `list` field step by step, ticking each (a recipe's method, a routine): `{ type: \"steps\", entity, param, list: \"<list field>\", onFinish?: \"<action>\" }`",
+    declarations: ["StepsView"],
+    cues: /type:\s*["']steps["']|\b(steps?|step[- ]by[- ]step|cook[- ]?along|walk (?:me )?through|routines?|method|instructions|krok\w*|passo\w*|schritt\w*|pasos?|passi|passaggi)\b/i,
+    uses: /type:\s*["']steps["']/,
+  },
+  {
+    key: "aggregate",
+    summary:
+      "a screen folded from ALL the rows rather than one per record (who owes whom, what is left to buy): `{ type: \"aggregate\", entity, rows: (rows, ctx) => [{ label, value?, detail?, tone?: \"positive\", group? }] }`",
+    declarations: ["AggregateRow", "AggregateView"],
+    cues: /type:\s*["']aggregate["']|\b(owes?|owed|owing|balances?|settle\w*|split\w*|debts?|who pays|left to (?:buy|pay|do)|remaining|leftover|per person|dług\w*|rozlicz\w*|dívida\w*|acert\w*|schulde\w*|abrechn\w*|deuda\w*|saldo\w*|debit\w*)\b/i,
+    uses: /type:\s*["']aggregate["']/,
+  },
+  {
+    key: "checklist",
+    summary: "a checklist's rarer options: `reorder` (a number field; rows drag), `groupOrder` (relation groups renamed, reordered, added in place), `editText` (rename a row in place), `donePlacement: \"sink\"`",
+    declarations: [],
+    members: [
+      { of: "ChecklistView", name: "donePlacement" },
+      { of: "ChecklistView", name: "editText" },
+      { of: "ChecklistView", name: "reorder" },
+      { of: "ChecklistView", name: "groupOrder" },
+    ],
+    cues: /\b(donePlacement|editText|reorder|groupOrder)\b|\b(drag\w*|re-?order\w*|rearrang\w*|sort by hand|move (?:it|them|items?|rows?) (?:up|down)|rename (?:it|items?|rows?|groups?)|to the bottom|przeciąg\w*|arrast\w*|zieh\w*|verschieb\w*|arrastr\w*|trascin\w*)\b/i,
+    uses: /\b(donePlacement|editText|reorder|groupOrder)\s*:/,
+  },
+  {
+    key: "mount",
+    summary: "a custom view in anything but React (p5, a canvas, Svelte): `mount: (el, props) => teardown`, data through `props.runtime.watchQuery/watchRecord`",
+    declarations: ["CustomViewMount"],
+    members: [
+      { of: "CustomView", name: "mount" },
+      { of: "Runtime", name: "watchQuery" },
+      { of: "Runtime", name: "watchRecord" },
+    ],
+    also: ["watchQuery", "watchRecord"],
+    cues: /\bmount\s*:|watch(?:Query|Record)\b|\b(p5(?:\.js)?|three\.js|webgl|svelte|vue|vanilla js|plain js|canvas)\b/i,
+    uses: /\bmount\s*:|watch(?:Query|Record)\b/,
+  },
+  {
+    key: "ctx.scope",
+    summary:
+      "the one record everything else belongs to (the current trip, project, season, child): `scope: { entity: \"trip\", required: true }` gives a header picker; functions read it synchronously as `ctx.scope.trip` and each page narrows itself: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`",
+    declarations: ["ScopeDef"],
+    members: [{ of: "Ctx", name: "scope" }],
+    cues: /\bscope\s*:|ctx\.scope\b|\b(trips?|travels?|holidays?|vacations?|projects?|seasons?|semesters?|each (?:child|kid|class|event)|current (?:trip|project|season)|podróż\w*|wyjazd\w*|projekt\w*|sezon\w*|viage\w*|projeto\w*|temporada\w*|reise\w*|saison|viaje\w*|proyecto\w*|viaggi\w*|progett\w*|stagion\w*)\b/i,
+    uses: /\bscope\s*:\s*\{|ctx\.scope\b/,
+  },
+  {
+    key: "sources",
+    summary: "outside data the app's Ask may read (a places API, a search engine): `sources: { places: { endpoint, description, docs?, auth? } }` — never a key in the app",
+    declarations: ["SourceDef"],
+    members: [{ of: "AppDefinition", name: "sources" }],
+    cues: /\bsources\s*:|\b(api keys?|search engine|places api|data sources?|look (?:it )?up online|from the web)\b/i,
+    uses: /\bsources\s*:\s*\{/,
+  },
+  {
+    key: "ctx.ui.form",
+    summary:
+      "`await ctx.ui.form({ title, fields: { kg: { type: \"number\", unit: \"kg\" } }, initial, submit })` when an action needs several values (null = cancelled); `sheet`/`menu({ title, items: [{ id, label, detail, destructive }] })` for a short choice; `progress(label)` → `{ update(0..1), done() }`",
+    declarations: ["UiItem", "UiProgress"],
+    members: [
+      { of: "CtxUi", name: "sheet" },
+      { of: "CtxUi", name: "menu" },
+      { of: "CtxUi", name: "form" },
+      { of: "CtxUi", name: "progress" },
+    ],
+    also: ["ctx.ui.sheet", "ctx.ui.menu", "ctx.ui.progress"],
+    cues: /\.ui\.(?:form|sheet|menu|progress)\b|\b(choose|choice|pick (?:one|from)|menu|options?|a form|several values|ask (?:me|for)|enter (?:the )?(?:weight|amount|details)|progress bar|long (?:action|import)|wybierz|wybór|escolh\w*|auswahl|wähl\w*|elegir|elig\w*|scegli\w*)\b/i,
+    uses: /\.ui\.(?:form|sheet|menu|progress)\(/,
+  },
 ];
 
 const CAPABILITY_BY_DECL = new Map(CAPABILITIES.flatMap((c) => c.declarations.map((d) => [d, c] as const)));
@@ -319,7 +473,8 @@ const CAPABILITY_BY_DECL = new Map(CAPABILITIES.flatMap((c) => c.declarations.ma
 /** The capability a lookup query names: its key, with or without `ctx.`, any case. */
 export function capabilityNamed(query: string): Capability | undefined {
   const q = query.trim().toLowerCase().replace(/^ctx\./, "");
-  return CAPABILITIES.find((c) => c.key.toLowerCase().replace(/^ctx\./, "") === q);
+  const bare = (name: string): string => name.toLowerCase().replace(/^ctx\./, "");
+  return CAPABILITIES.find((c) => bare(c.key) === q || (c.also ?? []).some((a) => bare(a) === q));
 }
 
 export interface SplitReference {
@@ -347,28 +502,30 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
   }
   for (const d of declarations(buildReference(lookupOnlySources))) found.set(d.name, d.text);
 
-  const fragments = new Map<string, string>();
+  // One fragment per declaration a capability cuts members out of, the members in their own order —
+  // `mount` cuts from `CustomView` and from `Runtime`, `ctx.ui.form` four members of `CtxUi`.
+  const fragments = new Map<string, string[]>();
   const decls = declarations(full);
   for (const c of CAPABILITIES) {
-    // Several members may leave one declaration for one capability (`share`, `timer`… of CtxUi):
-    // one fragment per declaration, with every member it lost, in the order they are declared.
-    const cut = new Map<string, { head: string; ranges: Array<[number, number]>; own: string[] }>();
+    const byHost = new Map<string, Array<[number, number]>>();
     for (const m of c.members ?? []) {
       const host = decls.find((d) => d.name === m.of);
       if (!host) throw new Error(`CAPABILITIES: ${c.key} cuts ${m.name} out of ${m.of}, which is not declared`);
-      const own = lines.slice(host.from, host.to + 1);
-      const range = memberRange(own, m.name);
+      const range = memberRange(lines.slice(host.from, host.to + 1), m.name);
       if (!range) throw new Error(`CAPABILITIES: ${m.of} has no member ${m.name} (${c.key})`);
-      for (let i = range[0]; i <= range[1]; i += 1) drop.add(host.from + i);
-      const entry = cut.get(m.of) ?? { head: own.find((l) => START.test(l))!.replace(/\{.*$/, "{"), ranges: [], own };
-      entry.ranges.push(range);
-      cut.set(m.of, entry);
+      byHost.set(m.of, [...(byHost.get(m.of) ?? []), range]);
     }
-    const parts = [...cut].map(([of, { head, ranges, own }]) => {
-      const body = ranges.sort((x, y) => x[0] - y[0]).map(([from, to]) => own.slice(from, to + 1).join("\n"));
-      return `// ${of}, continued (${c.key}):\n${head}\n${body.join("\n")}\n}`;
-    });
-    if (parts.length) fragments.set(c.key, parts.join("\n\n"));
+    const out: string[] = [];
+    for (const [name, ranges] of byHost) {
+      const host = decls.find((d) => d.name === name)!;
+      const own = lines.slice(host.from, host.to + 1);
+      const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
+      for (const [a, b] of sorted) for (let i = a; i <= b; i += 1) drop.add(host.from + i);
+      const head = own.find((l) => START.test(l))!.replace(/\{.*$/, "{");
+      const body = sorted.map(([a, b]) => own.slice(a, b + 1).join("\n")).join("\n");
+      out.push(`// ${name}, continued (${c.key}):\n${head}\n${body}\n}`);
+    }
+    if (out.length) fragments.set(c.key, out);
   }
 
   const capabilities: Record<string, string> = {};
@@ -379,8 +536,7 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
       if (text === undefined) throw new Error(`CAPABILITIES: ${c.key} lists ${name}, which no type file declares`);
       parts.push(text);
     }
-    const fragment = fragments.get(c.key);
-    if (fragment) parts.push(fragment);
+    parts.push(...(fragments.get(c.key) ?? []));
     capabilities[c.key] = parts.join("\n\n");
   }
   const core = lines
