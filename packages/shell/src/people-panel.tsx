@@ -12,6 +12,8 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { shellDialogs } from "./dialog.js";
+import type { GuestBook } from "@potyro/host";
+import { GuestsSection } from "./guests-panel.js";
 
 type Role = "admin" | "writer" | "reader";
 interface Member {
@@ -26,14 +28,35 @@ const ROLE_WORDS: Record<Role, MessageDescriptor> = {
   reader: msg({ message: "Can view", comment: "People panel: a person's role in a shared app" }),
 };
 
-export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: string; appName: string; meId?: string; onClose: () => void; toast: (msg: string) => void }) {
+export function PeoplePanel({
+  appId,
+  appName,
+  meId,
+  meName,
+  sync = true,
+  guests,
+  onClose,
+  toast,
+}: {
+  appId: string;
+  appName: string;
+  meId?: string;
+  meName?: string;
+  /** False for an app on this device alone: you, and its guests (docs/04 §Guests). */
+  sync?: boolean;
+  guests?: GuestBook;
+  onClose: () => void;
+  toast: (msg: string) => void;
+}) {
   const { t } = useLingui();
-  const [members, setMembers] = useState<Member[] | null>(null);
-  const [myRole, setMyRole] = useState<Role>("reader");
+  const solo: Member[] | null = sync ? null : [{ id: meId ?? "local", name: meName ?? t`You`, role: "admin" }];
+  const [members, setMembers] = useState<Member[] | null>(solo);
+  const [myRole, setMyRole] = useState<Role>(sync ? "reader" : "admin");
   const [inviting, setInviting] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (!sync) return;
     let alive = true;
     let stop: (() => void) | undefined;
     void (async () => {
@@ -51,7 +74,7 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
       alive = false;
       stop?.();
     };
-  }, []);
+  }, [sync]);
 
   const owner = members?.find((m) => m.role === "admin");
   const isOwner = myRole === "admin";
@@ -107,9 +130,7 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
             ✕
           </button>
         </header>
-        <p className="k-muted">
-          <Trans>Everyone who can open “{appName}”.</Trans>
-        </p>
+        <p className="k-muted">{sync ? <Trans>Everyone who can open “{appName}”.</Trans> : <Trans>“{appName}” is only on this device. Share it to invite the people below.</Trans>}</p>
         {members === null ? <p className="k-loading">
             <Trans>Loading…</Trans>
           </p> : null}
@@ -134,7 +155,16 @@ export function PeoplePanel({ appId, appName, meId, onClose, toast }: { appId: s
             </li>
           ))}
         </ul>
-        {isOwner ? (
+        {guests ? (
+          <GuestsSection
+            book={guests}
+            others={(members ?? []).map((m) => ({ id: m.id, name: m.name }))}
+            nameOf={(id) => (id === meId ? t`you` : (members ?? []).find((m) => m.id === id)?.name ?? t`someone who left`)}
+            appName={appName}
+            toast={toast}
+          />
+        ) : null}
+        {!sync ? null : isOwner ? (
           inviting ? (
             <div className="k-people-invite" role="group" aria-label={t`Invite someone`}>
               <span className="k-muted">

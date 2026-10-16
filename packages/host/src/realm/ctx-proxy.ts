@@ -13,9 +13,11 @@ import { makeFormat, translate, type WordsContext } from "../format.js";
 import type { Transport } from "./port-transport.js";
 import type { CtxBase, FetchAnswer, Op } from "./protocol.js";
 import { realmSocket, type RealmSocketInfo } from "./realm-sockets.js";
+import { plainTimer, timerHandle, type TimerVerb } from "../timers.js";
 import { realmSpeech, type RealmSpeechInfo } from "./realm-speech.js";
 
 let progressSeq = 0;
+let awakeSeq = 0;
 
 /** A file argument as plain data: a path, or a FileRef's own fields (never a getter or a method). */
 const fileArg = (f: string | FileRef): string | FileRef =>
@@ -69,6 +71,9 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
     now: () => fixedNow,
   };
   const has = (n: string) => base.capsAvailable.includes(n);
+  const timerControl = async (tid: string, verb: TimerVerb): Promise<void> => {
+    await call("ui.timer.control", String(tid), verb);
+  };
 
   const files: CtxFiles = {
     list: (folder) => call<FileInfo[]>("files.list", folder == null ? undefined : String(folder)),
@@ -170,6 +175,16 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
           space: { ...base.space, members: base.space.members.map((m) => ({ ...m })) } as unknown as NonNullable<Ctx["space"]>,
         }
       : {}),
+    people: Object.freeze((base.people ?? []).map((p) => ({ ...p }))),
+    guests: {
+      add: (name) => call("guests.add", String(name)),
+      rename: async (gid, name) => {
+        await call("guests.rename", String(gid), String(name));
+      },
+      remove: async (gid) => {
+        await call("guests.remove", String(gid));
+      },
+    },
     async query(entity, spec) {
       // The host resolves the rows (relations, computed); the app's own functions filter and sort here.
       return applySpec(await call<Resolved[]>("query", String(entity)), spec);
@@ -217,6 +232,13 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       form: (o) => call("ui.form", o),
       // A file to share crosses as a picture does: a Blob as itself, a reference by its fields only.
       share: (o) => call("ui.share", o && Array.isArray(o.files) ? { ...o, files: o.files.map(aiImage) } : o),
+      keepAwake: () => {
+        const hid = `w${++awakeSeq}`;
+        send("ui.keepAwake", hid, "hold");
+        return { release: () => send("ui.keepAwake", hid, "release") };
+      },
+      timer: async (o) => timerHandle(plainTimer(await call("ui.timer", o ? { label: o.label, seconds: o.seconds, id: o.id } : o)), timerControl),
+      timers: async () => ((await call<unknown[]>("ui.timers")) ?? []).map((t) => timerHandle(plainTimer(t), timerControl)),
       progress: (label): UiProgress => {
         const pid = `p${++progressSeq}`;
         send("ui.progress", pid, "open", label);

@@ -8,6 +8,12 @@ import type { PickerHost } from "./picker.js";
 import type { DialogHost } from "./dialog.js";
 import type { UiHost } from "./ui-host.js";
 
+/**
+ * What only an OPEN app gets: the screen held on for it, and its countdowns (docs/04). Both are the
+ * shell's for one app — they need to know whose they are, and let go when it is left.
+ */
+export type AppUiExtras = Pick<UiBridge, "keepAwake" | "timers">;
+
 /** Makes the link `ctx.ui.share({ app })` asks for (docs/24 §11), for the app this bridge belongs to. */
 export type AppLinkMaker = (target: NonNullable<ShownShare["app"]>) => Promise<string>;
 
@@ -22,7 +28,7 @@ export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker): { text?
   return rest.text || rest.url || rest.files?.length ? rest : null;
 }
 
-export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker): UiBridge {
+export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras): UiBridge {
   return {
     toast: (msg) => onToast(msg),
     // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is confirmed.
@@ -45,6 +51,9 @@ export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHo
       : {}),
     // #112. Without a host (headless) these are left out, and ctx answers them as dismissed.
     ...(questions ? { sheet: questions.sheet, menu: questions.menu, form: questions.form, progress: questions.progress } : {}),
+    // Headless (validation, tests), left out: ctx holds nothing and keeps no timer.
+    ...(extras?.keepAwake ? { keepAwake: extras.keepAwake } : {}),
+    ...(extras?.timers ? { timers: extras.timers } : {}),
   };
 }
 

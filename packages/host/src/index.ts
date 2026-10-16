@@ -27,6 +27,8 @@ export {
 export { createHost, type CreateHostOptions } from "./create-host.js";
 export { DirectLoadedApp } from "./direct-host.js";
 export { buildCtx } from "./make-ctx.js";
+export { GuestBook, guestBookOf, type GuestWho } from "./guests.js";
+export { TIMER_LIMITS, checkTimer, plainTimer, timerHandle, type TimerBridge, type TimerData, type TimerVerb } from "./timers.js";
 export { mediateCaps, type AiContext } from "./mediate.js";
 export { makeAi, checkShape, fitShape, jsonSchemaFor, parseJsonReply, numberIn, languageName, AiError, AI_LIMITS, type AiDeps, type AiErrorCode, type Fit } from "./ai.js";
 export { resolveRecord, type ResolveDeps } from "./resolve.js";

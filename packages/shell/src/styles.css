@@ -14279,6 +14279,291 @@ button.k-metro-group-name {
 }
 /* tokens-only: end — start screen */
 
+/* tokens-only: start — timer chips */
+/* `ctx.ui.timer` (docs/04 §Timers): the countdowns the shell keeps, on every page and at home. A dark
+   pill reads as the shell's, not the app's — the same family as the progress bar —
+   and a rung timer turns the accent colour and breathes until someone says Done. */
+/* In thumb reach and off the page's own controls: stacked above the floating add button (which sits
+   above the tab bar on a phone), like a player's mini bar — the top of a page is its filters and
+   actions. At home, above "New app". */
+.k-timer-dock {
+  position: fixed;
+  right: calc(var(--space-3) + var(--k-safe-right));
+  bottom: calc(8.6rem + var(--k-safe-bottom));
+  z-index: 56;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: calc(100vw - 2 * var(--space-3));
+  pointer-events: none;
+}
+.k-timer-dock[data-home] {
+  bottom: calc(5rem + var(--k-safe-bottom));
+}
+@media (min-width: 760px) {
+  .k-timer-dock:not([data-home]) {
+    bottom: calc(var(--space-6) + var(--k-safe-bottom));
+  }
+}
+.k-timer-chip {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  max-width: 22rem;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  animation: k-timer-in var(--dur-slow) var(--ease);
+}
+.k-timer-chip[data-paused] {
+  background: color-mix(in oklab, var(--ink) 78%, var(--paper));
+}
+.k-timer-ring {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  transform: rotate(-90deg);
+}
+.k-timer-ring circle {
+  fill: none;
+  stroke-width: 3.5;
+}
+.k-timer-ring-track {
+  stroke: color-mix(in oklab, var(--paper) 22%, transparent);
+}
+.k-timer-ring-left {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.k-timer-chip[data-paused] .k-timer-ring-left {
+  stroke: var(--paper);
+}
+.k-timer-what {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  line-height: 1.15;
+  cursor: pointer;
+}
+.k-timer-what:disabled {
+  cursor: default;
+}
+.k-timer-what b {
+  max-width: 11rem;
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+.k-timer-time,
+.k-timer-what span {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.k-timer-btn {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--paper) 12%, transparent);
+  color: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-timer-btn:hover {
+  background: color-mix(in oklab, var(--paper) 22%, transparent);
+}
+.k-timer-btn:active {
+  transform: scale(0.92);
+}
+.k-timer-btn:focus-visible,
+.k-timer-what:focus-visible,
+.k-timer-done:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-timer-chip[data-ringing] {
+  position: relative;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+/* The ring breathes around the chip, not the chip itself: its Done button stays where a thumb is. */
+.k-timer-chip[data-ringing]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--accent);
+  pointer-events: none;
+  animation: k-timer-breathe 1.2s var(--ease) infinite;
+}
+.k-timer-bell {
+  flex: none;
+  width: 1.9rem;
+  text-align: center;
+  font-size: 1.15rem;
+}
+.k-timer-done {
+  flex: none;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@keyframes k-timer-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.96);
+  }
+}
+@keyframes k-timer-breathe {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-timer-chip,
+  .k-timer-chip[data-ringing]::after {
+    animation: none;
+  }
+  .k-timer-ring-left {
+    transition: none;
+  }
+}
+/* tokens-only: end — timer chips */
+
+/* tokens-only: start — guests */
+/* Placeholder people (docs/04 §Guests): a dashed ring says "not here yet" without a word. */
+.k-guests {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+.k-guests-head {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-person-avatar.k-guest-avatar {
+  border-style: dashed;
+  border-width: 2px;
+  background: var(--surface);
+}
+.k-guest-add {
+  justify-self: start;
+}
+.k-guest-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: 100%;
+}
+.k-claim {
+  gap: var(--space-3);
+}
+.k-claim h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+.k-claim-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-claim-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3.25rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-claim-pick b {
+  flex: 1;
+  font-size: 1.05rem;
+}
+.k-claim-me {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.k-claim-pick:hover,
+.k-claim-pick:focus-visible {
+  border-color: var(--accent-line);
+  background: var(--accent-tint);
+}
+.k-claim-pick:hover .k-claim-me,
+.k-claim-pick:focus-visible .k-claim-me {
+  opacity: 1;
+}
+.k-claim-pick:active {
+  transform: scale(0.99);
+}
+.k-claim-pick:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-claim-none {
+  justify-self: start;
+}
+@media (max-width: 759px) {
+  .k-modal-scrim:has(> .k-claim) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .k-claim-me {
+    opacity: 1;
+  }
+}
+/* tokens-only: end — guests */
 /* Moving to a new home (move-banner.tsx, move-page.tsx) ------------------------------------------
    The banner is the one thing on an old site's home that matters more than the apps, so it reads as
    an arrival card rather than a notice: an accent rail on the leading edge, an arrow mark that moves

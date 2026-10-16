@@ -39,6 +39,9 @@ import { getUserApp, listUserApps } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { screenAwake } from "./keep-awake.js";
+import { setTimerNotifier, timerHub } from "./timer-hub.js";
+import { clearTimerFocus, setTimerFocus, TimerDock } from "./timer-dock.js";
 import { NavHost } from "./nav-host.js";
 import { Dialogs, shellDialogs } from "./dialog.js";
 import { askToIncludeChat } from "./share-chat.js";
@@ -260,6 +263,8 @@ function mount(root: HTMLElement, node: ReactNode): void {
       {node}
       {/* Once, around every route — home, a built-in, or a saved app. */}
       <Dialogs host={shellDialogs} />
+      {/* Every app's countdowns (docs/04 §Timers), in sight on every page and at home. */}
+      <TimerDock onOpenApp={(app) => navigateTo({ kind: "user", id: app })} />
       {/* Files dropped on Potyro, shared to it or opened with it (#254). */}
       <IncomingFiles />
     </StrictMode>,
@@ -597,11 +602,22 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const picker = new PickerHost();
   const questions = new UiHost();
   // `ctx.ui.share({ app })`: a link to one of this app's pages (docs/24 §11), made from the app as it is saved now.
-  const ui = createUiBridge(toaster.push, picker, shellDialogs, questions, async (target) => {
-    const now = getUserApp(id) ?? saved;
-    const [{ makeAppLink }, { declaredAppId }] = await Promise.all([import("./app-link-make.js"), import("./source-declared.js")]);
-    return makeAppLink(now, await declaredAppId(now.source), target);
-  });
+  const ui = createUiBridge(
+    toaster.push,
+    picker,
+    shellDialogs,
+    questions,
+    async (target) => {
+      const now = getUserApp(id) ?? saved;
+      const [{ makeAppLink }, { declaredAppId }] = await Promise.all([import("./app-link-make.js"), import("./source-declared.js")]);
+      return makeAppLink(now, await declaredAppId(now.source), target);
+    },
+    {
+      // Held for THIS app, and all let go when it is left (dispose, below).
+      keepAwake: () => ({ release: screenAwake.hold(id) }),
+      timers: timerHub.bridgeFor(id, saved.name),
+    },
+  );
   const navHost = new NavHost();
   const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
 
@@ -700,6 +716,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       if (!open) return;
       open = false;
       liveApps(-1);
+      // Its screen goes back to sleeping as usual; its timers go on (they are the shell's).
+      screenAwake.releaseApp(id);
+      clearTimerFocus(id);
       for (const stop of stops.splice(0)) stop();
       forgetModules(id);
       // Writes still on their way land first — a tick then Home used to close the store under its
@@ -755,6 +774,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       generator
     />,
   );
+  setTimerFocus(id);
   return opened;
 }
 
@@ -1050,6 +1070,8 @@ async function boot(): Promise<void> {
   // Only imported when actually on a device (web bundle stays Capacitor-free). Sole target-selection.
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   setShellCaps(caps);
+  // A timer's end rings on the lock screen where the device can schedule it (docs/04 §Timers).
+  setTimerNotifier(caps.notifications);
   // "Camera on" whenever an app sees through the camera live; the shell's, not the app's (docs/25).
   if (caps.liveCamera) watchLiveCamera(caps.liveCamera);
   // Faces in its frames, when an app asks (`live({ faces: true })`): the shell loads the finder, the
