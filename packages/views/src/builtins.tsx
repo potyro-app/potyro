@@ -15,8 +15,9 @@ import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
 import { editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
-import { Lead, leadSwatch, type LeadKind } from "./lead.js";
+import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
 import { useReportCount } from "./page-count.js";
+import { pageOf } from "./backdrop.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -152,7 +153,7 @@ export function EmptyState({
   return (
     <div className="k-empty-state" data-page={pageId}>
       <span className="k-empty-mark" aria-hidden>
-        {def?.icon ?? "◇"}
+        {def?.icon ?? pageOf(runtime.definition, pageId)?.icon ?? runtime.definition.icon ?? "◇"}
       </span>
       <p className="k-empty k-empty-title" data-k-wording>
         {text}
@@ -180,6 +181,16 @@ function AddRow({ onAdd, as = "li" }: { onAdd: () => void; as?: "li" | "div" }) 
     </button>
   );
   return as === "li" ? <li className="k-add-row">{body}</li> : <div className="k-add-row k-card-add">{body}</div>;
+}
+
+/**
+ * The lead a page gets when it names none: the record's initial — unless every row starts with the
+ * same letter ("M5.2 · Vanuatu", "M4.8 · Ecuador"), when an initial says nothing and the entity's
+ * icon, in each row's own colour, does the job; without an icon, nothing.
+ */
+export function autoLead(primaries: readonly string[], icon: string | undefined): LeadKind {
+  if (primaries.length > 1 && new Set(primaries.map(initialOf)).size === 1) return icon ? "icon" : "none";
+  return "monogram";
 }
 
 /** A card with no photo wears its record's colour. */
@@ -231,10 +242,11 @@ export function ListView(props: BuiltinViewProps) {
   const selectedKey = Object.entries(view.onOpen?.param ?? {}).find(([, source]) => source === "id")?.[0];
   // Cells line up with `rows`; a grouped row is looked up by id (a tag puts one row in two groups).
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
-  const lead = view.display?.lead ?? "monogram";
+  const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
   // A short, ungrouped list offers the next one in its own shape, so two rows are not two rows and a
   // screen of nothing.
-  const offerAdd = onCreate && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
+  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderRows = (list: Resolved[]) => (
     <ul className="k-list" data-lead={lead}>
       {list.map((row) => {
@@ -364,8 +376,9 @@ export function GalleryView(props: BuiltinViewProps) {
   if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={onCreate} />;
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
-  const lead = view.display?.lead ?? "monogram";
-  const offerAdd = onCreate && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
+  // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
+  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderCards = (list: Resolved[]) => (
     <div className="k-gallery" data-aspect={view.aspect ?? "landscape"}>
       {list.map((row) => {
