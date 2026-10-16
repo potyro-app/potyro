@@ -80,8 +80,7 @@ export interface EntityDef {
   computed?: Record<string, Computed | ComputedDef>;
   actions?: Record<string, ActionFn | ActionDef>;
   /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
-   *  else's edit does not take. `"app"`: only the app's own code (a feed's records): no Add, Edit or
-   *  Delete for people; ctx and its actions still write. Default `"anyone"`. */
+   *  else's edit does not take; `"app"`: only app code (docs/03). Default `"anyone"`. */
   editableBy?: "anyone" | "creator" | "app";
 }
 
@@ -628,6 +627,7 @@ export interface PermissionManifest {
   network?: NetworkPermission;
   /** `ctx.caps.ai` (docs/23): send what a call names to an AI service. A shared app asks the person first. */
   ai?: boolean;
+  speech?: boolean;
 }
 
 export interface Theme {
