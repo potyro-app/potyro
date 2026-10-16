@@ -30,8 +30,8 @@ test("plants reads in Polish, with a Polish plural and a Polish relative date", 
   await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText("Do podlania teraz");
   // ICU plural from ctx.t: "1 roślina", "2 rośliny", "5 roślin" — never "2 roślin" or "plants".
   await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText(/nic do podlania|\d+ roślin(a|y)? do podlania/);
-  // ctx.format.relative inside ctx.t: "termin: 23 dni temu".
-  await expect(page.getByRole("region", { name: "Zaległe" })).toContainText(/termin: .*(temu|dzisiaj|wczoraj)/);
+  // ctx.format.relative inside ctx.t: "podlana 30 dni temu · co 7 dni".
+  await expect(page.getByRole("region", { name: "Spragnione" })).toContainText(/podlana .*(temu|dzisiaj|wczoraj)/);
   await expect(page.getByRole("button", { name: "Podlej" }).first()).toBeVisible();
   await expect(tab(page, "Harmonogram")).toBeVisible();
 });
@@ -48,20 +48,23 @@ test("places reads in Polish", async ({ page }) => {
 
 test("recipes reads in Polish, its custom cook-along view too", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  // "393 kcal · łatwy": a computed difficulty, put into Polish words by a function.
-  await expect(page.locator(".k-list-row").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
-  await expect(page.getByRole("button", { name: "Oznacz jako ugotowane" }).first()).toBeVisible();
-  // The recipe's name, not the middle of its row: the Polish row action is long enough to sit there.
-  await page.locator(".k-list-row", { hasText: "Fluffy Pancakes" }).first().getByText("Fluffy Pancakes").click();
+  // "505 kcal · łatwy": a computed difficulty, put into Polish words by a function.
+  await expect(page.locator(".k-card").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
+  // The page's one big button, in the app's words.
+  await expect(page.getByRole("button", { name: /Dodaj przepis/ }).first()).toBeVisible();
+  await page.locator(".k-card", { hasText: "Fluffy Pancakes" }).first().click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-  await page.getByRole("button", { name: "Gotuj", exact: true }).first().click();
+  await page.getByRole("button", { name: /Zacznij gotować/ }).first().click();
   await expect(page.locator("#cook-heading")).toHaveText("Gotujemy: Fluffy Pancakes", { timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Zakończ" })).toBeVisible();
+  // The cook view's own words, from ctx.t inside a custom view.
+  await expect(page.getByRole("button", { name: "Następny krok" })).toBeVisible();
+  await expect(page.getByText(/Krok 1 z \d+/).first()).toBeVisible();
 });
 
 test("a recipe's computed values are headed in Polish, not by their keys (#310)", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  await page.locator(".k-list-row", { hasText: "Fluffy Pancakes" }).first().getByText("Fluffy Pancakes").click();
+  // Chicken Caesar misses ingredients, so every computed in the group has something to show.
+  await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
   const detail = page.locator("article.k-detail");
   await expect(detail).toBeVisible();
   // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
@@ -77,11 +80,11 @@ test("a recipe's computed values are headed in Polish, not by their keys (#310)"
 
 test("a recipe's diet badge reads in Polish, not as its stored value", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  await tab(page, "Roślinne").click();
-  const badges = page.locator(".k-list-row .k-badge");
+  // The cookbook's cards wear the diet badge.
+  const badges = page.locator(".k-card .k-badge");
   await expect(badges.first()).toBeVisible({ timeout: 30_000 });
-  // `diet` is a computed returning "vegan" / "vegetarian"; its `labels` say them in Polish.
-  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański)$/);
+  // `diet` is a computed returning "vegan" / "vegetarian" / "animal-based"; its `labels` say them in Polish.
+  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański|odzwierzęcy)$/);
 });
 
 test("an exercise's rolling best reads as kg × reps, not as an object", async ({ page }) => {
