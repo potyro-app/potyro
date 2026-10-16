@@ -367,6 +367,10 @@ msgstr "{cents} ¢"
 msgid "{changed, plural, one {changed # record} other {changed # records}}"
 msgstr "{changed, plural, one {modificata # voce} other {modificate # voci}}"
 
+#: ../shell/src/launcher-metro.tsx
+msgid "{count, plural, one {# app} other {# apps}}"
+msgstr "{count, plural, one {# app} other {# app}}"
+
 #: ../shell/src/files-panel.tsx
 msgid "{count, plural, one {# file · {size}} other {# files · {size}}}"
 msgstr "{count, plural, one {# file · {size}} other {# file · {size}}}"
@@ -400,6 +404,7 @@ msgid "{count, plural, one {Otherwise it stays on the list ({kind}: none).} othe
 msgstr "{count, plural, one {Altrimenti resta nella lista ({kind}: nessuno).} other {Altrimenti restano nella lista ({kind}: nessuno).}}"
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/metro-tile.tsx
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Condivisa con # persona} other {Condivisa con # persone}}"
 
@@ -574,6 +579,10 @@ msgstr "{label}: scegli"
 msgid "{label}: nothing called “{name}”; left empty."
 msgstr "{label}: niente si chiama “{name}”; lasciato vuoto."
 
+#: ../shell/src/launcher-metro.tsx
+msgid "{letter} — jump to another letter"
+msgstr "{letter} — vai a un’altra lettera"
+
 #: ../shell/src/library-fetch.ts
 msgid "{library} could not be fetched from {host}: {why}"
 msgstr "Non è stato possibile scaricare {library} da {host}: {why}"
@@ -665,6 +674,11 @@ msgstr "{name} non contiene testo."
 msgid "{name} is {size} KB; files up to {max} KB can be brought in."
 msgstr "{name} pesa {size} KB; si possono portare file fino a {max} KB."
 
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+msgid "{name} is in a group now."
+msgstr "{name} ora è in un gruppo."
+
 #: ../shell/src/file-viewer.tsx
 msgid "{name} is not on this device yet."
 msgstr "{name} non è ancora su questo dispositivo."
@@ -672,6 +686,16 @@ msgstr "{name} non è ancora su questo dispositivo."
 #: ../shell/src/files-panel.tsx
 msgid "{name} is not on this device yet. Open it to get it, then save a copy."
 msgstr "{name} non è ancora su questo dispositivo. Aprilo per scaricarlo, poi salvane una copia."
+
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+msgid "{name} is off Start. It is still in All apps."
+msgstr "{name} non è più su Start. È ancora in Tutte le app."
+
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+msgid "{name} is out of its group."
+msgstr "{name} non è più nel suo gruppo."
 
 #: ../shell/src/data-page.tsx
 msgid "{name} records and files"
@@ -961,6 +985,10 @@ msgstr "un database sincronizzato in un worker (quello veloce)"
 msgid "a translated label needs words in every language it has"
 msgstr "un’etichetta tradotta ha bisogno di parole in ogni lingua che ha"
 
+#: ../shell/src/look-panel.tsx
+msgid "A wall of coloured tiles you arrange"
+msgstr "Una parete di riquadri colorati che disponi tu"
+
 #: ../shell/src/identity-panel.tsx
 msgid "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://."
 msgstr "Un URL websocket: wss://… su una pagina sicura, perché il browser rifiuta ws:// da https://."
@@ -1027,10 +1055,12 @@ msgid "add"
 msgstr "aggiungi"
 
 #. Add one more photo or file to a field that holds several
+#. App bar: add an app someone sent you; one short word
 #. Board: add a card to this column
 #. Checklist: add the typed item
 #. Link another record
 #. Picker: add the chosen items
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/picker.tsx
 #: ../views/src/board.tsx
 #: ../views/src/checklist.tsx
@@ -1091,11 +1121,13 @@ msgstr "Aggiungi una fonte"
 
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Add an app"
 msgstr "Aggiungi un’app"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Add an app someone sent you"
@@ -1224,7 +1256,9 @@ msgstr "ritoccata"
 msgid "Advanced — sync relay, identity id"
 msgstr "Avanzate — relay di sincronizzazione, id dell’identità"
 
+#. A launcher tile group: apps that use AI
 #. Tile editor: the app's own use of AI (ctx.caps.ai)
+#: ../shell/src/launcher-groups.ts
 #: ../shell/src/tile-editor.tsx
 msgid "AI"
 msgstr "IA"
@@ -1247,6 +1281,8 @@ msgid "AI, for the photos and text it sends"
 msgstr "IA, per le foto e i testi che invia"
 
 #: ../shell/src/chrome.tsx
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
 msgid "All apps"
 msgstr "Tutte le app"
 
@@ -1322,6 +1358,7 @@ msgstr "Indirizzo dell’API"
 msgid "App history"
 msgstr "Cronologia dell’app"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "App launcher"
 msgstr "Schermata delle app"
@@ -1377,6 +1414,24 @@ msgstr "Zona sulla tua mappa · {lat}, {lng} · {km} km"
 #: ../shell/src/ask-panel.tsx
 msgid "Area on your map · {lat}, {lng} · <1 km"
 msgstr "Zona sulla tua mappa · {lat}, {lng} · <1 km"
+
+#. Button under the tile wall: resize, move and group the tiles
+#: ../shell/src/launcher-metro.tsx
+msgid "Arrange"
+msgstr "Disponi"
+
+#. The bar of tile commands in the launcher's edit mode
+#: ../shell/src/launcher-metro.tsx
+msgid "Arrange Start"
+msgstr "Disponi Start"
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Arrow keys move between tiles. Alt with an arrow moves the chosen tile. Delete takes it off Start. Escape is done."
+msgstr "Le frecce passano da un riquadro all’altro. Alt con una freccia sposta il riquadro scelto. Canc lo toglie da Start. Esc termina."
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Arrow keys move between tiles. Enter opens. The menu key, or Shift+F10, arranges the tiles."
+msgstr "Le frecce passano da un riquadro all’altro. Invio apre. Il tasto menu, o Maiusc+F10, dispone i riquadri."
 
 #. Button: send the request to Ask
 #. The feature that adds records with AI
@@ -1575,6 +1630,7 @@ msgid "Building…"
 msgstr "Compilazione…"
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Bundled examples"
 msgstr "Esempi inclusi"
 
@@ -1620,6 +1676,11 @@ msgstr "arrivato con l’app"
 #: ../shell/src/capability-words.ts
 msgid "camera"
 msgstr "fotocamera"
+
+#. A launcher tile group: apps that use the camera
+#: ../shell/src/launcher-groups.ts
+msgid "Camera"
+msgstr "Fotocamera"
 
 #. The shell's sign that an app is using the camera live
 #: ../shell/src/camera-indicator.ts
@@ -1871,6 +1932,11 @@ msgstr "Integrato in Chrome"
 msgid "Chrome's built-in Gemini Nano. Runs locally, nothing to download."
 msgstr "Gemini Nano integrato in Chrome. Funziona in locale, niente da scaricare."
 
+#. Home screen style: Potyro's list of app cards
+#: ../shell/src/look-panel.tsx
+msgid "Classic"
+msgstr "Classica"
+
 #. A command name; keep as is
 #: ../shell/src/engines.ts
 msgid "claude -p"
@@ -1968,6 +2034,8 @@ msgstr "Codice, file e cronologia"
 msgid "Coder-tuned — the output is a structured .app.ts"
 msgstr "Addestrato sul codice: il risultato è un .app.ts strutturato"
 
+#. Change the tint of a tile group
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Colour"
 msgstr "Colore"
@@ -2159,6 +2227,7 @@ msgstr "Non è stato ancora possibile inviarlo. È salvato su questo dispositivo
 msgid "Create"
 msgstr "Crea"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Create “{typed}”"
 msgstr "Crea “{typed}”"
@@ -2189,8 +2258,10 @@ msgstr "Scuro"
 #. Data page title: every app's records
 #. The page with every app's records
 #. Tile menu: this app's records, on the Data page
+#. Tile menu: this app's records, on the Data page
 #: ../shell/src/App.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Data"
 msgstr "Dati"
@@ -2292,6 +2363,7 @@ msgid "Describe a new app"
 msgstr "Descrivi una nuova app"
 
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Describe an app"
 msgstr "Descrivi un’app"
 
@@ -2307,6 +2379,7 @@ msgstr "Descrivi l’app"
 msgid "Describe the app you want…"
 msgstr "Descrivi l’app che vuoi…"
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
 msgstr "Descrivi cosa vuoi tenere sotto controllo (una lista della spesa condivisa, le tue piante, un viaggio) e Potyro lo costruisce. Oppure apri uno degli esempi qui sotto e modificalo."
@@ -2386,6 +2459,7 @@ msgstr "Non condividere"
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
 #: ../shell/src/inline-edit.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/suggest-wording.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/pick-list.tsx
@@ -2427,6 +2501,11 @@ msgstr "ad es. cinque caffè sul fiume dove si può andare col cane"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "e.g. Places search"
 msgstr "ad es. Ricerca luoghi"
+
+#. Move a tile group earlier on the wall
+#: ../shell/src/launcher-metro.tsx
+msgid "Earlier"
+msgstr "Prima"
 
 #. Files viewer: copies of this file that newer writes replaced
 #: ../shell/src/file-viewer.tsx
@@ -2498,6 +2577,11 @@ msgstr "ogni voce"
 #: ../shell/src/history.tsx
 msgid "Every version of <0>{appName}</0> — review a change, or roll back to it."
 msgstr "Ogni versione di <0>{appName}</0>: rivedi una modifica o torna a quella versione."
+
+#. A launcher tile group: everyday apps (shopping, plants, recipes)
+#: ../shell/src/launcher-groups.ts
+msgid "Everyday"
+msgstr "Ogni giorno"
 
 #: ../shell/src/identity-panel.tsx
 msgid "Everyone starts out as “Me”, which makes a shared app hard to read. You can change this any time from ⌾ You."
@@ -2643,6 +2727,14 @@ msgstr "Filtra la lista"
 msgid "Filters"
 msgstr "Filtri"
 
+#. App bar: search the apps; one short word
+#: ../shell/src/launcher-metro.tsx
+msgid "Find"
+msgstr "Cerca"
+
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -2671,6 +2763,13 @@ msgstr "Correggi"
 #: ../shell/src/studio-engine.ts
 msgid "Fixing it via {label}… {elapsed}"
 msgstr "Correzione tramite {label}… {elapsed}"
+
+#. Fold an opened tile group back into one tile
+#. Fold an opened tile group back into one tile
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+msgid "Fold"
+msgstr "Chiudi"
 
 #: ../shell/src/look-panel.tsx
 msgid "Follows this device"
@@ -2753,6 +2852,11 @@ msgstr "Schermo intero"
 msgid "gallery"
 msgstr "galleria"
 
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Games"
+msgstr "Giochi"
+
 #. Fix agent outcome: it could not find a fix
 #: ../shell/src/fix-panel.tsx
 msgid "Gave up"
@@ -2807,6 +2911,10 @@ msgstr "Vai alle tue app"
 msgid "going online on its own"
 msgstr "andare online da sola"
 
+#. A launcher tile group the person made and has not named yet
+#. Put this tile in a group with the next one
+#: ../shell/src/launcher-groups.ts
+#: ../shell/src/launcher-metro.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -2817,6 +2925,18 @@ msgstr "Gruppo"
 #: ../shell/src/app-source.ts
 msgid "group {n} would be left with no fields"
 msgstr "il gruppo {n} resterebbe senza campi"
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Group folded into one tile."
+msgstr "Gruppo chiuso in un riquadro."
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Group renamed."
+msgstr "Gruppo rinominato."
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Group unfolded."
+msgstr "Gruppo aperto."
 
 #. Short for hours, beside a duration's hours box
 #: ../views/src/number-input.tsx
@@ -2831,6 +2951,11 @@ msgstr "Nome dell’intestazione"
 #: ../shell/src/point-target.ts
 msgid "heading"
 msgstr "titolo"
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Health"
+msgstr "Salute"
 
 #. Menu hint: the page you are on
 #: ../shell/src/chrome.tsx
@@ -2866,17 +2991,31 @@ msgstr "Cronologia"
 msgid "History of {appName}"
 msgstr "Cronologia di {appName}"
 
+#: ../shell/src/launcher-metro.tsx
+msgid "Hold a tile to arrange Start."
+msgstr "Tieni premuto un riquadro per disporre Start."
+
 #. Storage report: how much this site stores on the device
 #: ../shell/src/storage-report.tsx
 msgid "Holding"
 msgstr "Occupa"
 
+#. A launcher tile group: apps for the household
 #. The page that shows an app's kinds of record as tiles
 #: ../shell/src/App.tsx
+#: ../shell/src/launcher-groups.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Home"
 msgstr "Home"
+
+#. The launcher's two panes: the tile wall and the list of all apps
+#. Which style the home screen has
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/look-panel.tsx
+#: ../shell/src/look-panel.tsx
+msgid "Home screen"
+msgstr "Schermata principale"
 
 #: ../views/src/number-input.tsx
 msgid "hours"
@@ -3207,6 +3346,10 @@ msgstr "Unisciti, eseguila come tua"
 msgid "Joining…"
 msgstr "Ingresso…"
 
+#: ../shell/src/launcher-metro.tsx
+msgid "Jump to a letter"
+msgstr "Vai a una lettera"
+
 #. Activity feed: when a change was made, under a minute ago
 #: ../shell/src/activity-panel.tsx
 #: ../shell/src/files-panel.tsx
@@ -3316,9 +3459,19 @@ msgstr "Settimana scorsa"
 msgid "lat"
 msgstr "lat"
 
+#. Move a tile group later on the wall
+#: ../shell/src/launcher-metro.tsx
+msgid "Later"
+msgstr "Dopo"
+
 #: ../shell/src/inline-edit.tsx
 msgid "Later →"
 msgstr "Dopo →"
+
+#. The bar of buttons at the bottom of the home screen
+#: ../shell/src/launcher-metro.tsx
+msgid "Launcher actions"
+msgstr "Azioni della schermata delle app"
 
 #. Button: leave a shared app
 #: ../shell/src/remove-app.ts
@@ -3453,12 +3606,15 @@ msgstr "Posizione approssimativa: non è stato possibile confermare “{address}
 #. The panel for light/dark appearance and accent colour
 #. The panel for light/dark appearance and accent colour
 #. The panel for light/dark appearance and accent colour
+#. The panel for light/dark appearance and accent colour
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/look-panel.tsx
 msgid "Look"
 msgstr "Aspetto"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Look — appearance and colour"
 msgstr "Aspetto: tema e colore"
@@ -3507,6 +3663,7 @@ msgstr "Fatto con Potyro"
 msgid "Make it mine"
 msgstr ""
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Crea l’app che ti serve"
@@ -3558,6 +3715,8 @@ msgid "Measuring…"
 msgstr "Misurazione…"
 
 #. Reasoning level
+#. Tile size
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/thinking-settings.tsx
 msgid "Medium"
 msgstr "Medio"
@@ -3599,6 +3758,11 @@ msgstr "Impostazioni del modello"
 #: ../shell/src/studio.tsx
 msgid "Modify the app"
 msgstr "Modifica l’app"
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Money"
+msgstr "Soldi"
 
 #. Tile editor placeholder: with no icon the tile shows the name's first letters
 #: ../shell/src/tile-editor.tsx
@@ -3645,13 +3809,24 @@ msgstr "Sposta in “{aboveName}”"
 msgid "Move to {to}"
 msgstr "Sposta in {to}"
 
+#: ../shell/src/launcher-metro.tsx
+msgid "Moved {name}."
+msgstr "{name} spostata."
+
 #: ../views/src/reorder.ts
 msgid "Moved {what} to {where}."
 msgstr "{what} spostato in {where}."
 
+#: ../shell/src/launcher-metro.tsx
 #: ../views/src/reorder.ts
 msgid "Moved {what} to position {at} of {count}."
 msgstr "{what} spostato alla posizione {at} di {count}."
+
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
+msgid "Moved the group."
+msgstr "Gruppo spostato."
 
 #. placeholder {0}: progress.name
 #. placeholder {1}: progress.done
@@ -3663,6 +3838,11 @@ msgstr "Spostamento di {0}: {1} di {2}"
 #: ../shell/src/backup-switch.tsx
 msgid "Moving…"
 msgstr "Spostamento…"
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Music"
+msgstr "Musica"
 
 #: ../shell/src/studio-thread-view.tsx
 msgid "My plants, and when each one needs water"
@@ -3683,6 +3863,10 @@ msgstr "Indica l’intestazione in cui va la chiave."
 msgid "Name the query parameter the key goes in."
 msgstr "Indica il parametro di query in cui va la chiave."
 
+#: ../shell/src/launcher-metro.tsx
+msgid "Name this group"
+msgstr "Dai un nome a questo gruppo"
+
 #: ../shell/src/engine-settings.tsx
 msgid "needs a WebGPU browser"
 msgstr "richiede un browser con WebGPU"
@@ -3701,6 +3885,7 @@ msgstr "nuova"
 msgid "New"
 msgstr "Nuova"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -3718,6 +3903,10 @@ msgstr "Nome del nuovo gruppo"
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr "Nuova su questo dispositivo"
+
+#: ../shell/src/look-panel.tsx
+msgid "New: try Tiles — your apps as a wall of coloured tiles you size and group. You can come back to Classic any time."
+msgstr "Novità: prova Riquadri — le tue app come una parete di riquadri colorati che ridimensioni e raggruppi. Puoi tornare a Classica quando vuoi."
 
 #: ../views/src/calendar.tsx
 #: ../views/src/date-input.tsx
@@ -3745,6 +3934,7 @@ msgstr "No"
 msgid "No app \"{appId}\" installed to import into."
 msgstr "Nessuna app “{appId}” installata in cui importare."
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "No app called “{typed}”."
@@ -3754,6 +3944,7 @@ msgstr "Nessuna app chiamata “{typed}”."
 msgid "No apps on this device yet."
 msgstr "Ancora nessuna app su questo dispositivo."
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "No apps yet — press New app to make one."
 msgstr "Ancora nessuna app: tocca Nuova app per crearne una."
@@ -3888,6 +4079,7 @@ msgstr "non si sa finché non viene eseguita"
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
 #: ../shell/src/restore-apps.tsx
@@ -3925,6 +4117,11 @@ msgstr "Non salvata: {reason}"
 #: ../shell/src/fix-panel.tsx
 msgid "not usable — {detail}"
 msgstr "non utilizzabile — {detail}"
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Notes"
+msgstr "Note"
 
 #. Activity feed: a field that has no value
 #. Activity feed: a field that has no value
@@ -3972,6 +4169,10 @@ msgstr "Niente corrisponde."
 #: ../shell/src/add-app-dialog.tsx
 msgid "nothing of its own"
 msgstr "niente di suo"
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Nothing on Start. Pin an app from All apps."
+msgstr "Niente su Start. Aggiungi un’app da Tutte le app."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "nothing on this device"
@@ -4333,6 +4534,14 @@ msgstr "immagine"
 msgid "Pin"
 msgstr "Fissa"
 
+#: ../shell/src/launcher-metro.tsx
+msgid "Pin {appName} to Start"
+msgstr "Aggiungi {appName} a Start"
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Pin to Start"
+msgstr "Aggiungi a Start"
+
 #: ../shell/src/launcher.tsx
 msgid "Pinned"
 msgstr "Fissate"
@@ -4573,6 +4782,7 @@ msgstr "{name} rimosso"
 
 #: ../shell/src/files-panel.tsx
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/studio.tsx
 msgid "Rename"
@@ -4726,8 +4936,12 @@ msgid "Runs in the sealed box. Tap to let it run as yours."
 msgstr "Viene eseguita nella scatola sigillata. Tocca per eseguirla come tua."
 
 #: ../shell/src/App.tsx
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/metro-tile.tsx
+#: ../shell/src/metro-tile.tsx
 msgid "Runs sealed"
 msgstr "Funziona sigillata"
 
@@ -5042,6 +5256,11 @@ msgstr "Mostra 24 parole da digitare sull’altro dispositivo. Sono l’unica co
 msgid "Shows text that missed the catalogs (dev only)"
 msgstr "Mostra il testo sfuggito ai cataloghi (solo sviluppo)"
 
+#. Tile size
+#: ../shell/src/launcher-metro.tsx
+msgid "Small"
+msgstr "Piccolo"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "So you can see what a change does. They are examples, not anyone’s own, and you can delete them. Leave it off to start empty."
 msgstr ""
@@ -5097,6 +5316,11 @@ msgstr "Fonti"
 #: ../shell/src/ask-review-layouts.tsx
 msgid "Sources and notes"
 msgstr "Fonti e note"
+
+#. The launcher pane with the tile wall, as on Windows Phone
+#: ../shell/src/launcher-metro.tsx
+msgid "Start"
+msgstr "Start"
 
 #: ../shell/src/studio.tsx
 msgid "Start a new app"
@@ -5252,7 +5476,10 @@ msgstr "Le app sincronizzate si incontrano tramite il relay di questo sito. Vede
 msgid "Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records."
 msgstr "Le app sincronizzate si incontrano tramite il tuo relay. Vede solo dati cifrati: non può leggere le tue voci."
 
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/metro-tile.tsx
 msgid "Synced to your other devices"
 msgstr "Sincronizzata con i tuoi altri dispositivi"
 
@@ -5298,6 +5525,10 @@ msgstr "Accetta questi file"
 #: ../shell/src/studio.tsx
 msgid "Tap a part of the app to talk about it"
 msgstr "Tocca una parte dell’app per parlarne"
+
+#: ../shell/src/launcher-metro.tsx
+msgid "Tap a tile to change it, or drag it."
+msgstr "Tocca un riquadro per cambiarlo, o trascinalo."
 
 #: ../shell/src/inline-edit.tsx
 msgid "Tap highlighted text to change it."
@@ -5461,6 +5692,10 @@ msgstr "I file con cui è arrivata — {list} — non sono su questo dispositivo
 #: ../shell/src/app-ai.ts
 msgid "The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings."
 msgstr "Il servizio di IA gratuito non ha risposto. Riprova tra un minuto o aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
+#: ../shell/src/launcher-metro.tsx
+msgid "The group is gone; its tiles stay on Start."
+msgstr "Il gruppo non c’è più; i suoi riquadri restano su Start."
 
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
@@ -5895,6 +6130,16 @@ msgstr "Icona del riquadro"
 msgid "Tile name"
 msgstr "Nome del riquadro"
 
+#. Choose small, medium or wide for a launcher tile
+#: ../shell/src/launcher-metro.tsx
+msgid "Tile size"
+msgstr "Dimensione del riquadro"
+
+#. Home screen style: a wall of coloured tiles you arrange, like Windows Phone's Start
+#: ../shell/src/look-panel.tsx
+msgid "Tiles"
+msgstr "Riquadri"
+
 #: ../views/src/date-input.tsx
 msgid "Time"
 msgstr "Ora"
@@ -5933,6 +6178,11 @@ msgstr "Traduci in {into}"
 #: ../shell/src/App.tsx
 msgid "Translate this app into {intoName} ({intoTag})."
 msgstr "Traduci quest’app in {intoName} ({intoTag})."
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Travel"
+msgstr "Viaggi"
 
 #. The words sent with a demo link in a chat
 #: ../shell/src/share-sheet.tsx
@@ -6033,6 +6283,22 @@ msgstr "meno di 1 ¢"
 msgid "Unfinished"
 msgstr "Non finite"
 
+#. Show a folded tile group as its tiles again
+#: ../shell/src/launcher-metro.tsx
+msgid "Unfold"
+msgstr "Apri"
+
+#. Take this tile out of its group
+#: ../shell/src/launcher-metro.tsx
+msgid "Ungroup"
+msgstr "Separa"
+
+#. Take every tile out of this group
+#: ../shell/src/launcher-metro.tsx
+msgid "Ungroup all"
+msgstr "Sciogli il gruppo"
+
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Unpin"
 msgstr "Stacca"
@@ -6274,6 +6540,16 @@ msgstr "Quali parole suonano male?"
 msgid "While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app."
 msgstr "Finché l’app è aperta può inviare e ricevere qualsiasi cosa lì. Potyro chiude la connessione quando esci dall’app."
 
+#. Tile size
+#: ../shell/src/launcher-metro.tsx
+msgid "Wide"
+msgstr "Largo"
+
+#. A launcher tile group
+#: ../shell/src/launcher-groups.ts
+msgid "Work"
+msgstr "Lavoro"
+
 #: ../shell/src/ask-panel.tsx
 msgid "Working on it…"
 msgstr "Ci sto lavorando…"
@@ -6322,6 +6598,7 @@ msgstr "Ieri"
 msgid "you"
 msgstr "tu"
 
+#. App bar: you and your devices; one short word
 #. Chat: a message you wrote
 #. Chat: a message you wrote
 #. Heading of the panel about the person using Potyro and their devices
@@ -6330,10 +6607,12 @@ msgstr "tu"
 #: ../shell/src/chat-panel.tsx
 #: ../shell/src/demo.tsx
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher-metro.tsx
 msgid "You"
 msgstr "Tu"
 
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "You and your devices"
@@ -6410,6 +6689,10 @@ msgstr "Le tue app sono sul relay. Anche tutto ciò che crei dopo ci va."
 msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
 msgstr "Le tue app sono aperte in una scheda alla volta, così niente di ciò che cambi in una manca nell’altra."
 
+#: ../shell/src/look-panel.tsx
+msgid "Your apps as cards, with a pinned row"
+msgstr "Le tue app come schede, con una riga fissata"
+
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Le tue app su questo account"
@@ -6418,10 +6701,12 @@ msgstr "Le tue app su questo account"
 msgid "Your browser will ask what to record: choose this tab."
 msgstr "Il browser ti chiederà cosa registrare: scegli questa scheda."
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Your data"
 msgstr "I tuoi dati"
 
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Your data — every app’s records"
 msgstr "I tuoi dati: le voci di tutte le app"
