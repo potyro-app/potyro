@@ -3,7 +3,8 @@
 Status: built (`packages/rooms`), **not deployed yet** — see docs/16 "Rooms for multiplayer apps".
 Owner decision 2026-10-15: apps get WebSockets through `ctx.caps.network.socket(url)` (built:
 docs/28, which also gives apps `ctx.caps.network.room(id)` over this relay), and real-time multiplayer apps — the first is a draw-and-guess game
-whose rooms are joined by a share link — need a server nobody has to run themselves. This is that
+(`apps/draw-guess`, whose rooms are joined by a 12-character code — its README says why a code and
+not a link) — need a server nobody has to run themselves. This is that
 server. The socket capability will point here; this document is what an app author needs.
 
 It is deliberately small and boring: a room is a set of open websockets, and whatever one of them

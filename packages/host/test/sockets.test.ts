@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { FakeCapabilities, createFakeSockets, type FakeSocketsOptions } from "@potyro/capabilities";
 import type { Caps, PermissionManifest, Room, Socket, SocketClose, SocketData } from "potyro";
-import { mediateCaps, openSocketsOf, permittedHosts, roomsAllowed, socketHostAllowed, SOCKET_LIMITS, type UiBridge } from "../src/index.js";
+import { mediateCaps, openSocketsOf, permittedHosts, retireAppSockets, roomsAllowed, socketHostAllowed, SOCKET_LIMITS, type UiBridge } from "../src/index.js";
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 async function until(cond: () => boolean, ms = 2000): Promise<void> {
@@ -280,6 +280,28 @@ describe("Potyro closes them", () => {
     listeners.forEach((f) => f());
     await until(() => s.closes.length === 1);
     expect(s.closes[0]!.why).toBe("hidden");
+  });
+
+  it("once the app is closed, what it held ends and a late retry of its own opens nothing", async () => {
+    const { caps, fake, owner } = setup({ trusted: true });
+    const s = collect(await caps.network!.socket("wss://echo.test/"));
+    retireAppSockets(owner);
+    expect(s.closes[0]).toMatchObject({ why: "left" });
+    expect(await codeOf(caps.network!.socket("wss://echo.test/again"))).toBe("refused");
+    expect(fake.connections).toHaveLength(1);
+    expect(openSocketsOf(owner)).toBe(0);
+  });
+
+  it("nothing opens while Potyro is in the background: hidden, and the first try after coming back opens", async () => {
+    const doc = { hidden: true, addEventListener: () => {} };
+    const { caps, fake } = setup({ trusted: true, fake: { deps: { doc } } });
+    expect(await codeOf(caps.network!.socket("wss://echo.test/"))).toBe("hidden");
+    expect(await codeOf(caps.network!.room("room-for-tests-0000000000"))).toBe("hidden");
+    expect(fake.connections).toHaveLength(0);
+    expect(fake.cap.openCount).toBe(0);
+    doc.hidden = false;
+    const s = await caps.network!.socket("wss://echo.test/");
+    expect(s.readyState).toBe("open");
   });
 
   it("the server closing says server, with its code and reason; a drop says network", async () => {
