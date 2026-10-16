@@ -40,6 +40,14 @@ async function viewFrame(page: Page): Promise<Frame> {
   return frame!;
 }
 
+/**
+ * Press a button in the frame without waiting for the frame to finish handling it: a click Playwright
+ * performs waits for the frame's input to be acknowledged, which a spinning frame never does.
+ */
+async function press(frame: Frame, selector: string): Promise<void> {
+  await frame.evaluate((sel) => void setTimeout(() => (document.querySelector(sel) as HTMLElement).click(), 50), selector);
+}
+
 const toast = (page: Page) => page.locator(".k-toast").last();
 const notice = (page: Page) => page.locator(".k-sealed-notice");
 
@@ -88,11 +96,12 @@ test("a shared app's own screen renders in its sandboxed frame: its DOM, its pix
 
 test("nothing the screen tries reaches the network, the shell's storage, the top page or another op", async ({ page, consoleGuard }) => {
   consoleGuard.allow(
-    /Refused to|Content Security Policy|Content-Security-Policy|Blocked form submission|Blocked opening|Blocked a frame|sandbox|SecurityError|Unsafe attempt|not allowed to navigate|Failed to load|NetworkError|access-control|WebSocket connection|EventSource|ERR_BLOCKED|beacon/i,
+    /Refused to|Content Security Policy|Content-Security-Policy|Blocked form submission|Blocked opening|Blocked a frame|sandbox|SecurityError|Unsafe attempt|not allowed to navigate|Failed to load|NetworkError|access-control|WebSocket connection|EventSource|ERR_BLOCKED|beacon|can.t establish a connection/i,
     "the adversarial screen tries every way out on purpose; the browser says it refused each one",
   );
   await open(page);
   const before = page.url();
+  await page.evaluate(() => (document.cookie = "potyro-cookie=the-shells"));
   const frame = await viewFrame(page);
   // The shell hears every message the frame posts to it, and acts on none of them.
   await page.evaluate(() => {
@@ -105,7 +114,10 @@ test("nothing the screen tries reaches the network, the shell's storage, the top
   const report = JSON.parse(String(await toast(page).textContent())) as Record<string, string>;
 
   expect(report["origin"]).toMatch(/opaque origin null/);
-  for (const k of ["localStorage", "sessionStorage", "document.cookie", "indexedDB", "parent.document", "parent.localStorage", "top.location.href", "fetch(probe)", "WebSocket(relay)", "EventSource", "<img src>", "window.open", "top navigation", "RTCPeerConnection"]) {
+  // Refused (Chromium, Firefox), or a cookie jar of its own that is empty (WebKit): never the shell's.
+  expect(report["document.cookie"]).toMatch(/^(blocked|ALLOWED: $)/);
+  expect(JSON.stringify(report)).not.toContain("the-shells");
+  for (const k of ["localStorage", "sessionStorage", "indexedDB", "parent.document", "parent.localStorage", "top.location.href", "fetch(probe)", "WebSocket(relay)", "EventSource", "<img src>", "window.open", "top navigation", "RTCPeerConnection"]) {
     expect(report[k], k).toMatch(/^blocked/);
   }
   expect(report["raw op: relay.connect"]).toBe("blocked: op not allowed: relay.connect");
@@ -131,7 +143,7 @@ test("a screen that spins for 3 s is replaced by the app's plain version, calmly
   const frame = await viewFrame(page);
   const gap = await startGapMeter(page);
   const started = Date.now();
-  await frame.locator("#sv-spin").click({ noWaitAfter: true });
+  await press(frame, "#sv-spin");
   await expect(notice(page)).toContainText("This app’s screen stopped responding, so Potyro is showing its plain version.", { timeout: 15_000 });
   expect(Date.now() - started).toBeLessThan(8_000);
   await expect(page.locator(".k-sealed-view iframe")).toHaveCount(0);
@@ -164,7 +176,7 @@ test("a screen that never stops is stopped where the frame runs apart, and the s
   await open(page);
   const frame = await viewFrame(page);
   const gap = await startGapMeter(page);
-  await frame.locator("#sv-forever").click({ noWaitAfter: true });
+  await press(frame, "#sv-forever");
   await expect(notice(page)).toBeVisible({ timeout: 15_000 });
   expect(await gap()).toBeLessThan(250);
   // The logic frame shared the spinning view's process and could not answer: every realm restarted.
