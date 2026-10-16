@@ -17,6 +17,7 @@ import { editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
 import { useReportCount } from "./page-count.js";
+import { pageOf } from "./backdrop.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
@@ -152,7 +153,7 @@ export function EmptyState({
   return (
     <div className="k-empty-state" data-page={pageId}>
       <span className="k-empty-mark" aria-hidden>
-        {def?.icon ?? "◇"}
+        {def?.icon ?? pageOf(runtime.definition, pageId)?.icon ?? runtime.definition.icon ?? "◇"}
       </span>
       <p className="k-empty k-empty-title" data-k-wording>
         {text}
@@ -244,7 +245,8 @@ export function ListView(props: BuiltinViewProps) {
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
   // A short, ungrouped list offers the next one in its own shape, so two rows are not two rows and a
   // screen of nothing.
-  const offerAdd = onCreate && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
+  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderRows = (list: Resolved[]) => (
     <ul className="k-list" data-lead={lead}>
       {list.map((row) => {
@@ -375,7 +377,8 @@ export function GalleryView(props: BuiltinViewProps) {
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
-  const offerAdd = onCreate && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
+  const offerAdd = onCreate && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderCards = (list: Resolved[]) => (
     <div className="k-gallery" data-aspect={view.aspect ?? "landscape"}>
       {list.map((row) => {

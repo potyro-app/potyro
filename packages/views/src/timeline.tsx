@@ -9,6 +9,7 @@
 // the groups near the screen are rendered and have their display bindings resolved (the part that
 // crosses the isolate bridge per row).
 
+import { useReportCount } from "./page-count.js";
 import { fmt } from "@potyro/i18n";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -100,6 +101,7 @@ export function TimelineView(props: BuiltinViewProps) {
   const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit } = props;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
+  useReportCount(loading ? undefined : rows.length);
   const view = getView(runtime, pageId) as unknown as TimelineDef;
   const entityDef = runtime.definition.entities[view.entity];
   const groupBy = view.groupBy ?? "day";
