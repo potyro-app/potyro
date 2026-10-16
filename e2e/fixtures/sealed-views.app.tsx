@@ -125,7 +125,7 @@ async function escapes(props: ViewProps): Promise<Report> {
     return "sent";
   });
   const port = await stealPort(props);
-  r["raw op: relay.connect"] = await rawOp(port, { ctxId: props.runtime.ctx ? 999999 : 0, op: "relay.connect", args: [] });
+  r["raw op: relay.connect"] = await rawOp(port, { ctxId: 1, op: "relay.connect", args: [] });
   r["raw op: unknown ctxId"] = await rawOp(port, { ctxId: 424242, op: "query", args: ["note"] });
   r["raw op: space.invite"] = await rawOp(port, { ctxId: 424242, op: "space.invite", args: [] });
   return r;
@@ -156,7 +156,7 @@ function Board(props: ViewProps) {
       <p id="sv-count">{rows.length} notes</p>
       <p id="sv-key">key: {key}</p>
       <p id="sv-ink">{ink}</p>
-      <canvas id="sv-canvas" width={200} height={40} onPointerDown={() => setClicks((c) => c + 1)} />
+      <canvas ref={canvas} id="sv-canvas" width={200} height={40} onPointerDown={() => setClicks((c) => c + 1)} />
       <p>
         <button id="sv-add" type="button" className="k-add k-primary-action" onClick={() => void props.runtime.ctx.create("note", { text: `from the screen ${rows.length + 1}` })}>
           Add a note
