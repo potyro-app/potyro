@@ -67,7 +67,7 @@ export interface LeadProps {
 
 /** A record's lead: picture, initial or icon. Decorative — the row's words say what it is. */
 export function Lead({ url, text, badges, kind = "monogram", icon, className = "k-lead", size = 44 }: LeadProps) {
-  if (url) return <img className={`${className} k-lead-photo`} src={url} alt="" width={size} height={size} loading="lazy" decoding="async" />;
+  if (url) return <img className={`${className} k-lead-photo`} src={url} alt="" width={size} height={size} loading="lazy" decoding="async" draggable={false} />;
   if (kind === "none") return null;
   const glyph = kind === "icon" && icon ? icon : initialOf(text);
   return (
