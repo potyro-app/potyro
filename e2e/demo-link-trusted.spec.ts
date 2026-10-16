@@ -54,6 +54,23 @@ test("a stranger opens a demo link: the app runs at once, sealed, demo records o
   await context.close();
 });
 
+test("a demo of an app shown for one group at a time opens on one of the demo's groups, never on “choose a group”", async ({ page, browser, baseURL }) => {
+  // Split has a required app-wide selection (docs/03 `scope`): a first run of the empty app asks
+  // which group; a demo has groups of its own, so it opens on one.
+  const link = await makeDemoLink(page, "Split");
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  await viewer.goto(link);
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
+  const chip = viewer.locator(".k-scope");
+  await expect(chip).toBeVisible();
+  await expect(chip).not.toHaveAttribute("data-empty", "true");
+  await expect(chip).not.toContainText("Choose");
+  // Given a moment to ask, it still has not.
+  await viewer.waitForTimeout(500);
+  await expect(viewer.getByRole("dialog", { name: "Choose" })).toHaveCount(0);
+  await context.close();
+});
+
 test("Keep this app goes through the Add-an-app card, as a link: sealed, never “I wrote this”", async ({ page, browser, baseURL }) => {
   const link = await makeDemoLink(page, "Groceries");
   const { context, page: viewer } = await stranger(browser, baseURL!);
