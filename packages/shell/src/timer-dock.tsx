@@ -8,6 +8,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { timerHub, type KeptTimer } from "./timer-hub.js";
+import { getUserApp } from "./user-apps.js";
 
 /** "1:05", "12:00", "1:02:03" — how a countdown reads. */
 export function clock(ms: number): string {
@@ -31,7 +32,7 @@ export function setTimerFocus(app: string | null): void {
 export function clearTimerFocus(app: string): void {
   if (focused === app) setTimerFocus(null);
 }
-const subscribeFocus =(cb: () => void): (() => void) => {
+const subscribeFocus = (cb: () => void): (() => void) => {
   focusListeners.add(cb);
   return () => focusListeners.delete(cb);
 };
@@ -73,7 +74,8 @@ function TimerChip({ k, here, onOpenApp }: { k: KeptTimer; here: boolean; onOpen
   const fraction = k.seconds > 0 ? Math.min(1, left / (k.seconds * 1000)) : 0;
   const label = here ? k.label : `${k.appName} · ${k.label}`;
   const time = clock(left);
-  const open = here ? undefined : () => onOpenApp(k.app);
+  // Another installed app's chip opens it; a preview's or a demo's has nowhere to go.
+  const open = here || !getUserApp(k.app) ? undefined : () => onOpenApp(k.app);
 
   if (k.ringing) {
     return (
