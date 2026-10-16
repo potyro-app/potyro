@@ -32,6 +32,7 @@ import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
+import { pauseTiles, watchTile } from "./tile-runner.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
 import { getUserApp, listUserApps } from "./user-apps.js";
@@ -450,6 +451,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // on another store would run without its records and its files. The screen says why, and Try again
   // opens it once the other tab has let go.
   const retry = { label: t`Try again`, run: async () => location.reload() };
+  // A launcher tile being run from the home screen holds its app's store for a moment; the app being
+  // opened waits for it rather than racing it for the same database (tile-runner.ts).
+  const resumeTiles = await pauseTiles();
   try {
     const pending = sessionStorage.getItem(IMPORT_KEY);
     if (pending && !(syncAllowed && saved.sync)) {
@@ -468,11 +472,13 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       rawStore = await openAppStore(saved, { sync: syncAllowed && Boolean(saved.sync), me: me.id });
     }
   } catch (e) {
+    resumeTiles();
     // Another tab owns the storage: the whole tab already says so, with "Use it here".
     if (isStorageElsewhere(e)) return null;
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
     return null;
   }
+  resumeTiles();
 
   // The files it shipped with (`levels.json`), before any of its code runs: one that is not here
   // would fail the app in its own words, which read like its bug. The screen says what is missing,
@@ -658,6 +664,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   }
   // The launcher badge's reminders (#86): due times, so one that falls due while the app is closed counts.
   stops.push(watchReminderTimes(composed!.runtime, store, (due) => recordSignals(appKey("user", id), { due })));
+  // Its live launcher tile (docs/04 §Tile), run again after its data changes: home shows what you just did.
+  stops.push(watchTile({ id, source: saved.source }, composed!.loaded, composed!.runtime, store));
   await restoreScope(composed!.runtime, id);
 
   let open = true;

@@ -73,6 +73,11 @@
   --warn: oklch(52% 0.12 70);
   /* A chart's single series (#109): checked with the dataviz palette validator against each theme's surface. */
   --series-1: #a96b00;
+  /* A Start tile (#96): white on the app's own colour, in every theme — the colour is darkened
+     until white reads on it (tile-colour.ts). `--tile-shade` darkens a photo under its words. */
+  --tile-ink: oklch(100% 0 0);
+  --tile-ink-soft: oklch(100% 0 0 / 0.86);
+  --tile-shade: oklch(0% 0 0 / 0.62);
   --scrim: oklch(20% 0.02 60 / 0.4);
   --scrim-soft: oklch(20% 0.02 60 / 0.32);
   --shadow: 0 1px 2px oklch(30% 0.02 60 / 0.06), 0 8px 24px oklch(30% 0.02 60 / 0.08);
@@ -1207,6 +1212,84 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
 }
 .k-look-hue-default {
   background: var(--accent-potyro);
+}
+/* The home screen's style (#96): two cards, each with a small drawing of what it looks like. */
+.k-look-styles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.k-look-style {
+  gap: 0.25rem;
+  min-height: 2.75rem;
+}
+.k-look-hint {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.k-look-preview {
+  display: grid;
+  width: 100%;
+  height: 4.5rem;
+  margin-bottom: 0.3rem;
+  padding: 0.35rem;
+  gap: 3px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.k-look-preview[data-style="classic"] {
+  grid-template-columns: 1fr 1fr;
+  border-radius: 8px;
+}
+.k-look-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.k-look-preview-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--accent) 45%, var(--paper));
+}
+.k-look-preview-line {
+  flex: 1;
+  height: 3px;
+  background: var(--ink-faint);
+}
+.k-look-preview[data-style="start"] {
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  grid-auto-flow: row dense;
+}
+.k-look-preview-tile {
+  background: color-mix(in oklab, var(--accent) 80%, var(--ink));
+}
+.k-look-preview-tile[data-size="wide"] {
+  grid-column: span 4;
+}
+.k-look-preview-tile[data-size="medium"] {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.k-look-preview-tile[data-n="1"] {
+  background: color-mix(in oklab, var(--ok) 85%, var(--ink));
+}
+.k-look-preview-tile[data-n="3"],
+.k-look-preview-tile[data-n="6"] {
+  background: color-mix(in oklab, var(--danger) 70%, var(--ink));
+}
+.k-look-preview-tile[data-n="4"] {
+  background: color-mix(in oklab, var(--series-1) 85%, var(--ink));
 }
 /* Appearance and colour, from the launcher — a device's look, kept with the device. */
 .k-look-btn,
@@ -11887,3 +11970,917 @@ body:has(.k-tabbar) .k-toasts {
   }
 }
 /* tokens-only: end — share links */
+
+/* ---- The Start screen (#96; owner, 2026-10-15 — settles #93) ---------------------------------
+   Windows Phone 8.1's Start: flat tiles of solid colour, square corners, no shadow, packed in a
+   tight grid with small even gutters; big light type for the pane titles; a slim app bar. The tile
+   colour is the app's own (`--tile-bg`, darkened in tile-colour.ts until white reads on it), and the
+   only motion is Metro's: the press tilt, the live tile turning over, the turnstile when an app
+   opens — transforms and opacity only, and none of it under reduced motion. */
+/* tokens-only: start — start screen */
+.k-metro {
+  --metro-side: 12px;
+  /* The app bar's height, so the last row of tiles can scroll clear of it. */
+  --metro-bar: calc(4.25rem + var(--k-safe-bottom));
+  max-width: none;
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper);
+  /* Edge to edge in the theme's ground, the content no wider than 1400px. */
+  padding: calc(var(--space-3) + var(--k-safe-top)) max(var(--metro-side), calc((100% - 1400px) / 2)) calc(var(--metro-bar) + var(--space-6));
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+}
+.k-metro .k-metro-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.15rem;
+}
+.k-metro .k-metro-head .k-brand strong {
+  font-family: var(--font-ui);
+  font-size: inherit;
+}
+.k-metro-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-metro-brand strong {
+  font-weight: 600;
+}
+/* The pivot: the pane you are on in big light type, the other one beside it, fainter — a header
+   you can read across the room, and a tab you can hit with a thumb. */
+.k-metro-pivot {
+  display: flex;
+  align-items: baseline;
+  gap: 1.1rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.k-metro-pivot [role="tab"] {
+  border: 0;
+  padding: 0.1rem 0;
+  min-height: 2.75rem;
+  background: none;
+  font: inherit;
+  font-size: clamp(2.1rem, 1.6rem + 2.2vw, 3.1rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-transform: lowercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+.k-metro-pivot [role="tab"][aria-selected="true"] {
+  color: var(--ink);
+}
+.k-metro-pivot [role="tab"]:hover {
+  color: var(--ink-soft);
+}
+.k-metro-pivot [role="tab"][aria-selected="true"]:hover {
+  color: var(--ink);
+}
+.k-metro-pivot [role="tab"]:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.k-metro-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: k-metro-pane-in var(--dur-slow) var(--ease);
+}
+@keyframes k-metro-pane-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+.k-metro[data-pane="start"] .k-metro-pane {
+  animation-name: k-metro-pane-back;
+}
+@keyframes k-metro-pane-back {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+.k-metro .k-welcome {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surface-sunken);
+  padding: var(--space-4);
+}
+.k-metro .k-welcome h2 {
+  font-family: var(--font-ui);
+  font-weight: 300;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+.k-metro .k-welcome .k-add {
+  border-radius: 0;
+}
+
+/* The wall. Blocks stack on a phone, flow side by side on a desk; inside each, the tiles sit on an
+   explicit grid of square units (`pack` gives each its column and row). */
+.k-metro-wall {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) + var(--metro-gap));
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* On a desk, blocks of six columns fill the width in columns, top to bottom — no row of blocks
+   waits for its tallest one. */
+.k-metro-wall[data-wide] {
+  display: block;
+  column-width: calc(6 * var(--metro-unit) + 5 * var(--metro-gap));
+  column-gap: 2.5rem;
+}
+.k-metro-wall[data-wide] > * {
+  width: fit-content;
+  break-inside: avoid;
+  margin-bottom: calc(var(--space-4) + var(--metro-gap));
+}
+.k-metro-wall[data-wide] > .k-metro-group {
+  margin: var(--metro-gap) calc(-1 * var(--metro-gap)) calc(var(--space-4) + var(--metro-gap));
+}
+.k-metro-block {
+  display: grid;
+  grid-template-columns: repeat(var(--metro-cols), var(--metro-unit));
+  grid-auto-rows: var(--metro-unit);
+  gap: var(--metro-gap);
+  perspective: 900px;
+}
+.k-metro-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* A group is a lightly tinted rectangle, reaching a little past its tiles so they line up with the
+     loose tiles above and below it. */
+  margin: calc(-1 * var(--metro-gap));
+  padding: var(--metro-gap);
+  background: color-mix(in oklab, var(--group-tint, var(--ink)) 6%, transparent);
+  transition: background var(--dur-fast) var(--ease), outline-color var(--dur-fast) var(--ease);
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+.k-metro-group[data-drop],
+.k-metro-group[data-chosen] {
+  outline-color: var(--ink);
+}
+.k-metro-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 1.9rem;
+  padding: 0 0.15rem;
+}
+.k-metro-group-name {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+button.k-metro-group-name {
+  min-height: 2.75rem;
+  cursor: grab;
+}
+.k-metro-group-edit {
+  color: var(--ink-faint);
+}
+.k-metro-link {
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.k-metro-link:hover {
+  color: var(--ink);
+}
+
+/* A tile. Its cell carries the grid place and the drag; the button inside is the tile itself, so the
+   press tilt and the flip never fight the drag for `transform`. */
+.k-metro-pane {
+  /* A sideways swipe is the pivot's, a vertical one scrolls (launcher-metro.tsx). */
+  touch-action: pan-y;
+}
+.k-metro-cell {
+  position: relative;
+  display: block;
+  touch-action: pan-y;
+  transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.k-metro .k-launch-tile.k-metro-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--tile-bg);
+  color: var(--tile-ink);
+  box-shadow: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transform: perspective(520px) rotateX(calc(var(--tile-ty, 0) * -9deg)) rotateY(calc(var(--tile-tx, 0) * 9deg)) scale(var(--press, 1));
+  transition: transform 140ms var(--ease);
+}
+.k-metro .k-launch-tile.k-metro-tile:hover {
+  transform: perspective(520px) scale(1);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--tile-ink) 45%, transparent);
+  border-color: transparent;
+}
+.k-metro .k-launch-tile.k-metro-tile[data-pressed="true"] {
+  --press: 0.96;
+  transition-duration: 60ms;
+}
+.k-metro .k-metro-tile:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  z-index: 2;
+}
+.k-metro .k-metro-tile[data-active="true"] {
+  box-shadow: inset 0 0 0 3px var(--tile-ink);
+}
+/* Two faces, back to back: the plain one and the live one. Turning over is one rotation of the pair. */
+.k-metro-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 640ms cubic-bezier(0.5, 0, 0.25, 1);
+}
+.k-metro-tile[data-face="live"] .k-metro-flip {
+  transform: rotateX(180deg);
+}
+.k-metro-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: var(--tile-bg);
+}
+.k-metro-face-live {
+  transform: rotateX(180deg);
+}
+/* The app's mark, centred, as Start draws it; a little above the middle on a tile with a name. */
+.k-metro .k-launch-avatar.k-metro-glyph {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%);
+  border-radius: 0;
+  background: none;
+  color: var(--tile-ink);
+  font-family: var(--font-ui);
+  line-height: 1;
+  font-size: calc(var(--metro-unit) * 0.42);
+  font-weight: 400;
+}
+.k-metro-tile[data-size="small"] .k-metro-glyph {
+  top: 50%;
+  font-size: calc(var(--metro-unit) * 0.4);
+}
+.k-metro-tile[data-size="medium"] .k-metro-glyph,
+.k-metro-tile[data-size="wide"] .k-metro-glyph {
+  font-size: calc(var(--metro-unit) * 0.62);
+}
+.k-metro .k-metro-glyph[data-kind="monogram"] {
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.k-metro-tile[data-size="small"] .k-metro-glyph[data-kind="monogram"] {
+  font-size: calc(var(--metro-unit) * 0.34);
+}
+.k-metro-tile[data-size="medium"] .k-metro-glyph[data-kind="monogram"],
+.k-metro-tile[data-size="wide"] .k-metro-glyph[data-kind="monogram"] {
+  font-size: calc(var(--metro-unit) * 0.5);
+}
+.k-metro .k-metro-name {
+  position: absolute;
+  left: 0.6rem;
+  right: 2.4rem;
+  bottom: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--tile-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The count sits where Start puts it: bottom right, beside the name. */
+.k-metro .k-metro-count {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.4rem;
+  top: auto;
+  left: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--tile-ink);
+  font-size: 1rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.k-metro-tile[data-size="small"] .k-metro-count {
+  right: 0.35rem;
+  bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+.k-metro-marks {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--tile-ink);
+}
+.k-metro-marks .k-launch-shield,
+.k-metro-marks .k-launch-mark {
+  position: static;
+  display: inline-grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tile-ink);
+  box-shadow: none;
+  font-size: inherit;
+}
+/* The live face: a headline and a few lines, top-left; the name stays at the foot. */
+.k-metro-live-text {
+  position: absolute;
+  inset: 0.55rem 0.6rem 1.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+.k-metro-live-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.k-metro-tile[data-size="wide"] .k-metro-live-title {
+  font-size: 1.3rem;
+  font-weight: 400;
+  -webkit-line-clamp: 1;
+}
+.k-metro-live-line {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--tile-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k-metro-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.k-metro-photo + .k-metro-live-text {
+  inset: auto 0 0;
+  padding: 2.4rem 0.6rem 1.9rem;
+  background: linear-gradient(to top, var(--tile-shade), transparent);
+}
+
+/* A folded group: one medium tile holding a mosaic of its apps (a Windows Phone live folder). */
+.k-metro .k-metro-folder {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: color-mix(in oklab, var(--group-tint, var(--ink)) 14%, var(--paper));
+  color: var(--ink);
+}
+.k-metro .k-metro-folder:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.k-metro-wall[data-editing] .k-metro-cell[data-chosen] .k-metro-folder {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.k-metro-mosaic {
+  position: absolute;
+  inset: 0.45rem 0.45rem 1.9rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 3px;
+}
+.k-metro-mosaic-cell {
+  display: grid;
+  place-items: center;
+  background: var(--tile-bg);
+  color: var(--tile-ink);
+  font-size: calc(var(--metro-unit) * 0.3);
+  line-height: 1;
+}
+.k-metro-folder .k-metro-name {
+  color: var(--ink);
+}
+
+/* Edit mode: every tile steps back and dims; the one being changed stays forward and bright. */
+.k-metro-wall[data-editing] .k-metro-cell {
+  transform: scale(0.9);
+  opacity: 0.55;
+}
+.k-metro-wall[data-editing] .k-metro-cell[data-chosen],
+.k-metro-wall[data-editing] .k-metro-group[data-chosen] .k-metro-cell {
+  transform: none;
+  opacity: 1;
+}
+.k-metro-wall[data-editing] .k-metro-cell[data-chosen] .k-metro-tile {
+  box-shadow: inset 0 0 0 3px var(--tile-ink), 0 0 0 2px var(--ink);
+}
+.k-metro-wall[data-editing] .k-metro-tile {
+  cursor: grab;
+}
+.k-metro-cell[data-dragging="true"] {
+  opacity: 1 !important;
+  z-index: 5;
+  transition: none;
+  cursor: grabbing;
+}
+.k-metro-cell[data-dragging="true"] .k-metro-tile {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+/* Where it would land: on a tile, the two make a group (an inset frame); beside it, a bar. */
+.k-metro-cell[data-drop="onto"] {
+  opacity: 1 !important;
+  transform: scale(0.84) !important;
+}
+.k-metro-cell[data-drop="onto"] .k-metro-tile {
+  box-shadow: inset 0 0 0 4px var(--tile-ink), 0 0 0 3px var(--ink);
+}
+.k-metro-cell[data-drop="before"]::before,
+.k-metro-cell[data-drop="after"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--ink);
+}
+.k-metro-cell[data-drop="before"]::before {
+  left: calc(-1 * var(--metro-gap) / 2 - 2px);
+}
+.k-metro-cell[data-drop="after"]::before {
+  right: calc(-1 * var(--metro-gap) / 2 - 2px);
+}
+
+/* Turnstile: opening an app, the tiles swing away about the screen's left edge, the top-left first. */
+.k-metro-wall[data-leaving] {
+  perspective: 1200px;
+  perspective-origin: 0 50%;
+}
+.k-metro-wall[data-leaving] .k-metro-cell {
+  animation: k-metro-turnstile 200ms cubic-bezier(0.6, 0, 1, 1) var(--metro-leave, 0ms) both;
+  transform-origin: calc(-1 * var(--metro-side)) 50%;
+}
+@keyframes k-metro-turnstile {
+  to {
+    transform: rotateY(80deg);
+    opacity: 0;
+  }
+}
+.k-metro-hint {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-metro-empty {
+  margin: 0;
+}
+
+/* The app bar: a slim band of round buttons with a word under each. Pinned to the bottom of a phone;
+   on a wide screen it sits in the header's row, top right. */
+.k-metro-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.35rem var(--metro-side) calc(0.35rem + var(--k-safe-bottom));
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+.k-metro-bar-btn,
+.k-metro .k-metro-bar .k-add {
+  flex: 0 1 4.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.2rem 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  box-shadow: none;
+  cursor: pointer;
+}
+.k-metro .k-metro-bar .k-launch-newbtn {
+  display: flex;
+  background: none;
+  color: var(--ink);
+}
+.k-metro-bar-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-metro .k-metro-bar .k-launch-you {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.78rem;
+  border-width: 2px;
+}
+.k-metro-bar-btn:hover .k-metro-bar-icon,
+.k-metro-bar-btn:focus-visible .k-metro-bar-icon,
+.k-metro-bar-btn[aria-pressed="true"] .k-metro-bar-icon,
+.k-metro-bar-btn[aria-checked="true"] .k-metro-bar-icon {
+  background: var(--ink);
+  color: var(--paper);
+}
+.k-metro-bar-btn:focus-visible {
+  outline: none;
+}
+.k-metro-bar-btn:active .k-metro-bar-icon {
+  transform: scale(0.92);
+}
+.k-metro-bar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.k-metro-bar-word {
+  font-size: 0.68rem;
+  line-height: 1.1;
+  color: var(--ink-soft);
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+/* The primary action keeps the accent, the way Start's app bar has one filled button. */
+.k-metro-bar .k-launch-newbtn .k-metro-bar-icon {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-metro-editbar {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+.k-metro-sizes {
+  display: flex;
+  gap: 0.15rem;
+  padding-right: 0.35rem;
+  margin-right: 0.2rem;
+  border-right: 1px solid var(--line);
+}
+.k-metro-size {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.2rem 0.1rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.k-metro-size-shape {
+  display: block;
+  width: calc(var(--tile-w) * 0.55rem + 0.3rem);
+  height: calc(var(--tile-h) * 0.55rem + 0.3rem);
+  margin: calc((2.25rem - (var(--tile-h) * 0.55rem + 0.3rem)) / 2) 0;
+  border: 2px solid var(--ink);
+}
+.k-metro-size[aria-checked="true"] .k-metro-size-shape {
+  background: var(--ink);
+}
+.k-metro-size[aria-checked="true"] .k-metro-bar-word {
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-metro-size:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.k-metro-bar-more {
+  display: flex;
+}
+.k-metro-bar-more .k-tile-menu-host {
+  position: static;
+}
+/* The edit bar can take two rows on a phone: the last tiles must scroll clear of it. */
+.k-metro:has(.k-metro-wall[data-editing]) {
+  --metro-bar: calc(8.5rem + var(--k-safe-bottom));
+}
+/* In edit mode the edit bar takes the app bar's place. */
+.k-metro:has(.k-metro-wall[data-editing]) .k-metro-bar:not(.k-metro-editbar) {
+  display: none;
+}
+.k-metro-bar-more .k-tile-menu-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0.25rem;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+}
+.k-metro-bar-note {
+  margin: 0;
+  align-self: center;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-metro-done .k-metro-bar-icon {
+  border-color: var(--ink);
+}
+
+/* All apps: Windows Phone's list — a letter in a small square of colour, then the apps under it. */
+.k-metro-all {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 40rem;
+}
+.k-metro-search {
+  max-width: none;
+  margin-bottom: var(--space-2);
+}
+.k-metro-search .k-input {
+  border-radius: 0;
+  border-width: 2px;
+  min-height: 2.75rem;
+}
+.k-metro-letter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: var(--space-3);
+}
+.k-metro-letter {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: var(--space-2) 0 var(--space-1);
+  display: grid;
+  place-items: start end;
+  padding: 0.1rem 0.35rem;
+  border: 2px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 300;
+  line-height: 1;
+  scroll-margin-top: var(--space-4);
+  cursor: pointer;
+}
+.k-metro-letter:hover,
+.k-metro-letter:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+  outline: none;
+}
+.k-metro-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-metro .k-launch-tile.k-metro-row-open {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.25rem;
+  padding: 0.2rem 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+.k-metro .k-metro-row-open .k-launch-name {
+  font-weight: 400;
+}
+.k-metro .k-launch-tile.k-metro-row-open:hover {
+  transform: none;
+  box-shadow: none;
+}
+.k-metro .k-launch-tile.k-metro-row-open:hover .k-launch-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.k-metro .k-launch-tile.k-metro-row-open:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.k-metro .k-launch-avatar.k-metro-mini {
+  position: relative;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0;
+  background: var(--tile-bg);
+  color: var(--tile-ink);
+  font-size: 1.2rem;
+  font-family: var(--font-ui);
+}
+.k-metro .k-metro-mini[data-kind="monogram"] {
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--tile-ink);
+}
+.k-metro .k-metro-row-mark {
+  position: static;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+.k-metro .k-metro-row .k-tile-menu-host {
+  position: static;
+}
+.k-metro-pin {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.k-metro-pin:hover,
+.k-metro-pin:focus-visible {
+  color: var(--ink);
+}
+.k-metro-gone {
+  margin-top: var(--space-4);
+}
+/* Tap a letter: every letter, in a grid; the ones with apps lit, the others faint. */
+.k-metro-jump-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--space-6) + var(--k-safe-top)) var(--space-4) var(--space-6);
+  background: color-mix(in oklab, var(--paper) 88%, transparent);
+  animation: k-fade var(--dur-fast) var(--ease);
+}
+.k-metro-jump {
+  display: grid;
+  grid-template-columns: repeat(4, 4rem);
+  gap: 0.4rem;
+}
+.k-metro-jump-letter {
+  width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: end start;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 1.7rem;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+.k-metro-jump-letter:disabled {
+  background: var(--surface-sunken);
+  color: var(--ink-faint);
+  cursor: default;
+}
+.k-metro-jump-letter:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (min-width: 900px) {
+  .k-metro {
+    --metro-side: 3rem;
+    --metro-bar: 0px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-content: start;
+    column-gap: var(--space-6);
+  }
+  .k-metro > :not(.k-metro-bar) {
+    grid-column: 1 / -1;
+  }
+  .k-metro-head {
+    grid-column: 1 / 2 !important;
+    grid-row: 1;
+  }
+  .k-metro-bar {
+    position: static;
+    grid-column: 2 / 3;
+    grid-row: 1;
+    align-self: end;
+    padding: 0 0 0.35rem;
+    background: none;
+    border: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-metro-pane,
+  .k-metro-jump-scrim {
+    animation: none;
+  }
+  .k-metro .k-launch-tile.k-metro-tile,
+  .k-metro-cell,
+  .k-metro-flip,
+  .k-metro-bar-icon {
+    transition: none;
+  }
+  .k-metro .k-launch-tile.k-metro-tile,
+  .k-metro .k-launch-tile.k-metro-tile[data-pressed="true"] {
+    transform: none;
+  }
+  .k-metro-wall[data-leaving] .k-metro-cell {
+    animation: none;
+  }
+}
+/* tokens-only: end — start screen */

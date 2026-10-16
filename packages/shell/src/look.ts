@@ -18,11 +18,19 @@ import { useSyncExternalStore } from "react";
 import { hueColour } from "./tile-identity.js";
 
 export type Appearance = "system" | "light" | "dark";
+/**
+ * The home screen's style (#96, owner 2026-10-16): Classic, the default, or Start — the Windows Phone
+ * tile wall. A matter of taste, so it is the person's, per device, with the rest of the look. Each
+ * style keeps its own arrangement (Classic's pins and order, Start's wall), so switching loses nothing.
+ */
+export type LauncherStyle = "classic" | "start";
 
 export interface Look {
   appearance: Appearance;
   /** A hue from `TILE_HUES`, or absent for Potyro's own gold. */
   accent?: number;
+  /** Absent: Classic. */
+  launcher?: LauncherStyle;
 }
 
 const KEY = "potyro:look";
@@ -46,7 +54,7 @@ export function readLook(): Look {
     const appearance: Appearance =
       parsed.appearance === "light" || parsed.appearance === "dark" ? parsed.appearance : "system";
     const accent = typeof parsed.accent === "number" && Number.isFinite(parsed.accent) ? parsed.accent : undefined;
-    return accent === undefined ? { appearance } : { appearance, accent };
+    return { appearance, ...(accent === undefined ? {} : { accent }), ...(parsed.launcher === "start" ? { launcher: "start" as const } : {}) };
   } catch {
     return DEFAULT_LOOK;
   }
@@ -67,6 +75,11 @@ function current(): Look {
 }
 
 export function setLook(next: Look): void {
+  // Classic is what "no choice" means: written as absence, like Potyro's own accent.
+  if (next.launcher !== "start") {
+    const { launcher: _classic, ...rest } = next;
+    next = rest;
+  }
   snapshot = next;
   try {
     store()?.setItem(KEY, JSON.stringify(next));

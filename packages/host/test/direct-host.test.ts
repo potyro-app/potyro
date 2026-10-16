@@ -311,3 +311,35 @@ describe("ctx.ui questions", () => {
     expect(share).toHaveBeenCalledOnce();
   });
 });
+
+describe("the live tile (docs/04 §Tile)", () => {
+  const app = (tile?: (ctx: Ctx) => unknown) =>
+    defineApp({
+      id: "plants",
+      name: "Plants",
+      version: "1.0.0",
+      schemaVersion: 1,
+      category: "everyday",
+      ...(tile ? { tile: tile as never } : {}),
+      entities: { plant: { fields: { name: { type: "text" } } } },
+      pages: [{ id: "all", title: "All", view: { type: "list", entity: "plant" } }],
+    });
+
+  it("calls the app's tile with ctx and returns what it says; null without one", async () => {
+    const store = new MemoryStore();
+    await store.open("plants");
+    await store.insert("plant", { name: "Fern" });
+    const host = createHost();
+    const ui: UiBridge = { toast: () => {}, confirm: async () => false, prompt: async () => null, pick: async () => null };
+    const nav: NavBridge = { navigate: () => {} };
+    const loaded = await host.load({ kind: "module", app: app(async (ctx) => ({ count: (await ctx.query("plant")).length })), provenance: "trusted" });
+    const ctx = host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui, nav });
+    expect(await loaded.callTile(ctx)).toEqual({ count: 1 });
+    const plain = await host.load({ kind: "module", app: app(), provenance: "trusted" });
+    expect(await plain.callTile(host.makeCtx(plain, { store, caps: new FakeCapabilities(), ui, nav }))).toBeNull();
+  });
+
+  it("validates `category` as one lowercase word", () => {
+    expect(() => defineApp({ ...app(), category: "Games!" } as never)).toThrow(/category/);
+  });
+});
