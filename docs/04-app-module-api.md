@@ -495,7 +495,11 @@ the model works down, stopping at the first rung that fits:
    checked by a test), so "this option does not exist" is something to read, not assume. Since
    #341 the prompt carries the core of them; each capability (`ctx.caps.*`, `ctx.files`, `ctx.ui.share`…)
    is one index line, its declarations a `lookup` away and put beside a request that names it
-   (`CAPABILITIES` in `packages/generator/src/reference.ts`).
+   (`CAPABILITIES` in `packages/generator/src/reference.ts`). Since #370 so are the rarer views and
+   options, by how often apps use them: `board`, `timeline`, `stats` (and a page's `summary`), `chart`,
+   `steps`, `aggregate`, the checklist's drag-and-rename options, `mount`, `scope`, `sources`,
+   `ctx.ui.form`/`sheet`/`menu`/`progress` and the permission manifest. A new feature gets an index
+   line there; the core's budget is not raised for it.
 2. **A `custom` view** when no built-in fits — the person's own app runs trusted.
 3. **The doable parts**, as SEARCH/REPLACE edits, with the rest listed under **`Not done:`** in the
    prose (carried as `notDone`, shown in the Studio, filed as diagnoses). A request is never refused
