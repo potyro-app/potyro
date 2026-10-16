@@ -129,6 +129,17 @@ export const STYLES = `
 .dg-new .dg-hint { flex: 1 1 10rem; }
 .dg-or { height: 2px; margin: var(--space-3) 0 var(--space-2); background: repeating-linear-gradient(90deg, color-mix(in oklab, var(--ink) 22%, transparent) 0 8px, transparent 8px 14px); }
 .dg-join .dg-row { flex-wrap: nowrap; }
+/* Arrived from an invite link: the join box is the thing to do, so it is the one that stands out. */
+.dg-invited {
+  margin: 0; padding: var(--space-3);
+  border-radius: 18px; background: color-mix(in oklab, var(--dg-sun) 22%, var(--dg-card));
+  border: 2px solid var(--dg-edge); box-shadow: var(--dg-pop);
+  animation: dg-invite-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dg-invite-note { margin: 0 0 var(--space-2); font-weight: 800; }
+.dg-invited .dg-code-in { background: var(--dg-cream); color: var(--dg-cream-ink); }
+@keyframes dg-invite-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dg-invited { animation: none; } }
 .dg-how {
   border: 2px dashed color-mix(in oklab, var(--ink) 28%, transparent); border-radius: 18px;
   padding: var(--space-3) var(--space-4); background: color-mix(in oklab, var(--dg-card) 70%, transparent);

@@ -8,6 +8,7 @@
 // On success we return the *original* definition (with live function closures intact); the
 // parsed output is only used to surface errors.
 
+import { LINK_LIMITS, LINK_PARAM_NAME } from "./links.js";
 import { z } from "zod";
 import { ENUM_COLORS, FIELD_TYPES } from "./types/fields.js";
 import { isWordsSchema, zLanguage, zWords, zWordsNonEmpty } from "./words-schema.js";
@@ -495,7 +496,7 @@ const viewSchema = z.discriminatedUnion("type", [
  * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
  * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
  */
-export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "description?", "icon?", "hidden?", "summary?", "actions?", "primaryAction?", "background?", "layout?"]);
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "description?", "icon?", "hidden?", "summary?", "actions?", "primaryAction?", "background?", "layout?", "link?"]);
 
 export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   Object.fromEntries(
@@ -619,6 +620,11 @@ const pageSchema = z
     view: viewSchema.optional(),
     layout: layoutSchema.optional(),
     fullscreen: z.boolean().optional(),
+    // What a link may open the page with (docs/24 §11): plain names, so they read the same in a URL.
+    link: z
+      .object({ params: z.array(z.string().regex(LINK_PARAM_NAME, "a link param is a plain name: letters, digits and _")).max(LINK_LIMITS.params).optional() })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((page, ctx) => {
@@ -720,6 +726,7 @@ const permissionSchema = z.object({
   haptics: z.boolean().optional(),
   network: networkPermissionSchema.optional(),
   ai: z.boolean().optional(),
+  speech: z.boolean().optional(),
 });
 
 

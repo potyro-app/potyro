@@ -68,7 +68,7 @@ export async function shippedFiles(store: Store, paths: readonly string[]): Prom
 }
 
 export interface DemoPackageInput {
-  app: Pick<UserApp, "id" | "name" | "source" | "lock">;
+  app: Pick<UserApp, "id" | "name" | "source" | "lock" | "line">;
   /** The entities the app keeps, by id: what the demo records may fill. */
   entities: readonly string[];
   /** The app's own modules and libraries (`appCode`): only its own modules travel. */
@@ -92,6 +92,8 @@ export function packDemo(input: DemoPackageInput): Uint8Array {
     seed: input.seed,
     chat: undefined,
     ...(input.credit ? { credit: input.credit } : {}),
+    // Which app it is (docs/24 §11): kept, the copy opens from the same links as this one.
+    ...(input.app.line ? { line: input.app.line } : {}),
   });
 }
 

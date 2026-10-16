@@ -131,9 +131,10 @@ export default defineApp({
 function fullReferenceSection(): string {
   return `REFERENCE — THE \`potyro\` MODULE'S TYPE DECLARATIONS, VERBATIM. This is the authoritative surface: every
 field type, every view type and each option it accepts, every member of \`ctx\`, with the doc comment that
-says what it does. The capabilities in the CAPABILITIES index further down (\`Caps\`, \`CtxFiles\`, \`CtxMedia\`…)
-are declared outside this text: read one with lookup, or in the passages beside the request. If an option
-is declared here or there, it works; if it is declared nowhere, it does not exist — do not invent one and
+says what it does. What the CAPABILITIES index further down names — the capabilities (\`Caps\`, \`CtxFiles\`…)
+and the rarer views and options (\`BoardView\`, \`AggregateView\`, \`ScopeDef\`…) — is declared outside this
+text: read it with lookup, or in the passages beside the request. If an option is declared here or there,
+it works; if it is declared nowhere, it does not exist — do not invent one and
 do not assume one is missing without reading the declaration. Before saying something cannot be done,
 find the type it would live on and read it.
 
@@ -287,19 +288,17 @@ migrations: [
 - \`ctx.params\` — view/route params
 - \`ctx.storage\` — \`get\`/\`set\`/\`delete\`/\`keys\` (all async, app-scoped key/value)
 - \`ctx.ui\` — \`toast(msg)\`, \`await confirm(msg, { ok, destructive })\`, \`await prompt(msg)\`, \`await pick(items)\`,
-  \`await sheet({ title, items: [{ id, label, detail, destructive }] })\` / \`menu(...)\` for a short choice,
-  \`await form({ title, fields: { kg: { type: "number", unit: "kg" } }, initial, submit })\` when an action needs
-  several values (null = cancelled), \`progress(label)\` → \`{ update(0..1), done() }\`, and \`share\` (below).
-  Nothing else — no \`alert\`.
+  and \`form\` / \`sheet\` / \`menu\` / \`progress\` / \`share\` (CAPABILITIES). Nothing else — no \`alert\`.
 - \`ctx.navigate(pageId, params?)\`, \`ctx.log(...)\`
 Because reads are async, a computed that queries other records MUST be \`async\` and \`await\` the call.
 - A page has \`id\`, \`title\`, and a \`view\` — or a \`layout\` of several views (\`PageLayout\` in the
   REFERENCE): \`{ type: "grid", items: [{ title: "Due", span: 1, view: {...} }, { title: "Overdue", span: 2,
   view: {...} }] }\`. Use a grid for a home page that shows figures, a short list and a calendar at
   once; a \`split\` (a list, then its \`detail\`) so a wide screen shows the record beside the list; \`tabs\`
-  for "Active / Done" inside one page. The view types and every option each accepts are the \`View\`
-  union in the REFERENCE. Omitting a required option fails validation. A \`display.primary\`/\`secondary\`
-  binding is a field-key string OR a function \`(r) => ...\`.
+  for "Active / Done" inside one page. The view types are the \`View\` union in the REFERENCE; each one's
+  options are its declaration there, or in CAPABILITIES (board, timeline, stats, chart, steps, aggregate).
+  Omitting a required option fails validation. A \`display.primary\`/\`secondary\` binding is a field-key
+  string OR a function \`(r) => ...\`.
 - \`table\` columns live under \`display.columns\`, not at the top level. A \`map\` view's \`geo\` is the KEY
   of a \`geo\` field (a string, not a function): \`{ type: "map", entity: "place", geo: "location", title: "name" }\`.
 - Give a map \`onOpen\` so tapping a pin opens that record's detail page; without it a pin only shows its
@@ -324,9 +323,9 @@ Because reads are async, a computed that queries other records MUST be \`async\`
   Prefer a built-in view unless the ask genuinely needs bespoke interaction. There is NO chart/graph
   view type — do not invent one; build it from JSX (e.g. sized \`div\`s) inside a custom view.
 
-CAPABILITIES — what an app reaches for only sometimes. Each is real and declared; its declarations are
-not in the REFERENCE above but come with a request that needs it, and lookup("<name>") reads any of
-them. Read the declaration before you write the call:
+CAPABILITIES — what an app reaches for only sometimes: capabilities, and the rarer views and options. Each
+is real and declared; its declarations are not in the REFERENCE above but come with a request that needs
+it, and lookup("<name>") reads any of them. Read the declaration before you write the call:
 ${capabilityIndex()}
 
 NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
@@ -345,12 +344,8 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   show on the detail page, headed by the computed's \`label\`). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
   \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
   text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
-- Records with a stage or status (tasks, applications, "want to try / tried") want a \`board\` page:
-  \`{ type: "board", entity, column: "<enum field>" }\`.
-- Records read back by when (a journal, a workout or care log) want a \`timeline\` page:
-  \`{ type: "timeline", entity, date: "<datetime field>", groupBy: "week", color: "<enum field>" }\`.
-- "How am I doing" numbers (this week vs last, totals over time) are a page \`layout\` stacking a \`stats\`
-  view and a \`chart\` view; both fold the page's rows in functions.
+- Pick the view the records want: a stage or status → \`board\`; read back by when → \`timeline\`; "how am I
+  doing" → a \`stats\` and a \`chart\` in a \`layout\`; who owes whom → \`aggregate\` (CAPABILITIES).
 - A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
   whose rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.
@@ -365,15 +360,12 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   entity's ONLY required field is a single enum (a "type"/"day"), add \`mode: "menu"\` to pick it inline;
   otherwise the shell opens the create form. \`open: true\` lands the user in the new record.
 - Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
-- When one entity is what everything else belongs to (a trip and its places/events/expenses, a project
-  and its tasks), declare \`scope: { entity: "trip", required: true }\`. The shell then shows the current
-  trip in the header with a picker, and every function reads it synchronously as \`ctx.scope.trip\`.
-  Narrow each page yourself: \`filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id\`. Options typed
-  \`Dynamic<T>\` in the REFERENCE — a page \`title\`, a list's \`emptyText\`, an aggregate's \`title\`, the
+- When one entity is what everything else belongs to (a trip and its places, a project and its tasks),
+  declare a \`scope\` (CAPABILITIES: \`ctx.scope\`), never \`ctx.params\` (per page) or \`ctx.storage\` (async).
+  Options typed \`Dynamic<T>\` in the REFERENCE — a page \`title\`, a list's \`emptyText\`, an aggregate's \`title\`, the
   map \`camera\` — may be a function of ctx: \`title: (ctx) => \\\`Places in \${ctx.scope.trip?.city}\\\`\`,
   \`camera: (ctx) => ctx.scope.trip?.location ? { center: [lng, lat], zoom: 11 } : "fit"\`. \`sort\` receives
-  ctx as its THIRD argument: \`(a, b, ctx) => ...\`. A relation to the scoped entity defaults to the current
-  selection on create. Do NOT reach for \`ctx.params\` (per page) or \`ctx.storage\` (async) for this.
+  ctx as its THIRD argument: \`(a, b, ctx) => ...\`.
 - Do NOT expose sub-records (e.g. a session's individual sets) as their own top-level tab — model them
   as a nested \`list\` field or reach them from the parent's detail.
 - Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).

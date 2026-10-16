@@ -271,7 +271,11 @@ export function createAppAi(deps: AppAiDeps): AiCap {
       if (aiStanding(deps.appId) === "off") throw new Error(t`AI is turned off for this app. Turn it on again in Edit tile.`);
       if (!online()) throw new Error(t`You're offline. AI needs the internet — try again when you're connected.`);
       const parts: AiPart[] = [];
-      for (const p of call.parts) parts.push("image" in p ? { type: "image", data: await dataUrl(await resize(p.image)) } : { type: "text", text: p.text });
+      for (const p of call.parts) {
+        if ("image" in p) parts.push({ type: "image", data: await dataUrl(await resize(p.image)) });
+        else if ("audio" in p) parts.push({ type: "audio", data: await dataUrl(p.audio) });
+        else parts.push({ type: "text", text: p.text });
+      }
       const payload: AiPayload = { format: AI_FORMAT, device: deps.device(), system: call.system, parts, ...(call.json ? { json: call.json } : {}), maxTokens: call.maxTokens };
 
       const first = await free(payload);
