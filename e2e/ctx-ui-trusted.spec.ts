@@ -14,7 +14,7 @@ const violations = async (page: Page, selector: string) =>
 async function openYesterdaysSession(page: Page, phone: boolean): Promise<void> {
   await page.clock.setFixedTime(new Date(2026, 8, 9, 12, 0, 0));
   await page.goto("/?user=workout");
-  await expect(page.locator("h1").first()).toHaveText("PPL Log", { timeout: 30_000 });
+  await expect(page.locator("h1").first()).toHaveText("Workout", { timeout: 30_000 });
   if (phone) await page.locator(".k-tabbar .k-tab", { hasText: "History" }).first().tap();
   else await page.locator(".k-sidenav .k-tab", { hasText: "History" }).click();
   await page.locator(".k-tl-card").first().click();
@@ -29,16 +29,16 @@ test.describe("phone", () => {
     await page.getByRole("button", { name: "Log set" }).tap();
     const form = page.getByRole("dialog", { name: "Log set" });
     await expect(form).toBeVisible();
-    // The last set of this session was Overhead Press, 42.5 kg × 6.
-    await expect(form.getByRole("button", { name: /Exercise: Overhead Press/ })).toBeVisible();
-    await expect(form.getByRole("spinbutton", { name: "Weight" })).toHaveValue("42.5");
-    await expect(form.getByRole("spinbutton", { name: "Reps" })).toHaveValue("6");
+    // The last set of yesterday's Push A was Triceps Pushdown, 30 kg × 9.
+    await expect(form.getByRole("button", { name: /Exercise: Triceps Pushdown/ })).toBeVisible();
+    await expect(form.getByRole("spinbutton", { name: "Weight" })).toHaveValue("30");
+    await expect(form.getByRole("spinbutton", { name: "Reps" })).toHaveValue("9");
     await form.getByRole("button", { name: "Increase Reps" }).tap();
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/ui-form-phone.png` });
     await form.getByRole("button", { name: "Log set" }).tap();
     await expect(form).toHaveCount(0);
-    await expect(page.locator(".k-toast")).toHaveText("Logged 42.5 kg × 7");
-    await expect(page.locator(".k-detail")).toContainText("42.5 kg · 7");
+    await expect(page.locator(".k-toast")).toHaveText("Logged 30 kg × 10");
+    await expect(page.locator(".k-detail")).toContainText("30 kg · 10");
   });
 
   test("a delete confirm is a bottom sheet whose button says Delete, in the danger colour", async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe("desktop", () => {
   test("Finish asks with a sheet: the destructive choice last and red, keys walk it, Escape keeps training", async ({ page }) => {
     await page.goto("/?user=workout");
     await page.locator(".k-sidenav .k-tab", { hasText: "Train" }).click();
-    await page.getByRole("button", { name: /Start push workout/ }).click();
+    await page.getByRole("button", { name: /Start Pull A/ }).click();
     await page.getByRole("button", { name: "Finish" }).click();
 
     const sheet = page.getByRole("menu", { name: "Finish workout?" });
@@ -82,7 +82,7 @@ test.describe("desktop", () => {
 
     await page.getByRole("button", { name: "Finish" }).click();
     await page.getByRole("menuitem", { name: /Discard workout/ }).click();
-    await expect(page.getByRole("button", { name: /Start push workout/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
   });
 
   test("a menu hangs under the button that ran the action; progress shows while the action runs", async ({ page }) => {

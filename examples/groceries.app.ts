@@ -446,7 +446,6 @@ export default defineApp({
         reorder: "position",
         editText: true,
         quickAdd: true,
-        hideDone: "collapse",
         emptyText: {
           en: "Nothing on the list. Add the first thing below, or bring back your usuals.",
           "pt-BR": "A lista está vazia. Adicione a primeira coisa aqui embaixo ou traga seus habituais.",

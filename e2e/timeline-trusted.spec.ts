@@ -12,7 +12,7 @@ const SHOTS = process.env.POTYRO_SHOTS;
 async function openHistory(page: Page, phone = false): Promise<void> {
   await page.clock.setFixedTime(NOW);
   await page.goto("/?user=workout");
-  await expect(page.locator("h1").first()).toHaveText("PPL Log", { timeout: 30_000 });
+  await expect(page.locator("h1").first()).toHaveText("Workout", { timeout: 30_000 });
   if (phone) await page.locator(".k-tabbar .k-tab", { hasText: "History" }).first().tap();
   else await page.locator(".k-sidenav .k-tab", { hasText: "History" }).click();
   await expect(page.locator(".k-tl-item").first()).toBeVisible({ timeout: 30_000 });

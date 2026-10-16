@@ -1062,7 +1062,7 @@ const CSS = `
 .wk-set input { width:100%; min-width:0; height:48px; text-align:center; border:1px solid var(--wk-line); border-radius:12px; background:var(--wk-bg); color:var(--wk-ink); font-weight:800; font-size:1.1rem; }
 .wk-set input::placeholder { color:color-mix(in oklab, var(--wk-soft) 55%, transparent); }
 .wk-set input:focus { outline:2px solid var(--wk-hot); outline-offset:0; }
-.wk-check { width:56px; height:48px; border-radius:12px; border:2px solid var(--wk-line); background:transparent; color:transparent; font-size:1.4rem; font-weight:900; cursor:pointer; transition:transform .12s ease, background-color .12s ease; }
+.wk-check { width:56px; height:48px; border-radius:12px; border:2px solid var(--wk-line); background:transparent; color:color-mix(in oklab, var(--wk-soft) 45%, transparent); font-size:1.4rem; font-weight:900; cursor:pointer; transition:transform .12s ease, background-color .12s ease; }
 .wk-check:active { transform:scale(.92); }
 .wk-check[data-on] { background:var(--wk-ok); border-color:var(--wk-ok); color:var(--wk-hot-ink); }
 .wk-addset { align-self:flex-start; margin-top:4px; min-height:40px; border:1px dashed var(--wk-line); background:transparent; color:var(--wk-soft); border-radius:12px; padding:0 14px; cursor:pointer; }

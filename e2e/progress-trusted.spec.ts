@@ -11,7 +11,7 @@ const SHOTS = process.env.POTYRO_SHOTS;
 async function openProgress(page: Page, phone = false): Promise<void> {
   await page.clock.setFixedTime(NOW);
   await page.goto("/?user=workout");
-  await expect(page.locator("h1").first()).toHaveText("PPL Log", { timeout: 30_000 });
+  await expect(page.locator("h1").first()).toHaveText("Workout", { timeout: 30_000 });
   if (phone) {
     const tab = page.locator(".k-tabbar .k-tab", { hasText: "Progress" });
     if (await tab.count()) await tab.first().tap();
