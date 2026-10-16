@@ -220,6 +220,7 @@ const listDisplaySchema = z.object({
   media: z.string().optional(),
   badges: z.array(z.string()).optional(),
   lead: z.enum(["monogram", "icon", "none"]).optional(),
+  icon: zBinding.optional(),
 });
 
 const filterChipSchema = z.object({
@@ -289,7 +290,33 @@ const detailView = z.object({
   entity: z.string(),
   param: z.string().optional(),
   sections: z
-    .array(z.object({ title: zWords.optional(), fields: z.array(z.string()), collapsible: z.boolean().optional(), collapsed: z.boolean().optional() }))
+    .array(
+      z
+        .object({
+          title: zWords.optional(),
+          fields: z.array(z.string()).optional(),
+          related: z
+            .object({
+              entity: z.string().min(1),
+              via: z.string().min(1),
+              view: z.enum(["list", "timeline", "chart"]).optional(),
+              display: listDisplaySchema.optional(),
+              date: z.string().optional(),
+              value: z.string().optional(),
+              by: z.enum(["day", "week", "month"]).optional(),
+              limit: z.number().int().positive().optional(),
+              onOpen: onOpenSchema.optional(),
+            })
+            .strict()
+            .optional(),
+          collapsible: z.boolean().optional(),
+          collapsed: z.boolean().optional(),
+        })
+        .refine((s) => s.fields !== undefined || s.related !== undefined, { message: "a section needs `fields` or `related`" })
+        .refine((s) => !s.related || s.related.view === undefined || s.related.view === "list" || s.related.date !== undefined, {
+          message: "a related timeline or chart needs `date`",
+        }),
+    )
     .optional(),
   actions: z.array(detailActionSchema).optional(),
   media: z.union([z.string(), z.literal(false)]).optional(),
@@ -373,7 +400,11 @@ const checklistView = z.object({
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
   donePlacement: z.enum(["sink", "stay"]).optional(),
-  quickAdd: z.boolean().optional(),
+  quickAdd: z
+    .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional() }).strict()])
+    .optional(),
+  icon: zBinding.optional(),
+  layout: z.enum(["rows", "tiles"]).optional(),
   editText: z.boolean().optional(),
   reorder: z.string().min(1).optional(),
   groupOrder: z.string().min(1).optional(),

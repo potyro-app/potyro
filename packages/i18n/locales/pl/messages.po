@@ -1147,7 +1147,9 @@ msgid "Add an item…"
 msgstr "Dodaj element…"
 
 #. Under a short list: make one more record like these
+#. Under a short list: make one more record like these
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add another"
 msgstr "Dodaj kolejny wpis"
 
@@ -1214,7 +1216,9 @@ msgid "Add the API's address, or a link to its documentation."
 msgstr "Dodaj adres API albo link do jego dokumentacji."
 
 #. Button on an empty page: make its first record
+#. Button on an empty page: make its first record
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add the first one"
 msgstr "Dodaj pierwszy wpis"
 
@@ -1313,6 +1317,13 @@ msgstr "Wszystkie szczegóły i źródła"
 #: ../views/src/steps.tsx
 msgid "All done."
 msgstr "Wszystko zrobione."
+
+#. On an app's home: a list of every page it has
+#. On an app's home: a list of every page it has
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
+msgid "All pages"
+msgstr "Wszystkie strony"
 
 #. Button: let a shared app open a live connection
 #. Button: let a shared app open a live connection
@@ -1671,6 +1682,11 @@ msgstr "Od {by}"
 #: ../shell/src/demo-share.ts
 msgid "By {by}. Try it in your browser: no account, nothing to install."
 msgstr "Od {by}. Wypróbuj w przeglądarce: bez konta, bez instalowania."
+
+#. A small bar chart of related records over time
+#: ../views/src/related.tsx
+msgid "By date"
+msgstr "Według daty"
 
 #: ../shell/src/launcher-order.ts
 msgid "By name"
@@ -2195,6 +2211,10 @@ msgstr "Nie udało się tego zapisać"
 msgid "Could not update your data: {why}"
 msgstr "Nie udało się zaktualizować twoich danych: {why}"
 
+#: ../views/src/checklist.tsx
+msgid "Could not work out the rest of that item"
+msgstr "Nie udało się uzupełnić reszty tego wpisu"
+
 #: ../views/src/media-input.tsx
 msgid "Couldn’t add it: {failed}"
 msgstr "Nie udało się dodać: {failed}"
@@ -2529,6 +2549,11 @@ msgstr "Wcześniej"
 #: ../shell/src/file-viewer.tsx
 msgid "Earlier copies"
 msgstr "Wcześniejsze kopie"
+
+#. Checklist: what was added before, offered while typing
+#: ../views/src/checklist.tsx
+msgid "Earlier items"
+msgstr "Wcześniejsze wpisy"
 
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
@@ -3604,6 +3629,7 @@ msgstr "Wczytywanie modelu…"
 #: ../views/src/checklist.tsx
 #: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
+#: ../views/src/related.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
 #: ../views/src/steps.tsx
@@ -4169,6 +4195,7 @@ msgstr "Nic tu nie ma"
 
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 #: ../views/src/timeline.tsx
 msgid "Nothing here yet."
 msgstr "Jeszcze nic tu nie ma."
