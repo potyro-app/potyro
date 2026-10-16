@@ -138,7 +138,7 @@ test("a file that is not an app is refused with a reason, and nothing is added",
   await expect(dialog.getByRole("alert")).toContainText("None of these is an app");
 });
 
-test("a sealed app's own screen offers to run it as yours, and the sandbox mark opens the same dialog", async ({ page }) => {
+test("a sealed app's own screen draws in the sealed box, the card says so, and the sandbox mark offers to run it as yours", async ({ page }) => {
   const custom = `import { defineApp } from "potyro";
 export default defineApp({
   id: "custom-screen",
@@ -154,18 +154,26 @@ export default defineApp({
   await dialog.getByRole("button", { name: /Paste the source/ }).click();
   await dialog.getByRole("textbox", { name: "The app's source" }).fill(custom);
   await dialog.getByRole("button", { name: "Check it" }).click();
-  await expect(dialog.getByRole("region", { name: "About Custom screen" })).toBeVisible({ timeout: 30_000 });
+  const card = dialog.getByRole("region", { name: "About Custom screen" });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  // The card says where its screens run (#267).
+  await expect(card).toContainText("It draws its own screens, inside the sealed box");
   await dialog.getByRole("button", { name: "Add app" }).click();
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
 
-  // The mark at the top is a button now.
+  // Its screen runs sealed, in its own sandboxed frame — not in the shell's page — and no card asks
+  // to run it as yours first.
+  const frame = page.frameLocator(".k-sealed-view iframe");
+  await expect(frame.getByText("Hello from my own code")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Run it as mine…" })).toHaveCount(0);
+
+  // The mark at the top is a button, and its dialog says what the sealed box already gives.
   await page.getByRole("button", { name: "Runs sealed: review" }).click();
   await expect(page.getByRole("heading", { name: "Let it run as yours?" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
-
-  // And the screen that needs trust asks for it itself.
-  await page.getByRole("button", { name: "Run it as mine…" }).click();
+  await expect(page.getByRole("dialog")).toContainText("In the sealed box it runs and draws its own screens");
   await page.getByRole("button", { name: "Yes, run it as yours" }).click();
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
-  await expect(page.getByText("Hello from my own code")).toBeVisible();
+  // As yours, the same screen is the shell's own, with no frame.
+  await expect(page.locator(".k-main").getByText("Hello from my own code")).toBeVisible();
+  await expect(page.locator(".k-sealed-view")).toHaveCount(0);
 });

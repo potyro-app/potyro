@@ -442,6 +442,11 @@ function Card({
           })}
         </p>
       ) : null}
+      {sealed && app.ownScreens ? (
+        <p className="k-muted k-add-app-note k-add-app-screens">
+          <Trans>It draws its own screens, inside the sealed box: from there they reach your data and this device only through Potyro, and only what you allow.</Trans>
+        </p>
+      ) : null}
       {app.preview === "unavailable" ? (
         <p className="k-add-app-note k-add-app-unpreviewed" role="note">
           <Trans>This app could not be previewed here, so what it keeps and asks for is not shown yet.</Trans>

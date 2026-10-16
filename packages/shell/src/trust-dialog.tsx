@@ -75,7 +75,7 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
             </h3>
             <p className="k-muted">
               <Trans>
-                It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did.{" "}
+                In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did.{" "}
                 <strong>{name}</strong> asks for:
               </Trans>
             </p>
