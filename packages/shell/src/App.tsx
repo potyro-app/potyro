@@ -113,8 +113,8 @@ function GridTile({
   return (
     <button type="button" className="k-objtile" onClick={onOpen}>
       <span className="k-objtile-icon" aria-hidden>{icon}</span>
-      <span className="k-objtile-name">{label}</span>
       <span className="k-objtile-count">{rows.length}</span>
+      <span className="k-objtile-name">{label}</span>
     </button>
   );
 }
@@ -1073,7 +1073,19 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       >
       {locked ? <LockBanner state={locked} /> : null}
       {pageId === HOME ? (
-        <main className="k-main">
+        <main className="k-main k-home">
+          {/* The app's front door: its name, big, on its own colour — then what it holds, then every
+              page it has. A grid home used to be two small tiles at the top of an empty screen. */}
+          <header className="k-page-hero k-home-hero" data-backdrop="wash">
+            <div className="k-page-hero-body">
+              <div className="k-page-hero-top">
+                <span className="k-page-hero-icon k-home-icon" aria-hidden>
+                  {def.icon ?? "◆"}
+                </span>
+                <h2 className="k-page-title">{appLabel}</h2>
+              </div>
+            </div>
+          </header>
           <div className="k-objgrid" aria-label={t({ message: "Objects", comment: "The tiles of an app's kinds of record" })}>
             {baseEntities.map((e) => {
               const lp = visiblePages.find((p) => (p.view as { entity?: string }).entity === e);
@@ -1090,6 +1102,31 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
               );
             })}
           </div>
+          {visiblePages.length ? (
+            <section className="k-home-pages" aria-label={t({ message: "All pages", comment: "On an app's home: a list of every page it has" })}>
+              <h3 className="k-home-pages-title">
+                <Trans comment="On an app's home: a list of every page it has">All pages</Trans>
+              </h3>
+              <ul className="k-list" data-lead="icon">
+                {visiblePages.map((p) => (
+                  <li key={p.id} className="k-list-row" data-clickable="true" onClick={() => navigate(p.id)}>
+                    <span className="k-lead" data-glyph="icon" aria-hidden>
+                      {pageIcon(p)}
+                    </span>
+                    <span className="k-list-text">
+                      <button type="button" className="k-home-page-link" onClick={(e) => { e.stopPropagation(); navigate(p.id); }}>
+                        {titles[p.id] ?? p.id}
+                      </button>
+                      {(p as { description?: string }).description ? <span className="k-secondary">{(p as { description?: string }).description}</span> : null}
+                    </span>
+                    <span className="k-row-chevron" aria-hidden>
+                      ›
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </main>
       ) : (
         // `key={pageId}`: a fresh boundary per page, not a stuck one — navigating away from a page
