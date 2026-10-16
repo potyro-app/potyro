@@ -69,6 +69,7 @@ interface RecipeSeed {
   tags: string[];
   servings: number;
   ingredients: Line[];
+  notes?: string;
   steps: Step[];
   /** Days ago, most recent first. */
   cooked?: number[];
@@ -77,6 +78,7 @@ interface RecipeSeed {
 const RECIPES: RecipeSeed[] = [
   {
     name: "Fluffy Pancakes",
+    notes: "Rest the batter ten minutes; the first one is always for the cook.",
     file: "pancakes",
     status: "keeper",
     tags: ["breakfast", "vegetarian"],
@@ -87,6 +89,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Chicken Caesar",
+    notes: "Anchovies in the dressing, whatever anyone says.",
     file: "chicken-caesar",
     status: "tried",
     tags: ["lunch", "dinner"],
@@ -97,6 +100,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Shakshuka",
+    notes: "Feta and a pinch of chilli on top. Bread for the sauce.",
     file: "shakshuka",
     status: "keeper",
     tags: ["breakfast", "dinner", "vegetarian"],
@@ -107,6 +111,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Greek Salad",
+    notes: "Only when tomatoes are good. Don't cut the feta.",
     file: "greek-salad",
     status: "keeper",
     tags: ["lunch", "vegetarian"],
@@ -117,6 +122,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Mushroom Risotto",
+    notes: "Keep the stock hot. A splash of white wine after toasting the rice.",
     file: "mushroom-risotto",
     status: "tried",
     tags: ["dinner", "vegetarian"],
@@ -127,6 +133,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Chickpea Curry",
+    notes: "Better the next day. Ana asks for this one.",
     file: "chickpea-curry",
     status: "keeper",
     tags: ["dinner", "vegan"],
@@ -137,6 +144,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Spaghetti Bolognese",
+    notes: "Sunday sauce: double it and freeze half.",
     file: "spaghetti-bolognese",
     status: "keeper",
     tags: ["dinner"],
@@ -147,6 +155,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Avocado Toast",
+    notes: "A soft-boiled egg on top makes it lunch.",
     file: "avocado-toast",
     status: "tried",
     tags: ["breakfast", "vegan"],
@@ -157,6 +166,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Banana Bread",
+    notes: "The blacker the bananas, the better. Walnuts if there are any.",
     file: "banana-bread",
     status: "keeper",
     tags: ["snack", "vegetarian"],
@@ -167,6 +177,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Pumpkin Soup",
+    notes: "From Lena: roast the seeds too.",
     file: "pumpkin-soup",
     status: "want to try",
     tags: ["lunch", "dinner", "vegan"],
@@ -176,6 +187,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Guacamole",
+    notes: "Make it last, just before people arrive.",
     file: "guacamole",
     status: "tried",
     tags: ["snack", "vegan"],
@@ -186,6 +198,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Berry Yogurt Pots",
+    notes: "For the busy mornings this week.",
     file: "berry-yogurt-pots",
     status: "want to try",
     tags: ["breakfast", "vegetarian"],
@@ -195,6 +208,7 @@ const RECIPES: RecipeSeed[] = [
   },
   {
     name: "Street Tacos",
+    notes: "Saw it at the market stall: try with pickled onions.",
     file: "street-tacos",
     status: "want to try",
     tags: ["dinner"],
@@ -230,6 +244,7 @@ export async function seedRecipes(store: Store, _me: string | undefined, photo: 
     const pic = await photo(`photos/${r.file}.webp`);
     const row = await store.insert("recipe", {
       name: r.name,
+      notes: r.notes ?? "",
       status: r.status,
       tags: r.tags,
       servings: r.servings,
