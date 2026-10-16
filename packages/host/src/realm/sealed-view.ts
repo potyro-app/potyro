@@ -101,7 +101,19 @@ function definitionJson(def: unknown): string {
 }
 
 export class SealedViewController implements SealedView {
+  /** The mounts that are up, each by its way down. */
+  private readonly live = new Set<() => void>();
+
   constructor(private readonly d: SealedViewDeps) {}
+
+  /**
+   * The app is being put away (switched from, closed): every mounted view goes now, before its store
+   * closes, so no watcher or op of a view reaches a store that is gone. React's unmount, which may
+   * come after, then finds nothing left to do.
+   */
+  closeAll(): void {
+    for (const close of [...this.live]) close();
+  }
 
   state(): "ready" | "off" {
     return this.d.guard.isOff(this.d.appKey) ? "off" : "ready";
@@ -144,6 +156,7 @@ export class SealedViewController implements SealedView {
     );
 
     const end = (): void => {
+      this.live.delete(close);
       over = true;
       for (const t of timers.splice(0)) clearInterval(t);
       for (const off of offs.splice(0)) off();
@@ -330,10 +343,13 @@ export class SealedViewController implements SealedView {
       );
     })().catch((e: unknown) => fail(message(e)));
 
-    return () => {
+    const close = (): void => {
+      this.live.delete(close);
       if (over) return;
       end();
       mark.done();
     };
+    this.live.add(close);
+    return close;
   }
 }
