@@ -7,6 +7,7 @@
 import type { Geo } from "potyro";
 import type { LiveCameraCap } from "./live-camera.js";
 import type { SocketCap } from "./sockets.js";
+import type { SpeechCap } from "./speech.js";
 
 export interface CameraCap {
   capture(o?: { source?: "camera" | "library" }): Promise<Blob>;
@@ -46,8 +47,8 @@ export interface HapticsCap {
 /** One request to an AI service (docs/23): what the host built from an app's `ctx.caps.ai` call. */
 export interface AiCall {
   system: string;
-  /** What goes, in order: the app's words and its pictures. */
-  parts: Array<{ text: string } | { image: Blob }>;
+  /** What goes, in order: the app's words and its pictures — or one recording to write down (docs/29, 16 kHz WAV). */
+  parts: Array<{ text: string } | { image: Blob } | { audio: Blob }>;
   /** A JSON Schema the answer must follow; absent = words back. */
   json?: Record<string, unknown>;
   maxTokens: number;
@@ -112,4 +113,9 @@ export interface Capabilities {
    * exist; the shell wraps it per app. Absent or `null` = this target cannot open any.
    */
   sockets?: SocketCap | null;
+  /**
+   * Voice input (docs/29): one per page (`sharedWebSpeech()`, or the native recognizer); the shell
+   * wraps it per app. Absent or `null` = this target cannot listen.
+   */
+  speech?: SpeechCap | null;
 }

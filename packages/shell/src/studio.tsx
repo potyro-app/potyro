@@ -48,6 +48,8 @@ import { StudioTools, type ToolsTab } from "./studio-tools.js";
 import { ownName, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { platformAsk, useStudioRequests } from "./studio-requests.js";
+import { useVoice, VoiceButton, VoiceStrip } from "./voice-input.js";
+import { withHeard } from "./studio-voice.js";
 import { remixLine } from "./credit-words.js";
 import { remixSuggestions } from "./remix-suggestions.js";
 
@@ -161,6 +163,17 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [description, setDescription] = useState(initialDescription ?? "");
+  const descriptionRef = useRef(description);
+  descriptionRef.current = description;
+  // The microphone (docs/29): what was in the box when it started, and then what is heard after it.
+  const beforeVoice = useRef("");
+  const voice = useVoice(
+    (heard) => setDescription(withHeard(beforeVoice.current, heard)),
+    () => {
+      beforeVoice.current = descriptionRef.current;
+    },
+  );
+  const listening = voice.phase !== "idle";
   // Point mode (#284): pointing is the preview taking taps instead of the app; `point` is the part
   // the next message is about, shown on the box until it is sent or taken off.
   const [pointing, setPointing] = useState(false);
@@ -390,6 +403,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const send = async (text = description): Promise<void> => {
     const asked = text.trim();
     if (!asked || busy || !ready) return;
+    voice.stop();
     const about = point;
     setDescription("");
     setPoint(null);
@@ -678,7 +692,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          <div className="k-composer-box" data-pointed={point ? true : undefined}>
+          <VoiceStrip voice={voice} />
+          <div className="k-composer-box" data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
               <div className="k-composer-point">
                 <span className="k-point-chip" title={t({ message: `About ${point.label}`, comment: "The part of the app a message is about" })}>
@@ -695,10 +710,16 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               id="k-studio-desc"
               className="k-composer-input"
               aria-label={t`Describe the app`}
-              placeholder={point ? t`What should be different about it?` : hasApp ? t`Ask for a change…` : t`Describe the app you want…`}
+              placeholder={
+                listening ? t({ message: "Say what you want…", comment: "Studio box while the microphone listens" }) : point ? t`What should be different about it?` : hasApp ? t`Ask for a change…` : t`Describe the app you want…`
+              }
               rows={2}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                // Typing takes over from the microphone: what was heard stays, to be changed.
+                if (voice.phase === "listening") voice.release();
+                setDescription(e.target.value);
+              }}
               onKeyDown={(e) => {
                 // Enter sends on a keyboard; a phone's Enter is a new line, and its send button is right there.
                 if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) {
@@ -707,12 +728,13 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
                 }
               }}
             />
+            <VoiceButton voice={voice} disabled={busy} />
             <button
               type="button"
               className="k-composer-send"
               aria-label={hasApp ? t`Modify the app` : t`Create the app`}
               title={ready ? t`Send to ${label}` : t`${label} needs an API key — open Model settings`}
-              disabled={!description.trim() || busy || !ready}
+              disabled={!description.trim() || busy || !ready || voice.phase === "working"}
               onClick={() => void send()}
             >
               <span aria-hidden>↑</span>
