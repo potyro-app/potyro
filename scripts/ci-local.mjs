@@ -124,7 +124,36 @@ const claimed = new Set();
 process.on("exit", () => {
   for (const f of claimed) rmSync(f, { force: true });
 });
-for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => process.exit(130));
+/**
+ * Running shards' process groups. Stopping this script stops them with SIGINT, which Playwright
+ * treats as "shut down": it stops its own dev servers and relay too. Those are in process groups of
+ * their own (Playwright starts them detached), so killing the shard's group outright would leave
+ * them listening — on ports nobody holds a claim to any more. SIGKILL only if they will not go.
+ */
+const shardGroups = new Set();
+const SHUTDOWN_GRACE_MS = 20_000;
+let stopping = false;
+function stopShards() {
+  if (stopping) process.exit(130);
+  stopping = true;
+  if (!shardGroups.size) process.exit(130);
+  for (const pid of shardGroups) signalGroup(pid, "SIGINT");
+  setTimeout(() => {
+    for (const pid of shardGroups) signalGroup(pid, "SIGKILL");
+    process.exit(130);
+  }, SHUTDOWN_GRACE_MS).unref();
+}
+function signalGroup(pid, sig) {
+  try {
+    process.kill(-pid, sig);
+  } catch {
+    /* already gone */
+  }
+}
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, stopShards);
+process.on("exit", () => {
+  for (const pid of shardGroups) signalGroup(pid, "SIGKILL");
+});
 
 /**
  * Claim a block of PORT_BLOCK ports for one shard: a lockfile naming this process (`wx`, so two
@@ -296,7 +325,7 @@ async function runShard(i, files) {
   out.write(`$ POTYRO_E2E_PORT_BASE=${block.base} pnpm ${args.join(" ")}\n`);
   let tail = "";
   const status = await new Promise((resolve) => {
-    // Its own process group, so a shard that is stopped takes its servers and browsers with it.
+    // Its own process group, so stopping a shard reaches pnpm and Playwright at once (stopShards).
     const child = spawn("pnpm", args, { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     const onData = (d) => {
       out.write(d);
@@ -304,15 +333,12 @@ async function runShard(i, files) {
     };
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
-    const stop = () => {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        /* already gone */
-      }
-    };
-    process.once("exit", stop);
-    child.once("close", (code) => (process.off("exit", stop), resolve(code)));
+    shardGroups.add(child.pid);
+    child.once("close", (code) => {
+      shardGroups.delete(child.pid);
+      if (stopping && !shardGroups.size) process.exit(130);
+      resolve(code);
+    });
     child.once("error", (e) => (onData(String(e)), resolve(1)));
   });
   await new Promise((r) => out.end(r));

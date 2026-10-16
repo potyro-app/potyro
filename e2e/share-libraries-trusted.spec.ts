@@ -2,6 +2,7 @@ import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // An app with a library, shared by link, opens on the other device (#281).
 //
@@ -28,7 +29,6 @@ const fixture = (name: string) => readFileSync(new URL(`./fixtures/esm/${name}`,
 // kinds of code that have to reach the guest are drawn.
 const summer = (withModule: boolean) => `import { defineApp } from "potyro";
 import { describe } from "${ROOT}";
-import { E2E_RELAY } from "./ports";
 ${withModule ? 'import { label } from "./label.ts";' : "const label = (t: string) => `Sum: ${t}`;"}
 export default defineApp({
   id: "summer",
