@@ -16,7 +16,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { webShare, type ShareCap } from "@potyro/capabilities";
 import { shellCaps } from "./shell-caps.js";
 
-type State = "idle" | "copied" | "saved" | "failed" | "save-failed";
+/** `making`: a link to an app's page is on its way (`pendingLink`); `unmade`: it could not be made. */
+type State = "idle" | "copied" | "saved" | "failed" | "save-failed" | "making" | "unmade";
 
 /** How it left: copied, through the device's own sheet, or saved as a copy (docs/24 counts which). */
 export type ShareHow = "copy" | "native" | "save";
@@ -32,15 +33,37 @@ function deviceShare(): ShareCap {
 
 export interface ShareBodyProps {
   link: string;
+  /** A link still being made (`ctx.ui.share({ app })`, docs/24 §11): shown as on its way, and Copy waits for it. If it cannot be made, the rest goes alone. */
+  pendingLink?: Promise<string>;
   text?: string;
   files?: File[];
   onHanded: (how: ShareHow) => void;
   onDone: () => void;
 }
 
-export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProps) {
+export function ShareBody({ link: given, pendingLink, text, files, onHanded, onDone }: ShareBodyProps) {
   const { t } = useLingui();
-  const [state, setState] = useState<State>("idle");
+  const [state, setState] = useState<State>(pendingLink ? "making" : "idle");
+  const [link, setLink] = useState(given);
+  useEffect(() => {
+    if (!pendingLink) return;
+    let alive = true;
+    pendingLink.then(
+      (made) => {
+        if (!alive) return;
+        setLink(made);
+        setState("idle");
+      },
+      (e: unknown) => {
+        console.warn("[potyro] the link could not be made:", e);
+        if (alive) setState("unmade");
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [pendingLink]);
+  const making = state === "making";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const primaryRef = useRef<HTMLButtonElement | null>(null);
@@ -51,10 +74,12 @@ export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProp
   const payload = useMemo(() => ({ ...(text ? { text } : {}), ...(link ? { url: link } : {}), ...(hasFiles ? { files } : {}) }), [text, link, files, hasFiles]);
   const device = useMemo(() => deviceShare(), []);
   const canShare = device.canShare(payload);
-  const canCopy = Boolean(whole);
+  const canCopy = Boolean(whole) || making;
 
-  // The dialog's main way holds focus from the start, so Enter does the likely thing.
-  useEffect(() => primaryRef.current?.focus(), []);
+  // The dialog's main way holds focus from the start (once a link being made is there), so Enter does the likely thing.
+  useEffect(() => {
+    if (!making) primaryRef.current?.focus();
+  }, [making]);
 
   const selectIt = (): void => {
     const field = textRef.current ?? inputRef.current;
@@ -100,7 +125,11 @@ export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProp
   };
 
   const status =
-    state === "copied"
+    state === "making"
+      ? t({ message: "Making the link…", comment: "Share dialog: the link to an app's page is being made" })
+      : state === "unmade"
+        ? t({ message: "The link could not be made. The words can still be sent.", comment: "Share dialog: making the link to an app's page failed" })
+        : state === "copied"
       ? t`Copied`
       : state === "saved"
         ? files && files.length > 1
@@ -115,7 +144,7 @@ export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProp
                 ? t({ message: "Couldn't copy — select the text and copy it yourself.", comment: "Share dialog: copying an app's words failed" })
                 : t`Couldn't copy — select the link and copy it yourself.`
             : "";
-  const failed = state === "failed" || state === "save-failed";
+  const failed = state === "failed" || state === "save-failed" || state === "unmade";
   // The main way: the share sheet when it takes everything, else saving the files, else copying.
   const primary: "share" | "save" | "copy" = canShare && (hasFiles || !canCopy) ? "share" : hasFiles ? "save" : "copy";
 
@@ -128,11 +157,12 @@ export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProp
           className="k-input k-share-text"
           aria-label={t({ message: "What will be sent", comment: "Share dialog: the words an app hands over, read-only" })}
           readOnly
-          rows={Math.min(hasFiles ? 4 : 10, whole.split("\n").length)}
+          // Lines as they wrap, not only as they are written: a long link is shown whole, not cut off.
+          rows={Math.min(hasFiles ? 4 : 10, whole.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 56)), 0))}
           value={whole}
           onFocus={(e) => e.currentTarget.select()}
         />
-      ) : link ? (
+      ) : link || making ? (
         <input ref={inputRef} className="k-input k-share-link" aria-label={t`Share link`} readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
       ) : null}
       <p className={`k-share-status${failed ? " k-share-status-failed" : ""}`} role="status" aria-live="polite">
@@ -148,12 +178,12 @@ export function ShareBody({ link, text, files, onHanded, onDone }: ShareBodyProp
           </button>
         ) : null}
         {canShare ? (
-          <button ref={primary === "share" ? primaryRef : undefined} type="button" className={`k-add${primary === "share" ? " k-primary-action" : ""}`} data-share="native" onClick={() => void shareNative()}>
+          <button ref={primary === "share" ? primaryRef : undefined} type="button" className={`k-add${primary === "share" ? " k-primary-action" : ""}`} data-share="native" disabled={making} onClick={() => void shareNative()}>
             <Trans comment="Opens the device's own share sheet">Share…</Trans>
           </button>
         ) : null}
         {canCopy ? (
-          <button ref={primary === "copy" ? primaryRef : undefined} type="button" className={`k-add${primary === "copy" ? " k-primary-action" : ""}`} data-share="copy" onClick={() => void copy()}>
+          <button ref={primary === "copy" ? primaryRef : undefined} type="button" className={`k-add${primary === "copy" ? " k-primary-action" : ""}`} data-share="copy" disabled={making} onClick={() => void copy()}>
             {words ? <Trans comment="Share dialog: copy an app's words (and link)">Copy</Trans> : <Trans>Copy link</Trans>}
           </button>
         ) : null}
