@@ -8,7 +8,8 @@ import { DatabaseIcon } from "./data-icon.js";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
-import { LayoutHost, RecordForm, TRUST_REQUEST, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
+import { LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, createDefaults, usePageTitles } from "@potyro/views";
+import { PageHeader, type PageCta } from "./page-header.js";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -828,6 +829,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // A page that asks for the whole screen gets it each time it opens; leaving full screen holds until
   // the person goes to another page (or asks for it back from the tools).
   const [leftFullscreen, setLeftFullscreen] = useState<string | null>(null);
+  // How many records the page's view shows, for its header — told by the view (PageCountContext).
+  const [pageCount, setPageCount] = useState<number | undefined>(undefined);
+  const [ctaBusy, setCtaBusy] = useState(false);
   const fullscreen = Boolean(currentPage?.fullscreen) && leftFullscreen !== pageId;
   const exitFullscreen = useCallback(() => setLeftFullscreen(pageId), [pageId]);
   useEffect(() => setLeftFullscreen(null), [pageId]);
@@ -853,6 +857,31 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // A hidden page (a record's detail, a custom walk-through) is a sub-page: the top bar gets a back
   // control to the entity's list, and the floating quick action stays out of the page's own actions.
   const isSubPage = Boolean(currentPage?.hidden);
+  // The page's header (page-header.tsx): every page that lists or sums records — not a record's own
+  // page, a map that fills the screen, or a screen the app drew itself.
+  const showHero =
+    pageId !== HOME &&
+    !isSubPage &&
+    !fullscreen &&
+    (Boolean(currentPage?.layout) || !["detail", "map", "custom"].includes(pageView?.type ?? ""));
+  // The page's ONE primary action (`primaryAction`): a quick action by id, or one of its own actions
+  // by index. It is the big button in the header, and the floating Add stands down for it.
+  const primaryRef = (currentPage as { primaryAction?: string | number } | undefined)?.primaryAction;
+  const ctaQuick = typeof primaryRef === "string" ? quickActions.find((qa) => qa.id === primaryRef) : undefined;
+  const ctaAction = typeof primaryRef === "number" ? currentPage?.actions?.[primaryRef] : undefined;
+  const cta: PageCta | undefined = ctaQuick
+    ? { label: ctaQuick.label, icon: ctaQuick.icon ?? def.entities[ctaQuick.entity]?.icon, onRun: () => triggerQuick(ctaQuick) }
+    : ctaAction && typeof primaryRef === "number"
+    ? {
+        label: ctaAction.label,
+        icon: ctaAction.icon,
+        busy: ctaBusy,
+        onRun: () => {
+          setCtaBusy(true);
+          void runtime.runPageAction(pageId, primaryRef, params).finally(() => setCtaBusy(false));
+        },
+      }
+    : undefined;
   const backTo = (): void => {
     const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === currentEntity);
     navigate(list?.id ?? landingPage());
@@ -941,6 +970,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       dir={isRtl(runtime.language.current) ? "rtl" : undefined}
       data-provenance={provenance}
       data-locked={locked ? "" : undefined}
+      // What the page sits on (`background`): a glow of the app's colour unless it says otherwise.
+      data-backdrop={backdropKind(backdropOf(def as Parameters<typeof backdropOf>[0], currentPage as Parameters<typeof backdropOf>[1]))}
       style={{ ["--accent" as string]: accent }}
       // Locked: a tap on a control that writes explains instead of acting. Capture phase, so it wins
       // over the control's own handler; the store would refuse the write anyway, but only after a
@@ -1031,9 +1062,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           ) : null
         }
         onBack={isSubPage ? backTo : undefined}
-        pageTitle={pageId === HOME ? undefined : titles[pageId] ?? pageId}
+        pageTitle={pageId === HOME || showHero ? undefined : titles[pageId] ?? pageId}
         pageKey={pageId === HOME ? undefined : pageId}
-        showQuick={!isSubPage && !ownsScreen}
+        showQuick={!isSubPage && !ownsScreen && !cta}
         // A map fills the page: it is the thing you came to look at, and every phone map app shows
         // it edge to edge with the controls on top.
         fullBleed={pageView?.type === "map" && !currentPage?.layout}
@@ -1066,9 +1097,21 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         // a clean boundary for wherever you land, instead of carrying yesterday's error state into a
         // page that never had a problem.
         <ViewErrorBoundary key={`${pageId}:${scoped?.id ?? ""}`} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
+          {showHero ? (
+            <PageHeader
+              runtime={runtime}
+              pageId={pageId}
+              params={params}
+              title={shownTitle}
+              icon={currentPage ? pageIcon(currentPage) : "◇"}
+              count={pageCount || undefined}
+              cta={cta}
+            />
+          ) : null}
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
-          <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
+          {showHero ? null : <SummaryStrip runtime={runtime} pageId={pageId} params={params} />}
           <main className="k-main">
+            <PageCountContext.Provider value={setPageCount}>
             {currentPage?.layout ? (
               // Several views on one page (#105); each item is a view under its own page ref.
               <LayoutHost
@@ -1092,6 +1135,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
                 onCreate={onCreate}
               />
             )}
+            </PageCountContext.Provider>
             {/* The record's own conversation, under the record — the half of KA-35 nothing else can
                 do. Rendered by the SHELL and not by the detail view, because `views` is reachable
                 from a page an app declares and messages must stay out of app code's reach entirely
