@@ -22,10 +22,10 @@ test.describe("phone", () => {
 
   test("Plants: the interval says days, steps by 44px buttons, and asks for the numeric keyboard", async ({ page }) => {
     const form = await openForm(page, "plants", "Plants", "Add: Plant", "Plants");
-    const interval = form.getByRole("spinbutton", { name: "Watering Interval Days" });
+    const interval = form.getByRole("spinbutton", { name: "Water every" });
     await expect(interval).toHaveValue("7");
     await expect(interval).toHaveAttribute("inputmode", "numeric");
-    const wrapper = form.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const wrapper = form.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     await expect(wrapper.locator(".k-number-unit")).toHaveText("days");
     const plus = wrapper.getByRole("button", { name: /Increase/ });
     const minus = wrapper.getByRole("button", { name: /Decrease/ });

@@ -214,7 +214,7 @@ export default defineApp({
           type: "boolean",
           default: false,
           label: {
-            en: "Needs Direct Sun",
+            en: "Wants direct sun",
             "pt-BR": "Precisa de sol direto",
             de: "Braucht direkte Sonne",
             es: "Necesita sol directo",
@@ -226,7 +226,7 @@ export default defineApp({
         lastWatered: {
           type: "datetime",
           width: "half",
-          label: { en: "Last Watered", "pt-BR": "Última rega", de: "Zuletzt gegossen", es: "Último riego", pl: "Ostatnie podlanie", it: "Ultima annaffiatura" },
+          label: { en: "Last watered", "pt-BR": "Última rega", de: "Zuletzt gegossen", es: "Último riego", pl: "Ostatnie podlanie", it: "Ultima annaffiatura" },
         },
         wateringIntervalDays: {
           type: "number",
@@ -236,7 +236,7 @@ export default defineApp({
           integer: true,
           width: "half",
           label: {
-            en: "Watering Interval Days",
+            en: "Water every",
             "pt-BR": "Regar a cada",
             de: "Gießen alle",
             es: "Regar cada",
@@ -254,7 +254,7 @@ export default defineApp({
         },
         seasonalCare: {
           type: "list",
-          label: { en: "Seasonal Care", "pt-BR": "Cuidados por estação", de: "Pflege nach Jahreszeit", es: "Cuidados por estación", pl: "Pielęgnacja w porach roku", it: "Cura stagionale" },
+          label: { en: "Seasonal care", "pt-BR": "Cuidados por estação", de: "Pflege nach Jahreszeit", es: "Cuidados por estación", pl: "Pielęgnacja w porach roku", it: "Cura stagionale" },
           of: {
             season: {
               type: "enum",
@@ -273,7 +273,8 @@ export default defineApp({
               type: "number",
               min: 1,
               integer: true,
-              label: { en: "Interval Days", "pt-BR": "A cada (dias)", de: "Alle (Tage)", es: "Cada (días)", pl: "Co ile dni", it: "Ogni (giorni)" },
+              unit: { en: "days", "pt-BR": "dias", de: "Tage", es: "días", pl: "dni", it: "giorni" },
+              label: { en: "Water every", "pt-BR": "Regar a cada", de: "Gießen alle", es: "Regar cada", pl: "Podlewać co", it: "Annaffiare ogni" },
             },
             note: { type: "text", label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
           },
@@ -286,8 +287,8 @@ export default defineApp({
           label: { en: "Last fed", "pt-BR": "Última adubação", de: "Zuletzt gedüngt", es: "Último abono", pl: "Ostatnie nawożenie", it: "Ultima concimazione" },
         },
         // "Soil still wet": not before this day, and how many times in a row it was said.
-        snoozedUntil: { type: "datetime", hidden: true },
-        snoozes: { type: "number", integer: true, default: 0, hidden: true },
+        snoozedUntil: { type: "datetime", hidden: true, label: { en: "Not before", "pt-BR": "Não antes de", de: "Nicht vor", es: "No antes de", pl: "Nie wcześniej niż", it: "Non prima di" } },
+        snoozes: { type: "number", integer: true, default: 0, hidden: true, label: { en: "Still wet, in a row", "pt-BR": "Ainda úmida, seguidas", de: "Noch nass, hintereinander", es: "Aún húmeda, seguidas", pl: "Wciąż wilgotna, z rzędu", it: "Ancora umida, di fila" } },
       },
       groups: [
         { fields: ["name", "species", "photo", "labels", "needsDirectSun"] },
