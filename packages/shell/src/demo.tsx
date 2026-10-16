@@ -30,6 +30,7 @@ import { Toaster } from "./toaster.js";
 import { siteBase, type DemoLink } from "./demo-link.js";
 import { shareEvent } from "./share-events.js";
 import { creditLine } from "./credit-words.js";
+import { chooseDemoScope } from "./scope.js";
 
 /** The person using a demo: nobody in particular, and never this device's identity. */
 const demoPerson = (): Person => ({ id: "demo-viewer", name: t({ message: "You", comment: "The person trying a demo app" }) });
@@ -118,6 +119,8 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities): Promise<Dem
   // The demo records, once the app has said which entities it keeps. Never anyone's real records:
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
   await applySeed(store, pkg.seed, Object.keys(composed.runtime.definition.entities ?? {}));
+  // An app shown "for a group" opens on one of the demo's groups, not on "choose a group".
+  await chooseDemoScope(composed.runtime);
   composed.runtime.core.invalidate();
   return { composed, navHost, picker, questions, toaster };
 }

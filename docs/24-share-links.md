@@ -74,6 +74,11 @@ The device that shares builds them, in this order:
 2. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
    and an app worth sharing is usable from empty.
 
+An app with an app-wide selection (docs/03 `scope`, Split's group) opens with the first of its demo
+records of that entity already chosen, not on "choose a group": a question before the app is on
+screen is a poor first look. Nothing is remembered, and an app with no such demo records asks, as on
+a first run.
+
 What is never read: the app's own store. Building the demo package opens the app's store only to
 copy files it **shipped with**, by path.
 
