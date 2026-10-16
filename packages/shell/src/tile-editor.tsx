@@ -7,6 +7,7 @@
 // it is predictable: the override is the tile's, and only the tile's.
 
 import { useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { updateEntry, type InstalledApp } from "./launcher-store.js";
 import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
@@ -57,8 +58,10 @@ export function TileEditor({ app, onClose }: Props) {
     onClose();
   };
 
-  return (
-    <div className="k-modal-scrim" onClick={onClose}>
+  // On the page itself: opened from the switcher (a drawer over an open app), it must not be placed —
+  // or clipped — by the drawer.
+  return createPortal(
+    <div className="k-modal-scrim k-tile-editor-scrim" onClick={onClose}>
       <div className="k-modal k-tile-editor" role="dialog" aria-modal="true" aria-label={t`Edit tile: ${appName}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.key === "Escape" && onClose()}>
         <header className="k-tile-editor-head">
           <div>
@@ -174,6 +177,7 @@ export function TileEditor({ app, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -93,8 +93,18 @@ export interface SocketCap {
   localAddress?(): string | undefined;
   /** The consent question for a shared app, in the person's language. The host has English ones. */
   consentWords?(appName: string, target: SocketTarget, note?: ConsentNote): ConsentWords;
-  /** The question asking for a home device's address, in the person's language (`retry`: the last answer was not one). */
-  localAddressWords?(appName: string, retry: string | null): string;
+  /** The question asking for a home device's address, in the person's language (`retry`: what they typed that was not one). */
+  localAddressWords?(appName: string, retry: string | null): AddressAskWords;
+}
+
+/** The words of the question that asks for a home device's address. */
+export interface AddressAskWords {
+  message: string;
+  detail: string;
+  ok: string;
+  cancel: string;
+  /** An example in the empty field. */
+  placeholder: string;
 }
 
 // ---------------------------------------------------------------- addresses

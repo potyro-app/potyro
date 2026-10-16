@@ -10708,6 +10708,11 @@ body:has(.k-tabbar) .k-toasts {
   accent-color: var(--accent);
 }
 
+/* Edit tile is put on the page itself (a portal): from the switcher it sits above the drawer. */
+.k-modal-scrim.k-tile-editor-scrim {
+  z-index: 90;
+}
+
 /* Edit tile's "Live connections" (docs/28): one row per place the app was allowed, a switch each. A
    row turned off greys its name (the app cannot connect there), one whose address is being forgotten
    dims the whole row; the address itself is set in the mono face, because a person compares digits. */

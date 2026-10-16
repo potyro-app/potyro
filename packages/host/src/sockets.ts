@@ -17,7 +17,7 @@
 // realm's worker, or QuickJS) that reaches these through `SocketBridge` (socket-bridge.ts).
 
 import type { NetworkPermission, Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "potyro";
-import { HIDDEN_KEEP_MAX_MS, SocketOpenError, parseLocalAddress, type ConsentNote, type ConsentWords, type PlatformCloseWhy, type PlatformSocket, type SocketCap, type SocketTarget } from "@potyro/capabilities";
+import { HIDDEN_KEEP_MAX_MS, SocketOpenError, parseLocalAddress, type AddressAskWords, type ConsentNote, type ConsentWords, type PlatformCloseWhy, type PlatformSocket, type SocketCap, type SocketTarget } from "@potyro/capabilities";
 import { ROOM_ID, SERVER_PREFIX, cleanName, newRoomId, readServerEvent } from "@potyro/rooms";
 import type { UiBridge } from "./types.js";
 
@@ -149,9 +149,14 @@ export function englishSocketConsent(appName: string, target: SocketTarget, note
   };
 }
 
-export function englishLocalAddressAsk(appName: string, retry: string | null): string {
-  const again = retry ? `“${retry.slice(0, 60)}” is not an address on your home network. ` : "";
-  return `${again}“${appName}” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local`;
+export function englishLocalAddressAsk(appName: string, retry: string | null): AddressAskWords {
+  return {
+    message: retry ? `“${retry.slice(0, 60)}” is not an address on your home network.` : `“${appName}” wants to connect to a device on your home network.`,
+    detail: "What is the device’s address? For example 192.168.1.20 or homeassistant.local — it is in the device’s own settings or app.",
+    ok: "Continue",
+    cancel: "Not now",
+    placeholder: "192.168.1.20",
+  };
 }
 
 /** `keepWhileHidden: "90s" | "5m"` in milliseconds, held to 15 minutes; `undefined` for the default. */
@@ -510,8 +515,8 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
         try {
           let retry: string | null = null;
           for (let i = 0; i < 5; i++) {
-            const words = cap?.localAddressWords?.(appName, retry) ?? englishLocalAddressAsk(appName, retry);
-            const typed = await ui.prompt(words, { default: "" });
+            const w = cap?.localAddressWords?.(appName, retry) ?? englishLocalAddressAsk(appName, retry);
+            const typed = await ui.prompt(w.message, { default: retry ?? "", detail: w.detail, ok: w.ok, cancel: w.cancel, placeholder: w.placeholder });
             if (typed === null || typed === undefined || !String(typed).trim()) return null;
             const address = parseLocalAddress(String(typed));
             if (address) return address;

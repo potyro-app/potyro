@@ -235,9 +235,11 @@ const hub = await ctx.caps.network.socket("ws://local:8123/api/websocket");
 ```
 
 - The first time, Potyro asks the person for the address — “**“Lights” wants to connect to a device on
-  your home network. What is its address? For example 192.168.1.20 or homeassistant.local**” — then
-  asks the consent naming it: “**“Lights” wants a live connection to 192.168.1.20 on your home
-  network.**” Allow / Not now.
+  your home network.**” *What is the device’s address? For example 192.168.1.20 or homeassistant.local —
+  it is in the device’s own settings or app.* [192.168.1.20] **Continue** / **Not now** — then asks the
+  consent naming it: “**“Lights” wants a live connection to 192.168.1.20 on your home network.**” Allow /
+  Not now. (The shell's prompt dialog takes a detail line, button words and a placeholder for this —
+  `UiBridge.prompt`; an app's own `ctx.ui.prompt` still passes only `default`.)
 - Only a local address is taken (loopback, 10/8, 172.16/12, 192.168/16, link-local, IPv6 unique-local,
   a `.local` name — `parseLocalAddress`); anything else is asked again, naming what was typed.
   Cancelling is Not now (`"denied"`). A port they type wins over the app's (`homeassistant.local:9000`).

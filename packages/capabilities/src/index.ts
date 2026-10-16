@@ -36,6 +36,7 @@ export {
   parseLocalAddress,
   SocketOpenError,
   type ConsentNote,
+  type AddressAskWords,
   CONNECT_TIMEOUT_MS,
   HIDDEN_CLOSE_MS,
   HIDDEN_KEEP_MAX_MS,

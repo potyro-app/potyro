@@ -14,8 +14,7 @@
  * `permissions.network.hosts` does not name (refused without asking anyone); `"insecure"` — `ws://`
  * where only `wss://` can work (the web, except a local address); `"too-many"` — this app already
  * has 4 connections open; `"hidden"` — Potyro is in the background, where nothing opens (try again:
- * the first try after the person comes back opens); `"off"` — the person turned this connection off
- * for the app in Edit tile (nobody is asked; it stays off until they turn it on there).
+ * the first try after the person comes back opens); `"off"` — turned off by the person in Edit tile.
  */
 export type SocketFailure = "offline" | "denied" | "refused" | "unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden" | "off";
 
@@ -29,11 +28,10 @@ export type SocketSendFailure = "closed" | "too-big" | "full";
 /**
  * Why a connection ended. `"app"` — the app closed it; `"server"` — the server closed it (`code`,
  * `reason` say why); `"network"` — the connection dropped; `"left"` — the person left the app;
- * `"hidden"` — Potyro was in the background for a while (30 s, or the `keepWhileHidden` asked for);
- * `"too-big"` — the server sent one message over 1 MiB; `"slow"` — messages piled up faster than the
- * app took them; `"stopped"` — the shared app's box was stopped; `"off"` — the person turned this
- * connection off in Edit tile (do not retry: the next try is refused with `"off"`). Potyro never
- * reconnects by itself: open a new one when it makes sense.
+ * `"hidden"` — Potyro was in the background for a while (30 s, or `keepWhileHidden`); `"too-big"` —
+ * the server sent one message over 1 MiB; `"slow"` — messages piled up faster than the app took them;
+ * `"stopped"` — the shared app's box was stopped; `"off"` — turned off in Edit tile (do not retry).
+ * Potyro never reconnects by itself: open a new one when it makes sense.
  */
 export type SocketCloseWhy = "app" | "server" | "network" | "left" | "hidden" | "too-big" | "slow" | "stopped" | "off";
 
@@ -47,22 +45,13 @@ export interface SocketClose {
 /** A message: text arrives as a string, binary as bytes. */
 export type SocketData = string | Uint8Array;
 
-/**
- * How long a connection may stay open while Potyro is in the background: seconds (`"90s"`) or
- * minutes (`"5m"`). The default is 30 s; at most `"15m"` (a longer one is held to 15 minutes). For a
- * chat, so a quick look at another app does not drop the person out of the conversation. The device
- * may still end it sooner (a phone that stops a backgrounded app's network).
- */
+/** How long a connection stays while Potyro is hidden — `"90s"`, `"5m"`; default 30 s, at most 15 min. For a chat. */
 export type KeepWhileHidden = `${number}s` | `${number}m`;
 
 /**
- * `socket(url, opts)`: the WebSocket subprotocols to offer, in order of preference; how long to keep
- * it while Potyro is hidden.
- *
- * A shared app that declared `permissions: { network: { hosts: ["local"] } }` connects to a device on
- * the person's home network with the host `local` — `socket("ws://local:8123/api/websocket")`: Potyro
- * asks the person for its address (`192.168.1.20`, `homeassistant.local`) the first time, names it in
- * the question, and remembers it for the app. The port in the address they type wins over the app's.
+ * `socket(url, opts)`: subprotocols to offer, in order. A device on the person's home network is the
+ * host `local` (`ws://local:8123/…`, and `hosts: ["local"]` for a shared app): Potyro asks them for
+ * its address once.
  */
 export interface SocketOptions {
   protocols?: string | string[];
@@ -102,7 +91,7 @@ export interface RoomPresence {
   member: RoomMember;
 }
 
-/** `room(id, opts)`: the name the others see (display only, at most 40 characters; none by default); how long to stay while Potyro is hidden. */
+/** `room(id, opts)`: the name the others see (display only, at most 40 characters; none by default). */
 export interface RoomOptions {
   name?: string;
   keepWhileHidden?: KeepWhileHidden;

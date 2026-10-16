@@ -7,10 +7,19 @@
 // The rows are the person's, kept by app-sockets.ts; this only shows them and hands the changes back.
 
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { SocketTarget } from "@potyro/capabilities";
+import { isLocalAddress, type SocketTarget } from "@potyro/capabilities";
 import { setSocketSwitch, socketSwitches } from "./app-sockets.js";
 
 export type LiveChoice = "on" | "off" | "forget";
+
+/** A host an app was allowed that is itself on the home network (a trusted app's `ws://192.168.…`). */
+function onHomeNetwork(host: string): boolean {
+  try {
+    return isLocalAddress(new URL(`ws://${host}`).hostname);
+  } catch {
+    return false;
+  }
+}
 
 export interface LiveRow {
   key: string;
@@ -44,7 +53,7 @@ export function LiveConnectionsSetting({ rows, onChange }: Props) {
   const whatOf = (target: SocketTarget): string =>
     "rooms" in target
       ? t({ message: "Rooms where people with the link play or talk together", comment: "Edit tile, Live connections: what Potyro's rooms are" })
-      : "local" in target
+      : "local" in target || onHomeNetwork(target.host)
         ? t({ message: "A device on your home network", comment: "Edit tile, Live connections: a local address like 192.168.1.20" })
         : t({ message: "A server on the internet", comment: "Edit tile, Live connections: a host like stream.binance.com" });
 

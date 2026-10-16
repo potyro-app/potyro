@@ -43,10 +43,10 @@ msgstr "«{appName}» vuole una connessione in tempo reale con {host}."
 msgid "“{appName}” wants a live connection to Potyro’s rooms."
 msgstr "«{appName}» vuole una connessione in tempo reale con le stanze di Potyro."
 
-#. Asked the first time an app connects to a device on the person's home network (a smart-home hub, lights); they type its local address
+#. Asked the first time an app connects to a device on the person's home network (a smart-home hub, lights); they then type its local address
 #: ../shell/src/app-sockets.ts
-msgid "“{appName}” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local"
-msgstr "«{appName}» vuole collegarsi a un dispositivo della tua rete di casa. Qual è il suo indirizzo? Per esempio 192.168.1.20 o homeassistant.local"
+msgid "“{appName}” wants to connect to a device on your home network."
+msgstr "«{appName}» vuole collegarsi a un dispositivo della tua rete di casa."
 
 #. Asked before a shared app first uses AI on a picture
 #: ../shell/src/app-ai.ts
@@ -2061,6 +2061,11 @@ msgstr "Connessione…"
 msgid "Contents of {name}"
 msgstr "Contenuto di {name}"
 
+#. Button: use the address the person typed for a home device (the permission question follows)
+#: ../shell/src/app-sockets.ts
+msgid "Continue"
+msgstr "Continua"
+
 #. placeholder {0}: d.title
 #: ../shell/src/draft-strip.tsx
 msgid "Continue “{0}”"
@@ -4056,7 +4061,9 @@ msgstr "non si sa finché non viene eseguita"
 
 #. Button: refuse a shared app's AI request this time
 #. Button: refuse a shared app's live connection this time
+#. Button: refuse a shared app's live connection this time
 #: ../shell/src/app-ai.ts
+#: ../shell/src/app-sockets.ts
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -6434,6 +6441,11 @@ msgstr "Cosa ti aspettavi?"
 #: ../shell/src/case-report.tsx
 msgid "What happened"
 msgstr "Cosa è successo"
+
+#. Under the question asking for a home device's address; the field below takes it
+#: ../shell/src/app-sockets.ts
+msgid "What is the device’s address? For example 192.168.1.20 or homeassistant.local — it is in the device’s own settings or app."
+msgstr "Qual è l’indirizzo del dispositivo? Per esempio 192.168.1.20 o homeassistant.local: lo trovi nelle impostazioni o nell’app del dispositivo."
 
 #: ../shell/src/trust-dialog.tsx
 msgid "what it asks for cannot be read without running it"
