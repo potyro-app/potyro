@@ -186,6 +186,11 @@ interface Ctx {
     };
     // AiShape: "text" | "number" | "boolean" | "date" (each with "?" for may-be-null), { oneOf: [...] },
     // [shape], { key: shape }.  AiImage: Blob | Uint8Array | FileRef | a path | a media field's MediaRef.
+    speech?: {                                                              // docs/29; permissions: { speech: true }
+      listen(opts?: { language?: string; interim?: boolean }): Promise<SpeechSession>;
+    };
+    // SpeechSession: { language, engine: "device" | "browser" | "cloud", listening,
+    //   onText(cb: (text, final) => void): () => void; stop(): void; result: Promise<string> }
   };
 
   // ---- media helpers ----
@@ -353,9 +358,10 @@ actions: [{ label: "Follow BTC", run: async (ctx) => {
 `"too-big"` (over 1 MiB; a room's 64 KiB) or `"full"` (1 MiB still waiting to go). `onClose` hears
 `{ code, reason, why }`, `why` being `"app" | "server" | "network" | "left" | "hidden" | "too-big" |
 "slow" | "stopped"`. A refused connect rejects with a `code`: `"offline" | "denied" | "refused" |
-"unreachable" | "not-allowed-host" | "insecure" | "too-many"`. **Potyro closes every connection when
+"unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden"`. **Potyro closes every connection when
 the person leaves the app or Potyro has been in the background 30 s, and never reconnects by itself**
-(docs/28 §5 has the five-line reconnect pattern). Messages that arrive before `onMessage` are held and
+(docs/28 §5 has the five-line reconnect pattern); nothing opens while it is in the background
+(`"hidden"`), so an app that tries again every few seconds picks up when the person comes back. Messages that arrive before `onMessage` are held and
 handed to the first callback. Inside a callback `ctx` works; `ctx.now()` is the opening call's time.
 
 `room(id?, { name })` joins a room on Potyro's own relay (docs/26) — no address to know: `room()` makes
@@ -370,6 +376,36 @@ device: "“Price Board” wants a live connection to stream.binance.com." ("…
 room). The socket is the shell's, never the sealed frame's: messages cross the realm's port and the
 QuickJS bridge (bytes as base64 there). Plain `ws://` works only where it can: the device itself, a
 page served over http (development), and the Android app to the local network (docs/28 §6). A new
+optional member: no app's `schemaVersion` changes.
+
+### Voice input (`ctx.caps.speech`, docs/29)
+
+Live words as the person speaks, in their language:
+
+```ts
+let heard: SpeechSession | null = null;   // module level: Stop is another action
+
+actions: [
+  { label: "Dictate", run: async (ctx) => {
+    heard = await ctx.caps.speech!.listen();             // resolves once the microphone is on
+    heard.onText((text, final) => { /* everything so far: show it as it is */ });
+    void heard.result.then((text) => ctx.create("note", { text }),
+                           (e) => ctx.ui.toast(e.code === "denied" ? "Allow the microphone to talk to it" : "It stopped"));
+  } },
+  { label: "Stop", run: async () => heard?.stop() },
+],
+// permissions: { speech: true }
+```
+
+Do not await `result` inside the action that started it: while an action runs, the app's other
+buttons wait, so Stop could never be pressed. `listen({ language: "pt-BR" })` listens in another
+language; `interim: false` hands over finished sentences only. Failures carry a `code`: `"denied" |
+"unavailable" | "offline" | "failed"`. A listening ends on `stop()`, a pause, leaving the app, Potyro
+hidden, a new listening, or 5 minutes (1 for the cloud engine). Where the words are made —
+`engine` — is the device's own recognizer where it has one, else the browser's speech service
+(Chrome's is Google's), else (Firefox) a recording written down by an AI service; the question says
+which. A shared app is asked once per app and way of listening: "“Pantry” wants to listen to you
+through the microphone."; the person's own app only when the recording would leave the device. A new
 optional member: no app's `schemaVersion` changes.
 
 ### How `ctx` differs by trust

@@ -50,6 +50,7 @@ import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ShareSheet } from "./share-sheet.js";
 import { takeStudioHandoff } from "./studio-handoff.js";
+import { canRemix, RemixDialog } from "./remix.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
 import { isRtl, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
@@ -545,17 +546,21 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   };
 
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
-  // Placing a point on the map opens the create form already carrying it.
-  const onCreate = (entity: string, initial: Record<string, unknown>): void =>
-    setEditor({ entity, initial, openAfter: false });
+  // Placing a point on the map opens the create form already carrying it — unless the app said nothing
+  // is added by hand (`quickActions: []`, a live feed's records): then a map has no place button.
+  const handAdds = (def as { quickActions?: unknown[] }).quickActions?.length !== 0;
+  const onCreate = handAdds
+    ? (entity: string, initial: Record<string, unknown>): void => setEditor({ entity, initial, openAfter: false })
+    : undefined;
 
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
   const addLabel = (noun: string): string => t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" });
 
   // Quick actions: the app's declared triggers, else an auto "Add: <Entity>" per top-level object —
-  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3).
-  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions ?? [];
-  const quickActions: QuickActionDef[] = declaredQuick.length
+  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3). A declared empty list
+  // is an app saying "none": records it makes itself (a live feed's) are not for adding by hand.
+  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions;
+  const quickActions: QuickActionDef[] = declaredQuick
     ? declaredQuick
     : baseEntities.map((e) => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }));
 
@@ -668,6 +673,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const [peopleOpen, setPeopleOpen] = useState(false);
   // Share (docs/24): a link anyone can try, or — for a synced app — the people in it.
   const [shareOpen, setShareOpen] = useState(false);
+  // Make it mine (docs/24 §6): your own copy of this sealed app, to change in the Studio.
+  const [remixOpen, setRemixOpen] = useState(false);
   // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
   // app — and the control is hidden rather than showing an empty panel that would claim nothing
   // happened.
@@ -767,11 +774,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     openStudio();
   };
 
-  // A remix opens here with the Studio asking what to change (docs/24 §6): left by the demo it came from.
+  // A remix opens here with the Studio asking what to change (docs/24 §6): left by Make it mine.
   useEffect(() => {
     if (!generator || currentKind !== "user") return;
-    const prompt = takeStudioHandoff(appId);
-    if (prompt) askStudioAbout(prompt);
+    const handoff = takeStudioHandoff(appId);
+    if (handoff) askStudioAbout(handoff.prompt ?? "");
     // once, on arrival
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -878,6 +885,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
     ...(sync && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    // Someone else's app, sealed: the one obvious way to your own copy of it.
+    ...(generator && currentKind === "user" && appId && provenance === "untrusted" && canRemix(getUserApp(appId) ?? {})
+      ? [{ key: "remix", label: t({ message: "Make it mine", comment: "App menu: your own copy of this app, to change in the Studio" }), icon: "✧", hint: t`your own copy to change`, onSelect: () => setRemixOpen(true) }]
+      : []),
     ...(generator && currentKind === "user" && appId ? [{ key: "share", label: t({ message: "Share", comment: "App menu: share this app" }), icon: "↗", hint: t`a link anyone can try`, onSelect: () => setShareOpen(true) }] : []),
     ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
@@ -1181,6 +1192,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {shareOpen && appId && getUserApp(appId) ? (
         <ShareSheet app={getUserApp(appId)!} onClose={() => setShareOpen(false)} onInvite={sync ? () => setPeopleOpen(true) : undefined} clipRoot={() => document.querySelector(".k-app")} />
       ) : null}
+      {remixOpen && appId && getUserApp(appId) ? <RemixDialog app={getUserApp(appId)!} onClose={() => setRemixOpen(false)} /> : null}
       {peopleOpen && appId ? (
         <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
       ) : null}

@@ -24,7 +24,7 @@ import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
 import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
-import { freeAppId, getUserApp, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
+import { freeAppId, getUserApp, listUserApps, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { openStore } from "./open-store.js";
@@ -360,9 +360,17 @@ export interface InstallOptions extends PackageDeps {
   link?: string;
   /**
    * A remix (docs/24 §6): the person's own copy to change, so its credit is "a remix of" the app it
-   * came from, not that app's. Trust is the same as any app from a link: sealed.
+   * came from, not that app's. Trust is the same as any app from a link: sealed. Always a new app, under
+   * an id of its own: never the original's, so nothing written for the original (an example's first-run
+   * records, its conversation) lands in it.
    */
   remix?: boolean;
+  /**
+   * Whether its first records go in (default yes). Off, it starts empty. Only ever the package's own
+   * sample records (docs/24 §3) — a remix of an app on this device is made from its demo package,
+   * never from its store.
+   */
+  seed?: boolean;
   /** Where its data opens. Injected in tests. */
   openStore?: (app: UserApp, opts: { sync: boolean }) => Promise<Store>;
   now?: string;
@@ -399,10 +407,11 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     !runsAsMine && !inspected.sealedProblem && inspected.libraries.some((l) => !l.here)
       ? await sealedCheck(pkg.source, memoryModules(code.lock, new Map(code.files.map((f) => [f.path, f.data]))))
       : { sealedProblem: undefined, missing: [] as string[] };
+  const remix = !update && opts.remix ? remixOf(pkg.credit, inspected.name) : undefined;
   const app = await saveUserApp(
     {
-      id: update ? existing!.id : existing ? freeAppId(inspected.name) : inspected.id,
-      name: inspected.name,
+      id: remix ? freeAppId(`${inspected.id}-remix`) : update ? existing!.id : existing ? freeAppId(inspected.name) : inspected.id,
+      name: remix ? remixName(inspected.name) : inspected.name,
       source: pkg.source,
       trusted: runsAsMine,
       link: opts.source === "link" ? opts.link : undefined,
@@ -410,16 +419,19 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       origin: "imported",
       // Who made it travels with it; a remix says what it remixed instead (docs/24 §6). An update keeps
       // what the app already said about itself.
-      ...(update ? {} : opts.remix ? (pkg.credit ? { remixOf: pkg.credit } : {}) : pkg.credit ? { credit: pkg.credit } : {}),
-      // A library upgrade may change no line of the source: the note says what it did change.
-      note: [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
+      ...(update ? {} : remix ? { remixOf: remix } : pkg.credit ? { credit: pkg.credit } : {}),
+      // A library upgrade may change no line of the source: the note says what it did change. A remix's
+      // says what it is a remix of, so History keeps the credit with the app's first version.
+      note: remix ? remixNote(remix) : [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
     },
     now,
   );
   // A package that brings its own first records is not also given the example's: the example seeders
   // are keyed on the app id, so keeping a shared Groceries listed every item twice (docs/24 §3).
-  const hasSeed = !update && Object.values(pkg.seed ?? {}).some((rows) => rows.length > 0);
-  const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => (hasSeed ? openStore(`user:${a.id}`, o) : openAppStore(a, o)));
+  const seeds = opts.seed !== false;
+  const hasSeed = !update && seeds && Object.values(pkg.seed ?? {}).some((rows) => rows.length > 0);
+  // A remix opens its store as it is: whatever it starts with is what the person chose on the card.
+  const open = opts.openStore ?? ((a: UserApp, o: { sync: boolean }) => (hasSeed || remix ? openStore(`user:${a.id}`, o) : openAppStore(a, o)));
   const theirs = (paths: string[]) => paths.filter((p) => !isReservedPath(p));
   let files: ShippedResult;
   let seeded: number;
@@ -434,7 +446,7 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     await assertShipped(store, code.files.filter((f) => !synced || !isReservedPath(f.path)).map((f) => f.path));
     // What a person reads afterwards is about THEIR files, not the app's code.
     files = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };
-    seeded = update ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
+    seeded = update || !seeds ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
   } catch (e) {
     // Never a "working" app without its files. A new app is taken away again, so trying again is a
     // first install; an update keeps the app it was, and trying again writes the files again.
@@ -450,6 +462,29 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
   const chat = pkg.chat === undefined || update ? null : parseChatRecord(pkg.chat);
   if (chat) await importChat(app.id, chat, now);
   return { app: getUserApp(app.id) ?? app, updated: update, files, seeded, sealedProblem, ...(missing.length ? { missing } : {}) };
+}
+
+/**
+ * What a remix credits (docs/24 §6): the shared app's own credit, or — when it came with none, as an app
+ * from a file or one made on another device by someone who did not say — just its name. Honest either
+ * way: "Remix of Groceries by Ana" when the link said Ana made it, "Remix of Groceries" when nobody said.
+ */
+export function remixOf(credit: AppCredit | undefined, name: string): AppCredit {
+  return credit ?? { name };
+}
+
+/** The remix's name: the original's, unless an app here is already called that — then "Groceries (remix)". */
+export function remixName(name: string): string {
+  const taken = listUserApps().some((a) => a.name === name);
+  return taken ? t({ message: `${name} (remix)`, comment: "The name of a remix when an app here already has the original's name" }) : name;
+}
+
+/**
+ * The note on a remix's first version, in English on purpose — notes are stored and travel, and
+ * `shownNote` (version-notes.ts) recognises and translates this one where it is read.
+ */
+export function remixNote(of: AppCredit): string {
+  return of.by ? `remix of “${of.name}” by ${of.by}` : `remix of “${of.name}”`;
 }
 
 /** Every one of these paths is in the store's file space, or this says which are not. */
