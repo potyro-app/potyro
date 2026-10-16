@@ -123,10 +123,12 @@ export interface DemoPackage {
   accent?: string;
   /** Who the link says made it. */
   credit: AppCredit;
+  /** Whether it carries files the app shipped with (pictures, mostly): what an inline link can drop. */
+  pictures: boolean;
 }
 
 /** Everything `packDemo` needs, read from this device for a saved app. */
-export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): Promise<DemoPackage> {
+export async function demoPackageFor(app: UserApp, opts: { by?: string; pictures?: boolean } = {}): Promise<DemoPackage> {
   const [{ inspect }, { appCode, modulesOf }] = await Promise.all([import("./app-source.js"), import("./app-modules.js")]);
   const shape = await inspect(app.source);
   const entities = shape.entities.map((e) => e.key);
@@ -140,7 +142,8 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
     const { openAppStore, syncAllowedFor } = await import("./app-store.js");
     const store = await openAppStore(app, { sync: await syncAllowedFor(app) });
     try {
-      files = await shippedFiles(store, [...new Set([...(app.shipped ?? []), ...bundled])]);
+      // `pictures: false`: a link that has to carry the app in itself, and would not fit with them.
+      if (opts.pictures !== false) files = await shippedFiles(store, [...new Set([...(app.shipped ?? []), ...bundled])]);
       code = await appCode((await modulesOf(app.id)) ?? store, app.lock);
     } finally {
       await store.close();
@@ -159,5 +162,6 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
     icon: shape.icon,
     accent: shape.accent,
     credit,
+    pictures: files.length > 0,
   };
 }

@@ -44,13 +44,14 @@ const pickPerson = async (row: Locator, who: RegExp): Promise<void> => {
 };
 
 /**
- * The halves of the two expenses the app comes with that belong to whoever joins (#222).
+ * The halves of the Flat's sample expenses that belong to whoever joins (#222).
  *
  * They used to name the owner alone and so contributed nothing to a second person's balance —
  * which is what made them read as broken ("your share €0.00") the moment the app was shared. Now
- * they split like any other expense, so every balance in this file carries them: (42.85 + 39.00)/2.
+ * they split like any other expense, so every balance in this file carries them: Groceries, Cleaning
+ * things, Internet and Electricity, (42.85 + 18.40 + 39.00 + 64.20) / 2, the odd cent to the owner.
  */
-const SEEDED_HALF = 40.92;
+const SEEDED_HALF = 82.22;
 
 const openSplit = async (page: Page): Promise<void> => {
   await page.goto("/?user=split");

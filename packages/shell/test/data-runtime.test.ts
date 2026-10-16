@@ -18,7 +18,7 @@ describe("declaredEntities", () => {
   it("reads every example's fields with their types, in declared order", async () => {
     const groceries = (await declaredEntities(read("groceries.app.ts")))!;
     expect(Object.keys(groceries)).toEqual(["aisle", "item"]);
-    expect(Object.keys(groceries.item!.fields)).toEqual(["name", "aisle", "quantity", "bought", "position", "note"]);
+    expect(Object.keys(groceries.item!.fields)).toEqual(["name", "aisle", "quantity", "for", "bought", "position", "note", "onList", "timesBought", "lastBought"]);
     expect(groceries.item!.fields.aisle).toEqual({ type: "relation", to: "aisle", label: { en: "Aisle", "pt-BR": "Seção", de: "Abteilung", es: "Sección", pl: "Dział", it: "Reparto" } });
     expect(groceries.item!.displayField).toBe("name");
     for (const file of ["recipes.app.tsx", "places.app.ts", "plants.app.ts", "split.app.ts", "workout.app.tsx"]) {
