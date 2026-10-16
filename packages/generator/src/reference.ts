@@ -22,7 +22,7 @@
 export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
 
 /** Type files that are never in the core: read only through `lookup` and the capability passages. */
-export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts"] as const;
+export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts", "speech.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 
@@ -170,10 +170,10 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "Face",
-    summary: "a face in a live frame: eyes, mouth, nose, brows, expressions (smile, blink…), head turn, 3D matrix — `live({ faces: true })`",
+    summary: "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn — `live({ faces: true })`",
     declarations: ["FacePoint", "FaceMeshPoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
     notes:
-      "`info.time - info.facesTime` is how old the faces are. A warp that must not lag: `faces: { sameFrame: true }`, then draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
+      "Each face also has `matrix` (the head in 3D, 16 numbers column-major; see Face.matrix) and, with `points: true`, mesh points with depth `z`. `info.time - info.facesTime` is how old the faces are. A warp that must not lag: `faces: { sameFrame: true }`, then draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
     cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
     uses: /\bfaces\s*:|\.faces\b/,
   },
@@ -238,6 +238,22 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /caps\.network\.(?:socket|room)\b/,
   },
   {
+    key: "ctx.caps.speech",
+    summary:
+      "voice input, live words",
+    declarations: ["SpeechEngine", "SpeechFailure", "SpeechOptions", "SpeechSession", "SpeechCapability"],
+    notes: [
+      "Declare `permissions: { speech: true }`. Start it from a button the person presses (an action or a custom view), keep the",
+      "session in a module-level variable, and",
+      "do NOT await `result` inside that action: while an action runs the app's other buttons wait, so a Stop button could",
+      "never be pressed — use `s.result.then(text => ctx.create(…))`. `text` is everything heard so far: show it as it is.",
+      "It listens in the person's language unless `language` says another. A failure's `e.code` is one of SpeechFailure; word",
+      "it (\"denied\" → \"Allow the microphone to talk to it\").",
+    ].join("\n"),
+    cues: /caps\.speech\b|\b(voice|speak\w*|spoken|speech|dicta\w*|talk to it|say it|hands[- ]free|microphone|mic|transcri\w*|głos\w*|mów\w*|dyktu\w*|mikrofon\w*|voz|falar|fala|dita[rd]\w*|hablar|hablad\w*|stimm\w*|sprechen|sprach\w*|diktier\w*|voce|parlar\w*|dettat\w*)\b/i,
+    uses: /caps\.speech\b/,
+  },
+  {
     key: "ctx.media",
     summary: "`put(blob)` → MediaRef for a `media` field, `url(ref)` → a URL to show it",
     declarations: ["CtxMedia"],
@@ -254,8 +270,10 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url, files })`: hand a result, a link or a picture on (share sheet / Copy); no permission",
+    summary: "`await ctx.ui.share({ text, url })`: hand a result or a link on (share sheet / Copy); no permission",
     declarations: ["ShareFile"],
+    notes:
+      "Pictures and files too: `files: [blob, record.picture, photoField]` (a Blob such as `cam.snap()` or `canvas.toBlob()`, bytes, a file field's value, a photo field's value; at most 10, 25 MB together). The person sees them in the dialog and picks Share…, or Save a copy.",
     members: [{ of: "CtxUi", name: "share" }],
     cues: /\bshare\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir)\b/i,
     uses: /\.share\(/,

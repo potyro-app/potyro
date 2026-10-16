@@ -440,6 +440,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | What is in a request | The host's instructions to the model, the parts the app's call named (its words and its pictures, resized on the device to 1600 px), the JSON Schema for the answer, a token cap, a random device id. Never a key; never a record the app did not pass. |
 | What it sends on | `google/gemini-2.5-flash-lite` (or `AI_MODEL`), always — the sender cannot choose the model, the token cap (≤ 4 000) or the provider rules (`data_collection: "deny"`). No tools, no web search. |
 | Size | 6 MiB a request, checked before parsing; ≤ 4 pictures of ≤ 3 MiB each as data URLs; ≤ 40 000 characters of text. Too big is refused, never cut. |
+| Recordings (voice, docs/29) | Where a browser cannot turn speech into words (Firefox), the shell sends ONE `audio` part — `data:audio/wav;base64,…`, 16 kHz mono, ≤ 2.7 MB (a minute), never with a picture — and the relay hands it to the same model as `input_audio`. The same limits and the same ledger as every request: about $0.0006 a minute of speech. Nothing else about the relay changes; an older relay refuses the part (`400 part`), and the shell then uses the person's own key. |
 | Limits | 20 a day and 100 a month per device id, 60 a day per address (first `X-Forwarded-For`), 2 at once per device. |
 | Spending cap | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service a calendar month (UTC), checked **before** each request with a cent of room; what each request really cost (OpenRouter's `usage.cost`) is added after it. Past it, every device is told "used up" and moves to its own key. |
 | State | The month's spend and each device's count in `AI_LEDGER` (a JSON file), written on every change, so a restart does not start the month again. A file it cannot read stops it starting. Daily limits are in memory. |
@@ -723,6 +724,79 @@ instead means the SPA rule answered first; a `403` means the `Origin` is not on 
 container again if `package.json` changed, and `docker restart potyro-rooms`. A restart closes every
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
+
+## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
+
+The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, `favicon.svg` and
+`shots/*.jpg`. Nothing runs on the server for it, it keeps no logs of its own, and it loads nothing
+from anyone else (no fonts, analytics or CDN), so it can be served with a strict policy. Until
+potyro.com has a website, the gallery is its front page. All its paths are relative, so it works at
+`/` or under `/gallery/` without being rebuilt.
+
+### 1. Make the links (once per change to the list, from a machine with a browser)
+
+```bash
+# Against the real site. It adds each ready app the way a person does, makes its demo link from the
+# tile's Share sheet, opens the link as a stranger (sealed, named, no console errors, and the remix
+# link opens Make it mine), screenshots it, and writes the link and screenshot into gallery.json.
+# An app with a link on this site already keeps it; --refresh makes new ones.
+pnpm gallery:publish --site https://potyro.app
+git add gallery/gallery.json gallery/shots && git commit -m "chore(gallery): links for potyro.app"
+```
+
+The publishing browser is new and empty, so the links carry no one's name unless `--by "Potyro"` is
+passed, and no records but the apps' own samples (docs/24 §3). The share service limits each address to
+30 links a day; one run makes at most one per ready app.
+
+### 2. Build and upload
+
+```bash
+pnpm gallery:build                    # → dist/gallery/ (refuses data with a problem, or a missing screenshot)
+rsync -av --delete dist/gallery/ SERVER:/srv/potyro.com/
+```
+
+### 3. Serve it (Caddy)
+
+```caddy
+potyro.com, www.potyro.com {
+    root * /srv/potyro.com
+    encode zstd gzip
+    file_server
+
+    header {
+        Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+    # The page and its data change on every build; the style, script and pictures are named by version.
+    @page path / /index.html
+    header @page Cache-Control "no-cache"
+    @assets path /gallery.css /gallery.js /shots/* /favicon.svg
+    header @assets Cache-Control "public, max-age=86400"
+
+    # No access log: a gallery that keeps no record of you, on the server too.
+    log {
+        output discard
+    }
+}
+```
+
+`img-src data:` is for the page's paper grain, an inline SVG. The page's data is a
+`<script type="application/json">` block, which a CSP does not treat as a script. The page has no form
+and no inline script or style, so it needs nothing looser.
+
+### 4. Check it
+
+```bash
+curl -sI https://potyro.com/ | grep -i content-security-policy
+curl -s https://potyro.com/ | grep -c 'potyro.app/s/'       # one Try it and one Make it mine per app
+```
+
+Open it in a private window with the network panel open: every request should go to potyro.com. Then
+tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make it mine card opens over it).
 
 ## What this does NOT protect
 

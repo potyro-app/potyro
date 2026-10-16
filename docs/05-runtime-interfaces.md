@@ -94,6 +94,7 @@ export interface Capabilities {
   sockets?: SocketCap | null;              // docs/28 — one per page; the shell wraps it per app
   share?: ShareCap | null;                 // the device's share sheet: { canShare(p), share(p) } for the share dialog
                                            // (web: Web Share API + canShare({ files }); native: @capacitor/share)
+  speech?: SpeechCap | null;               // docs/29 — the page's microphone; the shell wraps it per app
 }
 /** Live connections: the page owns the WebSockets (the shell's realm, never a sealed frame). */
 export interface SocketCap {
@@ -108,7 +109,17 @@ export type SocketTarget = { host: string } | { rooms: true };
 export interface PlatformSocketEvents { message(d: string | Uint8Array): void; close(code: number, reason: string, why: "app" | "server" | "network" | "left" | "hidden"): void; }
 export interface PlatformSocket { readonly protocol: string; readonly bufferedAmount: number; send(d: string | Uint8Array): void; close(code?: number, reason?: string): void; }
 /** One request: the host built it from an app's ctx.caps.ai call; the shell decides who pays and sends it. */
-export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob }>;
+/** Voice input: one listening per page; `where` says which engine and whose service. */
+export interface SpeechCap {
+  where(language: string): Promise<{ engine: "device" | "browser" | "cloud"; service?: string } | null>;
+  listen(o: { language: string; interim: boolean; maxMs?: number },
+         ev: { onText(text: string, final: boolean): void; onWorking?(): void;
+               onEnd(e: { why: SpeechEndWhy; text: string; code?: SpeechFailure; message?: string }): void }): Promise<{ stop(): void; abort(why: SpeechEndWhy): void }>;
+  stopAll(why: SpeechEndWhy): void;  readonly listening: boolean;
+  withTranscriber?(t: { service: string; transcribe(wav: Blob, language: string): Promise<string> }): SpeechCap; // the cloud engine
+  allowed?(engine): boolean; allow?(engine): void; consentWords?(appName: string, where): AiConsentWords;   // per app, the shell's
+}
+export interface AiCall { system: string; parts: Array<{ text: string } | { image: Blob } | { audio: Blob }>;
                           json?: Record<string, unknown>; maxTokens: number; }
 export interface AiReply { text: string; via: "free" | "own-key"; cost?: number; }
 export interface AiCap {
@@ -160,6 +171,15 @@ question once per app and host, 4 per app, 1 MiB a message, 1 MiB waiting each w
 `.room`, `.socket.send`, `.socket.close`), a `{ t: "sock" }` message per event and a `sockack` for
 each one the app takes — at most 64 events / 1 MiB untaken in the box, then the connection closes
 `"slow"`. The Android app adds ws:// to the local network through its own plugin (docs/28 §6).
+
+`speech` is ONE microphone per page (`sharedWebSpeech()`, or `speechOverPlugin` in the Android app;
+the fake is `createFakeSpeech()`). It picks the engine (docs/29 §2), and where the browser has none
+the shell's per-app wrapper (`app-speech.ts`) adds the cloud engine with `withTranscriber`, writing a
+16 kHz WAV down through the app's own AI service (`AiCall` with one `{ audio }` part). The host's
+`speech.ts` is the mediation for every app (the manifest's `speech`, the question once per app and
+way of listening, the limits) and `speech-bridge.ts` carries a sealed app's listening into its box:
+two ops (`caps.speech.listen`, `.stop`) and a `{ t: "speech" }` message per event; a listening that
+is on pauses the box's call budget like a question.
 
 `liveCamera` is ONE object per page (`sharedLiveCamera()`), not one per `Capabilities`: the shell's
 indicator watches it, and a second instance (the Studio's preview builds its own capabilities) would

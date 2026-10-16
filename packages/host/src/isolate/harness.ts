@@ -27,6 +27,8 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   // Live connections (docs/28), by the number the host gave each. Kept across calls: a connection
   // outlives the action that opened it.
   var socks = {};
+  // Listenings (docs/29), by the number the host gave each.
+  var speeches = {};
   function bridge(obj){
     return new Promise(function(resolve, reject){
       var id = "c" + (++callSeq);
@@ -269,6 +271,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         return makeSock(info);
       }
     };
+    if (has("speech")) ctx.caps.speech = {
+      listen: async function(o){
+        var info = await bridge({op:"cap.speech.listen", opts: o ? { language: o.language == null ? null : String(o.language), interim: o.interim == null ? null : o.interim !== false } : null});
+        return makeSpeech(info);
+      }
+    };
     if (has("filesystem")) ctx.caps.filesystem = {
       pick: async function(){ throw new Error("filesystem pick is not marshalable in isolate v1"); },
       save: async function(){ throw new Error("filesystem save is not marshalable in isolate v1"); }
@@ -353,6 +361,42 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     return s;
   }
 
+  // A listening as the app holds it: the host has the microphone (speech-bridge.ts).
+  function makeSpeech(info){
+    var lid = info.lid, cbs = [], text = "", fin = true, settle = null;
+    var s = { language: String(info.language), engine: info.engine, listening: true };
+    s.result = new Promise(function(resolve, reject){ settle = { resolve: resolve, reject: reject }; });
+    s.result.catch(function(){});
+    function give(t, f){
+      if (t === text && f === fin) return;
+      text = t; fin = f;
+      tell(cbs.slice(), t, f);
+    }
+    function tell(list, t, f){
+      for (var i = 0; i < list.length; i++) { try { list[i](t, f); } catch (e) { bridgeSync({op:"log", args:["a speech onText threw: " + String((e && e.message) || e)]}); } }
+    }
+    s.onText = function(cb){
+      if (typeof cb !== "function") throw new TypeError("onText takes a function");
+      if (!s.listening) return function(){};
+      cbs.push(cb);
+      if (text) { var t0 = text, f0 = fin; Promise.resolve().then(function(){ if (cbs.indexOf(cb) >= 0) cb(t0, f0); }); }
+      return function(){ cbs = cbs.filter(function(x){ return x !== cb; }); };
+    };
+    s.stop = function(){ if (s.listening) bridgeSync({op:"cap.speech.stop", lid: lid}); };
+    s._event = function(ev){
+      if (!s.listening) return;
+      if (ev.kind === "text") return give(String(ev.text), ev.final === true);
+      if (ev.text && !ev.code) give(String(ev.text), true);
+      s.listening = false;
+      delete speeches[lid];
+      cbs = [];
+      if (ev.code) { var err = new Error(String(ev.message || ev.code)); err.code = String(ev.code); settle.reject(err); }
+      else settle.resolve(text);
+    };
+    speeches[lid] = s;
+    return s;
+  }
+
   function resolveBinding(app, p, record, ctx){
     if (p.refKind === "reminder"){
       var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; });
@@ -376,6 +420,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       // An error with a code (a socket's "denied") arrives as {"__err", "code"}; anything else is the message.
       if (json.indexOf('{"__err":') === 0) { try { var pe = JSON.parse(json); var err = new Error(pe.__err); err.code = pe.code; return c.reject(err); } catch (x) {} }
       c.reject(new Error(json));
+    },
+    speech: function(json){
+      var ev = JSON.parse(json);
+      var s = speeches[ev.lid];
+      if (s) s._event(ev);
+      return "1";
     },
     sock: function(json){
       var ev = JSON.parse(json);
