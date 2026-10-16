@@ -1,11 +1,13 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Guests (docs/04 §Guests): Ana sets a trip up before anyone has joined — "Tom" paid for dinner — then
 // shares it. Bo joins, says he is Tom, and the dinner is his on both devices, with nothing rewritten.
 
-const RELAY = process.env.POTYRO_RELAY ?? "ws://localhost:4201";
+// The relay this run's servers talk to: a shard has its own block of ports (e2e/ports.ts).
+const RELAY = E2E_RELAY;
 const shots = process.env.POTYRO_SHOTS;
 
 const TRIP = `import { defineApp } from "potyro";
