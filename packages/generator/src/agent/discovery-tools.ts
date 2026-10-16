@@ -77,7 +77,15 @@ function lookupPath(decls: readonly Declaration[], path: readonly string[]): Dec
 export function lookupReference(reference: string, rawQuery: string): string {
   const trimmed = rawQuery.trim().replace(/[?:]+$/, "").replace(/\(\)$/, "");
   const capability = capabilityNamed(trimmed);
-  if (capability) return clip(capabilityBlock(capability, CAPABILITY_REFERENCE));
+  if (capability) {
+    // A view type that left the core (#370: `board`, `aggregate`…) still says what the validator accepts.
+    // A view that stays in the core with only some options moved (`checklist`) answers with both.
+    const fields = VIEW_FIELDS[capability.key];
+    const block = capabilityBlock(capability, CAPABILITY_REFERENCE);
+    const view = fields ? declarations(SCHEMA_REFERENCE).find((d) => d.name.toLowerCase() === `${capability.key}view`) : undefined;
+    const head = fields ? `\`${capability.key}\` view — what the validator accepts: ${fields.join(", ")}\n\n${view ? `${view.text.trim()}\n\n` : ""}` : "";
+    return clip(head + block);
+  }
   const decls = declarations(reference);
   const path = /^ctx\./i.test(trimmed) ? trimmed.slice(4).split(".").filter(Boolean) : [];
   if (path.length > 1) {

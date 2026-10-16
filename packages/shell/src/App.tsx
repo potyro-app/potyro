@@ -50,10 +50,13 @@ import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ShareSheet } from "./share-sheet.js";
 import { takeStudioHandoff } from "./studio-handoff.js";
+import { canRemix, RemixDialog } from "./remix.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
 import { isRtl, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
+import { acceptLinkParams } from "potyro";
+import type { Arrival } from "./app-link.js";
 
 interface EditorState {
   entity: string;
@@ -87,8 +90,31 @@ interface QuickMenuState {
 // Sentinel page id for the grid "home" overview (grid nav mode only).
 const HOME = "__home__";
 
-/** Survives the reload that re-runs an edited app, so an edit doesn't cost you your place. */
+/**
+ * Survives the reload that re-runs an edited app, or one let run as yours, so it doesn't cost you your
+ * place: the page, and what it was opened with — a game's code from a link must not be lost to the
+ * reload that lets the game run (docs/24 §11). Plain text (a page id) in what older builds wrote.
+ */
 const RETURN_TO_PAGE = "potyro:return-to-page";
+
+function readReturning(): { page: string; params: Record<string, unknown> } | null {
+  const raw = globalThis.sessionStorage?.getItem(RETURN_TO_PAGE);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { page?: unknown; params?: unknown };
+    if (parsed && typeof parsed === "object" && typeof parsed.page === "string") {
+      const params = parsed.params && typeof parsed.params === "object" && !Array.isArray(parsed.params) ? (parsed.params as Record<string, unknown>) : {};
+      return { page: parsed.page, params };
+    }
+  } catch {
+    // an older build's page id
+  }
+  return { page: raw, params: {} };
+}
+
+function holdReturning(page: string, params: Record<string, unknown>): void {
+  globalThis.sessionStorage?.setItem(RETURN_TO_PAGE, JSON.stringify({ page, params }));
+}
 /** Set across a re-run that edit mode asked for (a move), so it is still on when the app is back. */
 const KEEP_EDITING = "potyro:keep-editing";
 
@@ -160,9 +186,11 @@ interface AppProps {
    * and this is how the trust dialog in here does it.
    */
   onPromote?: () => void;
+  /** Opened from a link to one of its pages (docs/24 §11): which page, and the params the link carried — checked here against the page. */
+  arrival?: Arrival;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, arrival }: AppProps) {
   const { t } = useLingui();
   const def = runtime.definition;
   // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
@@ -191,19 +219,27 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // from the app's own declared pages rather than wherever `navigate` was just headed.
   const landingPage = (): string => (navMode === "grid" ? HOME : (visiblePages[0]?.id ?? def.pages[0]!.id));
 
-  const [pageId, setPageId] = useState<string>(() => {
+  // Where it opens: back where a reload left it; else where a link said (docs/24 §11); else the landing.
+  // A link's page is one the app declares, and its params only those the page takes from a link —
+  // as text, capped (`acceptLinkParams`). The page just receives them: nothing runs because of a link.
+  const [opening] = useState<{ page: string; params: Record<string, unknown> }>(() => {
     // READ ONLY. Clearing it here would make this initialiser impure, and StrictMode double-invokes
     // initialisers on purpose — the second call would find nothing and fall back to the first tab,
     // which is exactly how "come back to the page you were on" silently did nothing.
-    const returning = globalThis.sessionStorage?.getItem(RETURN_TO_PAGE);
-    if (returning && (returning === HOME || def.pages.some((p) => p.id === returning))) return returning;
-    return landingPage();
+    const returning = readReturning();
+    if (returning && (returning.page === HOME || def.pages.some((p) => p.id === returning.page))) return returning;
+    const linked = arrival?.page ? def.pages.find((p) => p.id === arrival.page) : undefined;
+    if (linked) return { page: linked.id, params: acceptLinkParams(linked, arrival?.params ?? {}) };
+    return { page: landingPage(), params: {} };
   });
+  const [pageId, setPageId] = useState<string>(opening.page);
   // Consumed once, after mount, so it can't affect a later boot.
   useEffect(() => {
     globalThis.sessionStorage?.removeItem(RETURN_TO_PAGE);
   }, []);
-  const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>({});
+  const [paramsByPage, setParamsByPage] = useState<Record<string, Record<string, unknown>>>(() =>
+    Object.keys(opening.params).length ? { [opening.page]: opening.params } : {},
+  );
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   // This app's saved source as the Studio opened. The app below the Studio runs the module it booted
@@ -667,6 +703,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const [peopleOpen, setPeopleOpen] = useState(false);
   // Share (docs/24): a link anyone can try, or — for a synced app — the people in it.
   const [shareOpen, setShareOpen] = useState(false);
+  // Make it mine (docs/24 §6): your own copy of this sealed app, to change in the Studio.
+  const [remixOpen, setRemixOpen] = useState(false);
   // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
   // app — and the control is hidden rather than showing an empty panel that would claim nothing
   // happened.
@@ -719,7 +757,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    * on when the re-run was for a move rather than for finishing.
    */
   const rerunApp = (keepEditing: boolean): void => {
-    sessionStorage.setItem(RETURN_TO_PAGE, pageId);
+    holdReturning(pageId, params);
     if (keepEditing) sessionStorage.setItem(KEEP_EDITING, "1");
     location.reload();
   };
@@ -766,11 +804,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     openStudio();
   };
 
-  // A remix opens here with the Studio asking what to change (docs/24 §6): left by the demo it came from.
+  // A remix opens here with the Studio asking what to change (docs/24 §6): left by Make it mine.
   useEffect(() => {
     if (!generator || currentKind !== "user") return;
-    const prompt = takeStudioHandoff(appId);
-    if (prompt) askStudioAbout(prompt);
+    const handoff = takeStudioHandoff(appId);
+    if (handoff) askStudioAbout(handoff.prompt ?? "");
     // once, on arrival
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -793,6 +831,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       return;
     }
     setUserAppTrusted(appId, trusted, new Date().toISOString());
+    // Back on this page, with what it was opened with: letting a game run as yours from its join page keeps the code.
+    holdReturning(pageId, params);
     location.reload();
   };
 
@@ -877,6 +917,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
     ...(sync && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    // Someone else's app, sealed: the one obvious way to your own copy of it.
+    ...(generator && currentKind === "user" && appId && provenance === "untrusted" && canRemix(getUserApp(appId) ?? {})
+      ? [{ key: "remix", label: t({ message: "Make it mine", comment: "App menu: your own copy of this app, to change in the Studio" }), icon: "✧", hint: t`your own copy to change`, onSelect: () => setRemixOpen(true) }]
+      : []),
     ...(generator && currentKind === "user" && appId ? [{ key: "share", label: t({ message: "Share", comment: "App menu: share this app" }), icon: "↗", hint: t`a link anyone can try`, onSelect: () => setShareOpen(true) }] : []),
     ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
@@ -1179,6 +1223,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {shareOpen && appId && getUserApp(appId) ? (
         <ShareSheet app={getUserApp(appId)!} onClose={() => setShareOpen(false)} onInvite={sync ? () => setPeopleOpen(true) : undefined} clipRoot={() => document.querySelector(".k-app")} />
       ) : null}
+      {remixOpen && appId && getUserApp(appId) ? <RemixDialog app={getUserApp(appId)!} onClose={() => setRemixOpen(false)} /> : null}
       {peopleOpen && appId ? (
         <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
       ) : null}
