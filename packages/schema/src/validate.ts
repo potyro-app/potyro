@@ -744,6 +744,9 @@ export const structureSchema = z.object({
   language: zLanguage.optional(),
   languages: z.array(zLanguage).min(1).optional(),
   theme: z.object({ accent: z.string().optional() }).optional(),
+  // A function, or the sealed box's placeholder for one (a definition read out of it).
+  tile: z.union([zFn, z.literal("__potyro_fn__")]).optional(),
+  category: z.string().min(1).max(24).regex(/^[a-z][a-z0-9-]*$/, "a category is one lowercase word, like games").optional(),
   permissions: permissionSchema.optional(),
   nav: z.enum(["grid", "tabs"]).optional(),
   scope: z.object({ entity: z.string().min(1), label: zWords.optional(), required: z.boolean().optional() }).optional(),

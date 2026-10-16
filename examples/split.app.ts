@@ -109,12 +109,35 @@ export default defineApp({
   id: "split",
   name: { en: "Split", "pt-BR": "Dividir", de: "Aufteilen", es: "Dividir", pl: "Podział", it: "Dividi" },
   icon: "🧾",
-  version: "1.3.0",
+  version: "1.4.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#3C9A8F" },
   permissions: { sync: true },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): where you stand in the group, and the last things paid for.
+  // The home screen has no selection of its own, so it is the selected group, else the first.
+  tile: async (ctx) => {
+    const group = ctx.scope.group ?? (await ctx.query("group"))[0];
+    if (!group) return {};
+    const mine = (r: Resolved): boolean => idOf(r.group) === String(group.id);
+    const expenses = (await ctx.query("expense")).filter(mine);
+    const net = netBalances(expenses, (await ctx.query("payment")).filter(mine), ctx);
+    const you = net.get(ctx.me?.id ?? "") ?? 0;
+    const amount = money(Math.abs(you), ctx);
+    const title =
+      you > 0
+        ? ctx.t({ en: "You are owed {amount}", "pt-BR": "Você tem {amount} a receber", de: "Du bekommst {amount}", es: "Te deben {amount}", pl: "Masz do odebrania {amount}", it: "Devi ricevere {amount}" }, { amount })
+        : you < 0
+          ? ctx.t({ en: "You owe {amount}", "pt-BR": "Você deve {amount}", de: "Du schuldest {amount}", es: "Debes {amount}", pl: "Masz do oddania {amount}", it: "Devi {amount}" }, { amount })
+          : ctx.t({ en: "All square", "pt-BR": "Tudo certo", de: "Alles ausgeglichen", es: "Cuentas saldadas", pl: "Wszystko rozliczone", it: "Tutto in pari" });
+    const latest = [...expenses].sort((a, b) => new Date(String(b.when ?? 0)).getTime() - new Date(String(a.when ?? 0)).getTime()).slice(0, 2);
+    return {
+      title,
+      lines: [String(group.name ?? ""), ...latest.map((e) => `${String(e.description ?? "")} ${money(typeof e.amount === "number" ? e.amount : 0, ctx)}`)].filter(Boolean),
+    };
+  },
 
   // The group is the app's selection, in the header, and every page follows it. `required` because
   // an expense with no group is an expense nobody can be asked to pay.

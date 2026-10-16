@@ -50,12 +50,32 @@ export default defineApp({
   id: "places",
   name: { en: "Places", "pt-BR": "Lugares", de: "Orte", es: "Lugares", pl: "Miejsca", it: "Luoghi" },
   icon: "📍",
-  version: "1.2.1",
+  version: "1.3.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#5FB0E4" },
   permissions: { camera: true, geo: true },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): the places still to visit.
+  tile: async (ctx) => {
+    const toVisit = (await ctx.query("place")).filter((p) => !p.visited);
+    return {
+      count: toVisit.length,
+      title: ctx.t(
+        {
+          en: "{n, plural, =0 {Everywhere visited} one {# to visit} other {# to visit}}",
+          "pt-BR": "{n, plural, =0 {Tudo visitado} one {# para visitar} other {# para visitar}}",
+          de: "{n, plural, =0 {Überall gewesen} one {# zu besuchen} other {# zu besuchen}}",
+          es: "{n, plural, =0 {Todo visitado} one {# por visitar} other {# por visitar}}",
+          pl: "{n, plural, =0 {Wszędzie byłeś} one {# do odwiedzenia} few {# do odwiedzenia} many {# do odwiedzenia} other {# do odwiedzenia}}",
+          it: "{n, plural, =0 {Visitato tutto} one {# da visitare} other {# da visitare}}",
+        },
+        { n: toVisit.length },
+      ),
+      lines: toVisit.slice(0, 3).map((p) => String(p.name)),
+    };
+  },
 
   entities: {
     place: {
