@@ -7,8 +7,7 @@
 //
 // "Keep this app" is the Add-an-app card, fed the package the link carried, as a link: sealed, never
 // "I wrote this", promotable later from the app (docs/07).
-import { useEffect, useState } from "react";
-import { TRUST_REQUEST } from "@potyro/views";
+import { useCallback, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import type { Person } from "potyro";
@@ -132,11 +131,7 @@ export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPac
   const [adding, setAdding] = useState<"keep" | "remix" | null>(null);
   // A screen that cannot run here asks to "Run it as mine…": nothing is installed in a demo, so the
   // first step is keeping it (sealed, docs/07); it can be promoted from the app once kept.
-  useEffect(() => {
-    const keep = (): void => setAdding((a) => a ?? "keep");
-    globalThis.addEventListener(TRUST_REQUEST, keep);
-    return () => globalThis.removeEventListener(TRUST_REQUEST, keep);
-  }, []);
+  const keep = useCallback((): void => setAdding((a) => a ?? "keep"), []);
   const name = demoName(pkg);
   const credit = creditLine(pkg.credit);
   return (
@@ -169,6 +164,7 @@ export function DemoScreen({ session, pkg }: { session: DemoSession; pkg: AppPac
         questions={session.questions}
         runtime={session.composed.runtime}
         provenance="untrusted"
+        onTrustRequest={keep}
         toaster={session.toaster}
         name={name}
       />
