@@ -725,6 +725,79 @@ container again if `package.json` changed, and `docker restart potyro-rooms`. A 
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
+## The gallery on potyro.com (docs/24 §10): NOT deployed yet
+
+The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, `favicon.svg` and
+`shots/*.jpg`. Nothing runs on the server for it, it keeps no logs of its own, and it loads nothing
+from anyone else (no fonts, analytics or CDN), so it can be served with a strict policy. Until
+potyro.com has a website, the gallery is its front page. All its paths are relative, so it works at
+`/` or under `/gallery/` without being rebuilt.
+
+### 1. Make the links (once per change to the list, from a machine with a browser)
+
+```bash
+# Against the real site. It adds each ready app the way a person does, makes its demo link from the
+# tile's Share sheet, opens the link as a stranger (sealed, named, no console errors, and the remix
+# link opens Make it mine), screenshots it, and writes the link and screenshot into gallery.json.
+# An app with a link on this site already keeps it; --refresh makes new ones.
+pnpm gallery:publish --site https://potyro.app
+git add gallery/gallery.json gallery/shots && git commit -m "chore(gallery): links for potyro.app"
+```
+
+The publishing browser is new and empty, so the links carry no one's name unless `--by "Potyro"` is
+passed, and no records but the apps' own samples (docs/24 §3). The share service limits each address to
+30 links a day; one run makes at most one per ready app.
+
+### 2. Build and upload
+
+```bash
+pnpm gallery:build                    # → dist/gallery/ (refuses data with a problem, or a missing screenshot)
+rsync -av --delete dist/gallery/ SERVER:/srv/potyro.com/
+```
+
+### 3. Serve it (Caddy)
+
+```caddy
+potyro.com, www.potyro.com {
+    root * /srv/potyro.com
+    encode zstd gzip
+    file_server
+
+    header {
+        Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+    # The page and its data change on every build; the style, script and pictures are named by version.
+    @page path / /index.html
+    header @page Cache-Control "no-cache"
+    @assets path /gallery.css /gallery.js /shots/* /favicon.svg
+    header @assets Cache-Control "public, max-age=86400"
+
+    # No access log: a gallery that keeps no record of you, on the server too.
+    log {
+        output discard
+    }
+}
+```
+
+`img-src data:` is for the page's paper grain, an inline SVG. The page's data is a
+`<script type="application/json">` block, which a CSP does not treat as a script. The page has no form
+and no inline script or style, so it needs nothing looser.
+
+### 4. Check it
+
+```bash
+curl -sI https://potyro.com/ | grep -i content-security-policy
+curl -s https://potyro.com/ | grep -c 'potyro.app/s/'       # one Try it and one Make it mine per app
+```
+
+Open it in a private window with the network panel open: every request should go to potyro.com. Then
+tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make it mine card opens over it).
+
 ## What this does NOT protect
 
 Be straight with anyone you invite:

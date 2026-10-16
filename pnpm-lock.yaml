@@ -44,6 +44,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
 
+  apps/draw-guess:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
+  apps/earthquakes:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
+
   apps/markdown-notes:
     dependencies:
       potyro:
@@ -107,6 +123,26 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
 
+  apps/ticker:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
+
+  apps/word-watch:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      intl-messageformat:
+        specifier: ^10.7.18
+        version: 10.7.18
+
   examples:
     dependencies:
       potyro:
@@ -119,6 +155,8 @@ importers:
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
+
+  gallery: {}
 
   packages/ai-relay: {}
 

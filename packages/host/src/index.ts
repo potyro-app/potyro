@@ -32,6 +32,7 @@ export { resolveRecord, type ResolveDeps } from "./resolve.js";
 export {
   makeLiveNetwork,
   closeAppSockets,
+  retireAppSockets,
   openSocketsOf,
   permittedHosts,
   socketHostAllowed,
