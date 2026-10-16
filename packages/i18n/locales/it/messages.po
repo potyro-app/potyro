@@ -965,6 +965,10 @@ msgstr "un database sincronizzato in un worker (quello veloce)"
 msgid "a translated label needs words in every language it has"
 msgstr "un’etichetta tradotta ha bisogno di parole in ogni lingua che ha"
 
+#: ../shell/src/look-panel.tsx
+msgid "A wall of coloured tiles you arrange"
+msgstr "Una parete di riquadri colorati che disponi tu"
+
 #: ../shell/src/identity-panel.tsx
 msgid "A websocket URL — wss://… on a secure page, since a browser refuses ws:// from https://."
 msgstr "Un URL websocket: wss://… su una pagina sicura, perché il browser rifiuta ws:// da https://."
@@ -1083,10 +1087,14 @@ msgstr "Aggiungi una fonte"
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Add an app"
 msgstr "Aggiungi un’app"
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Add an app someone sent you"
 msgstr "Aggiungi un’app che qualcuno ti ha mandato"
 
@@ -1312,6 +1320,7 @@ msgid "App history"
 msgstr "Cronologia dell’app"
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "App launcher"
 msgstr "Schermata delle app"
 
@@ -1351,6 +1360,7 @@ msgstr "Approva {name}"
 
 #: ../shell/src/data-page.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/launcher.tsx
 msgid "Apps"
 msgstr "App"
 
@@ -1571,6 +1581,7 @@ msgstr "memoria locale del browser (lenta e piccola)"
 msgid "Building…"
 msgstr "Compilazione…"
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Bundled examples"
 msgstr "Esempi inclusi"
@@ -1833,6 +1844,10 @@ msgstr "Scegli un file"
 msgid "Choose a package zip on its own, or the app's source with the files it uses"
 msgstr "Scegli solo un pacchetto zip, oppure il codice sorgente dell’app con i file che usa"
 
+#: ../shell/src/launcher.tsx
+msgid "choose an app"
+msgstr "scegli un’app"
+
 #: ../views/src/media-input.tsx
 msgid "Choose from library"
 msgstr "Scegli dalla libreria"
@@ -1863,6 +1878,11 @@ msgstr "Integrato in Chrome"
 #: ../shell/src/engines.ts
 msgid "Chrome's built-in Gemini Nano. Runs locally, nothing to download."
 msgstr "Gemini Nano integrato in Chrome. Funziona in locale, niente da scaricare."
+
+#. Home screen style: Potyro's list of app cards
+#: ../shell/src/look-panel.tsx
+msgid "Classic"
+msgstr "Classica"
 
 #. A command name; keep as is
 #: ../shell/src/engines.ts
@@ -1898,6 +1918,7 @@ msgstr "Cancella {filter}"
 #: ../shell/src/fix-panel.tsx
 #: ../shell/src/history.tsx
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/studio-preview.tsx
@@ -1920,6 +1941,7 @@ msgstr "Chiudi codice, file e cronologia"
 msgid "Close history"
 msgstr "Chiudi cronologia"
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Close launcher"
 msgstr "Chiudi la schermata delle app"
@@ -2153,6 +2175,7 @@ msgid "Create"
 msgstr "Crea"
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "Create “{typed}”"
 msgstr "Crea “{typed}”"
 
@@ -2283,6 +2306,11 @@ msgid "Delete this conversation?"
 msgstr "Eliminare questa conversazione?"
 
 #: ../shell/src/launcher.tsx
+msgid "Describe a new app"
+msgstr "Descrivi una nuova app"
+
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Describe an app"
 msgstr "Descrivi un’app"
 
@@ -2298,6 +2326,7 @@ msgstr "Descrivi l’app"
 msgid "Describe the app you want…"
 msgstr "Descrivi l’app che vuoi…"
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
 msgstr "Descrivi cosa vuoi tenere sotto controllo (una lista della spesa condivisa, le tue piante, un viaggio) e Potyro lo costruisce. Oppure apri uno degli esempi qui sotto e modificalo."
@@ -2509,10 +2538,18 @@ msgstr "All’inizio tutti si chiamano “Me”, e questo rende difficile legger
 msgid "Everyone who can open “{appName}”."
 msgstr "Tutti quelli che possono aprire “{appName}”."
 
+#: ../shell/src/launcher.tsx
+msgid "Everything else"
+msgstr "Tutto il resto"
+
 #. A version's note in History: the app came with Potyro
 #: ../shell/src/version-notes.ts
 msgid "example app"
 msgstr "app di esempio"
+
+#: ../shell/src/launcher.tsx
+msgid "Examples to try"
+msgstr "Esempi da provare"
 
 #: ../shell/src/App.tsx
 msgid "Export"
@@ -2640,6 +2677,8 @@ msgstr "Cerca"
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Find an app"
@@ -2898,11 +2937,15 @@ msgstr "Occupa"
 #: ../shell/src/App.tsx
 #: ../shell/src/launcher-groups.ts
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "Home"
 msgstr "Home"
 
 #. The launcher's two panes: the tile wall and the list of all apps
+#. Which style the home screen has
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/look-panel.tsx
+#: ../shell/src/look-panel.tsx
 msgid "Home screen"
 msgstr "Schermata principale"
 
@@ -3490,13 +3533,16 @@ msgstr "Posizione approssimativa: non è stato possibile confermare “{address}
 #. The panel for light/dark appearance and accent colour
 #. The panel for light/dark appearance and accent colour
 #. The panel for light/dark appearance and accent colour
+#. The panel for light/dark appearance and accent colour
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/look-panel.tsx
 msgid "Look"
 msgstr "Aspetto"
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "Look — appearance and colour"
 msgstr "Aspetto: tema e colore"
 
@@ -3534,6 +3580,7 @@ msgstr "Fatto con Potyro"
 msgid "Make me a version of {name} that…"
 msgstr "Fammi una versione di {name} che…"
 
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Crea l’app che ti serve"
@@ -3757,6 +3804,10 @@ msgstr "Nuova"
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 #: ../shell/src/studio-thread-view.tsx
 #: ../shell/src/studio.tsx
 msgid "New app"
@@ -3769,6 +3820,10 @@ msgstr "Nome del nuovo gruppo"
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr "Nuova su questo dispositivo"
+
+#: ../shell/src/look-panel.tsx
+msgid "New: try Tiles — your apps as a wall of coloured tiles you size and group. You can come back to Classic any time."
+msgstr "Novità: prova Riquadri — le tue app come una parete di riquadri colorati che ridimensioni e raggruppi. Puoi tornare a Classica quando vuoi."
 
 #: ../views/src/calendar.tsx
 #: ../views/src/date-input.tsx
@@ -3798,6 +3853,7 @@ msgstr "Nessuna app “{appId}” installata in cui importare."
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "No app called “{typed}”."
 msgstr "Nessuna app chiamata “{typed}”."
 
@@ -3806,6 +3862,7 @@ msgid "No apps on this device yet."
 msgstr "Ancora nessuna app su questo dispositivo."
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "No apps yet — press New app to make one."
 msgstr "Ancora nessuna app: tocca Nuova app per crearne una."
 
@@ -3934,6 +3991,7 @@ msgstr "non si sa finché non viene eseguita"
 
 #. Button: refuse a shared app's AI request this time
 #: ../shell/src/app-ai.ts
+#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
@@ -4396,6 +4454,10 @@ msgstr "Aggiungi {appName} a Start"
 #: ../shell/src/launcher-metro.tsx
 msgid "Pin to Start"
 msgstr "Aggiungi a Start"
+
+#: ../shell/src/launcher.tsx
+msgid "Pinned"
+msgstr "Fissate"
 
 #. Preview bar button: point at a part of the app to talk about it
 #: ../shell/src/studio-preview.tsx
@@ -5148,6 +5210,10 @@ msgstr "Qualcosa è andato storto aprendo {pageLabel}."
 msgid "Something's wrong"
 msgstr "Qualcosa non va"
 
+#: ../shell/src/launcher.tsx
+msgid "Sort apps"
+msgstr "Ordina le app"
+
 #. Tab: the app's source code
 #: ../shell/src/studio-tools.tsx
 msgid "Source"
@@ -5275,6 +5341,10 @@ msgstr "riepilogo"
 #: ../shell/src/summary-strip.tsx
 msgid "Summary"
 msgstr "Riepilogo"
+
+#: ../shell/src/launcher.tsx
+msgid "switch app"
+msgstr "cambia app"
 
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
@@ -5966,6 +6036,11 @@ msgstr "Nome del riquadro"
 msgid "Tile size"
 msgstr "Dimensione del riquadro"
 
+#. Home screen style: a wall of coloured tiles you arrange, like Windows Phone's Start
+#: ../shell/src/look-panel.tsx
+msgid "Tiles"
+msgstr "Riquadri"
+
 #: ../views/src/date-input.tsx
 msgid "Time"
 msgstr "Ora"
@@ -6435,6 +6510,7 @@ msgstr "Tu"
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/launcher.tsx
 msgid "You and your devices"
 msgstr "Tu e i tuoi dispositivi"
 
@@ -6509,6 +6585,10 @@ msgstr "Le tue app sono sul relay. Anche tutto ciò che crei dopo ci va."
 msgid "Your apps are open in one tab at a time, so nothing you change in one is ever missing from the other."
 msgstr "Le tue app sono aperte in una scheda alla volta, così niente di ciò che cambi in una manca nell’altra."
 
+#: ../shell/src/look-panel.tsx
+msgid "Your apps as cards, with a pinned row"
+msgstr "Le tue app come schede, con una riga fissata"
+
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Le tue app su questo account"
@@ -6518,10 +6598,12 @@ msgid "Your browser will ask what to record: choose this tab."
 msgstr "Il browser ti chiederà cosa registrare: scegli questa scheda."
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "Your data"
 msgstr "I tuoi dati"
 
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
 msgid "Your data — every app’s records"
 msgstr "I tuoi dati: le voci di tutte le app"
 

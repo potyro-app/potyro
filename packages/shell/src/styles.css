@@ -1213,6 +1213,84 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
 .k-look-hue-default {
   background: var(--accent-potyro);
 }
+/* The home screen's style (#96): two cards, each with a small drawing of what it looks like. */
+.k-look-styles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.k-look-style {
+  gap: 0.25rem;
+  min-height: 2.75rem;
+}
+.k-look-hint {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.k-look-preview {
+  display: grid;
+  width: 100%;
+  height: 4.5rem;
+  margin-bottom: 0.3rem;
+  padding: 0.35rem;
+  gap: 3px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.k-look-preview[data-style="classic"] {
+  grid-template-columns: 1fr 1fr;
+  border-radius: 8px;
+}
+.k-look-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.k-look-preview-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--accent) 45%, var(--paper));
+}
+.k-look-preview-line {
+  flex: 1;
+  height: 3px;
+  background: var(--ink-faint);
+}
+.k-look-preview[data-style="start"] {
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  grid-auto-flow: row dense;
+}
+.k-look-preview-tile {
+  background: color-mix(in oklab, var(--accent) 80%, var(--ink));
+}
+.k-look-preview-tile[data-size="wide"] {
+  grid-column: span 4;
+}
+.k-look-preview-tile[data-size="medium"] {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.k-look-preview-tile[data-n="1"] {
+  background: color-mix(in oklab, var(--ok) 85%, var(--ink));
+}
+.k-look-preview-tile[data-n="3"],
+.k-look-preview-tile[data-n="6"] {
+  background: color-mix(in oklab, var(--danger) 70%, var(--ink));
+}
+.k-look-preview-tile[data-n="4"] {
+  background: color-mix(in oklab, var(--series-1) 85%, var(--ink));
+}
 /* Appearance and colour, from the launcher — a device's look, kept with the device. */
 .k-look-btn,
 .k-data-btn {

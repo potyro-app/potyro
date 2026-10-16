@@ -14,11 +14,13 @@ import { shellDialogs } from "./dialog.js";
 import { renameUserApp, type UserApp } from "./user-apps.js";
 import { duplicateApp } from "./app-modules.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
-import { attentionOf, describeAttention, useInstalledApps, useSortMode, type InstalledApp } from "./launcher-store.js";
-import { orderApps } from "./launcher-order.js";
+import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
+import { SORT_MODES, orderApps } from "./launcher-order.js";
+import { useReorder } from "@potyro/views";
 import { MetroHome } from "./launcher-metro.js";
 import { onWall, pin, unpin } from "./launcher-wall.js";
 import { getWall, saveWall, useWall } from "./wall-store.js";
+import { useLook } from "./look.js";
 import { hueColour, tileIdentity } from "./tile-identity.js";
 import { personHue, personInitials } from "@potyro/runtime";
 import { TileEditor } from "./tile-editor.js";
@@ -35,6 +37,7 @@ import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
 import { AddAppDialog } from "./add-app-dialog.js";
+import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 import { DraftStrip } from "./draft-strip.js";
@@ -181,7 +184,7 @@ function TileMenu({
   app: InstalledApp;
   busy: boolean;
   onOpen: () => void;
-  /** On the Start screen's wall (#96): Pin puts it there, Unpin takes it off. */
+  /** Pinned in the style on screen: Classic's Pinned row, or Start's wall (#96). */
   pinned: boolean;
   onPin: () => void;
   /** History, sync, share, rename, delete: every app has them (#152). */
@@ -273,6 +276,37 @@ function TileMenu({
 
 const WELCOME_KEY = "potyro:welcome:dismissed";
 
+/** You, as your initials in your own hue once there is an identity; the same mark chat uses (#90). */
+/** Light or dark, and the colour the shell wears. A device thing, so it lives with the device. */
+function DataButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
+  return (
+    <button type="button" className="k-add k-data-btn" aria-label={t`Your data — every app’s records`} title={t`Your data`} onClick={onClick}>
+      <DatabaseIcon size="1.15em" />
+    </button>
+  );
+}
+
+function LookButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
+  return (
+    <button type="button" className="k-add k-look-btn" aria-label={t`Look — appearance and colour`} title={t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" })} onClick={onClick}>
+      <span aria-hidden>◐</span>
+    </button>
+  );
+}
+
+function YouButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLingui();
+  const me = peekIdentity();
+  const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
+  return (
+    <button type="button" className="k-launch-you" aria-label={t`You and your devices`} onClick={onClick} style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
+      {me && named ? personInitials(me.name, me.id) : <span aria-hidden>⌾</span>}
+    </button>
+  );
+}
+
 /**
  * The link in an install address (`#add=<link>`, #253), taken once and cleared from the address bar.
  *
@@ -363,8 +397,27 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       setQuery("");
     }
   };
-  // On the home screen, search, order and arranging belong to the Start screen (launcher-metro.tsx).
+  // Reordering by hand is for the whole list, not a filtered view of it.
+  // A tile is dragged from anywhere on itself, except its menu button (#84).
+  const TILE = { names: nameOf, onReorder: (keys: string[]) => setOrder(keys as AppKey[]), ignore: ".k-tile-menu-host" };
+  const pinnedReorder = useReorder({ ...TILE, keys: pinned.map((a) => a.key), enabled: !q });
+  const restReorder = useReorder({ ...TILE, keys: rest.map((a) => a.key), enabled: sortMode === "manual" && !q });
+  // Which home this person chose in Look (#96): Classic, the default, or Start. The switcher is one.
+  const look = useLook();
+  const start = variant === "home" && look.launcher === "start";
   const wall = useWall();
+  useEffect(() => {
+    if (variant !== "home" || start) return;
+    // Spotlight-style: a printable key with nothing focused goes to the field and starts the filter.
+    const onKey = (e: globalThis.KeyboardEvent): void => {
+      const t = e.target as HTMLElement | null;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      searchRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [variant, start]);
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -608,8 +661,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       app={a}
       busy={busy === a.id}
       onOpen={() => onOpen(a)}
-      pinned={onWall(wall, a.key)}
-      onPin={() => saveWall(onWall(getWall(), a.key) ? unpin(getWall(), a.key) : pin(getWall(), a.key))}
+      pinned={start ? onWall(wall, a.key) : Boolean(a.entry.pinned)}
+      onPin={() => (start ? saveWall(onWall(getWall(), a.key) ? unpin(getWall(), a.key) : pin(getWall(), a.key)) : setPinned(a.key, !a.entry.pinned))}
       open={openMenuLive === a.key}
       onOpenChange={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
       user={{
@@ -627,8 +680,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     />
   );
 
-  // The home screen is a Windows Phone Start screen (#96, owner 2026-10-15): the tile wall and All
-  // apps, in launcher-metro.tsx. Everything a tile's menu does stays here, shared with the switcher.
+  // The Start style (#96, owner 2026-10-15): the tile wall and All apps, in launcher-metro.tsx —
+  // chosen in Look; Classic, below, is the default. Every tile action stays here, shared by both.
   const welcome =
     neverOpened && !welcomeDismissed ? (
       <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -670,7 +723,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     </section>
   ) : null;
 
-  const body = (
+  const metroBody = (
     <MetroHome
       installed={installed}
       now={mountedAt}
@@ -709,6 +762,199 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
       {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
     </MetroHome>
+  );
+
+  if (start) return metroBody;
+
+  const body = (
+    <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label={t`App launcher`} onClick={(e) => e.stopPropagation()}>
+      <header className="k-launcher-head">
+        <div className="k-brand">
+          <span className="k-logo" aria-hidden>◆</span>
+          <strong>Potyro</strong>
+          <span className="k-muted">· {variant === "home" ? t`choose an app` : t`switch app`}</span>
+        </div>
+        <div className="k-launcher-head-actions">
+          {/* One persistent create action (#90): a button here on a wide screen, a floating button
+              in thumb reach on a phone (below) — never a tile among the apps. */}
+          {variant === "home" ? (
+            <button type="button" className="k-add k-primary-action k-launch-newbtn" onClick={() => onNewApp()}>
+              ＋ <Trans>New app</Trans>
+            </button>
+          ) : null}
+          {variant === "home" ? (
+            <button type="button" className="k-add k-launch-addbtn" aria-label={t`Add an app`} title={t`Add an app someone sent you`} onClick={() => setAdding({})}>
+              <span aria-hidden>⤓</span>
+              <span className="k-launch-addbtn-word">
+                <Trans>Add an app</Trans>
+              </span>
+            </button>
+          ) : null}
+          {variant === "home" ? <DataButton onClick={() => navigateTo({ kind: "data" })} /> : null}
+          <LookButton onClick={() => setLookOpen(true)} />
+          <YouButton onClick={() => setIdentity(true)} />
+          {onClose ? (
+            <>
+              <button type="button" className="k-add" onClick={goHome}>
+                ⌂ <Trans>Home</Trans>
+              </button>
+              <button type="button" className="k-add" aria-label={t`Close launcher`} onClick={onClose}>
+                <Trans>Close</Trans> ✕
+              </button>
+            </>
+          ) : null}
+        </div>
+      </header>
+      {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+      {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
+
+      {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
+        <section className="k-welcome" aria-labelledby="k-welcome-h">
+          <h2 id="k-welcome-h">
+            <Trans>Make the app you need</Trans>
+          </h2>
+          <p>
+            <Trans>
+              Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open
+              one of the examples below and change it.
+            </Trans>
+          </p>
+          <div className="k-welcome-actions">
+            <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
+              <Trans>Describe an app</Trans>
+            </button>
+            <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
+              <Trans>Not now</Trans>
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="k-launch-search">
+        <input
+          ref={searchRef}
+          className="k-input"
+          type="search"
+          placeholder={t`Find an app`}
+          aria-label={t`Find an app`}
+          value={query}
+          autoFocus={!coarse}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onSearchKey}
+        />
+      </div>
+      {q && !firstMatch ? (
+        <p className="k-muted k-launch-empty k-launch-nomatch">
+          <Trans>No app called “{typed}”.</Trans>{" "}
+          <button type="button" className="k-add" onClick={() => onNewApp(typed)}>
+            <Trans>Create “{typed}”</Trans>
+          </button>
+        </p>
+      ) : null}
+
+      {/* Conversations that have not made an app yet (#261), before the apps: they are what you were last doing. */}
+      {variant === "home" && onResumeDraft && !q ? <DraftStrip onResume={onResumeDraft} /> : null}
+
+      {pinned.length ? (
+        <section className="k-launch-section" aria-labelledby="k-launch-pinned">
+          <h3 className="k-launch-title" id="k-launch-pinned">
+            <Trans>Pinned</Trans>
+          </h3>
+          <div className="k-launch-grid" data-reorderable="true">
+            {pinned.map((a) => (
+              <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...pinnedReorder.item(a.key)} {...inertUnless(a.key)}>
+                <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} now={mountedAt} />
+                {menuFor(a)}
+              </div>
+            ))}
+          </div>
+          <p className="k-visually-hidden" aria-live="polite">{pinnedReorder.announcement}</p>
+        </section>
+      ) : null}
+
+      <section className="k-launch-section" aria-labelledby="k-launch-all">
+        <div className="k-launch-section-head">
+          <h3 className="k-launch-title" id="k-launch-all">
+            {pinned.length ? t`Everything else` : variant === "home" && neverOpened && !welcomeDismissed ? t`Examples to try` : t`Apps`}
+          </h3>
+          <div className="k-launch-sort" role="group" aria-label={t`Sort apps`}>
+            {SORT_MODES.map((m) => (
+              <button key={m.id} type="button" className="k-launch-sort-btn" aria-pressed={sortMode === m.id} title={t(m.title)} onClick={() => setSortMode(m.id)}>
+                {t(m.label)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="k-launch-grid" data-reorderable={sortMode === "manual"}>
+          {rest.map((a) => (
+            <div key={a.key} className={`k-launch-item${a.kind === "user" ? " k-launch-usertile" : ""}`} {...restReorder.item(a.key)} {...inertUnless(a.key)}>
+              {/* The badge reads the record: a Studio-authored app is the user's own and runs
+                  trusted. Hardcoding "untrusted" here once reported the opposite of what ran. */}
+              <Tile app={a} active={isSelected(a)} onOpen={() => onOpen(a)} now={mountedAt} />
+              {menuFor(a)}
+            </div>
+          ))}
+        </div>
+        <p className="k-visually-hidden" aria-live="polite">{restReorder.announcement}</p>
+        {!installed.length ? (
+          <p className="k-muted k-launch-empty">
+            <Trans>No apps yet — press New app to make one.</Trans>
+          </p>
+        ) : null}
+      </section>
+
+      {/* A bundled example you deleted is gone for good, which is right — until you want it back.
+          Nothing brings one back on its own; this is how you ask. */}
+      {gone.length ? (
+        <section className="k-launch-section" aria-labelledby="k-launch-gone">
+          <div className="k-launch-section-head">
+            <h3 className="k-launch-title" id="k-launch-gone">
+              <Trans>Bundled examples</Trans>
+            </h3>
+          </div>
+          <div className="k-launch-gone">
+            {gone.map((e) => (
+              <button key={e.id} type="button" className="k-add k-launch-restore" disabled={busy === e.id} onClick={() => void restore(e.id)}>
+                <span aria-hidden>＋</span> {e.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {variant === "home" ? (
+        // On a phone the header's Add button is a lone icon, and this is the button people reach for:
+        // so it asks which they mean — make one, or bring in one someone sent (#253).
+        <ActionMenu
+          label={t`New app`}
+          title={t`New app`}
+          buttonClassName="k-launch-fab"
+          trigger={
+            <>
+              <span aria-hidden>＋</span> <Trans>New app</Trans>
+            </>
+          }
+          entries={[
+            { key: "describe", label: t`Describe a new app`, icon: "✦", onSelect: () => onNewApp() },
+            { key: "add", label: t`Add an app someone sent you`, icon: "⤓", onSelect: () => setAdding({}) },
+          ]}
+        />
+      ) : null}
+
+      {history ? (
+        <History
+          appId={history.id}
+          appName={history.name}
+          onClose={() => setHistory(null)}
+          // Restoring from the launcher opens the app on the version you just chose, so you can see
+          // what you got back.
+          onRestored={() => openUserApp(history.id)}
+        />
+      ) : null}
+      {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
+      {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
+    </div>
   );
 
   if (variant === "overlay") {
