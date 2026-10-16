@@ -43,16 +43,30 @@ test("an app's own button on a page can move the map", async ({ page }) => {
   if (!box) throw new Error("map canvas has no box");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -400);
-  await expect.poll(() => (zooms.length ? Math.max(...zooms) : 0), { timeout: 15_000 }).toBeGreaterThan(12);
+  await expect.poll(() => (zooms.length ? Math.max(...zooms) : 0), { timeout: 15_000 }).toBeGreaterThan(14);
+
+  // Zoomed in on a street, most of the places are off the canvas.
+  const onCanvas = () =>
+    page.evaluate(() => {
+      const c = document.querySelector(".maplibregl-canvas")!.getBoundingClientRect();
+      return [...document.querySelectorAll(".maplibregl-marker")].filter((m) => {
+        const r = m.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        return x >= c.left && x <= c.right && r.bottom >= c.top && r.bottom <= c.bottom;
+      }).length;
+    });
+  expect(await onCanvas()).toBeLessThan(13);
 
   zooms.length = 0;
   await showAll.click();
 
   // Back out to a view that holds a city of places and Potsdam beside it, from a street. Polled rather than
   // measured once: `fitBounds` animates, so tiles arrive from the zoom it left through the ones it
-  // passes on the way. Not pinned to an exact level — the same fit lands a step apart depending on
-  // the canvas size when it runs — but z11-from-z13 is not a rounding difference.
-  await expect.poll(() => (zooms.length ? Math.min(...zooms) : 99), { timeout: 25_000 }).toBeLessThanOrEqual(11);
+  // passes on the way (the fitted level's own tiles are cached from the first open, so they need not
+  // be asked for again). Not pinned to an exact level — the same fit lands a step apart depending
+  // on the canvas size when it runs.
+  await expect.poll(() => (zooms.length ? Math.min(...zooms) : 99), { timeout: 25_000 }).toBeLessThanOrEqual(13);
   // And all of them are on screen — the point of the button.
   await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
+  await expect.poll(onCanvas, { timeout: 25_000 }).toBe(13);
 });
