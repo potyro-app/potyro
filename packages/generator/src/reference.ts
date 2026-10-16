@@ -268,7 +268,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy, no permission; `app: { page, params }` links to a page here",
+    summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
     declarations: ["ShareAppLink", "PageLink"],
     members: [{ of: "CtxUi", name: "share" }],
     notes: [

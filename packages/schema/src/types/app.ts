@@ -561,7 +561,6 @@ export interface Page {
   layout?: PageLayout;
   /** Open with no bars (a game, a slideshow). The shell keeps its own way out. */
   fullscreen?: boolean;
-  /** What a link may open it with (docs/24 §11). */
   link?: PageLink;
 }
 
