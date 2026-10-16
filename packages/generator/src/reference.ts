@@ -170,8 +170,11 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "Face",
-    summary: "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn — `live({ faces: true })`",
-    declarations: ["FacePoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    summary:
+      "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn, 3D `matrix`, mesh `points` with depth — `live({ faces: true })`; `{ sameFrame: true }` for a warp that must not lag",
+    declarations: ["FacePoint", "FaceMeshPoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    notes:
+      "`info.time - info.facesTime` is how old the faces are. With `sameFrame`, draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
     cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
     uses: /\bfaces\s*:|\.faces\b/,
   },

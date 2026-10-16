@@ -7,7 +7,7 @@
 //
 // Messages: `{ type: "init", base, model, max, shapes }` → `{ type: "ready", delegate }` or `{ type: "error",
 // code, message }`; `{ type: "find", id, frame, time, max }` (an ImageBitmap, transferred) → `{ type:
-// "found", id, faces: [{ points, shapes }] }`, the arrays transferred back.
+// "found", id, faces: [{ points, shapes, matrix? }] }`, the arrays transferred back.
 
 import { FaceLandmarker, FilesetResolver, type FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 
@@ -87,7 +87,8 @@ async function init(msg: Extract<In, { type: "init" }>): Promise<void> {
       runningMode: "VIDEO",
       numFaces,
       outputFaceBlendshapes: true,
-      outputFacialTransformationMatrixes: false,
+      // Where the head is in 3D (`Face.matrix`): a small solve on the mesh beside the find.
+      outputFacialTransformationMatrixes: true,
     });
   try {
     if (!gpuIsReal()) throw new Error("no hardware GPU in this worker");
@@ -117,7 +118,7 @@ async function retune(ms: number): Promise<void> {
   delegate = "CPU";
 }
 
-function pack(result: FaceLandmarkerResult): { points: Float32Array; shapes: Float32Array }[] {
+function pack(result: FaceLandmarkerResult): { points: Float32Array; shapes: Float32Array; matrix?: Float32Array }[] {
   return result.faceLandmarks.map((marks, i) => {
     const points = new Float32Array(marks.length * 3);
     marks.forEach((m, j) => points.set([m.x, m.y, m.z], j * 3));
@@ -126,7 +127,9 @@ function pack(result: FaceLandmarkerResult): { points: Float32Array; shapes: Flo
       const k = wanted.indexOf(c.categoryName);
       if (k >= 0) shapes[k] = c.score;
     }
-    return { points, shapes };
+    // 4×4, column-major as MediaPipe packs it (`MatrixData`'s default layout).
+    const m = result.facialTransformationMatrixes?.[i];
+    return m && m.rows === 4 && m.columns === 4 && m.data.length === 16 ? { points, shapes, matrix: Float32Array.from(m.data) } : { points, shapes };
   });
 }
 
@@ -144,7 +147,7 @@ async function find(msg: Extract<In, { type: "find" }>): Promise<void> {
     lastTime = time;
     const began = performance.now();
     const faces = pack(landmarker.detectForVideo(frame, time));
-    scope.postMessage({ type: "found", id: msg.id, faces, delegate }, faces.flatMap((f) => [f.points.buffer, f.shapes.buffer]));
+    scope.postMessage({ type: "found", id: msg.id, faces, delegate }, faces.flatMap((f) => [f.points.buffer, f.shapes.buffer, ...(f.matrix ? [f.matrix.buffer] : [])]));
     // A GPU that cannot be moved keeps finding faces where it is.
     if (tuning) void retune(performance.now() - began).catch(() => undefined);
   } catch (e) {

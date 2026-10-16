@@ -30,12 +30,20 @@ export interface CameraCapability {
 export type LiveCameraOptions = { facing?: "user" | "environment"; width?: number; height?: number; faces?: boolean | FaceOptions };  // ideal px, 640×480
 export type LiveCameraStop = "app" | "person" | "hidden" | "closed" | "ended" | "replaced";
 export type LiveCameraFailure = "denied" | "missing" | "busy" | "hidden" | "failed";
-export type LiveFrameInfo = { time: number; width: number; height: number; faces?: Face[]; facesFailed?: FacesFailure };
+/**
+ * A frame: `time` (ms, the video's clock), its size, and with `faces` the faces found and
+ * `facesTime`, the `time` of the frame they were found in (`time - facesTime` is how stale they are;
+ * equal with `faces: { sameFrame: true }`, which also hands `frame`, that frame's still, only valid
+ * inside the callback).
+ */
+export type LiveFrameInfo = { time: number; width: number; height: number; faces?: Face[]; facesTime?: number; facesFailed?: FacesFailure; frame?: ImageBitmap };
 
 /** A running live camera. Frames are not mirrored; it stops when the page is hidden or the app is left. */
 export interface LiveCamera {
   readonly video: HTMLVideoElement; readonly stream: MediaStream; readonly facing: "user" | "environment";
   readonly width: number; readonly height: number; readonly active: boolean;
+  /** What draws on this device: `"gpu"`, or `"software"` (no real graphics chip: a VM, a blocked driver) — draw less, smaller. */
+  readonly graphics: "gpu" | "software" | "unknown";
   onFrame(cb: (video: HTMLVideoElement, info: LiveFrameInfo) => void): () => void;
   snap(opts?: { type?: "image/jpeg" | "image/png" | "image/webp"; quality?: number }): Promise<Blob>;
   onStop(cb: (why: LiveCameraStop) => void): () => void;
