@@ -41,7 +41,7 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the cookbook tab
   const unique = `E2E Test Dish ${Date.now()}`;
   await page.getByRole("button", { name: /Add a recipe/ }).first().click();
-  await page.getByRole("button", { name: /Type it in/ }).click();
+  await page.getByRole("menuitem", { name: /Type it in/ }).click();
   const form = page.getByRole("dialog", { name: "New recipe" });
   await expect(form).toBeVisible();
   await form.getByRole("textbox").first().fill(unique);
