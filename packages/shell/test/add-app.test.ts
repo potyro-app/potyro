@@ -127,6 +127,20 @@ describe("installing", () => {
     expect(await store.all("session")).toHaveLength(1);
   });
 
+  it("keeps the package's seed beside the app, so a demo link of it opens on it (docs/24 §3) — but not a huge one", async () => {
+    const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("seed.json", '{"session":[{"minutes":20}]}')]);
+    await installPackage(pkg, await inspectPackage(pkg), { source: "file", mine: false, mode: "replace", openStore: openFor });
+    expect(getUserApp("piano")?.seed).toEqual({ session: [{ minutes: 20 }] });
+
+    localStorage.clear();
+    byApp.clear();
+    const huge = JSON.stringify({ session: Array.from({ length: 4000 }, (_, i) => ({ minutes: i, note: "a long practice note" })) });
+    const big = await gatherFromFiles([file("piano.app.tsx", SOURCE), file("seed.json", huge)]);
+    await installPackage(big, await inspectPackage(big), { source: "file", mine: false, mode: "replace", openStore: openFor });
+    expect(getUserApp("piano")).toBeDefined();
+    expect(getUserApp("piano")?.seed).toBeUndefined();
+  });
+
   it('"mine" from a file runs it directly; from a link it never does', async () => {
     const pkg = await gatherFromFiles([file("piano.app.tsx", SOURCE)]);
     const mine = await installPackage(pkg, await inspectPackage(pkg), { source: "file", mine: true, mode: "replace", openStore: openFor });

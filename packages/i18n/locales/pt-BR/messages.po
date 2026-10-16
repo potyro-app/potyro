@@ -32,6 +32,11 @@ msgstr "“{0}” não está escrito como um objeto simples, então as proprieda
 msgid "“{appName}” is only on this device. Share it to invite the people below."
 msgstr "“{appName}” está só neste aparelho. Compartilhe para convidar as pessoas abaixo."
 
+#. Asked before a shared app first connects to a device on the person's home network (a smart-home hub, lights); {address} is what the person typed, like 192.168.1.20
+#: ../shell/src/app-sockets.ts
+msgid "“{appName}” wants a live connection to {address} on your home network."
+msgstr "“{appName}” quer uma conexão ao vivo com {address} na sua rede de casa."
+
 #. Asked before a shared app first opens a live connection (WebSocket) to a server; {host} is its address
 #: ../shell/src/app-sockets.ts
 msgid "“{appName}” wants a live connection to {host}."
@@ -41,6 +46,11 @@ msgstr "“{appName}” quer uma conexão ao vivo com {host}."
 #: ../shell/src/app-sockets.ts
 msgid "“{appName}” wants a live connection to Potyro’s rooms."
 msgstr "“{appName}” quer uma conexão ao vivo com as salas do Potyro."
+
+#. Asked the first time an app connects to a device on the person's home network (a smart-home hub, lights); they then type its local address
+#: ../shell/src/app-sockets.ts
+msgid "“{appName}” wants to connect to a device on your home network."
+msgstr "“{appName}” quer se conectar a um aparelho da sua rede de casa."
 
 #. Asked before an app first uses voice input (ctx.caps.speech); {appName} is the app
 #: ../shell/src/app-speech.ts
@@ -157,6 +167,11 @@ msgstr "Página “{title}”"
 #: ../shell/src/app-source.ts
 msgid "\"{title}\" would be left with no fields"
 msgstr "“{title}” ficaria sem nenhum campo"
+
+#. The person typed an address that is not on their local network (like a website); they are asked again
+#: ../shell/src/app-sockets.ts
+msgid "“{typed}” is not an address on your home network."
+msgstr "“{typed}” não é um endereço da sua rede de casa."
 
 #: ../shell/src/library-fetch.ts
 msgid "\"{url}\" does not name an exact version, so it could change under the app. Pin one, like https://esm.sh/chart.js@4.4.1?bundle."
@@ -996,6 +1011,11 @@ msgstr "um banco de dados na thread principal"
 msgid "A demo: nothing you do here is kept"
 msgstr "Uma demonstração: nada do que você fizer aqui fica salvo"
 
+#. Edit tile, Live connections: a local address like 192.168.1.20
+#: ../shell/src/live-connections-setting.tsx
+msgid "A device on your home network"
+msgstr "Um aparelho da sua rede de casa"
+
 #: ../shell/src/language-picker.tsx
 msgid "A draft translation was written by a model and may read oddly in places. It is being improved."
 msgstr "Uma tradução em rascunho foi escrita por um modelo e pode soar estranha em alguns pontos. Ela está sendo melhorada."
@@ -1048,6 +1068,11 @@ msgstr "Um parâmetro de consulta chamado…"
 #: ../shell/src/add-app-dialog.tsx
 msgid "A separate copy, starting empty."
 msgstr "Uma cópia separada, que começa vazia."
+
+#. Edit tile, Live connections: a host like stream.binance.com
+#: ../shell/src/live-connections-setting.tsx
+msgid "A server on the internet"
+msgstr "Um servidor na internet"
 
 #: ../shell/src/identity-panel.tsx
 msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
@@ -1396,11 +1421,9 @@ msgid "All done."
 msgstr "Tudo feito."
 
 #. Button: let a shared app open a live connection
-#. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
 #. Button: let an app listen through the microphone
 #: ../shell/src/app-ai.ts
-#: ../shell/src/app-sockets.ts
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-speech.ts
 #: ../shell/src/ask-panel.tsx
@@ -1914,6 +1937,11 @@ msgstr "Mudar {0}"
 msgid "change {editsN}"
 msgstr "mudar {editsN}"
 
+#. Tile editor: forget a home device's address so the app asks for it again
+#: ../shell/src/live-connections-setting.tsx
+msgid "Change address"
+msgstr "Mudar endereço"
+
 #: ../shell/src/inline-edit.tsx
 msgid "Change field name"
 msgstr "Mudar nome do campo"
@@ -2238,6 +2266,11 @@ msgstr "Conectando…"
 #: ../shell/src/file-viewer.tsx
 msgid "Contents of {name}"
 msgstr "Conteúdo de {name}"
+
+#. Button: use the address the person typed for a home device (the permission question follows)
+#: ../shell/src/app-sockets.ts
+msgid "Continue"
+msgstr "Continuar"
 
 #. placeholder {0}: d.title
 #: ../shell/src/draft-strip.tsx
@@ -2972,6 +3005,10 @@ msgstr "Para {sourceLabel}."
 msgid "Forget the key"
 msgstr "Esquecer a chave"
 
+#: ../shell/src/live-connections-setting.tsx
+msgid "Forget this address: the app asks for it again next time"
+msgstr "Esquecer este endereço: o app pergunta de novo da próxima vez"
+
 #: ../shell/src/ask-panel.tsx
 msgid "Found on {sites}"
 msgstr "Encontrado em {sites}"
@@ -3339,6 +3376,11 @@ msgstr "importado"
 #: ../shell/src/main.tsx
 msgid "Imported data into {name}."
 msgstr "Dados importados para {name}."
+
+#. Added to the question about a device on the home network when Potyro runs as a website: an https page cannot open plain ws:// connections
+#: ../shell/src/app-sockets.ts
+msgid "In a browser it connects only if the device offers a secure (wss://) connection; the Potyro app for Android connects either way."
+msgstr "No navegador, só conecta se o aparelho oferecer uma conexão segura (wss://); o app do Potyro para Android conecta de qualquer jeito."
 
 #. Better-wording form: the same words in English, for comparison
 #. placeholder {0}: step.message.english
@@ -3785,6 +3827,15 @@ msgstr "Ouvindo — solte quando terminar"
 #: ../shell/src/voice-input.tsx
 msgid "Listening — tap ■ to stop"
 msgstr "Ouvindo — toque em ■ para parar"
+
+#: ../shell/src/live-connections-setting.tsx
+msgid "Live connection to {name}"
+msgstr "Conexão ao vivo com {name}"
+
+#. Tile editor: the places a shared app may keep a live connection to (WebSockets)
+#: ../shell/src/live-connections-setting.tsx
+msgid "Live connections"
+msgstr "Conexões ao vivo"
 
 #. Longitude, as short as your language writes it
 #: ../views/src/field-input.tsx
@@ -4904,6 +4955,16 @@ msgstr "O Potyro está aberto em outra aba"
 msgid "Potyro is open in another tab of this site. Press “Use it here”: this page comes back and asks you again."
 msgstr "O Potyro está aberto em outra aba deste site. Toque em “Usar aqui”: esta página volta e pergunta de novo."
 
+#. Edit tile, Live connections: Potyro's own relay where apps play together
+#: ../shell/src/live-connections-setting.tsx
+msgid "Potyro’s rooms"
+msgstr "Salas do Potyro"
+
+#. What an app asks this device for, lower case: Potyro's own relay for live multiplayer rooms (ctx.caps.network.room, docs/28)
+#: ../shell/src/capability-words.ts
+msgid "Potyro’s rooms (play live with people who have the link)"
+msgstr "as salas do Potyro (jogar ao vivo com quem tem o link)"
+
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
 msgstr "tempo preciso"
@@ -5242,6 +5303,11 @@ msgstr "Voltar para v{seq}"
 #: ../shell/src/version-notes.ts
 msgid "rolled back to version {seq}"
 msgstr "voltou para a versão {seq}"
+
+#. Edit tile, Live connections: what Potyro's rooms are
+#: ../shell/src/live-connections-setting.tsx
+msgid "Rooms where people with the link play or talk together"
+msgstr "Salas onde quem tem o link joga ou conversa junto"
 
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
@@ -6061,6 +6127,10 @@ msgstr "o app mudou desde que este texto foi lido: tente de novo"
 msgid "The app could not be fetched. Check the connection and try again."
 msgstr "Não foi possível baixar o app. Verifique a conexão e tente de novo."
 
+#: ../shell/src/live-connections-setting.tsx
+msgid "The app will ask for the address again."
+msgstr "O app vai pedir o endereço de novo."
+
 #: ../shell/src/studio.tsx
 msgid "the app, not its data"
 msgstr "o app, não os dados dele"
@@ -6138,6 +6208,11 @@ msgstr "os grupos precisam continuar sendo os que existem agora"
 #: ../shell/src/capability-words.ts
 msgid "the internet"
 msgstr "a internet"
+
+#. What an app asks this device for, lower case; sites is a list of web addresses, e.g. api.example.com
+#: ../shell/src/capability-words.ts
+msgid "the internet, only these sites: {sites}"
+msgstr "a internet, só estes sites: {sites}"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "The key goes in"
@@ -6803,6 +6878,11 @@ msgstr "Digite estas palavras no Potyro no outro dispositivo. Elas são a única
 msgid "under 1¢"
 msgstr "menos de 1 ¢"
 
+#. Tile editor: undo 'Change address'
+#: ../shell/src/live-connections-setting.tsx
+msgid "Undo"
+msgstr "Desfazer"
+
 #. Launcher: Studio conversations that have not made an app yet
 #: ../shell/src/draft-strip.tsx
 msgid "Unfinished"
@@ -7014,6 +7094,11 @@ msgstr "O que você esperava?"
 msgid "What happened"
 msgstr "O que aconteceu"
 
+#. Under the question asking for a home device's address; the field below takes it
+#: ../shell/src/app-sockets.ts
+msgid "What is the device’s address? For example 192.168.1.20 or homeassistant.local — it is in the device’s own settings or app."
+msgstr "Qual é o endereço do aparelho? Por exemplo 192.168.1.20 ou homeassistant.local — ele fica nas configurações ou no app do próprio aparelho."
+
 #: ../shell/src/trust-dialog.tsx
 msgid "what it asks for cannot be read without running it"
 msgstr "o que ele pede não pode ser lido sem rodá-lo"
@@ -7079,6 +7164,10 @@ msgstr "De onde vem"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Where the key goes"
 msgstr "Onde a chave vai"
+
+#: ../shell/src/live-connections-setting.tsx
+msgid "Where this app may stay connected while it is open. Turn one off to close it now; the app can’t connect there again until you turn it back on."
+msgstr "Onde este app pode ficar conectado enquanto está aberto. Desligue uma para fechá-la agora; o app não consegue se conectar lá de novo até você ligar outra vez."
 
 #: ../shell/src/ask-review-parts.tsx
 msgid "Where this was found"
