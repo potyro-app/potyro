@@ -71,16 +71,6 @@ const careName = (k: unknown, ctx: Ctx): string => {
   }
 };
 
-const CARE_KINDS = ["water", "fertilize", "mist", "repot", "prune", "note"];
-const CARE_LABELS = {
-  water: { en: "water", "pt-BR": "rega", de: "gießen", es: "riego", pl: "podlewanie", it: "annaffiatura" },
-  fertilize: { en: "feed", "pt-BR": "adubo", de: "düngen", es: "abono", pl: "nawożenie", it: "concime" },
-  mist: { en: "mist", "pt-BR": "borrifar", de: "besprühen", es: "pulverizar", pl: "zraszanie", it: "nebulizzare" },
-  repot: { en: "repot", "pt-BR": "replantar", de: "umtopfen", es: "trasplantar", pl: "przesadzanie", it: "rinvaso" },
-  prune: { en: "prune", "pt-BR": "podar", de: "schneiden", es: "podar", pl: "przycinanie", it: "potatura" },
-  note: { en: "note", "pt-BR": "anotação", de: "Notiz", es: "nota", pl: "notatka", it: "nota" },
-};
-
 /** Write one care event, and what it means for the plant's own dates. */
 async function logCare(ctx: Ctx, plant: Resolved, kind: string, at: Date, note = ""): Promise<void> {
   await ctx.create("care", { plant: plant.id, kind, at, note });
@@ -374,7 +364,20 @@ export default defineApp({
           icon: "📝",
           description: "Record a watering, a feed, misting, repotting or a note, on any day — today or earlier.",
           input: {
-            kind: { type: "enum", options: CARE_KINDS, default: "water", labels: CARE_LABELS, label: { en: "What", "pt-BR": "O quê", de: "Was", es: "Qué", pl: "Co", it: "Cosa" } },
+            kind: {
+              type: "enum",
+              options: ["water", "fertilize", "mist", "repot", "prune", "note"],
+              default: "water",
+              label: { en: "What", "pt-BR": "O quê", de: "Was", es: "Qué", pl: "Co", it: "Cosa" },
+              labels: {
+                water: { en: "water", "pt-BR": "rega", de: "gießen", es: "riego", pl: "podlewanie", it: "annaffiatura" },
+                fertilize: { en: "feed", "pt-BR": "adubo", de: "düngen", es: "abono", pl: "nawożenie", it: "concime" },
+                mist: { en: "mist", "pt-BR": "borrifar", de: "besprühen", es: "pulverizar", pl: "zraszanie", it: "nebulizzare" },
+                repot: { en: "repot", "pt-BR": "replantar", de: "umtopfen", es: "trasplantar", pl: "przesadzanie", it: "rinvaso" },
+                prune: { en: "prune", "pt-BR": "podar", de: "schneiden", es: "podar", pl: "przycinanie", it: "potatura" },
+                note: { en: "note", "pt-BR": "anotação", de: "Notiz", es: "nota", pl: "notatka", it: "nota" },
+              },
+            },
             at: { type: "datetime", required: true, label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
             note: { type: "text", label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
           },
@@ -395,10 +398,17 @@ export default defineApp({
         plant: { type: "relation", to: "plant", required: true, label: { en: "Plant", "pt-BR": "Planta", de: "Pflanze", es: "Planta", pl: "Roślina", it: "Pianta" } },
         kind: {
           type: "enum",
-          options: CARE_KINDS,
+          options: ["water", "fertilize", "mist", "repot", "prune", "note"],
           default: "water",
           colors: { water: "blue", fertilize: "green", mist: "teal", repot: "orange", prune: "yellow", note: "grey" },
-          labels: CARE_LABELS,
+          labels: {
+            water: { en: "water", "pt-BR": "rega", de: "gießen", es: "riego", pl: "podlewanie", it: "annaffiatura" },
+            fertilize: { en: "feed", "pt-BR": "adubo", de: "düngen", es: "abono", pl: "nawożenie", it: "concime" },
+            mist: { en: "mist", "pt-BR": "borrifar", de: "besprühen", es: "pulverizar", pl: "zraszanie", it: "nebulizzare" },
+            repot: { en: "repot", "pt-BR": "replantar", de: "umtopfen", es: "trasplantar", pl: "przesadzanie", it: "rinvaso" },
+            prune: { en: "prune", "pt-BR": "podar", de: "schneiden", es: "podar", pl: "przycinanie", it: "potatura" },
+            note: { en: "note", "pt-BR": "anotação", de: "Notiz", es: "nota", pl: "notatka", it: "nota" },
+          },
           label: { en: "What", "pt-BR": "O quê", de: "Was", es: "Qué", pl: "Co", it: "Cosa" },
         },
         at: { type: "datetime", required: true, label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
@@ -512,9 +522,21 @@ export default defineApp({
       icon: "🪴",
       description: { en: "Every plant in the house, by its photo.", "pt-BR": "Todas as plantas da casa, pela foto.", de: "Alle Pflanzen im Haus, mit Foto.", es: "Todas las plantas de casa, con su foto.", pl: "Wszystkie rośliny w domu, ze zdjęciem.", it: "Tutte le piante di casa, con la foto." },
       view: {
-        type: "gallery",
+        type: "list",
         entity: "plant",
-        aspect: "portrait",
+        // Search matches the name and the person's own labels ("kitchen", "from Ana").
+        filters: [
+          {
+            label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
+            param: "q",
+            type: "text",
+            placeholder: { en: "Name or label", "pt-BR": "Nome ou etiqueta", de: "Name oder Schlagwort", es: "Nombre o etiqueta", pl: "Nazwa lub etykieta", it: "Nome o etichetta" },
+          },
+        ],
+        filter: (p, ctx) => {
+          const q = String(ctx.params.q ?? "").trim().toLowerCase();
+          return !q || p.name.toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));
+        },
         sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
         display: {
           primary: (p) => p.name,
@@ -525,6 +547,7 @@ export default defineApp({
           media: "photo",
           badges: ["labels"],
         },
+        rowActions: ["water"],
         onOpen: { page: "plant", param: { plantId: "id" } },
       },
     },
