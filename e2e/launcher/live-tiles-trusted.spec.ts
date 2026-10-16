@@ -1,5 +1,10 @@
 import { test, expect, type Locator, type Page } from "../console-guard";
-import { openHome, seed } from "./fixture.js";
+import { openHome, seed, useStart } from "./fixture.js";
+
+// The Tiles home screen (the Start style), chosen in Look; Classic is the default (#96).
+test.beforeEach(async ({ page }) => {
+  await useStart(page);
+});
 
 // The Start screen's tiles (#96; owner, 2026-10-15): each app's own colour with white on it that
 // reads (AA), and the live face an app declares (`AppDefinition.tile`, docs/04 §Tile) — run after the

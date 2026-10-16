@@ -34,7 +34,7 @@ interface TileContent {               // packages/schema/src/types/tile.ts
 }
 ```
 
-A medium or wide tile turns over every few seconds between the app's own face (its icon and name)
+On the Tiles home screen (a choice in Look; Classic is the default), a medium or wide tile turns over every few seconds between the app's own face (its icon and name)
 and this live face — Windows Phone's live tile; a small one shows the count. The function reads the
 app's data through `ctx` like any other and **returns data**, like an `aggregate`'s `rows`: a trusted
 app's runs directly, a sealed app's runs in its box (`LoadedApp.callTile`, docs/05) and only the

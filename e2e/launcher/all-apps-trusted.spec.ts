@@ -1,5 +1,10 @@
 import { test, expect } from "../console-guard";
-import { expectTappable, openHome, seed } from "./fixture.js";
+import { expectTappable, openHome, seed, useStart } from "./fixture.js";
+
+// The Tiles home screen (the Start style), chosen in Look; Classic is the default (#96).
+test.beforeEach(async ({ page }) => {
+  await useStart(page);
+});
 
 // All apps (#96): every app by name, a letter over each run of them, and a tap on a letter to jump —
 // Windows Phone's app list. It stays alphabetical whatever the wall looks like: groups are the wall's.

@@ -1,6 +1,5 @@
 import { test, expect } from "./console-guard";
 import { makeDemoLink, stranger } from "./share-demo";
-import { openTileMenu } from "./launcher-actions.js";
 
 // "Made with Potyro · Remix this" (docs/24 §6). Inside a shared app, Remix opens the Studio on the
 // person's own copy, prefilled with "Make me a version of <app> that…"; the copy says what it is a
@@ -12,7 +11,7 @@ test("Remix this: the Studio opens on your own sealed copy, prefilled, and the c
   await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
   await page.evaluate(() => localStorage.setItem("potyro:identity:name", "Ana"));
   await page.goto("/");
-  await openTileMenu(page, "Groceries");
+  await page.getByRole("button", { name: "Actions for Groceries" }).click();
   await page.getByRole("menu").locator('[data-action="share"]').click();
   await expect(page.locator(".k-share-sheet").getByRole("checkbox", { name: "Say it is by Ana" })).toBeChecked();
   await page.keyboard.press("Escape");

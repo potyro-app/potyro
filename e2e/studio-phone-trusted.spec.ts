@@ -43,8 +43,9 @@ test.describe("phone", () => {
 
   test("the box is whole, at the bottom, with nothing on top of it", async ({ page }) => {
     await page.goto("/");
-    // The app bar's New app (#96); Add an app is its own button beside it.
-    await page.locator(".k-launch-newbtn").tap();
+    // The floating New app asks first on a phone: make one, or add one someone sent (#253).
+    await page.locator(".k-launch-fab").tap();
+    await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
     const studio = page.getByRole("dialog", { name: "App studio" });
     const prompt = studio.getByRole("textbox", { name: "Describe the app" });
     await expect(prompt).toBeVisible();
@@ -73,7 +74,8 @@ test.describe("phone", () => {
     await stubGenerator(page);
     await page.addInitScript(() => localStorage.setItem("potyro:generator:engine", JSON.stringify({ engine: "cli" })));
     await page.goto("/");
-    await page.locator(".k-launch-newbtn").tap();
+    await page.locator(".k-launch-fab").tap();
+    await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
     const studio = page.getByRole("dialog", { name: "App studio" });
     await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading list");
     await studio.getByRole("button", { name: "Create the app" }).tap();

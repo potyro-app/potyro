@@ -8,7 +8,8 @@ import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
 import { TILE_HUES, hueColour } from "./tile-identity.js";
-import { setLook, useLook, type Appearance } from "./look.js";
+import { setLook, useLook, type Appearance, type LauncherStyle } from "./look.js";
+import { useEffect, useState } from "react";
 
 const MODES: Array<{ id: Appearance; label: MessageDescriptor; detail: MessageDescriptor }> = [
   { id: "system", label: msg({ message: "System", comment: "Appearance: follow the device's light/dark setting" }), detail: msg`Follows this device` },
@@ -16,9 +17,58 @@ const MODES: Array<{ id: Appearance; label: MessageDescriptor; detail: MessageDe
   { id: "dark", label: msg({ message: "Dark", comment: "Appearance" }), detail: msg`Always dark` },
 ];
 
+const STYLES: Array<{ id: LauncherStyle; label: MessageDescriptor; detail: MessageDescriptor }> = [
+  { id: "classic", label: msg({ message: "Classic", comment: "Home screen style: Potyro's list of app cards" }), detail: msg`Your apps as cards, with a pinned row` },
+  { id: "start", label: msg({ message: "Tiles", comment: "Home screen style: a wall of coloured tiles you arrange, like Windows Phone's Start" }), detail: msg`A wall of coloured tiles you arrange` },
+];
+
+/** Shown once, the first time Look opens after the Tiles style arrived: a line, never a dialog. */
+const HINT_KEY = "potyro:look:tiles-hint";
+function hintSeen(): boolean {
+  try {
+    return Boolean(localStorage.getItem(HINT_KEY));
+  } catch {
+    return true;
+  }
+}
+function markHintSeen(): void {
+  try {
+    localStorage.setItem(HINT_KEY, "1");
+  } catch {
+    /* it shows again next time, which is harmless */
+  }
+}
+
+/** A small picture of each style, drawn with boxes, so the choice is seen before it is made. */
+function StylePreview({ style }: { style: LauncherStyle }) {
+  if (style === "classic") {
+    return (
+      <span className="k-look-preview" data-style="classic" aria-hidden>
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="k-look-preview-card">
+            <span className="k-look-preview-dot" />
+            <span className="k-look-preview-line" />
+          </span>
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span className="k-look-preview" data-style="start" aria-hidden>
+      {["wide", "medium", "small", "small", "small", "small"].map((size, i) => (
+        <span key={i} className="k-look-preview-tile" data-size={size} data-n={i} />
+      ))}
+    </span>
+  );
+}
+
 export function LookPanel({ onClose }: { onClose: () => void }) {
   const { t } = useLingui();
   const look = useLook();
+  // Read while rendering, written after: React may render twice, and a write on the first render
+  // would hide the hint from the second.
+  const [hint] = useState(() => (look.launcher ?? "classic") === "classic" && !hintSeen());
+  useEffect(() => markHintSeen(), []);
   return (
     <div className="k-modal-scrim" onClick={onClose}>
       <div className="k-modal k-look" role="dialog" aria-modal="true" aria-label={t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" })} onClick={(e) => e.stopPropagation()}>
@@ -52,6 +102,33 @@ export function LookPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <h3 className="k-field-label">
+          <Trans comment="Which style the home screen has">Home screen</Trans>
+        </h3>
+        {hint ? (
+          <p className="k-look-hint">
+            <Trans>New: try Tiles — your apps as a wall of coloured tiles you size and group. You can come back to Classic any time.</Trans>
+          </p>
+        ) : null}
+        <div className="k-look-styles" role="radiogroup" aria-label={t`Home screen`}>
+          {STYLES.map((style) => (
+            <button
+              key={style.id}
+              type="button"
+              role="radio"
+              aria-checked={(look.launcher ?? "classic") === style.id}
+              className="k-chip k-look-mode k-look-style"
+              data-style={style.id}
+              data-on={(look.launcher ?? "classic") === style.id || undefined}
+              onClick={() => setLook({ ...look, launcher: style.id })}
+            >
+              <StylePreview style={style.id} />
+              <strong>{t(style.label)}</strong>
+              <span className="k-muted">{t(style.detail)}</span>
+            </button>
+          ))}
+        </div>
+
+        <h3 className="k-field-label">
           <Trans comment="The colour the shell wears">Accent</Trans>
         </h3>
         <div className="k-look-hues" role="radiogroup" aria-label={t`Accent colour`}>
@@ -64,7 +141,7 @@ export function LookPanel({ onClose }: { onClose: () => void }) {
             aria-label={t`Potyro gold`}
             className="k-look-hue k-look-hue-default"
             data-on={look.accent === undefined || undefined}
-            onClick={() => setLook({ appearance: look.appearance })}
+            onClick={() => setLook({ ...look, accent: undefined })}
           />
           {TILE_HUES.map((hue) => {
             const degrees = fmt.number(hue);

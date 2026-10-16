@@ -43,8 +43,8 @@ const SCREENS: Array<[string, string, (page: Page) => Promise<void>]> = [
     "the Studio",
     "/",
     async (page) => {
-      // The app bar's New app (#96).
-      await page.locator(".k-launch-newbtn").tap();
+      await page.locator(".k-launch-fab").tap();
+      await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
       await expect(page.getByRole("dialog", { name: "App studio" })).toBeVisible({ timeout: 30_000 });
     },
   ],

@@ -1,7 +1,6 @@
 import { test, expect } from "../console-guard";
 import AxeBuilder from "@axe-core/playwright";
 import { openApp, openHome, openSwitcher, seed } from "./fixture.js";
-import { openTileMenu } from "../launcher-actions.js";
 
 // Accessibility of the launcher (#94): axe on the home screen, the switcher and the open tile
 // menu — zero serious or critical violations — and a reduced-motion run in which nothing animates.
@@ -26,7 +25,7 @@ test("home has no serious or critical violations", async ({ page }) => {
 
 test("the tile menu, open, has none either", async ({ page }) => {
   await openHome(page);
-  await openTileMenu(page, "Groceries");
+  await page.getByRole("button", { name: "Actions for Groceries" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   await audit(page, "tile menu");
 });
@@ -49,7 +48,7 @@ test.describe("dark", () => {
 
   test("the open tile menu has none in dark", async ({ page }) => {
     await openHome(page);
-    await openTileMenu(page, "Groceries");
+    await page.getByRole("button", { name: "Actions for Groceries" }).click();
     await expect(page.getByRole("menu")).toBeVisible();
     await audit(page, "tile menu, dark");
   });
@@ -68,7 +67,7 @@ test.describe("reduced motion", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openHome(page);
     // The bottom sheet is the launcher's one entrance animation.
-    await openTileMenu(page, "Groceries");
+    await page.getByRole("button", { name: "Actions for Groceries" }).tap();
     await expect(page.getByRole("menu")).toBeVisible();
     const longest = await page.evaluate(() =>
       Math.max(0, ...document.getAnimations().map((a) => Number(a.effect?.getComputedTiming().duration ?? 0))),

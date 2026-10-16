@@ -1,5 +1,4 @@
 import { test, expect } from "../console-guard";
-import { openTileMenu } from "../launcher-actions.js";
 
 // Attention badges on the launcher (#86, phase 1): the counts an app already shows, kept on its
 // launcher entry while it is open, so home can show them without running every app. Reminders are
@@ -31,7 +30,7 @@ test("an app's due reminders show on its tile, and more as time passes, without 
 
   if (process.env.POTYRO_SHOTS) await page.screenshot({ path: `${process.env.POTYRO_SHOTS}/badges-home.png` });
   // The breakdown is in the tile's menu too.
-  await openTileMenu(page, "Plants");
+  await page.getByRole("button", { name: "Actions for Plants" }).click();
   await expect(page.locator(".k-tile-menu-note")).toHaveText(/\d+ due/);
 });
 

@@ -1,4 +1,10 @@
 import { test, expect } from "../console-guard";
+import { useStart } from "./fixture.js";
+
+// The Tiles home screen (the Start style), chosen in Look; Classic is the default (#96).
+test.beforeEach(async ({ page }) => {
+  await useStart(page);
+});
 
 // A sealed app's live tile (docs/04 §Tile): under `--mode sandbox` the examples are seeded as shared
 // apps, so their `tile` runs in the sealed box (the browser realm) and only the data it returns comes

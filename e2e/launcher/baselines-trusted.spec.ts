@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "../console-guard";
-import { openTileMenu, tileAction } from "../launcher-actions.js";
+import { tileAction } from "../launcher-actions.js";
 import { openApp, openHome, openSwitcher, pinFonts, seed } from "./fixture.js";
 
 // Screenshot baselines for the launcher (#94): home (empty and seeded), the in-app switcher and the
@@ -61,7 +61,7 @@ for (const width of WIDTHS) {
         await seed(page);
         await openHome(page);
         await pinFonts(page);
-        await openTileMenu(page, "Groceries");
+        await page.getByRole("button", { name: "Actions for Groceries" }).click();
         await expect(page.getByRole("menu")).toBeVisible();
         await shot(page, `tile-menu-${width}-${theme}`);
       });
