@@ -82,8 +82,8 @@ export interface EntityDef {
   computed?: Record<string, Computed | ComputedDef>;
   actions?: Record<string, ActionFn | ActionDef>;
   /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
-   *  else's edit does not take. Default `"anyone"`; means nothing in an app nobody else uses. */
-  editableBy?: "anyone" | "creator";
+   *  else's edit does not take; `"app"`: only app code (docs/03). Default `"anyone"`. */
+  editableBy?: "anyone" | "creator" | "app";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

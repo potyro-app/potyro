@@ -2,6 +2,7 @@ import { test, expect, type Page, type BrowserContext } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // The version gate while the app is OPEN (KA-22, #63).
 //
@@ -42,9 +43,9 @@ const V2 = V1.replace('version: "1.0.0"', 'version: "2.0.0"')
   );
 
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

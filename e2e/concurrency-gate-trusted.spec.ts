@@ -1,5 +1,6 @@
 import { test, expect } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { E2E_RELAY } from "./ports";
 
 // The gate, in a browser, on the path a real person takes.
 //
@@ -38,9 +39,9 @@ export default defineApp({
 
 test("sharing an app that loses concurrent edits says so first", async ({ page }) => {
   test.slow();
+  await page.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       localStorage.setItem(
         "potyro:user-apps",
         JSON.stringify([{ id: "gate-demo", name: "Gate Demo", source, trusted: true, updatedAt: new Date().toISOString() }]),

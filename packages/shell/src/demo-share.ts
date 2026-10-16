@@ -71,7 +71,11 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   // Named by the build in the native app, where the page is the phone (site.ts).
   const site = currentSite();
   const named = site?.configured ? site : null;
-  const link = inlineDemoLink(demo.zip, opts.origin ?? named?.origin ?? location.origin, opts.pathname ?? named?.path ?? location.pathname);
+  const origin = opts.origin ?? named?.origin ?? location.origin;
+  const pathname = opts.pathname ?? named?.path ?? location.pathname;
+  // Too long with its demo records (docs/24 §2's limit): the app on its own still makes a link, which
+  // opens empty, as it would for anyone who adds it.
+  const link = inlineDemoLink(demo.zip, origin, pathname) ?? (demo.bare ? inlineDemoLink(demo.bare, origin, pathname) : null);
   if (!link) {
     const name = app.name;
     throw new Error(t`“${name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package.`);

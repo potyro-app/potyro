@@ -14,6 +14,7 @@ import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, formatDateValue, humanizeKey } from "./format.js";
 import { mapOnOpen } from "./builtins.js";
 import { Lead } from "./lead.js";
+import { byPeople } from "./edit-lock.js";
 import { formatDateRelative, startOfDay, toDate } from "./dates.js";
 
 export interface RelatedSpec {
@@ -125,7 +126,8 @@ export function RelatedRecords({ runtime, pageId, index, recordId, spec, navigat
     if (page) return navigate(page.id, { [(page.view as { param?: string }).param ?? "id"]: String(row.id) });
     onEdit?.(spec.entity, String(row.id));
   };
-  const add = onCreate ? () => onCreate(spec.entity, { [spec.via]: recordId }) : undefined;
+  // Records only the app writes (`editableBy: "app"`) are not added by hand.
+  const add = onCreate && byPeople(runtime, spec.entity) ? () => onCreate(spec.entity, { [spec.via]: recordId }) : undefined;
 
   if (loading) return <p className="k-loading">{t`Loading…`}</p>;
 
