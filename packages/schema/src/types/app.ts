@@ -49,6 +49,9 @@ export interface ActionDef {
   run: ActionFn;
   /** Button text; default: the key, humanised. */
   label?: Words;
+  /** One emoji or short glyph shown before the label where the action is a compact button (a list
+   *  row's action, a detail page's action bar). */
+  icon?: string;
   /** What it does, for Ask. */
   description?: string;
   input?: Record<string, Field>;
@@ -97,8 +100,13 @@ export interface OnOpen {
 export interface ListDisplay {
   primary?: Binding;
   secondary?: Binding;
+  /** A media field shown as the row's picture. Default: the entity's first photo field, if it has one. */
   media?: string;
   badges?: string[];
+  /** What leads a row that has no picture: a tinted initial (`"monogram"`, the default), the
+   *  entity's `icon` (`"icon"`), or nothing (`"none"`). A row's colour follows its first coloured
+   *  badge, else its own text. */
+  lead?: "monogram" | "icon" | "none";
 }
 
 export interface ListView {
@@ -134,6 +142,8 @@ export interface GalleryView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
+  /** The cards' shape: `"landscape"` (4:3, the default), `"square"` or `"portrait"` (4:5). */
+  aspect?: "square" | "portrait" | "landscape";
 }
 
 export interface TableView {
@@ -169,6 +179,20 @@ export interface DetailView {
   /** Overrides the entity's `groups` for this page only. Without it the page shows the groups. */
   sections?: DetailSection[];
   actions?: DetailAction[];
+  /** The media field shown big at the top of the page. Default: the entity's first photo field,
+   *  when the record has one; without a photo the page opens on a band of the app's colour.
+   *  `false`: never a picture at the top. A computed that returns a path in the app's files
+   *  (`"art/squat.jpg"`) works too: a picture per kind of record without a photo field. */
+  media?: string | false;
+  /** How the page opens: `"banner"` (the picture across the top, the title on it — the default when
+   *  there is a picture), `"full"` (the picture fills the first screen), `"band"` (a band of the
+   *  app's colour — the default without one), `"none"`. Without a record photo the page's
+   *  `background` image, then the app's, is the picture. */
+  cover?: "banner" | "full" | "band" | "none";
+  /** Fields shown as chips on the cover, beside the title ("45 min", "Easy"). Default: its enum fields. */
+  facts?: string[];
+  /** The ONE thing this page is for ("Start this exercise"): a big button on the cover, apart from `actions`. */
+  primaryAction?: DetailAction;
 }
 
 export interface CalendarView {
@@ -548,6 +572,15 @@ export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<Words>;
+  /** One line under the page's title, saying what the page is for ("What you can cook with what you
+   *  have"). Shown in the page's header. */
+  description?: Words;
+  /** The ONE thing this page is for, as a big button in its header ("Start workout"): a quick
+   *  action's `id`, or the index of one of this page's `actions` (it leaves the row of chips). The
+   *  page then has no floating Add button. */
+  primaryAction?: string | number;
+  /** This page's ground; overrides `theme.background`. */
+  background?: Backdrop;
   /** One emoji or short glyph for the page's tab (#111). Without it the tab shows the entity's icon. */
   icon?: string;
   hidden?: boolean;
@@ -629,8 +662,18 @@ export interface PermissionManifest {
   ai?: boolean;
 }
 
+/**
+ * What a page sits on. `"wash"` (the default): a soft glow of the app's colour behind the top of the
+ * page; `"dots"` and `"grain"`: a texture in it; `"plain"`: paper. `{ image }`: a picture from the
+ * app's own files (a path in `ctx.files`, e.g. a shipped `"art/kitchen.jpg"`) behind the page's
+ * header, darkened under the words so they read — and the cover of a record page with no photo.
+ */
+export type Backdrop = "plain" | "wash" | "dots" | "grain" | { image: string };
+
 export interface Theme {
   accent?: string;
+  /** Every page's ground; a page's own `background` wins. */
+  background?: Backdrop;
 }
 
 /**
