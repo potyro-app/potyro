@@ -314,8 +314,9 @@ never run in the shell's realm.
 
 - **Where.** One sandboxed frame per mounted view (`sandbox="allow-scripts"`, srcdoc, the realm CSP,
   WebRTC deleted first), in the place the shell gives the view: the shell keeps the chrome and the
-  navigation, the frame is as wide as the content area, at least the room below it and as tall as
-  its document asks (the page scrolls, the frame never does). It is its own frame, not the logic's,
+  navigation, the frame is as wide as the content area and exactly as tall as the room below it,
+  down to the shell's bottom bar (a taller view scrolls inside it, so a bar the view fixes to its
+  bottom stays on screen). It is its own frame, not the logic's,
   so a stuck view goes without the app's logic, a second view is not frozen with it, and its
   document goes with every unmount.
 - **What runs.** `RealmLoadedApp.sealedView(pageRef)` → `SealedView` (`state`, `retry`, `mount`).

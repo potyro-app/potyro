@@ -157,8 +157,6 @@ export type ViewToHost =
   /** The view could not be mounted: its bundle threw, or the page has no custom view. */
   | { t: "failed"; error: string }
   | { t: "pong"; n: number }
-  /** The view's document wants this many CSS pixels: it scrolls with the page, never inside itself. */
-  | { t: "height"; px: number }
   | { t: "op"; id: number; ctxId: number; op: string; args: unknown[] }
   | { t: "sockack"; sid: number; n: number; bytes: number };
 

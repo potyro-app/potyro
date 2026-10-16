@@ -76,12 +76,12 @@ export function realmDocument(): string {
 /**
  * A view frame's own styles: the page's theme arrives as custom properties (`tokens`), and these
  * few rules make a view written against the shell's — its `k-add` buttons, its `k-muted` text — look
- * as it does in an app that runs as yours. The document never scrolls by itself; the shell grows the
- * frame to its height instead, so a page of the view scrolls with the page around it.
+ * as it does in an app that runs as yours. The frame is exactly the room the shell gives it; a view
+ * taller than that scrolls inside it.
  */
 export const VIEW_CSS = [
   "*,*::before,*::after{box-sizing:border-box}",
-  "html{overflow:hidden;-webkit-text-size-adjust:100%}",
+  "html{overflow:auto;overscroll-behavior:contain;-webkit-text-size-adjust:100%}",
   "body{margin:0;background:transparent;color:var(--k-view-ink,var(--ink,#2b241e));font-family:var(--k-view-font,var(--font-ui,system-ui,sans-serif));font-size:16px;line-height:1.45}",
   "#root{display:flow-root}",
   "button,input,select,textarea{font:inherit;color:inherit}",

@@ -196,18 +196,6 @@ async function boot(port: MessagePort, init: ViewInit): Promise<void> {
   } catch (e) {
     failed(e);
   }
-
-  // The document scrolls with the shell's page, never inside itself: say how tall it is.
-  const content = document.getElementById("root")!;
-  let lastPx = -1;
-  const report = () => {
-    const px = Math.ceil(content.getBoundingClientRect().height);
-    if (px === lastPx) return;
-    lastPx = px;
-    port.postMessage({ t: "height", px });
-  };
-  new ResizeObserver(report).observe(content);
-  report();
 }
 
 /** A render that throws is that part failing (#271), not the frame: it says so and shows nothing. */

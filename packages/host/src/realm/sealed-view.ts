@@ -2,9 +2,10 @@
 // shell gave it, its ops answered through the app's mediated ctx (realm-host.ts `answer`, the same
 // table its logic uses), and a watchdog and a crash-loop guard around it.
 //
-// The shell owns the chrome, the navigation and the page; the frame fills the view's place, as wide
-// as it is and at least as tall as the room below it, and taller when the view's document is (the
-// page then scrolls, the frame never does). The page's theme crosses as custom properties.
+// The shell owns the chrome, the navigation and the page; the frame fills the view's place: as wide
+// as it is, and exactly as tall as the room below it, down to the shell's bottom bar. A view taller
+// than that scrolls inside its frame, so a bar the view fixes to its bottom (Workout's Finish) stays
+// on screen, as it does in an app that runs as yours. The page's theme crosses as custom properties.
 
 import type { Ctx, ViewProps } from "potyro";
 import type { SealedView, SealedViewEvents } from "../types.js";
@@ -15,9 +16,8 @@ import type { CtxBase, Op, ViewOp, ViewToHost } from "./protocol.js";
 import { ViewGuard } from "./view-guard.js";
 import { VIEW_CHECK_MS, VIEW_PING_MS, ViewWatchdog, type ViewVerdict, type ViewWatchdogOptions } from "./view-watchdog.js";
 
-/** The least room a view gets, and the most a view's document may ask for. */
+/** The least room a view gets. */
 export const VIEW_MIN_HEIGHT = 320;
-export const VIEW_MAX_HEIGHT = 20_000;
 /** Watched queries a view may hold at once. */
 const MAX_WATCHES = 256;
 /** Messages a view may send between two checks (100 ms): more is a loop posting, stopped like a silent one. */
@@ -83,6 +83,14 @@ export function readTokens(el: Element): Record<string, string> {
   return out;
 }
 
+/**
+ * The theme as the frame should see it. The frame already ends above the shell's bottom bar and
+ * below its top, so the insets that push a view's own bars clear of the shell's are none inside it.
+ */
+function frameTokens(el: Element): Record<string, string> {
+  return { ...readTokens(el), "--k-chrome-bottom": "0px", "--k-safe-top": "0px", "--k-safe-bottom": "0px" };
+}
+
 /** The definition as data: what a view reads of it (labels, fields); functions stay with the app. */
 function definitionJson(def: unknown): string {
   try {
@@ -119,7 +127,6 @@ export class SealedViewController implements SealedView {
     let frame: ViewFrameHandle | null = null;
     let over = false;
     let burst = 0;
-    let wanted = 0;
     const timers: Array<ReturnType<typeof setInterval>> = [];
     const offs: Array<() => void> = [];
 
@@ -164,21 +171,21 @@ export class SealedViewController implements SealedView {
       events.onFailed?.(why);
     };
 
-    // ---- size: as wide as its place, at least the room below it, taller if its document is ----
+    // ---- size: as wide as its place, as tall as the room below it ----
     const room = (): number => {
       const top = el.getBoundingClientRect().top + win.scrollY;
       const bottom = parseFloat(win.getComputedStyle(el).getPropertyValue("--k-chrome-bottom")) || 0;
       return Math.max(VIEW_MIN_HEIGHT, Math.floor(win.innerHeight - top - bottom));
     };
     const size = (): void => {
-      el.style.height = `${Math.min(VIEW_MAX_HEIGHT, Math.max(room(), wanted))}px`;
+      el.style.height = `${room()}px`;
     };
     size();
     win.addEventListener("resize", size);
     offs.push(() => win.removeEventListener("resize", size));
 
     // ---- the theme, again whenever it changes ----
-    const retheme = (): void => post({ t: "tokens", tokens: readTokens(el) });
+    const retheme = (): void => post({ t: "tokens", tokens: frameTokens(el) });
     const dark = win.matchMedia?.("(prefers-color-scheme: dark)");
     dark?.addEventListener?.("change", retheme);
     offs.push(() => dark?.removeEventListener?.("change", retheme));
@@ -278,9 +285,6 @@ export class SealedViewController implements SealedView {
           return;
         case "failed":
           return fail(String(m.error).slice(0, 500));
-        case "height":
-          wanted = Math.max(0, Math.min(VIEW_MAX_HEIGHT, Number(m.px) || 0));
-          return size();
         case "op":
           return d.answer(m, channel);
         case "sockack":
@@ -305,7 +309,7 @@ export class SealedViewController implements SealedView {
           language: { current: language?.current, default: language?.default, available: [...(language?.available ?? [])] },
           entity: props.entity,
           param: { ...(props.param ?? {}) },
-          tokens: readTokens(el),
+          tokens: frameTokens(el),
         },
         onLost: (why) => stop("silent", why),
       });

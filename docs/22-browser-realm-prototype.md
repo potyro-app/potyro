@@ -583,11 +583,12 @@ for as long as it spins; the protections below bound what that can cost.
   frame makes its own `blob:` URL (the shell's do not load in an opaque origin). `runtime.definition`
   is the localized definition as data. `ctx.caps.camera.live` is not there — it stays trusted-only
   for now (Mirror Monsters is a follow-up).
-- **Layout.** The frame is as wide as the content area and at least as tall as the room below it
-  (the window's height less its top and `--k-chrome-bottom`, at least 320 px); the view's document
-  reports its height and the frame grows to it (at most 20,000 px), so a scrolling page scrolls with
-  the shell and never inside the frame, and a stage app (a game) gets the whole room. The frame's
-  document does not scroll by itself.
+- **Layout.** The frame is as wide as the content area and exactly as tall as the room below it
+  (the window's height less its top and `--k-chrome-bottom`, at least 320 px): a stage app (a game)
+  gets the whole room, and a taller view scrolls inside its frame. An earlier cut grew the frame to
+  the view's height so the shell's page scrolled instead; that put a bar the view fixes to its own
+  bottom (Workout's Finish) below the screen, out of reach. Inside the frame `--k-chrome-bottom`,
+  `--k-safe-top` and `--k-safe-bottom` are 0: the frame already stops clear of the shell's bars.
 - **Theme.** Every custom property where the view sits, its `color-scheme`, font and ink, at mount and
   again when the theme, the colour scheme or the app's accent changes; a few rules (`.k-add`,
   `.k-muted`, `.k-primary-action`) make a view written against the shell's classes look native.
