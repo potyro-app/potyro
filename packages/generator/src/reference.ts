@@ -311,9 +311,15 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.views",
     summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()`: move a map that is on screen, from a page action (\"Centre on me\")",
-    declarations: ["MapViewControl", "CtxViews"],
-    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er))\b/i,
-    uses: /ctx\.views\b/,
+    // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
+    // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
+    declarations: ["MapViewControl", "CtxViews", "RelatedSection"],
+    members: [
+      { of: "ListDisplay", name: "icon" },
+      { of: "DetailSection", name: "related" },
+    ],
+    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er)|history|log|logs|related|linked|past|suggest\w*|remember\w*|tap\w*|tiles?|emoji|icons?|pins?|settle|histori\w*|registro|verlauf|historia|storia)\b/i,
+    uses: /ctx\.views\b|\b(related|quickAdd|layout)\s*:/,
   },
   {
     key: "ctx.format",
@@ -388,15 +394,17 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "checklist",
     summary: "a checklist's rarer options: `reorder` (a number field; rows drag), `groupOrder` (relation groups renamed, reordered, added in place), `editText` (rename a row in place), `donePlacement: \"sink\"`",
-    declarations: [],
+    declarations: ["ChecklistQuickAdd"],
     members: [
+      { of: "ChecklistView", name: "icon" },
+      { of: "ChecklistView", name: "layout" },
       { of: "ChecklistView", name: "donePlacement" },
       { of: "ChecklistView", name: "editText" },
       { of: "ChecklistView", name: "reorder" },
       { of: "ChecklistView", name: "groupOrder" },
     ],
-    cues: /\b(donePlacement|editText|reorder|groupOrder)\b|\b(drag\w*|re-?order\w*|rearrang\w*|sort by hand|move (?:it|them|items?|rows?) (?:up|down)|rename (?:it|items?|rows?|groups?)|to the bottom|przeciąg\w*|arrast\w*|zieh\w*|verschieb\w*|arrastr\w*|trascin\w*)\b/i,
-    uses: /\b(donePlacement|editText|reorder|groupOrder)\s*:/,
+    cues: /\b(donePlacement|editText|reorder|groupOrder|ChecklistQuickAdd)\b|\b(suggest\w*|remember\w*|tiles?|emoji|aisle|drag\w*|re-?order\w*|rearrang\w*|sort by hand|move (?:it|them|items?|rows?) (?:up|down)|rename (?:it|items?|rows?|groups?)|to the bottom|przeciąg\w*|arrast\w*|zieh\w*|verschieb\w*|arrastr\w*|trascin\w*)\b/i,
+    uses: /\b(donePlacement|editText|reorder|groupOrder|layout|remember|defaults)\s*:/,
   },
   {
     key: "mount",

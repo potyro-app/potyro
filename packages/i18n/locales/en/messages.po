@@ -1239,7 +1239,9 @@ msgid "Add an item…"
 msgstr "Add an item…"
 
 #. Under a short list: make one more record like these
+#. Under a short list: make one more record like these
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add another"
 msgstr "Add another"
 
@@ -1306,7 +1308,9 @@ msgid "Add the API's address, or a link to its documentation."
 msgstr "Add the API's address, or a link to its documentation."
 
 #. Button on an empty page: make its first record
+#. Button on an empty page: make its first record
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add the first one"
 msgstr "Add the first one"
 
@@ -1814,6 +1818,11 @@ msgstr "By {by}"
 #: ../shell/src/demo-share.ts
 msgid "By {by}. Try it in your browser: no account, nothing to install."
 msgstr "By {by}. Try it in your browser: no account, nothing to install."
+
+#. A small bar chart of related records over time
+#: ../views/src/related.tsx
+msgid "By date"
+msgstr "By date"
 
 #: ../shell/src/launcher-order.ts
 msgid "By name"
@@ -2362,6 +2371,10 @@ msgstr "Could not save that"
 msgid "Could not update your data: {why}"
 msgstr "Could not update your data: {why}"
 
+#: ../views/src/checklist.tsx
+msgid "Could not work out the rest of that item"
+msgstr "Could not work out the rest of that item"
+
 #: ../views/src/media-input.tsx
 msgid "Couldn’t add it: {failed}"
 msgstr "Couldn’t add it: {failed}"
@@ -2714,6 +2727,11 @@ msgstr "Earlier"
 #: ../shell/src/file-viewer.tsx
 msgid "Earlier copies"
 msgstr "Earlier copies"
+
+#. Checklist: what was added before, offered while typing
+#: ../views/src/checklist.tsx
+msgid "Earlier items"
+msgstr "Earlier items"
 
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
@@ -3853,6 +3871,7 @@ msgstr "Loading model…"
 #: ../views/src/checklist.tsx
 #: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
+#: ../views/src/related.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
 #: ../views/src/steps.tsx
@@ -4442,6 +4461,7 @@ msgstr "Nothing here"
 
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 #: ../views/src/timeline.tsx
 msgid "Nothing here yet."
 msgstr "Nothing here yet."

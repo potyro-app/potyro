@@ -64,7 +64,9 @@ interface ChecklistDef {
   group?: unknown;
   hideDone?: boolean | "collapse";
   donePlacement?: "sink" | "stay";
-  quickAdd?: boolean;
+  quickAdd?: boolean | { suggest?: boolean; remember?: string[]; defaults?: unknown };
+  icon?: unknown;
+  layout?: "rows" | "tiles";
   editText?: boolean;
   reorder?: string;
   groupOrder?: string;
@@ -75,6 +77,8 @@ interface ChecklistDef {
 interface RowText {
   text: string;
   detail: string;
+  /** The item's own glyph (`icon`), or "". */
+  icon: string;
 }
 
 interface Section {
@@ -88,7 +92,14 @@ interface Section {
 
 const str = (v: unknown): string => (v == null ? "" : String(v));
 
-const PATHS = ["text", "detail"] as const;
+const PATHS = ["text", "detail", "icon"] as const;
+
+/** Newest first, by when each was made. */
+const newestFirst = (rows: readonly Resolved[]): Resolved[] =>
+  [...rows].sort((a, b) => str((b as { createdAt?: unknown }).createdAt).localeCompare(str((a as { createdAt?: unknown }).createdAt)));
+
+/** At most this many earlier items are offered under the add box. */
+const SUGGESTIONS = 5;
 
 const rowKey = (row: Resolved): string => `r:${String(row.id)}`;
 const groupKey = (key: string): string => `g:${key}`;
@@ -118,8 +129,8 @@ function useRowTexts(runtime: BuiltinViewProps["runtime"], pageId: string, rows:
       rows.map(async (row): Promise<RowText> => {
         const one = async (path: (typeof PATHS)[number]): Promise<string> =>
           view[path] === undefined ? "" : str(await runtime.resolveBinding({ kind: "view", page: pageId, path }, row, ctx));
-        const [text, detail] = await Promise.all([one("text"), one("detail")]);
-        return { text: view.text === undefined ? str(row[fallback] ?? row.id) : text, detail };
+        const [text, detail, icon] = await Promise.all([one("text"), one("detail"), one("icon")]);
+        return { text: view.text === undefined ? str(row[fallback] ?? row.id) : text, detail, icon: icon.trim() };
       }),
     ).then((texts) => {
       if (alive) setResolved({ rows, texts });
@@ -131,7 +142,7 @@ function useRowTexts(runtime: BuiltinViewProps["runtime"], pageId: string, rows:
   }, [runtime, pageId, rows, plain]);
   if (plain) {
     const read = (row: Resolved, path: (typeof PATHS)[number]): string => (view[path] === undefined ? "" : str(row[view[path] as string]));
-    return rows.map((row) => ({ text: view.text === undefined ? str(row[fallback] ?? row.id) : read(row, "text"), detail: read(row, "detail") }));
+    return rows.map((row) => ({ text: view.text === undefined ? str(row[fallback] ?? row.id) : read(row, "text"), detail: read(row, "detail"), icon: read(row, "icon").trim() }));
   }
   return resolved?.rows === rows ? resolved.texts : null;
 }
@@ -302,9 +313,36 @@ export function ChecklistView(props: BuiltinViewProps) {
   const input = useRef<HTMLInputElement>(null);
   const textField = typeof view.text === "string" ? view.text : displayFieldFor(runtime, view.entity);
 
+  const quick = typeof view.quickAdd === "object" ? view.quickAdd : view.quickAdd ? {} : null;
+  // Every item ever added, done or not: what the box suggests, and what `remember` copies from.
+  const everything = runtime.useQuery(view.entity);
+  const sameText = (r: Resolved, text: string): boolean => str(r[textField]).trim().toLocaleLowerCase() === text.trim().toLocaleLowerCase();
+  const fieldKeys = new Set(Object.keys(runtime.definition.entities[view.entity]?.fields ?? {}));
+
+  /** The new item's fields beyond its text: the app's `defaults(text)`, then what the last one like it had. */
+  const quickFields = async (text: string): Promise<Record<string, unknown>> => {
+    const out: Record<string, unknown> = {};
+    if (quick?.defaults !== undefined) {
+      try {
+        const given = await runtime.core.app.callFold(pageId, "quickAdd.defaults", text as never, runtime.ctx);
+        if (given && typeof given === "object") for (const [k, v] of Object.entries(given)) if (fieldKeys.has(k) && v !== undefined) out[k] = v;
+      } catch (e) {
+        // The app's guess failed; the item is still added, with its defaults. Said, not hidden.
+        fail(e, t`Could not work out the rest of that item`);
+      }
+    }
+    const last = newestFirst(everything.rows).find((r) => sameText(r, text));
+    for (const k of quick?.remember ?? []) {
+      if (!last || !fieldKeys.has(k)) continue;
+      const v = last[k];
+      out[k] = v && typeof v === "object" && !Array.isArray(v) && "id" in (v as object) ? (v as { id: unknown }).id : v;
+    }
+    return out;
+  };
+
   const write = async (text: string): Promise<void> => {
     try {
-      const made = await runtime.create(view.entity, { ...(await createDefaults(runtime, view.entity)), [textField]: text });
+      const made = await runtime.create(view.entity, { ...(await createDefaults(runtime, view.entity)), ...(await quickFields(text)), [textField]: text });
       // Nowhere to put it and somewhere it could go: ask, rather than guess a group for it.
       if (managed && groupField && groupQuery.rows.length > 0 && !relationId((made as Record<string, unknown>)[groupField])) {
         setPending({ id: String(made.id), text });
@@ -321,6 +359,14 @@ export function ChecklistView(props: BuiltinViewProps) {
   const add = async (): Promise<void> => {
     const text = draft.trim();
     if (!text || !people) return;
+    // Typed again, word for word, while it is still on the list ticked: it comes back, not twice.
+    if (quick && quick.suggest !== false) {
+      const back = newestFirst(everything.rows).find((r) => sameText(r, text) && isDone(r));
+      if (back && !everything.rows.some((r) => sameText(r, text) && !isDone(r))) {
+        setDraft("");
+        return toggle(back);
+      }
+    }
     // Emptied NOW, not when the store confirms. Typing the next item is the very next thing a
     // person does — that is what a quick-add list is — and waiting for the write meant the letters
     // of the next item landed on top of the last one.
@@ -580,7 +626,7 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   // ---- render ------------------------------------------------------------------------------
 
-  const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "" };
+  const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "", icon: "" };
 
   const renderRow = (r: Resolved) => {
     const rt = textOf(r);
@@ -619,11 +665,13 @@ export function ChecklistView(props: BuiltinViewProps) {
           <InlineText value={rt.text} label={t`Rename ${name}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
         ) : view.editText ? (
           <button type="button" className="k-check-text k-check-rename" onClick={() => setEditingRow(id)} aria-label={t`Rename ${name}`}>
+            {rt.icon ? <span className="k-check-icon" aria-hidden>{rt.icon}</span> : null}
             <span className="k-check-label">{rt.text}</span>
             {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </button>
         ) : (
           <span className="k-check-text">
+            {rt.icon ? <span className="k-check-icon" aria-hidden>{rt.icon}</span> : null}
             <span className="k-check-label">{rt.text}</span>
             {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </span>
@@ -638,6 +686,34 @@ export function ChecklistView(props: BuiltinViewProps) {
         ) : null}
       </li>
     );
+  };
+
+  // What was added before, as you type it: an item already on the list (ticked) comes back
+  // instead of being written twice; one that was deleted is offered by its words.
+  const suggestions: { text: string; again?: Resolved }[] = (() => {
+    const q = draft.trim().toLocaleLowerCase();
+    if (!quick || quick.suggest === false || q.length < 1) return [];
+    const seen = new Set<string>();
+    const out: { text: string; again?: Resolved }[] = [];
+    for (const r of newestFirst(everything.rows)) {
+      const text = str(r[textField]).trim();
+      const low = text.toLocaleLowerCase();
+      if (!text || seen.has(low) || !low.includes(q) || low === q) continue;
+      seen.add(low);
+      const open = everything.rows.some((x) => sameText(x, text) && !isDone(x));
+      if (open) continue;
+      out.push({ text, again: isDone(r) ? r : undefined });
+      if (out.length >= SUGGESTIONS) break;
+    }
+    return out;
+  })();
+  const pickSuggestion = async (sug: { text: string; again?: Resolved }): Promise<void> => {
+    setDraft("");
+    input.current?.focus();
+    if (sug.again) return toggle(sug.again);
+    const mine = writes.current.then(() => write(sug.text));
+    writes.current = mine.catch(() => undefined);
+    await mine;
   };
 
   const renderHeading = (s: Section) => {
@@ -684,7 +760,7 @@ export function ChecklistView(props: BuiltinViewProps) {
   const pendingText = pending?.text ?? "";
 
   return (
-    <div className="k-checklist">
+    <div className="k-checklist" data-layout={view.layout === "tiles" ? "tiles" : undefined}>
       {rows.length === 0 && !managed ? <p className="k-empty" data-k-wording>{emptyText}</p> : null}
       {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">
           <Trans>All done.</Trans>
@@ -742,6 +818,18 @@ export function ChecklistView(props: BuiltinViewProps) {
           <button type="submit" className="k-add k-primary-action" disabled={adding || !draft.trim()}>
             <Trans comment="Checklist: add the typed item">Add</Trans>
           </button>
+          {suggestions.length ? (
+            <ul className="k-check-suggest" aria-label={t({ message: "Earlier items", comment: "Checklist: what was added before, offered while typing" })}>
+              {suggestions.map((sug) => (
+                <li key={sug.text}>
+                  <button type="button" className="k-chip k-check-suggestion" onClick={() => void pickSuggestion(sug)}>
+                    {sug.again ? <span aria-hidden>↺ </span> : null}
+                    {sug.text}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </form>
       ) : null}
       <span className="k-visually-hidden" aria-live="polite">

@@ -99,6 +99,8 @@ export interface OnOpen {
 export interface ListDisplay {
   primary?: Binding;
   secondary?: Binding;
+  /** An emoji per record: the row's lead, the map's pin. */
+  icon?: Binding;
   media?: string;
   badges?: string[];
   /** What leads a row with no photo: a tinted initial (default), the entity's icon, or nothing. */
@@ -159,9 +161,28 @@ export type DetailAction =
   | string
   | { label: Words; navigate: { page: string; param?: Record<string, string> } };
 
+/** Records that point at this one, as a section of its page: a plant's care log, a recipe's cooks. */
+export interface RelatedSection {
+  entity: string;
+  /** Their relation field that points at this record. */
+  via: string;
+  /** Default `"list"`. `"timeline"` and `"chart"` need `date`. */
+  view?: "list" | "timeline" | "chart";
+  display?: ListDisplay;
+  date?: string;
+  /** Chart: the number field summed per bar; default counts. */
+  value?: string;
+  /** Chart bars; default `"week"`. */
+  by?: "day" | "week" | "month";
+  /** Newest first, at most this many (default 20). */
+  limit?: number;
+  onOpen?: OnOpen;
+}
+
 export interface DetailSection {
   title?: Words;
-  fields: string[];
+  fields?: string[];
+  related?: RelatedSection;
   /** The heading folds it, remembered per device (#108). */
   collapsible?: boolean;
   /** Start folded; implies `collapsible`. */
@@ -303,7 +324,11 @@ export interface ChecklistView {
    *  just touched leaving from under your finger. `hideDone` still wins. */
   donePlacement?: "sink" | "stay";
   /** An input at the bottom: type, Enter, next — creates a record with the text as its display field. */
-  quickAdd?: boolean;
+  quickAdd?: boolean | ChecklistQuickAdd;
+  /** An emoji per item, before its text. */
+  icon?: Binding;
+  /** `"tiles"`: items as a grid of big tappable tiles. Default `"rows"`. */
+  layout?: "rows" | "tiles";
   /** Tap a row's text to rename it in place. Off by default: a row whose text is computed is not editable. */
   editText?: boolean;
   /** The number field holding a row's position; with it, rows can be dragged (within a group and into
@@ -317,6 +342,16 @@ export interface ChecklistView {
   /** Where the row's chevron goes. Without it a row has no detail. */
   onOpen?: OnOpen;
   emptyText?: Dynamic<Words>;
+}
+
+/** The checklist's add box (`quickAdd: { … }`). */
+export interface ChecklistQuickAdd {
+  /** Offer earlier items as you type. Default true. */
+  suggest?: boolean;
+  /** Fields copied from the last item with the same text (its aisle). */
+  remember?: string[];
+  /** The new item's other fields, from what was typed. */
+  defaults?: (text: string, ctx: Ctx) => Record<string, unknown> | Promise<Record<string, unknown>>;
 }
 
 /** Records in columns by an enum field; dragging a card, or its Move to, patches that field (#107). */
@@ -360,6 +395,12 @@ export interface AggregateRow {
   tone?: "positive" | "negative" | "neutral";
   /** Optional section heading; consecutive rows sharing one are grouped under it. */
   group?: string;
+  /** Tapping the row opens this record's page. */
+  record?: { entity: string; id: string };
+  /** Tapping the row opens this page. */
+  open?: { page: string; params?: Record<string, string> };
+  /** A button on the row that runs an entity action on a record ("Settle", "Water"). */
+  action?: { entity: string; id: string; key: string; label?: string };
 }
 
 /**

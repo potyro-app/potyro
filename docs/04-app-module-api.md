@@ -74,6 +74,16 @@ an `ActionDef`'s `icon`. They are data — the shell draws them, at either prove
 sets none still gets a page header, rows led by their photo or a tinted initial, and a cover on every
 record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.
 
+### Related records, tappable rows, a remembering checklist (all optional)
+
+A detail section may be `related: { entity, via, view: "list" | "timeline" | "chart", … }` instead of
+`fields`; an `AggregateRow` may carry `record`, `open` and `action`; a checklist's `quickAdd` may be
+`{ suggest, remember, defaults: (text, ctx) => fields }`, with `icon` and `layout: "tiles"`; and
+`display.icon` gives a record its own glyph. `defaults` and any function binding in a related section
+run through the host like a stats fold (`callFold` at their path), so a shared app behaves the same
+(docs/03). The Studio reads these with `ctx.views`; the core prompt does not carry them. Additive: no
+app bumps `schemaVersion`.
+
 ## Function signatures
 
 ```ts
