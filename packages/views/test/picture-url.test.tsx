@@ -1,34 +1,38 @@
 // @vitest-environment happy-dom
-// A picture's address is read once per picture. `runtime.ctx` is a fresh object on every access, so a
-// hook that watched the ctx read the picture again on every render: a page header re-rendering with
-// its page minted a new address each time, and its backdrop <img> never finished loading one before
-// the next replaced it — a grey band where the photo should be.
+// A page's picture is asked for once, and its URL holds still — even though `runtime.ctx`, which the
+// views pass in, is a NEW object on every access. Keyed by ctx, the hook asked again on every render
+// and set a new URL each time, so the page's background picture never finished loading (#368).
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
-import { useState } from "react";
 import { usePictureUrl } from "../src/picture.js";
 
 afterEach(cleanup);
 
 describe("usePictureUrl", () => {
-  it("asks for a file's address once, however often the page re-renders with a fresh ctx", async () => {
-    let asked = 0;
-    const fresh = () => ({
-      media: { put: async () => ({ key: "k", mime: "image/webp" }), url: async () => "blob:media" },
-      files: { url: async () => `blob:file-${++asked}` },
-    });
-    let rerender: () => void = () => {};
-    function Header() {
-      const [, set] = useState(0);
-      rerender = () => set((n) => n + 1);
-      const url = usePictureUrl(fresh() as never, "art/plates.webp");
-      return <img alt="" src={url ?? ""} />;
+  it("asks once for a picture, though the ctx it is given is new on every render", async () => {
+    let n = 0;
+    const url = vi.fn(async (path: string) => `blob:test/${path}/${(n += 1)}`);
+    // Like `runtime.ctx`: a fresh object each time it is read.
+    const freshCtx = () => ({ media: { url: async () => "", put: async () => ({ key: "", mime: "" }) }, files: { url } }) as never;
+    const seen: Array<string | null> = [];
+    function Probe({ tick }: { tick: number }) {
+      const u = usePictureUrl(freshCtx(), "art/bg.webp");
+      seen.push(u);
+      return <img alt="" src={u ?? undefined} data-tick={tick} />;
     }
-    const { container } = render(<Header />);
-    await act(async () => {});
-    for (let i = 0; i < 5; i++) await act(async () => rerender());
-    expect(asked).toBe(1);
-    expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:file-1");
+    const { rerender } = render(<Probe tick={0} />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    for (let tick = 1; tick < 5; tick++) {
+      rerender(<Probe tick={tick} />);
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    expect(url).toHaveBeenCalledTimes(1);
+    const src = document.querySelector("img")!.getAttribute("src");
+    expect(src).toBe("blob:test/art/bg.webp/1");
   });
 });

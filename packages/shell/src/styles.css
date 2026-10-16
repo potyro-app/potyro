@@ -2346,12 +2346,12 @@ th.k-data-raw {
    Painted behind the top of the page, under everything in it, so a page reads as a place and not as
    beige. A layer of its own (z-index -1 inside an isolated page): nothing in the page moves for it. */
 .k-page,
-.k-content {
+.k-app-chrome[data-layout="wide"] {
   position: relative;
   isolation: isolate;
 }
 .k-page::before,
-.k-content::before {
+.k-app-chrome[data-layout="wide"]::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -2360,22 +2360,22 @@ th.k-data-raw {
   pointer-events: none;
 }
 .k-app[data-backdrop="wash"] .k-page::before,
-.k-app[data-backdrop="wash"] .k-content::before,
+.k-app[data-backdrop="wash"] .k-app-chrome[data-layout="wide"]::before,
 .k-app[data-backdrop="image"] .k-page::before,
-.k-app[data-backdrop="image"] .k-content::before {
+.k-app[data-backdrop="image"] .k-app-chrome[data-layout="wide"]::before {
   background:
     radial-gradient(90% 75% at 100% 0%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 72%),
     radial-gradient(70% 60% at 0% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%);
 }
 .k-app[data-backdrop="dots"] .k-page::before,
-.k-app[data-backdrop="dots"] .k-content::before {
+.k-app[data-backdrop="dots"] .k-app-chrome[data-layout="wide"]::before {
   background-image: radial-gradient(circle, color-mix(in oklab, var(--accent) 42%, transparent) 1.1px, transparent 1.7px);
   background-size: 18px 18px;
   -webkit-mask-image: linear-gradient(to bottom, var(--ink), transparent);
   mask-image: linear-gradient(to bottom, var(--ink), transparent);
 }
 .k-app[data-backdrop="grain"] .k-page::before,
-.k-app[data-backdrop="grain"] .k-content::before {
+.k-app[data-backdrop="grain"] .k-app-chrome[data-layout="wide"]::before {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     radial-gradient(90% 75% at 100% 0%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 72%);
@@ -2385,7 +2385,7 @@ th.k-data-raw {
 }
 /* A map fills its page edge to edge: no ground behind it. */
 .k-page[data-full]::before,
-.k-content[data-full]::before {
+.k-app-chrome[data-layout="wide"]:has(.k-content[data-full])::before {
   display: none;
 }
 
@@ -2501,11 +2501,13 @@ th.k-data-raw {
   inset: 0;
   z-index: -1;
 }
+/* The header's words run its whole height (title at the top, figures and the button below), so its
+   shade does too: never lighter than most of the tile shade, darkest at the bottom. */
 .k-page-hero-photo::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--cover-shade);
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--tile-shade) 80%, transparent) 0%, var(--tile-shade) 70%);
 }
 .k-page-hero-photo img,
 .k-detail-photo img {

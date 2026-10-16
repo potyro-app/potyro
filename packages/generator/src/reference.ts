@@ -237,10 +237,25 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.media",
+    // Also how pages SHOW pictures and look (`cover`, `background`, a big `primaryAction`…): the
+    // presentation options, cut out of the core and read here with the media calls.
     summary: "`put(blob)` → MediaRef for a `media` field, `url(ref)` → a URL to show it",
-    declarations: ["CtxMedia"],
-    cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*)\b/i,
-    uses: /ctx\.media\b/,
+    declarations: ["CtxMedia", "Backdrop"],
+    members: [
+      { of: "Page", name: "description" },
+      { of: "Page", name: "primaryAction" },
+      { of: "Page", name: "background" },
+      { of: "Theme", name: "background" },
+      { of: "DetailView", name: "cover" },
+      { of: "DetailView", name: "media" },
+      { of: "DetailView", name: "facts" },
+      { of: "DetailView", name: "primaryAction" },
+      { of: "ListDisplay", name: "lead" },
+      { of: "GalleryView", name: "aspect" },
+      { of: "ActionDef", name: "icon" },
+    ],
+    cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*|cover|hero|backgrounds?|wallpaper|full ?screen|look\w*|design\w*|beautiful|pretty|prettier|playful|professional|polish\w*|prominent|big button|call to action|tło|wygląd\w*|fundo|aparência|hintergrund|aussehen|fondo|aspecto|sfondo)\b/i,
+    uses: /ctx\.media\b|\b(cover|background|primaryAction|facts|lead|aspect)\s*:/,
   },
   {
     key: "ctx.files",
@@ -278,26 +293,6 @@ export const CAPABILITIES: readonly Capability[] = [
     declarations: ["FormatDateOptions", "FormatNumberOptions", "CtxFormat"],
     cues: /ctx\.format\b|\b(format\w*|locale|currency)\b/i,
     uses: /ctx\.format\b/,
-  },
-  {
-    key: "looks",
-    summary: "pictures, covers, backgrounds, one big button",
-    declarations: ["Backdrop"],
-    members: [
-      { of: "Page", name: "description" },
-      { of: "Page", name: "primaryAction" },
-      { of: "Page", name: "background" },
-      { of: "Theme", name: "background" },
-      { of: "DetailView", name: "cover" },
-      { of: "DetailView", name: "media" },
-      { of: "DetailView", name: "facts" },
-      { of: "DetailView", name: "primaryAction" },
-      { of: "ListDisplay", name: "lead" },
-      { of: "GalleryView", name: "aspect" },
-      { of: "ActionDef", name: "icon" },
-    ],
-    cues: /\b(cover|hero|backgrounds?|wallpaper|full ?screen|photos?|pictures?|images?|look\w*|design\w*|beautiful|pretty|prettier|playful|professional|polish\w*|prominent|big button|call to action|tło|wygląd\w*|zdjęci\w*|fundo|aparência|hintergrund|aussehen|fondo|aspecto|sfondo)\b/i,
-    uses: /\b(cover|background|primaryAction|facts|lead|aspect)\s*:/,
   },
   {
     key: "languages",
@@ -360,7 +355,7 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
       if (!range) throw new Error(`CAPABILITIES: ${m.of} has no member ${m.name} (${c.key})`);
       for (let i = range[0]; i <= range[1]; i += 1) drop.add(host.from + i);
       const head = own.find((l) => START.test(l))!.replace(/\{.*$/, "{");
-      // A capability may cut members out of several declarations (`looks`): each one adds its piece.
+      // A capability may cut members out of several declarations (`ctx.media`): each one adds its piece.
       const piece = `// ${m.of}, continued (${c.key}):\n${head}\n${own.slice(range[0], range[1] + 1).join("\n")}\n}`;
       const before = fragments.get(c.key);
       fragments.set(c.key, before ? `${before}\n\n${piece}` : piece);
