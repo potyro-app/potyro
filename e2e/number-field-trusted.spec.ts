@@ -48,7 +48,7 @@ test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test("Workout: target sets is an integer with a stepper and a unit; Places: a half-star rating steps by 0.5", async ({ page }) => {
-    const exercise = await openForm(page, "workout", "PPL Log", "New exercise");
+    const exercise = await openForm(page, "workout", "Workout", "New exercise");
     const sets = exercise.getByRole("spinbutton", { name: "Target Sets" });
     await expect(sets).toHaveAttribute("inputmode", "numeric");
     await expect(sets).toHaveValue("3");

@@ -9,7 +9,7 @@ test("deleting an exercise past sessions mention leaves Program and Train workin
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?app=workout");
-  await expect(page.locator("h1").first()).toHaveText("PPL Log");
+  await expect(page.locator("h1").first()).toHaveText("Workout");
   await page.locator(".k-sidenav button", { hasText: "Program" }).first().click();
   const rows = page.locator(".k-list-row");
   await expect(rows.first()).toBeVisible();

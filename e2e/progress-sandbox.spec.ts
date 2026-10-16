@@ -7,7 +7,7 @@ test("Workout's Progress runs untrusted: tiles, comparisons and the chart", asyn
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date(2026, 8, 9, 12, 0, 0));
   await page.goto("/?app=workout");
-  await expect(page.locator("h1").first()).toHaveText("PPL Log", { timeout: 30_000 });
+  await expect(page.locator("h1").first()).toHaveText("Workout", { timeout: 30_000 });
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
   await page.locator(".k-sidenav .k-tab", { hasText: "Progress" }).click();
 
