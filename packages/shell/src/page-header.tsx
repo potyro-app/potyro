@@ -44,7 +44,7 @@ export function PageHeader({ runtime, pageId, params, title, icon, count, cta, o
     <header className="k-page-hero" data-backdrop={kind} data-photo={photo ? "true" : undefined}>
       {kind === "image" ? (
         <span className="k-page-hero-photo" aria-hidden>
-          {photo ? <img src={photo} alt="" decoding="async" /> : null}
+          {photo ? <img src={photo} alt="" decoding="async" draggable={false} /> : null}
         </span>
       ) : null}
       <div className="k-page-hero-body">
