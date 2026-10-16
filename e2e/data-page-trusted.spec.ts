@@ -23,8 +23,8 @@ test("an example never opened still shows its records, once", async ({ page }) =
   await home(page);
   await tileAction(page, "Groceries", "data");
   const data = dataPage(page);
-  await expect(data.getByRole("tab", { name: /Aisle/ })).toContainText("5");
-  await expect(data.locator(".k-data-table tbody tr")).toHaveCount(5);
+  await expect(data.getByRole("tab", { name: /Aisle/ })).toContainText("6");
+  await expect(data.locator(".k-data-table tbody tr")).toHaveCount(6);
   await data.getByRole("tab", { name: /Item/ }).click();
   await expect(data.getByRole("cell", { name: "Milk", exact: true })).toBeVisible();
 
