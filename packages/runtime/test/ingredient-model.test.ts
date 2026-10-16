@@ -66,15 +66,15 @@ describe("recipe computed derived from the ingredient model", () => {
   });
 });
 
-describe("filter views", () => {
-  it("Plant-based lists only vegan/vegetarian recipes", async () => {
-    const rows = (await runtime.queryPage("plant-based")).rows;
-    expect(rows.map((r) => r.name)).toEqual(["Pancakes"]);
+describe("What can I cook?", () => {
+  it("lists what you can cook first, then by how little is missing", async () => {
+    const rows = (await runtime.queryPage("cook-with")).rows;
+    expect(rows.map((r) => r.name)).toEqual(["Pancakes", "Roast chicken"]);
   });
 
-  it("Ready to cook lists only fully-stocked recipes", async () => {
-    const before = (await runtime.queryPage("ready")).rows.map((r) => r.name);
-    expect(before).toEqual(["Pancakes"]);
+  it("“Can cook now” keeps only fully-stocked recipes", async () => {
+    const ready = (await runtime.queryPage("cook-with", { ready: true })).rows.map((r) => r.name);
+    expect(ready).toEqual(["Pancakes"]);
   });
 });
 
@@ -84,7 +84,7 @@ describe("ingredient action toggleStock", () => {
     const chicken = await store.get("ingredient", ids.chicken);
     expect(chicken!.inStock).toBe(true);
 
-    const ready = (await runtime.queryPage("ready")).rows.map((r) => r.name);
+    const ready = (await runtime.queryPage("cook-with", { ready: true })).rows.map((r) => r.name);
     expect(ready).toContain("Roast chicken");
   });
 });

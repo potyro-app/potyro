@@ -171,6 +171,7 @@ const actionDefSchema = z
   .object({
     run: z.union([zFn, z.literal("__potyro_fn__")]),
     label: zWordsNonEmpty.optional(),
+    icon: z.string().min(1).max(8).optional(),
     description: z.string().optional(),
     input: z.record(fieldSchema).optional(),
   })
@@ -219,6 +220,8 @@ const listDisplaySchema = z.object({
   secondary: zBinding.optional(),
   media: z.string().optional(),
   badges: z.array(z.string()).optional(),
+  lead: z.enum(["monogram", "icon", "none"]).optional(),
+  icon: zBinding.optional(),
 });
 
 const filterChipSchema = z.object({
@@ -259,6 +262,7 @@ const galleryView = z.object({
   emptyText: zDynamicWords.optional(),
   group: zBinding.optional(),
   collapsible: z.boolean().optional(),
+  aspect: z.enum(["square", "portrait", "landscape"]).optional(),
 });
 
 const tableView = z.object({
@@ -279,14 +283,47 @@ const detailActionSchema = z.union([
   }),
 ]);
 
+/** A page's ground: a named treatment of the app's colour, or a picture from the app's files. */
+const backdropSchema = z.union([z.enum(["plain", "wash", "dots", "grain"]), z.object({ image: z.string().min(1) }).strict()]);
+
 const detailView = z.object({
   type: z.literal("detail"),
   entity: z.string(),
   param: z.string().optional(),
   sections: z
-    .array(z.object({ title: zWords.optional(), fields: z.array(z.string()), collapsible: z.boolean().optional(), collapsed: z.boolean().optional() }))
+    .array(
+      z
+        .object({
+          title: zWords.optional(),
+          fields: z.array(z.string()).optional(),
+          related: z
+            .object({
+              entity: z.string().min(1),
+              via: z.string().min(1),
+              view: z.enum(["list", "timeline", "chart"]).optional(),
+              display: listDisplaySchema.optional(),
+              date: z.string().optional(),
+              value: z.string().optional(),
+              by: z.enum(["day", "week", "month"]).optional(),
+              limit: z.number().int().positive().optional(),
+              onOpen: onOpenSchema.optional(),
+            })
+            .strict()
+            .optional(),
+          collapsible: z.boolean().optional(),
+          collapsed: z.boolean().optional(),
+        })
+        .refine((s) => s.fields !== undefined || s.related !== undefined, { message: "a section needs `fields` or `related`" })
+        .refine((s) => !s.related || s.related.view === undefined || s.related.view === "list" || s.related.date !== undefined, {
+          message: "a related timeline or chart needs `date`",
+        }),
+    )
     .optional(),
   actions: z.array(detailActionSchema).optional(),
+  media: z.union([z.string(), z.literal(false)]).optional(),
+  cover: z.enum(["banner", "full", "band", "none"]).optional(),
+  facts: z.array(z.string()).optional(),
+  primaryAction: detailActionSchema.optional(),
 });
 
 const calendarView = z.object({
@@ -364,7 +401,11 @@ const checklistView = z.object({
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
   donePlacement: z.enum(["sink", "stay"]).optional(),
-  quickAdd: z.boolean().optional(),
+  quickAdd: z
+    .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional() }).strict()])
+    .optional(),
+  icon: zBinding.optional(),
+  layout: z.enum(["rows", "tiles"]).optional(),
   editText: z.boolean().optional(),
   reorder: z.string().min(1).optional(),
   groupOrder: z.string().min(1).optional(),
@@ -486,7 +527,7 @@ const viewSchema = z.discriminatedUnion("type", [
  * What a PAGE can declare, as opposed to its view. Same purpose as `VIEW_FIELDS`: the Edit-mode
  * agent is told the real boundary, and `summary` lives here rather than on the eight view types.
  */
-export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "icon?", "hidden?", "summary?", "actions?", "layout?", "link?"]);
+export const PAGE_FIELDS: readonly string[] = Object.freeze(["title", "description?", "icon?", "hidden?", "summary?", "actions?", "primaryAction?", "background?", "layout?", "link?"]);
 
 export const VIEW_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   Object.fromEntries(
@@ -600,10 +641,13 @@ const pageSchema = z
   .object({
     id: z.string().min(1),
     title: zDynamicWords,
+    description: zWords.optional(),
     icon: z.string().min(1).max(8).optional(),
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
     actions: z.array(pageActionSchema).optional(),
+    primaryAction: z.union([z.string().min(1), z.number().int().min(0)]).optional(),
+    background: backdropSchema.optional(),
     view: viewSchema.optional(),
     layout: layoutSchema.optional(),
     fullscreen: z.boolean().optional(),
@@ -749,7 +793,7 @@ export const structureSchema = z.object({
   // against the maps by `checkWords`, after this.
   language: zLanguage.optional(),
   languages: z.array(zLanguage).min(1).optional(),
-  theme: z.object({ accent: z.string().optional() }).optional(),
+  theme: z.object({ accent: z.string().optional(), background: backdropSchema.optional() }).optional(),
   // A function, or the sealed box's placeholder for one (a definition read out of it).
   tile: z.union([zFn, z.literal("__potyro_fn__")]).optional(),
   category: z.string().min(1).max(24).regex(/^[a-z][a-z0-9-]*$/, "a category is one lowercase word, like games").optional(),

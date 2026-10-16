@@ -15,6 +15,6 @@ test("untrusted apps switch in place, each in its own fresh isolate", async ({ p
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
   await page.goBack();
   await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
-  await expect(page.locator(".k-list-row", { hasText: "Fluffy Pancakes" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".k-card", { hasText: "Fluffy Pancakes" })).toBeVisible({ timeout: 30_000 });
   expect(loads).toBe(1);
 });

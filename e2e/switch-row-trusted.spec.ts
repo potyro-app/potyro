@@ -1,12 +1,14 @@
 import { test, expect } from "./console-guard";
 
-// A boolean field is a switch row (#97). In the Plants form, "Needs Direct Sun" and "Active" used
+// A boolean field is a switch row (#97). In the Plants form, "Wants direct sun" and "Active" used
 // to be a grey caption over a 13px browser checkbox. Now each is one row: the label, a toggle, the
 // whole thing the hit target, 44px tall, and a real switch to a keyboard and a screen reader.
 
 async function openNewPlant(page: import("@playwright/test").Page): Promise<import("@playwright/test").Locator> {
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
+  // Today's one big button is "Add a plant" (a photo or typed); the Plants list has the form button.
+  await page.getByRole("tab", { name: "Plants" }).or(page.getByRole("button", { name: "Plants", exact: true })).first().click();
   await page.getByRole("button", { name: "Add: Plant" }).click();
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
@@ -18,7 +20,7 @@ test.describe("phone", () => {
 
   test("the booleans are switch rows: 44px, the whole row toggles, and the value is saved", async ({ page }) => {
     const form = await openNewPlant(page);
-    const sun = form.getByRole("switch", { name: "Needs Direct Sun" });
+    const sun = form.getByRole("switch", { name: "Wants direct sun" });
     const active = form.getByRole("switch", { name: "Active" });
     await expect(sun).toHaveAttribute("aria-checked", "false");
     await expect(active).toHaveAttribute("aria-checked", "true"); // its default
@@ -46,7 +48,7 @@ test.describe("phone", () => {
     await expect(page.locator(".k-detail-title")).toHaveText("Sun-lover");
     // The record page states the value in words, which is the form the claim takes here: the
     // switch was on when it was saved, so the plant needs direct sun after a reload.
-    const sunField = page.locator(".k-detail .k-field", { hasText: "Needs Direct Sun" }).first();
+    const sunField = page.locator(".k-detail .k-field", { hasText: "Wants direct sun" }).first();
     await expect(sunField).toContainText("Yes");
   });
 });
@@ -56,7 +58,7 @@ test.describe("keyboard", () => {
 
   test("Space toggles the focused row, and the focus ring is visible", async ({ page }) => {
     const form = await openNewPlant(page);
-    const sun = form.getByRole("switch", { name: "Needs Direct Sun" });
+    const sun = form.getByRole("switch", { name: "Wants direct sun" });
     await sun.focus();
     await page.keyboard.press("Space");
     await expect(sun).toHaveAttribute("aria-checked", "true");

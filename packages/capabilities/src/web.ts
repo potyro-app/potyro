@@ -8,7 +8,7 @@
 // are present with per-app mediation for untrusted code — unchanged by what this class exposes.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap } from "./types.js";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, NetworkCap, NotificationCap, ShareCap } from "./types.js";
 import { sharedLiveCamera, type LiveCameraCap } from "./live-camera.js";
 import { sharedWebSockets, type SocketCap } from "./sockets.js";
 import { sharedWebSpeech, type SpeechCap } from "./speech.js";
@@ -169,6 +169,8 @@ export class WebCapabilities implements Capabilities {
   readonly liveCamera: LiveCameraCap | null;
   /** The browser's WebSocket, one set per page (docs/28). */
   readonly sockets: SocketCap | null;
+  /** The Web Share API, where the browser has it. */
+  readonly share: ShareCap = webShare();
   /** SpeechRecognition, or a recording to write down where there is none (docs/29). */
   readonly speech: SpeechCap | null;
 
@@ -182,6 +184,31 @@ export class WebCapabilities implements Capabilities {
     this.sockets = sharedWebSockets();
     this.speech = sharedWebSpeech();
   }
+}
+
+/**
+ * The Web Share API as a `ShareCap`. `navigator` is read at each call, not once: a browser can gain
+ * it (a test stands one in) after this module loaded. Files go only where `navigator.canShare({ files })`
+ * says yes — desktop Firefox shares no files, and a browser may refuse a type it does not know.
+ */
+export function webShare(nav: () => Navigator | undefined = () => globalThis.navigator): ShareCap {
+  return {
+    canShare(p) {
+      const n = nav();
+      if (typeof n?.share !== "function") return false;
+      if (!p.files?.length) return true;
+      try {
+        return typeof n.canShare === "function" && n.canShare({ files: p.files });
+      } catch {
+        return false;
+      }
+    },
+    async share(p) {
+      const n = nav();
+      if (typeof n?.share !== "function") throw new DOMException("This browser has no share sheet", "NotSupportedError");
+      await n.share({ ...(p.title ? { title: p.title } : {}), ...(p.text ? { text: p.text } : {}), ...(p.url ? { url: p.url } : {}), ...(p.files?.length ? { files: p.files } : {}) });
+    },
+  };
 }
 
 /** Factory for the web target's capability set (used by the shell composition root). */

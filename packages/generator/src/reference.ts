@@ -174,7 +174,9 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "Face",
     summary: "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn — `live({ faces: true })`",
-    declarations: ["FacePoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    declarations: ["FacePoint", "FaceMeshPoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    notes:
+      "Each face also has `matrix` (the head in 3D, 16 numbers column-major; see Face.matrix) and, with `points: true`, mesh points with depth `z`. `info.time - info.facesTime` is how old the faces are. A warp that must not lag: `faces: { sameFrame: true }`, then draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
     cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
     uses: /\bfaces\s*:|\.faces\b/,
   },
@@ -255,10 +257,25 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.media",
+    // Also how pages SHOW pictures and look (`cover`, `background`, a big `primaryAction`…): the
+    // presentation options, cut out of the core and read here with the media calls.
     summary: "`put(blob)` → MediaRef for a `media` field, `url(ref)` → a URL to show it",
-    declarations: ["CtxMedia"],
-    cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*)\b/i,
-    uses: /ctx\.media\b/,
+    declarations: ["CtxMedia", "Backdrop"],
+    members: [
+      { of: "Page", name: "description" },
+      { of: "Page", name: "primaryAction" },
+      { of: "Page", name: "background" },
+      { of: "Theme", name: "background" },
+      { of: "DetailView", name: "cover" },
+      { of: "DetailView", name: "media" },
+      { of: "DetailView", name: "facts" },
+      { of: "DetailView", name: "primaryAction" },
+      { of: "ListDisplay", name: "lead" },
+      { of: "GalleryView", name: "aspect" },
+      { of: "ActionDef", name: "icon" },
+    ],
+    cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*|cover|hero|backgrounds?|wallpaper|full ?screen|look\w*|design\w*|beautiful|pretty|prettier|playful|professional|polish\w*|prominent|big button|call to action|tło|wygląd\w*|fundo|aparência|hintergrund|aussehen|fondo|aspecto|sfondo)\b/i,
+    uses: /ctx\.media\b|\b(cover|background|primaryAction|facts|lead|aspect)\s*:/,
   },
   {
     key: "ctx.files",
@@ -271,13 +288,15 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.ui.share",
     summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
-    declarations: ["ShareAppLink", "PageLink"],
+    declarations: ["ShareAppLink", "PageLink", "ShareFile"],
     members: [{ of: "CtxUi", name: "share" }],
     notes: [
       "A link to one of the app's pages: the page declares what a link may hand it, `link: { params: [\"code\"] }`, and",
       "`ctx.ui.share({ text, app: { page: \"play\", params: { code } } })` makes it. It opens the friend's own copy of the app",
       "there (or a demo they can keep, which lands there). The page reads `ctx.params.code` (a custom view: `props.param?.code`):",
       "text, at most 200 characters, possibly typed by a stranger. Never act on it by itself — fill a box, and let the person tap.",
+      "Pictures and files too: `files: [blob, record.picture, photoField]` (a Blob such as `cam.snap()` or `canvas.toBlob()`, bytes,",
+      "a file field's value, a photo field's value; at most 10, 25 MB together). The person sees them and picks Share… or Save a copy.",
     ].join("\n"),
     cues: /\bshare\(|link:\s*\{\s*params|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|invit\w*|deep ?links?|udostępni\w*|zapros\w*|compartilh\w*|convid\w*|teilen|einlad\w*|compartir|invitar\w*)\b/i,
     uses: /\.share\(|link:\s*\{\s*params/,
@@ -333,9 +352,15 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.views",
     summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()`: move a map that is on screen, from a page action (\"Centre on me\")",
-    declarations: ["MapViewControl", "CtxViews"],
-    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er))\b/i,
-    uses: /ctx\.views\b/,
+    // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
+    // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
+    declarations: ["MapViewControl", "CtxViews", "RelatedSection"],
+    members: [
+      { of: "ListDisplay", name: "icon" },
+      { of: "DetailSection", name: "related" },
+    ],
+    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er)|history|log|logs|related|linked|past|suggest\w*|remember\w*|tap\w*|tiles?|emoji|icons?|pins?|settle|histori\w*|registro|verlauf|historia|storia)\b/i,
+    uses: /ctx\.views\b|\b(related|quickAdd|layout)\s*:/,
   },
   {
     key: "ctx.format",
@@ -410,15 +435,17 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "checklist",
     summary: "a checklist's rarer options: `reorder` (a number field; rows drag), `groupOrder` (relation groups renamed, reordered, added in place), `editText` (rename a row in place), `donePlacement: \"sink\"`",
-    declarations: [],
+    declarations: ["ChecklistQuickAdd"],
     members: [
+      { of: "ChecklistView", name: "icon" },
+      { of: "ChecklistView", name: "layout" },
       { of: "ChecklistView", name: "donePlacement" },
       { of: "ChecklistView", name: "editText" },
       { of: "ChecklistView", name: "reorder" },
       { of: "ChecklistView", name: "groupOrder" },
     ],
-    cues: /\b(donePlacement|editText|reorder|groupOrder)\b|\b(drag\w*|re-?order\w*|rearrang\w*|sort by hand|move (?:it|them|items?|rows?) (?:up|down)|rename (?:it|items?|rows?|groups?)|to the bottom|przeciąg\w*|arrast\w*|zieh\w*|verschieb\w*|arrastr\w*|trascin\w*)\b/i,
-    uses: /\b(donePlacement|editText|reorder|groupOrder)\s*:/,
+    cues: /\b(donePlacement|editText|reorder|groupOrder|ChecklistQuickAdd)\b|\b(suggest\w*|remember\w*|tiles?|emoji|aisle|drag\w*|re-?order\w*|rearrang\w*|sort by hand|move (?:it|them|items?|rows?) (?:up|down)|rename (?:it|items?|rows?|groups?)|to the bottom|przeciąg\w*|arrast\w*|zieh\w*|verschieb\w*|arrastr\w*|trascin\w*)\b/i,
+    uses: /\b(donePlacement|editText|reorder|groupOrder|layout|remember|defaults)\s*:/,
   },
   {
     key: "mount",

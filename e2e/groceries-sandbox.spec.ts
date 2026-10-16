@@ -19,5 +19,5 @@ test("groceries checklist runs untrusted in the isolate: rows, headings, a tick"
   // It stays where it is — not sunk to the bottom of its aisle, and not moved to a Done section.
   const dairy = page.locator("section", { has: page.getByRole("heading", { name: "Dairy" }) });
   await page.waitForTimeout(1_000);
-  await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt"]);
+  await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt", "Eggs"]);
 });

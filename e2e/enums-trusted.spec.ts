@@ -57,7 +57,7 @@ test.describe("desktop", () => {
     expect(await badge.getAttribute("style")).toBe(formTint);
   });
 
-  test("six options open a searchable list in a popover", async ({ page }) => {
+  test("many options open a searchable list in a popover", async ({ page }) => {
     await openApp(page, "places", "Places");
     await goToAllPlaces(page);
     await page.getByRole("button", { name: /Add: Place/ }).click();
@@ -66,7 +66,7 @@ test.describe("desktop", () => {
 
     await form.getByRole("button", { name: "Kind: choose" }).click();
     const list = page.getByRole("listbox", { name: "Kind" });
-    await expect(list.getByRole("option")).toHaveCount(6);
+    await expect(list.getByRole("option")).toHaveCount(11);
     await expect(page.getByRole("dialog", { name: "Kind" })).not.toHaveClass(/k-enum-list-sheet/);
     await page.getByRole("searchbox", { name: "Search Kind" }).fill("ba");
     await expect(list.getByRole("option")).toHaveText([/bar/, /bakery/]);

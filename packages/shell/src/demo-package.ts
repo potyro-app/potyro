@@ -44,7 +44,9 @@ export async function demoSeed(appId: string, entities: readonly string[], packa
   const scratch = new MemoryStore();
   await scratch.open(`demo:${appId}`);
   try {
-    await seedIfEmpty(scratch, appId, undefined);
+    // A photo stays the path of the file it is: the link carries the file, and the device that opens
+    // it makes the record's copy (seed-files.ts).
+    await seedIfEmpty(scratch, appId, undefined, async (file) => ({ file }));
     const seed: DemoSeed = {};
     for (const entity of entities) {
       const rows = await scratch.all(entity);
@@ -121,21 +123,27 @@ export interface DemoPackage {
   accent?: string;
   /** Who the link says made it. */
   credit: AppCredit;
+  /** Whether it carries files the app shipped with (pictures, mostly): what an inline link can drop. */
+  pictures: boolean;
 }
 
 /** Everything `packDemo` needs, read from this device for a saved app. */
-export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): Promise<DemoPackage> {
+export async function demoPackageFor(app: UserApp, opts: { by?: string; pictures?: boolean } = {}): Promise<DemoPackage> {
   const [{ inspect }, { appCode, modulesOf }] = await Promise.all([import("./app-source.js"), import("./app-modules.js")]);
   const shape = await inspect(app.source);
   const entities = shape.entities.map((e) => e.key);
   let files: PackagedFile[] = [];
   let code: Array<{ path: string; data: Uint8Array }> = [];
-  const needsStore = Boolean(app.shipped?.length) || Boolean(app.lock && Object.keys(app.lock).length);
+  // A bundled example's files reach its folder when its store opens (example-files.ts), so one that
+  // has never been opened on this device still shares its pictures.
+  const bundled = (await import("./example-files.js")).exampleFilePaths(app.id);
+  const needsStore = Boolean(app.shipped?.length) || bundled.length > 0 || Boolean(app.lock && Object.keys(app.lock).length);
   if (needsStore) {
     const { openAppStore, syncAllowedFor } = await import("./app-store.js");
     const store = await openAppStore(app, { sync: await syncAllowedFor(app) });
     try {
-      files = await shippedFiles(store, app.shipped ?? []);
+      // `pictures: false`: a link that has to carry the app in itself, and would not fit with them.
+      if (opts.pictures !== false) files = await shippedFiles(store, [...new Set([...(app.shipped ?? []), ...bundled])]);
       code = await appCode((await modulesOf(app.id)) ?? store, app.lock);
     } finally {
       await store.close();
@@ -154,5 +162,6 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
     icon: shape.icon,
     accent: shape.accent,
     credit,
+    pictures: files.length > 0,
   };
 }

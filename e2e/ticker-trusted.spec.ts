@@ -79,7 +79,7 @@ test("a shared copy: asked first, subscribed, a hundred ticks a second shown eve
 
   // A hundred ticks a second for four seconds: what the list shows changes at most every three.
   const shown = new Set<string>();
-  const watch = setInterval(() => void row(page, "BTC-USD").innerText().then((t) => shown.add(t.split("\n")[0]!)).catch(() => {}), 50);
+  const watch = setInterval(() => void row(page, "BTC-USD").locator(".k-primary").innerText().then((t) => shown.add(t)).catch(() => {}), 50);
   for (let i = 0; i < 40; i++) {
     for (let k = 0; k < 10; k++) feed.push(tick("BTC-USD", 82_400 + i * 10 + k));
     await page.waitForTimeout(100);

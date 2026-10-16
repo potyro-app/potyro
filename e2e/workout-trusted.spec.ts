@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { installGridApp } from "./grid-fixture.js";
 // A one-screen app whose quick action is a MENU: one required enum, everything else defaulted —
 // the shape that makes "press the button, pick the type, and you are in it" possible. It lives here
 // rather than in an example because it is a platform behaviour: PPL Log used to carry it, until
@@ -61,8 +62,11 @@ test("a menu quick action creates the record from its defaults and opens it", as
   await expect(page.locator("article.k-detail")).toBeVisible();
 });
 
-test("workout grid home shows object tiles and opens an object", async ({ page }) => {
-  await page.goto("/?app=workout");
+// The grid home (`nav: "grid"`): a tile per object. Workout used to land here; it opens on Train now,
+// so the grid brings its own small app.
+test("a grid home shows object tiles and opens an object", async ({ page }) => {
+  await installGridApp(page);
+  await page.goto("/?user=gridhome");
   const grid = page.locator(".k-objgrid");
   await expect(grid).toBeVisible(); // grid nav: lands on the object overview, not a tab
 
@@ -79,7 +83,7 @@ test("workout grid home shows object tiles and opens an object", async ({ page }
 });
 
 test("workout 'New exercise' quick action opens the create form", async ({ page }) => {
-  await page.goto("/?app=workout");
+  await page.goto("/?user=workout");
   await page.locator(".k-quickbar").getByRole("button", { name: /New exercise/ }).click();
   const modal = page.locator(".k-modal");
   await expect(modal).toBeVisible();

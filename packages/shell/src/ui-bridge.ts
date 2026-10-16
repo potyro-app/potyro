@@ -22,10 +22,10 @@ export type AppLinkMaker = (target: NonNullable<ShownShare["app"]>) => Promise<s
  * already up; where no link can be made for this app (the Studio's preview, a headless runtime), the
  * words go alone — and with no words, there is nothing to send.
  */
-export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker): { text?: string; url?: string; title?: string; makeLink?: () => Promise<string> } | null {
+export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker): { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> } | null {
   const { app, ...rest } = opts;
   if (app && makeLink) return { ...rest, makeLink: () => makeLink(app) };
-  return rest.text || rest.url ? rest : null;
+  return rest.text || rest.url || rest.files?.length ? rest : null;
 }
 
 export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras): UiBridge {
@@ -40,7 +40,7 @@ export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHo
       // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is chosen.
       return null;
     },
-    // Words or a link to send on, through the share dialog; headless, nothing is sent.
+    // Words, a link or files to send on, through the share dialog; headless, nothing is sent.
     ...(dialogs
       ? {
           share: async (opts: ShownShare) => {

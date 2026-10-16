@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 
-// Entity groups drive both the form and the detail page (#100): Recipes declares four, and the
+// Entity groups drive both the form and the detail page (#100): Recipes declares five, and the
 // person who edits a recipe under "Nutrition & cost" reads it back under "Nutrition & cost". A
 // required field left empty is told so under the field and gets the focus; two `width: "half"`
 // neighbours share a row on a wide screen and stack on a phone.
@@ -29,11 +29,11 @@ test.describe("desktop", () => {
     await openApp(page, "recipes", "Recipes");
 
     // The detail page: the entity's groups, no page `sections` needed.
-    await page.locator(".k-list-row").first().click();
+    await page.locator(".k-card").first().click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
     // Headings are plain for a group that does not fold and a button for one that does (#108).
-    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
     // The folded group is closed until opened, and opens.
     const steps = detail.getByRole("button", { name: /^Steps/ });
     await expect(steps).toHaveAttribute("aria-expanded", "false");
@@ -42,12 +42,12 @@ test.describe("desktop", () => {
     // A computed value in a group shows on the detail page, under its own label (#310).
     await expect(detail.locator(".k-field dt", { hasText: "Calories per serving" })).toBeVisible();
 
-    // The form: the same four groups, the computed-only fields skipped, Steps folded.
-    await page.getByRole("button", { name: /Recipes/ }).click();
+    // The form: the same five groups, the computed-only fields skipped, Steps folded.
+    await page.getByRole("button", { name: /Recipes/ }).first().click();
     await page.locator(".k-quickbar").getByRole("button", { name: /Add: Recipe/ }).click();
     const form = page.locator(".k-modal .k-form");
     await expect(form).toBeVisible();
-    await expect(form.locator(".k-form-group-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost"]);
+    await expect(form.locator(".k-form-group-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
     await expect(form.locator("details.k-form-group")).not.toHaveAttribute("open", "");
     const name = form.getByRole("textbox", { name: "Name" });
     await expect(name).toHaveAttribute("placeholder", "Shakshuka");
@@ -72,8 +72,8 @@ test.describe("desktop", () => {
     await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
-    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
-    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last watered") });
+    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     const a = (await watered.boundingBox())!;
     const b = (await interval.boundingBox())!;
     expect(Math.abs(a.y - b.y)).toBeLessThan(2);
@@ -87,11 +87,13 @@ test.describe("phone", () => {
 
   test("Plants: the half-width fields stack", async ({ page }) => {
     await openApp(page, "plants", "Plants");
+    // Today's one big button is "Add a plant" (a photo or typed); the Plants list has the form.
+    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
     await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
-    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
-    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last watered") });
+    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     const a = (await watered.boundingBox())!;
     const b = (await interval.boundingBox())!;
     expect(b.y).toBeGreaterThan(a.y + a.height - 1);

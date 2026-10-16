@@ -74,6 +74,15 @@ function base64OfBytes(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/** `ui.share`'s options as the isolate sends them: bytes come as base64 (there is no Blob in QuickJS). */
+function shareFromIsolate(opts: unknown): never {
+  if (!opts || typeof opts !== "object" || !Array.isArray((opts as { files?: unknown }).files)) return opts as never;
+  const files = ((opts as { files: unknown[] }).files).map((f) =>
+    f && typeof f === "object" && typeof (f as { __bytes?: unknown }).__bytes === "string" ? bytesOfBase64((f as { __bytes: string }).__bytes) : f,
+  );
+  return { ...(opts as object), files } as never;
+}
+
 function bytesOfBase64(b64: string): Uint8Array {
   const binary = atob(b64);
   const out = new Uint8Array(binary.length);
@@ -248,7 +257,7 @@ class IsolateLoadedApp implements LoadedApp {
                     : kind === "ui.menu"
                       ? await ctx.ui.menu(opts)
                       : kind === "ui.share"
-                        ? await ctx.ui.share(opts)
+                        ? await ctx.ui.share(shareFromIsolate(opts))
                         : await ctx.ui.form(opts);
           return serialize((answer ?? (kind === "ui.confirm" || kind === "ui.share" ? false : null)) as Value);
         } finally {

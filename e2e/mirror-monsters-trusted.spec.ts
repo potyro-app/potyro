@@ -158,6 +158,19 @@ test("Mirror Monsters: the live camera draws on the canvas, the shell says Camer
   await expect(piece).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => piece.locator("img").evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(500);
 
+  // Share hands the snap itself to Potyro's share dialog, which shows the picture before it goes.
+  await piece.click();
+  const box = page.getByRole("dialog", { name: "Pixel 1" });
+  await box.getByRole("button", { name: /Share/ }).click();
+  const share = page.getByRole("dialog", { name: "Pixel 1" }).filter({ has: page.locator(".k-share-files") });
+  const snapPreview = share.locator(".k-share-file-picture");
+  await expect(snapPreview).toBeVisible();
+  await expect.poll(() => snapPreview.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(500);
+  await expect(share.getByRole("button", { name: "Save a copy" })).toBeVisible();
+  await share.getByRole("button", { name: "Done" }).click();
+  await expect(share).toHaveCount(0);
+  await box.getByRole("button", { name: "Close" }).click();
+
   // Back to the mirror: it was turned on before, so opening the mirror turns it on.
   await page.locator(".k-tab, .k-nav a, .k-nav button", { hasText: "Mirror" }).first().click();
   await expect.poll(() => live(page)).toBe(1);

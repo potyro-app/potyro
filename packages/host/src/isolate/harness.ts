@@ -220,7 +220,15 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         sheet: function(o){ return bridge({op:"ui.sheet", opts:o}); },
         menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
         form: function(o){ return bridge({op:"ui.form", opts:o}); },
-        share: function(o){ return bridge({op:"ui.share", opts:o}); },
+        share: function(o){
+          // Files cross as data: bytes as base64, a reference by its fields (there is no Blob here).
+          if (o && Array.isArray(o.files)) o = Object.assign({}, o, { files: o.files.map(function(f){
+            if (f instanceof Uint8Array) return { __bytes: toBase64(f) };
+            if (f && typeof f === "object") return f.key !== undefined ? { key: f.key, mime: f.mime } : { id: f.id, path: f.path, name: f.name, mime: f.mime };
+            return f;
+          }) });
+          return bridge({op:"ui.share", opts:o});
+        },
         keepAwake: function(){
           var id = "w" + (++awakeSeq);
           bridgeSync({op:"ui.keepAwake", id:id, hold:true});

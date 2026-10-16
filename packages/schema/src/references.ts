@@ -111,7 +111,21 @@ export function checkReferences(def: AppDefinition): string[] {
       }
       case "detail": {
         for (const s of v.sections ?? []) {
-          for (const fld of s.fields) ensureKey(entity, v.entity, fld, `${where} section "${plainWords(s.title)}"`);
+          const at = `${where} section "${plainWords(s.title)}"`;
+          for (const fld of s.fields ?? []) ensureKey(entity, v.entity, fld, at);
+          const rel = s.related;
+          if (!rel) continue;
+          // The records that point here: their entity, and the relation on it that points at this one.
+          const other = def.entities[rel.entity];
+          if (!other) {
+            issues.push(`${at} related.entity "${rel.entity}" is not an entity`);
+            continue;
+          }
+          const via = other.fields[rel.via] as { type?: string; to?: string } | undefined;
+          if (!via) issues.push(`${at} related.via "${rel.via}" is not a field of "${rel.entity}"`);
+          else if (via.type !== "relation" || via.to !== v.entity) issues.push(`${at} related.via "${rel.via}" must be a relation on "${rel.entity}" to "${v.entity}"`);
+          if (rel.date) ensureKey(other, rel.entity, rel.date, `${at} related.date`);
+          if (rel.value) ensureKey(other, rel.entity, rel.value, `${at} related.value`);
         }
         break;
       }
