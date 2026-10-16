@@ -11,6 +11,7 @@ import type { BuiltinViewProps } from "./types.js";
 import { getView } from "./format.js";
 import { resolveViewComponent } from "./registry.js";
 import { PartBoundary, PartProblem, describePartFailure, usePartFailures } from "./part-failure.js";
+import { byPeople } from "./edit-lock.js";
 
 export function ViewHost(
   props: BuiltinViewProps & { registry?: Partial<Record<View["type"], ComponentType<BuiltinViewProps>>> },
@@ -37,6 +38,10 @@ export function ViewHost(
       </div>
     );
   }
+  // Records only the app's own code writes (`editableBy: "app"`, a feed's): the view gets no Edit and
+  // no place to add, so it offers neither. Its delete and in-place changes ask `byPeople` too.
+  const entity = (view as { entity?: string }).entity;
+  const viewProps = entity && !byPeople(props.runtime, entity) ? { ...props, onEdit: undefined, onCreate: undefined } : props;
   // A built-in view prints records, and its text is theirs unless marked `data-k-wording`. Edit mode
   // pairs text with the app's literals, and a record called "Milk" must never pass for one of them —
   // so here the default is "data", and a view that forgets to mark its wording just offers less.
@@ -45,7 +50,7 @@ export function ViewHost(
   return (
     <div data-k-view data-k-part={props.pageId} style={{ display: "contents" }}>
       {notes}
-      {part(<Component {...props} />)}
+      {part(<Component {...viewProps} />)}
     </div>
   );
 }

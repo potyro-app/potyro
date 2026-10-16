@@ -21,7 +21,7 @@ test("search_corpus answers from the release's example apps, inside the browser"
     requests.push(body.messages);
     const n = requests.length;
     if (n === 1) return route.fulfill(reply({ content: "```ts\n" + APP + "\n```" }));
-    if (n === 2) return route.fulfill(reply({ content: "", tool_calls: [{ id: "call_1", type: "function", function: { name: "search_corpus", arguments: '{"query":"custom view render"}' } }] }));
+    if (n === 2) return route.fulfill(reply({ content: "", tool_calls: [{ id: "call_1", type: "function", function: { name: "search_corpus", arguments: '{"query":"cook along steps custom view"}' } }] }));
     return route.fulfill(reply({ content: EDITS }));
   });
 

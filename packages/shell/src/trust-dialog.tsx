@@ -11,7 +11,7 @@
 // Promoting needs the person to SAY so. A link is still never trusted on the way in, and a failure
 // that promoting would not fix (promotion.ts) never offers this as the way out.
 
-import { capabilityWords } from "./capability-words.js";
+import { permissionWords } from "./capability-words.js";
 import { Trans } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -20,8 +20,8 @@ import { promoteAndOpen } from "./promotion.js";
 
 export interface TrustDialogProps {
   name: string;
-  /** What it declares it asks for; `null` when that cannot be read without running it; `undefined` while reading. */
-  permissions: readonly string[] | null | undefined;
+  /** What it declares it asks for (its `permissions`); `null` when that cannot be read without running it; `undefined` while reading. */
+  permissions: Readonly<Record<string, unknown>> | null | undefined;
   /** It runs as yours already: the dialog offers to put it back in the sealed box. */
   trusted?: boolean;
   onCancel: () => void;
@@ -32,7 +32,8 @@ export interface TrustDialogProps {
 export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, onRevoke }: TrustDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => cancelRef.current?.focus(), []);
-  // A permission key (`camera`) is code; the list says what it means.
+  // A permission key (`camera`) is code; the list says what it means, as precisely as it was declared.
+  const asks = permissions ? permissionWords(permissions) : [];
   // On the page itself: opened from inside another dialog (the Add an app card) or a menu, it must
   // not be placed — or clipped — by them.
   return createPortal(
@@ -86,8 +87,8 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
                 <li className="k-muted">
                   <Trans>what it asks for cannot be read without running it</Trans>
                 </li>
-              ) : permissions.length ? (
-                permissions.map((c) => <li key={c}>{capabilityWords(c)}</li>)
+              ) : asks.length ? (
+                asks.map((c) => <li key={c}>{c}</li>)
               ) : (
                 <li className="k-muted">
                   <Trans>no special capabilities</Trans>
@@ -115,7 +116,7 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
  * just added. What it asks for is read from its source; confirming promotes it and opens it as yours.
  */
 export function PromoteDialog({ app, onCancel }: { app: Pick<UserApp, "id" | "name" | "source">; onCancel: () => void }) {
-  const [permissions, setPermissions] = useState<string[] | null | undefined>(undefined);
+  const [permissions, setPermissions] = useState<Record<string, unknown> | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
     void import("./app-source.js")

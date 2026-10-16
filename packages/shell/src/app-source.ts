@@ -30,6 +30,7 @@ import {
   hasOpaqueMembers,
   keyOf,
   literalLanguages,
+  literalOf,
   literalString,
   literalWords,
   load,
@@ -175,7 +176,7 @@ export async function declaredSync(source: string): Promise<boolean | null> {
  * none; `null` when they are not written literally (a helper, a spread, a value decided at run time)
  * or the module cannot be read, which the dialog says instead of "nothing".
  */
-export async function declaredPermissions(source: string): Promise<string[] | null> {
+export async function declaredPermissions(source: string): Promise<Record<string, unknown> | null> {
   const t = await load();
   if (!t) return null;
   const ast = parseModule(t, source);
@@ -183,15 +184,35 @@ export async function declaredPermissions(source: string): Promise<string[] | nu
   const def = findDefinition(ast);
   if (!def) return null;
   const permissions = propValue(def, "permissions");
-  if (!permissions) return prop(def, "permissions") || hasOpaqueMembers(def) ? null : [];
+  if (!permissions) return prop(def, "permissions") || hasOpaqueMembers(def) ? null : {};
   if (permissions.type !== "ObjectExpression" || hasOpaqueMembers(permissions)) return null;
-  const out: string[] = [];
+  const out: Record<string, unknown> = {};
   for (const p of asArray(permissions.properties)) {
+    const key = keyOf(p);
     const value = p.value as Node;
-    if (value.type !== "BooleanLiteral") return null;
-    if (value.value === true) out.push(keyOf(p) ?? "");
+    if (!key) return null;
+    if (value.type === "BooleanLiteral") {
+      if (value.value === true) out[key] = true;
+      continue;
+    }
+    // `network: { hosts: [...], rooms: true }` (docs/28): said as written. A part that is not written
+    // out (`hosts: [API_HOST]`) cannot be named, so the whole of it is said as the internet: never
+    // less than it may reach.
+    if (key === "network" && value.type === "ObjectExpression") {
+      out[key] = hasOpaqueMembers(value) || !literallyAll(value) ? true : literalOf(value);
+      continue;
+    }
+    return null;
   }
-  return out.filter(Boolean);
+  return out;
+}
+
+/** Every member of an object expression is written as a literal, all the way down. */
+function literallyAll(node: Node): boolean {
+  return asArray(node.properties).every((p) => {
+    const v = p.value as Node;
+    return v.type === "ObjectExpression" ? literallyAll(v) : literalOf(v) !== undefined;
+  });
 }
 
 /** The entity's `groups` when every group is `{ title?, fields: ["a", "b"] }` written out; `undefined`
