@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Taking access back (#58). A shared app's owner removes someone from the People panel, and that
 // removal is real: the person's role is revoked and the space's key rotated, so nothing written after
@@ -16,9 +17,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, seed = false): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "people", name: "People App", source, trusted: true, updatedAt: new Date().toISOString() }]));
     },
