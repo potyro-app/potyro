@@ -53,6 +53,7 @@ const BLOCK_LAST = 32_000;
 const CLAIMS = "/tmp/potyro-e2e-ports";
 /** Each spec file's last duration in seconds, kept across commits (gitignored, like every result). */
 const TIMINGS = join(ROOT, ".ci-local", "e2e-timings.json");
+const SEED_TIMINGS = join(ROOT, "e2e", "timings.json");
 const STEPS = ["install", "build", "unit", "typecheck", "lint", ...Array.from({ length: SHARDS }, (_, i) => `e2e:${i + 1}`)];
 
 const sh = (cmd) => execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -195,12 +196,20 @@ function specFiles() {
   return out.sort();
 }
 
-function readTimings() {
+const readJson = (f) => {
   try {
-    return JSON.parse(readFileSync(TIMINGS, "utf8"));
+    return JSON.parse(readFileSync(f, "utf8"));
   } catch {
     return {};
   }
+};
+
+/**
+ * Each file's last duration: this checkout's own measurements over the committed seed
+ * (`e2e/timings.json`, measured on vazio), so even a fresh clone's first run is balanced.
+ */
+function readTimings() {
+  return { ...readJson(SEED_TIMINGS), ...readJson(TIMINGS) };
 }
 
 /**
@@ -218,6 +227,9 @@ function shardPlan() {
   } catch {
     /* none yet */
   }
+  // A new deal: any shard result already here was for other files (CI_LOCAL_SHARDS changed, or a
+  // result from before plans were kept), so it describes nothing any more.
+  for (const f of readdirSync(dir)) if (/^e2e-\d+\.(ok|fail)$/.test(f)) rmSync(join(dir, f), { force: true });
   const timings = readTimings();
   const known = files.map((f) => timings[f]).filter((t) => typeof t === "number").sort((a, b) => a - b);
   let plan;
@@ -257,7 +269,7 @@ function learnTimings(report) {
   };
   for (const suite of parsed.suites ?? []) walk(suite);
   if (!Object.keys(perFile).length) return;
-  const timings = { ...readTimings() };
+  const timings = readJson(TIMINGS);
   for (const [f, secs] of Object.entries(perFile)) timings[f] = Math.round(secs * 10) / 10;
   writeFileSync(TIMINGS, `${JSON.stringify(Object.fromEntries(Object.entries(timings).sort()), null, 1)}\n`);
 }
