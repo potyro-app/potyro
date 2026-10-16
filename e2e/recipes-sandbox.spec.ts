@@ -20,21 +20,6 @@ test("recipes app runs untrusted in the QuickJS-WASM isolate", async ({ page }) 
   // Detail navigation works through the isolate boundary too.
   await rows.first().click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-
-  // Cook mode, sealed: the screen held on and a step's timer kept by the shell, asked for across the
-  // realm's port (docs/04 §Timers) — and let go of when cook mode closes.
-  await page.getByRole("button", { name: /Start cooking/ }).click();
-  await expect(page.locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
-  const html = page.locator("html");
-  await expect(html).toHaveAttribute("data-k-awake", "");
-  await page.locator(".ck-timer").click();
-  const chip = page.locator(".k-timer-chip", { hasText: ", step 1" });
-  await expect(chip).toHaveCount(1);
-  await expect(page.locator(".ck-timer")).toHaveAttribute("data-running", "true");
-  await page.getByRole("button", { name: /Recipes/ }).first().click();
-  await expect(html).not.toHaveAttribute("data-k-awake", "");
-  await chip.getByRole("button", { name: "Stop timer" }).click();
-  await expect(chip).toHaveCount(0);
 });
 
 // The M1 cook-along, sealed (#267): the same React component, in its own sandboxed frame, with the
@@ -56,6 +41,14 @@ test("the cook-along screen runs sealed in its own frame, and its steps tick", a
   // The recipe it was opened for (its `param`), one step at a time: Next ticks the step it leaves.
   await expect(frame.locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
   await expect(frame.getByText(/Step 1 of \d+/).first()).toBeVisible();
+  // Sealed, it asks across the realm's port: the screen held on, and a step's timer the shell keeps —
+  // its chip in the shell's own page (docs/04 §Timers).
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-k-awake", "");
+  await frame.locator(".ck-timer").click();
+  const chip = page.locator(".k-timer-chip", { hasText: ", step 1" });
+  await expect(chip).toHaveCount(1);
+  await expect(frame.locator(".ck-timer")).toHaveAttribute("data-running", "true");
   await frame.getByRole("button", { name: "Next step" }).click();
   await expect(frame.getByText(/Step 2 of \d+/).first()).toBeVisible();
   await expect(frame.locator("ol li input[type=checkbox]").first()).toBeChecked();
@@ -64,4 +57,9 @@ test("the cook-along screen runs sealed in its own frame, and its steps tick", a
   await expect(secondStep).toBeChecked();
   // Nothing of the app's screen is in the shell's own document.
   await expect(page.locator("#cook-heading")).toHaveCount(0);
+  // Out of cook mode the screen may sleep; the step's timer is still on its chip, and stops there.
+  await page.getByRole("button", { name: /Recipes/ }).first().click();
+  await expect(html).not.toHaveAttribute("data-k-awake", "");
+  await chip.getByRole("button", { name: "Stop timer" }).click();
+  await expect(chip).toHaveCount(0);
 });
