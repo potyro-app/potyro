@@ -10,7 +10,7 @@ import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type UiBridge } from "@potyro/host";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
-import { GalleryView, ListView } from "../src/builtins.js";
+import { GalleryView, ListView, autoLead } from "../src/builtins.js";
 import { DetailView } from "../src/detail.js";
 import { PageCountContext } from "../src/page-count.js";
 import { firstPhotoField, initialOf, mediaFieldFor } from "../src/lead.js";
@@ -94,6 +94,13 @@ describe("a list row's lead", () => {
     render(<ListView {...props(runtime, "bare")} />);
     await screen.findByText("squat");
     expect(document.querySelector(".k-list-row .k-lead")).toBeNull();
+  });
+
+  it("is the entity's icon when every row starts with the same letter, since an initial would say nothing", () => {
+    expect(autoLead(["M5.2 · Vanuatu", "M4.8 · Ecuador"], "🌍")).toBe("icon");
+    expect(autoLead(["M5.2", "M4.8"], undefined)).toBe("none");
+    expect(autoLead(["Fern", "Monstera"], "🌱")).toBe("monogram");
+    expect(autoLead(["Fern"], "🌱")).toBe("monogram");
   });
 
   it("takes the first letter a person reads, whole", () => {

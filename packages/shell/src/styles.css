@@ -986,48 +986,109 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   }
 }
 
-/* Object grid (grid nav home) */
+/* Object grid (grid nav home): what the app holds, each kind a tile with its count big. */
+.k-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.k-home-icon {
+  width: 3.2rem;
+  height: 3.2rem;
+  font-size: 1.7rem;
+  border-radius: 16px;
+}
 .k-objgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(9.5rem, 44%), 1fr));
+  gap: var(--space-3);
 }
 .k-objtile {
+  position: relative;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1rem;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  align-content: end;
+  gap: 0.15rem;
+  min-height: 8.5rem;
+  padding: var(--space-4);
   text-align: left;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  transition: transform 150ms var(--ease), box-shadow 150ms var(--ease), border-color 150ms var(--ease);
+  color: var(--ink);
+  font: inherit;
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--line));
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--accent) 24%, transparent), transparent 65%),
+    var(--surface-raised);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 5%, transparent);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .k-objtile:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
-  border-color: var(--accent);
+}
+.k-objtile:active {
+  transform: scale(0.98);
+}
+.k-objtile:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 .k-objtile-icon {
-  width: 2.4rem;
-  height: 2.4rem;
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 2.6rem;
+  height: 2.6rem;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--accent) 20%, var(--paper));
-  font-size: 1.25rem;
-}
-.k-objtile-name {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  text-transform: capitalize;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  font-size: 1.35rem;
 }
 .k-objtile-count {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 600;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
-  font-size: 1.1rem;
+  color: var(--accent-ink);
+}
+.k-objtile-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: capitalize;
+}
+.k-home-pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-home-pages-title {
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-1);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.k-home-page-link {
+  all: unset;
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-home-page-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-objtile {
+    transition: none;
+  }
 }
 
 
@@ -5076,17 +5137,24 @@ button.k-fold-head {
   font: inherit;
   text-align: left;
 }
+/* A record page's folding section heads like its other sections: a small label in the app's colour. */
+.k-fold-section > .k-fold-head {
+  min-height: 2rem;
+  color: var(--accent-ink);
+}
 .k-fold-section .k-fold-title {
-  font-family: var(--font-display);
-  font-size: 1.17em;
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .k-fold-section .k-fold-count {
   font-size: 0.85rem;
   font-weight: 400;
 }
 .k-fold-section[data-open="true"] > .k-fold-body {
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 @media (prefers-reduced-motion: reduce) {
   .k-fold-chevron {
