@@ -478,45 +478,57 @@ export default defineApp({
           value: (rows) => rows.filter((p) => visited(p)).length,
         },
       ],
-      view: {
-        type: "list",
-        entity: "place",
-        filters: [
-          { label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" }, param: "kind", from: "kind" },
-          { label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" }, param: "status", from: "status" },
+      // A split (#105): on a wide screen a row fills the place on the right; on a phone it opens the
+      // place's own page, as any list does.
+      layout: {
+        type: "split",
+        items: [
+          {
+            view: {
+              type: "list",
+              entity: "place",
+              filters: [
+                { label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" }, param: "kind", from: "kind" },
+                { label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" }, param: "status", from: "status" },
+              ],
+              filter: (p, ctx) => {
+                const { kind, status } = ctx.params as { kind?: string; status?: string };
+                const list = ctx.scope.collection;
+                if (list && !((p.lists as Array<{ id: string }> | undefined) ?? []).some((l) => l?.id === list.id)) return false;
+                return (!kind || p.kind === kind) && (!status || p.status === status);
+              },
+              // Favourites, then by your own ranking, then by rating.
+              sort: (a, b) =>
+                Number(b.status === "favourite") - Number(a.status === "favourite") ||
+                (a.rankInKind ?? 99) - (b.rankInKind ?? 99) ||
+                (b.rating ?? 0) - (a.rating ?? 0),
+              // Every category at once, in the enum's order, each folding away (#108). The chips still
+              // narrow it to one.
+              group: "kind",
+              collapsible: true,
+              display: {
+                primary: "name",
+                // The heading already says the category, so the row does not repeat it. "4,5★" in Polish.
+                secondary: (p, ctx) =>
+                  [
+                    typeof p.rankInKind === "number" && visited(p) ? `#${p.rankInKind}` : "",
+                    typeof p.rating === "number" ? `${ctx.format.number(p.rating)}★` : "",
+                    statusName(p.status, ctx),
+                    p.mustOrder ? `“${p.mustOrder}”` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                media: "photo",
+                badges: ["vibes"],
+              },
+              rowActions: ["favourite"],
+              onOpen: { page: "detail", param: { placeId: "id" } },
+            },
+          },
+          {
+            view: { type: "detail", entity: "place", param: "placeId", cover: "banner", facts: ["status", "kind", "rankText"], primaryAction: "logVisit", actions: ["rank", "favourite"] },
+          },
         ],
-        filter: (p, ctx) => {
-          const { kind, status } = ctx.params as { kind?: string; status?: string };
-          const list = ctx.scope.collection;
-          if (list && !((p.lists as Array<{ id: string }> | undefined) ?? []).some((l) => l?.id === list.id)) return false;
-          return (!kind || p.kind === kind) && (!status || p.status === status);
-        },
-        // Favourites, then by your own ranking, then by rating.
-        sort: (a, b) =>
-          Number(b.status === "favourite") - Number(a.status === "favourite") ||
-          (a.rankInKind ?? 99) - (b.rankInKind ?? 99) ||
-          (b.rating ?? 0) - (a.rating ?? 0),
-        // Every category at once, in the enum's order, each folding away (#108). The chips still
-        // narrow it to one.
-        group: "kind",
-        collapsible: true,
-        display: {
-          primary: "name",
-          // The heading already says the category, so the row does not repeat it. "4,5★" in Polish.
-          secondary: (p, ctx) =>
-            [
-              typeof p.rankInKind === "number" && visited(p) ? `#${p.rankInKind}` : "",
-              typeof p.rating === "number" ? `${ctx.format.number(p.rating)}★` : "",
-              statusName(p.status, ctx),
-              p.mustOrder ? `“${p.mustOrder}”` : "",
-            ]
-              .filter(Boolean)
-              .join(" · "),
-          media: "photo",
-          badges: ["vibes"],
-        },
-        rowActions: ["favourite"],
-        onOpen: { page: "detail", param: { placeId: "id" } },
       },
     },
     {

@@ -416,6 +416,7 @@ async function addRecipe(ctx: Ctx): Promise<void> {
       servings: { type: "number", min: 1, integer: true, default: 2, label: { en: "Servings", "pt-BR": "Porções", de: "Portionen", es: "Raciones", pl: "Porcje", it: "Porzioni" } },
     },
     initial: { servings: 2 },
+    submit: { en: "Add recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" },
   });
   if (!typed) return;
   const recipe = await ctx.create("recipe", { name: typed.name, servings: typed.servings ?? 2, status: "want to try" });
