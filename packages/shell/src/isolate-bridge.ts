@@ -10,6 +10,7 @@ import type { CreateHostOptions } from "@potyro/host";
 import type { QuickJSAsyncContextLike } from "@potyro/host/isolate";
 import type { Store } from "@potyro/store";
 import { markRealmUnavailable, sandboxRunner } from "./sandbox-runner.js";
+import type { SealedViewSource } from "./realm-bridge.js";
 
 export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
@@ -43,11 +44,15 @@ export async function createSandboxLoader(store: Store, opts?: SandboxOptions): 
   });
 }
 
-/** The loader a shared app runs with: the browser realm, or QuickJS behind the flag. */
-export async function createSharedAppLoader(store: Store, opts?: SandboxOptions): Promise<LoadIsolated> {
+
+/**
+ * The loader a shared app runs with: the browser realm, or QuickJS behind the flag. `views` lets the
+ * realm draw its custom views in sandboxed frames (#267); QuickJS cannot, and leaves them off.
+ */
+export async function createSharedAppLoader(store: Store, opts?: SandboxOptions, views?: SealedViewSource): Promise<LoadIsolated> {
   if (sandboxRunner() === "quickjs") return createSandboxLoader(store, opts);
   const { createRealmSandboxLoader, RealmStartError } = await import("./realm-bridge.js");
-  const realm = createRealmSandboxLoader(opts);
+  const realm = createRealmSandboxLoader(opts, views);
   return async (args) => {
     try {
       return await realm(args);

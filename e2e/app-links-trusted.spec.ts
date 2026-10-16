@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type Page } from "./console-guard";
+import { test, expect, type Browser, type FrameLocator, type Page } from "./console-guard";
 import { addAsMine, packApp } from "./library-demos";
 import { routeRooms, startRoomsRelay, type RoomsRelay } from "./live-servers.js";
 import { stranger } from "./share-demo";
@@ -7,8 +7,8 @@ import { stranger } from "./share-demo";
 // "Invite friends" sends a link that opens the game's Play page with the code filled in.
 //   - a friend who has the game: the link opens THEIR copy, on Play, the code in the box — and only
 //     a tap on Join joins;
-//   - a friend who does not: the demo, then Keep this app, then (the drawing board is the app's own
-//     code) Run it as mine — and they land on Play with the code still there;
+//   - a friend who does not: the demo, sealed, on Play with the code — the game's own screen runs
+//     sealed (#267), so they can play right away — then Keep this app keeps it on Play, still sealed;
 //   - a link anyone could write: what does not fit is cut, silently; an app this device does not have
 //     is said in plain words, and nothing is installed;
 //   - the remix intent (`&remix=1`) on such a link still opens Make it mine.
@@ -30,8 +30,8 @@ const shot = async (p: Page, name: string): Promise<void> => {
   if (dir) await p.screenshot({ path: `${dir}/${name}.png` });
 };
 
-const codeBox = (p: Page) => p.getByPlaceholder("KQ7M-XR4P-2DHC");
-const invitedNote = (p: Page) => p.getByText("You're invited to a game. Say your name and tap Join.");
+const codeBox = (p: Page | FrameLocator) => p.getByPlaceholder("KQ7M-XR4P-2DHC");
+const invitedNote = (p: Page | FrameLocator) => p.getByText("You're invited to a game. Say your name and tap Join.");
 
 /** Someone with Draw & Guess added as theirs, on its start screen. */
 async function player(browser: Browser, baseURL: string, name?: string): Promise<Page> {
@@ -90,18 +90,27 @@ test("a friend who has the game: the invite opens their own copy on Play, with t
   await expect(lobbyHas(bo, "Ana")).toBeVisible();
 });
 
-test("a friend who does not have it: the demo, Keep this app, Run it as mine — and they land on Play with the code", async ({ browser, baseURL }) => {
+test("a friend who does not have it: the demo opens sealed on Play with the code, ready to play, and Keep this app keeps it there", async ({ browser, baseURL }) => {
   test.setTimeout(300_000);
   const { ana, link, code } = await anaInvites(browser, baseURL!);
   const { context, page: cy } = await stranger(browser, baseURL!);
   await routeRooms(cy, relay);
 
   await cy.goto(link);
-  // The demo, sealed, opened on the page the link is for.
+  // The demo, sealed, opened on the page the link is for — and the game's own screen runs there, in
+  // its sandboxed frame (#267): the code is in the box, so they can play right away.
   await expect(cy.locator(".k-demo-bar")).toBeVisible({ timeout: 30_000 });
   await expect(cy.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
-  await expect(cy.getByText("This screen is built with the app’s own code, so it only runs when the app runs as yours.")).toBeVisible();
   await expect(cy.locator(".k-tab", { hasText: "Play" })).toHaveAttribute("data-active", "true");
+  const demoFrame = cy.locator(".k-sealed-view iframe");
+  await expect(demoFrame).toHaveAttribute("sandbox", "allow-scripts", { timeout: 30_000 });
+  const demoBoard = cy.frameLocator(".k-sealed-view iframe");
+  await expect(codeBox(demoBoard)).toHaveValue(code, { timeout: 30_000 });
+  await expect(invitedNote(demoBoard)).toBeVisible();
+  // It is the real screen, drawn in the frame — not a card about it.
+  expect(await demoBoard.locator("body").evaluate(() => self.origin)).toBe("null");
+  await expect(demoBoard.getByLabel("Your name")).toBeVisible();
+  await expect(cy.getByText("This screen is built with the app’s own code, so it only runs when the app runs as yours.")).toHaveCount(0);
   // Nothing was installed by opening it.
   expect(await cy.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]").length)).toBe(0);
   await shot(cy, "3-demo-on-play");
@@ -111,28 +120,20 @@ test("a friend who does not have it: the demo, Keep this app, Run it as mine —
   await expect(card.getByRole("heading", { name: "Draw & Guess" })).toBeVisible({ timeout: 30_000 });
   await card.getByRole("button", { name: "Add app" }).click();
 
-  // Kept, sealed, on Play. The board is the app's own code: running it as theirs is the person's call.
+  // Kept, sealed, on Play, the code still in the box: its own screen runs sealed, nothing to promote.
   await expect(cy).toHaveURL(/\/\?user=draw-guess$/, { timeout: 30_000 });
   await expect(cy.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
-  await cy.getByRole("button", { name: "Run it as mine…" }).click();
-  await cy.getByRole("button", { name: "Yes, run it as yours" }).click();
-
-  // After the reload that lets it run: still on Play, the code still in the box.
-  await expect(cy.locator(".k-app")).toHaveAttribute("data-provenance", "trusted", { timeout: 30_000 });
-  await expect(codeBox(cy)).toHaveValue(code, { timeout: 30_000 });
-  await expect(invitedNote(cy)).toBeVisible();
-  await expect(cy.getByLabel("Your name")).toBeFocused();
+  await expect(cy.locator(".k-tab", { hasText: "Play" })).toHaveAttribute("data-active", "true");
+  const board = cy.frameLocator(".k-sealed-view iframe");
+  await expect(codeBox(board)).toHaveValue(code, { timeout: 30_000 });
+  await expect(invitedNote(board)).toBeVisible();
   await shot(cy, "4-kept-landed-with-code");
   // The kept copy is the same app: its next invite link names the same line.
-  const kept = await cy.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; line?: string; lineOf?: string }>);
-  expect(kept.find((a) => a.id === "draw-guess")).toMatchObject({ id: "draw-guess" });
+  const kept = await cy.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]") as Array<{ id: string; trusted?: boolean; line?: string; lineOf?: string }>);
+  expect(kept.find((a) => a.id === "draw-guess")).toMatchObject({ id: "draw-guess", trusted: false });
   expect(kept.find((a) => a.id === "draw-guess")?.lineOf).toBeUndefined();
-
-  await cy.getByLabel("Your name").fill("Cy");
-  await cy.getByLabel("Your name").press("Enter");
-  await expect(cy.getByRole("heading", { name: "Waiting for players" })).toBeVisible({ timeout: 20_000 });
-  await expect(lobbyHas(ana, "Cy")).toBeVisible({ timeout: 20_000 });
   await context.close();
+  await ana.context().close();
 });
 
 test("a link anyone could write: huge and unknown params are cut silently, and an app you do not have installs nothing", async ({ browser, baseURL }) => {

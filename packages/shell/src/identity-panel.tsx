@@ -14,7 +14,7 @@
 // Always reachable here regardless, because the honest version of "we won't nag you" is "and you can
 // find it whenever you want".
 
-import { useState } from "react";
+import { useRef, useState, type ComponentType } from "react";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { StorageReport } from "./storage-report.js";
@@ -102,6 +102,15 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
   const [me, setMe] = useState(() => peekIdentity());
   const [words, setWords] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [Probe, setProbe] = useState<ComponentType<{ onClose: () => void }> | null>(null);
+  const taps = useRef<number[]>([]);
+  const tapHeading = (): void => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((at) => now - at < 3000), now];
+    if (taps.current.length < 7) return;
+    taps.current = [];
+    void import("./realm-probe-screen.js").then((m) => setProbe(() => m.RealmProbeScreen));
+  };
 
   const rename = async (): Promise<void> => {
     const name = await shellDialogs.prompt(t`What should people you share with see you as?`, { default: me?.name ?? "" });
@@ -191,7 +200,8 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
     <div className="k-modal-scrim" onClick={onClose}>
       <div className="k-modal k-identity" role="dialog" aria-modal="true" aria-label={t`You and your devices`} onClick={(e) => e.stopPropagation()}>
         <header className="k-identity-head">
-          <h2>
+          {/* Seven taps open the sealed-screen device check (#267, docs/22 §5): hidden, inert until then. */}
+          <h2 onClick={tapHeading}>
             <Trans comment="Heading of the panel about the person using Potyro and their devices">You</Trans>
           </h2>
           <button type="button" className="k-add" onClick={onClose} aria-label={t`Close`}>
@@ -308,6 +318,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               so without this the only way to know is to ask someone to open a console. */}
           <StorageReport />
         </details>
+        {Probe ? <Probe onClose={() => setProbe(null)} /> : null}
       </div>
     </div>
   );

@@ -174,6 +174,8 @@ export interface Inspected {
   failsToOpenSealed: boolean;
   /** Its top level threw in the sealed box for another reason: it could not be tried there. */
   trialProblem?: string;
+  /** It draws some of its screens itself (a custom view, #267): sealed, they run in their own sandboxed frames. */
+  ownScreens: boolean;
   /** Who made it, when its package says (docs/24 §6). */
   credit?: AppCredit;
 }
@@ -188,6 +190,14 @@ interface AppFacts {
   permissions?: Record<string, unknown>;
   language?: string;
   languages?: string[];
+  pages?: Array<{ view?: { type?: string }; layout?: { items?: Array<{ view?: { type?: string } }> } } | undefined>;
+}
+
+/** Whether any page draws itself (`type: "custom"`): from what was read, or, failing that, the source's text. */
+function drawsOwnScreens(facts: AppFacts, source: string): boolean {
+  const pages = facts.pages ?? [];
+  if (pages.length) return pages.some((p) => p?.view?.type === "custom" || (p?.layout?.items ?? []).some((i) => i?.view?.type === "custom"));
+  return /type\s*:\s*["']custom["']/.test(source);
 }
 
 /** An app's own words, in the language the person will see it in: the card must never show `{ en, pl }`. */
@@ -281,6 +291,7 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
     missing: trial?.missing ?? [],
     failsToOpenSealed: !!trial?.loadFailed,
     ...(trial?.loadFailed && !trial.missing.length && !trial.libraryProblem && preview !== "unavailable" ? { trialProblem: trial.loadFailed } : {}),
+    ownScreens: drawsOwnScreens(facts, pkg.source),
     ...(pkg.credit ? { credit: pkg.credit } : {}),
   };
 }

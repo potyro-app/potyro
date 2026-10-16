@@ -36,3 +36,32 @@ test("recipes app runs untrusted in the QuickJS-WASM isolate", async ({ page }) 
   await chip.getByRole("button", { name: "Stop timer" }).click();
   await expect(chip).toHaveCount(0);
 });
+
+// The M1 cook-along, sealed (#267): the same React component, in its own sandboxed frame, with the
+// recipe it was opened for (`param`, `useRecord`) and a step ticked inside the frame. Through the
+// QuickJS fallback a custom view cannot run, and the card says how to run it as yours instead.
+test("the cook-along screen runs sealed in its own frame, and its steps tick", async ({ page }, info) => {
+  await page.goto("/?app=recipes");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
+  await page.locator(".k-card").first().click();
+  await expect(page.locator("article.k-detail")).toBeVisible();
+  await page.getByRole("button", { name: /Start cooking/ }).click();
+  if (info.project.name === "sandbox-quickjs") {
+    await expect(page.getByRole("button", { name: "Run it as mine…" })).toBeVisible();
+    return;
+  }
+  const el = page.locator(".k-sealed-view iframe");
+  await expect(el).toHaveAttribute("sandbox", "allow-scripts", { timeout: 30_000 });
+  const frame = page.frameLocator(".k-sealed-view iframe");
+  // The recipe it was opened for (its `param`), one step at a time: Next ticks the step it leaves.
+  await expect(frame.locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
+  await expect(frame.getByText(/Step 1 of \d+/).first()).toBeVisible();
+  await frame.getByRole("button", { name: "Next step" }).click();
+  await expect(frame.getByText(/Step 2 of \d+/).first()).toBeVisible();
+  await expect(frame.locator("ol li input[type=checkbox]").first()).toBeChecked();
+  const secondStep = frame.locator("ol li input[type=checkbox]").nth(1);
+  await secondStep.check();
+  await expect(secondStep).toBeChecked();
+  // Nothing of the app's screen is in the shell's own document.
+  await expect(page.locator("#cook-heading")).toHaveCount(0);
+});
