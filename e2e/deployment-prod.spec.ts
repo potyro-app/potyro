@@ -96,5 +96,5 @@ test("a built-in app still runs, offline-first, with no server behind it", async
   // product's actual claim.
   await page.goto("/?app=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
-  await expect(page.locator(".k-list-row").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".k-card").first()).toBeVisible({ timeout: 30_000 });
 });
