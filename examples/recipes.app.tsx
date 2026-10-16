@@ -152,12 +152,31 @@ export default defineApp({
   id: "recipes",
   name: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
   icon: "🍳",
-  version: "1.1.1",
+  version: "1.2.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#E4A93C" },
   permissions: { camera: true, filesystem: true },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): what to cook next — the recipe left longest — with its photo.
+  tile: async (ctx) => {
+    const recipes = (await ctx.query("recipe")).sort(
+      (a, b) => new Date(String(a.lastCookedAt ?? 0)).getTime() - new Date(String(b.lastCookedAt ?? 0)).getTime(),
+    );
+    const next = recipes[0];
+    if (!next) return {};
+    return {
+      title: String(next.name),
+      lines: [
+        next.lastCookedAt
+          ? ctx.t({ en: "Last cooked {when}", "pt-BR": "Feita pela última vez {when}", de: "Zuletzt gekocht {when}", es: "Cocinada por última vez {when}", pl: "Ostatnio {when}", it: "Cucinata l'ultima volta {when}" }, { when: ctx.format.relative(new Date(String(next.lastCookedAt)), { unit: "day" }) })
+          : ctx.t({ en: "Not cooked yet", "pt-BR": "Ainda não foi feita", de: "Noch nie gekocht", es: "Aún sin cocinar", pl: "Jeszcze nie gotowane", it: "Mai cucinata" }),
+        ctx.t({ en: "{n, plural, one {# recipe} other {# recipes}}", "pt-BR": "{n, plural, one {# receita} other {# receitas}}", de: "{n, plural, one {# Rezept} other {# Rezepte}}", es: "{n, plural, one {# receta} other {# recetas}}", pl: "{n, plural, one {# przepis} few {# przepisy} many {# przepisów} other {# przepisu}}", it: "{n, plural, one {# ricetta} other {# ricette}}" }, { n: recipes.length }),
+      ],
+      ...(next.photo ? { image: next.photo as never } : {}),
+    };
+  },
 
   entities: {
     ingredient: {

@@ -17,6 +17,10 @@ import { confirmAndRemoveApp } from "./remove-app.js";
 import { attentionOf, describeAttention, setOrder, setPinned, setSortMode, useInstalledApps, useSortMode, type AppKey, type InstalledApp } from "./launcher-store.js";
 import { SORT_MODES, orderApps } from "./launcher-order.js";
 import { useReorder } from "@potyro/views";
+import { MetroHome } from "./launcher-metro.js";
+import { onWall, pin, unpin } from "./launcher-wall.js";
+import { getWall, saveWall, useWall } from "./wall-store.js";
+import { useLook } from "./look.js";
 import { hueColour, tileIdentity } from "./tile-identity.js";
 import { personHue, personInitials } from "@potyro/runtime";
 import { TileEditor } from "./tile-editor.js";
@@ -177,6 +181,7 @@ function TileMenu({
   busy,
   onOpen,
   onPin,
+  pinned,
   user,
   open,
   onOpenChange,
@@ -184,6 +189,8 @@ function TileMenu({
   app: InstalledApp;
   busy: boolean;
   onOpen: () => void;
+  /** Pinned in the style on screen: Classic's Pinned row, or Start's wall (#96). */
+  pinned: boolean;
   onPin: () => void;
   /** History, sync, share, rename, delete: every app has them (#152). */
   user: UserActions;
@@ -256,7 +263,7 @@ function TileMenu({
               <div className="k-tile-menu-note">{describeAttention(attentionOf(app.entry, Date.now()))}</div>
             ) : null}
             {item("open", t({ message: "Open", comment: "Tile menu: open this app" }), onOpen)}
-            {item("pin", app.entry.pinned ? t`Unpin` : t`Pin`, onPin)}
+            {item("pin", pinned ? t`Unpin` : t`Pin`, onPin)}
             {item("edit-tile", t`Edit tile`, user.onEditTile)}
             {item("history", t`History`, user.onHistory)}
             {item("data", t({ message: "Data", comment: "Tile menu: this app's records, on the Data page" }), user.onData)}
@@ -404,8 +411,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   const TILE = { names: nameOf, onReorder: (keys: string[]) => setOrder(keys as AppKey[]), ignore: ".k-tile-menu-host" };
   const pinnedReorder = useReorder({ ...TILE, keys: pinned.map((a) => a.key), enabled: !q });
   const restReorder = useReorder({ ...TILE, keys: rest.map((a) => a.key), enabled: sortMode === "manual" && !q });
+  // Which home this person chose in Look (#96): Classic, the default, or Start. The switcher is one.
+  const look = useLook();
+  const start = variant === "home" && look.launcher === "start";
+  const wall = useWall();
   useEffect(() => {
-    if (variant !== "home") return;
+    if (variant !== "home" || start) return;
     // Spotlight-style: a printable key with nothing focused goes to the field and starts the filter.
     const onKey = (e: globalThis.KeyboardEvent): void => {
       const t = e.target as HTMLElement | null;
@@ -415,7 +426,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [variant]);
+  }, [variant, start]);
   // Reviewing/rolling back an app's history without opening it — the way back when an edit broke the
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
@@ -661,7 +672,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       app={a}
       busy={busy === a.id}
       onOpen={() => onOpen(a)}
-      onPin={() => setPinned(a.key, !a.entry.pinned)}
+      pinned={start ? onWall(wall, a.key) : Boolean(a.entry.pinned)}
+      onPin={() => (start ? saveWall(onWall(getWall(), a.key) ? unpin(getWall(), a.key) : pin(getWall(), a.key)) : setPinned(a.key, !a.entry.pinned))}
       open={openMenuLive === a.key}
       onOpenChange={(open) => setOpenMenu((cur) => (open ? a.key : cur === a.key ? null : cur))}
       user={{
@@ -679,6 +691,92 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       }}
     />
   );
+
+  // The Start style (#96, owner 2026-10-15): the tile wall and All apps, in launcher-metro.tsx —
+  // chosen in Look; Classic, below, is the default. Every tile action stays here, shared by both.
+  const welcome =
+    neverOpened && !welcomeDismissed ? (
+      <section className="k-welcome" aria-labelledby="k-welcome-h">
+        <h2 id="k-welcome-h">
+          <Trans>Make the app you need</Trans>
+        </h2>
+        <p>
+          <Trans>
+            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open
+            one of the examples below and change it.
+          </Trans>
+        </p>
+        <div className="k-welcome-actions">
+          <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
+            <Trans>Describe an app</Trans>
+          </button>
+          <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
+            <Trans>Not now</Trans>
+          </button>
+        </div>
+      </section>
+    ) : null;
+  // A bundled example you deleted is gone for good, which is right — until you want it back.
+  // Nothing brings one back on its own; this is how you ask.
+  const goneSection = gone.length ? (
+    <section className="k-launch-section k-metro-gone" aria-labelledby="k-launch-gone">
+      <div className="k-launch-section-head">
+        <h3 className="k-launch-title" id="k-launch-gone">
+          <Trans>Bundled examples</Trans>
+        </h3>
+      </div>
+      <div className="k-launch-gone">
+        {gone.map((e) => (
+          <button key={e.id} type="button" className="k-add k-launch-restore" disabled={busy === e.id} onClick={() => void restore(e.id)}>
+            <span aria-hidden>＋</span> {e.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  ) : null;
+
+  const metroBody = (
+    <MetroHome
+      installed={installed}
+      now={mountedAt}
+      isSelected={isSelected}
+      onOpen={onOpen}
+      onNewApp={onNewApp}
+      onAdd={() => setAdding({})}
+      menuFor={menuFor}
+      inertUnless={inertUnless}
+      top={
+        <>
+          {welcome}
+          {/* Conversations that have not made an app yet (#261), before the apps: they are what you were last doing. */}
+          {onResumeDraft ? <DraftStrip onResume={onResumeDraft} /> : null}
+        </>
+      }
+      gone={goneSection}
+      onData={() => navigateTo({ kind: "data" })}
+      onLook={() => setLookOpen(true)}
+      onYou={() => setIdentity(true)}
+    >
+      {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
+      {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
+      {history ? (
+        <History
+          appId={history.id}
+          appName={history.name}
+          onClose={() => setHistory(null)}
+          // Restoring from the launcher opens the app on the version you just chose, so you can see
+          // what you got back.
+          onRestored={() => openUserApp(history.id)}
+        />
+      ) : null}
+      {editing ? <TileEditor app={editing} onClose={() => setEditing(null)} /> : null}
+      {promoting ? <PromoteDialog app={promoting} onCancel={() => setPromoting(null)} /> : null}
+    </MetroHome>
+  );
+
+  if (start) return metroBody;
 
   const body = (
     <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label={t`App launcher`} onClick={(e) => e.stopPropagation()}>

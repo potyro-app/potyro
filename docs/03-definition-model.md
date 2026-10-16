@@ -21,6 +21,8 @@ export default defineApp({
   version: "1.0.0",
   schemaVersion: 1,
   theme: { accent: "#E4A93C" },     // colours the app when open, and its tile
+  category: "everyday",             // its group on the launcher's Start screen
+  tile: async (ctx) => ({ count: (await ctx.query("recipe")).length }),  // its live tile (docs/04 §Tile)
 
   // declares what native powers this app expects; used for the trust prompt when the app
   // is run untrusted. Trusted (own) apps get everything without prompting.

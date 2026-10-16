@@ -460,6 +460,7 @@ export default defineApp({
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#e4a93c" },
+  category: "games",
   permissions: { haptics: true },
   entities: {
     run: {

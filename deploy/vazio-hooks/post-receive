@@ -9,7 +9,7 @@ unset GIT_DIR GIT_QUARANTINE_PATH GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRE
 while read -r old new ref; do
   [ "$ref" = "refs/heads/main" ] || continue
   cd "$HOME/appinator-deploy" || exit 1
-  PATH="$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:/bin" POTYRO_DEPLOY_TARGET=karta-deploy: \
+  PATH="$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:/bin" POTYRO_DEPLOY_TARGET="karta-deploy:,potyro-deploy:" \
     setsid nohup flock "$HOME/.karta-ci.lock" node scripts/ci-watch.mjs gate "$new" >> "$HOME/ci-watch.log" 2>&1 < /dev/null &
   echo "⏳ gating $(echo "$new" | cut -c1-7) on vazio: green → GitHub's main + apps.vaz.io, red → nothing moves"
   echo "   follow: ssh vazio tail -f ci-watch.log   ·   result: the local-ci check on the commit"
