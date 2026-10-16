@@ -230,7 +230,8 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       sheet: (o) => call("ui.sheet", o),
       menu: (o) => call("ui.menu", o),
       form: (o) => call("ui.form", o),
-      share: (o) => call("ui.share", o),
+      // A file to share crosses as a picture does: a Blob as itself, a reference by its fields only.
+      share: (o) => call("ui.share", o && Array.isArray(o.files) ? { ...o, files: o.files.map(aiImage) } : o),
       keepAwake: () => {
         const hid = `w${++awakeSeq}`;
         send("ui.keepAwake", hid, "hold");

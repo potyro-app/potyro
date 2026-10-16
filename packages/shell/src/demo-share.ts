@@ -73,9 +73,12 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   const named = site?.configured ? site : null;
   const origin = opts.origin ?? named?.origin ?? location.origin;
   const pathname = opts.pathname ?? named?.path ?? location.pathname;
-  // Too long with its demo records (docs/24 §2's limit): the app on its own still makes a link, which
-  // opens empty, as it would for anyone who adds it.
-  const link = inlineDemoLink(demo.zip, origin, pathname) ?? (demo.bare ? inlineDemoLink(demo.bare, origin, pathname) : null);
+  // Too long as it is: first without its pictures (a backdrop, sample photos) — the app and its sample
+  // records still arrive, on plain grounds; then, still too long with its demo records (docs/24 §2's
+  // limit), the app on its own, which opens empty, as it would for anyone who adds it.
+  let link = inlineDemoLink(demo.zip, origin, pathname);
+  if (!link && demo.pictures) link = inlineDemoLink((await demoPackageFor(app, { by: opts.by, pictures: false })).zip, origin, pathname);
+  if (!link && demo.bare) link = inlineDemoLink(demo.bare, origin, pathname);
   if (!link) {
     const name = app.name;
     throw new Error(t`“${name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package.`);

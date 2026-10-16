@@ -20,11 +20,11 @@ const accentOf = (t: Locator) => t.evaluate((el) => (el as HTMLElement).style.ge
 test("a built-in shows its declared name, icon and accent, not its module id", async ({ page }) => {
   await seed(page, []);
   await openHome(page);
-  const workout = tile(page, "PPL Log");
+  const workout = tile(page, "Workout");
   await expect(workout).toBeVisible();
   await expect(avatar(workout)).toHaveText("🏋");
   await expect(avatar(workout)).toHaveAttribute("data-kind", "icon");
-  expect(await accentOf(workout)).toBe("#5B8DEF");
+  expect(await accentOf(workout)).toBe("#B6E62E");
   await expect(page.locator(".k-launch-tile", { hasText: /^W?workout/ })).toHaveCount(0);
   await expect(avatar(tile(page, "Recipes"))).toHaveText("🍳");
 });

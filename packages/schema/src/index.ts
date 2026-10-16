@@ -75,6 +75,7 @@ export type {
   UiTimer,
   UiTimerOptions,
   CtxGuests,
+  ShareFile,
   ShareAppLink,
   CtxMedia,
   CtxFiles,
@@ -98,7 +99,7 @@ export type {
   AiImage,
   AiExtractRequest,
 } from "./types/ctx.js";
-export type { Face, FaceEye, FaceExpressions, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
+export type { Face, FaceEye, FaceExpressions, FaceMeshPoint, FaceOptions, FacePoint, FacesFailure } from "./types/faces.js";
 export type { TileContent } from "./types/tile.js";
 export type { KeepWhileHidden, Room, RoomMember, RoomOptions, RoomPresence, Socket, SocketClose, SocketCloseWhy, SocketData, SocketFailure, SocketOptions, SocketSendFailure } from "./types/sockets.js";
 export type { SpeechCapability, SpeechEngine, SpeechFailure, SpeechOptions, SpeechSession } from "./types/speech.js";
@@ -142,6 +143,8 @@ export type {
   CustomView,
   ListDisplay,
   DetailSection,
+  RelatedSection,
+  ChecklistQuickAdd,
   DetailAction,
   FilterChip,
   OnOpen,
@@ -151,6 +154,7 @@ export type {
   PermissionManifest,
   NetworkPermission,
   Theme,
+  Backdrop,
   Computed,
   ComputedDef,
   ActionFn,

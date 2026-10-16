@@ -96,6 +96,8 @@ export interface FakeLiveCameraOptions {
   faces?: Face[];
   /** Make loading the face finder fail with this code. */
   facesFail?: FacesFailure;
+  /** What `LiveCamera.graphics` says ("unknown" when absent). */
+  graphics?: "gpu" | "software" | "unknown";
 }
 
 export interface FakeLiveCamera {
@@ -118,6 +120,8 @@ export interface FakeLiveCamera {
   setFaces(faces: Face[]): void;
   /** How many times the face finder was loaded, and asked. */
   faceCalls: { loads: number; finds: number };
+  /** The stills taken for `sameFrame` (each `{ time, closed }`, `time` the video's then), newest last. */
+  stills: Array<{ time: number; closed: boolean }>;
 }
 
 export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLiveCamera {
@@ -131,6 +135,7 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
   let hold: Promise<void> | null = null;
   let faces = opts.faces;
   const faceCalls = { loads: 0, finds: 0 };
+  const stills: Array<{ time: number; closed: boolean }> = [];
   const finder = scriptedFinder(() => {
     faceCalls.finds++;
     return faces ?? [];
@@ -173,6 +178,12 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
       return () => clearTimeout(t);
     },
     metadataTimeoutMs: 50,
+    grab: async (video) => {
+      const still = { time: video.currentTime * 1000, closed: false };
+      stills.push(still);
+      return { width: video.videoWidth, height: video.videoHeight, time: still.time, close: () => (still.closed = true) } as unknown as ImageBitmap;
+    },
+    graphics: () => opts.graphics ?? "unknown",
     ...(opts.faces || opts.facesFail
       ? {
           faces: async () => {
@@ -203,6 +214,7 @@ export function createFakeLiveCamera(opts: FakeLiveCameraOptions = {}): FakeLive
       faces = next;
     },
     faceCalls,
+    stills,
     holdNext() {
       let release!: () => void;
       hold = new Promise<void>((r) => (release = r));

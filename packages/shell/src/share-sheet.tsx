@@ -141,7 +141,7 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
                 </p>
               )}
               <NetworkRow link={state.made.link} text={shareText} />
-              <ShareBody link={state.made.link} onDone={onClose} onHanded={(how) => shareEvent(`share-network:${how}`)} />
+              <ShareBody link={state.made.link} onDone={onClose} onHanded={(how) => how !== "save" && shareEvent(`share-network:${how}`)} />
             </>
           ) : (
             <>

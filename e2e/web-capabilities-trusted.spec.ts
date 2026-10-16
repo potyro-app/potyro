@@ -63,7 +63,7 @@ test("a plant with no watering yet is shown as due, even though the web cannot s
   test.slow();
   // The web target has no notifications at all (`createWebCapabilities().notifications === null`) —
   // it does not pretend to schedule something that will never fire. What it owes instead is an
-  // in-app "due", which is the example's Overdue section.
+  // in-app "due", which is the example's Thirsty section.
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
 
@@ -74,9 +74,9 @@ test("a plant with no watering yet is shown as due, even though the web cannot s
   await form.getByRole("button", { name: /^(Save|Create)$/i }).first().click();
 
   // Never watered counts as long overdue: the plant is due the moment it exists. The in-app "due"
-  // is the example's own Today page — the figures and the Overdue list.
+  // is the example's own Today page — the figures and the Thirsty list.
   await page.getByRole("button", { name: /Today/ }).first().click();
-  await expect(page.getByText("Overdue").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Thirsty").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Due now").first()).toBeVisible();
   await expect(page.locator(".k-list-row", { hasText: "Fern" }).first()).toBeVisible({ timeout: 30_000 });
 });

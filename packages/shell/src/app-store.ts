@@ -34,7 +34,14 @@ export async function syncAllowedFor(app: UserApp): Promise<boolean> {
  */
 export async function openAppStore(app: UserApp, opts: { sync: boolean; me?: string }): Promise<Store> {
   const store = await openStore(`user:${app.id}`, { sync: opts.sync });
-  if (!app.joined) await seedOnce(app.id, () => seedIfEmpty(store, app.id, opts.me));
+  if (!app.joined) {
+    // An example's files first: its first-run records take their photos from its folder.
+    const { ensureExampleFiles } = await import("./example-files.js");
+    await seedOnce(app.id, async () => {
+      await ensureExampleFiles(store, app);
+      await seedIfEmpty(store, app.id, opts.me);
+    });
+  }
   return store;
 }
 

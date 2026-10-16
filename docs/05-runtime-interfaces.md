@@ -92,6 +92,8 @@ export interface Capabilities {
   liveCamera?: LiveCameraCap | null;       // getUserMedia; one session per page (docs/25)
   ai?: AiCap | null;                       // docs/23 — composed per app by the shell, not a target
   sockets?: SocketCap | null;              // docs/28 — one per page; the shell wraps it per app
+  share?: ShareCap | null;                 // the device's share sheet: { canShare(p), share(p) } for the share dialog
+                                           // (web: Web Share API + canShare({ files }); native: @capacitor/share)
   speech?: SpeechCap | null;               // docs/29 — the page's microphone; the shell wraps it per app
 }
 /** Live connections: the page owns the WebSockets (the shell's realm, never a sealed frame). */
@@ -195,7 +197,11 @@ Faces: the capability owns the rule (one find in flight per session, every frame
 faces, `facesFailed` on a loader or finder that fails) and the arithmetic (`faceFrom`: the landmarker's
 raw mesh → `Face`); the SHELL owns the finding (`packages/shell/src/faces/`: MediaPipe's Face
 Landmarker in a worker, loaded from files the shell serves itself) and hands it over with `useFaces` at
-boot. `createFakeLiveCamera({ faces })` scripts faces for tests; `sketchFace` draws a believable one.
+boot. `createFakeLiveCamera({ faces })` scripts faces for tests; `sketchFace` draws a believable one
+(with a `matrix` that `projectFacePoint` takes back onto its nose). `facesTime` is the session's: the
+time of the frame the last answered find started on. `sameFrame` uses the `grab` dependency (a full
+`ImageBitmap` of the frame, taken in the same task as the find) and hands frames on only from the
+find's answer; `graphics` is read once per page (`graphicsOf`, a throwaway WebGL context).
 
 ## Host (packages/host) — loading, execution, trust  **[central, new]**
 
@@ -454,3 +460,10 @@ A view's full-screen layer (a form sheet) is portalled to `usePortalRoot()`, whi
 `document.body` unless a host frames the app in a screen of its own (`PortalRootContext`, #261):
 the Studio shows an app beside its conversation, and the app's forms belong to that screen, not
 to the page. Popovers anchored to a control keep the page — they are placed by page coordinates.
+
+A view that lists records reports how many it shows through `PageCountContext` (`useReportCount`),
+which the shell's page header provides; the header never runs the page's query a second time to
+count. Inside a page `layout` the items report to nobody (`null` provider) except a `split`'s list.
+The views also export the presentation helpers the shell's header shares with them: `backdropOf` /
+`backdropImage` / `backdropKind` / `pageOf` (a page's ground) and `usePictureUrl` (a photo, a file,
+or a path in the app's files, as a URL).

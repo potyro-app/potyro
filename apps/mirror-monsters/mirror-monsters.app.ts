@@ -872,16 +872,27 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     const deleteWord = ctx.t({ en: "Delete", "pt-BR": "Excluir", de: "Löschen", es: "Eliminar", pl: "Usuń", it: "Elimina" });
+    const share = h("button", { class: "mm-plain mm-share", type: "button" }, `↗ ${ctx.t({ en: "Share", "pt-BR": "Compartilhar", de: "Teilen", es: "Compartir", pl: "Udostępnij", it: "Condividi" })}`);
     const save = h("button", { class: "mm-plain", type: "button" }, ctx.t({ en: "Save a copy", "pt-BR": "Salvar uma cópia", de: "Kopie speichern", es: "Guardar una copia", pl: "Zapisz kopię", it: "Salva una copia" }));
     const del = h("button", { class: "mm-plain mm-danger", type: "button" }, deleteWord);
     const shut = h("button", { class: "mm-plain", type: "button" }, ctx.t({ en: "Close", "pt-BR": "Fechar", de: "Schließen", es: "Cerrar", pl: "Zamknij", it: "Chiudi" }));
     const box = h(
       "div",
       { class: "mm-lightbox", role: "dialog", "aria-modal": "true", "aria-label": String(r.title) },
-      h("div", { class: "mm-lightbox-card" }, h("img", { src: url, alt: String(r.title) }), h("div", { class: "mm-lightbox-meta" }, h("h3", {}, String(r.title)), h("div", { class: "mm-row" }, save, del, shut))),
+      h("div", { class: "mm-lightbox-card" }, h("img", { src: url, alt: String(r.title) }), h("div", { class: "mm-lightbox-meta" }, h("h3", {}, String(r.title)), h("div", { class: "mm-row" }, share, save, del, shut))),
     );
     box.addEventListener("click", (e) => e.target === box && close());
     shut.addEventListener("click", close);
+    // The picture itself, through Potyro's share dialog: the person sees it and picks where it goes.
+    share.addEventListener("click", () =>
+      void ctx.ui
+        .share({
+          title: String(r.title),
+          text: ctx.t({ en: "My monster from Mirror Monsters 👹", "pt-BR": "Meu monstro do Monstros no Espelho 👹", de: "Mein Monster aus Spiegelmonster 👹", es: "Mi monstruo de Monstruos del Espejo 👹", pl: "Mój potwór z Potworów z Lustra 👹", it: "Il mio mostro da Mostri allo Specchio 👹" }),
+          files: [r.image as FileRef],
+        })
+        .catch(() => ctx.ui.toast(ctx.t({ en: "It could not be shared.", "pt-BR": "Não deu para compartilhar.", de: "Es ließ sich nicht teilen.", es: "No se pudo compartir.", pl: "Nie udało się udostępnić.", it: "Non è stato possibile condividerlo." }))),
+    );
     save.addEventListener("click", () =>
       void ctx.files.export(r.image as FileRef).catch(() =>
         ctx.ui.toast(ctx.t({ en: "It could not be saved here.", "pt-BR": "Não deu para salvar aqui.", de: "Hier ließ es sich nicht speichern.", es: "No se pudo guardar aquí.", pl: "Nie udało się tu zapisać.", it: "Non è stato possibile salvarlo qui." })),

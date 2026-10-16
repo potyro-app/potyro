@@ -44,11 +44,11 @@ test.describe("first run, the examples", () => {
   test("a live face shows the app's own data without opening it, and follows a change made in the app", async ({ page }) => {
     await page.goto("/");
     // Plain faces first; the live ones arrive once the tiles have run (tile-runner.ts).
-    await expect(liveFace(page, "user:groceries")).toContainText("5 to buy", { timeout: 30_000 });
+    await expect(liveFace(page, "user:groceries")).toContainText("11 to buy", { timeout: 30_000 });
     await expect(liveFace(page, "user:groceries")).toContainText("Apples");
     await expect(liveFace(page, "user:plants")).toContainText(/\d to water/, { timeout: 30_000 });
     // The same words for the ear.
-    await expect(tile(page, "user:groceries")).toContainText("5 to buy");
+    await expect(tile(page, "user:groceries")).toContainText("11 to buy");
 
     // Buy the milk, in the app; home says what is left.
     await page.goto("/?user=groceries");
@@ -57,9 +57,9 @@ test.describe("first run, the examples", () => {
     await expect(page.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
     await expect
       .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}")["user:groceries"]?.tile?.tile?.count), { timeout: 15_000 })
-      .toBe(4);
+      .toBe(10);
     await page.goto("/");
-    await expect(liveFace(page, "user:groceries")).toContainText("4 to buy", { timeout: 30_000 });
+    await expect(liveFace(page, "user:groceries")).toContainText("10 to buy", { timeout: 30_000 });
     await expect(liveFace(page, "user:groceries")).not.toContainText("Milk");
   });
 });

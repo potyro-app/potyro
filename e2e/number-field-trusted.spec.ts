@@ -21,11 +21,11 @@ test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
   test("Plants: the interval says days, steps by 44px buttons, and asks for the numeric keyboard", async ({ page }) => {
-    const form = await openForm(page, "plants", "Plants", "Add: Plant");
-    const interval = form.getByRole("spinbutton", { name: "Watering Interval Days" });
+    const form = await openForm(page, "plants", "Plants", "Add: Plant", "Plants");
+    const interval = form.getByRole("spinbutton", { name: "Water every" });
     await expect(interval).toHaveValue("7");
     await expect(interval).toHaveAttribute("inputmode", "numeric");
-    const wrapper = form.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const wrapper = form.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     await expect(wrapper.locator(".k-number-unit")).toHaveText("days");
     const plus = wrapper.getByRole("button", { name: /Increase/ });
     const minus = wrapper.getByRole("button", { name: /Decrease/ });
@@ -47,17 +47,17 @@ test.describe("phone", () => {
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("Workout: target sets is an integer with a stepper and a unit; Places: a half-star rating steps by 0.5", async ({ page }) => {
-    const exercise = await openForm(page, "workout", "PPL Log", "New exercise");
-    const sets = exercise.getByRole("spinbutton", { name: "Target Sets" });
-    await expect(sets).toHaveAttribute("inputmode", "numeric");
-    await expect(sets).toHaveValue("3");
-    const wrap = exercise.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Target Sets" }) });
-    await expect(wrap.locator(".k-number-unit")).toHaveText("sets");
+  test("Workout: a weight step is a decimal with a stepper and a unit; Places: a half-star rating steps by 0.5", async ({ page }) => {
+    const exercise = await openForm(page, "workout", "Workout", "New exercise");
+    const step = exercise.getByRole("spinbutton", { name: "Add each time" });
+    await expect(step).toHaveAttribute("inputmode", "decimal");
+    await expect(step).toHaveValue("2.5");
+    const wrap = exercise.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Add each time" }) });
+    await expect(wrap.locator(".k-number-unit")).toHaveText("kg");
     await wrap.getByRole("button", { name: /Increase/ }).click();
-    await expect(sets).toHaveValue("4");
-    // Below its minimum the button is disabled, not silently clamped.
-    await sets.fill("1");
+    await expect(step).toHaveValue("3");
+    // At its minimum the button is disabled, not silently clamped.
+    await step.fill("0");
     await expect(wrap.getByRole("button", { name: /Decrease/ })).toBeDisabled();
 
     const place = await openForm(page, "places", "Places", "Add: Place", "All places");

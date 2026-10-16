@@ -41,11 +41,13 @@ const SHARE_MAX = 10_000;
  * pages, with params that page declares; the shell makes the address, so the app never names one.
  */
 export function checkShare(
-  opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink } | undefined,
+  opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; files?: unknown } | undefined,
   say: (w: Words | undefined) => string,
   pages: ReadonlyArray<Pick<Page, "id" | "link">> = [],
 ): ShownShare {
-  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text } or { url }");
+  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text }, { url }, { app } or { files }");
+  // Anything given as `files` but an empty list counts here; `checkShareFiles` says what is wrong with it.
+  const hasFiles = opts.files != null && !(Array.isArray(opts.files) && opts.files.length === 0);
   const text = opts.text === undefined || opts.text === null ? undefined : say(opts.text);
   let url: string | undefined;
   if (opts.url !== undefined && opts.url !== null) {
@@ -60,9 +62,96 @@ export function checkShare(
   }
   const app = opts.app === undefined || opts.app === null ? undefined : checkLinkRequest(opts.app, pages);
   if (app && url) throw new Error("ui.share takes `url` or `app`, not both");
-  if (!text && !url && !app) throw new Error("ui.share needs { text } or { url }");
+  if (!text && !url && !app && !hasFiles) throw new Error("ui.share needs { text }, { url }, { app } or { files }");
   if (text && text.length > SHARE_MAX) throw new Error(`ui.share: \`text\` is longer than ${SHARE_MAX} characters`);
   return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(app ? { app } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
+}
+
+/** At most this many files in one `ui.share`. */
+export const SHARE_FILES_MAX = 10;
+/** And at most this many bytes of them together: a few photos, never a backup. */
+export const SHARE_BYTES_MAX = 25 * 1024 * 1024;
+
+const EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/svg+xml": "svg",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "audio/mpeg": "mp3",
+  "application/pdf": "pdf",
+  "application/json": "json",
+  "text/plain": "txt",
+  "text/csv": "csv",
+};
+
+/** A name a file can be handed on under: no folders, no control characters, never empty. */
+function safeName(name: string, fallback: string): string {
+  const base = name.split(/[\\/]/).pop() ?? "";
+  // eslint-disable-next-line no-control-regex
+  const clean = base.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, "").trim().slice(0, 120);
+  return clean && clean !== "." && clean !== ".." ? clean : fallback;
+}
+
+/**
+ * What `ui.share` hands the shell as `files`: each one resolved to bytes from what the app named — a
+ * Blob or File as it is, a file in this app's folder, a photo field's value in this app's store (only
+ * this app's: a sealed app cannot name another app's file) — and named, so the share sheet and a saved
+ * copy say what it is. Checked: a list, at most 10, 25 MB together.
+ */
+export async function checkShareFiles(store: Store, files: unknown): Promise<File[]> {
+  if (files === undefined || files === null) return [];
+  if (!Array.isArray(files)) throw new Error("ui.share: `files` is a list of files");
+  if (files.length > SHARE_FILES_MAX) throw new Error(`ui.share: at most ${SHARE_FILES_MAX} files at a time`);
+  const out: File[] = [];
+  const taken = new Set<string>();
+  let total = 0;
+  for (const [i, item] of files.entries()) {
+    const { blob, name } = await shareBlob(store, item, i + 1);
+    total += blob.size;
+    if (total > SHARE_BYTES_MAX) throw new Error(`ui.share: the files are larger than ${SHARE_BYTES_MAX / 1024 / 1024} MB together`);
+    // Two of the same name would land on top of each other in a folder: number the later ones.
+    let unique = name;
+    for (let k = 2; taken.has(unique.toLowerCase()); k++) unique = name.replace(/(\.[^.]*)?$/, (ext) => `-${k}${ext}`);
+    taken.add(unique.toLowerCase());
+    out.push(new File([blob], unique, { type: blob.type }));
+  }
+  return out;
+}
+
+async function shareBlob(store: Store, item: unknown, n: number): Promise<{ blob: Blob; name: string }> {
+  const fallback = (type: string) => `${type.startsWith("image/") ? "picture" : "file"}-${n}${EXT[type] ? `.${EXT[type]}` : ""}`;
+  if (item instanceof Blob) {
+    const named = typeof (item as File).name === "string" ? (item as File).name : "";
+    return { blob: item, name: safeName(named, fallback(item.type)) };
+  }
+  if (item instanceof Uint8Array) {
+    // Bytes (`ctx.files.bytes()`, a sealed app's own): a picture by its first bytes, else unnamed data.
+    const known = sniffImage(item);
+    const type = known === "image/jpeg" && !(item[0] === 0xff && item[1] === 0xd8) ? "" : known;
+    const blob = new Blob([item as BlobPart], type ? { type } : {});
+    return { blob, name: fallback(type) };
+  }
+  if (item && typeof item === "object" && typeof (item as MediaRef).key === "string") {
+    const ref = item as MediaRef;
+    const b = await store.getBlob({ key: ref.key, mime: String(ref.mime ?? "") });
+    if (!b) throw new Error("ui.share: that photo is not on this device");
+    const blob = b.type ? b : new Blob([b], { type: String(ref.mime ?? "") });
+    return { blob, name: fallback(blob.type) };
+  }
+  if (item && typeof item === "object" && ("id" in item || "path" in item)) {
+    const ref = item as FileRef;
+    // By id when it has one (it survives a rename), else by path — plain fields, never a getter.
+    const target: FileTarget = typeof ref.id === "string" ? { id: ref.id } : String(ref.path);
+    const f = await appFolder(fileSpace(store)).find(target);
+    if (!f) throw new Error(`ui.share: no file ${ref.path ? `"${ref.path}"` : "like that"} in this app`);
+    const b = await fileSpace(store).read({ id: f.id });
+    if (!b) throw new Error(`ui.share: "${f.name}" has not reached this device yet`);
+    return { blob: b.type ? b : new Blob([b], { type: f.mime }), name: safeName(f.name, fallback(f.mime)) };
+  }
+  throw new Error("ui.share: a file is a Blob, bytes, a file of this app (a file field's value) or a photo field's value");
 }
 
 /** The base language of a tag: "pt-BR" → "pt". */
@@ -449,7 +538,9 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
       share: async (opts) => {
         const shared = checkShare(opts, say, app.definition.pages);
-        return ui.share ? ui.share(shared) : false;
+        const files = await checkShareFiles(store, opts?.files);
+        if (!ui.share) return false;
+        return ui.share(files.length ? { ...shared, files } : shared);
       },
       // Harmless, so no permission and the same sealed: it only keeps the screen from dimming while
       // Potyro is in front, and the shell lets go when the app is left (docs/04 §Keeping the screen on).

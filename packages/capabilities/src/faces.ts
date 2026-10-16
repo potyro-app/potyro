@@ -6,7 +6,7 @@
 // mesh (478 normalised points and its blendshape scores) into the small `Face` an app reads. Pure, so
 // it is tested without a browser or a model.
 
-import type { Face, FaceEye, FaceExpressions, FacePoint, FacesFailure } from "potyro";
+import type { Face, FaceEye, FaceExpressions, FaceMeshPoint, FacePoint, FacesFailure } from "potyro";
 
 /** Finds faces in a frame. One call at a time: a live session never asks again before it answers. */
 export interface FaceFinder {
@@ -17,6 +17,8 @@ export interface FindOptions {
   max: number;
   /** Hand over every mesh point (`Face.points`). */
   points: boolean;
+  /** `"high"`: find in the whole picture, not one shrunk to 640 px on its long side. */
+  detail: "normal" | "high";
 }
 /** Loads the finder, once per page; rejects with `code` `"unsupported"` where faces cannot be found. */
 export type FaceLoader = () => Promise<FaceFinder>;
@@ -64,10 +66,38 @@ export const SHAPES = [
   "cheekPuff",
 ] as const;
 
-/** A face as the landmarker gives it: x, y, z per mesh point (normalised to the frame) and `SHAPES`' scores. */
+/**
+ * A face as the landmarker gives it: x, y, z per mesh point (normalised to the frame; z on x's
+ * scale), `SHAPES`' scores, and its facial transformation matrix (16, column-major) when it gave one.
+ */
 export interface RawFace {
   points: ArrayLike<number>;
   shapes: ArrayLike<number>;
+  matrix?: ArrayLike<number>;
+}
+
+// ---- the head in 3D: the facial transformation matrix ----
+
+/** The vertical field of view MediaPipe's face geometry assumes for the camera (its default environment). */
+export const FACE_FOV_DEGREES = 63;
+/** Points of MediaPipe's canonical face (centimetres; +x the person's left, +y up, +z out of the face). */
+export const CANONICAL = {
+  noseTip: { x: 0, y: -1.126865, z: 7.475604 },
+  rightEyeOuter: { x: -4.445859, y: 2.663991, z: 3.173422 },
+  leftEyeOuter: { x: 4.445859, y: 2.663991, z: 3.173422 },
+  chin: { x: 0, y: -9.403378, z: 4.264492 },
+} as const;
+
+/**
+ * A point of the canonical face -> the picture's pixels (`width` x `height`), through `Face.matrix`:
+ * the arithmetic docs/25 gives apps, here so the fakes and the tests use exactly it.
+ */
+export function projectFacePoint(m: ArrayLike<number>, p: { x: number; y: number; z: number }, width: number, height: number, fovDegrees = FACE_FOV_DEGREES): FacePoint {
+  const t = Math.tan(((fovDegrees / 2) * Math.PI) / 180);
+  const X = m[0]! * p.x + m[4]! * p.y + m[8]! * p.z + m[12]!;
+  const Y = m[1]! * p.x + m[5]! * p.y + m[9]! * p.z + m[13]!;
+  const Z = m[2]! * p.x + m[6]! * p.y + m[10]! * p.z + m[14]!;
+  return { x: ((1 + X / (-Z * t * (width / height))) / 2) * width, y: ((1 - Y / (-Z * t)) / 2) * height };
 }
 
 const clamp01 = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
@@ -76,6 +106,16 @@ const mid = (a: FacePoint, b: FacePoint): FacePoint => ({ x: (a.x + b.x) / 2, y:
 
 /** A raw face → the `Face` an app reads, in the video's pixels (`w`×`h`). */
 export function faceFrom(raw: RawFace, w: number, h: number, withPoints = false): Face {
+  const face = faceShape(raw, w, h);
+  if (withPoints) {
+    const n = Math.floor(raw.points.length / 3);
+    face.points = Array.from({ length: n }, (_, i): FaceMeshPoint => ({ x: raw.points[i * 3]! * w, y: raw.points[i * 3 + 1]! * h, z: raw.points[i * 3 + 2]! * w }));
+  }
+  if (raw.matrix && raw.matrix.length === 16 && Array.from(raw.matrix).every(Number.isFinite)) face.matrix = Array.from(raw.matrix);
+  return face;
+}
+
+function faceShape(raw: RawFace, w: number, h: number): Face {
   const n = Math.floor(raw.points.length / 3);
   const p = (i: number): FacePoint => (i < n ? { x: raw.points[i * 3]! * w, y: raw.points[i * 3 + 1]! * h } : { x: 0, y: 0 });
   const z = (i: number) => (i < n ? raw.points[i * 3 + 2]! * w : 0);
@@ -141,7 +181,6 @@ export function faceFrom(raw: RawFace, w: number, h: number, withPoints = false)
     expressions,
     turn: { roll, yaw, pitch },
   };
-  if (withPoints) face.points = Array.from({ length: n }, (_, i) => p(i));
   return face;
 }
 
@@ -154,6 +193,27 @@ export interface FaceSketch {
   size: number;
   roll?: number;
   expressions?: Partial<FaceExpressions>;
+  /** The picture's size, for `matrix` (640x480 when absent). */
+  frame?: { width: number; height: number };
+}
+
+/**
+ * The matrix of a head whose canonical nose tip lands on `nose` in a `width` x `height` picture,
+ * `eyeSpan` pixels between the outer eye corners, turned `roll` on screen (clockwise positive).
+ */
+export function sketchMatrix(nose: FacePoint, eyeSpan: number, roll: number, width: number, height: number): number[] {
+  const t = Math.tan(((FACE_FOV_DEGREES / 2) * Math.PI) / 180);
+  const span = CANONICAL.leftEyeOuter.x - CANONICAL.rightEyeOuter.x;
+  // Pixels per centimetre at depth D are height / (2 D t): the depth that makes the eyes eyeSpan apart.
+  const D = (height * span) / (2 * t * Math.max(1e-6, eyeSpan));
+  // Clockwise on screen (y down) is clockwise in the camera's y-up space too: a turn of -roll about z.
+  const c = Math.cos(-roll);
+  const s = Math.sin(-roll);
+  const n = CANONICAL.noseTip;
+  const rn = { x: c * n.x - s * n.y, y: s * n.x + c * n.y, z: n.z };
+  const X = ((nose.x / width) * 2 - 1) * D * t * (width / height);
+  const Y = (1 - (nose.y / height) * 2) * D * t;
+  return [c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, X - rn.x, Y - rn.y, -D - rn.z, 1];
 }
 
 /**
@@ -178,6 +238,7 @@ export function sketchFace(f: FaceSketch): Face {
     return { center: at(cu, -0.1), pupil: at(cu, -0.1), outline: ring(cu, -0.1, 0.09, open * 0.09, 16), width: 0.18 * f.size, open };
   };
   const gap = 0.02 + ex.mouthOpen * 0.18;
+  const frame = f.frame ?? { width: 640, height: 480 };
   return {
     box: { x: f.x - f.size / 2, y: f.y - f.size * 0.65, w: f.size, h: f.size * 1.3 },
     // The person's right eye is on the picture's left (u < 0).
@@ -194,7 +255,33 @@ export function sketchFace(f: FaceSketch): Face {
     brows: { right: [at(-0.08, -0.24), at(-0.16, -0.26), at(-0.26, -0.24)], left: [at(0.08, -0.24), at(0.16, -0.26), at(0.26, -0.24)] },
     expressions: ex,
     turn: { roll, yaw: 0, pitch: 0 },
+    // The outer eye corners are 0.58 face widths apart (each eye at +-0.2, 0.18 wide).
+    matrix: sketchMatrix(at(0, 0.12), 0.58 * f.size, roll, frame.width, frame.height),
   };
+}
+
+/**
+ * Whether a WebGL renderer's name is a software stand-in for a GPU (SwiftShader, llvmpipe, Microsoft's
+ * Basic Render Driver): VMs, headless browsers, drivers the browser blocklists.
+ */
+export function isSoftwareRenderer(renderer: string): boolean {
+  return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer);
+}
+
+/** What draws on this page, read once from a throwaway WebGL context (`LiveCamera.graphics`). */
+export function graphicsOf(make: () => { getContext(kind: "webgl2" | "webgl"): unknown } | null): "gpu" | "software" | "unknown" {
+  try {
+    const canvas = make();
+    const gl = (canvas?.getContext("webgl2") ?? canvas?.getContext("webgl")) as WebGLRenderingContext | null | undefined;
+    if (!gl) return "software";
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    if (!renderer) return "unknown";
+    return isSoftwareRenderer(renderer) ? "software" : "gpu";
+  } catch {
+    return "unknown";
+  }
 }
 
 /** A finder that answers with whatever `script` says now — for fakes, tests and the dev shell. */
