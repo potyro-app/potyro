@@ -2,7 +2,7 @@
 // (`FileRef`), or a path in the app's own files (`"art/squat.jpg"`) — what a computed returns to give
 // every kind of record its own picture, and what a page's `background` names.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Ctx, FileRef, MediaRef } from "potyro";
 import { releaseMediaUrl } from "./media-input.js";
 
@@ -36,31 +36,49 @@ export async function pictureUrl(ctx: Pick<Ctx, "media" | "files">, picture: Med
   }
 }
 
-/** `pictureUrl` as a hook: `null` until it is ready, or when there is none. */
+/**
+ * `pictureUrl` as a hook: `null` until it is ready, or when there is none.
+ *
+ * Keyed by the PICTURE, never by `ctx`: `runtime.ctx` is a fresh object on every access, so an effect
+ * that depended on it ran again on every render — each run asked for the URL anew and set it, which
+ * rendered again — and the image's `src` changed faster than it could load. A page's background
+ * picture never appeared (#368). The URL a page shows is freed once another has replaced it.
+ */
 export function usePictureUrl(ctx: Pick<Ctx, "media" | "files">, value: unknown): string | null {
   const picture = pictureOf(value);
   const key = picture === undefined ? "" : typeof picture === "string" ? `p:${picture}` : isMediaRef(picture) ? `m:${picture.key}` : `f:${picture.id}`;
-  const [url, setUrl] = useState<string | null>(null);
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+  const pictureRef = useRef(picture);
+  pictureRef.current = picture;
+  const [shown, setShown] = useState<{ url: string; owned: boolean } | null>(null);
   useEffect(() => {
-    if (!picture) {
-      setUrl(null);
+    const want = pictureRef.current;
+    if (!want) {
+      setShown(null);
       return;
     }
     let alive = true;
-    let minted: string | null = null;
-    void pictureUrl(ctx, picture).then((got) => {
-      if (got?.owned) minted = got.url;
-      if (!alive) {
-        if (minted) releaseMediaUrl(minted);
-        return;
-      }
-      setUrl(got?.url ?? null);
+    void pictureUrl(ctxRef.current, want).then((got) => {
+      if (alive) setShown(got);
+      else if (got?.owned) releaseMediaUrl(got.url);
     });
     return () => {
       alive = false;
-      if (minted) releaseMediaUrl(minted);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx, key]);
-  return url;
+  }, [key]);
+  // Free a photo's URL once the next one is on screen, or the page has gone.
+  const onScreen = useRef<{ url: string; owned: boolean } | null>(null);
+  useEffect(() => {
+    const before = onScreen.current;
+    onScreen.current = shown;
+    if (before?.owned && before.url !== shown?.url) releaseMediaUrl(before.url);
+  }, [shown]);
+  useEffect(
+    () => () => {
+      if (onScreen.current?.owned) releaseMediaUrl(onScreen.current.url);
+    },
+    [],
+  );
+  return shown?.url ?? null;
 }

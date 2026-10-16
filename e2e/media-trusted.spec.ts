@@ -49,7 +49,11 @@ test.describe("desktop", () => {
     await form.getByRole("button", { name: "Create" }).click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    await expect(detail.locator(".k-media-tile img")).toBeVisible();
+    // The record's photo is its page's cover now, across the top with the name on it — and not shown
+    // a second time as a tile further down.
+    await expect(detail).toHaveAttribute("data-cover", "banner");
+    await expect(detail.locator(".k-detail-photo img")).toHaveAttribute("src", /^blob:|^data:/);
+    await expect(detail.locator(".k-detail-title")).toHaveText("E2E Photo Plant");
     // Read-only there: nothing to remove from a record you are reading.
     await expect(detail.locator(".k-media-x")).toHaveCount(0);
   });
