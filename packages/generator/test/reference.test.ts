@@ -197,7 +197,13 @@ describe("capabilities outside the core", () => {
       const inCore = SCHEMA_REFERENCE.split("\n").some((l) => memberLine(name).test(l)) && !CAPABILITIES.some((c) => path === c.key || path.startsWith(`${c.key}.`) || parent === c.key);
       if (inCore) continue;
       // A container (`ctx.caps`) does not stand in for its members: `ctx.caps.nfc` needs its own line.
-      const covers = (c: (typeof CAPABILITIES)[number]): boolean => path === c.key || (!c.container && path.startsWith(`${c.key}.`));
+      // …and one that cuts members out of a declaration covers each of them beside its key (`ctx.ui.timers`).
+      const beside = (c: (typeof CAPABILITIES)[number]): boolean =>
+        (c.members ?? []).some((m) => {
+          const at = `${c.key.split(".").slice(0, -1).join(".")}.${m.name}`;
+          return path === at || path.startsWith(`${at}.`);
+        });
+      const covers = (c: (typeof CAPABILITIES)[number]): boolean => path === c.key || (!c.container && path.startsWith(`${c.key}.`)) || beside(c);
       const indexed = CAPABILITIES.some((c) => covers(c) && SYSTEM_PROMPT.includes(`lookup("${c.key}")`));
       // Its declaration: the member's own line, or — for a capability's index name — the whole capability.
       const answer = lookupReference(LOOKUP_REFERENCE, path);

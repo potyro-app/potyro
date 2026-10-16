@@ -21,6 +21,8 @@ import type {
   UiProgress,
 } from "potyro";
 import type { Capabilities } from "@potyro/capabilities";
+import type { GuestBook } from "./guests.js";
+import type { TimerBridge } from "./timers.js";
 import type { Store } from "@potyro/store";
 
 export type Provenance = "trusted" | "untrusted";
@@ -59,6 +61,13 @@ export interface UiBridge {
   progress?(label: string): UiProgress;
   /** `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`). */
   share?(opts: { text?: string; url?: string; title?: string }): Promise<boolean>;
+  /**
+   * `ctx.ui.keepAwake`: hold the screen on until the handle is released or the app is left. A headless
+   * bridge leaves it out, and `ctx` hands back a handle that holds nothing.
+   */
+  keepAwake?(): { release(): void };
+  /** `ctx.ui.timer` / `timers`: this app's countdowns, kept by the shell. Headless, a timer is not kept. */
+  timers?: TimerBridge;
 }
 
 /** What the shell provides to build `ctx.navigate`. */
@@ -100,6 +109,11 @@ export interface MakeCtxBase {
   me?: Person;
   /** The space this app's data lives in, when it is synced. Absent = solo (ADR D3). */
   space?: Space;
+  /**
+   * The app's guests (docs/04 §Guests), kept by the runtime for the app it runs. Absent (a fake host),
+   * `ctx.people` is the members alone and `ctx.guests` refuses.
+   */
+  guests?: GuestBook;
   /** The app-wide selected record(s) by entity (`ctx.scope`, see `ScopeDef`). Absent = `{}`. */
   scope?: Record<string, Resolved | undefined>;
   /**

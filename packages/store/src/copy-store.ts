@@ -29,6 +29,7 @@
 
 import type { PotyroRecord, MediaRef } from "potyro";
 import type { Store } from "./types.js";
+import { PEOPLE_KV, copyPeople } from "./people-log.js";
 
 export interface CopyStoreResult {
   records: number;
@@ -40,6 +41,8 @@ export interface CopyStoreResult {
   files: number;
   /** Files that could not be, by path and size, with the reason. */
   skippedFiles: Array<{ path: string; size: number; reason: string }>;
+  /** Placeholder people carried over (people-log.ts). */
+  guests?: number;
 }
 
 /** A `MediaRef`-shaped value: `{ key, mime }` with anything else optional. */
@@ -83,6 +86,11 @@ export async function copyStoreData(
      * (#282), and a data import must not put an older copy of it over the app's own.
      */
     skipFile?: (path: string) => boolean;
+    /**
+     * Who is copying, and the app's owners: guests (people-log.ts) are carried as what they add up
+     * to, written by `me`. Absent, the local stand-in identity writes them.
+     */
+    people?: { me: string; admins?: readonly string[] };
   },
 ): Promise<CopyStoreResult> {
   const result: CopyStoreResult = { records: 0, kv: 0, blobs: 0, skippedBlobs: [], files: 0, skippedFiles: [] };
@@ -116,6 +124,8 @@ export async function copyStoreData(
   // and saying so is better than a copy that looks complete.
   if (from.kvKeys) {
     for (const key of await from.kvKeys()) {
+      // Guests move as people, below: their log is not the same thing in a synced store.
+      if (key === PEOPLE_KV) continue;
       const value = await from.kvGet(key);
       if (value != null) {
         await to.kvSet(key, value);
@@ -123,6 +133,9 @@ export async function copyStoreData(
       }
     }
   }
+
+  const me = opts.people?.me ?? "local";
+  result.guests = await copyPeople(from, to, me, new Set([me, ...(opts.people?.admins ?? [])]));
 
   const here = async (key: string, mime: string): Promise<Blob | null> =>
     from.blobHere && !(await from.blobHere({ key, mime })) ? null : from.getBlob({ key, mime });

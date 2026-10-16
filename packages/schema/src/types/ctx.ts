@@ -120,6 +120,7 @@ export interface Caps {
 export interface Person {
   id: Id;
   name: string;
+  guest?: true; // not joined yet: see ctx.guests
 }
 
 /** What a member may do in a space (ADR D3). */
@@ -148,6 +149,24 @@ export interface Space {
   invite(): Promise<string>;
 }
 
+/**
+ * Placeholder people (`Person.guest`): name the people of a group before they join — "Ana", "Tom" —
+ * so expenses, chores or turns can name them from day one. When someone joins the shared app they
+ * can say which guest they are, and every record naming that guest names them from then on (no
+ * record is rewritten; it reads as them). Everyone in the app sees the same guests.
+ *
+ * Anyone who can change the app may add one. Renaming and removing are for whoever added that guest,
+ * or the app's owner; anything else throws words for the person. Works the same in a solo app (the
+ * guests move with it when it is shared) and sealed.
+ */
+export interface CtxGuests {
+  /** Add a guest (a name, at most 60 characters). Store `guest.id` in a `member` field. */
+  add(name: string): Promise<Person>;
+  rename(id: Id, name: string): Promise<void>;
+  /** Take a guest off the list. Records that name it still read with its name. */
+  remove(id: Id): Promise<void>;
+}
+
 /** App-scoped key/value storage, separate from entity records. */
 export interface CtxStorage {
   get<T = unknown>(k: string): Promise<T | null>;
@@ -171,6 +190,46 @@ export interface UiProgress {
   /** `fraction` from 0 to 1; `detail` replaces the count on the right ("24 of 40"). */
   update(fraction: number, detail?: string): void;
   done(): void;
+}
+
+/** A screen kept on by `ui.keepAwake`. */
+export interface UiKeepAwake {
+  /** Let the screen sleep again. Leaving the app does this too; calling it twice is fine. */
+  release(): void;
+}
+
+/** What `ui.timer` starts: a countdown with a label. */
+export interface UiTimerOptions {
+  /** What it is for, shown on the chip and in the notification: "Rest", "Simmer the sauce". */
+  label: Words;
+  /** How long, in seconds: 1 to 86,400 (a day). */
+  seconds: number;
+  /**
+   * Name it to have one of it: starting a timer with the id of one that is running replaces it
+   * ("rest" restarts the rest timer rather than adding a second). Without one, every call is new.
+   */
+  id?: string;
+}
+
+/**
+ * A countdown the shell keeps (`ui.timer`). It goes on when the person changes page, leaves the app,
+ * or locks the phone: a chip shows it on every page and on the home screen, and a notification rings
+ * at the end (on the web, the moment Potyro is in front again when the browser could not ring).
+ * The person can pause or stop it from the chip. A snapshot: read `ui.timers()` again for news.
+ */
+export interface UiTimer {
+  readonly id: string;
+  /** In the language the app is shown in. */
+  readonly label: string;
+  readonly seconds: number;
+  /** When it ends; `null` while paused. */
+  readonly endsAt: Date | null;
+  /** Seconds left when this was read (the frozen amount, while paused). */
+  readonly left: number;
+  readonly paused: boolean;
+  cancel(): Promise<void>;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
 }
 
 /** Takes `Words` wherever it takes words. */
@@ -198,6 +257,19 @@ export interface CtxUi {
    * picks where, so no permission. `true` when copied or shared, `false` when closed.
    */
   share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
+  /**
+   * Keep the screen on while a page needs watching — a recipe being cooked, a workout under way —
+   * until `release()`, or until the person leaves the app. No permission: it only stops the screen
+   * dimming, and only while Potyro is in front.
+   */
+  keepAwake(): UiKeepAwake;
+  /**
+   * Start a countdown the shell keeps for the app: it survives a page change and a locked screen
+   * (see `UiTimer`). Several can run at once; at most 10 per app.
+   */
+  timer(opts: UiTimerOptions): Promise<UiTimer>;
+  /** This app's timers that are running or paused, soonest first. */
+  timers(): Promise<UiTimer[]>;
 }
 
 /**
@@ -340,6 +412,14 @@ export interface Ctx {
    * `ctx.space?.members ?? [ctx.me]`.
    */
   space?: Space;
+  /**
+   * Everyone a `member` field can name right now: the space's members (just you, solo) and the
+   * guests nobody has claimed yet (`guest: true`). Use this for "everyone in the group" — a split,
+   * a rota — rather than `ctx.space?.members ?? [ctx.me]`, which leaves the guests out. Fixed per pass.
+   */
+  people: readonly Person[];
+  /** Add, rename and remove placeholder people (see `CtxGuests`). */
+  guests: CtxGuests;
 
   /**
    * Runtime inputs: the values of the current page's filter chips (`FilterChip.param`) and the

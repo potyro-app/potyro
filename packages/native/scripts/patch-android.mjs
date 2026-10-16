@@ -1,5 +1,6 @@
 // Put Potyro's own Android code into the generated project (android/ is gitignored and regenerated):
-// the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — copied from
+// the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — and the
+// `PotyroKeepAwake` plugin — the screen kept on for `ctx.ui.keepAwake`, docs/04 — copied from
 // android-templates/ into MainActivity's package, and registered in MainActivity. Idempotent.
 //
 // Nothing here touches the network security config or `usesCleartextTraffic`: the app's cleartext
@@ -10,7 +11,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java"];
+export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "KeepAwakePlugin.java"];
+/** The plugin classes MainActivity registers, in order. */
+export const PLUGINS = ["LocalSocketPlugin", "KeepAwakePlugin"];
 
 /** The package a MainActivity.java declares, or null. Pure. */
 export function packageOf(source) {
@@ -19,17 +22,20 @@ export function packageOf(source) {
 }
 
 /**
- * MainActivity with the plugin registered before `super.onCreate` (Capacitor's rule for a plugin that
- * lives in the app), once. Handles the generated empty class and one that already has an onCreate. Pure.
+ * MainActivity with Potyro's plugins registered before `super.onCreate` (Capacitor's rule for a plugin
+ * that lives in the app), each once — so an activity patched before a plugin existed gets the new one.
+ * Handles the generated empty class and one that already has an onCreate. Pure.
  */
-export function withPluginRegistered(source) {
-  if (source.includes("registerPlugin(LocalSocketPlugin.class)")) return { source, added: false };
+export function withPluginRegistered(source, plugins = PLUGINS) {
+  const missing = plugins.filter((p) => !source.includes(`registerPlugin(${p}.class)`));
+  if (!missing.length) return { source, added: false };
+  const calls = missing.map((p) => `        registerPlugin(${p}.class);`).join("\n");
   let out = source;
   if (!/import\s+android\.os\.Bundle\s*;/.test(out)) out = out.replace(/(^\s*package\s+[\w.]+\s*;\s*\n)/m, "$1\nimport android.os.Bundle;\n");
   if (/void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{/.test(out)) {
-    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, "$1\n        registerPlugin(LocalSocketPlugin.class);");
+    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, `$1\n${calls}`);
   } else {
-    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // docs/28 §6: ws:// to the local network, from Potyro's own plugin (scripts/patch-android.mjs).\n        registerPlugin(LocalSocketPlugin.class);\n        super.onCreate(savedInstanceState);\n    }\n}`;
+    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // Potyro's own plugins (scripts/patch-android.mjs): docs/28 §6 local sockets, docs/04 keep awake.\n${calls}\n        super.onCreate(savedInstanceState);\n    }\n}`;
     out = out.replace(/extends\s+BridgeActivity\s*\{\s*\}/, `extends BridgeActivity ${body}`);
   }
   return { source: out, added: out !== source };
