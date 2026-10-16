@@ -2,7 +2,7 @@
 // (`FileRef`), or a path in the app's own files (`"art/squat.jpg"`) — what a computed returns to give
 // every kind of record its own picture, and what a page's `background` names.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Ctx, FileRef, MediaRef } from "potyro";
 import { releaseMediaUrl } from "./media-input.js";
 
@@ -41,7 +41,13 @@ export function usePictureUrl(ctx: Pick<Ctx, "media" | "files">, value: unknown)
   const picture = pictureOf(value);
   const key = picture === undefined ? "" : typeof picture === "string" ? `p:${picture}` : isMediaRef(picture) ? `m:${picture.key}` : `f:${picture.id}`;
   const [url, setUrl] = useState<string | null>(null);
+  // The ctx is read when the picture changes, not watched: `runtime.ctx` is a fresh object on every
+  // access, so depending on it re-read the picture on every render — a new address each time, and an
+  // <img> that never finished loading one before the next replaced it.
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
   useEffect(() => {
+    const ctx = ctxRef.current;
     if (!picture) {
       setUrl(null);
       return;
@@ -61,6 +67,6 @@ export function usePictureUrl(ctx: Pick<Ctx, "media" | "files">, value: unknown)
       if (minted) releaseMediaUrl(minted);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx, key]);
+  }, [key]);
   return url;
 }
