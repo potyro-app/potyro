@@ -19,7 +19,8 @@ export const AI_FORMAT = "potyro-ai/1";
 export const AI_MODEL = "google/gemini-2.5-flash-lite";
 export const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-export type AiPart = { type: "text"; text: string } | { type: "image"; data: string };
+/** `audio`: one recording to write down (voice input where the browser cannot, docs/29) — 16 kHz mono WAV as a data URL. */
+export type AiPart = { type: "text"; text: string } | { type: "image"; data: string } | { type: "audio"; data: string };
 
 export interface AiPayload {
   format: typeof AI_FORMAT;
@@ -47,9 +48,17 @@ export const AI_LIMITS = {
   /** The schema, as JSON. */
   json: 20_000,
   maxTokens: 4_000,
+  /** Recordings in one request: one. */
+  audios: 1,
+  /**
+   * One recording, as a data URL: a minute of 16 kHz mono 16-bit WAV is 1.92 MB, 2.56 MB in base64 —
+   * the cloud engine's limit (docs/29). A longer one is refused, never cut.
+   */
+  audio: 2_700_000,
 } as const;
 
 const IMAGE_URL = /^data:image\/(?:jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
+const AUDIO_URL = /^data:audio\/wav;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 export type ReadResult = { ok: true; payload: AiPayload } | { ok: false; error: string };
 
@@ -66,6 +75,7 @@ export function readAiPayload(v: unknown): ReadResult {
   if (!Array.isArray(o.parts) || o.parts.length === 0 || o.parts.length > AI_LIMITS.parts) return bad("parts");
   let text = 0;
   let images = 0;
+  let audios = 0;
   const parts: AiPart[] = [];
   for (const p of o.parts as unknown[]) {
     const part = p as Record<string, unknown> | null;
@@ -76,10 +86,16 @@ export function readAiPayload(v: unknown): ReadResult {
       if (part.data.length > AI_LIMITS.image || !IMAGE_URL.test(part.data)) return bad("image");
       images++;
       parts.push({ type: "image", data: part.data });
+    } else if (part?.type === "audio" && typeof part.data === "string" && Object.keys(part).length === 2) {
+      if (part.data.length > AI_LIMITS.audio || !AUDIO_URL.test(part.data)) return bad("audio");
+      audios++;
+      parts.push({ type: "audio", data: part.data });
     } else return bad("part");
   }
   if (text > AI_LIMITS.text) return bad("text too long");
   if (images > AI_LIMITS.images) return bad("too many images");
+  if (audios > AI_LIMITS.audios) return bad("too many recordings");
+  if (audios && images) return bad("a recording goes alone");
   if (o.json !== undefined) {
     if (o.json === null || typeof o.json !== "object" || Array.isArray(o.json) || JSON.stringify(o.json).length > AI_LIMITS.json) return bad("json");
   }
@@ -100,7 +116,7 @@ export function openRouterBody(p: AiPayload, model: string = AI_MODEL): Record<s
     model,
     messages: [
       { role: "system", content: p.system },
-      { role: "user", content: p.parts.map((part) => (part.type === "text" ? { type: "text", text: part.text } : { type: "image_url", image_url: { url: part.data } })) },
+      { role: "user", content: p.parts.map(contentOf) },
     ],
     max_tokens: Math.min(p.maxTokens, AI_LIMITS.maxTokens),
     temperature: p.json ? 0 : 0.3,
@@ -109,6 +125,13 @@ export function openRouterBody(p: AiPayload, model: string = AI_MODEL): Record<s
     // that honour it.
     provider: { data_collection: "deny", ...(p.json ? { require_parameters: true } : {}) },
   };
+}
+
+/** One part as OpenRouter's chat content: a recording is `input_audio`, its base64 without the data-URL prefix. */
+function contentOf(part: AiPart): Record<string, unknown> {
+  if (part.type === "text") return { type: "text", text: part.text };
+  if (part.type === "image") return { type: "image_url", image_url: { url: part.data } };
+  return { type: "input_audio", input_audio: { data: part.data.slice(part.data.indexOf(",") + 1), format: "wav" } };
 }
 
 export type UpstreamReply = { ok: true; text: string; cost?: number } | { ok: false; status: number; message: string };

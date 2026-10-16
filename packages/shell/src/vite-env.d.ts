@@ -15,6 +15,8 @@ interface ImportMetaEnv {
   readonly VITE_POTYRO_NEW_HOME?: string;
   /** More origins, comma-separated, that count as Potyro when apps move between sites (move-origins.ts). */
   readonly VITE_POTYRO_MOVE_ORIGINS?: string;
+  /** Where Potyro's gallery is (gallery-link.ts). Default `https://potyro.com/`. */
+  readonly VITE_POTYRO_GALLERY?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;
