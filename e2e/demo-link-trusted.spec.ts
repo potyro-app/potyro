@@ -118,10 +118,13 @@ for (const box of ["realm", "quickjs"] as const) {
     if (box === "quickjs") await context.addInitScript(() => localStorage.setItem("potyro:sandbox", "quickjs"));
     await viewer.goto(link);
     await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
-    await viewer.locator(".k-list-row").first().click();
-    await viewer.getByRole("button", { name: "Cook", exact: true }).click();
+    await viewer.locator(".k-card").first().click();
+    await viewer.getByRole("button", { name: /Start cooking/ }).click();
     if (box === "realm") {
-      await expect(viewer.frameLocator(".k-sealed-view iframe").locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
+      const frame = viewer.frameLocator(".k-sealed-view iframe");
+      await expect(frame.locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
+      await frame.getByRole("button", { name: "Next step" }).click();
+      await expect(frame.getByText(/Step 2 of \d+/).first()).toBeVisible();
     } else {
       await viewer.getByRole("button", { name: "Run it as mine…" }).click();
       const card = viewer.getByRole("dialog", { name: "Add an app" });

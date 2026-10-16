@@ -70,11 +70,11 @@ test("a sealed screen asks with the shell's sheet, and its answer reaches the sc
   const el = page.locator(".k-sealed-view iframe");
   await expect(el).toHaveCount(1, { timeout: 30_000 });
   const frame = page.frameLocator(".k-sealed-view iframe");
-  await frame.getByRole("button", { name: /Start push workout/ }).click({ timeout: 30_000 });
+  await frame.getByRole("button", { name: /Start Pull A/ }).click({ timeout: 30_000 });
   await frame.getByRole("button", { name: "Finish" }).click();
   const sheet = page.getByRole("menu", { name: "Finish workout?" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("menuitem")).toHaveText([/Save and finish/, /Keep training/, /Discard workout/]);
   await sheet.getByRole("menuitem", { name: /Discard workout/ }).click();
-  await expect(frame.getByRole("button", { name: /Start push workout/ })).toBeVisible();
+  await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
 });
