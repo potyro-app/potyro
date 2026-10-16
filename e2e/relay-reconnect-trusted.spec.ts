@@ -3,6 +3,7 @@ import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
+import { PORTS } from "./ports";
 
 // Sync must survive losing the relay.
 //
@@ -15,9 +16,9 @@ import { createConnection } from "node:net";
 // `cojson-transport-ws` has shipped `WebSocketPeerWithReconnection` all along; we were not using it.
 //
 // This spec owns its own relay on a private port so it can kill it without disturbing the shared one
-// on 4201 that every other sync spec uses.
+// every other sync spec uses (both in e2e/ports.ts).
 
-const PORT = 4321;
+const PORT = PORTS.reconnectRelay;
 const RELAY = `ws://localhost:${PORT}`;
 
 // `spawn` on Windows will not find `pnpm` — the shim on PATH is `pnpm.cmd`, and `pnpm.ps1` is the

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { E2E_RELAY } from "./ports";
 
 // Asking before a sandboxed app's data leaves this device (KA-23, #64).
 //
@@ -17,9 +18,9 @@ export default defineApp({
 `;
 
 async function seed(page: Page, opts: { trusted: boolean; permissions?: string }): Promise<void> {
+  await page.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await page.addInitScript(
     ([source, trusted]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
