@@ -27,14 +27,14 @@ test.describe("desktop", () => {
     await expect(first.locator(".k-fold-count")).toHaveText(String(rows));
 
     // Fold it: its rows leave the page, and it stays folded after a reload.
-    const head = first.getByRole("button");
+    const head = first.locator(".k-fold-head");
     await expect(head).toHaveAttribute("aria-expanded", "true");
     await head.click();
     await expect(head).toHaveAttribute("aria-expanded", "false");
     await expect(first.locator(".k-list-row")).toHaveCount(0);
     await page.reload();
     await openPlaces(page);
-    await expect(page.locator(".k-fold-group").first().getByRole("button")).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator(".k-fold-group").first().locator(".k-fold-head")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("a recipe's Ingredients section folds with its count, remembered across a reload", async ({ page }) => {
