@@ -12,7 +12,7 @@ test("Workout's History timeline runs untrusted", async ({ page }) => {
   await page.locator(".k-sidenav .k-tab", { hasText: "History" }).click();
 
   await expect(page.locator(".k-tl-head").first()).toHaveText("This week", { timeout: 30_000 });
-  const lastWeek = page.getByRole("region", { name: "Last week, 2" });
-  await expect(lastWeek.locator(".k-primary")).toHaveText(["Legs", "Push"]);
-  await expect(lastWeek.locator(".k-secondary").first()).toContainText("1,410 kg");
+  const lastWeek = page.getByRole("region", { name: "Last week, 3" });
+  await expect(lastWeek.locator(".k-primary")).toHaveText(["Legs A", "Pull A", "Push A"]);
+  await expect(lastWeek.locator(".k-secondary").first()).toContainText("15,498 kg");
 });

@@ -2,8 +2,8 @@ import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// The timeline (#110). Workout's History: sessions on a rail by week, newest first, each dot in its
-// day's colour, the week's heading sticking under the top bar while the week scrolls past. The clock
+// The timeline (#110). Workout's History: sessions on a rail by week, newest first, each card its
+// routine and its numbers, the week's heading sticking under the top bar while the week scrolls past. The clock
 // is fixed so the seeded history lands in known weeks — Wednesday 9 September.
 
 const NOW = new Date(2026, 8, 9, 12, 0, 0);
@@ -21,7 +21,7 @@ async function openHistory(page: Page, phone = false): Promise<void> {
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("weeks newest first, dots in the day's colour, a sticky heading, and a card opens its session", async ({ page }) => {
+  test("weeks newest first, a sticky heading, and a card opens its session", async ({ page }) => {
     await openHistory(page, true);
     const heads = page.locator(".k-tl-head");
     await expect(heads.nth(0)).toHaveText("This week");
@@ -29,14 +29,12 @@ test.describe("phone", () => {
     await expect(heads.nth(2)).toHaveText(/Aug 24\s*–\s*30|24\s*–\s*30 Aug/);
 
     const thisWeek = page.getByRole("region", { name: "This week, 1" });
-    await expect(thisWeek.locator(".k-primary")).toHaveText("Push");
+    await expect(thisWeek.locator(".k-primary")).toHaveText("Push A");
     await expect(thisWeek.locator(".k-tl-when")).toHaveText(/^Yesterday \d{1,2}:\d\d/);
-    const lastWeek = page.getByRole("region", { name: "Last week, 2" });
-    await expect(lastWeek.locator(".k-primary")).toHaveText(["Legs", "Push"]);
-    await expect(lastWeek.locator(".k-secondary").first()).toHaveText("3 sets · 1,410 kg · 55 min");
-    // Legs is green and push is red: different dots, drawn from the field's colours.
-    const dot = (loc: ReturnType<Page["locator"]>) => loc.locator(".k-tl-dot").evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(await dot(lastWeek.locator(".k-tl-item").nth(0))).not.toBe(await dot(lastWeek.locator(".k-tl-item").nth(1)));
+    const lastWeek = page.getByRole("region", { name: "Last week, 3" });
+    await expect(lastWeek.locator(".k-primary")).toHaveText(["Legs A", "Pull A", "Push A"]);
+    // Sets, volume and time, and the records the session broke (its own counting, worked out when it finished).
+    await expect(lastWeek.locator(".k-secondary").first()).toContainText("18 sets · 15,498 kg · 61 min");
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/timeline-phone.png` });
 
     // Scrolled down, the heading of the week being read sits under the top bar.

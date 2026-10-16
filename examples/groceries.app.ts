@@ -52,7 +52,7 @@ const STAPLES: [RegExp, string, string][] = [
   [/mushroom|cogumelo|pilz|champi|seta|grzyb|fungh/i, "🍄", "produce"],
   [/sourdough|bread|baguette|pão|brot|brötchen|\bpan\b|chleb|bułk|pane/i, "🥖", "bakery"],
   [/croissant|cornetto|rogal/i, "🥐", "bakery"],
-  [/oat milk|aveia|hafermilch|avena|owsian|bevanda d'avena/i, "🥛", "dairy"],
+  [/oat milk|oat drink|aveia|hafermilch|avena|owsian|bevanda d'avena/i, "🥛", "dairy"],
   [/milk|leite|milch|leche|mleko|latte/i, "🥛", "dairy"],
   [/yog|iogurte|joghurt|yogur|jogurt/i, "🥣", "dairy"],
   [/egg|ovo|\beier\b|huevo|jajk|jaja|uova|uovo/i, "🥚", "dairy"],

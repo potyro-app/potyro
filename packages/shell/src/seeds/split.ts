@@ -72,7 +72,7 @@ export async function seedSplit(store: Store, me: string | undefined, photo: See
   // ---- the flat at home ----
   const flat = await group("Flat", "Shared costs at home");
   await expense(flat, "Groceries", 4285, at(2), { category: "groceries" });
-  await expense(flat, "Cleaning things", 1840, at(5), { category: "groceries" });
+  await expense(flat, "Cleaning things", 1840, at(5), { category: "other" });
   await expense(flat, "Internet", 3900, at(9), { category: "bills" });
   await expense(flat, "Electricity", 6420, at(16), { category: "bills" });
 }
