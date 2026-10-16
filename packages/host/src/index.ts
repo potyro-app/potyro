@@ -45,4 +45,6 @@ export {
   type LiveNetwork,
   type LiveNetworkArgs,
 } from "./sockets.js";
+export { makeSpeech, englishSpeechConsent, leavesDevice, HostSpeechSession, SpeechError, SPEECH_LIMITS, type MakeSpeechArgs } from "./speech.js";
+export { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "./speech-bridge.js";
 export { onAppFailure, reportAppFailure, activeFailureListeners, type AppFailure } from "./failures.js";
