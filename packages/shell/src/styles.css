@@ -12936,20 +12936,28 @@ button.k-metro-group-name {
 /* `ctx.ui.timer` (docs/04 §Timers): the countdowns the shell keeps, under the top bar on every page
    and at home. A dark pill reads as the shell's, not the app's — the same family as the progress bar —
    and a rung timer turns the accent colour and breathes until someone says Done. */
+/* In thumb reach and off the page's own controls: stacked above the floating add button (which sits
+   above the tab bar on a phone), like a player's mini bar — the top of a page is its filters and
+   actions. At home, above "New app". */
 .k-timer-dock {
   position: fixed;
-  top: calc(3.6rem + var(--k-safe-top));
   right: calc(var(--space-3) + var(--k-safe-right));
+  bottom: calc(8.6rem + var(--k-safe-bottom));
   z-index: 56;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: flex-end;
   gap: var(--space-2);
   max-width: calc(100vw - 2 * var(--space-3));
   pointer-events: none;
 }
 .k-timer-dock[data-home] {
-  top: calc(var(--space-3) + var(--k-safe-top));
+  bottom: calc(5rem + var(--k-safe-bottom));
+}
+@media (min-width: 760px) {
+  .k-timer-dock:not([data-home]) {
+    bottom: calc(var(--space-6) + var(--k-safe-bottom));
+  }
 }
 .k-timer-chip {
   pointer-events: auto;
@@ -13049,8 +13057,18 @@ button.k-metro-group-name {
   outline-offset: 2px;
 }
 .k-timer-chip[data-ringing] {
+  position: relative;
   background: var(--accent);
   color: var(--on-accent);
+}
+/* The ring breathes around the chip, not the chip itself: its Done button stays where a thumb is. */
+.k-timer-chip[data-ringing]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--accent);
+  pointer-events: none;
   animation: k-timer-breathe 1.2s var(--ease) infinite;
 }
 .k-timer-bell {
@@ -13074,17 +13092,22 @@ button.k-metro-group-name {
 @keyframes k-timer-in {
   from {
     opacity: 0;
-    transform: translateY(-0.5rem) scale(0.96);
+    transform: translateY(0.5rem) scale(0.96);
   }
 }
 @keyframes k-timer-breathe {
-  50% {
-    transform: scale(1.04);
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.18);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .k-timer-chip,
-  .k-timer-chip[data-ringing] {
+  .k-timer-chip[data-ringing]::after {
     animation: none;
   }
   .k-timer-ring-left {
