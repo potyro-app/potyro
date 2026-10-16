@@ -11969,6 +11969,53 @@ body:has(.k-tabbar) .k-toasts {
     animation: none;
   }
 }
+
+/* Make it mine (docs/24 §6). The card's sample-records choice reads like its trust choice: a box,
+   a bold line, a quiet why. */
+.k-add-app-samples {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  cursor: pointer;
+}
+.k-add-app-samples > span {
+  display: grid;
+}
+.k-add-app-samples .k-muted {
+  font-size: 0.85rem;
+}
+/* The gallery is a link among the card's sources, and looks like one of them. */
+.k-add-app-gallery {
+  text-decoration: none;
+}
+/* The tile's details: who made it, or what it is a remix of — in the maker's voice, so italic. */
+.k-tile-menu-credit {
+  margin-top: -0.25rem;
+  font-style: italic;
+}
+/* The Studio's greeting on a remix: the credit as a small eyebrow, the question in the display face,
+   and the suggestions as the same chips a new app starts from — the one thing to do next. */
+.k-studio .k-remix-hello {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+.k-remix-credit {
+  margin: 0;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+.k-studio .k-thread-theirs > .k-remix-ask {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.3;
+  color: var(--ink);
+}
 /* tokens-only: end — share links */
 
 /* ---- The Start screen (#96; owner, 2026-10-15 — settles #93) ---------------------------------
