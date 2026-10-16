@@ -248,6 +248,10 @@ export default defineConfig({
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
   // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272).
   plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), shareLinksPlugin(), facesAssets()],
+  // The browser suite's parallel shards each start their own dev servers from this one checkout
+  // (docs/16 §8). Each shard gets its own dependency cache, so one server re-optimising never
+  // rewrites the `deps` another is serving from. Unset: Vite's default, `node_modules/.vite`.
+  cacheDir: process.env.POTYRO_VITE_CACHE_DIR || undefined,
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.

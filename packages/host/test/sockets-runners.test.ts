@@ -171,3 +171,73 @@ describe("ctx.caps.network.socket and .room in every runner", () => {
     }, 60_000);
   }
 });
+
+// The person's side, through every box (docs/28 §3, §5, §6): a home device the person names, a
+// connection that asked to stay while Potyro is hidden, and the Edit tile switch that ends it.
+describe("home devices, keepWhileHidden and the off switch in every runner", () => {
+  const HOME_ACTIONS: Record<string, string> = {
+    home: `async function (r, ctx) {
+      sock = await ctx.caps.network.socket("ws://local:8123/api/websocket", { keepWhileHidden: "0.15s" });
+      sock.onClose(function (c) { ctx.create("msg", { text: "closed " + c.why }); });
+      await ctx.create("msg", { text: "open " + sock.url });
+    }`,
+    again: `async function (r, ctx) {
+      try { await ctx.caps.network.socket("ws://local:8123/api/websocket"); await ctx.create("msg", { text: "again open" }); }
+      catch (e) { await ctx.create("msg", { text: "again " + e.code }); }
+    }`,
+  };
+  const homeDefinition = { ...definition, id: "lights", name: "Lights", permissions: { network: { hosts: ["local"] } } };
+
+  for (const trust of ["trusted", ...RUNNERS] as Array<"trusted" | Runner>) {
+    const name = trust === "trusted" ? "trusted" : trust.name;
+    it(`${name}: asks for the address once, keeps the connection 0.15 s hidden, and the switch ends it`, async () => {
+      const store = new MemoryStore();
+      await store.open("lights");
+      const listeners: Array<() => void> = [];
+      const doc = { hidden: false, addEventListener: (_: "visibilitychange", fn: () => void) => void listeners.push(fn) };
+      const fake = createFakeSockets({ pageProtocol: "http:", deps: { doc, hiddenCloseMs: 20 } });
+      const asked: string[] = [];
+      const prompted: string[] = [];
+      const ui: UiBridge = { toast: () => {}, confirm: async (m) => (asked.push(m), true), prompt: async (m) => (prompted.push(m), "192.168.1.20"), pick: async () => null };
+      const caps = new FakeCapabilities({ sockets: fake.cap });
+      const host = trust === "trusted" ? createHost() : createHost({ loadIsolated: await trust.loader(store) });
+      let loaded: LoadedApp;
+      if (trust === "trusted") {
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        const actions = new Function(`${PRELUDE} return { ${Object.entries(HOME_ACTIONS).map(([k, v]) => `${k}: ${v}`).join(",")} };`)() as Record<string, unknown>;
+        loaded = await host.load({ kind: "module", app: defineApp({ ...homeDefinition, entities: { ...homeDefinition.entities, run: { ...homeDefinition.entities.run, actions } } } as never) });
+      } else {
+        const actions = `{${Object.entries(HOME_ACTIONS).map(([k, v]) => `"${k}":${v}`).join(",")}}`;
+        const json = JSON.stringify(homeDefinition).replace('"run":{"fields":{"out":{"type":"text"}}}', `"run":{"fields":{"out":{"type":"text"}},"actions":${actions.replace(/\$/g, "$$$$")}}`);
+        loaded = await host.load({ kind: "bundle", code: `${PRELUDE} globalThis.__potyroApp = ${json};`, provenance: "untrusted" });
+      }
+      const row = await store.insert("run", { out: "" });
+      const act = (key: string) => loaded.callAction("run", key, { ...row } as never, host.makeCtx(loaded, { store, caps, ui, nav } as MakeCtxBase));
+      const texts = async () => (await store.all("msg")).map((m) => String(m.text));
+      const has = (t: string) => async () => (await texts()).includes(t);
+
+      await act("home");
+      await until(has("open ws://192.168.1.20:8123/api/websocket"));
+      expect(fake.connections[0]!.host).toBe("192.168.1.20:8123");
+      expect(prompted).toHaveLength(1);
+      expect(asked).toEqual(trust === "trusted" ? [] : ["“Lights” wants a live connection to 192.168.1.20 on your home network."]);
+
+      // Hidden longer than the default (20 ms) but less than it asked for: still open.
+      doc.hidden = true;
+      listeners.forEach((f) => f());
+      await new Promise((r) => setTimeout(r, 60));
+      expect(fake.connections[0]!.closed).toBe(false);
+      doc.hidden = false;
+      listeners.forEach((f) => f());
+
+      // The person turns it off in Edit tile: it ends at once, and the next try is refused, unasked.
+      fake.turnOff("local:192.168.1.20");
+      await until(has("closed off"));
+      await act("again");
+      await until(has("again off"));
+      expect(prompted).toHaveLength(1);
+      expect(fake.connections).toHaveLength(1);
+      loaded.dispose();
+    }, 60_000);
+  }
+});

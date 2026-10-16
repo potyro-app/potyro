@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // The Split example: what two people owe each other, agreed to the cent on both devices.
 //
@@ -10,7 +11,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // €100 dinner comes out as €100.01 between three people) is invisible until there are.
 
 async function device(context: BrowserContext): Promise<Page> {
-  await context.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   return context.newPage();
 }
 

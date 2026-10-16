@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // The Studio's conversation follows the person across their own devices (#283) — and only theirs.
 //
@@ -10,7 +11,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // that is what sharing is — and that is exactly why the conversation does not go there: C, opening the
 // same app's Studio, sees none of it.
 
-const RELAY = process.env.POTYRO_E2E_RELAY ?? "ws://localhost:4201";
+const RELAY = process.env.POTYRO_E2E_RELAY ?? E2E_RELAY;
 const ASKED = "remind me what the second page was for";
 const QUESTION = "Which page do you mean — Notes, or a new one?";
 

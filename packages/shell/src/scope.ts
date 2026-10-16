@@ -41,6 +41,19 @@ export async function restoreScope(runtime: PotyroRuntime, appId: string): Promi
   if (!runtime.scope[scope.entity]) rememberScope(appId, null);
 }
 
+/**
+ * A demo opens on something (docs/24 §1): an app with an app-wide selection (docs/03 `scope`) and
+ * none chosen yet is shown with the first of its demo records chosen — the first one its author's
+ * sample data lists — instead of asking "which one?" before the person has seen the app. Nothing is
+ * remembered: nothing in a demo is kept. A demo with no such records asks, as any empty app does.
+ */
+export async function chooseDemoScope(runtime: PotyroRuntime): Promise<void> {
+  const scope = runtime.definition.scope;
+  if (!scope || runtime.scope[scope.entity]) return;
+  const [first] = await runtime.ctx.query(scope.entity);
+  if (first) await runtime.setScope(scope.entity, String(first.id));
+}
+
 /** Select a record and remember it. */
 export async function chooseScope(runtime: PotyroRuntime, appId: string, id: string | null): Promise<void> {
   const scope = runtime.definition.scope;
