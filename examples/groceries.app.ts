@@ -443,8 +443,8 @@ export default defineApp({
         pl: "To, co kupujesz, najczęstsze najpierw. Stuknij, a trafi na listę, do swojego działu.",
         it: "Quello che compri, il più frequente prima. Toccalo ed è in lista, nel suo reparto.",
       },
-      // Tiles you tap (Bring!'s grid): a tile that is ticked is on the list. Tap one and it is on the
-      // list, in the aisle it was in; tap it again and it is off.
+      // Tiles you tap (Bring!'s grid): the usuals that are not on the list. Tap one and it is on the
+      // list, in the aisle it was in.
       view: {
         type: "checklist",
         entity: "item",
@@ -452,7 +452,9 @@ export default defineApp({
         done: "onList",
         text: "name",
         icon: "emoji",
-        detail: "memory",
+        // What is on the list already is not offered again: a tapped tile goes onto the list and
+        // leaves the grid.
+        hideDone: true,
         filter: (i) => (Number(i.timesBought) || 0) > 0,
         sort: (a, b, ctx) => usualness(b, ctx.now()) - usualness(a, ctx.now()) || String(a.name).localeCompare(String(b.name)),
         emptyText: {
