@@ -21,13 +21,22 @@ describe("patch-android", () => {
     expect(added).toBe(true);
     expect(source).toContain("import android.os.Bundle;");
     expect(source.indexOf("registerPlugin(LocalSocketPlugin.class);")).toBeLessThan(source.indexOf("super.onCreate(savedInstanceState);"));
+    expect(source.indexOf("registerPlugin(SpeechPlugin.class);")).toBeLessThan(source.indexOf("super.onCreate(savedInstanceState);"));
     expect(withPluginRegistered(source)).toEqual({ source, added: false });
+  });
+
+  it("adds the voice plugin to an activity an earlier build registered only the socket plugin in", () => {
+    const earlier = withPluginRegistered(GENERATED).source.replace(/\n\s*registerPlugin\(SpeechPlugin\.class\);/, "");
+    const { source, added } = withPluginRegistered(earlier);
+    expect(added).toBe(true);
+    expect(source.match(/registerPlugin\(/g)).toHaveLength(2);
   });
 
   it("adds to an onCreate that is already there", () => {
     const has = GENERATED.replace("extends BridgeActivity {}", "extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle b) {\n        super.onCreate(b);\n    }\n}").replace("import com.getcapacitor.BridgeActivity;", "import android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;");
     const { source } = withPluginRegistered(has);
     expect(source.match(/registerPlugin\(LocalSocketPlugin\.class\)/g)).toHaveLength(1);
+    expect(source.match(/registerPlugin\(SpeechPlugin\.class\)/g)).toHaveLength(1);
     expect(source.indexOf("registerPlugin")).toBeLessThan(source.indexOf("super.onCreate(b)"));
     expect(source.match(/import android\.os\.Bundle;/g)).toHaveLength(1);
   });

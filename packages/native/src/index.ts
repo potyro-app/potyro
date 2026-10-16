@@ -44,3 +44,4 @@ export async function maybeCreateNativeCapabilities(): Promise<Capabilities | nu
   return createCapacitorCapabilities();
 }
 export { setImmersive, onBackButton } from "./immersive.js";
+export { speechOverPlugin, type SpeechPlugin } from "./native-speech.js";
