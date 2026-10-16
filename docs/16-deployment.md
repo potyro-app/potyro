@@ -615,7 +615,7 @@ notice-and-action path). The folder and the `rm` above are that path's mechanism
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
 `du -sh /var/lib/potyro/shares` to watch it.
 
-## Rooms for multiplayer apps (docs/26): NOT deployed yet
+## Rooms for multiplayer apps (docs/26): deployed 2026-10-16
 
 Real-time multiplayer apps (the first is a draw-and-guess game whose rooms are joined by a share
 link) need a server that passes messages between the people in a room. `packages/rooms` is that
