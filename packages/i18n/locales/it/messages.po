@@ -282,6 +282,11 @@ msgstr "{0, plural, one {Riparata con # modifica.} other {Riparata con # modific
 msgid "{0, plural, one {Show more (# left)} other {Show more (# left)}}"
 msgstr "{0, plural, one {Mostra altro (ne resta #)} other {Mostra altro (ne restano #)}}"
 
+#. placeholder {0}: app.seedRows
+#: ../shell/src/add-app-dialog.tsx
+msgid "{0, plural, one {Start with its # sample record} other {Start with its # sample records}}"
+msgstr ""
+
 #. placeholder {0}: step.done.files.removed.length
 #: ../shell/src/add-app-dialog.tsx
 msgid "{0, plural, one {The new version no longer comes with {removedFiles}, so it is gone.} other {The new version no longer comes with {removedFiles}, so they are gone.}}"
@@ -641,6 +646,11 @@ msgstr "{n} KB"
 #: ../views/src/file-input.tsx
 msgid "{n} MB"
 msgstr "{n} MB"
+
+#. The name of a remix when an app here already has the original's name
+#: ../shell/src/add-app.ts
+msgid "{name} (remix)"
+msgstr ""
 
 #. The name of an app someone shared with you, when you already have one with that name
 #: ../shell/src/share-sync.ts
@@ -1043,6 +1053,11 @@ msgstr "Aggiungere {names} a {appName}?"
 msgid "add {rowsN}"
 msgstr "aggiungi {rowsN}"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a date to each “{label}”"
+msgstr ""
+
 #: ../shell/src/identity-panel.tsx
 msgid "Add a device"
 msgstr "Aggiungi un dispositivo"
@@ -1058,6 +1073,16 @@ msgstr "Aggiungi invece un file"
 #: ../shell/src/App.tsx
 msgid "Add a note"
 msgstr "Aggiungi una nota"
+
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a note to each “{label}”"
+msgstr ""
+
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a photo to each “{label}”"
+msgstr ""
 
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/ask-sources-panel.tsx
@@ -1341,6 +1366,10 @@ msgstr "Approva {name}"
 msgid "Apps"
 msgstr "App"
 
+#: ../shell/src/add-app-dialog.tsx
+msgid "Apps to try, and to make your own"
+msgstr ""
+
 #: ../shell/src/ask-panel.tsx
 msgid "Area on your map · {lat}, {lng} · {km} km"
 msgstr "Zona sulla tua mappa · {lat}, {lng} · {km} km"
@@ -1532,6 +1561,11 @@ msgstr "Caricamento…"
 msgid "brought in"
 msgstr "portato dall’esterno"
 
+#. Opens Potyro's gallery of apps to try and make your own
+#: ../shell/src/launcher.tsx
+msgid "Browse the gallery"
+msgstr ""
+
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
 msgstr "memoria locale del browser (lenta e piccola)"
@@ -1719,6 +1753,11 @@ msgstr "Modifiche"
 #: ../shell/src/history.tsx
 msgid "Changes in version {seq}"
 msgstr "Modifiche nella versione {seq}"
+
+#. Suggested changes for a remix
+#: ../shell/src/studio-thread-view.tsx
+msgid "Changes to start from"
+msgstr ""
 
 #: ../shell/src/ask-review.tsx
 msgid "Changes to your records"
@@ -2680,6 +2719,11 @@ msgstr "Da un link"
 msgid "From outside Potyro"
 msgstr "Da fuori Potyro"
 
+#. Add an app: Potyro's gallery of apps
+#: ../shell/src/add-app-dialog.tsx
+msgid "From the gallery"
+msgstr ""
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "from this app"
 msgstr "da quest’app"
@@ -2729,6 +2773,11 @@ msgstr "Recupero della foto…"
 #: ../views/src/media-input.tsx
 msgid "Getting the video…"
 msgstr "Recupero del video…"
+
+#. A suggested change for a remix
+#: ../shell/src/remix-suggestions.ts
+msgid "Give it a different colour and icon"
+msgstr ""
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Give it a name."
@@ -3316,6 +3365,11 @@ msgstr "Lasciala eseguire come tua"
 msgid "Let it run as yours?"
 msgstr "Lasciarla eseguire come tua?"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Let me say who each “{label}” is for"
+msgstr ""
+
 #: ../shell/src/tile-editor.tsx
 msgid "Let this app send what it asks about — a photo, some text — to an AI service."
 msgstr "Consenti a questa app di inviare ciò su cui chiede (una foto, un testo) a un servizio di IA."
@@ -3438,10 +3492,20 @@ msgstr "creato dall’app"
 msgid "Made with Potyro"
 msgstr "Fatto con Potyro"
 
-#. What the Studio starts with after Remix this
+#. Add-an-app card button, opened from Make it mine: your own copy of an app to change
+#. App menu: your own copy of this app, to change in the Studio
+#. Demo bar: make your own copy of this app, to change in the Studio
+#. The Add-an-app dialog, opened from Make it mine: your own copy of an app to change
+#. The Add-an-app dialog, opened from Make it mine: your own copy of an app to change
+#. Tile menu: your own copy of this app, to change in the Studio
 #: ../shell/src/add-app-dialog.tsx
-msgid "Make me a version of {name} that…"
-msgstr "Fammi una versione di {name} che…"
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/App.tsx
+#: ../shell/src/demo.tsx
+#: ../shell/src/launcher.tsx
+msgid "Make it mine"
+msgstr ""
 
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
@@ -4420,17 +4484,15 @@ msgstr "Rifiuta"
 msgid "Reject {name}"
 msgstr "Rifiuta {name}"
 
-#. The Add-an-app dialog, opened from Remix this
-#. The Add-an-app dialog, opened from Remix this
-#: ../shell/src/add-app-dialog.tsx
-#: ../shell/src/add-app-dialog.tsx
-msgid "Remix an app"
-msgstr "Fai un remix di un’app"
+#. A version's note in History, lower case: this app is a remix of another
+#: ../shell/src/version-notes.ts
+msgid "remix of “{name}”"
+msgstr ""
 
-#. Add-an-app card button, opened from Remix this
-#: ../shell/src/add-app-dialog.tsx
-msgid "Remix it"
-msgstr "Fanne un remix"
+#. A version's note in History, lower case: this app is a remix of another, made by someone
+#: ../shell/src/version-notes.ts
+msgid "remix of “{name}” by {by}"
+msgstr ""
 
 #. The app a remix came from, when its maker did not say who they are
 #: ../shell/src/credit-words.ts
@@ -4441,11 +4503,6 @@ msgstr "Remix di {name}"
 #: ../shell/src/credit-words.ts
 msgid "Remix of {name} by {by}"
 msgstr "Remix di {name} di {by}"
-
-#. Demo bar: make your own version of this app in the Studio
-#: ../shell/src/demo.tsx
-msgid "Remix this"
-msgstr "Fanne un remix"
 
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
@@ -4952,6 +5009,11 @@ msgstr "Condividerla attiva la sincronizzazione: da quel momento il suo codice s
 msgid "Shortcuts"
 msgstr "Scorciatoie"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Show “{label}” on a calendar"
+msgstr ""
+
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"
 msgstr "Mostra tutto"
@@ -4979,6 +5041,10 @@ msgstr "Mostra 24 parole da digitare sull’altro dispositivo. Sono l’unica co
 #: ../shell/src/language-picker.tsx
 msgid "Shows text that missed the catalogs (dev only)"
 msgstr "Mostra il testo sfuggito ai cataloghi (solo sviluppo)"
+
+#: ../shell/src/add-app-dialog.tsx
+msgid "So you can see what a change does. They are examples, not anyone’s own, and you can delete them. Leave it off to start empty."
+msgstr ""
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added."
@@ -5477,6 +5543,11 @@ msgstr "il codice sorgente di prima che esistesse la cronologia"
 msgid "the source editor could not be loaded"
 msgstr "non è stato possibile caricare l’editor del codice"
 
+#. The Studio's greeting on a remix, for a screen reader
+#: ../shell/src/studio-thread-view.tsx
+msgid "The Studio, on your remix"
+msgstr ""
+
 #. Read aloud after a move: the item went to the top of the list
 #: ../views/src/checklist.tsx
 msgid "the top"
@@ -5715,6 +5786,11 @@ msgstr "Questo è il mio secondo dispositivo"
 #: ../shell/src/file-viewer.tsx
 msgid "This is the beginning of {name}. Save a copy to read all of it."
 msgstr "Questo è l’inizio di {name}. Salvane una copia per leggerlo tutto."
+
+#. The Studio's first words on a remix
+#: ../shell/src/studio-thread-view.tsx
+msgid "This is your own copy. What would you like to change?"
+msgstr ""
 
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -6284,8 +6360,8 @@ msgid "You expected: {expectation}"
 msgstr "Ti aspettavi: {expectation}"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it."
-msgstr "Ricevi una copia tutta tua da modificare. Appena aggiunta, lo Studio si apre su di essa e ti chiede cosa vuoi farne."
+msgid "You get your own copy to change, beside anything you already have. Then the Studio opens on it and asks what you would like to change."
+msgstr ""
 
 #: ../shell/src/activity-panel.tsx
 msgid "You set {field} to {to}"
@@ -6373,6 +6449,10 @@ msgstr "La tua chiave OpenRouter è stata rifiutata. Controllala nelle impostazi
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"
 msgstr "Il tuo ordine: trascina i riquadri, o Alt+frecce"
+
+#: ../shell/src/App.tsx
+msgid "your own copy to change"
+msgstr ""
 
 #. A data source the person added themselves
 #: ../shell/src/ask-sources-panel.tsx

@@ -1,28 +1,128 @@
 {
   "format": "potyro-gallery/1",
   "categories": {
-    "home": { "en": "Home", "pt-BR": "Casa", "de": "Zuhause", "es": "Hogar", "pl": "Dom", "it": "Casa" },
-    "food": { "en": "Food", "pt-BR": "Comida", "de": "Essen", "es": "Comida", "pl": "Jedzenie", "it": "Cibo" },
-    "money": { "en": "Money", "pt-BR": "Dinheiro", "de": "Geld", "es": "Dinero", "pl": "Pieniądze", "it": "Soldi" },
-    "garden": { "en": "Plants", "pt-BR": "Plantas", "de": "Pflanzen", "es": "Plantas", "pl": "Rośliny", "it": "Piante" },
-    "travel": { "en": "Places", "pt-BR": "Lugares", "de": "Orte", "es": "Lugares", "pl": "Miejsca", "it": "Luoghi" },
-    "fitness": { "en": "Fitness", "pt-BR": "Exercício", "de": "Training", "es": "Ejercicio", "pl": "Ćwiczenia", "it": "Allenamento" },
-    "notes": { "en": "Notes", "pt-BR": "Notas", "de": "Notizen", "es": "Notas", "pl": "Notatki", "it": "Note" },
-    "plans": { "en": "Plans", "pt-BR": "Planos", "de": "Pläne", "es": "Planes", "pl": "Plany", "it": "Piani" },
-    "wellbeing": { "en": "Wellbeing", "pt-BR": "Bem-estar", "de": "Wohlbefinden", "es": "Bienestar", "pl": "Samopoczucie", "it": "Benessere" },
-    "play": { "en": "Play", "pt-BR": "Jogos", "de": "Spiele", "es": "Juegos", "pl": "Gry", "it": "Giochi" },
-    "creative": { "en": "Creative", "pt-BR": "Criar", "de": "Kreativ", "es": "Crear", "pl": "Twórcze", "it": "Creare" },
-    "music": { "en": "Music", "pt-BR": "Música", "de": "Musik", "es": "Música", "pl": "Muzyka", "it": "Musica" },
-    "world": { "en": "The world", "pt-BR": "O mundo", "de": "Die Welt", "es": "El mundo", "pl": "Świat", "it": "Il mondo" }
+    "home": {
+      "en": "Home",
+      "pt-BR": "Casa",
+      "de": "Zuhause",
+      "es": "Hogar",
+      "pl": "Dom",
+      "it": "Casa"
+    },
+    "food": {
+      "en": "Food",
+      "pt-BR": "Comida",
+      "de": "Essen",
+      "es": "Comida",
+      "pl": "Jedzenie",
+      "it": "Cibo"
+    },
+    "money": {
+      "en": "Money",
+      "pt-BR": "Dinheiro",
+      "de": "Geld",
+      "es": "Dinero",
+      "pl": "Pieniądze",
+      "it": "Soldi"
+    },
+    "garden": {
+      "en": "Plants",
+      "pt-BR": "Plantas",
+      "de": "Pflanzen",
+      "es": "Plantas",
+      "pl": "Rośliny",
+      "it": "Piante"
+    },
+    "travel": {
+      "en": "Places",
+      "pt-BR": "Lugares",
+      "de": "Orte",
+      "es": "Lugares",
+      "pl": "Miejsca",
+      "it": "Luoghi"
+    },
+    "fitness": {
+      "en": "Fitness",
+      "pt-BR": "Exercício",
+      "de": "Training",
+      "es": "Ejercicio",
+      "pl": "Ćwiczenia",
+      "it": "Allenamento"
+    },
+    "notes": {
+      "en": "Notes",
+      "pt-BR": "Notas",
+      "de": "Notizen",
+      "es": "Notas",
+      "pl": "Notatki",
+      "it": "Note"
+    },
+    "plans": {
+      "en": "Plans",
+      "pt-BR": "Planos",
+      "de": "Pläne",
+      "es": "Planes",
+      "pl": "Plany",
+      "it": "Piani"
+    },
+    "wellbeing": {
+      "en": "Wellbeing",
+      "pt-BR": "Bem-estar",
+      "de": "Wohlbefinden",
+      "es": "Bienestar",
+      "pl": "Samopoczucie",
+      "it": "Benessere"
+    },
+    "play": {
+      "en": "Play",
+      "pt-BR": "Jogos",
+      "de": "Spiele",
+      "es": "Juegos",
+      "pl": "Gry",
+      "it": "Giochi"
+    },
+    "creative": {
+      "en": "Creative",
+      "pt-BR": "Criar",
+      "de": "Kreativ",
+      "es": "Crear",
+      "pl": "Twórcze",
+      "it": "Creare"
+    },
+    "music": {
+      "en": "Music",
+      "pt-BR": "Música",
+      "de": "Musik",
+      "es": "Música",
+      "pl": "Muzyka",
+      "it": "Musica"
+    },
+    "world": {
+      "en": "The world",
+      "pt-BR": "O mundo",
+      "de": "Die Welt",
+      "es": "El mundo",
+      "pl": "Świat",
+      "it": "Il mondo"
+    }
   },
   "apps": [
     {
       "id": "groceries",
       "status": "ready",
-      "from": { "example": "groceries" },
+      "from": {
+        "example": "groceries"
+      },
       "category": "home",
       "icon": "🛒",
-      "name": { "en": "Groceries", "pt-BR": "Compras", "de": "Einkäufe", "es": "Compras", "pl": "Zakupy", "it": "Spesa" },
+      "name": {
+        "en": "Groceries",
+        "pt-BR": "Compras",
+        "de": "Einkäufe",
+        "es": "Compras",
+        "pl": "Zakupy",
+        "it": "Spesa"
+      },
       "line": {
         "en": "A shopping list in the order you walk the shop. Tick, drag, done.",
         "pt-BR": "Uma lista de compras na ordem em que você anda pelo mercado. Marque, arraste, pronto.",
@@ -35,10 +135,19 @@
     {
       "id": "recipes",
       "status": "ready",
-      "from": { "example": "recipes" },
+      "from": {
+        "example": "recipes"
+      },
       "category": "food",
       "icon": "🍳",
-      "name": { "en": "Recipes", "pt-BR": "Receitas", "de": "Rezepte", "es": "Recetas", "pl": "Przepisy", "it": "Ricette" },
+      "name": {
+        "en": "Recipes",
+        "pt-BR": "Receitas",
+        "de": "Rezepte",
+        "es": "Recetas",
+        "pl": "Przepisy",
+        "it": "Ricette"
+      },
       "line": {
         "en": "Recipes with their calories worked out, and what you can cook with what you have.",
         "pt-BR": "Receitas com as calorias calculadas, e o que dá para cozinhar com o que você tem.",
@@ -51,10 +160,19 @@
     {
       "id": "plants",
       "status": "ready",
-      "from": { "example": "plants" },
+      "from": {
+        "example": "plants"
+      },
       "category": "garden",
       "icon": "🌱",
-      "name": { "en": "Plants", "pt-BR": "Plantas", "de": "Pflanzen", "es": "Plantas", "pl": "Rośliny", "it": "Piante" },
+      "name": {
+        "en": "Plants",
+        "pt-BR": "Plantas",
+        "de": "Pflanzen",
+        "es": "Plantas",
+        "pl": "Rośliny",
+        "it": "Piante"
+      },
       "line": {
         "en": "Your plants, and which one needs water today, by the season.",
         "pt-BR": "Suas plantas, e qual precisa de água hoje, de acordo com a estação.",
@@ -67,10 +185,19 @@
     {
       "id": "places",
       "status": "ready",
-      "from": { "example": "places" },
+      "from": {
+        "example": "places"
+      },
       "category": "travel",
       "icon": "📍",
-      "name": { "en": "Places", "pt-BR": "Lugares", "de": "Orte", "es": "Lugares", "pl": "Miejsca", "it": "Luoghi" },
+      "name": {
+        "en": "Places",
+        "pt-BR": "Lugares",
+        "de": "Orte",
+        "es": "Lugares",
+        "pl": "Miejsca",
+        "it": "Luoghi"
+      },
       "line": {
         "en": "Places you love or want to see, on a map, and which are open right now.",
         "pt-BR": "Lugares de que você gosta ou quer conhecer, num mapa, e quais estão abertos agora.",
@@ -83,10 +210,19 @@
     {
       "id": "split",
       "status": "ready",
-      "from": { "example": "split" },
+      "from": {
+        "example": "split"
+      },
       "category": "money",
       "icon": "🧾",
-      "name": { "en": "Split", "pt-BR": "Dividir", "de": "Aufteilen", "es": "Dividir", "pl": "Podział", "it": "Dividi" },
+      "name": {
+        "en": "Split",
+        "pt-BR": "Dividir",
+        "de": "Aufteilen",
+        "es": "Dividir",
+        "pl": "Podział",
+        "it": "Dividi"
+      },
       "line": {
         "en": "Shared costs with flatmates or friends, and who owes whom, to the cent.",
         "pt-BR": "Gastos divididos com quem mora com você ou com amigos, e quem deve a quem, até o centavo.",
@@ -99,10 +235,19 @@
     {
       "id": "workout",
       "status": "ready",
-      "from": { "example": "workout" },
+      "from": {
+        "example": "workout"
+      },
       "category": "fitness",
       "icon": "🏋",
-      "name": { "en": "PPL Log", "pt-BR": "Diário PPL", "de": "PPL-Tagebuch", "es": "Registro PPL", "pl": "Dziennik PPL", "it": "Diario PPL" },
+      "name": {
+        "en": "PPL Log",
+        "pt-BR": "Diário PPL",
+        "de": "PPL-Tagebuch",
+        "es": "Registro PPL",
+        "pl": "Dziennik PPL",
+        "it": "Diario PPL"
+      },
       "line": {
         "en": "A push, pull and legs log: every set you lift, and your best so far.",
         "pt-BR": "Um diário de treino push, pull e legs: cada série, e o seu melhor até agora.",
@@ -115,10 +260,21 @@
     {
       "id": "receipt-split",
       "status": "ready",
-      "from": { "package": ["apps/receipt-split/receipt-split.app.ts"] },
+      "from": {
+        "package": [
+          "apps/receipt-split/receipt-split.app.ts"
+        ]
+      },
       "category": "money",
       "icon": "🧾",
-      "name": { "en": "Receipt Split", "pt-BR": "Dividir a conta", "de": "Kassenbon teilen", "es": "Dividir el tique", "pl": "Podział paragonu", "it": "Dividi lo scontrino" },
+      "name": {
+        "en": "Receipt Split",
+        "pt-BR": "Dividir a conta",
+        "de": "Kassenbon teilen",
+        "es": "Dividir el tique",
+        "pl": "Podział paragonu",
+        "it": "Dividi lo scontrino"
+      },
       "line": {
         "en": "Photograph a receipt and its lines become items you can share out.",
         "pt-BR": "Fotografe uma nota fiscal e cada linha vira um item para dividir.",
@@ -131,10 +287,21 @@
     {
       "id": "markdown-notes",
       "status": "ready",
-      "from": { "package": ["apps/markdown-notes/notes.app.tsx"] },
+      "from": {
+        "package": [
+          "apps/markdown-notes/notes.app.tsx"
+        ]
+      },
       "category": "notes",
       "icon": "📝",
-      "name": { "en": "Notes", "pt-BR": "Notas", "de": "Notizen", "es": "Notas", "pl": "Notatki", "it": "Note" },
+      "name": {
+        "en": "Notes",
+        "pt-BR": "Notas",
+        "de": "Notizen",
+        "es": "Notas",
+        "pl": "Notatki",
+        "it": "Note"
+      },
       "line": {
         "en": "Notes written in Markdown, kept as files you can take anywhere.",
         "pt-BR": "Notas escritas em Markdown, guardadas como arquivos que você leva para qualquer lugar.",
@@ -150,7 +317,14 @@
       "waitsFor": "#342",
       "category": "food",
       "icon": "🥫",
-      "name": { "en": "Pantry", "pt-BR": "Despensa", "de": "Vorrat", "es": "Despensa", "pl": "Spiżarnia", "it": "Dispensa" },
+      "name": {
+        "en": "Pantry",
+        "pt-BR": "Despensa",
+        "de": "Vorrat",
+        "es": "Despensa",
+        "pl": "Spiżarnia",
+        "it": "Dispensa"
+      },
       "line": {
         "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
         "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
@@ -166,7 +340,14 @@
       "waitsFor": "#343",
       "category": "garden",
       "icon": "🩺",
-      "name": { "en": "Plant Doctor", "pt-BR": "Médico de plantas", "de": "Pflanzendoktor", "es": "Doctor de plantas", "pl": "Doktor roślin", "it": "Dottore delle piante" },
+      "name": {
+        "en": "Plant Doctor",
+        "pt-BR": "Médico de plantas",
+        "de": "Pflanzendoktor",
+        "es": "Doctor de plantas",
+        "pl": "Doktor roślin",
+        "it": "Dottore delle piante"
+      },
       "line": {
         "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
         "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
@@ -182,7 +363,14 @@
       "waitsFor": "#340",
       "category": "plans",
       "icon": "🗓️",
-      "name": { "en": "Poster to Calendar", "pt-BR": "Do cartaz à agenda", "de": "Vom Plakat in den Kalender", "es": "Del cartel al calendario", "pl": "Z plakatu do kalendarza", "it": "Dal poster al calendario" },
+      "name": {
+        "en": "Poster to Calendar",
+        "pt-BR": "Do cartaz à agenda",
+        "de": "Vom Plakat in den Kalender",
+        "es": "Del cartel al calendario",
+        "pl": "Z plakatu do kalendarza",
+        "it": "Dal poster al calendario"
+      },
       "line": {
         "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
         "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
@@ -198,7 +386,14 @@
       "waitsFor": "#356",
       "category": "world",
       "icon": "🌋",
-      "name": { "en": "Earthquakes", "pt-BR": "Terremotos", "de": "Erdbeben", "es": "Terremotos", "pl": "Trzęsienia ziemi", "it": "Terremoti" },
+      "name": {
+        "en": "Earthquakes",
+        "pt-BR": "Terremotos",
+        "de": "Erdbeben",
+        "es": "Terremotos",
+        "pl": "Trzęsienia ziemi",
+        "it": "Terremoti"
+      },
       "line": {
         "en": "Earthquakes around the world, on a map, as they happen.",
         "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
@@ -214,7 +409,14 @@
       "waitsFor": "#356",
       "category": "world",
       "icon": "💬",
-      "name": { "en": "Word Watch", "pt-BR": "De olho na palavra", "de": "Wortwache", "es": "Vigía de palabras", "pl": "Na tropie słowa", "it": "Occhio alla parola" },
+      "name": {
+        "en": "Word Watch",
+        "pt-BR": "De olho na palavra",
+        "de": "Wortwache",
+        "es": "Vigía de palabras",
+        "pl": "Na tropie słowa",
+        "it": "Occhio alla parola"
+      },
       "line": {
         "en": "Pick a word and watch it go by on Bluesky, live.",
         "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
@@ -230,7 +432,14 @@
       "waitsFor": "#356",
       "category": "world",
       "icon": "📈",
-      "name": { "en": "Ticker", "pt-BR": "Cotações", "de": "Kurse", "es": "Cotizaciones", "pl": "Notowania", "it": "Quotazioni" },
+      "name": {
+        "en": "Ticker",
+        "pt-BR": "Cotações",
+        "de": "Kurse",
+        "es": "Cotizaciones",
+        "pl": "Notowania",
+        "it": "Quotazioni"
+      },
       "line": {
         "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
         "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
@@ -246,7 +455,14 @@
       "waitsFor": "#267",
       "category": "play",
       "icon": "🎨",
-      "name": { "en": "Potyro Daily", "pt-BR": "Potyro Diário", "de": "Potyro Täglich", "es": "Potyro Diario", "pl": "Potyro Codziennie", "it": "Potyro Quotidiano" },
+      "name": {
+        "en": "Potyro Daily",
+        "pt-BR": "Potyro Diário",
+        "de": "Potyro Täglich",
+        "es": "Potyro Diario",
+        "pl": "Potyro Codziennie",
+        "it": "Potyro Quotidiano"
+      },
       "line": {
         "en": "One colour puzzle a day, the same for everyone.",
         "pt-BR": "Um desafio de cores por dia, o mesmo para todo mundo.",
@@ -262,7 +478,14 @@
       "waitsFor": "#267",
       "category": "creative",
       "icon": "🎨",
-      "name": { "en": "Palette Catcher", "pt-BR": "Caça-paletas", "de": "Palettenfänger", "es": "Cazapaletas", "pl": "Łowca palet", "it": "Acchiappa palette" },
+      "name": {
+        "en": "Palette Catcher",
+        "pt-BR": "Caça-paletas",
+        "de": "Palettenfänger",
+        "es": "Cazapaletas",
+        "pl": "Łowca palet",
+        "it": "Acchiappa palette"
+      },
       "line": {
         "en": "Catch the colours of a photo, then keep and share the palette.",
         "pt-BR": "Capture as cores de uma foto, depois guarde e compartilhe a paleta.",
@@ -278,7 +501,14 @@
       "waitsFor": "#267",
       "category": "play",
       "icon": "🧩",
-      "name": { "en": "Photo Puzzle", "pt-BR": "Quebra-cabeça de foto", "de": "Fotopuzzle", "es": "Puzle de fotos", "pl": "Fotopuzzle", "it": "Puzzle di foto" },
+      "name": {
+        "en": "Photo Puzzle",
+        "pt-BR": "Quebra-cabeça de foto",
+        "de": "Fotopuzzle",
+        "es": "Puzle de fotos",
+        "pl": "Fotopuzzle",
+        "it": "Puzzle di foto"
+      },
       "line": {
         "en": "Any photo becomes a jigsaw you can send to a friend.",
         "pt-BR": "Qualquer foto vira um quebra-cabeça para mandar a um amigo.",
@@ -294,7 +524,14 @@
       "waitsFor": "#267",
       "category": "music",
       "icon": "🎹",
-      "name": { "en": "Piano", "pt-BR": "Piano", "de": "Klavier", "es": "Piano", "pl": "Pianino", "it": "Pianoforte" },
+      "name": {
+        "en": "Piano",
+        "pt-BR": "Piano",
+        "de": "Klavier",
+        "es": "Piano",
+        "pl": "Pianino",
+        "it": "Pianoforte"
+      },
       "line": {
         "en": "A practice plan for the piano, a little every day, week by week.",
         "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
@@ -310,7 +547,14 @@
       "waitsFor": "#267",
       "category": "wellbeing",
       "icon": "🌙",
-      "name": { "en": "Sleep & Mood", "pt-BR": "Sono e humor", "de": "Schlaf & Stimmung", "es": "Sueño y ánimo", "pl": "Sen i nastrój", "it": "Sonno e umore" },
+      "name": {
+        "en": "Sleep & Mood",
+        "pt-BR": "Sono e humor",
+        "de": "Schlaf & Stimmung",
+        "es": "Sueño y ánimo",
+        "pl": "Sen i nastrój",
+        "it": "Sonno e umore"
+      },
       "line": {
         "en": "How you slept and how you felt, and what the mornings add up to.",
         "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
@@ -326,7 +570,14 @@
       "waitsFor": "#267",
       "category": "creative",
       "icon": "🌸",
-      "name": { "en": "Photo Garden", "pt-BR": "Jardim de fotos", "de": "Fotogarten", "es": "Jardín de fotos", "pl": "Ogród zdjęć", "it": "Giardino di foto" },
+      "name": {
+        "en": "Photo Garden",
+        "pt-BR": "Jardim de fotos",
+        "de": "Fotogarten",
+        "es": "Jardín de fotos",
+        "pl": "Ogród zdjęć",
+        "it": "Giardino di foto"
+      },
       "line": {
         "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
         "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
@@ -342,7 +593,14 @@
       "waitsFor": "#267",
       "category": "play",
       "icon": "✏️",
-      "name": { "en": "Draw & Guess", "pt-BR": "Desenhe e adivinhe", "de": "Malen & Raten", "es": "Dibuja y adivina", "pl": "Rysuj i zgaduj", "it": "Disegna e indovina" },
+      "name": {
+        "en": "Draw & Guess",
+        "pt-BR": "Desenhe e adivinhe",
+        "de": "Malen & Raten",
+        "es": "Dibuja y adivina",
+        "pl": "Rysuj i zgaduj",
+        "it": "Disegna e indovina"
+      },
       "line": {
         "en": "A party game: one person draws, everyone else guesses, live.",
         "pt-BR": "Um jogo para a turma: uma pessoa desenha, o resto adivinha, ao vivo.",
