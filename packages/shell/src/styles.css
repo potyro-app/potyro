@@ -13125,6 +13125,10 @@ button.k-metro-group-name {
   align-content: center;
   gap: 0.3rem;
 }
+.k-move-app-quiet {
+  grid-template-columns: 1fr;
+  background: var(--surface-sunken);
+}
 .k-move-notes {
   display: grid;
   gap: 0.1rem;

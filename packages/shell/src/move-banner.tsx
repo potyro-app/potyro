@@ -73,7 +73,9 @@ function Banner({ newHome }: { newHome: string }) {
     const channel = newChannel();
     // Opened FIRST, inside the click: a window opened after an await is a pop-up the browser blocks.
     // The address carries the channel and nothing else.
-    const win = window.open(`${newHome}/?move=${channel}`, "_blank");
+    // Named, so bringing them over again reuses the window a first move opened: two tabs of the new
+    // site would be two tabs after one storage (storage-elsewhere.tsx).
+    const win = window.open(`${newHome}/?move=${channel}`, "potyro-move");
     if (!win) {
       setPhase({ kind: "blocked" });
       return;
@@ -106,8 +108,9 @@ function Banner({ newHome }: { newHome: string }) {
         setPhase({ kind: "idle" });
         cleanup();
       } else if (reply.step === "failed") {
+        // Still listening: the new window may load again (its storage taken back from another tab)
+        // and say hello, and then it is offered again.
         setPhase({ kind: "failed", reason: reply.reason });
-        cleanup();
       }
     };
     let finished = false;

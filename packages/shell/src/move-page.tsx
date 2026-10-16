@@ -20,6 +20,21 @@ import { archiveDigest, matchesOffer, MoveArchiveError, offerOf, readMoveArchive
 import { bringInEverything, previewPlans, type BringInProgress, type BringInResult } from "./move-bring-in.js";
 import type { AppPlan, MoveVia } from "./move-plan.js";
 import { shellCaps } from "./shell-caps.js";
+import { openStore } from "./open-store.js";
+import { isStorageElsewhere } from "@potyro/store";
+import { DEFAULT_NAME } from "@potyro/identity";
+
+/** Can this tab write the site's storage now? Opening a store says, without writing anything. */
+async function storageIsHere(): Promise<boolean> {
+  try {
+    const probe = await openStore("studio-chat");
+    await probe.close();
+    return true;
+  } catch (e) {
+    if (isStorageElsewhere(e)) return false;
+    return true; // any other failure is reported by the import itself, by name
+  }
+}
 
 /** How long to wait for the old site before offering the file instead. */
 const PATIENCE_MS = 10_000;
@@ -28,7 +43,7 @@ const HELLO_EVERY_MS = 1_000;
 type View =
   | { kind: "waiting"; patient: boolean }
   | { kind: "file" }
-  | { kind: "offered"; offer: MoveOffer; via: MoveVia; archive?: MoveArchive }
+  | { kind: "offered"; offer: MoveOffer; via: MoveVia; archive?: MoveArchive; elsewhere?: boolean }
   | { kind: "importing"; progress?: BringInProgress }
   | { kind: "done"; result: BringInResult; from: string }
   | { kind: "failed"; reason: string };
@@ -103,8 +118,11 @@ export function MovePage({ channel }: { channel?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const confirm = (): void => {
+  const confirm = async (): Promise<void> => {
     if (view.kind !== "offered") return;
+    // Another tab of this site may hold the storage. Then it shows "Use it here" over this page, and
+    // this page asks again after that reload — nothing is started that could only half finish.
+    if (!(await storageIsHere())) return setView({ ...view, elsewhere: true });
     if (view.via === "file") {
       if (view.archive) void bringIn(view.archive, "file");
       return;
@@ -137,7 +155,9 @@ export function MovePage({ channel }: { channel?: string }) {
     <main className="k-move-page">
       {view.kind === "waiting" ? <Waiting patient={view.patient} onFile={() => void pickFile()} /> : null}
       {view.kind === "file" ? <FromFile onFile={() => void pickFile()} /> : null}
-      {view.kind === "offered" ? <Offer offer={view.offer} via={view.via} onConfirm={confirm} onCancel={() => navigateTo({ kind: "home" })} /> : null}
+      {view.kind === "offered" ? (
+        <Offer offer={view.offer} via={view.via} elsewhere={Boolean(view.elsewhere)} onConfirm={() => void confirm()} onCancel={() => navigateTo({ kind: "home" })} />
+      ) : null}
       {view.kind === "importing" ? <Importing progress={view.progress} /> : null}
       {view.kind === "done" ? <Done result={view.result} from={view.from} /> : null}
       {view.kind === "failed" ? <Failed reason={view.reason} onFile={() => void pickFile()} /> : null}
@@ -194,7 +214,16 @@ function FromFile({ onFile }: { onFile: () => void }) {
   );
 }
 
-function Offer({ offer, via, onConfirm, onCancel }: { offer: MoveOffer; via: MoveVia; onConfirm: () => void; onCancel: () => void }) {
+interface OfferProps {
+  offer: MoveOffer;
+  via: MoveVia;
+  /** Another tab of this site holds the storage: nothing can come in until this one has it. */
+  elsewhere: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function Offer({ offer, via, elsewhere, onConfirm, onCancel }: OfferProps) {
   const { t } = useLingui();
   const plans = useMemo(() => previewPlans({ manifest: offer.manifest }, via), [offer, via]);
   const from = siteName(offer.manifest.from);
@@ -202,7 +231,11 @@ function Offer({ offer, via, onConfirm, onCancel }: { offer: MoveOffer; via: Mov
   const files = offer.manifest.apps.reduce((n, a) => n + a.files, 0);
   const conversations = offer.manifest.conversations;
   const sealed = plans.filter((p) => p.kind !== "merge" && !p.trusted).length;
-  const sorted = [...plans].sort((a, b) => a.app.name.localeCompare(b.app.name));
+  // An app that is already here and brings nothing new — an example never opened there — is one
+  // line at the end, not a row each: the list is for what actually changes.
+  const nothingNew = (p: AppPlan): boolean => p.kind === "merge" && p.app.records === 0 && p.app.files === 0;
+  const sorted = plans.filter((p) => !nothingNew(p)).sort((a, b) => a.app.name.localeCompare(b.app.name));
+  const quiet = plans.length - sorted.length;
   const who = offer.identity?.name;
   return (
     <section className="k-move-card k-move-offer" aria-labelledby="k-move-offer-h">
@@ -240,15 +273,29 @@ function Offer({ offer, via, onConfirm, onCancel }: { offer: MoveOffer; via: Mov
             </span>
           </li>
         ))}
+        {quiet ? (
+          <li className="k-move-app k-move-app-quiet">
+            <span className="k-move-app-meta">
+              {plural(quiet, {
+                one: "And # more that is already here, with nothing new in it.",
+                other: "And # more that are already here, with nothing new in them.",
+              })}
+            </span>
+          </li>
+        ) : null}
       </ul>
       <div className="k-move-notes">
-        {via === "window" && who !== undefined ? (
+        {via === "file" ? (
+          <p>
+            <Trans>Who you are does not come in a file. To be the same person here, enter your recovery words under You afterwards.</Trans>
+          </p>
+        ) : who === undefined ? null : who && who !== DEFAULT_NAME ? (
           <p>
             <Trans>You come too: here you will be {who}, with the same recovery words, so what you made is still yours.</Trans>
           </p>
         ) : (
           <p>
-            <Trans>Who you are does not come in a file. To be the same person here, enter your recovery words under You afterwards.</Trans>
+            <Trans>You come too, with the same recovery words, so what you made is still yours.</Trans>
           </p>
         )}
         {sealed ? (
@@ -267,6 +314,11 @@ function Offer({ offer, via, onConfirm, onCancel }: { offer: MoveOffer; via: Mov
           <Trans>Nothing is removed from {from}, and nothing already here is doubled.</Trans>
         </p>
       </div>
+      {elsewhere ? (
+        <p className="k-move-status" data-tone="warn" role="status">
+          <Trans>Potyro is open in another tab of this site. Press “Use it here”: this page comes back and asks you again.</Trans>
+        </p>
+      ) : null}
       <div className="k-move-actions">
         <button type="button" className="k-add k-primary-action" onClick={onConfirm}>
           <Trans>Bring them in</Trans>
@@ -291,6 +343,13 @@ function PlanTag({ plan }: { plan: AppPlan }) {
     return (
       <span className="k-ask-badge">
         <Trans>replaces the untouched example here</Trans>
+      </span>
+    );
+  }
+  if (plan.kind === "new") {
+    return (
+      <span className="k-ask-badge" data-tone="good">
+        <Trans>new here</Trans>
       </span>
     );
   }
