@@ -640,6 +640,7 @@ export interface PermissionManifest {
   network?: NetworkPermission;
   /** `ctx.caps.ai` (docs/23): send what a call names to an AI service. A shared app asks the person first. */
   ai?: boolean;
+  speech?: boolean;
 }
 
 export interface Theme {

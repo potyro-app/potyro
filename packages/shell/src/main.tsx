@@ -771,6 +771,8 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   caps.liveCamera?.stopAll("closed");
   // And every live connection it opened (docs/28): the app hears `why: "left"`.
   caps.sockets?.closeAll("left");
+  // And the microphone (docs/29): a listening ends, and a recording still being made is not sent.
+  caps.speech?.stopAll("left");
   const seq = ++routeSeq;
   const isCurrent = (): boolean => seq === routeSeq;
   const prev = current;

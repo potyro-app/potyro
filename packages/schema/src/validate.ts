@@ -713,6 +713,7 @@ const permissionSchema = z.object({
   haptics: z.boolean().optional(),
   network: networkPermissionSchema.optional(),
   ai: z.boolean().optional(),
+  speech: z.boolean().optional(),
 });
 
 
