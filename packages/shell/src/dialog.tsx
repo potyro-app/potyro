@@ -286,7 +286,8 @@ export function ShareBody({
           className="k-input k-share-text"
           aria-label={t({ message: "What will be sent", comment: "Share dialog: the words an app hands over, read-only" })}
           readOnly
-          rows={Math.min(10, whole.split("\n").length)}
+          // Lines as they wrap, not only as they are written: a long link is shown whole, not cut off.
+          rows={Math.min(10, whole.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 56)), 0))}
           value={whole}
           onFocus={(e) => e.currentTarget.select()}
         />
