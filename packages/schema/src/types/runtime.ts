@@ -22,11 +22,12 @@ export interface Runtime {
   ctx: Ctx;
 
   // ---- data access ----
-  //
-  // `watchQuery`/`watchRecord` are the CONTRACT: a subscription any framework can adapt. The `use*`
-  // forms below are React sugar over exactly these, kept because most views are React today — but a
-  // view written in something else is not shut out, which is what stops the view framework being an
-  // architectural decision.
+  /**
+   * `watchQuery`/`watchRecord` are the CONTRACT: a subscription any framework can adapt. The `use*`
+   * forms below are React sugar over exactly these, kept because most views are React today — but a
+   * view written in something else is not shut out, which is what stops the view framework being an
+   * architectural decision.
+   */
   watchQuery(
     entity: string,
     spec: { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number } | undefined,

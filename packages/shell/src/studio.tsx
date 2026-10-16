@@ -25,6 +25,7 @@ import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
 import { getUserApp, lockToRestore, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { newLine } from "./app-line.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
@@ -286,7 +287,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     // A library's bytes are in the app's folder before its record names them, so no open finds one missing.
     if (existing && libraries?.files.length) await keepLibraryFiles(existing, libraries.files);
     const record = await saveUserApp(
-      { id: existing?.id, name, source: next, lock: libraries?.lock, note: note || undefined, rationale: summary || undefined, origin },
+      // A new app is an app of its own (docs/24 §11): links to it open its copies, whatever it declares as its id.
+      { id: existing?.id, name, source: next, lock: libraries?.lock, note: note || undefined, rationale: summary || undefined, origin, ...(existing ? {} : { line: newLine() }) },
       new Date().toISOString(),
     );
     if (!existing && libraries?.files.length) await keepLibraryFiles(record, libraries.files);
