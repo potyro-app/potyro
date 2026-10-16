@@ -319,6 +319,8 @@ export class RealmLoadedApp implements LoadedApp {
 
   dispose(): void {
     this.disposed = true;
+    // Its screens first: they hold watchers on the app's runtime and may have ops in flight.
+    for (const view of this.views.values()) view.closeAll();
     this.sockets.endAll("left", "the app was closed");
     this.speech.endAll();
     this.teardown();
