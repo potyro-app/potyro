@@ -12,6 +12,7 @@ export type {
   SealedView,
   SealedViewEvents,
   SealedViewStop,
+  ShownShare,
 } from "./types.js";
 export {
   formatLocaleFor,
