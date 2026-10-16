@@ -79,13 +79,15 @@ test("a sealed screen asks with the shell's sheet, and its answer reaches the sc
   const chip = page.locator(".k-timer-chip", { hasText: "Rest" });
   await expect(chip).toHaveCount(1);
   await expect(frame.getByRole("timer", { name: "Rest" })).toBeVisible();
+  // Skipped in the frame: the shell's timer stops, not just its drawing.
+  await frame.getByRole("button", { name: "skip" }).click();
+  await expect(chip).toHaveCount(0);
   await frame.getByRole("button", { name: "Finish" }).click();
   const sheet = page.getByRole("menu", { name: "Finish workout?" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("menuitem")).toHaveText([/Save and finish/, /Keep training/, /Discard workout/]);
   await sheet.getByRole("menuitem", { name: /Discard workout/ }).click();
   await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
-  // Thrown away: its rest stops with it, and the screen may sleep.
-  await expect(chip).toHaveCount(0);
+  // Thrown away: the screen may sleep.
   await expect(html).not.toHaveAttribute("data-k-awake", "");
 });
