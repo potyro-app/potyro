@@ -11,7 +11,13 @@
 
 /** `data` is the Data page, open on one app's records when `id` says which — or on its files (#254). */
 /** `share`: text shared into Potyro from another app, waiting for the person to pick an app (#213). */
-export type ShellRoute = { kind: "user"; id: string } | { kind: "home" } | { kind: "data"; id?: string; files?: boolean } | { kind: "share" };
+/** `move`: apps arriving from an old Potyro site (move-page.tsx); `channel` when that site opened this window. */
+export type ShellRoute =
+  | { kind: "user"; id: string }
+  | { kind: "home" }
+  | { kind: "data"; id?: string; files?: boolean }
+  | { kind: "share" }
+  | { kind: "move"; channel?: string };
 
 /** Returns false to decline, and the router navigates the page instead. */
 type Handler = (route: ShellRoute) => boolean;
@@ -25,6 +31,7 @@ export function setRouteHandler(next: Handler | null): void {
 export function urlFor(route: ShellRoute): string {
   if (route.kind === "home") return location.pathname;
   if (route.kind === "share") return `${location.pathname}?share`;
+  if (route.kind === "move") return `${location.pathname}?move`;
   if (route.kind === "data") return route.id ? `${location.pathname}?data=${encodeURIComponent(route.id)}${route.files ? "&files" : ""}` : `${location.pathname}?data`;
   return `${location.pathname}?user=${encodeURIComponent(route.id)}`;
 }

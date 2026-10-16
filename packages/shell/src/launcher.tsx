@@ -28,6 +28,7 @@ import { toggleAppSync } from "./toggle-sync.js";
 import { createShareLink } from "./share-sync.js";
 import { ShareSheet } from "./share-sheet.js";
 import { IdentityPanel, askNameIfUnnamed, offerBackupOnFirstSync } from "./identity-panel.js";
+import { MoveBanner } from "./move-banner.js";
 import { LookPanel } from "./look-panel.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
@@ -735,6 +736,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       inertUnless={inertUnless}
       top={
         <>
+          {/* An old Potyro site shows its people the way to the new one (move-banner.tsx). */}
+          {variant === "home" ? <MoveBanner /> : null}
           {welcome}
           {/* Conversations that have not made an app yet (#261), before the apps: they are what you were last doing. */}
           {onResumeDraft ? <DraftStrip onResume={onResumeDraft} /> : null}
@@ -810,6 +813,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
 
+      {variant === "home" ? <MoveBanner /> : null}
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
         <section className="k-welcome" aria-labelledby="k-welcome-h">
           <h2 id="k-welcome-h">
