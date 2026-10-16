@@ -62,7 +62,7 @@ test.describe("desktop", () => {
   test("a card with a photo moves when it is dragged BY the photo", async ({ page }) => {
     await page.goto("/?user=recipes");
     await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
-    await page.locator(".k-list-row", { hasText: "Chicken Caesar" }).first().locator(".k-list-text").click();
+    await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
     await expect(page.locator("article.k-detail")).toBeVisible();
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
