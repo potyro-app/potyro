@@ -354,7 +354,7 @@ async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
   try {
     const session = await openDemo(pkg, caps);
     shareEvent("demo-opened");
-    mount(root, <DemoScreen session={session} pkg={pkg} />);
+    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} />);
   } catch (e) {
     const why =
       e instanceof DemoDeclined

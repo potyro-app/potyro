@@ -40,8 +40,24 @@ export function inlineDemoLink(zip: Uint8Array, origin: string, pathname: string
   return link.length > MAX_INLINE_CHARS ? null : link;
 }
 
-/** A demo link, as the address bar has it. */
-export type DemoLink = { kind: "inline"; zip: Uint8Array } | { kind: "hosted"; id: string; key: string };
+/**
+ * The remix intent (docs/24 §6): `#k=<key>&remix=1` (or `#try=<package>&remix=1`) opens the demo with
+ * "Make it mine" already asked — the gallery's second button. Only `1` means it; anything else is a
+ * plain demo. It is in the fragment like the key, so it never reaches a server either.
+ */
+export const REMIX_KEY = "remix";
+
+/** A demo link, as the address bar has it. `remix`: the link asks to make it the person's own. */
+export type DemoLink = ({ kind: "inline"; zip: Uint8Array } | { kind: "hosted"; id: string; key: string }) & { remix?: true };
+
+/** The same demo link, asking to make it the person's own: what the gallery's "Make it mine" opens. */
+export function remixLink(link: string): string {
+  const at = link.indexOf("#");
+  if (at < 0) throw new Error("A demo link carries its key or package in the fragment");
+  const params = new URLSearchParams(link.slice(at + 1));
+  if (params.get(REMIX_KEY) === "1") return link;
+  return `${link}&${REMIX_KEY}=1`;
+}
 
 /** Share ids are 128 random bits, base64url: 22 characters. */
 const ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
@@ -52,16 +68,17 @@ const ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
  */
 export function readDemoLink(pathname: string, hash: string): DemoLink | null {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
+  const remix = params.get(REMIX_KEY) === "1" ? ({ remix: true } as const) : {};
   const inline = params.get(INLINE_KEY);
   if (inline) {
     try {
-      return { kind: "inline", zip: fromBase64Url(inline) };
+      return { kind: "inline", zip: fromBase64Url(inline), ...remix };
     } catch {
       return null;
     }
   }
   const hosted = /\/s\/([^/]+)\/?$/.exec(pathname);
   const key = params.get("k");
-  if (hosted && key && ID_RE.test(hosted[1]!)) return { kind: "hosted", id: hosted[1]!, key };
+  if (hosted && key && ID_RE.test(hosted[1]!)) return { kind: "hosted", id: hosted[1]!, key, ...remix };
   return null;
 }
