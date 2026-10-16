@@ -258,7 +258,7 @@ export default defineApp({
           label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" },
           placeholder: { en: "Produce", "pt-BR": "Hortifrúti", de: "Obst & Gemüse", es: "Frutas y verduras", pl: "Warzywa", it: "Frutta e verdura" },
         },
-        order: { type: "number", integer: true, default: 0, hidden: true },
+        order: { type: "number", integer: true, default: 0, hidden: true, label: { en: "Order", "pt-BR": "Ordem", de: "Reihenfolge", es: "Orden", pl: "Kolejność", it: "Ordine" } },
       },
     },
 
@@ -308,7 +308,7 @@ export default defineApp({
           default: false,
           label: { en: "In the basket", "pt-BR": "Na cesta", de: "Im Korb", es: "En la cesta", pl: "W koszyku", it: "Nel carrello" },
         },
-        position: { type: "number", integer: true, default: 0, hidden: true },
+        position: { type: "number", integer: true, default: 0, hidden: true, label: { en: "Position", "pt-BR": "Posição", de: "Position", es: "Posición", pl: "Pozycja", it: "Posizione" } },
         note: {
           type: "text",
           multiline: true,
@@ -325,9 +325,9 @@ export default defineApp({
         { title: { en: "More", "pt-BR": "Mais", de: "Mehr", es: "Más", pl: "Więcej", it: "Altro" }, fields: ["note", "for", "bought"], collapsed: true },
       ],
       computed: {
-        emoji: (i) => emojiOf(i.name),
+        emoji: { label: { en: "Emoji", "pt-BR": "Emoji", de: "Emoji", es: "Emoji", pl: "Emoji", it: "Emoji" }, value: (i) => emojiOf(i.name) },
         /** "2 × 1 l · Ana": the quieter line under a row. */
-        line: (i, ctx) => [String(i.quantity ?? ""), addedBy(i, ctx), i.for ? `→ ${String((i.for as { name?: string }).name ?? "")}` : ""].filter(Boolean).join(" · "),
+        line: { label: { en: "Details", "pt-BR": "Detalhes", de: "Details", es: "Detalles", pl: "Szczegóły", it: "Dettagli" }, value: (i, ctx) => [String(i.quantity ?? ""), addedBy(i, ctx), i.for ? `→ ${String((i.for as { name?: string }).name ?? "")}` : ""].filter(Boolean).join(" · ") },
         memory: {
           label: { en: "Bought", "pt-BR": "Comprado", de: "Gekauft", es: "Comprado", pl: "Kupione", it: "Comprato" },
           value: (i, ctx) => {

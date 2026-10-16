@@ -48,6 +48,22 @@ const dateOf = (v: unknown): Date => (v instanceof Date ? v : new Date(String(v 
 /** Warm-ups are for getting ready: they never count towards records or the next target. */
 const working = (sets: readonly LoggedSet[]): LoggedSet[] => sets.filter((s) => s.kind !== "warmup" && num(s.reps) > 0);
 
+/**
+ * The picture for a kind of lifting, from the muscles it works: pressing (chest, shoulders, triceps),
+ * pulling (back, biceps) or legs. A path in the app's own files; "" when the muscles do not say.
+ */
+const ART: Record<string, string> = { press: "art/press.webp", pull: "art/pull.webp", legs: "art/plates.webp" };
+const KIND_OF: Record<string, string> = { chest: "press", shoulders: "press", triceps: "press", back: "pull", biceps: "pull", quads: "legs", hamstrings: "legs", glutes: "legs", calves: "legs" };
+function artFor(muscles: readonly unknown[]): string {
+  const count = new Map<string, number>();
+  for (const m of muscles) {
+    const kind = KIND_OF[String(m)];
+    if (kind) count.set(kind, (count.get(kind) ?? 0) + 1);
+  }
+  const top = [...count.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top ? ART[top[0]]! : "";
+}
+
 /** An exercise's sessions, newest first, as `exercise.history` keeps them. */
 type History = { date: string; sets: { kg: number; reps: number }[] }[];
 
@@ -1109,7 +1125,9 @@ export default defineApp({
   schemaVersion: 2,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
-  theme: { accent: "#B6E62E", background: { image: "art/plates.webp" } },
+  // No picture behind the pages: the gym photos are for a record that is about a kind of lifting
+  // (an exercise, a routine), each by what it works. Train has its own dark panel.
+  theme: { accent: "#B6E62E" },
   category: "everyday",
   // The launcher tile (docs/04 §Tile): what is next, when you last trained, and the streak.
   tile: async (ctx) => {
@@ -1244,6 +1262,16 @@ export default defineApp({
         { title: { en: "More", "pt-BR": "Mais", de: "Mehr", es: "Más", pl: "Więcej", it: "Altro" }, fields: ["note"], collapsed: true },
       ],
       computed: {
+        /** The picture on its page: what most of its exercises work — pressing, pulling or legs. */
+        art: {
+          label: { en: "Picture", "pt-BR": "Imagem", de: "Bild", es: "Imagen", pl: "Obraz", it: "Immagine" },
+          value: (r) =>
+          artFor(
+            ((r.exercises as { exercise?: { muscles?: unknown[] } | string | null }[] | undefined) ?? []).flatMap((row) =>
+              row.exercise && typeof row.exercise === "object" ? (row.exercise.muscles ?? []) : [],
+            ),
+          ),
+        },
         summary: {
           label: { en: "Plan", "pt-BR": "Plano", de: "Plan", es: "Plan", pl: "Plan", it: "Piano" },
           value: (r, ctx) => {
@@ -1380,13 +1408,18 @@ export default defineApp({
         { title: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["cue"] },
       ],
       computed: {
+        /** The picture on its page: pressing, pulling or legs, from its muscles. */
+        art: { label: { en: "Picture", "pt-BR": "Imagem", de: "Bild", es: "Imagen", pl: "Obraz", it: "Immagine" }, value: (e) => artFor((e.muscles as unknown[] | undefined) ?? []) },
         // ASYNC computed that reads history, ONCE: every session this exercise was in, newest first,
         // as its date and working sets. The values below are worked out from it, so an exercise
         // costs one query rather than one per figure.
-        history: async (e, ctx) =>
+        history: {
+          label: { en: "History", "pt-BR": "Histórico", de: "Verlauf", es: "Historial", pl: "Historia", it: "Cronologia" },
+          value: async (e, ctx) =>
           newestFirst(await ctx.query("session"))
             .map((s) => ({ date: dateOf(s.date).toISOString(), sets: working(setsIn(s, e.id) ?? []).map((x) => ({ kg: num(x.kg), reps: num(x.reps) })) }))
             .filter((h) => h.sets.length > 0),
+        },
         // The best set of the last N sessions that had this exercise.
         lastBest: {
           label: { en: "Rolling best", "pt-BR": "Melhor recente", de: "Aktueller Bestwert", es: "Mejor reciente", pl: "Ostatni rekord", it: "Record recente" },
@@ -1412,11 +1445,14 @@ export default defineApp({
           },
         },
         // Estimated 1RM per session (reps, for a bodyweight lift), oldest first: the chart on its page.
-        progress: (e) =>
+        progress: {
+          label: { en: "Estimated 1RM per session", "pt-BR": "1RM estimado por treino", de: "Geschätztes 1RM pro Training", es: "1RM estimado por sesión", pl: "Szacowany 1RM na trening", it: "1RM stimato per sessione" },
+          value: (e) =>
           [...((e.history as History | undefined) ?? [])]
             .reverse()
             .map((h) => ({ date: h.date, value: Math.max(0, ...h.sets.map((x) => (e.bodyweight ? x.reps : e1rm(x.kg, x.reps)))) }))
             .filter((p) => p.value > 0),
+        },
         best: {
           label: { en: "Best estimated 1RM", "pt-BR": "Melhor 1RM estimado", de: "Bestes geschätztes 1RM", es: "Mejor 1RM estimado", pl: "Najlepszy szacowany 1RM", it: "Miglior 1RM stimato" },
           value: (e, ctx) => {
@@ -1446,7 +1482,7 @@ export default defineApp({
           default: (ctx) => ctx.now(),
           label: { en: "Date", "pt-BR": "Data", de: "Datum", es: "Fecha", pl: "Data", it: "Data" },
         },
-        durationSec: { type: "number", hidden: true },
+        durationSec: { type: "number", hidden: true, label: { en: "Duration (seconds)", "pt-BR": "Duração (segundos)", de: "Dauer (Sekunden)", es: "Duración (segundos)", pl: "Czas trwania (sekundy)", it: "Durata (secondi)" } },
         entries: {
           type: "list",
           label: { en: "Entries", "pt-BR": "Exercícios", de: "Übungen", es: "Ejercicios", pl: "Ćwiczenia", it: "Esercizi" },
@@ -1526,8 +1562,11 @@ export default defineApp({
           label: { en: "Routine", "pt-BR": "Rotina", de: "Routine", es: "Rutina", pl: "Plan", it: "Routine" },
           value: (s, ctx) => String(s.routine?.name ?? "") || dayName(s.day, ctx) || ctx.t({ en: "Workout", "pt-BR": "Treino", de: "Training", es: "Entreno", pl: "Trening", it: "Allenamento" }),
         },
-        label: (s, ctx) =>
+        label: {
+          label: { en: "Session", "pt-BR": "Treino", de: "Training", es: "Sesión", pl: "Trening", it: "Sessione" },
+          value: (s, ctx) =>
           `${String(s.routine?.name ?? "") || dayName(s.day, ctx) || ctx.t({ en: "Workout", "pt-BR": "Treino", de: "Training", es: "Entreno", pl: "Trening", it: "Allenamento" })} · ${ctx.format.date(dateOf(s.date), { weekday: "short", day: "numeric", month: "short" })}`,
+        },
         duration: {
           label: { en: "Duration", "pt-BR": "Duração", de: "Dauer", es: "Duración", pl: "Czas trwania", it: "Durata" },
           value: (s, ctx) => (num(s.durationSec) ? ctx.format.number(Math.round(num(s.durationSec) / 60), { style: "unit", unit: "minute" }) : "—"),
@@ -1872,6 +1911,7 @@ export default defineApp({
         entity: "routine",
         param: "routineId",
         facts: ["program"],
+        media: "art",
         sections: [
           { title: { en: "Routine", "pt-BR": "Rotina", de: "Routine", es: "Rutina", pl: "Plan", it: "Routine" }, fields: ["summary", "lastDone", "active", "order"] },
           { title: { en: "Exercises", "pt-BR": "Exercícios", de: "Übungen", es: "Ejercicios", pl: "Ćwiczenia", it: "Esercizi" }, fields: ["exercises"] },
@@ -1899,6 +1939,7 @@ export default defineApp({
               entity: "exercise",
               param: "exerciseId",
               facts: ["muscles"],
+              media: "art",
               sections: [
                 {
                   title: { en: "Your numbers", "pt-BR": "Seus números", de: "Deine Zahlen", es: "Tus números", pl: "Twoje liczby", it: "I tuoi numeri" },
