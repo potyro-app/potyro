@@ -283,9 +283,21 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.views",
     summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()`: move a map that is on screen, from a page action (\"Centre on me\")",
-    declarations: ["MapViewControl", "CtxViews"],
-    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er))\b/i,
-    uses: /ctx\.views\b/,
+    // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
+    // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
+    declarations: ["MapViewControl", "CtxViews", "RelatedSection", "ChecklistQuickAdd"],
+    members: [
+      { of: "ListDisplay", name: "icon" },
+      { of: "DetailSection", name: "related" },
+      { of: "ChecklistView", name: "quickAdd" },
+      { of: "ChecklistView", name: "icon" },
+      { of: "ChecklistView", name: "layout" },
+      { of: "AggregateRow", name: "record" },
+      { of: "AggregateRow", name: "open" },
+      { of: "AggregateRow", name: "action" },
+    ],
+    cues: /ctx\.views\b|\b(fly ?to|centre on|center on|zoom to|pan to|recent(?:re|er)|history|log|logs|related|linked|past|suggest\w*|remember\w*|tap\w*|tiles?|emoji|icons?|pins?|settle|histori\w*|registro|verlauf|historia|storia)\b/i,
+    uses: /ctx\.views\b|\b(related|quickAdd|layout)\s*:/,
   },
   {
     key: "ctx.format",
