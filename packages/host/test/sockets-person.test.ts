@@ -106,7 +106,7 @@ describe("a device on the home network (hosts: [\"local\"])", () => {
   it("asks for the address, names it in the question, connects there and remembers it", async () => {
     const { caps, fake, asked, prompted } = setup({ permissions: perms, typed: ["192.168.1.20"], fake: { pageProtocol: "http:" } });
     const s = await caps.network!.socket("ws://local:8123/api/websocket");
-    expect(prompted).toEqual(["“Lights” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local"]);
+    expect(prompted).toEqual(["“Lights” wants to connect to a device on your home network."]);
     expect(asked).toEqual(["“Lights” wants a live connection to 192.168.1.20 on your home network."]);
     expect(s.url).toBe("ws://192.168.1.20:8123/api/websocket");
     expect(fake.connections[0]!.host).toBe("192.168.1.20:8123");
@@ -121,7 +121,7 @@ describe("a device on the home network (hosts: [\"local\"])", () => {
     const a = setup({ permissions: perms, typed: ["8.8.8.8", "homeassistant.local:9000"], fake: { pageProtocol: "http:" } });
     const s = await a.caps.network!.socket("ws://local:8123/api");
     expect(a.prompted).toHaveLength(2);
-    expect(a.prompted[1]).toMatch(/^“8\.8\.8\.8” is not an address on your home network\./);
+    expect(a.prompted[1]).toBe("“8.8.8.8” is not an address on your home network.");
     expect(s.url).toBe("ws://homeassistant.local:9000/api");
 
     const b = setup({ permissions: perms, typed: [null], fake: { pageProtocol: "http:" } });

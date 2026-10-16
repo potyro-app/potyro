@@ -114,8 +114,11 @@ describe("app sockets", () => {
     expect(w.message).toBe("“Lights” wants a live connection to 192.168.1.20 on your home network.");
     expect(w.detail).toContain("In a browser it connects only if the device offers a secure (wss://) connection");
     expect(socketConsentWords("Lights", { local: "192.168.1.20" }).detail).not.toContain("browser");
-    expect(localAddressWords("Lights", null)).toBe("“Lights” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local");
-    expect(localAddressWords("Lights", "example.com")).toMatch(/^“example\.com” is not an address on your home network\. “Lights” wants/);
+    const ask = localAddressWords("Lights", null);
+    expect(ask.message).toBe("“Lights” wants to connect to a device on your home network.");
+    expect(ask.detail).toContain("For example 192.168.1.20 or homeassistant.local");
+    expect([ask.ok, ask.cancel, ask.placeholder]).toEqual(["Continue", "Not now", "192.168.1.20"]);
+    expect(localAddressWords("Lights", "example.com").message).toBe("“example.com” is not an address on your home network.");
     await setLocale("de");
     expect(socketConsentWords("Lights", { local: "192.168.1.20" }).message).not.toContain("wants");
   });

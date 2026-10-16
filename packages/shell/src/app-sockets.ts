@@ -8,7 +8,7 @@
 // an app that reaches a device on the home network, that device's address (`local:<address>`).
 
 import { t } from "@lingui/core/macro";
-import type { ConsentNote, ConsentWords, SocketCap, SocketTarget } from "@potyro/capabilities";
+import type { AddressAskWords, ConsentNote, ConsentWords, SocketCap, SocketTarget } from "@potyro/capabilities";
 import { currentSite } from "./site.js";
 
 const key = (appId: string): string => `potyro:sockets:${appId}`;
@@ -183,14 +183,23 @@ export function socketConsentWords(appName: string, target: SocketTarget, note?:
 }
 
 /** The question asking for a home device's address; `retry` is what they typed that was not one. */
-export function localAddressWords(appName: string, retry: string | null): string {
-  const ask = t({
-    message: `“${appName}” wants to connect to a device on your home network. What is its address? For example 192.168.1.20 or homeassistant.local`,
-    comment: "Asked the first time an app connects to a device on the person's home network (a smart-home hub, lights); they type its local address",
-  });
-  if (!retry) return ask;
-  const typed = retry.slice(0, 60);
-  return `${t({ message: `“${typed}” is not an address on your home network.`, comment: "The person typed an address that is not on their local network (like a website); they are asked again" })} ${ask}`;
+export function localAddressWords(appName: string, retry: string | null): AddressAskWords {
+  const typed = retry?.slice(0, 60) ?? "";
+  return {
+    message: retry
+      ? t({ message: `“${typed}” is not an address on your home network.`, comment: "The person typed an address that is not on their local network (like a website); they are asked again" })
+      : t({
+          message: `“${appName}” wants to connect to a device on your home network.`,
+          comment: "Asked the first time an app connects to a device on the person's home network (a smart-home hub, lights); they then type its local address",
+        }),
+    detail: t({
+      message: "What is the device’s address? For example 192.168.1.20 or homeassistant.local — it is in the device’s own settings or app.",
+      comment: "Under the question asking for a home device's address; the field below takes it",
+    }),
+    ok: t({ message: "Continue", comment: "Button: use the address the person typed for a home device (the permission question follows)" }),
+    cancel: t({ message: "Not now", comment: "Button: refuse a shared app's live connection this time" }),
+    placeholder: "192.168.1.20",
+  };
 }
 
 /** The page's connections, as one app sees them. `null` when the device has none. */

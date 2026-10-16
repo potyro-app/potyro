@@ -12,12 +12,17 @@ export const ROOM_ID = "e2e-room-0000000000000000";
 export interface LiveApp {
   echoPort: number;
   otherPort: number;
+  /** A server that answers slowly (`startEcho({ delayMs })`); the echo port when a spec has none. */
+  slowPort?: number;
   trusted: boolean;
   sandbox?: "realm" | "quickjs";
 }
 
 export async function openLiveEcho(page: Page, o: LiveApp): Promise<void> {
-  const source = SOURCE.replaceAll("__ECHO_PORT__", String(o.echoPort)).replaceAll("__OTHER_PORT__", String(o.otherPort)).replaceAll("__ROOM_ID__", ROOM_ID);
+  const source = SOURCE.replaceAll("__ECHO_PORT__", String(o.echoPort))
+    .replaceAll("__OTHER_PORT__", String(o.otherPort))
+    .replaceAll("__SLOW_PORT__", String(o.slowPort ?? o.echoPort))
+    .replaceAll("__ROOM_ID__", ROOM_ID);
   await page.addInitScript(
     ([src, trusted, sandbox]) => {
       if (sandbox) localStorage.setItem("potyro:sandbox", sandbox);
