@@ -74,8 +74,17 @@ The device that shares builds them, in this order:
    the viewer's device makes the record's copy (`seed-files.ts`) — so an example with photos makes
    a hosted link of a few hundred KB, too long for the inline form. Run without the sharer's account id (`me` is
    undefined), so no record names anyone.
-2. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
+2. For an app added from a package, **the seed its package came with** (`seed.json`, #253): the
+   app's own sample data, kept beside the app when it was added (`UserApp.seed`, at most 64 KB of
+   JSON — a bigger one is applied on install but not kept), and only for the entities it keeps.
+   Never what the person added since. An inline link too long with them is made without them.
+3. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
    and an app worth sharing is usable from empty.
+
+An app with an app-wide selection (docs/03 `scope`, Split's group) opens with the first of its demo
+records of that entity already chosen, not on "choose a group": a question before the app is on
+screen is a poor first look. Nothing is remembered, and an app with no such demo records asks, as on
+a first run.
 
 What is never read: the app's own store. Building the demo package opens the app's store only to
 copy files it **shipped with**, by path.
