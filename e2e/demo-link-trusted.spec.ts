@@ -76,3 +76,27 @@ test("Keep this app goes through the Add-an-app card, as a link: sealed, never �
   expect(apps.find((a) => a.id === "groceries")?.trusted).toBe(false);
   await context.close();
 });
+
+// A demo's own screens (#267): they draw sealed in their frames, as any shared app's do. Where they
+// cannot (the QuickJS fallback), "Run it as mine…" was a dead end — nothing is installed to promote —
+// so it leads to "Keep this app" first.
+for (const box of ["realm", "quickjs"] as const) {
+  test(`a demo's own screen: ${box === "realm" ? "drawn sealed in its frame" : "where it cannot run, Run it as mine leads to Keep this app"}`, async ({ page, browser, baseURL }) => {
+    const link = await makeDemoLink(page, "Recipes");
+    const { context, page: viewer } = await stranger(browser, baseURL!);
+    if (box === "quickjs") await context.addInitScript(() => localStorage.setItem("potyro:sandbox", "quickjs"));
+    await viewer.goto(link);
+    await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
+    await viewer.locator(".k-list-row").first().click();
+    await viewer.getByRole("button", { name: "Cook", exact: true }).click();
+    if (box === "realm") {
+      await expect(viewer.frameLocator(".k-sealed-view iframe").locator("#cook-heading")).toContainText("Cooking:", { timeout: 30_000 });
+    } else {
+      await viewer.getByRole("button", { name: "Run it as mine…" }).click();
+      const card = viewer.getByRole("dialog", { name: "Add an app" });
+      await expect(card.getByRole("heading", { name: "Recipes" })).toBeVisible({ timeout: 30_000 });
+      await expect(viewer.getByRole("heading", { name: "Let it run as yours?" })).toHaveCount(0);
+    }
+    await context.close();
+  });
+}

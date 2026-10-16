@@ -899,6 +899,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
   useEffect(() => {
+    // An app that is not installed (a demo link) cannot be promoted — nothing is saved to promote —
+    // so the dialog would be a dead end: the demo answers the request with "Keep this app" instead.
+    if (!appId) return;
     // Not while the Studio is open over this app: its preview has its own dialog, and one tap must
     // not open two.
     const open = (): void => {
@@ -906,7 +909,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     };
     globalThis.addEventListener(TRUST_REQUEST, open);
     return () => globalThis.removeEventListener(TRUST_REQUEST, open);
-  }, []);
+  }, [appId]);
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
