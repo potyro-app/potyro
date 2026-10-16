@@ -80,7 +80,8 @@ const LEGACY_SECRET = "potyro:jazz:accountSecret";
 const LEGACY_SEED = "potyro:jazz:accountSeed";
 
 /**
- * How the identity on this device came to be: `minted` | `adopted` | `passphrase`.
+ * How the identity on this device came to be: `minted` | `adopted` | `passphrase` | `moved` (brought
+ * over from another Potyro site of the same person's, `adoptPortableIdentity`).
  *
  * It exists to tell an identity this package INVENTED from one the user chose. A build shipped
  * between the move and the fix minted a fresh account on devices that already had one, so those
@@ -149,6 +150,12 @@ async function setSecret(keys: IdentityKeys, key: string, value: string): Promis
   if (!vault) return keys.set(key, value);
   await vault.set(key, value);
   keys.remove?.(key);
+}
+
+async function removeSecret(keys: IdentityKeys, key: string): Promise<void> {
+  keys.remove?.(key);
+  const vault = await vaultOf(keys);
+  if (vault) await vault.remove(key);
 }
 
 /**
@@ -343,4 +350,88 @@ export async function signInWithPassphrase(
   keys.set(ID, crypto.idFor(secret));
 
   return peekIdentity(keys)!;
+}
+
+/**
+ * Who you are, in a form that can be carried to another Potyro site of yours (docs/16 §Moving).
+ *
+ * Browser storage belongs to one site, so when Potyro moved from apps.vaz.io to potyro.app a
+ * person arrived there as a stranger: a fresh identity, with every `createdBy` in their own records
+ * naming somebody else. Carrying this is what the recovery words already do between devices — the
+ * same seed, so the same account — done for them, between two windows they have open, with no server
+ * in between. It is never written to a file: whoever holds it can sign as this person.
+ *
+ * `seed` is absent for an identity adopted from before the seed was kept; the secret still moves it.
+ */
+export interface PortableIdentity {
+  id: string;
+  name: string;
+  secret: string;
+  /** The recovery seed, hex. */
+  seed?: string;
+}
+
+/** This device's identity, ready to move — or null when it has none (nothing was ever minted). */
+export async function portableIdentity(keys: IdentityKeys = browserKeys()): Promise<PortableIdentity | null> {
+  const id = keys.get(ID);
+  if (!id) return null;
+  const secret = await getSecret(keys, SECRET);
+  if (!secret) return null;
+  const seed = await getSecret(keys, SEED);
+  return { id, name: keys.get(NAME) ?? DEFAULT_NAME, secret, ...(seed ? { seed } : {}) };
+}
+
+/** What happened to an identity that was brought over. */
+export type AdoptOutcome =
+  /** This site now knows you as the person you were there. */
+  | "adopted"
+  /** It already did. */
+  | "same"
+  /** This site has an identity of its own that is in use, and it was kept. */
+  | "kept-own";
+
+/**
+ * Become, on this site, the person `moved` describes.
+ *
+ * Checked before anything is written: the seed must give the secret and the secret the id, exactly
+ * as `signInWithPassphrase` derives them, so a carried identity that does not hang together is
+ * refused rather than half-adopted.
+ *
+ * An identity already here is replaced only when `replaceOwn` says it is unused — the caller knows
+ * whether anything on this site is shared under it. One in use is kept: swapping it would make every
+ * space it belongs to unreadable, which is the failure `ensureIdentity` exists to avoid.
+ */
+export async function adoptPortableIdentity(
+  moved: PortableIdentity,
+  opts: { replaceOwn: boolean },
+  keys: IdentityKeys = browserKeys(),
+): Promise<AdoptOutcome> {
+  if (typeof moved.id !== "string" || typeof moved.secret !== "string" || !moved.id || !moved.secret) {
+    throw new Error("The identity that came over is incomplete.");
+  }
+  const crypto = await loadCrypto();
+  if (moved.seed !== undefined) {
+    if (!/^(?:[0-9a-f]{2})+$/.test(moved.seed)) throw new Error("The identity that came over is damaged.");
+    if (crypto.agentSecretFromSecretSeed(fromHex(moved.seed)) !== moved.secret) throw new Error("The identity that came over does not hang together.");
+  }
+  if (crypto.idFor(moved.secret) !== moved.id) throw new Error("The identity that came over does not hang together.");
+
+  const here = peekIdentity(keys);
+  if (here?.id === moved.id) {
+    if (here.name === DEFAULT_NAME && moved.name && moved.name !== DEFAULT_NAME) keys.set(NAME, moved.name);
+    return "same";
+  }
+  if (here && !opts.replaceOwn) return "kept-own";
+
+  // Same order as minting: the id last, so an interrupted adoption is not mistaken for a complete one.
+  if (moved.seed) await setSecret(keys, SEED, moved.seed);
+  else await removeSecret(keys, SEED); // the words of the identity it replaces must not stay behind
+  await setSecret(keys, SECRET, moved.secret);
+  keys.set(NAME, moved.name?.trim() || DEFAULT_NAME);
+  // Chosen, like a sign-in with the words: never reclaimed over by leftover legacy keys. Not
+  // `passphrase`, though — nothing has to be fetched from a relay for this site to be useful, because
+  // the apps came over with their data.
+  keys.set(ORIGIN, "moved");
+  keys.set(ID, moved.id);
+  return "adopted";
 }

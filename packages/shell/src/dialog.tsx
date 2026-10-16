@@ -31,6 +31,8 @@ export interface DialogRequest {
   text?: string;
   /** For a share: the files to send (`ctx.ui.share({ files })`), named and checked by the host; pictures are previewed. */
   files?: File[];
+  /** For a share: a link still being made (`ctx.ui.share({ app })`, docs/24 §11). Copy waits for it. */
+  pendingLink?: Promise<string>;
   /** `true`/`false` for confirm, the string or `null` for prompt; for a share, whether it was copied or handed on. */
   settle: (value: boolean | string | null) => void;
 }
@@ -39,7 +41,7 @@ export class DialogHost {
   private current: DialogRequest | null = null;
   private listeners = new Set<() => void>();
 
-  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text" | "files"> = {}): Promise<boolean | string | null> {
+  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text" | "files" | "pendingLink"> = {}): Promise<boolean | string | null> {
     return new Promise((resolve) => {
       // A second request while one is open would strand the first promise. Settle it as declined —
       // never as accepted: an abandoned confirm must not delete anything.
@@ -79,8 +81,12 @@ export class DialogHost {
    * `ctx.ui.share` (an app's words, a link, files, or any of them together): the same dialog,
    * showing what will be sent. `true` once it was copied, saved or handed to the device's share sheet.
    */
-  send = async (opts: { text?: string; url?: string; title?: string; files?: File[] }): Promise<boolean> =>
-    (await this.open("share", opts.title ?? "", opts.url ?? "", { ...(opts.text ? { text: opts.text } : {}), ...(opts.files?.length ? { files: opts.files } : {}) })) === true;
+  send = async (opts: { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> }): Promise<boolean> =>
+    (await this.open("share", opts.title ?? "", opts.url ?? "", {
+      ...(opts.text ? { text: opts.text } : {}),
+      ...(opts.files?.length ? { files: opts.files } : {}),
+      ...(opts.makeLink ? { pendingLink: opts.makeLink() } : {}),
+    })) === true;
 
   get = (): DialogRequest | null => this.current;
 
@@ -145,7 +151,7 @@ export function Dialogs({ host }: { host: DialogHost }) {
           }}
         >
           {request.message ? <p className="k-dialog-message">{request.message}</p> : null}
-          <ShareBody link={request.initial} text={request.text} files={request.files} onHanded={() => (handed.current = true)} onDone={done} />
+          <ShareBody link={request.initial} pendingLink={request.pendingLink} text={request.text} files={request.files} onHanded={() => (handed.current = true)} onDone={done} />
         </div>
       </div>
     );

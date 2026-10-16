@@ -57,8 +57,22 @@ export interface UiBridge {
   menu?<T>(opts: { title?: string; items: ShownUiItem<T>[] }): Promise<T | null>;
   form?(opts: { title: string; fields: Record<string, Localized<Field>>; initial?: Record<string, unknown>; submit?: string }): Promise<Record<string, unknown> | null>;
   progress?(label: string): UiProgress;
-  /** `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`). `files` are checked and named (`checkShareFiles`). */
-  share?(opts: { text?: string; url?: string; title?: string; files?: File[] }): Promise<boolean>;
+  /**
+   * `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`).
+   * With `app`, the shell makes the link to this app's page itself (docs/24 §11).
+   */
+  share?(opts: ShownShare): Promise<boolean>;
+}
+
+/** What `ctx.ui.share` hands the shell, checked (`checkShare`, `checkShareFiles`): words in the app's language, an http(s) `url` or an `app` link, and files. */
+export interface ShownShare {
+  text?: string;
+  url?: string;
+  title?: string;
+  /** A link to this app: one of its pages, with the params that page declares (`link.params`). */
+  app?: { page: string; params: Record<string, string> };
+  /** Files, resolved from the app's own store and named (at most 10, 25 MB together). */
+  files?: File[];
 }
 
 /** What the shell provides to build `ctx.navigate`. */
