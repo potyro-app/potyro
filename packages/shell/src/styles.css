@@ -4416,12 +4416,16 @@ button.k-prov:focus-visible {
   gap: var(--space-2);
   min-width: 0;
 }
+/* A layout item's title heads it like a record page's section: a small label in the app's colour. */
 .k-layout-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--ink);
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-1);
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
 }
 .k-layout-grid {
   display: grid;
