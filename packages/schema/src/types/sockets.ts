@@ -13,9 +13,10 @@
  * `"unreachable"` — no answer in time; `"not-allowed-host"` — a shared app asked for a host its
  * `permissions.network.hosts` does not name (refused without asking anyone); `"insecure"` — `ws://`
  * where only `wss://` can work (the web, except a local address); `"too-many"` — this app already
- * has 4 connections open.
+ * has 4 connections open; `"hidden"` — Potyro is in the background, where nothing opens (try again:
+ * the first try after the person comes back opens).
  */
-export type SocketFailure = "offline" | "denied" | "refused" | "unreachable" | "not-allowed-host" | "insecure" | "too-many";
+export type SocketFailure = "offline" | "denied" | "refused" | "unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden";
 
 /**
  * Why a `send` was refused: the `code` of its Error. `"closed"` — the connection is not open;

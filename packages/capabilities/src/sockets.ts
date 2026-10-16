@@ -15,7 +15,7 @@ import type { AiConsentWords } from "./types.js";
 export type PlatformCloseWhy = "app" | "server" | "network" | "left" | "hidden";
 
 /** Why a connection could not be opened, as a code the host passes on to the app. */
-export type SocketOpenFailure = "offline" | "refused" | "unreachable" | "insecure";
+export type SocketOpenFailure = "offline" | "refused" | "unreachable" | "insecure" | "hidden";
 
 export class SocketOpenError extends Error {
   override name = "SocketOpenError";
@@ -314,6 +314,10 @@ export function createWebSockets(deps: WebSocketsDeps = {}): SocketCap {
       }
       if (u.protocol !== "ws:" && u.protocol !== "wss:") throw new TypeError(`A live connection needs a ws:// or wss:// address, not ${u.protocol}`);
       if (!online()) throw new SocketOpenError("This device is offline", "offline");
+      // Never open behind the person's back: in the background a connection would only be closed
+      // again ("hidden"). The app hears "hidden" and may try again; the first try after the person
+      // comes back opens — which is how an app picks up where it was when they return.
+      if (doc?.hidden) throw new SocketOpenError("Potyro is in the background: live connections open when you come back", "hidden");
       if (u.protocol === "ws:") {
         // The web refuses ws:// from an https page (mixed content) except to the device itself; the
         // Android app reaches its local network natively; a page served over http (development) can.
