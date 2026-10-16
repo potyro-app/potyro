@@ -8,7 +8,7 @@ import { DatabaseIcon } from "./data-icon.js";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
-import { LayoutHost, RecordForm, TRUST_REQUEST, ViewHost, createDefaults, usePageTitles } from "@potyro/views";
+import { LayoutHost, RecordForm, TRUST_REQUEST, ViewHost, byPeople, createDefaults, usePageTitles } from "@potyro/views";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -276,7 +276,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     if (!scopeDef) return;
     const NEW = { __new: true as const };
     const rows = await runtime.ctx.query(scopeDef.entity);
-    const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>([...rows, NEW], {
+    const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>(byPeople(runtime, scopeDef.entity) ? [...rows, NEW] : rows, {
       label: (r) => ("__new" in r ? `＋ ${addLabel(scopeEntity?.label ?? scopeDef.entity)}` : scopeName(r)),
     });
     if (!picked || Array.isArray(picked)) return;
@@ -555,9 +555,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // never "New <Entity>", which would have to agree with the noun (docs/20 Q3). A declared empty list
   // is an app saying "none": records it makes itself (a live feed's) are not for adding by hand.
   const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions;
-  const quickActions: QuickActionDef[] = declaredQuick
-    ? declaredQuick
-    : baseEntities.map((e) => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }));
+  // An entity only the app's code writes (`editableBy: "app"`) is never offered for adding by hand.
+  const quickActions: QuickActionDef[] = (
+    declaredQuick ? declaredQuick : baseEntities.map((e): QuickActionDef => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }))
+  ).filter((qa) => byPeople(runtime, qa.entity));
 
   // Which enum field a quick action picks inline (the "menu" style): explicit menu → the first enum;
   // auto → a lone enum with no OTHER required fields ("select the type"); form → none.
@@ -1109,7 +1110,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
       </AppChrome>
 
-      {editor ? (
+      {editor && byPeople(runtime, editor.entity) ? (
         // The form brings its own sheet (#101): full-screen on a phone with the actions in a fixed
         // footer, a capped modal on a wide screen; it asks before discarding edits.
         <RecordForm
