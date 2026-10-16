@@ -328,7 +328,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  text-transform: capitalize;
+}
+/* "Camera", "Potyro's rooms (play live…)": a capital to start each line, never one on every word. */
+.k-trust-caps li::first-letter {
+  text-transform: uppercase;
 }
 
 /* Edit mode — point-and-describe affordances */
