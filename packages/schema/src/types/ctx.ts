@@ -12,6 +12,7 @@ import type { Language, Words } from "./words.js";
 import type { AiValue } from "./infer.js";
 import type { Face, FaceOptions, FacesFailure } from "./faces.js";
 import type { Room, RoomOptions, Socket, SocketOptions } from "./sockets.js";
+import type { SpeechCapability } from "./speech.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -108,6 +109,8 @@ export interface Caps {
   network?: NetworkCapability;
   /** AI for the app's own work (docs/23). Needs `permissions: { ai: true }`. */
   ai?: AiCapability;
+  /** Voice input, live words as the person speaks (docs/29). Needs `permissions: { speech: true }`. */
+  speech?: SpeechCapability;
 }
 
 /**

@@ -230,6 +230,8 @@ describe("capabilities outside the core", () => {
     ["share", ["share(opts:"]],
     ["ctx.caps.network.socket", ["export interface Socket {", "onMessage(cb: (data: SocketData) => void): () => void;", "export interface Room extends Socket", "export type SocketFailure", "never reconnects by itself"]],
     ["ctx.caps.network.room", ["room(id?: string, opts?: RoomOptions): Promise<Room>;"]],
+    ["ctx.caps.speech", ["export interface SpeechSession", "onText(cb: (text: string, final: boolean) => void): () => void;", "export type SpeechFailure", "listen(opts?: SpeechOptions): Promise<SpeechSession>;"]],
+    ["SpeechSession", ["readonly result: Promise<string>;"]],
     ["Room", ["export interface Room extends Socket", "onPresence("]],
     ["ctx.caps.network", ["socket(url: string, opts?: SocketOptions): Promise<Socket>;"]],
     ["ctx.caps.geo", ["current(): Promise<{ lat: number; lng: number }>"]],
@@ -270,6 +272,14 @@ describe("capabilityNotes: the passages beside a request (every engine, tools or
     for (const ask of ["a live bitcoin price ticker", "a multiplayer drawing game with friends", "show my Home Assistant sensors in real time", "um placar ao vivo"]) {
       const out = capabilityNotes(CAPABILITY_REFERENCE, ask);
       expect(out, ask).toContain("export interface Socket {");
+      expect(out, ask).toContain("export interface Caps");
+    }
+  });
+
+  it("brings the voice declarations for a request to speak, in several languages", () => {
+    for (const ask of ["a shopping list I can dictate to", "add items by voice", "speak a note and save it", "lista de compras por voz", "notatki głosowe", "Einkaufsliste per Sprache", "una lista que puedo dictar", "appunti a voce"]) {
+      const out = capabilityNotes(CAPABILITY_REFERENCE, ask);
+      expect(out, ask).toContain("export interface SpeechSession");
       expect(out, ask).toContain("export interface Caps");
     }
   });

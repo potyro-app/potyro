@@ -48,6 +48,11 @@ msgstr "„{appName}“ möchte eine Live-Verbindung zu Potyros Räumen herstell
 msgid "“{appName}” wants to connect to a device on your home network."
 msgstr "„{appName}“ möchte sich mit einem Gerät in deinem Heimnetz verbinden."
 
+#. Asked before an app first uses voice input (ctx.caps.speech); {appName} is the app
+#: ../shell/src/app-speech.ts
+msgid "“{appName}” wants to listen to you through the microphone."
+msgstr "„{appName}“ möchte dir über das Mikrofon zuhören."
+
 #. Asked before a shared app first uses AI on a picture
 #: ../shell/src/app-ai.ts
 msgid "“{appName}” wants to send a photo to an AI service (OpenRouter) to read it."
@@ -296,6 +301,11 @@ msgstr "{0, plural, one {Mit # Änderung repariert.} other {Mit # Änderungen re
 #: ../shell/src/data-table.tsx
 msgid "{0, plural, one {Show more (# left)} other {Show more (# left)}}"
 msgstr "{0, plural, one {Mehr zeigen (noch #)} other {Mehr zeigen (noch #)}}"
+
+#. placeholder {0}: app.seedRows
+#: ../shell/src/add-app-dialog.tsx
+msgid "{0, plural, one {Start with its # sample record} other {Start with its # sample records}}"
+msgstr "{0, plural, one {Mit dem # Beispieleintrag beginnen} other {Mit den # Beispieleinträgen beginnen}}"
 
 #. placeholder {0}: step.done.files.removed.length
 #: ../shell/src/add-app-dialog.tsx
@@ -665,6 +675,11 @@ msgstr "{n} KB"
 #: ../views/src/file-input.tsx
 msgid "{n} MB"
 msgstr "{n} MB"
+
+#. The name of a remix when an app here already has the original's name
+#: ../shell/src/add-app.ts
+msgid "{name} (remix)"
+msgstr "{name} (Remix)"
 
 #. The name of an app someone shared with you, when you already have one with that name
 #: ../shell/src/share-sync.ts
@@ -1098,6 +1113,11 @@ msgstr "{names} zu {appName} hinzufügen?"
 msgid "add {rowsN}"
 msgstr "{rowsN} hinzufügen"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a date to each “{label}”"
+msgstr "Jedem Eintrag „{label}“ ein Datum geben"
+
 #: ../shell/src/identity-panel.tsx
 msgid "Add a device"
 msgstr "Gerät hinzufügen"
@@ -1113,6 +1133,16 @@ msgstr "Stattdessen eine Datei hinzufügen"
 #: ../shell/src/App.tsx
 msgid "Add a note"
 msgstr "Notiz hinzufügen"
+
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a note to each “{label}”"
+msgstr "Jedem Eintrag „{label}“ eine Notiz geben"
+
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Add a photo to each “{label}”"
+msgstr "Jedem Eintrag „{label}“ ein Foto geben"
 
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/ask-sources-panel.tsx
@@ -1301,8 +1331,10 @@ msgstr "Alles erledigt."
 
 #. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
+#. Button: let an app listen through the microphone
 #: ../shell/src/app-ai.ts
 #: ../shell/src/app-sockets.ts
+#: ../shell/src/app-speech.ts
 #: ../shell/src/ask-panel.tsx
 msgid "Allow"
 msgstr "Erlauben"
@@ -1400,6 +1432,10 @@ msgstr "{name} annehmen"
 #: ../shell/src/launcher.tsx
 msgid "Apps"
 msgstr "Apps"
+
+#: ../shell/src/add-app-dialog.tsx
+msgid "Apps to try, and to make your own"
+msgstr "Apps zum Ausprobieren und Zu-deiner-Machen"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Area on your map · {lat}, {lng} · {km} km"
@@ -1610,6 +1646,13 @@ msgstr "Wird übernommen…"
 msgid "brought in"
 msgstr "hinzugefügt"
 
+#. Opens Potyro's gallery of apps to try and make your own
+#. Opens Potyro's gallery of apps to try and make your own
+#: ../shell/src/launcher-metro.tsx
+#: ../shell/src/launcher.tsx
+msgid "Browse the gallery"
+msgstr "Die Galerie ansehen"
+
 #: ../shell/src/storage-report.tsx
 msgid "browser local storage (slow, and small)"
 msgstr "lokaler Browserspeicher (langsam und klein)"
@@ -1808,6 +1851,11 @@ msgstr "Änderungen"
 #: ../shell/src/history.tsx
 msgid "Changes in version {seq}"
 msgstr "Änderungen in Version {seq}"
+
+#. Suggested changes for a remix
+#: ../shell/src/studio-thread-view.tsx
+msgid "Changes to start from"
+msgstr "Änderungen für den Anfang"
 
 #: ../shell/src/ask-review.tsx
 msgid "Changes to your records"
@@ -2408,6 +2456,10 @@ msgstr "Eingaben verwerfen?"
 msgid "Discard your changes?"
 msgstr "Änderungen verwerfen?"
 
+#: ../shell/src/voice-input.tsx
+msgid "Dismiss"
+msgstr "Schließen"
+
 #: ../shell/src/chat-panel.tsx
 msgid "Dismiss this message"
 msgstr "Diese Nachricht ausblenden"
@@ -2816,6 +2868,11 @@ msgstr "Über einen Link"
 msgid "From outside Potyro"
 msgstr "Von außerhalb von Potyro"
 
+#. Add an app: Potyro's gallery of apps
+#: ../shell/src/add-app-dialog.tsx
+msgid "From the gallery"
+msgstr "Aus der Galerie"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "from this app"
 msgstr "aus dieser App"
@@ -2845,6 +2902,11 @@ msgstr "Vollbild"
 msgid "gallery"
 msgstr "Galerie"
 
+#. App bar: Potyro's gallery of apps; one short word
+#: ../shell/src/launcher-metro.tsx
+msgid "Gallery"
+msgstr "Galerie"
+
 #. A launcher tile group
 #: ../shell/src/launcher-groups.ts
 msgid "Games"
@@ -2870,6 +2932,11 @@ msgstr "Foto wird geholt…"
 #: ../views/src/media-input.tsx
 msgid "Getting the video…"
 msgstr "Video wird geholt…"
+
+#. A suggested change for a remix
+#: ../shell/src/remix-suggestions.ts
+msgid "Give it a different colour and icon"
+msgstr "Gib ihr eine andere Farbe und ein anderes Symbol"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Give it a name."
@@ -2982,6 +3049,11 @@ msgstr "Verlauf von {appName}"
 #: ../shell/src/launcher-metro.tsx
 msgid "Hold a tile to arrange Start."
 msgstr "Halte eine Kachel gedrückt, um Start anzuordnen."
+
+#. Studio microphone button tooltip
+#: ../shell/src/voice-input.tsx
+msgid "Hold to talk, or tap to start and stop"
+msgstr "Halten zum Sprechen, oder tippen zum Starten und Stoppen"
 
 #. Storage report: how much this site stores on the device
 #: ../shell/src/storage-report.tsx
@@ -3511,6 +3583,11 @@ msgstr "Als deine eigene laufen lassen"
 msgid "Let it run as yours?"
 msgstr "Als deine eigene laufen lassen?"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Let me say who each “{label}” is for"
+msgstr "Bei jedem Eintrag „{label}“ sagen können, für wen er ist"
+
 #: ../shell/src/tile-editor.tsx
 msgid "Let this app send what it asks about — a photo, some text — to an AI service."
 msgstr "Diese App darf das, wonach sie fragt – ein Foto, einen Text –, an einen KI-Dienst senden."
@@ -3537,6 +3614,16 @@ msgstr "Link zur App"
 #: ../shell/src/point-target.ts
 msgid "list"
 msgstr "Liste"
+
+#. Studio microphone while held down (push to talk)
+#: ../shell/src/voice-input.tsx
+msgid "Listening — let go when you’re done"
+msgstr "Ich höre zu — lass los, wenn du fertig bist"
+
+#. Studio microphone after a tap: it keeps listening until tapped again
+#: ../shell/src/voice-input.tsx
+msgid "Listening — tap ■ to stop"
+msgstr "Ich höre zu — tippe auf ■ zum Stoppen"
 
 #: ../shell/src/live-connections-setting.tsx
 msgid "Live connection to {name}"
@@ -3645,10 +3732,20 @@ msgstr "von der App erstellt"
 msgid "Made with Potyro"
 msgstr "Gemacht mit Potyro"
 
-#. What the Studio starts with after Remix this
+#. Add-an-app card button, opened from Make it mine: your own copy of an app to change
+#. App menu: your own copy of this app, to change in the Studio
+#. Demo bar: make your own copy of this app, to change in the Studio
+#. The Add-an-app dialog, opened from Make it mine: your own copy of an app to change
+#. The Add-an-app dialog, opened from Make it mine: your own copy of an app to change
+#. Tile menu: your own copy of this app, to change in the Studio
 #: ../shell/src/add-app-dialog.tsx
-msgid "Make me a version of {name} that…"
-msgstr "Mach mir eine Version von {name}, die…"
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/add-app-dialog.tsx
+#: ../shell/src/App.tsx
+#: ../shell/src/demo.tsx
+#: ../shell/src/launcher.tsx
+msgid "Make it mine"
+msgstr "Zu meiner machen"
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -4062,14 +4159,18 @@ msgstr "erst bekannt, wenn sie läuft"
 #. Button: refuse a shared app's AI request this time
 #. Button: refuse a shared app's live connection this time
 #. Button: refuse a shared app's live connection this time
+#. Button: refuse an app's voice input this time
+#. Studio microphone: button that refuses voice input this time
 #: ../shell/src/app-ai.ts
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-sockets.ts
+#: ../shell/src/app-speech.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
 #: ../shell/src/restore-apps.tsx
+#: ../shell/src/studio-voice.ts
 #: ../shell/src/sync-consent.ts
 #: ../shell/src/version-gate.ts
 #: ../shell/src/version-gate.ts
@@ -4279,6 +4380,11 @@ msgstr "Auf {where}, zu „{text}“: "
 #: ../shell/src/inline-edit.tsx
 msgid "On {where}: "
 msgstr "Auf {where}: "
+
+#. Voice input: the words are made on the phone or computer itself; nothing leaves it
+#: ../shell/src/app-speech.ts
+msgid "On this device"
+msgstr "Auf diesem Gerät"
 
 #: ../shell/src/tile-editor.tsx
 msgid "On this device only. The app itself keeps its own name and look."
@@ -4561,6 +4667,10 @@ msgstr "Das kann Potyro noch nicht"
 msgid "Potyro can’t show this kind of file. Save a copy to open it with another app."
 msgstr "Potyro kann diese Art von Datei nicht anzeigen. Speichere eine Kopie, um sie mit einer anderen App zu öffnen."
 
+#: ../shell/src/studio-voice.ts
+msgid "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
+msgstr "Potyro kann das Mikrofon nicht verwenden. Erlaube es für diese Seite in deinem Browser und versuch es noch einmal."
+
 #: ../shell/src/look-panel.tsx
 msgid "Potyro gold"
 msgstr "Potyro-Gold"
@@ -4685,17 +4795,15 @@ msgstr "Ablehnen"
 msgid "Reject {name}"
 msgstr "{name} ablehnen"
 
-#. The Add-an-app dialog, opened from Remix this
-#. The Add-an-app dialog, opened from Remix this
-#: ../shell/src/add-app-dialog.tsx
-#: ../shell/src/add-app-dialog.tsx
-msgid "Remix an app"
-msgstr "Eine App remixen"
+#. A version's note in History, lower case: this app is a remix of another
+#: ../shell/src/version-notes.ts
+msgid "remix of “{name}”"
+msgstr "Remix von „{name}“"
 
-#. Add-an-app card button, opened from Remix this
-#: ../shell/src/add-app-dialog.tsx
-msgid "Remix it"
-msgstr "Remixen"
+#. A version's note in History, lower case: this app is a remix of another, made by someone
+#: ../shell/src/version-notes.ts
+msgid "remix of “{name}” by {by}"
+msgstr "Remix von „{name}“ von {by}"
 
 #. The app a remix came from, when its maker did not say who they are
 #: ../shell/src/credit-words.ts
@@ -4706,11 +4814,6 @@ msgstr "Remix von {name}"
 #: ../shell/src/credit-words.ts
 msgid "Remix of {name} by {by}"
 msgstr "Remix von {name} von {by}"
-
-#. Demo bar: make your own version of this app in the Studio
-#: ../shell/src/demo.tsx
-msgid "Remix this"
-msgstr "Remixen"
 
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
@@ -5025,6 +5128,11 @@ msgstr "Sagen, dass sie von {myName} ist"
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Sag es so, wie du es einem Menschen sagen würdest — „füge eine Bewertung hinzu“, „das Neueste zuerst“, „eine Seite für die Einkaufsliste“."
 
+#. Studio box while the microphone listens
+#: ../shell/src/studio.tsx
+msgid "Say what you want…"
+msgstr "Sag, was du möchtest…"
+
 #. A small mark in the header of an app that runs sealed
 #: ../shell/src/App.tsx
 msgid "sealed"
@@ -5120,6 +5228,11 @@ msgstr "Deinen {sourceLabel}-Schlüssel an {host} senden?"
 #: ../shell/src/platform-request-card.tsx
 msgid "Sending…"
 msgstr "Wird gesendet…"
+
+#. Voice input: the recording leaves the device and an AI service ({service}) writes it down
+#: ../shell/src/app-speech.ts
+msgid "Sent to {service} to write down"
+msgstr "Zum Aufschreiben an {service} gesendet"
 
 #: ../shell/src/platform-requests.ts
 msgid "Sent to the Potyro team: “{title}”"
@@ -5227,6 +5340,11 @@ msgstr "Teilen schaltet die Synchronisierung ein: Ab dann schreibt ihr eigener C
 msgid "Shortcuts"
 msgstr "Abkürzungen"
 
+#. A suggested change for a remix; label is the app's own word for its record
+#: ../shell/src/remix-suggestions.ts
+msgid "Show “{label}” on a calendar"
+msgstr "„{label}“ in einem Kalender zeigen"
+
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"
 msgstr "Alles zeigen"
@@ -5259,6 +5377,10 @@ msgstr "Zeigt Text, der nicht in den Katalogen ist (nur Entwicklung)"
 #: ../shell/src/launcher-metro.tsx
 msgid "Small"
 msgstr "Klein"
+
+#: ../shell/src/add-app-dialog.tsx
+msgid "So you can see what a change does. They are examples, not anyone’s own, and you can delete them. Leave it off to start empty."
+msgstr "Damit du siehst, was eine Änderung bewirkt. Es sind Beispiele, nicht die Einträge von jemandem, und du kannst sie löschen. Lass es aus, um leer zu beginnen."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added."
@@ -5312,6 +5434,11 @@ msgstr "Quellen"
 msgid "Sources and notes"
 msgstr "Quellen und Notizen"
 
+#. Studio microphone button: describe the app by voice
+#: ../shell/src/voice-input.tsx
+msgid "Speak"
+msgstr "Sprechen"
+
 #. The launcher pane with the tile wall, as on Windows Phone
 #: ../shell/src/launcher-metro.tsx
 msgid "Start"
@@ -5325,6 +5452,11 @@ msgstr "Neue App beginnen"
 #: ../views/src/steps.tsx
 msgid "Start over"
 msgstr "Neu anfangen"
+
+#. Studio microphone: turning the microphone on
+#: ../shell/src/voice-input.tsx
+msgid "Starting the microphone…"
+msgstr "Mikrofon wird eingeschaltet…"
 
 #. Add an app card: the records it comes with
 #: ../shell/src/add-app-dialog.tsx
@@ -5353,6 +5485,11 @@ msgstr "Stopp"
 #: ../shell/src/backup-switch.tsx
 msgid "Stop backing up"
 msgstr "Sicherung beenden"
+
+#. Studio microphone button while it listens
+#: ../shell/src/voice-input.tsx
+msgid "Stop listening"
+msgstr "Zuhören beenden"
 
 #. placeholder {0}: point.label
 #: ../shell/src/studio.tsx
@@ -5717,6 +5854,15 @@ msgstr "Der Link antwortete {status}"
 msgid "The link could not be fetched from here"
 msgstr "Der Link konnte von hier aus nicht geladen werden"
 
+#: ../shell/src/studio-voice.ts
+msgid "The microphone stopped. Try again, or type what you want."
+msgstr "Das Mikrofon hat aufgehört. Versuch es noch einmal oder tippe, was du möchtest."
+
+#. What an app asks this device for, lower case (voice input, ctx.caps.speech)
+#: ../shell/src/capability-words.ts
+msgid "the microphone, to hear what you say"
+msgstr "das Mikrofon, um zu hören, was du sagst"
+
 #: ../shell/src/studio-engine.ts
 msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
 msgstr "Das Modell hat mit einer Erklärung statt einer App geantwortet. Versuch es erneut oder sag es anders."
@@ -5776,6 +5922,11 @@ msgstr "der Quelltext, bevor es den Verlauf gab"
 #: ../shell/src/app-source.ts
 msgid "the source editor could not be loaded"
 msgstr "der Quelltext-Editor konnte nicht geladen werden"
+
+#. The Studio's greeting on a remix, for a screen reader
+#: ../shell/src/studio-thread-view.tsx
+msgid "The Studio, on your remix"
+msgstr "Das Studio zu deinem Remix"
 
 #. Read aloud after a move: the item went to the top of the list
 #: ../views/src/checklist.tsx
@@ -5948,6 +6099,16 @@ msgstr "die Seiten dieser App sind kein einfaches Array"
 msgid "This board needs an enum field for its columns."
 msgstr "Dieses Board braucht ein Auswahlfeld für seine Spalten."
 
+#. Detail of the question before voice input in a browser without speech recognition (Firefox); {service} is the AI service
+#: ../shell/src/app-speech.ts
+msgid "This browser can’t turn speech into words itself, so the recording is sent to an AI service ({service}) to be written down — it leaves your device. Only the text reaches the app."
+msgstr "Dieser Browser kann Sprache nicht selbst in Text umwandeln, deshalb wird die Aufnahme an einen KI-Dienst ({service}) geschickt und dort aufgeschrieben — sie verlässt dein Gerät. Nur der Text erreicht die App."
+
+#. Studio microphone: asked once before voice input in a browser without speech recognition (Firefox); {service} is the AI service
+#: ../shell/src/studio-voice.ts
+msgid "This browser can’t turn speech into words itself, so what you say is recorded and sent to an AI service ({service}) to be written down — it leaves your device. You can read and change the words before sending them."
+msgstr "Dieser Browser kann Sprache nicht selbst in Text umwandeln, deshalb wird aufgenommen, was du sagst, und zum Aufschreiben an einen KI-Dienst ({service}) geschickt — es verlässt dein Gerät. Du kannst den Text vor dem Senden lesen und ändern."
+
 #: ../shell/src/share-sheet.tsx
 msgid "This browser cannot record the app. Your phone’s own screen recorder can: record the app, then trim it to 15 seconds."
 msgstr "Dieser Browser kann die App nicht aufnehmen. Die Bildschirmaufnahme deines Handys kann es: Nimm die App auf und kürze sie dann auf 15 Sekunden."
@@ -5979,6 +6140,10 @@ msgstr "Das löscht die App UND ihre Daten — jeden Eintrag, den du hinzugefüg
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "Dieses Gerät"
+
+#: ../shell/src/studio-voice.ts
+msgid "This device can’t listen. Type what you want instead."
+msgstr "Dieses Gerät kann nicht zuhören. Tippe stattdessen, was du möchtest."
 
 #: ../shell/src/file-viewer.tsx
 msgid "This device is offline. It arrives once it is back online."
@@ -6015,6 +6180,11 @@ msgstr "Das ist mein zweites Gerät"
 #: ../shell/src/file-viewer.tsx
 msgid "This is the beginning of {name}. Save a copy to read all of it."
 msgstr "Das ist der Anfang von {name}. Speichere eine Kopie, um alles zu lesen."
+
+#. The Studio's first words on a remix
+#: ../shell/src/studio-thread-view.tsx
+msgid "This is your own copy. What would you like to change?"
+msgstr "Das ist deine eigene Kopie. Was möchtest du ändern?"
 
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -6110,6 +6280,16 @@ msgstr "diese Version läuft"
 #: ../views/src/timeline.tsx
 msgid "This week"
 msgstr "Diese Woche"
+
+#. Voice input: the browser's speech recognition runs on its maker's servers ({service} = Google, Apple, Microsoft)
+#: ../shell/src/app-speech.ts
+msgid "Through {service}’s speech service"
+msgstr "Über den Sprachdienst von {service}"
+
+#. Voice input: the browser's own speech recognition, maker unknown
+#: ../shell/src/app-speech.ts
+msgid "Through your browser’s speech service"
+msgstr "Über den Sprachdienst deines Browsers"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Tile icon"
@@ -6350,6 +6530,16 @@ msgstr "Hier verwenden"
 msgid "Use it together"
 msgstr "Gemeinsam nutzen"
 
+#. Studio microphone: button that agrees to voice input
+#: ../shell/src/studio-voice.ts
+msgid "Use my voice"
+msgstr "Meine Stimme nutzen"
+
+#. Studio microphone: the question before the recording first leaves the device
+#: ../shell/src/studio-voice.ts
+msgid "Use your voice to describe the app?"
+msgstr "Die App mit deiner Stimme beschreiben?"
+
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Wird von der Übersicht und dem Studio genutzt, und von jeder App, die keine eigene Farbe hat — die Farbe einer App steht auf ihrer Kachel, unter <0>Kachel bearbeiten</0>."
@@ -6378,6 +6568,16 @@ msgstr "Vibration"
 #: ../shell/src/point-target.ts
 msgid "view"
 msgstr "Ansicht"
+
+#. Model settings: where the microphone's words are made; {words} = 'On this device'
+#: ../shell/src/engine-settings.tsx
+msgid "Voice: {words}. Nothing you say leaves it."
+msgstr "Sprache: {words}. Nichts, was du sagst, verlässt es."
+
+#. Model settings: where the microphone's words are made; {words} names the service
+#: ../shell/src/engine-settings.tsx
+msgid "Voice: {words}. What you say leaves your device."
+msgstr "Sprache: {words}. Was du sagst, verlässt dein Gerät."
 
 #: ../shell/src/history.tsx
 msgid "vs previous"
@@ -6574,6 +6774,11 @@ msgstr "Den Code selbst schreiben"
 msgid "Writes and edits apps; cannot investigate a reported problem step by step."
 msgstr "Schreibt und bearbeitet Apps; kann ein gemeldetes Problem nicht Schritt für Schritt untersuchen."
 
+#. Studio microphone: the recording is being turned into words (Firefox)
+#: ../shell/src/voice-input.tsx
+msgid "Writing down what you said…"
+msgstr "Schreibe auf, was du gesagt hast…"
+
 #. Activity feed: a ticked box
 #: ../shell/src/activity-panel.tsx
 msgid "yes"
@@ -6642,8 +6847,8 @@ msgid "You expected: {expectation}"
 msgstr "Du hast erwartet: {expectation}"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it."
-msgstr "Du bekommst deine eigene Kopie zum Ändern. Sobald sie hinzugefügt ist, öffnet sich das Studio und fragt, was du daraus machen willst."
+msgid "You get your own copy to change, beside anything you already have. Then the Studio opens on it and asks what you would like to change."
+msgstr "Du bekommst deine eigene Kopie zum Ändern, neben allem, was du schon hast. Dann öffnet sich das Studio darauf und fragt, was du ändern möchtest."
 
 #: ../shell/src/activity-panel.tsx
 msgid "You set {field} to {to}"
@@ -6656,6 +6861,10 @@ msgstr "Du hast {field} bei {record} auf {to} gesetzt"
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."
 msgstr "Du hast es gestoppt, bevor es fertig war."
+
+#: ../shell/src/studio-voice.ts
+msgid "You’re offline, and voice needs the internet here. Type what you want instead."
+msgstr "Du bist offline, und Sprache braucht hier das Internet. Tippe stattdessen, was du möchtest."
 
 #: ../shell/src/app-ai.ts
 msgid "You're offline. AI needs the internet — try again when you're connected."
@@ -6700,6 +6909,26 @@ msgstr "Deine Apps als Karten, mit einer angehefteten Reihe"
 msgid "Your apps on this account"
 msgstr "Deine Apps in diesem Konto"
 
+#. Detail of the question before voice input through the browser's speech service; {service} = Google, Apple or Microsoft
+#: ../shell/src/app-speech.ts
+msgid "Your browser turns your voice into text on {service}’s servers, so the recording leaves your device. Only the text reaches the app."
+msgstr "Dein Browser wandelt deine Stimme auf den Servern von {service} in Text um, die Aufnahme verlässt also dein Gerät. Nur der Text erreicht die App."
+
+#. Studio microphone: asked once before voice input through the browser's speech service; {service} = Google, Apple or Microsoft
+#: ../shell/src/studio-voice.ts
+msgid "Your browser turns your voice into text on {service}’s servers, so what you say leaves your device. You can read and change the words before sending them."
+msgstr "Dein Browser wandelt deine Stimme auf den Servern von {service} in Text um, was du sagst, verlässt also dein Gerät. Du kannst den Text vor dem Senden lesen und ändern."
+
+#. Detail of the question before voice input through a browser's speech service whose maker is unknown
+#: ../shell/src/app-speech.ts
+msgid "Your browser turns your voice into text with its own speech service, which may send the recording off your device. Only the text reaches the app."
+msgstr "Dein Browser wandelt deine Stimme mit seinem eigenen Sprachdienst in Text um, der die Aufnahme von deinem Gerät senden kann. Nur der Text erreicht die App."
+
+#. Studio microphone: asked once before voice input through a browser speech service whose maker is unknown
+#: ../shell/src/studio-voice.ts
+msgid "Your browser turns your voice into text with its own speech service, which may send what you say off your device. You can read and change the words before sending them."
+msgstr "Dein Browser wandelt deine Stimme mit seinem eigenen Sprachdienst in Text um, der das Gesagte von deinem Gerät senden kann. Du kannst den Text vor dem Senden lesen und ändern."
+
 #: ../shell/src/share-sheet.tsx
 msgid "Your browser will ask what to record: choose this tab."
 msgstr "Dein Browser fragt, was aufgenommen werden soll: Wähle diesen Tab."
@@ -6737,6 +6966,15 @@ msgstr "Dein OpenRouter-Schlüssel wurde abgelehnt. Prüfe ihn in den Modelleins
 #: ../shell/src/launcher-order.ts
 msgid "Your order: drag tiles, or Alt+arrows"
 msgstr "Deine Reihenfolge: Kacheln ziehen oder Alt+Pfeiltasten"
+
+#: ../shell/src/App.tsx
+msgid "your own copy to change"
+msgstr "deine eigene Kopie zum Ändern"
+
+#. Detail of the question before voice input, when the words are made on the device
+#: ../shell/src/app-speech.ts
+msgid "Your words are turned into text on this device; only the text reaches the app. The microphone is on only while it listens."
+msgstr "Deine Worte werden auf diesem Gerät in Text umgewandelt; nur der Text erreicht die App. Das Mikrofon ist nur an, solange es zuhört."
 
 #. A data source the person added themselves
 #: ../shell/src/ask-sources-panel.tsx

@@ -22,7 +22,7 @@
 export const REFERENCE_FILES = ["core.ts", "words.ts", "fields.ts", "ctx.ts", "app.ts", "runtime.ts"] as const;
 
 /** Type files that are never in the core: read only through `lookup` and the capability passages. */
-export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts"] as const;
+export const LOOKUP_ONLY_FILES = ["faces.ts", "sockets.ts", "speech.ts"] as const;
 
 const IMPORT_LINE = /^import\s.*$/gm;
 
@@ -233,6 +233,22 @@ export const CAPABILITIES: readonly Capability[] = [
     ].join("\n"),
     cues: /caps\.network\.(?:socket|room)\b|\b(live|real[- ]?time|websockets?|sockets?|multi-?player|stream\w*|ticker|chat ?rooms?|lobby|home assistant|push updates?|ao vivo|tempo real|na żywo|czas\w* rzeczywist\w*|en vivo|tiempo real|echtzeit|tempo reale|in diretta)\b/i,
     uses: /caps\.network\.(?:socket|room)\b/,
+  },
+  {
+    key: "ctx.caps.speech",
+    summary:
+      "voice input, live words",
+    declarations: ["SpeechEngine", "SpeechFailure", "SpeechOptions", "SpeechSession", "SpeechCapability"],
+    notes: [
+      "Declare `permissions: { speech: true }`. Start it from a button the person presses (an action or a custom view), keep the",
+      "session in a module-level variable, and",
+      "do NOT await `result` inside that action: while an action runs the app's other buttons wait, so a Stop button could",
+      "never be pressed — use `s.result.then(text => ctx.create(…))`. `text` is everything heard so far: show it as it is.",
+      "It listens in the person's language unless `language` says another. A failure's `e.code` is one of SpeechFailure; word",
+      "it (\"denied\" → \"Allow the microphone to talk to it\").",
+    ].join("\n"),
+    cues: /caps\.speech\b|\b(voice|speak\w*|spoken|speech|dicta\w*|talk to it|say it|hands[- ]free|microphone|mic|transcri\w*|głos\w*|mów\w*|dyktu\w*|mikrofon\w*|voz|falar|fala|dita[rd]\w*|hablar|hablad\w*|stimm\w*|sprechen|sprach\w*|diktier\w*|voce|parlar\w*|dettat\w*)\b/i,
+    uses: /caps\.speech\b/,
   },
   {
     key: "ctx.media",

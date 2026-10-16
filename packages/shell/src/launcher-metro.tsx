@@ -12,6 +12,7 @@
 // The live faces come from each app's own `tile` (docs/04 §Tile), run by `tile-runner.ts` after the
 // wall has painted, never before it.
 
+import { openGallery } from "./gallery-link.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type MutableRefObject } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -254,7 +255,7 @@ export function MetroHome(p: MetroHomeProps) {
         )}
       </div>
       {p.children}
-      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
+      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onGallery={openGallery} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
     </div>
   );
 }
@@ -274,7 +275,7 @@ function YouMark() {
  * The app bar: Metro's slim row of round buttons, each with its word under it. At the bottom of a
  * phone, in thumb reach; on a wide screen it sits up in the header's row.
  */
-function AppBar(p: { onNewApp: () => void; onAdd: () => void; onFind: () => void; onData: () => void; onLook: () => void; onYou: () => void }) {
+function AppBar(p: { onNewApp: () => void; onAdd: () => void; onGallery: () => void; onFind: () => void; onData: () => void; onLook: () => void; onYou: () => void }) {
   const { t } = useLingui();
   const btn = (cls: string, label: string | undefined, icon: ReactNode, word: string, fn: () => void, title?: string) => (
     <button type="button" className={`k-metro-bar-btn ${cls}`} aria-label={label} title={title} onClick={fn}>
@@ -294,6 +295,7 @@ function AppBar(p: { onNewApp: () => void; onAdd: () => void; onFind: () => void
     <nav className="k-metro-bar" aria-label={t({ message: "Launcher actions", comment: "The bar of buttons at the bottom of the home screen" })}>
       {btn("k-primary-action k-launch-newbtn", undefined, "＋", t`New app`, p.onNewApp)}
       {btn("k-launch-addbtn", t`Add an app`, "⤓", t({ message: "Add", comment: "App bar: add an app someone sent you; one short word" }), p.onAdd, t`Add an app someone sent you`)}
+      {btn("k-metro-gallery", t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), "▦", t({ message: "Gallery", comment: "App bar: Potyro's gallery of apps; one short word" }), p.onGallery)}
       {btn("k-metro-find", t`Find an app`, "⌕", t({ message: "Find", comment: "App bar: search the apps; one short word" }), p.onFind)}
       {btn(
         "k-data-btn",
