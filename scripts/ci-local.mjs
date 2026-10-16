@@ -39,7 +39,7 @@ import { join, relative } from "node:path";
 import { createConnection, createServer } from "node:net";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 6);
+const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 8);
 /** `sequential`: the browser shards one after another, the way this ran before they were isolated. */
 const E2E_MODE = process.env.CI_LOCAL_E2E === "sequential" ? "sequential" : "parallel";
 /** Keep in step with PORT_BLOCK in e2e/ports.ts. */

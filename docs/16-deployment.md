@@ -298,7 +298,7 @@ The pieces on `vazio`:
 ### The browser suite runs as parallel shards
 
 The browser suite is ~93% of a run. `ci:local all` (and `ci:local e2e` on its own) runs its shards
-**at once** — `CI_LOCAL_SHARDS`, default 6 — each still one Playwright worker, each recorded as its
+**at once** — `CI_LOCAL_SHARDS`, default 8 — each still one Playwright worker, each recorded as its
 own step (`e2e-<n>.ok` / `.fail` / `.log` under `.ci-local/<sha>/`), so resuming, `status --post` and
 the watcher work as before. `CI_LOCAL_E2E=sequential` runs them one after another, the old way.
 
@@ -326,8 +326,10 @@ What makes that safe is that the shards share **nothing**:
 
 Files are dealt to shards by their **measured duration**, longest first into the lightest shard,
 so the shards end together. Every shard's Playwright JSON report updates
-`.ci-local/e2e-timings.json` (per checkout, kept across commits); a file never timed counts as the
-median, and with no timings at all the files are dealt by index. The deal is written to
+`.ci-local/e2e-timings.json` (per checkout, kept across commits), read over the committed seed
+`e2e/timings.json` (measured on vazio; refresh it by copying a checkout's file over it when the
+suite has changed a lot). A file never timed counts as the median, and with no timings at all the
+files are dealt by index. The deal is written to
 `.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
 the files it ran before.
 
