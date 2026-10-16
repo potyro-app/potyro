@@ -29,6 +29,7 @@ import { Toaster } from "./toaster.js";
 import { siteBase, type DemoLink } from "./demo-link.js";
 import { shareEvent } from "./share-events.js";
 import { creditLine } from "./credit-words.js";
+import { holdArrival, lineFor, withAppTarget, type AppTarget } from "./app-link.js";
 
 /** The person using a demo: nobody in particular, and never this device's identity. */
 const demoPerson = (): Person => ({ id: "demo-viewer", name: t({ message: "You", comment: "The person trying a demo app" }) });
@@ -80,7 +81,7 @@ export interface DemoSession {
  * Open the app in the package, sealed, on a store in memory, with its demo records. Asks before
  * fetching a library, as opening any sealed app does; a "no" is `DemoDeclined`.
  */
-export async function openDemo(pkg: AppPackage, caps: Capabilities): Promise<DemoSession> {
+export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link?: string } = {}): Promise<DemoSession> {
   const name = demoName(pkg);
   const libraries = await inspectLibraries(pkg);
   const missing = libraries.lines.filter((l) => !l.here);
@@ -101,18 +102,29 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities): Promise<Dem
   const navHost = new NavHost();
   const [{ createAppBundler }, { createSharedAppLoader }] = await Promise.all([import("./app-bundler.js"), import("./isolate-bridge.js")]);
   const bundleCode = await (await createAppBundler())(pkg.source, modules);
+  // A link to one of its pages, from inside the demo (docs/24 §11): the demo's own link, landing there.
+  let declaredId: string | undefined = pkg.declared?.id;
+  const { link } = opts;
+  const makeLink = link
+    ? async (to: { page: string; params: Record<string, string> }): Promise<string> => {
+        const line = lineFor({ line: pkg.line }, declaredId);
+        if (!line) throw new Error("This app has no id to make a link to it with");
+        return withAppTarget(link, { line, page: to.page, params: to.params });
+      }
+    : undefined;
   const composed = await compose({
     provenance: "untrusted",
     bundleCode,
     store,
     caps,
-    ui: createUiBridge(toaster.push, picker, shellDialogs, questions),
+    ui: createUiBridge(toaster.push, picker, shellDialogs, questions, makeLink),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
     me: demoPerson(),
     loadIsolated: await createSharedAppLoader(store),
   });
   // The demo records, once the app has said which entities it keeps. Never anyone's real records:
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
+  declaredId = composed.runtime.definition.id || declaredId;
   await applySeed(store, pkg.seed, Object.keys(composed.runtime.definition.entities ?? {}));
   composed.runtime.core.invalidate();
   return { composed, navHost, picker, questions, toaster };
@@ -128,7 +140,7 @@ export function leaveDemoPath(): void {
  * `startRemix`: the link asked for Make it mine (`&remix=1`, the gallery's second button) — the card is
  * already open over the running app, so the person sees what they are making their own.
  */
-export function DemoScreen({ session, pkg, startRemix }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean }) {
+export function DemoScreen({ session, pkg, startRemix, target }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget }) {
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
   const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
@@ -166,6 +178,8 @@ export function DemoScreen({ session, pkg, startRemix }: { session: DemoSession;
         provenance="untrusted"
         toaster={session.toaster}
         name={name}
+        // A link to one of its pages (docs/24 §11): the demo opens there, as the kept copy will.
+        arrival={target}
       />
       {adding ? (
         <AddAppDialog
@@ -173,8 +187,10 @@ export function DemoScreen({ session, pkg, startRemix }: { session: DemoSession;
           initialPackage={pkg}
           remix={adding === "remix"}
           onClose={() => setAdding(null)}
-          onAdded={() => {
+          onAdded={(done) => {
             shareEvent(adding === "remix" ? "demo-remixed" : "demo-kept");
+            // Kept from a link to one of its pages: the copy opens there (docs/24 §11).
+            if (target) holdArrival(done.app.id, target);
             leaveDemoPath();
           }}
         />
