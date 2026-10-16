@@ -617,6 +617,38 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
       loaded.dispose();
     });
   });
+
+  // The launcher's live tile (docs/04 §Tile): it reads the app's data through ctx inside the box,
+  // and only the data it returns comes out.
+  const TILE_BUNDLE = `
+  globalThis.__potyroApp = {
+    id: "plants", name: "Plants", version: "1.0.0", schemaVersion: 1,
+    entities: { plant: { fields: { name: { type: "text" } } } },
+    pages: [{ id: "all", title: "All", view: { type: "list", entity: "plant" } }],
+    tile: async function(ctx){ var rows = await ctx.query("plant"); return { count: rows.length, title: rows.length + " to water", lines: rows.map(function(r){ return r.name; }) }; },
+    reminders: []
+  };
+  `;
+
+  describe("the live tile", () => {
+    it("runs the tile in the box over the app's own data and returns plain data", async () => {
+      const { loaded, ctx, store } = await setup(TILE_BUNDLE, {});
+      await store.insert("plant", { name: "Fern" });
+      await store.insert("plant", { name: "Basil" });
+      expect((loaded.definition as unknown as { tile?: unknown }).tile).toBe("__potyro_fn__");
+      const tile = (await loaded.callTile(ctx)) as { count: number; title: string; lines: string[] };
+      expect(tile.count).toBe(2);
+      expect(tile.title).toBe("2 to water");
+      expect([...tile.lines].sort()).toEqual(["Basil", "Fern"]);
+      loaded.dispose();
+    });
+
+    it("answers null for an app without a tile", async () => {
+      const { loaded, ctx } = await setup(DEFAULTS_BUNDLE, {});
+      expect(await loaded.callTile(ctx)).toBeNull();
+      loaded.dispose();
+    });
+  });
 });
 
 afterAll(async () => {
