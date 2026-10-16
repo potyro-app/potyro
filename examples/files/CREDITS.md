@@ -4,7 +4,7 @@ Every picture under `examples/files/` comes from Wikimedia Commons and is in the
 dedicated to it under CC0 — no attribution is legally required, and it is given here anyway. Each was
 cropped, resized and re-encoded as WebP for the example apps.
 
-## recipes (658 KB)
+## recipes (611 KB)
 
 | File | Source | Author | License |
 |---|---|---|---|
@@ -23,7 +23,7 @@ cropped, resized and re-encoded as WebP for the example apps.
 | `photos/street-tacos.webp` | [File:Tacos in a soft tortilla 5.jpg](https://commons.wikimedia.org/wiki/File:Tacos_in_a_soft_tortilla_5.jpg) | Kurt Kaiser | CC0 |
 | `art/market.webp` | [File:Vegetable Seller 2.jpg](https://commons.wikimedia.org/wiki/File:Vegetable_Seller_2.jpg) | Wilfredor | CC0 |
 
-## plants (486 KB)
+## plants (399 KB)
 
 | File | Source | Author | License |
 |---|---|---|---|
@@ -40,7 +40,7 @@ cropped, resized and re-encoded as WebP for the example apps.
 | `photos/calathea.webp` | [File:Calathea makoyana 1.jpg](https://commons.wikimedia.org/wiki/File:Calathea_makoyana_1.jpg) | Stickpen | CC0 |
 | `art/leaves.webp` | [File:Calathea roseopicta3.jpg](https://commons.wikimedia.org/wiki/File:Calathea_roseopicta3.jpg) | Hardyplants | CC0 |
 
-## places (672 KB)
+## places (606 KB)
 
 | File | Source | Author | License |
 |---|---|---|---|
