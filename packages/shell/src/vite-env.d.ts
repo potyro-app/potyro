@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_POTYRO_SITE?: string;
   /** Set when this deployment can actually reach a model — see `canGenerate`. */
   readonly VITE_POTYRO_GENERATOR?: string;
+  /** Where Potyro's gallery is (gallery-link.ts). Default `https://potyro.com/`. */
+  readonly VITE_POTYRO_GALLERY?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

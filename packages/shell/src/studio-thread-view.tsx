@@ -38,6 +38,11 @@ export interface ThreadViewProps {
   onSuggest: (text: string) => void;
   /** Nothing has been said yet in a conversation that is about an app that already exists. */
   existing: boolean;
+  /**
+   * A remix nobody has asked anything of yet (docs/24 §6): the Studio greets it — what it is a remix of,
+   * "What would you like to change?", and a few changes drawn from the app (remix-suggestions.ts).
+   */
+  remix?: RemixGreeting | null;
   /** Requests to the Potyro team (#263): what one would send, and sending it. Without it, none are offered. */
   requests?: {
     review: (ask: PlatformAsk) => Promise<PlatformRequestPayload>;
@@ -53,6 +58,36 @@ const SUGGESTIONS = [
   msg`A packing list I can reuse for trips`,
 ];
 
+export interface RemixGreeting {
+  /** "Remix of Groceries by Ana". */
+  credit: string;
+  suggestions: readonly string[];
+}
+
+/** The Studio's first words to a remix: an answer-side turn, so it reads as the Studio talking. */
+function RemixHello({ remix, onSuggest }: { remix: RemixGreeting; onSuggest: (text: string) => void }) {
+  const { t } = useLingui();
+  return (
+    <li className="k-thread-turn k-thread-theirs k-remix-hello" aria-label={t({ message: "The Studio, on your remix", comment: "The Studio's greeting on a remix, for a screen reader" })}>
+      <p className="k-remix-credit">{remix.credit}</p>
+      <p className="k-thread-answer k-remix-ask">
+        <Trans comment="The Studio's first words on a remix">This is your own copy. What would you like to change?</Trans>
+      </p>
+      {remix.suggestions.length ? (
+        <ul className="k-studio-suggest k-remix-suggest" aria-label={t({ message: "Changes to start from", comment: "Suggested changes for a remix" })}>
+          {remix.suggestions.map((s) => (
+            <li key={s}>
+              <button type="button" className="k-studio-chip" onClick={() => onSuggest(s)}>
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
 function Mark({ app, name }: { app: { id: string } | null; name: string }) {
   const identity = tileIdentity({ key: app?.id ?? name, name });
   return (
@@ -62,14 +97,16 @@ function Mark({ app, name }: { app: { id: string } | null; name: string }) {
   );
 }
 
-export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing, requests }: ThreadViewProps) {
+export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing, remix, requests }: ThreadViewProps) {
   const { t } = useLingui();
   // What came of each request sent from here — the latest word on it wins (saved, then sent).
   const sent = new Map<string, SentRequest>();
   for (const item of items) if (item.type === "event" && item.request) sent.set(item.request.id, item.request);
   const askCard = (ask: PlatformAsk | undefined) =>
     ask && requests ? <PlatformRequestCard ask={ask} sent={sent.get(ask.id)} review={() => requests.review(ask)} onSend={(payload) => requests.send(ask, payload)} /> : null;
-  if (!items.length && !working && !held) {
+  // Greeted until the person first asks for something; after that the conversation speaks for itself.
+  const greet = remix && !items.some((i) => i.type === "ask") && !working ? remix : null;
+  if (!items.length && !working && !held && !greet) {
     return existing ? (
       <div className="k-studio-empty">
         <p className="k-studio-eyebrow">{app ? <Trans comment="Studio, empty conversation about an existing app; name is the app's">Change {app.name}</Trans> : <Trans>Change this app</Trans>}</p>
@@ -180,6 +217,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
           </li>
         );
       })}
+      {greet ? <RemixHello remix={greet} onSuggest={onSuggest} /> : null}
       {held ? (
         <li className="k-thread-turn k-thread-theirs">
           <article className="k-card k-card-held" aria-label={t({ message: `${held.name}, not saved`, comment: "A Studio card for a version that was made but not saved" })}>
