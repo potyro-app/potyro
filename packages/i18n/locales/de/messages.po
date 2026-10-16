@@ -1147,7 +1147,9 @@ msgid "Add an item…"
 msgstr "Element hinzufügen…"
 
 #. Under a short list: make one more record like these
+#. Under a short list: make one more record like these
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add another"
 msgstr "Weitere hinzufügen"
 
@@ -1214,7 +1216,9 @@ msgid "Add the API's address, or a link to its documentation."
 msgstr "Füge die Adresse der API oder einen Link zu ihrer Dokumentation hinzu."
 
 #. Button on an empty page: make its first record
+#. Button on an empty page: make its first record
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 msgid "Add the first one"
 msgstr "Ersten Eintrag hinzufügen"
 
@@ -1678,6 +1682,11 @@ msgstr "Von {by}"
 #: ../shell/src/demo-share.ts
 msgid "By {by}. Try it in your browser: no account, nothing to install."
 msgstr "Von {by}. Probier sie im Browser aus: kein Konto, nichts zu installieren."
+
+#. A small bar chart of related records over time
+#: ../views/src/related.tsx
+msgid "By date"
+msgstr "Nach Datum"
 
 #: ../shell/src/launcher-order.ts
 msgid "By name"
@@ -2202,6 +2211,10 @@ msgstr "Konnte das nicht speichern"
 msgid "Could not update your data: {why}"
 msgstr "Deine Daten konnten nicht aktualisiert werden: {why}"
 
+#: ../views/src/checklist.tsx
+msgid "Could not work out the rest of that item"
+msgstr "Der Rest dieses Eintrags ließ sich nicht ermitteln"
+
 #: ../views/src/media-input.tsx
 msgid "Couldn’t add it: {failed}"
 msgstr "Konnte es nicht hinzufügen: {failed}"
@@ -2536,6 +2549,11 @@ msgstr "Früher"
 #: ../shell/src/file-viewer.tsx
 msgid "Earlier copies"
 msgstr "Frühere Kopien"
+
+#. Checklist: what was added before, offered while typing
+#: ../views/src/checklist.tsx
+msgid "Earlier items"
+msgstr "Frühere Einträge"
 
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
@@ -3611,6 +3629,7 @@ msgstr "Modell wird geladen…"
 #: ../views/src/checklist.tsx
 #: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
+#: ../views/src/related.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
 #: ../views/src/steps.tsx
@@ -4176,6 +4195,7 @@ msgstr "Nichts hier"
 
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 #: ../views/src/timeline.tsx
 msgid "Nothing here yet."
 msgstr "Noch nichts hier."

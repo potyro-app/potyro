@@ -840,8 +840,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // already does the one thing the floating button would, and better — the map's puts the new record
   // where you tapped. Two buttons for one act is one too many, so the page's own wins and the
   // floating one drops. Other entities' actions stay; only the one this page adds inline goes.
-  const pageView = currentPage?.view as { type?: string; quickAdd?: boolean; geo?: unknown } | undefined;
-  const addsInline = pageView?.quickAdd === true || (pageView?.type === "map" && typeof pageView.geo === "string") ? currentEntity : undefined;
+  const pageView = currentPage?.view as { type?: string; quickAdd?: unknown; geo?: unknown } | undefined;
+  const addsInline = Boolean(pageView?.quickAdd) || (pageView?.type === "map" && typeof pageView.geo === "string") ? currentEntity : undefined;
   // A custom view is a screen the app drew itself, with its own controls and often its own bottom
   // bar: a floating button of ours lands on top of them. The app can put its own there.
   const ownsScreen = pageView?.type === "custom";
