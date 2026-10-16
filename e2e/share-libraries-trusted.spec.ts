@@ -14,7 +14,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // esm.sh is answered from e2e/fixtures/esm, never contacted: what a person sees is the check — the
 // question, the list drawing what the library computed, and the refusal naming the library.
 
-const RELAY = process.env.POTYRO_E2E_RELAY ?? "ws://localhost:4201";
+const RELAY = process.env.POTYRO_E2E_RELAY ?? E2E_RELAY;
 const ROOT = "https://esm.sh/fancy-sum@1.2.3?bundle";
 const BUNDLE = "https://esm.sh/fancy-sum@1.2.3/es2022/fancy-sum.bundle.mjs";
 const SITE: Record<string, string> = {
@@ -28,6 +28,7 @@ const fixture = (name: string) => readFileSync(new URL(`./fixtures/esm/${name}`,
 // kinds of code that have to reach the guest are drawn.
 const summer = (withModule: boolean) => `import { defineApp } from "potyro";
 import { describe } from "${ROOT}";
+import { E2E_RELAY } from "./ports";
 ${withModule ? 'import { label } from "./label.ts";' : "const label = (t: string) => `Sum: ${t}`;"}
 export default defineApp({
   id: "summer",

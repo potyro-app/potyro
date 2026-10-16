@@ -2,8 +2,10 @@
 // Local CI: the same checks as .github/workflows/ci.yml, run on this machine, and able to put the
 // result on the commit as a GitHub status — which needs no Actions minutes.
 //
-//   node scripts/ci-local.mjs all              every step, in order (run it in a terminal)
+//   node scripts/ci-local.mjs all              every step, in order (run it in a terminal); the
+//                                              browser shards run side by side (see below)
 //   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N
+//   node scripts/ci-local.mjs e2e              every browser shard not yet passed, all at once
 //   node scripts/ci-local.mjs status           what has passed for HEAD, and what is left
 //   node scripts/ci-local.mjs status --post    ...and, if everything passed, mark HEAD green on GitHub
 //   node scripts/ci-local.mjs deploy           put HEAD on apps.vaz.io — only if it IS origin/main and
@@ -14,20 +16,43 @@
 // `.ci-local/<sha>/`, so a run that is interrupted resumes where it stopped, and a result can never
 // be attributed to a commit it was not run on.
 //
+// The browser suite (93% of the wall time) is split into shards that run AT ONCE, each a whole
+// copy of the suite on its own block of ports (e2e/ports.ts): its own dev servers, its own sync
+// relay, and — the port being part of the origin — its own OPFS, localStorage and IndexedDB. Inside
+// a shard it is still one worker, because within one origin the specs DO share state
+// (playwright.config.ts says what broke at two workers). A block is claimed with a lockfile under
+// /tmp/potyro-e2e-ports and bind-tested before use, so two whole runs on one machine (the gate and
+// someone's manual `ci:local`) take different blocks and never meet. Files are dealt to shards by
+// their last measured duration (longest first, into the lightest shard), so the shards finish
+// together; the deal is frozen per commit, so a resumed shard runs the files it ran before.
+// `CI_LOCAL_E2E=sequential` runs the shards one after another instead, as before (for comparison).
+//
 // What differs from GitHub's run, on purpose:
-//   - The browser suite is split into shards run one after another, one worker each — the suite
-//     shares a relay and browser storage, and this machine cannot hold it all at once.
+//   - The browser suite runs as parallel shards of one worker each (above).
 //   - The pixel baselines are skipped: they are GitHub's runner's pixels, and font hinting on any
 //     other Linux box differs by a few hundred pixels. Regenerate them on GitHub when it is back.
 //   - Flaky tests get one retry, as they do on GitHub.
 
-import { spawnSync, execSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync, execSync } from "node:child_process";
+import { createWriteStream, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { createConnection } from "node:net";
+import { createConnection, createServer } from "node:net";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 5);
+const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 6);
+/** `sequential`: the browser shards one after another, the way this ran before they were isolated. */
+const E2E_MODE = process.env.CI_LOCAL_E2E === "sequential" ? "sequential" : "parallel";
+/** Keep in step with PORT_BLOCK in e2e/ports.ts. */
+const PORT_BLOCK = 10;
+/**
+ * Where blocks are claimed: below Linux's ephemeral range (32768+), so a port a spec asks the OS for
+ * (`freePort()`) can never land inside a block, and well away from the suite's own defaults (4188…).
+ */
+const BLOCK_FIRST = 20_000;
+const BLOCK_LAST = 32_000;
+const CLAIMS = "/tmp/potyro-e2e-ports";
+/** Each spec file's last duration in seconds, kept across commits (gitignored, like every result). */
+const TIMINGS = join(ROOT, ".ci-local", "e2e-timings.json");
 const STEPS = ["install", "build", "unit", "typecheck", "lint", ...Array.from({ length: SHARDS }, (_, i) => `e2e:${i + 1}`)];
 
 const sh = (cmd) => execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -67,6 +92,95 @@ function portInUse(port) {
   });
 }
 
+/** Whether this process could listen on `port` right now (on both loopbacks Vite and the relay use). */
+function canBind(port, host) {
+  return new Promise((resolve) => {
+    const server = createServer();
+    // No such loopback on this machine (no IPv6): nothing there to collide with.
+    server.once("error", (e) => resolve(e.code === "EADDRNOTAVAIL" || e.code === "EAFNOSUPPORT"));
+    server.listen({ port, host, exclusive: true }, () => server.close(() => resolve(true)));
+  });
+}
+
+async function blockFree(base) {
+  for (let port = base; port < base + PORT_BLOCK; port++) {
+    if (await portInUse(port)) return false;
+    if (!(await canBind(port, "127.0.0.1")) || !(await canBind(port, "::1"))) return false;
+  }
+  return true;
+}
+
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
+}
+
+const claimed = new Set();
+process.on("exit", () => {
+  for (const f of claimed) rmSync(f, { force: true });
+});
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => process.exit(130));
+
+/**
+ * Claim a block of PORT_BLOCK ports for one shard: a lockfile naming this process (`wx`, so two
+ * claimers can never both win), then every port bind-tested. A claim whose process is gone is stale
+ * and taken over. Released when the shard ends, or when this process exits short of SIGKILL — and
+ * a SIGKILLed one's claims are stale by the next claim.
+ */
+async function claimBlock() {
+  mkdirSync(CLAIMS, { recursive: true });
+  const mine = `${process.pid} ${ROOT}\n`;
+  for (let base = BLOCK_FIRST; base + PORT_BLOCK <= BLOCK_LAST; base += PORT_BLOCK) {
+    const lock = join(CLAIMS, `${base}.lock`);
+    try {
+      writeFileSync(lock, mine, { flag: "wx" });
+    } catch {
+      let pid = 0;
+      try {
+        pid = Number(readFileSync(lock, "utf8").split(" ")[0]);
+      } catch {
+        continue; // released while we looked: the next pass may have it, the next block will do
+      }
+      if (pid && alive(pid)) continue;
+      // Stale: its owner is gone. Moved aside rather than deleted, and only if what was moved is
+      // still the dead owner's — between our read and now another claimer may have done the same and
+      // claimed it, and deleting by name would delete THEIR claim.
+      const aside = `${lock}.${process.pid}.stale`;
+      try {
+        renameSync(lock, aside);
+      } catch {
+        continue;
+      }
+      if (Number(readFileSync(aside, "utf8").split(" ")[0]) !== pid) {
+        try {
+          linkSync(aside, lock); // put theirs back (never over a newer one)
+        } catch {
+          /* a newer claim is there: it stands */
+        }
+        rmSync(aside, { force: true });
+        continue;
+      }
+      rmSync(aside, { force: true });
+      try {
+        writeFileSync(lock, mine, { flag: "wx" });
+      } catch {
+        continue; // someone else took it over first
+      }
+    }
+    if (await blockFree(base)) {
+      claimed.add(lock);
+      return { base, release: () => (rmSync(lock, { force: true }), claimed.delete(lock)) };
+    }
+    rmSync(lock, { force: true }); // something not ours is listening in it: try the next
+  }
+  console.error(`✘ no free block of ${PORT_BLOCK} ports in ${BLOCK_FIRST}..${BLOCK_LAST} — see ${CLAIMS}`);
+  process.exit(2);
+}
+
 /** Every browser spec file the trusted and sandbox projects run, minus the GitHub-only baselines. */
 function specFiles() {
   const out = [];
@@ -81,11 +195,142 @@ function specFiles() {
   return out.sort();
 }
 
-async function step(name) {
+function readTimings() {
+  try {
+    return JSON.parse(readFileSync(TIMINGS, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Which files each shard runs, decided once per commit and kept in `e2e-plan.json` — a shard that
+ * is re-run (resumed, or retried by hand) must run the files it ran the first time, or some files
+ * would run twice and others never. Longest first into the lightest shard, by each file's last
+ * duration; a file never timed counts as the median. With no timings at all, by index.
+ */
+function shardPlan() {
+  const planFile = join(dir, "e2e-plan.json");
+  const files = specFiles();
+  try {
+    const plan = JSON.parse(readFileSync(planFile, "utf8"));
+    if (plan.length === SHARDS && plan.flat().sort().join("\n") === files.join("\n")) return plan;
+  } catch {
+    /* none yet */
+  }
+  const timings = readTimings();
+  const known = files.map((f) => timings[f]).filter((t) => typeof t === "number").sort((a, b) => a - b);
+  let plan;
+  if (!known.length) {
+    plan = Array.from({ length: SHARDS }, (_, i) => files.filter((_, n) => n % SHARDS === i));
+  } else {
+    const median = known[Math.floor(known.length / 2)];
+    const cost = (f) => (typeof timings[f] === "number" ? timings[f] : median);
+    const shards = Array.from({ length: SHARDS }, () => ({ files: [], total: 0 }));
+    for (const f of [...files].sort((a, b) => cost(b) - cost(a) || a.localeCompare(b))) {
+      const lightest = shards.reduce((min, sh) => (sh.total < min.total ? sh : min));
+      lightest.files.push(f);
+      lightest.total += cost(f);
+    }
+    plan = shards.map((sh) => sh.files.sort());
+    process.stdout.write(`· shards by measured duration: ${shards.map((sh) => `${Math.round(sh.total)}s`).join(" ")}\n`);
+  }
+  writeFileSync(planFile, `${JSON.stringify(plan, null, 1)}\n`);
+  return plan;
+}
+
+/** Fold a shard's Playwright JSON report into the timings: each file's total, retries included. */
+function learnTimings(report) {
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(report, "utf8"));
+  } catch {
+    return;
+  }
+  const perFile = {};
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? []) {
+      const file = join("e2e", spec.file ?? suite.file);
+      for (const t of spec.tests ?? []) for (const r of t.results ?? []) perFile[file] = (perFile[file] ?? 0) + (r.duration ?? 0) / 1000;
+    }
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of parsed.suites ?? []) walk(suite);
+  if (!Object.keys(perFile).length) return;
+  const timings = { ...readTimings() };
+  for (const [f, secs] of Object.entries(perFile)) timings[f] = Math.round(secs * 10) / 10;
+  writeFileSync(TIMINGS, `${JSON.stringify(Object.fromEntries(Object.entries(timings).sort()), null, 1)}\n`);
+}
+
+/** One shard, as a child process with its own port block, log and Playwright output directory. */
+async function runShard(i, files) {
+  const label = `e2e:${i}`;
+  const f = `e2e-${i}`;
+  const log = join(dir, `${f}.log`);
+  const report = join(dir, `${f}.json`);
+  rmSync(report, { force: true });
+  const block = await claimBlock();
+  const args = ["exec", "playwright", "test", ...files, "--workers=1", "--retries=1", "--reporter=line,json", `--output=test-results/shard-${i}`];
+  const env = {
+    ...process.env,
+    POTYRO_E2E_PORT_BASE: String(block.base),
+    // Its own Vite dependency cache, by shard number so it stays warm from one run to the next.
+    POTYRO_VITE_CACHE_DIR: join(ROOT, "node_modules", ".vite-e2e", `shard-${i}`),
+    PLAYWRIGHT_JSON_OUTPUT_NAME: report,
+  };
+  process.stdout.write(`▶ ${label}: ${files.length} files on ports ${block.base}..${block.base + PORT_BLOCK - 1}\n`);
+  const started = Date.now();
+  const out = createWriteStream(log);
+  out.write(`$ POTYRO_E2E_PORT_BASE=${block.base} pnpm ${args.join(" ")}\n`);
+  let tail = "";
+  const status = await new Promise((resolve) => {
+    // Its own process group, so a shard that is stopped takes its servers and browsers with it.
+    const child = spawn("pnpm", args, { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const onData = (d) => {
+      out.write(d);
+      tail = (tail + d.toString()).slice(-20_000);
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    const stop = () => {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        /* already gone */
+      }
+    };
+    process.once("exit", stop);
+    child.once("close", (code) => (process.off("exit", stop), resolve(code)));
+    child.once("error", (e) => (onData(String(e)), resolve(1)));
+  });
+  await new Promise((r) => out.end(r));
+  block.release();
+  learnTimings(report);
+  const secs = Math.round((Date.now() - started) / 1000);
+  return { ok: status === 0, secs, log, tail: tail.trim().split("\n").slice(-25).join("\n") };
+}
+
+function refuseDirty() {
   if (dirty()) {
     console.error(`✘ refusing to run: tracked files are modified, so a result would not describe ${short}. Commit or stash them first.`);
     process.exit(2);
   }
+}
+
+/** Every shard not yet passed (all of them with `fresh`), at once, each recorded as its own step. */
+async function e2eParallel(fresh) {
+  refuseDirty();
+  const plan = shardPlan();
+  const shards = plan.map((files, n) => ({ i: n + 1, files }));
+  const todo = shards.filter(({ i }) => fresh || !existsSync(join(dir, `e2e-${i}.ok`)));
+  for (const { i } of shards.filter((sh) => !todo.includes(sh))) process.stdout.write(`✓ e2e:${i} (already passed for ${short})\n`);
+  const started = Date.now();
+  await Promise.all(todo.map(async ({ i, files }) => record(`e2e:${i}`, await runShard(i, files))));
+  if (todo.length) process.stdout.write(`· browser suite: ${todo.length} shards at once in ${Math.round((Date.now() - started) / 1000)}s\n`);
+}
+
+async function step(name) {
+  refuseDirty();
   switch (name) {
     case "install":
       return record(name, run(name, "pnpm", ["install", "--frozen-lockfile"]));
@@ -102,18 +347,11 @@ async function step(name) {
     }
     default: {
       const m = /^e2e:(\d+)$/.exec(name);
-      if (!m) throw new Error(`unknown step "${name}" — one of: ${STEPS.join(" ")}`);
-      // Playwright reuses a server already listening on a test port. One started from ANOTHER
-      // checkout would be tested in place of this one, and pass or fail for the wrong code.
-      for (const port of [4188, 4189, 4201]) {
-        if (await portInUse(port)) {
-          console.error(`✘ port ${port} is already in use — stop whatever is listening (lsof -i :${port}) so the suite starts its own servers from this checkout.`);
-          process.exit(2);
-        }
-      }
+      if (!m || Number(m[1]) < 1 || Number(m[1]) > SHARDS) throw new Error(`unknown step "${name}" — one of: ${STEPS.join(" ")} e2e`);
+      // On its own claimed block of ports (claimBlock), so a server another checkout left listening
+      // on the suite's default ports can never be tested in place of this one.
       const i = Number(m[1]);
-      const files = specFiles().filter((_, n) => n % SHARDS === i - 1);
-      return record(name, run(name, "pnpm", ["exec", "playwright", "test", ...files, "--workers=1", "--retries=1", "--reporter=line"]));
+      return record(name, await runShard(i, shardPlan()[i - 1]));
     }
   }
 }
@@ -227,16 +465,24 @@ if (!cmd || cmd === "status") {
   deploy();
   process.exit(existsSync(join(dir, "deploy.fail")) ? 1 : 0);
 } else if (cmd === "all") {
+  const fresh = rest.includes("--fresh");
   for (const s of STEPS) {
     const f = s.replace(":", "-");
-    if (existsSync(join(dir, `${f}.ok`)) && !rest.includes("--fresh")) {
+    if (existsSync(join(dir, `${f}.ok`)) && !fresh) {
       process.stdout.write(`✓ ${s} (already passed for ${short})\n`);
       continue;
+    }
+    if (s.startsWith("e2e:") && E2E_MODE === "parallel") {
+      await e2eParallel(fresh); // every shard left, at once; status below says what passed
+      break;
     }
     await step(s);
     if (existsSync(join(dir, `${f}.fail`))) break;
   }
   process.exit(status(rest.includes("--post")) ? 0 : 1);
+} else if (cmd === "e2e") {
+  await e2eParallel(rest.includes("--fresh"));
+  process.exit(status(false) ? 0 : 1);
 } else {
   await step(cmd);
   process.exit(existsSync(join(dir, `${cmd.replace(":", "-")}.ok`)) ? 0 : 1);

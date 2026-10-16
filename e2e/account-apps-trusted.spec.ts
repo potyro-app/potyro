@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Typing the recovery words gets you your APPS, not just your name (KA-16 follow-up).
 //
@@ -22,9 +23,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, seed = false): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
@@ -111,7 +112,7 @@ test("an app the new device already seeded for itself is still offered, with the
 
   // ---- A: the seeded Groceries, with something added, synced ----
   const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  await ctxA.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
+  await ctxA.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   const a = await ctxA.newPage();
   await a.goto("/?user=groceries");
   await expect(a.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
@@ -156,7 +157,7 @@ test("an app the new device already seeded for itself is still offered, with the
 
   // ---- B: a second browser, which has seeded its OWN Groceries ----
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
-  await ctxB.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
+  await ctxB.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   const b = await ctxB.newPage();
   await b.goto("/?user=groceries");
   await expect(b.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
@@ -201,9 +202,9 @@ test("an app that was never synced is backed up by one switch, and a linked devi
 
   // ---- A: a local-only app with something in it ----
   const ctxA = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctxA.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await ctxA.addInitScript(
     ([source]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       localStorage.setItem(
         "potyro:user-apps",
         JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]),
@@ -239,7 +240,7 @@ test("an app that was never synced is backed up by one switch, and a linked devi
 
   // ---- B: a second browser that has never seen this app ----
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 780 } });
-  await ctxB.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
+  await ctxB.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   const b = await ctxB.newPage();
   await b.goto("/");
   await b.getByRole("button", { name: "You and your devices" }).click();
