@@ -3,7 +3,7 @@
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
 // memory + time limits.
 
-import type { AppDefinition, Ctx, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value, Words } from "potyro";
+import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value, Words } from "potyro";
 import { localize } from "potyro";
 import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
@@ -284,13 +284,14 @@ class IsolateLoadedApp implements LoadedApp {
         await null; // out of the VM's turn before anything can call back into it
         const ctx = this.ctxHost;
         if (!ctx) throw new Error("no call is running");
-        const o = (op.opts ?? null) as { protocols?: string[]; name?: string } | null;
+        const o = (op.opts ?? null) as { protocols?: string[] | null; name?: string | null; keepWhileHidden?: string | null } | null;
+        const keep = o?.keepWhileHidden != null ? { keepWhileHidden: String(o.keepWhileHidden) as KeepWhileHidden } : {};
         this.openQuestion();
         try {
           const info =
             kind === "cap.socket.open"
-              ? await this.sockets.open(ctx, String(op.url), o?.protocols ? { protocols: o.protocols.map(String) } : undefined)
-              : await this.sockets.room(ctx, op.id == null ? undefined : String(op.id), o?.name != null ? { name: String(o.name) } : undefined);
+              ? await this.sockets.open(ctx, String(op.url), o ? { ...(o.protocols ? { protocols: o.protocols.map(String) } : {}), ...keep } : undefined)
+              : await this.sockets.room(ctx, op.id == null ? undefined : String(op.id), o ? { ...(o.name != null ? { name: String(o.name) } : {}), ...keep } : undefined);
           return serialize(info as unknown as Value);
         } finally {
           this.closeQuestion();

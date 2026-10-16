@@ -253,11 +253,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       fetch: async function(){ throw new Error("network fetch is not marshalable in isolate v1"); },
       socket: async function(url, o){
         var p = o && o.protocols;
-        var info = await bridge({op:"cap.socket.open", url:String(url), opts: p == null ? null : { protocols: Array.isArray(p) ? p.map(String) : [String(p)] }});
+        var k = o && o.keepWhileHidden;
+        var info = await bridge({op:"cap.socket.open", url:String(url), opts: (p == null && k == null) ? null : { protocols: p == null ? null : (Array.isArray(p) ? p.map(String) : [String(p)]), keepWhileHidden: k == null ? null : String(k) }});
         return makeSock(info);
       },
       room: async function(id, o){
-        var info = await bridge({op:"cap.socket.room", id: id == null ? null : String(id), opts: (o && o.name != null) ? { name: String(o.name) } : null});
+        var n = o && o.name, k = o && o.keepWhileHidden;
+        var info = await bridge({op:"cap.socket.room", id: id == null ? null : String(id), opts: (n == null && k == null) ? null : { name: n == null ? null : String(n), keepWhileHidden: k == null ? null : String(k) }});
         return makeSock(info);
       }
     };

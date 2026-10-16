@@ -611,6 +611,8 @@ export interface Migration {
  * Network permission: on/off, or scoped to an allow-list of hosts (`"api.example.com"`, with
  * `":port"` when it is not the usual one) — for `fetch` and `socket` alike. `rooms: true` adds
  * Potyro's rooms relay (`ctx.caps.network.room`); `{ rooms: true }` alone allows nothing else.
+ * The host `"local"` is a device on the person's home network, for `socket` only: the app connects to
+ * `ws://local:<port>/…` and Potyro asks the person for the device's address the first time.
  */
 export type NetworkPermission = boolean | { hosts?: string[]; rooms?: boolean };
 
