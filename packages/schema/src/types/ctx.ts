@@ -11,6 +11,7 @@ import type { Field } from "./fields.js";
 import type { Language, Words } from "./words.js";
 import type { AiValue } from "./infer.js";
 import type { Face, FaceOptions, FacesFailure } from "./faces.js";
+import type { Room, RoomOptions, Socket, SocketOptions } from "./sockets.js";
 
 /** Query spec for `ctx.query` — JS predicates run in-memory over resolved rows. */
 export interface QuerySpec {
@@ -58,6 +59,10 @@ export interface FileCapability {
 
 export interface NetworkCapability {
   fetch(input: string, init?: RequestInit): Promise<Response>;
+  /** A live connection to a `wss://` server (docs/28): resolves once open, rejects with a `code` (SocketFailure). */
+  socket(url: string, opts?: SocketOptions): Promise<Socket>;
+  /** Join a room on Potyro's rooms relay — a new one without `id` — for live multiplayer (docs/28). */
+  room(id?: string, opts?: RoomOptions): Promise<Room>;
 }
 
 /** Haptic feedback (docs/04). `pattern` follows the Web Vibration API. */

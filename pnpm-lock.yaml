@@ -186,6 +186,9 @@ importers:
       '@potyro/capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      '@potyro/rooms':
+        specifier: workspace:*
+        version: link:../rooms
       '@potyro/store':
         specifier: workspace:*
         version: link:../store

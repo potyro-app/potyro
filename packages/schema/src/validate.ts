@@ -695,7 +695,7 @@ const migrationSchema = z.object({
   steps: z.array(migrationStepSchema),
 });
 
-const networkPermissionSchema = z.union([z.boolean(), z.object({ hosts: z.array(z.string()).optional() })]);
+const networkPermissionSchema = z.union([z.boolean(), z.object({ hosts: z.array(z.string()).optional(), rooms: z.boolean().optional() })]);
 
 const permissionSchema = z.object({
   // Declared, not yet enforced — the consent prompt is KA-23. See PermissionManifest.

@@ -10,6 +10,7 @@ export { fetchOver, maybeCreateNativeSourceHttp, type HttpPlugin, type SourceHtt
 export { listenForShares, textOfShare, filesOfShare, readSharedFile, isOpenedFile, nameFromUri, type SharedText, type SharedFileRef } from "./share-target.js";
 export { systemLanguages } from "./system-locale.js";
 export { keepStorage, keepStorageOn } from "./keep-storage.js";
+export { localOpenerOver, maybeLocalOpener, type LocalSocketPlugin } from "./local-sockets.js";
 
 export {
   CapacitorCapabilities,
