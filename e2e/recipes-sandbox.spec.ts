@@ -11,8 +11,8 @@ test("recipes app runs untrusted in the QuickJS-WASM isolate", async ({ page }) 
   // Provenance badge proves this is the isolate path, not direct execution.
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");
 
-  // The app's list + computed functions executed inside the isolate and marshalled results out.
-  const rows = page.locator(".k-list-row");
+  // The app's gallery + computed functions executed inside the isolate and marshalled results out.
+  const rows = page.locator(".k-card");
   await expect(rows.first()).toBeVisible();
   expect(await rows.count()).toBeGreaterThan(0);
   await expect(page.locator(".k-secondary").filter({ hasText: "kcal" }).first()).toBeVisible();

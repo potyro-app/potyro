@@ -21,7 +21,7 @@ describe("a translated app in the structural editor", () => {
     const quantity = shape.entities.find((e) => e.key === "item")!.fields.find((f) => f.key === "quantity")!;
     expect(quantity).toMatchObject({ labels: { en: "Quantity", "pt-BR": "Quantidade", de: "Menge", es: "Cantidad", pl: "Ilość", it: "Quantità" } });
     expect(quantity.labelOpaque).toBeUndefined();
-    expect(shape.pages.find((p) => p.id === "shopping")).toMatchObject({ titles: expect.objectContaining({ en: "Shopping", pl: "Zakupy" }) });
+    expect(shape.pages.find((p) => p.id === "shopping")).toMatchObject({ titles: expect.objectContaining({ en: "List", pl: "Lista" }) });
   });
 
   it("writes one language of a label, and nothing else moves", async () => {
@@ -37,8 +37,8 @@ describe("a translated app in the structural editor", () => {
     const partial = groceries.replace(NOTE, `label: { en: "Note", pl: "Notatka" }`);
     const added = await applyEdit(partial, { kind: "field-label", entity: "item", field: "note", value: "Notiz", language: "de" });
     expect(added.ok && added.source).toContain(`label: { en: "Note", pl: "Notatka", de: "Notiz" }`);
-    const page = await applyEdit(groceries, { kind: "page-title", page: "shopping", value: "Lista", language: "pl" });
-    expect(page.ok && page.source).toContain(`es: "Lista de la compra", pl: "Lista", it: "Lista della spesa" }`);
+    const page = await applyEdit(groceries, { kind: "page-title", page: "shopping", value: "Zakupy", language: "pl" });
+    expect(page.ok && page.source).toContain(`es: "Lista", pl: "Zakupy", it: "Lista" }`);
   });
 
   it("refuses an empty translation, and a language edit on a plain label", async () => {
@@ -49,8 +49,8 @@ describe("a translated app in the structural editor", () => {
 
   it("edit mode offers each language of a displayed map, and still not a placeholder's", async () => {
     const texts = (await textSites(groceries)).map((s) => s.text);
-    expect(texts).toContain("Lista jest pusta. Dodaj pierwszą rzecz poniżej.");
-    expect(texts).toContain("Nothing on the list. Add the first thing below.");
+    expect(texts).toContain("Lista jest pusta. Dodaj pierwszą rzecz poniżej albo przywróć stałe.");
+    expect(texts).toContain("Nothing on the list. Add the first thing below, or bring back your usuals.");
     expect(texts).not.toContain("Milk"); // placeholder: { en: "Milk", … } reads like a record
   });
 

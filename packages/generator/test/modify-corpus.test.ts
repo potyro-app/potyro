@@ -24,17 +24,25 @@ const shape = async (src: string, dir: string) => (await loadApp(src, dir)) as u
 /** A right change for each new case: [search, replace] against the app as it is. */
 // The examples are in six languages (#303), so a right change gives its new words in all six: one
 // in English only is a gap the check sends back.
-const PLANTS_TITLE = '      title: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },';
+const PLANTS_LIST_FILTERS =
+  '            placeholder: { en: "Name or label", "pt-BR": "Nome ou etiqueta", de: "Name oder Schlagwort", es: "Nombre o etiqueta", pl: "Nazwa lub etykieta", it: "Nome o etichetta" },\n          },';
+const PLANTS_LIST_RETURN =
+  "          return !q || p.name.toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));";
 const RECIPE_PHOTO = '        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },';
 const PLACE_NOTES = '        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },';
 const RIGHT: Record<string, Array<[string, string]>> = {
   "plants-no-more-pages": [
     [
-      `${PLANTS_TITLE}\n      view: {\n        type: "list",\n        entity: "plant",`,
-      `${PLANTS_TITLE}\n      view: {\n        type: "list",\n        entity: "plant",\n        filters: [{ label: { en: "Direct sun", "pt-BR": "Sol direto", de: "Direkte Sonne", es: "Sol directo", pl: "Pełne słońce", it: "Sole diretto" }, param: "sun", type: "boolean" }],\n        filter: (p, ctx) => !ctx.params.sun || p.needsDirectSun,`,
+      // The Plants list's search chip, then a second chip; its filter keeps the search and adds sun.
+      `${PLANTS_LIST_FILTERS}`,
+      `${PLANTS_LIST_FILTERS}\n          { label: { en: "Direct sun", "pt-BR": "Sol direto", de: "Direkte Sonne", es: "Sol directo", pl: "Pełne słońce", it: "Sole diretto" }, param: "sun", type: "boolean" },`,
+    ],
+    [
+      PLANTS_LIST_RETURN,
+      `          if (ctx.params.sun && !p.needsDirectSun) return false;\n${PLANTS_LIST_RETURN}`,
     ],
   ],
-  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
+  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
   "recipes-put-spice-back": [
     [
       RECIPE_PHOTO,
@@ -53,8 +61,13 @@ const RIGHT: Record<string, Array<[string, string]>> = {
       '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        waterAmount: { type: "number", unit: "ml", min: 0, label: { en: "Water each time", "pt-BR": "Água por rega", de: "Wasser pro Gießen", es: "Agua por riego", pl: "Woda na podlanie", it: "Acqua a ogni annaffiatura" } },',
     ],
   ],
-  "places-visited-starts-off": [['        visited: {\n          type: "boolean",\n          default: true,', '        visited: {\n          type: "boolean",\n          default: false,']],
-  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
+  "places-visited-starts-off": [
+    [
+      '          options: ["want to go", "been", "favourite"],\n          default: "been",\n          colors: { "want to go": "yellow", been: "teal", favourite: "pink" },',
+      '          options: ["want to go", "been", "favourite"],\n          default: "want to go",\n          colors: { "want to go": "yellow", been: "teal", favourite: "pink" },',
+    ],
+  ],
+  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
   "places-phone-wrong-gate": [
     [PLACE_NOTES, `${PLACE_NOTES}\n        phone: { type: "text", label: { en: "Phone", "pt-BR": "Telefone", de: "Telefon", es: "Teléfono", pl: "Telefon", it: "Telefono" } },`],
   ],

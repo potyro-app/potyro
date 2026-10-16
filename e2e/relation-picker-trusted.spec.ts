@@ -6,7 +6,7 @@ import { test, expect, type Page } from "./console-guard";
 async function openRecipeForm(page: Page): Promise<void> {
   await page.goto("/?user=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
-  await page.locator(".k-list-row .k-list-text").first().click();
+  await page.locator(".k-card").first().click();
   await page.getByRole("button", { name: "More actions" }).first().click();
   await page.getByRole("menuitem", { name: "Edit" }).click();
   await expect(page.locator(".k-form")).toBeVisible();

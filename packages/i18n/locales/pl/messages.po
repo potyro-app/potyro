@@ -476,6 +476,11 @@ msgstr "{count, plural, one {W przeciwnym razie zostanie na liście ({kind}: bra
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Udostępniono # osobie} few {Udostępniono # osobom} many {Udostępniono # osobom} other {Udostępniono # osoby}}"
 
+#. How many records the page shows, read after its title
+#: ../shell/src/page-header.tsx
+msgid "{count} shown"
+msgstr "Widocznych: {count}"
+
 #: ../shell/src/ask-review.tsx
 msgid "{created, plural, one {added # record} other {added # records}}"
 msgstr "{created, plural, one {dodano # wpis} few {dodano # wpisy} many {dodano # wpisów} other {dodano # wpisu}}"
@@ -1253,6 +1258,13 @@ msgstr "Dodaj element"
 msgid "Add an item…"
 msgstr "Dodaj element…"
 
+#. Under a short list: make one more record like these
+#. Under a short list: make one more record like these
+#: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
+msgid "Add another"
+msgstr "Dodaj kolejny wpis"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add app"
 msgstr "Dodaj aplikację"
@@ -1314,6 +1326,13 @@ msgstr "Dodaj źródło"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Add the API's address, or a link to its documentation."
 msgstr "Dodaj adres API albo link do jego dokumentacji."
+
+#. Button on an empty page: make its first record
+#. Button on an empty page: make its first record
+#: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
+msgid "Add the first one"
+msgstr "Dodaj pierwszy wpis"
 
 #. After a field's name and a colon, lower case
 #: ../views/src/media-input.tsx
@@ -1410,6 +1429,13 @@ msgstr "Wszystkie szczegóły i źródła"
 #: ../views/src/steps.tsx
 msgid "All done."
 msgstr "Wszystko zrobione."
+
+#. On an app's home: a list of every page it has
+#. On an app's home: a list of every page it has
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
+msgid "All pages"
+msgstr "Wszystkie strony"
 
 #. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
@@ -1630,6 +1656,7 @@ msgstr "Prosi o"
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/page-header.tsx
 #: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Wstecz"
@@ -1811,6 +1838,11 @@ msgstr "Od {by}"
 #: ../shell/src/demo-share.ts
 msgid "By {by}. Try it in your browser: no account, nothing to install."
 msgstr "Od {by}. Wypróbuj w przeglądarce: bez konta, bez instalowania."
+
+#. A small bar chart of related records over time
+#: ../views/src/related.tsx
+msgid "By date"
+msgstr "Według daty"
 
 #: ../shell/src/launcher-order.ts
 msgid "By name"
@@ -2260,8 +2292,8 @@ msgstr "Dalej"
 msgid "Continue “{0}”"
 msgstr "Kontynuuj „{0}”"
 
-#: ../shell/src/dialog.tsx
 #: ../shell/src/realm-probe-screen.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copied"
 msgstr "Skopiowano"
 
@@ -2274,12 +2306,12 @@ msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
 msgstr "Skopiowano do „{copyName}”. Zaczyna pusta — sama aplikacja, bez danych."
 
 #. Share dialog: copy an app's words (and link)
-#: ../shell/src/dialog.tsx
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copy"
 msgstr "Kopiuj"
 
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copy link"
 msgstr "Kopiuj link"
 
@@ -2365,6 +2397,10 @@ msgstr "Nie udało się tego zapisać"
 msgid "Could not update your data: {why}"
 msgstr "Nie udało się zaktualizować twoich danych: {why}"
 
+#: ../views/src/checklist.tsx
+msgid "Could not work out the rest of that item"
+msgstr "Nie udało się uzupełnić reszty tego wpisu"
+
 #: ../views/src/media-input.tsx
 msgid "Couldn’t add it: {failed}"
 msgstr "Nie udało się dodać: {failed}"
@@ -2373,12 +2409,12 @@ msgstr "Nie udało się dodać: {failed}"
 msgid "Couldn’t bring it in: {failed}"
 msgstr "Nie udało się wczytać: {failed}"
 
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Couldn't copy — select the link and copy it yourself."
 msgstr "Nie udało się skopiować — zaznacz link i skopiuj go samodzielnie."
 
 #. Share dialog: copying an app's words failed
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Couldn't copy — select the text and copy it yourself."
 msgstr "Nie udało się skopiować — zaznacz tekst i skopiuj go sam."
 
@@ -2398,6 +2434,11 @@ msgstr "Nie udało się uruchomić „{name}” jako twojej, więc otwiera się 
 msgid "Couldn’t run “{name}” as yours, so it opens sealed. {why}"
 msgstr "Nie udało się uruchomić „{name}” jako twojej, więc otwiera się zamknięta. {why}"
 
+#. Share dialog: Save a copy failed
+#: ../shell/src/share-body.tsx
+msgid "Couldn't save it. Try again."
+msgstr "Nie udało się zapisać. Spróbuj ponownie."
+
 #: ../views/src/record-form.tsx
 msgid "Couldn't save: {saveError}"
 msgstr "Nie udało się zapisać: {saveError}"
@@ -2409,6 +2450,11 @@ msgstr "Nie udało się jeszcze wysłać „{title}” do zespołu Potyro. Zapis
 #: ../shell/src/platform-request-card.tsx
 msgid "Couldn't send it yet. It's saved on this device and will be sent later."
 msgstr "Nie udało się jeszcze wysłać. Zapisano to na tym urządzeniu i zostanie wysłane później."
+
+#. Share dialog: the share sheet failed for files only
+#: ../shell/src/share-body.tsx
+msgid "Couldn't share it. Save a copy instead."
+msgstr "Nie udało się udostępnić. Zapisz zamiast tego kopię."
 
 #. Form button that saves a new record
 #: ../views/src/record-form.tsx
@@ -2487,9 +2533,9 @@ msgstr "Zmniejsz {label}"
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 msgid "Delete"
 msgstr "Usuń"
 
@@ -2647,11 +2693,11 @@ msgstr "Nie udostępniaj"
 #. Leave edit mode
 #. Share dialog: close it
 #: ../shell/src/ask-panel.tsx
-#: ../shell/src/dialog.tsx
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/share-body.tsx
 #: ../shell/src/suggest-wording.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/pick-list.tsx
@@ -2708,6 +2754,11 @@ msgstr "Wcześniej"
 msgid "Earlier copies"
 msgstr "Wcześniejsze kopie"
 
+#. Checklist: what was added before, offered while typing
+#: ../views/src/checklist.tsx
+msgid "Earlier items"
+msgstr "Wcześniejsze wpisy"
+
 #. History: how a version came about, lower case
 #: ../shell/src/history.tsx
 msgid "edit"
@@ -2720,7 +2771,8 @@ msgstr "edycja"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/map.tsx
 msgid "Edit"
 msgstr "Edytuj"
@@ -3844,11 +3896,12 @@ msgstr "Wczytywanie modelu…"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/calendar.tsx
 #: ../views/src/chart.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
+#: ../views/src/related.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
 #: ../views/src/steps.tsx
@@ -3948,7 +4001,7 @@ msgid "Making it via {label}… {elapsed}"
 msgstr "Tworzenie przez {label}… {elapsed}"
 
 #. Share dialog: the link to an app's page is being made
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-sheet.tsx
 msgid "Making the link…"
 msgstr "Tworzę link…"
@@ -4052,8 +4105,8 @@ msgstr "Więcej"
 msgid "More — something new"
 msgstr "Więcej — coś nowego"
 
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 msgid "More actions"
 msgstr "Więcej akcji"
 
@@ -4343,7 +4396,7 @@ msgstr "Niepotwierdzone"
 msgid "Not downloaded — tap to get it"
 msgstr "Nie pobrano — dotknij, aby pobrać"
 
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/steps.tsx
 msgid "Not found."
 msgstr "Nie znaleziono."
@@ -4439,6 +4492,7 @@ msgstr "Nic tu nie ma"
 
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
+#: ../views/src/related.tsx
 #: ../views/src/timeline.tsx
 msgid "Nothing here yet."
 msgstr "Jeszcze nic tu nie ma."
@@ -5352,8 +5406,10 @@ msgstr "tyle samo co {label}"
 msgid "Save"
 msgstr "Zapisz"
 
+#. Share dialog: download or keep the files on this device
 #: ../shell/src/file-viewer.tsx
 #: ../shell/src/files-panel.tsx
+#: ../shell/src/share-body.tsx
 #: ../views/src/file-input.tsx
 msgid "Save a copy"
 msgstr "Zapisz kopię"
@@ -5392,6 +5448,11 @@ msgstr "Zapisz klip"
 msgid "Save them as a file instead"
 msgstr "Zapisz je jako plik"
 
+#. Share dialog: Save a copy worked, one file
+#: ../shell/src/share-body.tsx
+msgid "Saved"
+msgstr "Zapisano"
+
 #: ../shell/src/share-sheet.tsx
 msgid "Saved {file}."
 msgstr "Zapisano {file}."
@@ -5399,6 +5460,11 @@ msgstr "Zapisano {file}."
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "Zapisano {packed}. Wyślij go komuś, a doda go przez „Dodaj aplikację”."
+
+#. Share dialog: Save a copy worked, several files
+#: ../shell/src/share-body.tsx
+msgid "Saved the files"
+msgstr "Zapisano pliki"
 
 #: ../shell/src/move-banner.tsx
 msgid "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
@@ -5579,7 +5645,7 @@ msgid "Share anyway"
 msgstr "Udostępnij mimo to"
 
 #: ../shell/src/dialog.tsx
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Share link"
 msgstr "Udostępnij link"
 
@@ -5588,7 +5654,7 @@ msgid "Share text to Potyro from another app and it will wait here for you to pi
 msgstr "Udostępnij tekst do Potyro z innej aplikacji, a poczeka tutaj, aż wybierzesz, gdzie ma trafić."
 
 #. Opens the device's own share sheet
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Share…"
 msgstr "Udostępnij…"
 
@@ -6183,7 +6249,7 @@ msgid "The link could not be fetched from here"
 msgstr "Nie udało się pobrać linku stąd"
 
 #. Share dialog: making the link to an app's page failed
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "The link could not be made. The words can still be sent."
 msgstr "Nie udało się utworzyć linku. Tekst nadal można wysłać."
 
@@ -6615,9 +6681,7 @@ msgid "This Potyro already knew you as someone else, and apps here are shared un
 msgstr "To Potyro znało cię już jako kogoś innego, a aplikacje są tu udostępnione pod tym imieniem, więc tak zostało. Aby być osobą, którą byłeś na {site}, wpisz tamte słowa w panelu Ty."
 
 #: ../shell/src/data-table.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 msgid "this record"
 msgstr "ten wpis"
 
@@ -7068,9 +7132,11 @@ msgstr "Jak mają cię widzieć osoby, z którymi udostępniasz?"
 msgid "What to add"
 msgstr "Co dodać"
 
+#. Share dialog: the files an app hands over
 #. Share dialog: the words an app hands over, read-only
-#: ../shell/src/dialog.tsx
 #: ../shell/src/platform-request-card.tsx
+#: ../shell/src/share-body.tsx
+#: ../shell/src/share-body.tsx
 msgid "What will be sent"
 msgstr "Co zostanie wysłane"
 

@@ -19,18 +19,18 @@ test("a shared plan is offered to the app it fits, and opens that app's Ask fill
   await expect(page.getByRole("heading", { name: "Bring this into…" })).toBeVisible();
   await expect(page.locator(".k-share-preview")).toContainText("Bench Press 4×6–8");
   const first = page.locator(".k-share-app").first();
-  await expect(first).toContainText("PPL Log");
+  await expect(first).toContainText("Workout");
   await expect(first).toContainText("Best fit");
 
   await first.click();
-  const dialog = page.getByRole("dialog", { name: /^Ask PPL Log/ });
+  const dialog = page.getByRole("dialog", { name: /^Ask Workout/ });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("textbox", { name: "What another AI made" })).toHaveValue(PLAN);
   // Handed over once: reopening the app does not bring it back.
   await dialog.getByRole("button", { name: "Close" }).click();
   await page.reload();
-  await expect(page.locator("h1").first()).toHaveText("PPL Log");
-  await expect(page.getByRole("dialog", { name: /^Ask PPL Log/ })).toHaveCount(0);
+  await expect(page.locator("h1").first()).toHaveText("Workout");
+  await expect(page.getByRole("dialog", { name: /^Ask Workout/ })).toHaveCount(0);
 });
 
 test("“Don’t add it” drops the share", async ({ page }) => {

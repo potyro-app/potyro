@@ -30,8 +30,8 @@ test("plants reads in Polish, with a Polish plural and a Polish relative date", 
   await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText("Do podlania teraz");
   // ICU plural from ctx.t: "1 roślina", "2 rośliny", "5 roślin" — never "2 roślin" or "plants".
   await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText(/nic do podlania|\d+ roślin(a|y)? do podlania/);
-  // ctx.format.relative inside ctx.t: "termin: 23 dni temu".
-  await expect(page.getByRole("region", { name: "Zaległe" })).toContainText(/termin: .*(temu|dzisiaj|wczoraj)/);
+  // ctx.format.relative inside ctx.t: "podlana 30 dni temu · co 7 dni".
+  await expect(page.getByRole("region", { name: "Spragnione" })).toContainText(/podlana .*(temu|dzisiaj|wczoraj)/);
   await expect(page.getByRole("button", { name: "Podlej" }).first()).toBeVisible();
   await expect(tab(page, "Harmonogram")).toBeVisible();
 });
@@ -48,20 +48,23 @@ test("places reads in Polish", async ({ page }) => {
 
 test("recipes reads in Polish, its custom cook-along view too", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  // "393 kcal · łatwy": a computed difficulty, put into Polish words by a function.
-  await expect(page.locator(".k-list-row").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
-  await expect(page.getByRole("button", { name: "Oznacz jako ugotowane" }).first()).toBeVisible();
-  // The recipe's name, not the middle of its row: the Polish row action is long enough to sit there.
-  await page.locator(".k-list-row", { hasText: "Fluffy Pancakes" }).first().getByText("Fluffy Pancakes").click();
+  // "505 kcal · łatwy": a computed difficulty, put into Polish words by a function.
+  await expect(page.locator(".k-card").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
+  // The page's one big button, in the app's words.
+  await expect(page.getByRole("button", { name: /Dodaj przepis/ }).first()).toBeVisible();
+  await page.locator(".k-card", { hasText: "Fluffy Pancakes" }).first().click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-  await page.getByRole("button", { name: "Gotuj", exact: true }).first().click();
+  await page.getByRole("button", { name: /Zacznij gotować/ }).first().click();
   await expect(page.locator("#cook-heading")).toHaveText("Gotujemy: Fluffy Pancakes", { timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Zakończ" })).toBeVisible();
+  // The cook view's own words, from ctx.t inside a custom view.
+  await expect(page.getByRole("button", { name: "Następny krok" })).toBeVisible();
+  await expect(page.getByText(/Krok 1 z \d+/).first()).toBeVisible();
 });
 
 test("a recipe's computed values are headed in Polish, not by their keys (#310)", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  await page.locator(".k-list-row", { hasText: "Fluffy Pancakes" }).first().getByText("Fluffy Pancakes").click();
+  // Chicken Caesar misses ingredients, so every computed in the group has something to show.
+  await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
   const detail = page.locator("article.k-detail");
   await expect(detail).toBeVisible();
   // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
@@ -77,21 +80,22 @@ test("a recipe's computed values are headed in Polish, not by their keys (#310)"
 
 test("a recipe's diet badge reads in Polish, not as its stored value", async ({ page }) => {
   await open(page, "recipes", "Przepisy");
-  await tab(page, "Roślinne").click();
-  const badges = page.locator(".k-list-row .k-badge");
+  // The cookbook's cards wear the diet badge.
+  const badges = page.locator(".k-card .k-badge");
   await expect(badges.first()).toBeVisible({ timeout: 30_000 });
-  // `diet` is a computed returning "vegan" / "vegetarian"; its `labels` say them in Polish.
-  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański)$/);
+  // `diet` is a computed returning "vegan" / "vegetarian" / "animal-based"; its `labels` say them in Polish.
+  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański|odzwierzęcy)$/);
 });
 
 test("an exercise's rolling best reads as kg × reps, not as an object", async ({ page }) => {
-  await open(page, "workout", "Dziennik PPL");
+  await open(page, "workout", "Trening");
   await tab(page, "Program").click();
   await page.locator(".k-list-row", { hasText: "Squat" }).first().getByText("Squat", { exact: true }).click();
   const detail = page.locator("article.k-detail");
   await expect(detail).toBeVisible();
-  // The seed's best squat set is 110 kg × 5; a computed returning an object read "…" before.
-  await expect(detail.locator("dd", { hasText: "110 kg × 5" })).toBeVisible({ timeout: 30_000 });
+  // The best squat set of the seed's last five legs days is 100 kg × 8; a computed returning an
+  // object read "…" before.
+  await expect(detail.locator("dd", { hasText: "100 kg × 8" })).toBeVisible({ timeout: 30_000 });
   await expect(detail.locator("dd", { hasText: /^…$/ })).toHaveCount(0);
 });
 
@@ -103,11 +107,11 @@ test("split reads in Polish", async ({ page }) => {
 });
 
 test("workout reads in Polish, its live training screen too", async ({ page }) => {
-  await open(page, "workout", "Dziennik PPL");
+  await open(page, "workout", "Trening");
   await expect(page.getByRole("button", { name: /Nowe ćwiczenie/ }).first()).toBeVisible();
   await tab(page, "Trenuj").click();
-  await expect(page.locator(".wk-start-title")).toHaveText("Czas na trening?", { timeout: 30_000 });
-  // The days are options stored as "push"; the buttons say them in Polish.
-  await expect(page.locator(".wk-seg-btn")).toHaveText(["pchanie", "ciągnięcie", "nogi"]);
-  await expect(page.locator(".wk-start-btn")).toHaveText("Zacznij trening: pchanie");
+  // The app's words in Polish; a routine's name is a record, so it stays as it was typed.
+  await expect(page.locator(".wk-eyebrow").first()).toContainText("Następny", { timeout: 30_000 });
+  await expect(page.locator(".wk-start-btn")).toHaveText("Zacznij: Pull A");
+  await expect(page.locator(".wk-streak")).toContainText("z rzędu");
 });
