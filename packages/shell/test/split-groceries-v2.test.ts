@@ -89,6 +89,23 @@ describe("Split", () => {
     expect(await balancesOf(runtime)).toEqual([]);
   });
 
+  it("a balance row's Settle goes straight to the payment when there is one transfer to make", async () => {
+    let sheets = 0;
+    const ui = quietUi({ sheet: async () => ((sheets += 1), null), form: async (o) => o.initial ?? null });
+    const twoOfUs: Space = { ...threeOfUs, members: threeOfUs.members.slice(0, 2) };
+    const { runtime } = await open(split as unknown as AppDefinition, "split", { me: ANA, space: twoOfUs, ui });
+    const group = await runtime.ctx.create("group", { name: "Taxi" });
+    await runtime.setScope("group", group.id);
+    await runtime.ctx.create("expense", { description: "Taxi", amount: 2000, paidBy: ANA.id, split: "equally", between: [ANA.id, BO.id], group: group.id });
+    const view = runtime.definition.pages.find((p) => p.id === "group")!.layout!.items[0]!.view as unknown as { rows: (r: unknown[], c: unknown) => Promise<{ label: string; action?: { key: string; id: string } }[]> };
+    const row = (await view.rows(await runtime.ctx.query("expense"), runtime.ctx)).find((r) => r.label === "Bo → You")!;
+    expect(row.action).toMatchObject({ key: "settle", id: group.id });
+    await runtime.runAction("group", row.action!.key, row.action!.id);
+    expect(sheets).toBe(0);
+    expect(await runtime.ctx.query("payment")).toMatchObject([{ amount: 1000 }]);
+    expect(await balancesOf(runtime)).toEqual([]);
+  });
+
   it("first run: a Lisbon weekend with an itemized dinner, and the flat; alone, nobody owes anybody", async () => {
     const { runtime } = await open(split as unknown as AppDefinition, "split", { seed: (s) => seedIfEmpty(s, "split", "local", async () => undefined) });
     const groups = await runtime.ctx.query("group");
@@ -149,30 +166,33 @@ describe("Groceries", () => {
     expect(items.filter((i) => i.onList !== false && i.bought)).toEqual([]);
   });
 
-  it("Usuals: one tap puts a remembered thing back on the list, at the end of its aisle", async () => {
+  it("Usuals: tiles of what you buy, most usual first; a ticked tile is on the list", async () => {
     const { runtime } = await open(groceries as unknown as AppDefinition, "groceries", { seed: seeded });
     const { rows } = await runtime.queryPage("usuals");
-    expect(rows[0]!.name).toBe("Coffee beans"); // most usual first
+    expect(rows[0]!.name).toBe("Milk"); // 11 times, last week
+    expect(rows.find((r) => r.name === "Milk")!.onList).toBe(true); // already on the list: a ticked tile
     expect(rows.find((r) => r.name === "Toilet paper")!.emoji).toBe("🧻");
     expect(rows.find((r) => r.name === "Cheddar")!.emoji).toBe("🧀");
     expect(rows.find((r) => r.name === "Peanut butter")!.emoji).toBe("🥜");
-    await runtime.runAction("item", "again", rows[0]!.id);
-    const back = (await runtime.ctx.get("item", rows[0]!.id))!;
+    expect(rows.some((r) => r.name === "Basil")).toBe(false); // never bought: not a usual yet
+    // From an item's own page, "Add" puts it back at the end of its aisle.
+    const coffee = rows.find((r) => r.name === "Coffee beans")!;
+    await runtime.runAction("item", "again", coffee.id);
+    const back = (await runtime.ctx.get("item", coffee.id))!;
     expect(back).toMatchObject({ onList: true, bought: false });
     const pantry = (await runtime.ctx.query("item")).filter((i) => i.onList !== false && (i.aisle as { id?: string })?.id === (back.aisle as { id?: string }).id);
     expect(Math.max(...pantry.map((i) => Number(i.position)))).toBe(back.position);
   });
 
-  it("puts a new name in its aisle: last time's, else the dictionary's, matched to YOUR aisle names", async () => {
+  it("quick add puts a new name in its aisle: the dictionary's, matched to YOUR aisle names", async () => {
     const { runtime } = await open(groceries as unknown as AppDefinition, "groceries", { seed: seeded });
     const aisles = await runtime.ctx.query("aisle");
     const of = (name: string) => aisles.find((a) => a.name === name)!.id;
-    const kiwi = await runtime.ctx.create("item", { name: "Croissants" }); // remembered: Bakery
-    const leite = await runtime.ctx.create("item", { name: "Leite" }); // Portuguese, never bought: Dairy
-    await runtime.runAction("item", "file", kiwi.id);
-    await runtime.runAction("item", "file", leite.id);
-    expect(((await runtime.ctx.get("item", kiwi.id))!.aisle as { id: string }).id).toBe(of("Bakery"));
-    expect(((await runtime.ctx.get("item", leite.id))!.aisle as { id: string }).id).toBe(of("Dairy"));
+    const defaults = (runtime.definition.pages.find((p) => p.id === "shopping")!.view as unknown as { quickAdd: { defaults: (t: string, c: unknown) => Promise<{ aisle?: string }> } }).quickAdd.defaults;
+    expect((await defaults("Leite", runtime.ctx)).aisle).toBe(of("Dairy")); // Portuguese, never bought
+    expect((await defaults("Brötchen", runtime.ctx)).aisle).toBe(of("Bakery"));
+    expect((await defaults("Waschmittel", runtime.ctx)).aisle).toBe(of("Household"));
+    expect(await defaults("Something odd", runtime.ctx)).toEqual({}); // the list asks with one tap instead
   });
 
   it("migrates 2.x records: everything already there stays on the list", async () => {

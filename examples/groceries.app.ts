@@ -174,32 +174,6 @@ async function doneShopping(ctx: Ctx): Promise<void> {
   );
 }
 
-/** The usuals that are not on the list, most usual first: one sheet, tick several, done. */
-async function addUsuals(ctx: Ctx): Promise<void> {
-  const items = await ctx.query("item");
-  const now = ctx.now();
-  const usual = items
-    .filter((i) => !onList(i) && (Number(i.timesBought) || 0) > 0 && !items.some((o) => onList(o) && norm(o.name) === norm(i.name)))
-    .sort((a, b) => usualness(b, now) - usualness(a, now))
-    .slice(0, 16);
-  if (!usual.length) {
-    ctx.ui.toast(
-      ctx.t({
-        en: "Nothing remembered yet: after Done shopping, what you bought waits here.",
-        "pt-BR": "Nada guardado ainda: depois de Compras feitas, o que você comprou fica aqui.",
-        de: "Noch nichts gemerkt: Nach Fertig eingekauft wartet hier, was du gekauft hast.",
-        es: "Nada recordado aún: tras Compra hecha, lo que compraste te espera aquí.",
-        pl: "Nic jeszcze nie zapamiętano: po Gotowe tu czeka to, co kupiłeś.",
-        it: "Ancora niente: dopo Spesa fatta, quello che hai comprato aspetta qui.",
-      }),
-    );
-    return;
-  }
-  const chosen = await ctx.ui.pick(usual, { label: (i) => `${emojiOf(i.name)} ${String(i.name ?? "")}`, multi: true });
-  const picked = Array.isArray(chosen) ? chosen : chosen ? [chosen] : [];
-  for (const item of picked) await putOnList(ctx, item, items);
-}
-
 /** Bring the household in: the shell mints the link (an app could otherwise hand its list away silently). */
 async function shareList(ctx: Ctx): Promise<void> {
   const link = ctx.space?.invite ? await ctx.space.invite().catch(() => "") : "";
@@ -352,8 +326,8 @@ export default defineApp({
       ],
       computed: {
         emoji: (i) => emojiOf(i.name),
-        /** "🥛 · 2 × 1 l · Ana": the quieter line under a row. */
-        line: (i, ctx) => [emojiOf(i.name), String(i.quantity ?? ""), addedBy(i, ctx), i.for ? `→ ${String((i.for as { name?: string }).name ?? "")}` : ""].filter(Boolean).join(" · "),
+        /** "2 × 1 l · Ana": the quieter line under a row. */
+        line: (i, ctx) => [String(i.quantity ?? ""), addedBy(i, ctx), i.for ? `→ ${String((i.for as { name?: string }).name ?? "")}` : ""].filter(Boolean).join(" · "),
         memory: {
           label: { en: "Bought", "pt-BR": "Comprado", de: "Gekauft", es: "Comprado", pl: "Kupione", it: "Comprato" },
           value: (i, ctx) => {
@@ -390,15 +364,6 @@ export default defineApp({
             ctx.ui.toast(ctx.t({ en: "{name} is on the list", "pt-BR": "{name} está na lista", de: "{name} steht auf der Liste", es: "{name} está en la lista", pl: "{name} jest na liście", it: "{name} è in lista" }, { name: `${emojiOf(item.name)} ${String(item.name ?? "")}` }));
           },
         },
-        // A new name has no aisle: put it where it went last time, or where the dictionary says.
-        file: {
-          label: { en: "Put in its aisle", "pt-BR": "Pôr na seção", de: "In die Abteilung", es: "Poner en su sección", pl: "Przydziel dział", it: "Metti nel reparto" },
-          icon: "🧭",
-          run: async (item, ctx) => {
-            const aisle = aisleFor(item.name, await ctx.query("item"), await ctx.query("aisle"));
-            if (aisle) await ctx.patch("item", item.id, { aisle });
-          },
-        },
       },
     },
   },
@@ -431,7 +396,6 @@ export default defineApp({
       primaryAction: 0,
       actions: [
         { label: { en: "Done shopping", "pt-BR": "Compras feitas", de: "Fertig eingekauft", es: "Compra hecha", pl: "Gotowe", it: "Spesa fatta" }, icon: "✓", run: doneShopping },
-        { label: { en: "Usuals", "pt-BR": "Habituais", de: "Üblich", es: "Habituales", pl: "Stałe", it: "Soliti" }, icon: "⭐", run: addUsuals },
         { label: { en: "Share", "pt-BR": "Compartilhar", de: "Teilen", es: "Compartir", pl: "Udostępnij", it: "Condividi" }, icon: "👋", run: shareList },
       ],
       view: {
@@ -439,13 +403,22 @@ export default defineApp({
         entity: "item",
         done: "bought",
         text: "name",
+        icon: "emoji",
         detail: "line",
         filter: (i) => i.onList !== false,
         group: "aisle",
         groupOrder: "order",
         reorder: "position",
         editText: true,
-        quickAdd: true,
+        // Type a name: earlier ones are offered as you go, and it lands in the aisle it was in last
+        // time — or, the first time, where the dictionary says it lives among YOUR aisles.
+        quickAdd: {
+          remember: ["aisle"],
+          defaults: async (text, ctx) => {
+            const aisle = aisleFor(text, [], await ctx.query("aisle"));
+            return aisle ? { aisle } : {};
+          },
+        },
         emptyText: {
           en: "Nothing on the list. Add the first thing below, or bring back your usuals.",
           "pt-BR": "A lista está vazia. Adicione a primeira coisa aqui embaixo ou traga seus habituais.",
@@ -463,25 +436,25 @@ export default defineApp({
       title: { en: "Usuals", "pt-BR": "Habituais", de: "Üblich", es: "Habituales", pl: "Stałe", it: "Soliti" },
       icon: "⭐",
       description: {
-        en: "What you buy, most often first. Tap Add and it is back on the list, in its aisle.",
-        "pt-BR": "O que você compra, do mais frequente. Toque em Adicionar e volta à lista, na seção certa.",
-        de: "Was du kaufst, das Häufigste zuerst. Tippe auf Hinzufügen, und es steht wieder auf der Liste.",
-        es: "Lo que compras, lo más frecuente primero. Toca Añadir y vuelve a la lista, en su sección.",
-        pl: "To, co kupujesz, najczęstsze najpierw. Stuknij Dodaj, a wróci na listę, do swojego działu.",
-        it: "Quello che compri, il più frequente prima. Tocca Aggiungi e torna in lista, nel suo reparto.",
+        en: "What you buy, most often first. Tap one and it is on the list, in its aisle.",
+        "pt-BR": "O que você compra, do mais frequente. Toque num e ele vai para a lista, na seção certa.",
+        de: "Was du kaufst, das Häufigste zuerst. Tippe darauf, und es steht auf der Liste.",
+        es: "Lo que compras, lo más frecuente primero. Toca uno y va a la lista, en su sección.",
+        pl: "To, co kupujesz, najczęstsze najpierw. Stuknij, a trafi na listę, do swojego działu.",
+        it: "Quello che compri, il più frequente prima. Toccalo ed è in lista, nel suo reparto.",
       },
+      // Tiles you tap (Bring!'s grid): a tile that is ticked is on the list. Tap one and it is on the
+      // list, in the aisle it was in; tap it again and it is off.
       view: {
-        type: "list",
+        type: "checklist",
         entity: "item",
-        filter: (i) => i.onList === false,
+        layout: "tiles",
+        done: "onList",
+        text: "name",
+        icon: "emoji",
+        detail: "memory",
+        filter: (i) => (Number(i.timesBought) || 0) > 0,
         sort: (a, b, ctx) => usualness(b, ctx.now()) - usualness(a, ctx.now()) || String(a.name).localeCompare(String(b.name)),
-        display: {
-          primary: (i) => `${emojiOf(i.name)}  ${String(i.name ?? "")}`,
-          secondary: "memory",
-          lead: "none",
-        },
-        rowActions: ["again"],
-        onOpen: { page: "item", param: { itemId: "id" } },
         emptyText: {
           en: "Nothing remembered yet. After Done shopping, what you bought waits here.",
           "pt-BR": "Nada guardado ainda. Depois de Compras feitas, o que você comprou fica aqui.",
@@ -501,7 +474,7 @@ export default defineApp({
         entity: "item",
         param: "itemId",
         cover: "band",
-        actions: ["again", "file"],
+        actions: ["again"],
         sections: [
           { title: { en: "Item", "pt-BR": "Item", de: "Artikel", es: "Artículo", pl: "Produkt", it: "Articolo" }, fields: ["quantity", "aisle", "for", "bought"] },
           { title: { en: "Memory", "pt-BR": "Histórico", de: "Erinnerung", es: "Historial", pl: "Pamięć", it: "Memoria" }, fields: ["memory"] },
