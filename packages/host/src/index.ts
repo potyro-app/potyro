@@ -9,6 +9,9 @@ export type {
   NavBridge,
   MakeCtxBase,
   ShownUiItem,
+  SealedView,
+  SealedViewEvents,
+  SealedViewStop,
   ShownShare,
 } from "./types.js";
 export {

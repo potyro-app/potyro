@@ -117,6 +117,59 @@ export const OPS = [
 ] as const;
 export type Op = (typeof OPS)[number];
 
+/**
+ * What a sealed custom view may ask for beyond `ctx` (phase 3, #267): the `Runtime` members a view
+ * gets in `ViewProps.runtime` that are not ctx methods, and its `navigate` prop. Only a view's port
+ * accepts them — the logic's does not. Each is one call on the runtime (or the prop) the shell handed
+ * the view, the same object a trusted view holds, so, like `OPS`, nothing is re-implemented here.
+ */
+export const VIEW_OPS = ["runtime.watchQuery", "runtime.watchRecord", "runtime.unwatch", "runtime.runAction", "runtime.reconcileReminders", "view.navigate"] as const;
+export type ViewOp = (typeof VIEW_OPS)[number];
+
+// ---- the view frame (phase 3, #267): one sandboxed frame per mounted custom view ----
+
+/** What the host hands a view frame, once, with its port. */
+export interface ViewInit {
+  t: "init";
+  /** The view bundle: the app's source with React resolved to the frame's own (shell `bundleViewSource`). */
+  code: string;
+  /** `page` or `page#index` (a layout item). */
+  pageRef: string;
+  /** The view's ctx: the plain-data half, as for logic. Its id names the view's ctx and nothing else. */
+  base: CtxBase;
+  /** The app's definition in the language it is shown in, functions left out (JSON). */
+  definition: string;
+  language: { current?: string; default?: string; available: string[] };
+  entity: string;
+  param: Record<string, string>;
+  /** CSS custom properties and a few computed values of where the view sits: the theme. */
+  tokens: Record<string, string>;
+}
+
+// ---- host → view frame ----
+export type HostToView =
+  | ViewInit
+  | { t: "ping"; n: number }
+  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }
+  /** A watched query or record changed (`runtime.watchQuery` / `runtime.watchRecord`). */
+  | { t: "watch"; wid: number; state: unknown }
+  | { t: "tokens"; tokens: Record<string, string> }
+  | { t: "sock"; ev: RealmSocketEvent }
+  /** The host is about to remove the frame: unmount now, as a courtesy. */
+  | { t: "stop" };
+
+// ---- view frame → host ----
+export type ViewToHost =
+  /** The frame runtime runs and holds its port. */
+  | { t: "up" }
+  /** The view's `mount` (or first render) returned. */
+  | { t: "mounted" }
+  /** The view could not be mounted: its bundle threw, or the page has no custom view. */
+  | { t: "failed"; error: string }
+  | { t: "pong"; n: number }
+  | { t: "op"; id: number; ctxId: number; op: string; args: unknown[] }
+  | { t: "sockack"; sid: number; n: number; bytes: number };
+
 // ---- host → realm (on the app's port) ----
 export type HostToRealm =
   | { t: "load"; code: string }
