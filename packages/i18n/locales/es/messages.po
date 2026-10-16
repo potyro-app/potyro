@@ -28,6 +28,10 @@ msgstr "…pensando"
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
 msgstr "“{0}” no está escrito como un objeto simple, así que sus propiedades no se pueden cambiar aquí"
 
+#: ../shell/src/people-panel.tsx
+msgid "“{appName}” is only on this device. Share it to invite the people below."
+msgstr "“{appName}” solo está en este dispositivo. Compártela para invitar a las personas de abajo."
+
 #. Asked before a shared app first connects to a device on the person's home network (a smart-home hub, lights); {address} is what the person typed, like 192.168.1.20
 #: ../shell/src/app-sockets.ts
 msgid "“{appName}” wants a live connection to {address} on your home network."
@@ -629,6 +633,10 @@ msgstr "{label}: “{name}” podría ser {candidates}; se dejó vacío."
 msgid "{label}: {addAfter}"
 msgstr "{label}: {addAfter}"
 
+#: ../shell/src/timer-dock.tsx
+msgid "{label}: {time} left"
+msgstr "{label}: quedan {time}"
+
 #. A file field's button: the field's name, then what it does
 #: ../views/src/file-input.tsx
 msgid "{label}: {wordAfter}"
@@ -643,6 +651,10 @@ msgstr "{label}: elegir"
 #: ../shell/src/ask-apply.ts
 msgid "{label}: nothing called “{name}”; left empty."
 msgstr "{label}: no hay nada llamado “{name}”; se dejó vacío."
+
+#: ../shell/src/timer-dock.tsx
+msgid "{label}: paused, {time} left"
+msgstr "{label}: en pausa, quedan {time}"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "{letter} — jump to another letter"
@@ -765,6 +777,11 @@ msgstr "{name} ya no está en Inicio. Sigue en Todas las apps."
 #: ../shell/src/launcher-metro.tsx
 msgid "{name} is out of its group."
 msgstr "{name} ya no está en su grupo."
+
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
+msgid "{name} is the same person as"
+msgstr "{name} es la misma persona que"
 
 #: ../shell/src/data-page.tsx
 msgid "{name} records and files"
@@ -1299,6 +1316,10 @@ msgstr "añadir foto"
 msgid "Add photo"
 msgstr "Añadir foto"
 
+#: ../shell/src/guests-panel.tsx
+msgid "Add someone who hasn’t joined"
+msgstr "Añadir a alguien que aún no se ha unido"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Add source"
 msgstr "Añadir fuente"
@@ -1342,6 +1363,14 @@ msgstr "Añadir: {noun}"
 #: ../views/src/pick-list.tsx
 msgid "Add: {noun} “{trimmed}”…"
 msgstr "Añadir: {noun} “{trimmed}”…"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Added {name}"
+msgstr "{name} añadido"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Added by {by}"
+msgstr "Añadido por {by}"
 
 #. Files: a file the person brought in
 #: ../shell/src/files-panel.tsx
@@ -1540,6 +1569,14 @@ msgstr "Apps que van a entrar"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Apps to try, and to make your own"
 msgstr "Apps para probar y hacerlas tuyas"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Are you {name}?"
+msgstr "¿Eres {name}?"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Are you one of these people?"
+msgstr "¿Eres una de estas personas?"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Area on your map · {lat}, {lng} · {km} km"
@@ -1876,6 +1913,7 @@ msgstr "Puede ver"
 #: ../shell/src/App.tsx
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/dialog.tsx
+#: ../shell/src/guests-panel.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/picker.tsx
 #: ../shell/src/studio-preview.tsx
@@ -2660,6 +2698,7 @@ msgid "Don't share"
 msgstr "No compartir"
 
 #. Better-wording form: finish
+#. Button: silence a timer that has rung
 #. Close a list where several can be picked
 #. Closes the model settings
 #. Closes the month grid
@@ -2673,6 +2712,7 @@ msgstr "No compartir"
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/share-body.tsx
 #: ../shell/src/suggest-wording.tsx
+#: ../shell/src/timer-dock.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/pick-list.tsx
 msgid "Done"
@@ -2821,6 +2861,10 @@ msgstr "Todos los que tengan el enlace de la sala ven lo que la app envía allí
 #: ../shell/src/launcher.tsx
 msgid "Everything else"
 msgstr "Todo lo demás"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Everything in “{appName}” that names {name} will name you instead."
+msgstr "Todo lo de “{appName}” que nombra a {name} te nombrará a ti."
 
 #: ../shell/src/move-banner.tsx
 msgid "Everything is still here too. Changed something here since? Bring them over again: what is already there is never doubled."
@@ -3345,6 +3389,10 @@ msgstr "No hice la app: lo que pediste necesita algo que Potyro aún no puede ha
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
 msgstr "La escribí yo. Ejecutarla como mía."
+
+#: ../shell/src/guests-panel.tsx
+msgid "I’m not on the list"
+msgstr "No estoy en la lista"
 
 #. Tile editor: the emoji or letters shown on the tile
 #: ../shell/src/tile-editor.tsx
@@ -4374,6 +4422,12 @@ msgstr "No encontrado."
 msgid "Not in its sources:"
 msgstr "No está en sus fuentes:"
 
+#. People panel: heading over the placeholder people
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
+msgid "Not joined yet"
+msgstr "Aún no se han unido"
+
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/add-app-dialog.tsx
 msgid "not known until it runs"
@@ -4854,6 +4908,11 @@ msgstr "Pega tu clave"
 msgid "Pasted"
 msgstr "Pegado"
 
+#. Button: stop a timer counting down for now
+#: ../shell/src/timer-dock.tsx
+msgid "Pause"
+msgstr "Pausar"
+
 #: ../shell/src/App.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
@@ -4964,7 +5023,9 @@ msgstr "las salas de Potyro (jugar en vivo con quien tenga el enlace)"
 msgid "precise timing"
 msgstr "medición precisa del tiempo"
 
+#. A timer started from the Studio's preview of an app
 #. Studio bar: open the app being made
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Preview"
 msgstr "Vista previa"
@@ -5099,8 +5160,12 @@ msgstr "Remezcla de {name}"
 msgid "Remix of {name} by {by}"
 msgstr "Remezcla de {name} de {by}"
 
+#. Button: remove a guest (someone who has not joined) from a shared app
 #. Button: remove a person from a shared app
 #. Button: remove a person from a shared app
+#. Menu: remove a guest from a shared app
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
 #: ../views/src/file-input.tsx
@@ -5166,7 +5231,9 @@ msgstr "Quitar: {noun}"
 msgid "Removed {name}"
 msgstr "Se quitó a {name}"
 
+#. Menu: rename a guest
 #: ../shell/src/files-panel.tsx
+#: ../shell/src/guests-panel.tsx
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -5180,6 +5247,7 @@ msgid "Rename {heading}"
 msgstr "Renombrar {heading}"
 
 #: ../shell/src/files-panel.tsx
+#: ../shell/src/guests-panel.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 msgid "Rename {name}"
@@ -5262,6 +5330,11 @@ msgstr "restaurada"
 #: ../shell/src/history.tsx
 msgid "Restoring…"
 msgstr "Restaurando…"
+
+#. Button: let a paused timer count down again
+#: ../shell/src/timer-dock.tsx
+msgid "Resume"
+msgstr "Reanudar"
 
 #. Trust menu hint: look at how an app that runs as yours runs
 #: ../shell/src/App.tsx
@@ -5353,6 +5426,15 @@ msgstr "Sá"
 #: ../views/src/stats.tsx
 msgid "same as {label}"
 msgstr "igual que {label}"
+
+#. Button: confirm that two people are the same
+#: ../shell/src/guests-panel.tsx
+msgid "Same person"
+msgstr "Misma persona"
+
+#: ../shell/src/guests-panel.tsx
+msgid "Same person as…"
+msgstr "Misma persona que…"
 
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
@@ -5711,9 +5793,17 @@ msgstr "algunas páginas no están escritas como objetos simples con un id"
 msgid "Some things could not come in. Try again from {site}; what is already here is not doubled."
 msgstr "Algunas cosas no pudieron entrar. Vuelve a intentarlo desde {site}; lo que ya está aquí no se duplica."
 
+#: ../shell/src/guests-panel.tsx
+msgid "Someone in “{appName}” named people before they joined. Pick yourself, and everything that names you there is yours."
+msgstr "Alguien en “{appName}” apuntó a personas antes de que se unieran. Elígete y todo lo que te nombra allí será tuyo."
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
 msgstr "Alguien te la envió, o la hiciste en otro sitio."
+
+#: ../shell/src/people-panel.tsx
+msgid "someone who left"
+msgstr "alguien que se fue"
 
 #. Activity feed: a value that cannot be shown in words
 #: ../shell/src/activity-panel.tsx
@@ -5820,6 +5910,11 @@ msgstr "¿Dejar de poner apps nuevas en el relay?"
 #: ../shell/src/App.tsx
 msgid "Stop recording"
 msgstr "Detener grabación"
+
+#. Button: cancel a running countdown
+#: ../shell/src/timer-dock.tsx
+msgid "Stop timer"
+msgstr "Detener temporizador"
 
 #. Ask: the person stopped the request
 #. Fix agent outcome: the person stopped it
@@ -5953,6 +6048,10 @@ msgstr "tabla"
 msgid "Table"
 msgstr "Tabla"
 
+#: ../shell/src/guests-panel.tsx
+msgid "Take {name} off the list?"
+msgstr "¿Quitar a {name} de la lista?"
+
 #: ../views/src/media-input.tsx
 msgid "Take a file"
 msgstr "Capturar un archivo"
@@ -6052,6 +6151,15 @@ msgstr "No se pudo cargar ese idioma. Conéctate una vez e inténtalo de nuevo."
 #: ../shell/src/chat-panel.tsx
 msgid "That message could not be sent."
 msgstr "No se pudo enviar ese mensaje."
+
+#. Beside a name: choose to be this person
+#. Button: say you are the placeholder person someone named before you joined
+#. Menu: say you are the placeholder person someone named before you joined
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
+msgid "That’s me"
+msgstr "Soy yo"
 
 #: ../shell/src/App.tsx
 msgid "the \"{shownTitle}\" page"
@@ -6296,6 +6404,11 @@ msgstr "La búsqueda web no estaba disponible, así que esto sale de la memoria 
 #: ../shell/src/add-app-dialog.tsx
 msgid "The whole app, as text"
 msgstr "La app entera, como texto"
+
+#. Prompt: the name of someone who has not joined a shared app yet
+#: ../shell/src/guests-panel.tsx
+msgid "Their name"
+msgstr "Su nombre"
 
 #: ../shell/src/app-folder.ts
 msgid "There is already a file called {path}"
@@ -6685,6 +6798,16 @@ msgstr "Mosaicos"
 msgid "Time"
 msgstr "Hora"
 
+#. A countdown timer has reached zero
+#: ../shell/src/timer-dock.tsx
+msgid "Time’s up"
+msgstr "Se acabó el tiempo"
+
+#: ../shell/src/timer-hub.ts
+#: ../shell/src/timer-hub.ts
+msgid "Time’s up · {appName}"
+msgstr "Se acabó el tiempo · {appName}"
+
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "timeline"
@@ -6987,6 +7110,14 @@ msgstr "referencias débiles"
 msgid "went back to version {seq}"
 msgstr "volvió a la versión {seq}"
 
+#: ../shell/src/guests-panel.tsx
+msgid "What about {name}?"
+msgstr "¿Qué hacer con {name}?"
+
+#: ../shell/src/guests-panel.tsx
+msgid "What already names {name} keeps the name. Nobody can say they are {name} any more."
+msgstr "Lo que ya nombra a {name} conserva el nombre. Nadie podrá decir que es {name}."
+
 #: ../shell/src/ask-material.tsx
 msgid "What another AI made"
 msgstr "Lo que hizo otra IA"
@@ -7198,6 +7329,7 @@ msgstr "Ayer"
 
 #. Ask review: a value came from what the person typed or pasted
 #: ../shell/src/ask-review-parts.tsx
+#: ../shell/src/people-panel.tsx
 msgid "you"
 msgstr "tú"
 
@@ -7211,6 +7343,7 @@ msgstr "tú"
 #: ../shell/src/demo.tsx
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/people-panel.tsx
 msgid "You"
 msgstr "Tú"
 
@@ -7268,6 +7401,11 @@ msgstr "Pusiste {field} en {to} en {record}"
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."
 msgstr "Lo detuviste antes de que terminara."
+
+#: ../shell/src/guests-panel.tsx
+#: ../shell/src/guests-panel.tsx
+msgid "You’re {name} in “{appName}” now"
+msgstr "Ahora eres {name} en “{appName}”"
 
 #: ../shell/src/studio-voice.ts
 msgid "You’re offline, and voice needs the internet here. Type what you want instead."

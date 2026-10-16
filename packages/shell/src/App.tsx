@@ -49,6 +49,7 @@ import { ViewErrorBoundary } from "./view-error-boundary.js";
 import { chooseScope } from "./scope.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
+import { ClaimPrompt } from "./guests-panel.js";
 import { ShareSheet } from "./share-sheet.js";
 import { takeStudioHandoff } from "./studio-handoff.js";
 import { canRemix, RemixDialog } from "./remix.js";
@@ -689,6 +690,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // on screen (inline-edit.tsx). Only for your own saved apps (editable source). No model: anything
   // bigger goes to the Studio.
   const canEdit = Boolean(generator && currentKind === "user" && appId);
+  // Whether the app names people at all (a `member` field): then People is worth a place in the menu
+  // before it is shared, to set up its guests.
+  const namesPeople = Object.values(runtime.definition.entities).some((e) => Object.values(e.fields).some((f) => f.type === "member"));
   const [editMode, setEditMode] = useState(() => canEdit && globalThis.sessionStorage?.getItem(KEEP_EDITING) === "1");
   useEffect(() => {
     globalThis.sessionStorage?.removeItem(KEEP_EDITING);
@@ -943,7 +947,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       ? [{ key: "changes", label: t({ message: "Changes", comment: "What other people changed in a shared app" }), icon: "✻", hint: activity.length ? plural(activity.length, { one: "# new", other: "# new" }) : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
-    ...(sync && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    // Solo too, when the app names people: its guests are set up before it is shared (docs/04 §Guests).
+    ...((sync || namesPeople) && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
     // Someone else's app, sealed: the one obvious way to your own copy of it.
     ...(generator && currentKind === "user" && appId && provenance === "untrusted" && canRemix(getUserApp(appId) ?? {})
       ? [{ key: "remix", label: t({ message: "Make it mine", comment: "App menu: your own copy of this app, to change in the Studio" }), icon: "✧", hint: t`your own copy to change`, onSelect: () => setRemixOpen(true) }]
@@ -1304,7 +1309,16 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       ) : null}
       {remixOpen && appId && getUserApp(appId) ? <RemixDialog app={getUserApp(appId)!} onClose={() => setRemixOpen(false)} /> : null}
       {peopleOpen && appId ? (
-        <PeoplePanel appId={appId} appName={appLabel} meId={runtime.ctx.me?.id} onClose={() => setPeopleOpen(false)} toast={(m) => runtime.ctx.ui.toast(m)} />
+        <PeoplePanel
+          appId={appId}
+          appName={appLabel}
+          meId={runtime.ctx.me?.id}
+          meName={runtime.ctx.me?.name}
+          sync={Boolean(sync)}
+          guests={runtime.core.guests}
+          onClose={() => setPeopleOpen(false)}
+          toast={(m) => runtime.ctx.ui.toast(m)}
+        />
       ) : null}
       {historyOpen && appId ? (
         <History
@@ -1387,6 +1401,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
       {picker ? <Picker host={picker} /> : null}
       {questions ? <UiSurfaces host={questions} runtime={runtime} /> : null}
+      {/* Joined a shared app whose people were named before they joined: which one are you? */}
+      {sync && appId && runtime.ctx.me ? <ClaimPrompt book={runtime.core.guests} meId={runtime.ctx.me.id} appId={appId} appName={appLabel} toast={(m) => runtime.ctx.ui.toast(m)} /> : null}
       <Toasts toaster={toaster} />
     </div>
   );

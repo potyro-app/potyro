@@ -25,11 +25,23 @@ describe("patch-android", () => {
     expect(withPluginRegistered(source)).toEqual({ source, added: false });
   });
 
+  it("registers keep-awake too, and adds it to an activity patched before it existed", () => {
+    const { source } = withPluginRegistered(GENERATED);
+    expect(source.match(/registerPlugin\(KeepAwakePlugin\.class\)/g)).toHaveLength(1);
+    expect(source.indexOf("registerPlugin(KeepAwakePlugin.class);")).toBeLessThan(source.indexOf("super.onCreate(savedInstanceState);"));
+    const older = withPluginRegistered(GENERATED, ["LocalSocketPlugin", "SpeechPlugin"]).source;
+    const upgraded = withPluginRegistered(older);
+    expect(upgraded.added).toBe(true);
+    expect(upgraded.source.match(/registerPlugin\(LocalSocketPlugin\.class\)/g)).toHaveLength(1);
+    expect(upgraded.source.match(/registerPlugin\(KeepAwakePlugin\.class\)/g)).toHaveLength(1);
+    expect(upgraded.source.indexOf("KeepAwakePlugin")).toBeLessThan(upgraded.source.indexOf("super.onCreate(savedInstanceState);"));
+  });
+
   it("adds the voice plugin to an activity an earlier build registered only the socket plugin in", () => {
     const earlier = withPluginRegistered(GENERATED).source.replace(/\n\s*registerPlugin\(SpeechPlugin\.class\);/, "");
     const { source, added } = withPluginRegistered(earlier);
     expect(added).toBe(true);
-    expect(source.match(/registerPlugin\(/g)).toHaveLength(2);
+    expect(source.match(/registerPlugin\(/g)).toHaveLength(3);
   });
 
   it("adds to an onCreate that is already there", () => {

@@ -50,6 +50,27 @@ export {
 export { applyMigrationStep, migrationChain, type EntityRecords } from "./migrate.js";
 export { copyStoreData, type CopyStoreResult } from "./copy-store.js";
 export {
+  PEOPLE_THREAD,
+  GUEST_PREFIX,
+  GUEST_NAME_MAX,
+  EMPTY_PEOPLE,
+  isGuestId,
+  newGuestId,
+  cleanGuestName,
+  foldPeople,
+  finalPerson,
+  openGuests,
+  claimOf,
+  readPeople,
+  writePeople,
+  subscribePeople,
+  copyPeople,
+  type PeopleOp,
+  type PeopleOpInput,
+  type PeopleState,
+  type GuestEntry,
+} from "./people-log.js";
+export {
   packBundle,
   unpackBundle,
   rowsToCsv,

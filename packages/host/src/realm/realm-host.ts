@@ -11,7 +11,8 @@
 // silent heartbeat kills the realm — the frame and its worker — and rejects what was waiting. The
 // next call starts a fresh realm (40–60 ms measured).
 
-import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, Value } from "potyro";
+import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, UiTimer, Value } from "potyro";
+import type { TimerData } from "../timers.js";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
@@ -125,6 +126,8 @@ export class RealmLoadedApp implements LoadedApp {
   private ctxById = new Map<number, Ctx>();
   private ctxSeq = 0;
   private progress = new Map<string, UiProgress>();
+  /** Screens held on by the realm, by its number for each: let go when the realm goes. */
+  private awake = new Map<string, { release(): void }>();
   private questionsOpen = 0;
   private questionSince = 0;
   private questionMs = 0;
@@ -241,6 +244,8 @@ export class RealmLoadedApp implements LoadedApp {
     realm?.kill();
     for (const [, bar] of this.progress) bar.done();
     this.progress.clear();
+    for (const [, held] of this.awake) held.release();
+    this.awake.clear();
   }
 
   dispose(): void {
@@ -450,6 +455,31 @@ export class RealmLoadedApp implements LoadedApp {
         }
         return null;
       }
+      case "ui.keepAwake": {
+        const [hid, what] = [s(0), s(1)];
+        if (what === "hold" && !this.awake.has(hid) && this.awake.size < 32) this.awake.set(hid, ctx.ui.keepAwake());
+        else if (what === "release") {
+          this.awake.get(hid)?.release();
+          this.awake.delete(hid);
+        }
+        return null;
+      }
+      case "ui.timer":
+        return plainTimerOf(await ctx.ui.timer(x(0)));
+      case "ui.timers":
+        return (await ctx.ui.timers()).map(plainTimerOf);
+      case "ui.timer.control": {
+        const verb = s(1);
+        const timer = (await ctx.ui.timers()).find((t) => t.id === s(0));
+        if (timer && (verb === "cancel" || verb === "pause" || verb === "resume")) await timer[verb]();
+        return null;
+      }
+      case "guests.add":
+        return { ...(await ctx.guests.add(s(0))) };
+      case "guests.rename":
+        return ctx.guests.rename(s(0), s(1));
+      case "guests.remove":
+        return ctx.guests.remove(s(0));
       case "navigate":
         return ctx.navigate(s(0), x(1));
       case "views.call": {
@@ -571,6 +601,7 @@ export class RealmLoadedApp implements LoadedApp {
       me: { id: ctx.me.id, name: ctx.me.name },
       // Identity crosses as plain data; `invite` never does (KA-18).
       space: ctx.space ? { id: ctx.space.id, role: ctx.space.role, members: ctx.space.members.map((m) => ({ ...m })) } : undefined,
+      people: ctx.people.map((p) => ({ id: p.id, name: p.name, ...(p.guest ? { guest: true as const } : {}) })),
       scope: { ...ctx.scope },
       locale: ctx.locale,
       formatLocale: ctx.format.locale,
@@ -644,4 +675,9 @@ export class RealmLoadedApp implements LoadedApp {
   customView(): null {
     return null;
   }
+}
+
+/** A timer handle as the data that crosses (its methods do not). */
+function plainTimerOf(t: UiTimer): TimerData {
+  return { id: t.id, label: t.label, seconds: t.seconds, endsAt: t.endsAt ? t.endsAt.toISOString() : null, left: t.left, paused: t.paused };
 }

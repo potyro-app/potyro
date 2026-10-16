@@ -6,7 +6,7 @@ import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isWordsM
 
 import type { AppDefinition, Ctx, Id, Language, Localized, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
 import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
-import { formatLocaleFor } from "@potyro/host";
+import { formatLocaleFor, GuestBook } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
 import type { Store } from "@potyro/store";
 import { asyncSort } from "./async-sort.js";
@@ -93,6 +93,11 @@ export class RuntimeCore {
   private shownIn: Language | undefined;
   private formatLocale: string;
   private readonly languageListeners = new Set<() => void>();
+  /**
+   * The app's guests (docs/04 §Guests): read from the store once, kept for every pass, and a change
+   * from anyone re-renders like a membership change does.
+   */
+  readonly guests: GuestBook;
 
   constructor(deps: RuntimeDeps) {
     this.app = deps.app;
@@ -108,6 +113,8 @@ export class RuntimeCore {
     this.prefs = deps.languages ?? [];
     this.shownIn = pickLanguage(this.prefs, this.app.definition);
     this.formatLocale = formatLocaleFor(this.prefs[0], this.shownIn);
+    this.guests = new GuestBook(this.store, () => ({ me: this.me, space: typeof this.space === "function" ? this.space() : this.space }));
+    this.guests.onChange(() => this.invalidate());
   }
 
   /** Which language the app is shown in, its own, and every one it carries. */
@@ -253,6 +260,7 @@ export class RuntimeCore {
       me: this.me,
       // Resolved per pass, never captured — see `RuntimeDeps.space`.
       space: typeof this.space === "function" ? this.space() : this.space,
+      guests: this.guests,
       scope: this.scope,
       language: this.shownIn,
       formatLocale: this.formatLocale,
@@ -272,6 +280,7 @@ export class RuntimeCore {
   /** The app is being put away (see `PotyroRuntime.close`). */
   close(): void {
     this.closed = true;
+    this.guests.dispose();
   }
 
   /** Remember `work` until it settles. Returns it unchanged, rejection included. */
