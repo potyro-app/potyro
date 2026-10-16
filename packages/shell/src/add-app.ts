@@ -15,7 +15,7 @@
 // be marked "I wrote this, run it as mine" on the card; a link may not, it can be promoted later.
 // The same app already installed: Replace is the default, through the ordinary update path, so
 // History keeps the old version and the data check runs on the next open.
-import { capabilityWords } from "./capability-words.js";
+import { permissionWords } from "./capability-words.js";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Words } from "potyro";
 import { languagePrefs } from "./locale.js";
@@ -24,7 +24,7 @@ import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
 import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
-import { freeAppId, getUserApp, listUserApps, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
+import { freeAppId, getUserApp, listUserApps, removeUserApp, saveUserApp, seedToKeep, setUserAppShipped, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { openStore } from "./open-store.js";
@@ -196,10 +196,7 @@ function shownIn(facts: AppFacts): (w: Words | undefined) => string | undefined 
   return (w) => (w == null ? undefined : word(w, language, app));
 }
 
-const asksOf = (permissions: Record<string, unknown> | undefined): string[] =>
-  Object.entries(permissions ?? {})
-    .filter(([, v]) => v)
-    .map(([k]) => capabilityWords(k));
+const asksOf = (permissions: Record<string, unknown> | undefined): string[] => permissionWords(permissions);
 
 /**
  * The id and name of an app that could not be read at all, from its text: enough for a card that says
@@ -407,6 +404,9 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
       origin: "imported",
+      // The sample records it came with, kept for a demo link of it (docs/24 §3) — never the
+      // person's own: these are the package's, not what they have added since.
+      seed: seedToKeep(pkg.seed),
       // Who made it travels with it; a remix says what it remixed instead (docs/24 §6). An update keeps
       // what the app already said about itself.
       ...(update ? {} : remix ? { remixOf: remix } : pkg.credit ? { credit: pkg.credit } : {}),

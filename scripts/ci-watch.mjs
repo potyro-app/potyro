@@ -10,9 +10,10 @@
 //                                          deploys it when green.
 //
 // Both run in this checkout, which is the watcher's own and is checked out detached at whatever is
-// being judged — never a working copy. A run cut short (the machine slept, another checkout's
-// suite held the test ports) resumes: ci-local records every step per commit. The gate retries the
-// test ports for a while; cron simply picks it up on the next tick.
+// being judged — never a working copy. A run cut short (the machine slept, no port block could be
+// claimed) resumes: ci-local records every step per commit. Each browser shard claims its own block
+// of ports (docs/16 §8), so another checkout's suite no longer holds this one's; the gate still
+// retries for a while if no block is free, and cron simply picks it up on the next tick.
 
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync, readdirSync, writeFileSync } from "node:fs";
@@ -21,7 +22,7 @@ import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const BARE = process.env.POTYRO_BARE_REPO ?? join(homedir(), "appinator.git");
-/** How long a gate waits for test ports another checkout is holding before it gives up. */
+/** How long a gate waits for a free port block (ci-local exits 2 without one) before it gives up. */
 const PORT_WAIT_MINUTES = 90;
 
 const sh = (cmd) => execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();

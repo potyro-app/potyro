@@ -194,7 +194,9 @@ export const RELAY_KEY = "potyro:sync:relay";
  *      require a rebuild.
  *   2. **A build-time default**, `VITE_POTYRO_RELAY`, for a deployment that puts its relay elsewhere.
  *   3. **`ws://localhost:4201` in dev**, because `pnpm dev` starts one alongside the shell. Without
- *      it, turning sync on appeared to do nothing until you knew to set a key by hand.
+ *      it, turning sync on appeared to do nothing until you knew to set a key by hand. A dev server
+ *      the browser suite starts on another port block (e2e/ports.ts) names its own relay in
+ *      `VITE_POTYRO_DEV_RELAY`, read in development only.
  *   4. **Same origin, `/sync`.** A deployment that terminates TLS and proxies that path gets working
  *      sync by deploying, with no build flag at all.
  *
@@ -213,7 +215,7 @@ export function syncRelayUrl(): string | undefined {
   const built = (import.meta.env?.VITE_POTYRO_RELAY as string | undefined)?.trim();
   if (built) return built;
 
-  if (import.meta.env?.DEV) return "ws://localhost:4201";
+  if (import.meta.env?.DEV) return import.meta.env.VITE_POTYRO_DEV_RELAY?.trim() || "ws://localhost:4201";
 
   // The site's own `/sync`: the page's origin on the web, the site the build names in the native app
   // (`VITE_POTYRO_SITE`, site.ts). `file:`, and a native build told no site, have none: local-only.

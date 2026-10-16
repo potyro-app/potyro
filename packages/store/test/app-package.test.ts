@@ -1,6 +1,6 @@
 // App packages (#253): source + shipped files + a one-time seed, as one zip.
 import { describe, expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -199,6 +199,31 @@ describe("pnpm pack:app", () => {
     writeFileSync(join(dir, "app", "x.app.ts"), 'import { y } from "../y.ts";\nexport default y;\n');
     writeFileSync(join(dir, "y.ts"), "export const y = 1;\n");
     expect(() => execFileSync("node", [script, "app/x.app.ts", "-o", "out.zip"], { cwd: dir, env: { ...process.env, INIT_CWD: dir }, stdio: "pipe" })).toThrow(/outside/);
+  });
+
+  // An app in six languages names itself with a Words map (#302): its description must still travel.
+  it("describes an app whose name is a name per language, and says the real reason when it cannot", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pack-app-words-"));
+    writeFileSync(
+      join(dir, "mm.app.ts"),
+      'import { defineApp } from "potyro";\nexport default defineApp({ id: "mm", name: { en: "Mirror Monsters", de: "Spiegelmonster" }, version: "1.0.0", schemaVersion: 1, language: "en", languages: ["en", "de"], entities: {}, pages: [] } as never);\n',
+    );
+    const run = (file: string) => execFileSync("node", [script, file, "-o", "out.zip"], { cwd: dir, env: { ...process.env, INIT_CWD: dir }, stdio: "pipe", encoding: "utf8" });
+    const warned = (file: string) => {
+      const r = spawnSync("node", [script, file, "-o", "out.zip"], { cwd: dir, env: { ...process.env, INIT_CWD: dir }, encoding: "utf8" });
+      return r.stderr;
+    };
+    expect(warned("mm.app.ts")).not.toMatch(/packed without a description/);
+    run("mm.app.ts");
+    const pkg = readAppPackage(new Uint8Array(readFileSync(join(dir, "out.zip"))));
+    expect(pkg.declared?.name).toEqual({ en: "Mirror Monsters", de: "Spiegelmonster" });
+
+    // One that is not an app is told why, and is never told it does not export one when it does.
+    writeFileSync(join(dir, "noid.app.ts"), 'import { defineApp } from "potyro";\nexport default defineApp({ name: "No id", entities: {}, pages: [] } as never);\n');
+    expect(warned("noid.app.ts")).toMatch(/Invalid app definition: - id: Required/);
+    expect(warned("noid.app.ts")).not.toMatch(/does not export an app/);
+    writeFileSync(join(dir, "none.app.ts"), "export default undefined;\n");
+    expect(warned("none.app.ts")).toMatch(/does not export an app/);
   });
 });
 

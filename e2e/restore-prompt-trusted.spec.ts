@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { PORTS } from "./ports";
 
 // "Load your apps?" kept coming back (the owner, on apps.vaz.io): after deleting shared apps it was
 // offered again on every boot, "Not now" did not stick, and with every app unticked the button still
@@ -10,7 +11,7 @@ import { tileAction } from "./launcher-actions.js";
 // One browser is enough: its apps are on the account (one switch puts them there), and an app the
 // account lists that this device does not have is exactly what the offer is for.
 
-const RELAY = `ws://localhost:${process.env.POTYRO_RELAY_PORT ?? "4201"}`;
+const RELAY = `ws://localhost:${process.env.POTYRO_RELAY_PORT ?? PORTS.relay}`;
 
 const source = (id: string, name: string): string => `import { defineApp } from "potyro";
 export default defineApp({

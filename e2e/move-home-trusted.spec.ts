@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { PORTS } from "./ports";
 
 // "Bring my apps over" (docs/16 §Moving to a new home), between TWO origins: this project's dev
 // server plays the old site and a second dev server, on another port, plays the new home. Browser
@@ -15,7 +16,7 @@ import { test, expect, type Page } from "./console-guard";
 // one would. Nothing may come of it — not even the confirmation.
 
 /** The new home: another origin. `POTYRO_MOVE_TO` names it; by default the sandbox project's server. */
-const NEW = process.env.POTYRO_MOVE_TO ?? "http://localhost:4189";
+const NEW = process.env.POTYRO_MOVE_TO ?? `http://localhost:${PORTS.sandbox}`;
 const SHOTS = process.env.POTYRO_MOVE_SHOTS;
 
 const NOTES = `import { defineApp } from "potyro";

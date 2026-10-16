@@ -35,9 +35,12 @@ function plainRow(row: Record<string, unknown>): Record<string, unknown> {
  * of its own gets none: it opens empty, as it would for anyone who adds it.
  *
  * Never reads the app's own store.
+ *
+ * An app added from a package has no seeder here: its sample data is the `seed.json` its package came
+ * with, kept beside it (`packageSeed`), and that is what travels — only for the entities it keeps.
  */
-export async function demoSeed(appId: string, entities: readonly string[]): Promise<DemoSeed | undefined> {
-  if (!hasSeeder(appId)) return undefined;
+export async function demoSeed(appId: string, entities: readonly string[], packageSeed?: DemoSeed): Promise<DemoSeed | undefined> {
+  if (!hasSeeder(appId)) return fromPackage(packageSeed, entities);
   const scratch = new MemoryStore();
   await scratch.open(`demo:${appId}`);
   try {
@@ -51,6 +54,16 @@ export async function demoSeed(appId: string, entities: readonly string[]): Prom
   } finally {
     await scratch.close();
   }
+}
+
+/** A package's seed as demo records: its rows for the entities the app keeps, as plain JSON. */
+function fromPackage(seed: DemoSeed | undefined, entities: readonly string[]): DemoSeed | undefined {
+  const out: DemoSeed = {};
+  for (const entity of entities) {
+    const rows = seed?.[entity];
+    if (rows?.length) out[entity] = rows.map((r) => plainRow(r));
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** The files an app shipped with, from its folder, by path. Never a file the person added. */
@@ -100,6 +113,8 @@ export function packDemo(input: DemoPackageInput): Uint8Array {
 /** A demo package, and what a preview of it may show: the app's look and its demo records. */
 export interface DemoPackage {
   zip: Uint8Array;
+  /** The same package without its demo records, when it has some: an inline link too long with them still works without. */
+  bare?: Uint8Array;
   entities: string[];
   seed?: DemoSeed;
   icon?: string;
@@ -127,9 +142,17 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string } = {}): 
     }
   }
   const credit = creditToShare(app, opts.by);
-  const seed = await demoSeed(app.id, entities);
+  const seed = await demoSeed(app.id, entities, app.seed);
   // What its first screens show come first: that is what the app is for, at a glance (preview-card.ts).
   const shown = shape.pages.filter((p) => !p.hidden && p.entity).map((p) => p.entity!);
   const byScreen = [...new Set([...shown, ...entities])];
-  return { zip: packDemo({ app, entities, code, files, seed, credit }), entities: byScreen, seed, icon: shape.icon, accent: shape.accent, credit };
+  return {
+    zip: packDemo({ app, entities, code, files, seed, credit }),
+    ...(seed ? { bare: packDemo({ app, entities, code, files, credit }) } : {}),
+    entities: byScreen,
+    seed,
+    icon: shape.icon,
+    accent: shape.accent,
+    credit,
+  };
 }

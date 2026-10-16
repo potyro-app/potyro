@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { E2E_RELAY } from "./ports";
 
 // When Potyro asks what to call you — and, more importantly, when it must NOT.
 //
@@ -34,9 +35,9 @@ async function showLauncher(page: Page): Promise<void> {
 }
 
 async function open(page: Page): Promise<void> {
+  await page.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await page.addInitScript(
     ([source]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
