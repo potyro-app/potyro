@@ -3487,9 +3487,9 @@ th.k-data-raw {
   color: var(--ink-soft);
 }
 
-/* A sealed app's own screen (#267): its sandboxed frame fills the page's content area. The frame's
-   height is set by the host (the room below it, or the view's own height when that is more), so the
-   page scrolls and the frame never does. A thin focus ring says where the keys go. */
+/* A sealed app's own screen (#267): its sandboxed frame fills the page's content area. The host sets
+   its height to the room below it, down to the bottom bar; a taller view scrolls inside the frame.
+   A thin focus ring says where the keys go. */
 .k-sealed-view {
   position: relative;
   width: 100%;

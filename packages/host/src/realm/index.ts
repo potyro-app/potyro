@@ -16,4 +16,4 @@ export { frameSpawner, realmDocument, viewDocument, spawnViewFrame, FRAME_SOURCE
 export { OPS, VIEW_OPS, REALM_CSP, type CallKind, type CtxBase, type Op, type ViewOp, type ViewInit, type HostToView, type ViewToHost } from "./protocol.js";
 export { ViewGuard, MARK_PREFIX, OFF_KEY, MARK_STALE_MS, MARK_REFRESH_MS, type GuardStorage, type MountMark, type OffEntry } from "./view-guard.js";
 export { ViewWatchdog, VIEW_BLOCKED_MS, VIEW_SILENCE_MS, VIEW_MOUNT_MS, VIEW_PING_MS, VIEW_CHECK_MS, type ViewVerdict } from "./view-watchdog.js";
-export { SealedViewController, readTokens, VIEW_MIN_HEIGHT, VIEW_MAX_HEIGHT } from "./sealed-view.js";
+export { SealedViewController, readTokens, VIEW_MIN_HEIGHT } from "./sealed-view.js";
