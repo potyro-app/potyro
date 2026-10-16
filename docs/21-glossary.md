@@ -63,7 +63,14 @@ change it in every message of that language, not only the one you are looking at
 | relay | relay | Relay | relay | przekaźnik | relay |
 | live connection (ctx.caps.network.socket) | conexão ao vivo | Live-Verbindung | conexión en vivo | połączenie na żywo | connessione in tempo reale |
 | Potyro’s rooms (the multiplayer relay) | salas do Potyro | Potyros Räume | salas de Potyro | pokoje Potyro | stanze di Potyro |
+| microphone / listen (voice input, ctx.caps.speech) | microfone / ouvir | Mikrofon / zuhören | micrófono / escuchar | mikrofon / słuchać | microfono / ascoltare |
+| write down (a recording, by an AI service) | transcrever | aufschreiben | transcribir | spisać | trascrivere |
+| speech service (the browser's own) | serviço de voz | Sprachdienst | servicio de voz | usługa mowy | servizio vocale |
 | share / shared | compartilhar / compartilhado | teilen / geteilt | compartir / compartido | udostępnić / udostępniona | condividere / condivisa |
+| Make it mine (your own copy of someone's app, to change; docs/24 §6) | Tornar meu | Zu meiner machen | Hacerla mía | Przerób na swoją | Rendila mia |
+| remix (noun: the copy; "Remix of Groceries by Ana") | remix | Remix | remezcla | przeróbka | remix |
+| gallery (Potyro's curated apps, docs/24 §10) | galeria | Galerie | galería | galeria | galleria |
+| sample records (an app's own examples, never anyone's) | registros de exemplo | Beispieleinträge | registros de ejemplo | przykładowe wpisy | voci di esempio |
 | History (an app's versions) | Histórico | Verlauf | Historial | Historia | Cronologia |
 | version | versão | Version | versión | wersja | versione |
 | Edit mode | Modo de edição | Bearbeitungsmodus | Modo edición | Tryb edycji | Modalità modifica |

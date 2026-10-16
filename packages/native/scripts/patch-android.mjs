@@ -10,7 +10,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java"];
+export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java"];
+
+/** Potyro's own plugins, registered in MainActivity in this order. */
+export const PLUGINS = ["LocalSocketPlugin", "SpeechPlugin"];
 
 /** The package a MainActivity.java declares, or null. Pure. */
 export function packageOf(source) {
@@ -23,13 +26,15 @@ export function packageOf(source) {
  * lives in the app), once. Handles the generated empty class and one that already has an onCreate. Pure.
  */
 export function withPluginRegistered(source) {
-  if (source.includes("registerPlugin(LocalSocketPlugin.class)")) return { source, added: false };
+  const missing = PLUGINS.filter((p) => !source.includes(`registerPlugin(${p}.class)`));
+  if (missing.length === 0) return { source, added: false };
+  const lines = missing.map((p) => `registerPlugin(${p}.class);`).join("\n        ");
   let out = source;
   if (!/import\s+android\.os\.Bundle\s*;/.test(out)) out = out.replace(/(^\s*package\s+[\w.]+\s*;\s*\n)/m, "$1\nimport android.os.Bundle;\n");
   if (/void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{/.test(out)) {
-    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, "$1\n        registerPlugin(LocalSocketPlugin.class);");
+    out = out.replace(/(void\s+onCreate\s*\(\s*Bundle\s+\w+\s*\)\s*\{)/, `$1\n        ${lines}`);
   } else {
-    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // docs/28 §6: ws:// to the local network, from Potyro's own plugin (scripts/patch-android.mjs).\n        registerPlugin(LocalSocketPlugin.class);\n        super.onCreate(savedInstanceState);\n    }\n}`;
+    const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // Potyro's own plugins (scripts/patch-android.mjs): ws:// to the local network (docs/28 §6), voice (docs/29).\n        ${lines}\n        super.onCreate(savedInstanceState);\n    }\n}`;
     out = out.replace(/extends\s+BridgeActivity\s*\{\s*\}/, `extends BridgeActivity ${body}`);
   }
   return { source: out, added: out !== source };

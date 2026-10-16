@@ -4,7 +4,10 @@
 // button. Each engine's own settings sit under it and only under it — a key field that belongs to a
 // provider you are not using is noise you have to read past every time.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { SpeechWhere } from "@potyro/capabilities";
+import { speechWhereWords } from "./app-speech.js";
+import { studioVoiceWhere } from "./studio-voice.js";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -13,6 +16,32 @@ import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
 import { ENGINES, ENGINE_GROUPS, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
 import { ThinkingSettings } from "./thinking-settings.js";
+
+/**
+ * Where the microphone's words are made on this device (docs/29): voice uses none of the engines
+ * above, and where it leaves the device it says so here as well as in its question.
+ */
+function VoiceNote() {
+  const [where, setWhere] = useState<SpeechWhere | null>(null);
+  useEffect(() => {
+    let live = true;
+    void studioVoiceWhere().then((w) => live && setWhere(w));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!where) return null;
+  const words = speechWhereWords(where);
+  return (
+    <p className="k-muted k-voice-note" data-engine={where.engine}>
+      {where.engine === "device" ? (
+        <Trans comment="Model settings: where the microphone's words are made; {words} = 'On this device'">Voice: {words}. Nothing you say leaves it.</Trans>
+      ) : (
+        <Trans comment="Model settings: where the microphone's words are made; {words} names the service">Voice: {words}. What you say leaves your device.</Trans>
+      )}
+    </p>
+  );
+}
 
 /**
  * The shortlists' notes, in the person's language. The lists live in the generator, which has no
@@ -193,6 +222,8 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
             </section>
           ))}
         </div>
+
+        <VoiceNote />
 
         <footer className="k-modal-foot">
           <span className="k-muted">

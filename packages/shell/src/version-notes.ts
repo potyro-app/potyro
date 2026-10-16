@@ -32,6 +32,18 @@ export function shownNote(note: string): string {
     const name = m[1]!;
     return t`copied from “${name}”`;
   }
+  // A remix's first version (add-app.ts `remixNote`): what it remixed, and who made that when they said.
+  m = /^remix of “(.*)” by (.+)$/s.exec(note);
+  if (m) {
+    const name = m[1]!;
+    const by = m[2]!;
+    return t({ message: `remix of “${name}” by ${by}`, comment: "A version's note in History, lower case: this app is a remix of another, made by someone" });
+  }
+  m = /^remix of “(.*)”$/s.exec(note);
+  if (m) {
+    const name = m[1]!;
+    return t({ message: `remix of “${name}”`, comment: "A version's note in History, lower case: this app is a remix of another" });
+  }
   m = /^(rolled|went) back to version (\d+)$/.exec(note);
   if (m) {
     const seq = m[2]!;

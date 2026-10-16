@@ -14,7 +14,11 @@
 //     why, because the refusal arrives as a rejected promise the geo field swallows.
 //   CAMERA — `ctx.caps.camera` taking a new photo (the library picker needs nothing), and the live
 //     camera (docs/25): the WebView's getUserMedia asks for it through Capacitor's chrome client.
-//     Video only — RECORD_AUDIO is never needed, and stays out.
+//     Video only — the live camera never asks for audio.
+//   RECORD_AUDIO — voice input ONLY (docs/29): the PotyroSpeech plugin asks for it at runtime the first
+//     time an app or the Studio listens, never before; the live camera still asks for video alone.
+//     With it, a <queries> entry for android.speech.RecognitionService: from Android 11 a recognizer
+//     the app cannot "see" makes SpeechRecognizer.isRecognitionAvailable answer false.
 //
 // NOT here: READ_EXTERNAL_STORAGE. The camera plugin asks for it only because
 // `requestPermissions()` with no argument checks every alias it has; the adapter asks for the one
@@ -29,7 +33,21 @@ export const PERMS = [
   '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
   '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
   '<uses-permission android:name="android.permission.CAMERA" />',
+  '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
 ];
+
+/** Package visibility for the phone's speech recognizer (docs/29). */
+export const SPEECH_QUERY = `<queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>`;
+
+/** The manifest with the recognizer visible to the app, once. Pure. */
+export function withSpeechQuery(xml) {
+  if (xml.includes("android.speech.RecognitionService")) return { xml, added: false };
+  return { xml: xml.replace(/<\/manifest>\s*$/, `    ${SPEECH_QUERY}\n</manifest>\n`), added: true };
+}
 
 const nameOf = (perm) => perm.split("android.permission.")[1].split('"')[0];
 
@@ -80,12 +98,14 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
     process.exit(1);
   }
   const { xml, added } = withPermissions(readFileSync(manifest, "utf8"));
-  const share = withShareTarget(xml);
-  if (added.length === 0 && !share.added) {
+  const speech = withSpeechQuery(xml);
+  const share = withShareTarget(speech.xml);
+  if (added.length === 0 && !share.added && !speech.added) {
     console.log("[patch-manifest] permissions and share target already present — nothing to do.");
   } else {
     writeFileSync(manifest, share.xml);
     if (added.length) console.log(`[patch-manifest] added ${added.length} permission(s): ${added.join(", ")}.`);
     if (share.added) console.log("[patch-manifest] added the share and open-with targets to MainActivity.");
+    if (speech.added) console.log("[patch-manifest] made the speech recognizer visible to the app (voice input).");
   }
 }
