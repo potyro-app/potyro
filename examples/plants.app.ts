@@ -480,7 +480,7 @@ export default defineApp({
                     : ctx.t({ en: "never watered here yet", "pt-BR": "ainda não regada aqui", de: "hier noch nie gegossen", es: "aún no regada aquí", pl: "jeszcze tu nie podlana", it: "mai annaffiata qui" }),
                 media: "photo",
               },
-              rowActions: ["water", "snooze"],
+              rowActions: ["water"],
               onOpen: { page: "plant", param: { plantId: "id" } },
               emptyText: { en: "Everyone's had a drink. 🌱", "pt-BR": "Todas já beberam. 🌱", de: "Alle haben getrunken. 🌱", es: "Todas han bebido. 🌱", pl: "Wszystkie napojone. 🌱", it: "Hanno bevuto tutte. 🌱" },
             },
