@@ -33,6 +33,22 @@ export interface FileCap {
   pickFiles?(opts?: { accept?: string; multiple?: boolean }): Promise<File[]>;
 }
 
+/** What the device's own share sheet is handed (`ctx.ui.share`, after the person has seen it). */
+export interface SharePayload {
+  title?: string;
+  text?: string;
+  url?: string;
+  files?: File[];
+}
+
+/** The device's own share sheet: the Web Share API in a browser, the phone's in the app. */
+export interface ShareCap {
+  /** Whether this payload can go through it — a browser may share words but not files, or not these files. */
+  canShare(p: SharePayload): boolean;
+  /** Open it. Rejects with a DOMException named "AbortError" when the person closes it without choosing. */
+  share(p: SharePayload): Promise<void>;
+}
+
 export interface NetworkCap {
   fetch(input: string, init?: RequestInit): Promise<Response>;
 }
@@ -112,4 +128,9 @@ export interface Capabilities {
    * exist; the shell wraps it per app. Absent or `null` = this target cannot open any.
    */
   sockets?: SocketCap | null;
+  /**
+   * The device's own share sheet, for the share dialog's "Share…" (`ctx.ui.share`, the shell's links).
+   * Absent or `null` = none: the dialog offers Copy and Save a copy only.
+   */
+  share?: ShareCap | null;
 }

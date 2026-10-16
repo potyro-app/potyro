@@ -236,7 +236,7 @@ what a trusted one does, with no permission prompt — none of them reach outsid
 | `menu({ title, items })` | bottom sheet | hangs under the button that ran the action (a centred panel when there is none) |
 | `form({ title, fields, initial, submit })` | full-screen form sheet | centred form |
 | `progress(label)` | a bar above the tab bar | a bar at the bottom centre |
-| `share({ text, url, title })` | dialog showing what will be sent: **Share…** (the system sheet) and **Copy** | the same dialog; **Copy** (and **Share…** where the browser has one) |
+| `share({ text, url, title, files })` | dialog showing what will be sent (pictures previewed): **Share…** (the system sheet), **Copy**, **Save a copy** for files | the same dialog; **Copy** and **Save a copy** (and **Share…** where the browser has one) |
 
 - **Items.** A `destructive` item is always shown last, after a separator, in the danger colour —
   whatever order the app listed it in. Arrow keys, Home/End and Escape work; dismissing answers `null`.
@@ -249,7 +249,18 @@ what a trusted one does, with no permission prompt — none of them reach outsid
 - **Share.** For a result, a message or a link the person sends on themselves ("Daily #12 4/6" and its
   grid; an invite from `ctx.space.invite()`). They choose where it goes — the share sheet or the
   clipboard — so it needs no permission and works the same sealed. `url` must be http(s), `text` at
-  most 10,000 characters; the answer is `true` once it was copied or handed on.
+  most 10,000 characters; the answer is `true` once it was copied, saved or handed on.
+- **Share files.** `files: [snapBlob, record.picture, photoField]` hands pictures and files on too: a
+  `Blob` or `File` the app made (`cam.snap()`, `canvas.toBlob()`), bytes, a file of the app's own
+  folder (a `file` field's value, a `FileInfo`) or a `media` field's value — only this app's own. At
+  most 10 files, 25 MB together; each is named (a `File`'s own name, the folder file's name, else
+  `picture-1.png`, numbered when two collide). The dialog shows every one before anything leaves —
+  a picture as itself, anything else by its kind, name and size — and offers **Share…** where the
+  device can share those files (the Web Share API with `navigator.canShare({ files })`: Android,
+  iOS, Safari, Chromium on Windows/macOS/ChromeOS; the phone app's own sheet through
+  `@capacitor/share`), and **Save a copy** everywhere (a download, or the phone's Documents). Sealed
+  apps the same: the person picks where it goes, so no permission — and the dialog shows exactly
+  what would be sent.
 - **Untrusted apps.** A question does not hold the sealed box: while a form is open the page keeps
   rendering, and the call's time budget pauses until it is answered.
 

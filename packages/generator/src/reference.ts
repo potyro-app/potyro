@@ -170,11 +170,10 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "Face",
-    summary:
-      "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn, 3D `matrix`, mesh `points` with depth — `live({ faces: true })`; `{ sameFrame: true }` for a warp that must not lag",
+    summary: "a face in a live frame: eyes, mouth, nose, brows, expressions (smile, blink…), head turn, 3D matrix — `live({ faces: true })`",
     declarations: ["FacePoint", "FaceMeshPoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
     notes:
-      "`info.time - info.facesTime` is how old the faces are. With `sameFrame`, draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
+      "`info.time - info.facesTime` is how old the faces are. A warp that must not lag: `faces: { sameFrame: true }`, then draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
     cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
     uses: /\bfaces\s*:|\.faces\b/,
   },
@@ -255,8 +254,8 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url })`: hand a result or a link on (share sheet / Copy); no permission",
-    declarations: [],
+    summary: "`await ctx.ui.share({ text, url, files })`: hand a result, a link or a picture on (share sheet / Copy); no permission",
+    declarations: ["ShareFile"],
     members: [{ of: "CtxUi", name: "share" }],
     cues: /\bshare\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir)\b/i,
     uses: /\.share\(/,

@@ -304,11 +304,50 @@ describe("ctx.ui questions", () => {
     const ctx = await base({ share });
     expect(await ctx.ui.share({ text: { en: "Daily #1 3/6" }, title: "Share", url: "https://potyro.app/a b" })).toBe(true);
     expect(share).toHaveBeenLastCalledWith({ text: "Daily #1 3/6", title: "Share", url: "https://potyro.app/a%20b" });
-    await expect(ctx.ui.share({})).rejects.toThrow(/needs \{ text \} or \{ url \}/);
+    await expect(ctx.ui.share({})).rejects.toThrow(/needs \{ text \}, \{ url \} or \{ files \}/);
+    await expect(ctx.ui.share({ files: [] })).rejects.toThrow(/needs \{ text \}, \{ url \} or \{ files \}/);
     await expect(ctx.ui.share({ url: "javascript:alert(1)" })).rejects.toThrow(/http\(s\)/);
     await expect(ctx.ui.share({ url: "not a link" })).rejects.toThrow(/whole http\(s\) address/);
     await expect(ctx.ui.share({ text: "x".repeat(10_001) })).rejects.toThrow(/longer than/);
     expect(share).toHaveBeenCalledOnce();
+  });
+
+  it("share hands on files: a Blob, a File, a file of the app's folder and a photo, each named, as Files", async () => {
+    const share = vi.fn(async (_o: { files?: File[] }) => true);
+    const store = new MemoryStore();
+    await store.open("q");
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app });
+    const ctx = host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui: { toast: () => {}, confirm: async () => false, prompt: async () => null, pick: async () => null, share }, nav: { navigate: () => {} } });
+    const kept = await ctx.files.write("snaps/monster 1.png", new Uint8Array([137, 80, 78, 71]), { mime: "image/png" });
+    const photo = await ctx.media.put(new Blob([new Uint8Array([255, 216, 255])], { type: "image/jpeg" }));
+    expect(
+      await ctx.ui.share({
+        title: "My monster",
+        files: [new Blob(["png"], { type: "image/png" }), new File(["a,b"], "../../scores.csv", { type: "text/csv" }), kept, { id: kept.id }, photo],
+      }),
+    ).toBe(true);
+    const sent = share.mock.calls[0]![0].files!;
+    expect(sent.every((f) => f instanceof File)).toBe(true);
+    // Named for what they are; no folder survives in a name; a second of the same name is numbered.
+    expect(sent.map((f) => f.name)).toEqual(["picture-1.png", "scores.csv", "monster 1.png", "monster 1-2.png", "picture-5.jpg"]);
+    expect(sent.map((f) => f.type)).toEqual(["image/png", "text/csv", "image/png", "image/png", "image/jpeg"]);
+    expect(new Uint8Array(await sent[2]!.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+    // Files alone are enough to share.
+    expect(share.mock.calls[0]![0]).toEqual({ title: "My monster", files: sent });
+  });
+
+  it("share refuses files it cannot hand on: not a list, too many, too big, or not this app's", async () => {
+    const share = vi.fn(async () => true);
+    const ctx = await base({ share });
+    await expect(ctx.ui.share({ files: new Blob(["x"]) as never })).rejects.toThrow(/a list of files/);
+    await expect(ctx.ui.share({ files: Array.from({ length: 11 }, () => new Blob(["x"])) })).rejects.toThrow(/at most 10 files/);
+    await expect(ctx.ui.share({ files: [new Blob([new Uint8Array(26 * 1024 * 1024)])] })).rejects.toThrow(/larger than 25 MB/);
+    await expect(ctx.ui.share({ files: [{ id: "someone-elses-file" }] })).rejects.toThrow(/no file like that in this app/);
+    await expect(ctx.ui.share({ files: [{ path: "nope.png" } as never] })).rejects.toThrow(/no file "nope.png"/);
+    await expect(ctx.ui.share({ files: [{ key: "not-here", mime: "image/png" }] })).rejects.toThrow(/not on this device/);
+    await expect(ctx.ui.share({ files: ["snaps/a.png" as never] })).rejects.toThrow(/a file is a Blob/);
+    expect(share).not.toHaveBeenCalled();
   });
 });
 
