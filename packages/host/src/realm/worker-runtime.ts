@@ -13,6 +13,7 @@ import { loadMessageFormat } from "../format.js";
 import { makeRealmCtx } from "./ctx-proxy.js";
 import { portTransport } from "./port-transport.js";
 import { dispatchSocketEvent } from "./realm-sockets.js";
+import { dispatchSpeechEvent } from "./realm-speech.js";
 import type { CallKind, HostToRealm } from "./protocol.js";
 
 interface WorkerScope {
@@ -45,6 +46,7 @@ function boot(port: MessagePort): void {
     const msg = ev.data as HostToRealm;
     if (tx.onReply(msg)) return;
     if (msg.t === "sock") return dispatchSocketEvent(msg.ev);
+    if (msg.t === "speech") return dispatchSpeechEvent(msg.ev);
     if (msg.t === "load") {
       if (app) return; // one app per realm
       void load(msg.code).then(
