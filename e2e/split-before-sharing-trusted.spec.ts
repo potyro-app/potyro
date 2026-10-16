@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // What happens to an expense written BEFORE the other person was there.
 //
@@ -18,7 +19,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // The visible symptom was two of four expenses sitting in the guest's list with a share of €0.00.
 
 async function device(context: BrowserContext): Promise<Page> {
-  await context.addInitScript(() => localStorage.setItem("potyro:sync:relay", "ws://localhost:4201"));
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   return context.newPage();
 }
 

@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Sharing an app you were already using, and then WATCHING it.
 //
@@ -27,9 +28,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, seed = false): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
