@@ -280,6 +280,26 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /ctx\.format\b/,
   },
   {
+    key: "looks",
+    summary: "pictures, covers, backgrounds, one big button",
+    declarations: ["Backdrop"],
+    members: [
+      { of: "Page", name: "description" },
+      { of: "Page", name: "primaryAction" },
+      { of: "Page", name: "background" },
+      { of: "Theme", name: "background" },
+      { of: "DetailView", name: "cover" },
+      { of: "DetailView", name: "media" },
+      { of: "DetailView", name: "facts" },
+      { of: "DetailView", name: "primaryAction" },
+      { of: "ListDisplay", name: "lead" },
+      { of: "GalleryView", name: "aspect" },
+      { of: "ActionDef", name: "icon" },
+    ],
+    cues: /\b(cover|hero|backgrounds?|wallpaper|full ?screen|photos?|pictures?|images?|look\w*|design\w*|beautiful|pretty|prettier|playful|professional|polish\w*|prominent|big button|call to action|tło|wygląd\w*|zdjęci\w*|fundo|aparência|hintergrund|aussehen|fondo|aspecto|sfondo)\b/i,
+    uses: /\b(cover|background|primaryAction|facts|lead|aspect)\s*:/,
+  },
+  {
     key: "languages",
     summary: "an app's words in several languages: `languages`, `Words` maps, `ctx.t` with plurals, enum `labels`",
     declarations: [],
@@ -340,7 +360,10 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
       if (!range) throw new Error(`CAPABILITIES: ${m.of} has no member ${m.name} (${c.key})`);
       for (let i = range[0]; i <= range[1]; i += 1) drop.add(host.from + i);
       const head = own.find((l) => START.test(l))!.replace(/\{.*$/, "{");
-      fragments.set(c.key, `// ${m.of}, continued (${c.key}):\n${head}\n${own.slice(range[0], range[1] + 1).join("\n")}\n}`);
+      // A capability may cut members out of several declarations (`looks`): each one adds its piece.
+      const piece = `// ${m.of}, continued (${c.key}):\n${head}\n${own.slice(range[0], range[1] + 1).join("\n")}\n}`;
+      const before = fragments.get(c.key);
+      fragments.set(c.key, before ? `${before}\n\n${piece}` : piece);
     }
   }
 

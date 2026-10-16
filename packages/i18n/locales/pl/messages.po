@@ -408,6 +408,11 @@ msgstr "{count, plural, one {W przeciwnym razie zostanie na liście ({kind}: bra
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Udostępniono # osobie} few {Udostępniono # osobom} many {Udostępniono # osobom} other {Udostępniono # osoby}}"
 
+#. How many records the page shows, read after its title
+#: ../shell/src/page-header.tsx
+msgid "{count} shown"
+msgstr "Widocznych: {count}"
+
 #: ../shell/src/ask-review.tsx
 msgid "{created, plural, one {added # record} other {added # records}}"
 msgstr "{created, plural, one {dodano # wpis} few {dodano # wpisy} many {dodano # wpisów} other {dodano # wpisu}}"
@@ -1141,6 +1146,11 @@ msgstr "Dodaj element"
 msgid "Add an item…"
 msgstr "Dodaj element…"
 
+#. Under a short list: make one more record like these
+#: ../views/src/builtins.tsx
+msgid "Add another"
+msgstr "Dodaj kolejny wpis"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add app"
 msgstr "Dodaj aplikację"
@@ -1202,6 +1212,11 @@ msgstr "Dodaj źródło"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Add the API's address, or a link to its documentation."
 msgstr "Dodaj adres API albo link do jego dokumentacji."
+
+#. Button on an empty page: make its first record
+#: ../views/src/builtins.tsx
+msgid "Add the first one"
+msgstr "Dodaj pierwszy wpis"
 
 #. After a field's name and a colon, lower case
 #: ../views/src/media-input.tsx
@@ -1502,6 +1517,7 @@ msgstr "Prosi o"
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/page-header.tsx
 #: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Wstecz"
@@ -2301,9 +2317,9 @@ msgstr "Zmniejsz {label}"
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 msgid "Delete"
 msgstr "Usuń"
 
@@ -2526,7 +2542,8 @@ msgstr "edycja"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/map.tsx
 msgid "Edit"
 msgstr "Edytuj"
@@ -3582,10 +3599,10 @@ msgstr "Wczytywanie modelu…"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/calendar.tsx
 #: ../views/src/chart.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
@@ -3787,8 +3804,8 @@ msgstr "Więcej"
 msgid "More — something new"
 msgstr "Więcej — coś nowego"
 
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 msgid "More actions"
 msgstr "Więcej akcji"
 
@@ -4065,7 +4082,7 @@ msgstr "Niepotwierdzone"
 msgid "Not downloaded — tap to get it"
 msgstr "Nie pobrano — dotknij, aby pobrać"
 
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/steps.tsx
 msgid "Not found."
 msgstr "Nie znaleziono."
@@ -6087,9 +6104,7 @@ msgid "This picture's format can't be read. Try a JPEG or PNG photo."
 msgstr "Nie da się odczytać formatu tego obrazu. Spróbuj zdjęcia JPEG lub PNG."
 
 #: ../shell/src/data-table.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 msgid "this record"
 msgstr "ten wpis"
 

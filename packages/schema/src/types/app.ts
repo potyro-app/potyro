@@ -49,8 +49,7 @@ export interface ActionDef {
   run: ActionFn;
   /** Button text; default: the key, humanised. */
   label?: Words;
-  /** One emoji or short glyph shown before the label where the action is a compact button (a list
-   *  row's action, a detail page's action bar). */
+  /** A glyph before the label on its compact buttons. */
   icon?: string;
   /** What it does, for Ask. */
   description?: string;
@@ -100,12 +99,9 @@ export interface OnOpen {
 export interface ListDisplay {
   primary?: Binding;
   secondary?: Binding;
-  /** A media field shown as the row's picture. Default: the entity's first photo field, if it has one. */
   media?: string;
   badges?: string[];
-  /** What leads a row that has no picture: a tinted initial (`"monogram"`, the default), the
-   *  entity's `icon` (`"icon"`), or nothing (`"none"`). A row's colour follows its first coloured
-   *  badge, else its own text. */
+  /** What leads a row with no photo: a tinted initial (default), the entity's icon, or nothing. */
   lead?: "monogram" | "icon" | "none";
 }
 
@@ -142,7 +138,7 @@ export interface GalleryView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
-  /** The cards' shape: `"landscape"` (4:3, the default), `"square"` or `"portrait"` (4:5). */
+  /** The cards' shape; default `"landscape"` (4:3). */
   aspect?: "square" | "portrait" | "landscape";
 }
 
@@ -179,19 +175,15 @@ export interface DetailView {
   /** Overrides the entity's `groups` for this page only. Without it the page shows the groups. */
   sections?: DetailSection[];
   actions?: DetailAction[];
-  /** The media field shown big at the top of the page. Default: the entity's first photo field,
-   *  when the record has one; without a photo the page opens on a band of the app's colour.
-   *  `false`: never a picture at the top. A computed that returns a path in the app's files
-   *  (`"art/squat.jpg"`) works too: a picture per kind of record without a photo field. */
+  /** The cover's picture: a photo field, or a computed returning a path in `ctx.files`
+   *  (`"art/squat.jpg"`). Default: the entity's first photo field; `false`: none. */
   media?: string | false;
-  /** How the page opens: `"banner"` (the picture across the top, the title on it — the default when
-   *  there is a picture), `"full"` (the picture fills the first screen), `"band"` (a band of the
-   *  app's colour — the default without one), `"none"`. Without a record photo the page's
-   *  `background` image, then the app's, is the picture. */
+  /** `"banner"` (picture across the top; default with one), `"full"` (fills the first screen), `"band"`
+   *  (the app's colour; default without), `"none"`. No record photo: the page's `background` image. */
   cover?: "banner" | "full" | "band" | "none";
-  /** Fields shown as chips on the cover, beside the title ("45 min", "Easy"). Default: its enum fields. */
+  /** Fields as chips on the cover. Default: its enum fields. */
   facts?: string[];
-  /** The ONE thing this page is for ("Start this exercise"): a big button on the cover, apart from `actions`. */
+  /** The ONE thing this page is for ("Start"): a big button on the cover. */
   primaryAction?: DetailAction;
 }
 
@@ -572,12 +564,10 @@ export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<Words>;
-  /** One line under the page's title, saying what the page is for ("What you can cook with what you
-   *  have"). Shown in the page's header. */
+  /** One line under the page's title. */
   description?: Words;
-  /** The ONE thing this page is for, as a big button in its header ("Start workout"): a quick
-   *  action's `id`, or the index of one of this page's `actions` (it leaves the row of chips). The
-   *  page then has no floating Add button. */
+  /** A big button in the page's header ("Start workout"): a quick action's `id`, or the index of one
+   *  of its `actions`. The page then has no floating Add. */
   primaryAction?: string | number;
   /** This page's ground; overrides `theme.background`. */
   background?: Backdrop;
@@ -662,12 +652,9 @@ export interface PermissionManifest {
   ai?: boolean;
 }
 
-/**
- * What a page sits on. `"wash"` (the default): a soft glow of the app's colour behind the top of the
- * page; `"dots"` and `"grain"`: a texture in it; `"plain"`: paper. `{ image }`: a picture from the
- * app's own files (a path in `ctx.files`, e.g. a shipped `"art/kitchen.jpg"`) behind the page's
- * header, darkened under the words so they read — and the cover of a record page with no photo.
- */
+/** What a page sits on: `"wash"` (default, a glow of the accent), `"dots"`, `"grain"`, `"plain"`, or
+ *  `{ image }`, a path in `ctx.files` (a shipped `"art/kitchen.jpg"`) shown behind the page's header
+ *  and as the cover of a record page with no photo. */
 export type Backdrop = "plain" | "wash" | "dots" | "grain" | { image: string };
 
 export interface Theme {
