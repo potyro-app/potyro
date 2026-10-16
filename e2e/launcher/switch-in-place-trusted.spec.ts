@@ -51,7 +51,7 @@ test("switching ten times leaves exactly one app open, and each app still has it
     await switchTo(page, "Recipes");
   }
   await expect.poll(() => live(page)).toBe(1);
-  await expect(page.locator(".k-list-row", { hasText: "Fluffy Pancakes" })).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: "Fluffy Pancakes" })).toBeVisible();
   await switchTo(page, "Plants");
   await expect(page.locator(".k-list-row, .k-tl-card, .k-card").filter({ hasText: "Fern" }).first()).toBeVisible({ timeout: 30_000 });
   // A deep link still works exactly as before.
