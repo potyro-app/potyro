@@ -30,6 +30,7 @@ s.close();                         // code 1000 unless given (or the app's own 3
 | `"not-allowed-host"` | a shared app asked for a host its `permissions.network` does not name — refused at once, nobody asked |
 | `"insecure"` | `ws://` where only `wss://` can work (§6) |
 | `"too-many"` | this app already holds 4 connections |
+| `"hidden"` | Potyro is in the background, where nothing opens — try again; the first try after the person comes back opens (§5) |
 
 `send` rejects with `"closed"`, `"too-big"` (one message over 1 MiB; a room's own limit, 64 KiB) or
 `"full"` (more than 1 MiB still waiting to go out — slow down). A bad address or a non-ws scheme is a
@@ -145,6 +146,27 @@ async function connect(ctx: Ctx): Promise<void> {
   });
 }
 ```
+
+**Picking up again when the person comes back.** Nothing opens while Potyro is in the background:
+`socket()` and `room()` reject at once with `"hidden"` there. So an app that wants to carry on after
+`why: "hidden"` tries again every few seconds — each try costs nothing while hidden — and the first
+one after the person returns opens. The hero apps (`apps/earthquakes`, `apps/word-watch`,
+`apps/ticker`, each `live.ts`) do this; after `"left"` they wait for the person to start again.
+
+```ts
+live.onClose(({ why }) => {
+  if (why === "hidden") retryEvery(3000);   // rejected with "hidden" until they are back
+});
+```
+
+**After the person leaves, nothing opens.** A trusted app's module lives on in the page, and a retry
+timer it set can fire after the app was closed; the host refuses that app's `socket()` and `room()`
+from then on (`"refused"`, `retireAppSockets` on close). A sealed app's box is gone with it anyway.
+
+**Long work from a button.** A sealed app's box gives each call about a second (its watchdog), the time
+spent on a question to the person aside. Filling in a day of data, or a demo's backlog, takes longer:
+the button starts the work and returns, and the work goes on (with the ctx of that call) and says how
+it is going through records — the hero apps' status line is an aggregate view over one record.
 
 ## 6. `ws://` — where it can work
 

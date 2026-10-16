@@ -84,6 +84,8 @@ interface AppSockets {
   asking: Map<string, Promise<boolean>>;
   /** Allowed in this session, for a platform that keeps no standing answer (tests, a fake). */
   allowedHere: Set<string>;
+  /** The app was closed: nothing new opens for it (a retry timer of a trusted app outlives it). */
+  closed?: boolean;
 }
 
 const byOwner = new WeakMap<object, AppSockets>();
@@ -95,6 +97,17 @@ function stateOf(owner: object): AppSockets {
     byOwner.set(owner, s);
   }
   return s;
+}
+
+/**
+ * The app was closed: end what it holds ("left") and refuse whatever it asks for afterwards. A sealed
+ * app's box dies with it; a trusted app's module lives on in the page, and a reconnect timer it set
+ * would otherwise open a connection for an app nobody has open (docs/28 §5).
+ */
+export function retireAppSockets(owner: object): void {
+  const state = stateOf(owner);
+  state.closed = true;
+  for (const s of [...state.open]) s.end(1001, "the app was closed", "left");
 }
 
 /** End every connection this app holds, now (its sealed box stopped; it was closed). */
@@ -422,6 +435,7 @@ export function makeLiveNetwork(args: LiveNetworkArgs): LiveNetwork {
   };
 
   const roomOrSlot = (): void => {
+    if (state.closed) throw new SocketError(`“${appName}” was closed: it opens nothing until it is opened again`, "refused");
     if (state.open.size >= SOCKET_LIMITS.perApp) throw new SocketError(`An app may hold ${SOCKET_LIMITS.perApp} live connections at once; close one first`, "too-many");
   };
 

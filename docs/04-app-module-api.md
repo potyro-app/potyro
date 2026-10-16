@@ -358,9 +358,10 @@ actions: [{ label: "Follow BTC", run: async (ctx) => {
 `"too-big"` (over 1 MiB; a room's 64 KiB) or `"full"` (1 MiB still waiting to go). `onClose` hears
 `{ code, reason, why }`, `why` being `"app" | "server" | "network" | "left" | "hidden" | "too-big" |
 "slow" | "stopped"`. A refused connect rejects with a `code`: `"offline" | "denied" | "refused" |
-"unreachable" | "not-allowed-host" | "insecure" | "too-many"`. **Potyro closes every connection when
+"unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden"`. **Potyro closes every connection when
 the person leaves the app or Potyro has been in the background 30 s, and never reconnects by itself**
-(docs/28 §5 has the five-line reconnect pattern). Messages that arrive before `onMessage` are held and
+(docs/28 §5 has the five-line reconnect pattern); nothing opens while it is in the background
+(`"hidden"`), so an app that tries again every few seconds picks up when the person comes back. Messages that arrive before `onMessage` are held and
 handed to the first callback. Inside a callback `ctx` works; `ctx.now()` is the opening call's time.
 
 `room(id?, { name })` joins a room on Potyro's own relay (docs/26) — no address to know: `room()` makes
