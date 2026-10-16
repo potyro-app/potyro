@@ -4652,7 +4652,9 @@ msgstr "Potyro está abierto en otra pestaña"
 msgid "precise timing"
 msgstr "medición precisa del tiempo"
 
+#. A timer started from the Studio's preview of an app
 #. Studio bar: open the app being made
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Preview"
 msgstr "Vista previa"

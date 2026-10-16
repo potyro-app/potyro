@@ -24,6 +24,8 @@ import { NavHost } from "./nav-host.js";
 import { PickerHost } from "./picker.js";
 import { UiHost } from "./ui-host.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { screenAwake } from "./keep-awake.js";
+import { timerHub } from "./timer-hub.js";
 import { shellDialogs } from "./dialog.js";
 import { Toaster } from "./toaster.js";
 import { siteBase, type DemoLink } from "./demo-link.js";
@@ -106,7 +108,12 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities): Promise<Dem
     bundleCode,
     store,
     caps,
-    ui: createUiBridge(toaster.push, picker, shellDialogs, questions),
+    // A demo's timers and screen are the shell's, as an installed app's (docs/04); leaving a demo is a
+    // page load, which lets go of the screen by itself.
+    ui: createUiBridge(toaster.push, picker, shellDialogs, questions, {
+      keepAwake: () => ({ release: screenAwake.hold(`demo:${pkg.declared?.id ?? "app"}`) }),
+      timers: timerHub.bridgeFor(`demo:${pkg.declared?.id ?? "app"}`, name),
+    }),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
     me: demoPerson(),
     loadIsolated: await createSharedAppLoader(store),

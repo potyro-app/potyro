@@ -4652,7 +4652,9 @@ msgstr "Potyro jest otwarte w innej karcie"
 msgid "precise timing"
 msgstr "precyzyjne odmierzanie czasu"
 
+#. A timer started from the Studio's preview of an app
 #. Studio bar: open the app being made
+#: ../shell/src/studio-preview.tsx
 #: ../shell/src/studio.tsx
 msgid "Preview"
 msgstr "Podgląd"
