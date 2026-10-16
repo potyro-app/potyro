@@ -64,6 +64,8 @@ test.describe("phone", () => {
 
   test("the tile offers the camera or the library", async ({ page }) => {
     await openApp(page, "plants", "Plants");
+    // Today's one big button is "Add a plant"; the Plants list has the floating form button.
+    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
     await page.getByRole("button", { name: "Add: Plant" }).tap();
     const form = page.locator(".k-form");
     await form.getByRole("button", { name: "Photo: add photo" }).tap();
