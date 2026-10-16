@@ -290,10 +290,48 @@ The pieces on `vazio`:
 |---|---|
 | Bare repo | `~/appinator.git`, with `hooks/pre-receive` and `hooks/post-receive` from [`deploy/vazio-hooks/`](../deploy/vazio-hooks/). |
 | Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
-| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so only one suite ever holds the test ports. |
+| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so the watcher judges one commit at a time. (Ports no longer need it: every shard claims its own block, below.) |
 | Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
 | ssh aliases | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` (apps.vaz.io), and `Host potyro-deploy` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), each with its own key locked by `rrsync` to its web root. |
 | cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="karta-deploy:,potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+
+### The browser suite runs as parallel shards
+
+The browser suite is ~93% of a run. `ci:local all` (and `ci:local e2e` on its own) runs its shards
+**at once** — `CI_LOCAL_SHARDS`, default 8 — each still one Playwright worker, each recorded as its
+own step (`e2e-<n>.ok` / `.fail` / `.log` under `.ci-local/<sha>/`), so resuming, `status --post` and
+the watcher work as before. `CI_LOCAL_E2E=sequential` runs them one after another, the old way.
+
+What makes that safe is that the shards share **nothing**:
+
+- **Ports.** Every port the suite must know in advance is in `e2e/ports.ts`: the trusted, sandbox,
+  prod and QuickJS dev servers, the sync relay, relay-reconnect's own relay and the port nothing
+  listens on. Unset, `POTYRO_E2E_PORT_BASE` leaves them where they always were (4188, 4189, 4190,
+  4191, 4201, 4321, 4299) — `pnpm e2e` and `pnpm dev` are unchanged. Set, the suite takes ten
+  consecutive ports from that base, and the dev servers default their relay to the block's
+  (`VITE_POTYRO_DEV_RELAY`, read in development only). Ports a spec needs only for itself — echo
+  servers, the rooms relay, the realm's probe — come from the OS (`freePort()`).
+- **Browser storage.** A port is part of an origin, so each block has its own OPFS, localStorage
+  and IndexedDB. Within one origin the specs DO share state — the reason for one worker per shard,
+  which `playwright.config.ts` explains.
+- **Claims.** Each shard claims a block in 20000–32000 (below Linux's ephemeral range, where
+  `freePort()` lands) with a lockfile in `/tmp/potyro-e2e-ports/<base>.lock` naming its process,
+  bind-tests all ten ports, and releases it when it ends. A claim whose process is dead is taken
+  over. Two whole runs on one machine — the gate and somebody's `ci:local` in another checkout —
+  therefore take different blocks, and neither touches the default ports a developer's `pnpm dev`
+  or `pnpm e2e` holds.
+- **Files.** Each shard has its own Playwright output (`test-results/shard-<n>`), its own Vite
+  dependency cache (`node_modules/.vite-e2e/shard-<n>`), and its own build of the rooms relay on a
+  Node without type stripping.
+
+Files are dealt to shards by their **measured duration**, longest first into the lightest shard,
+so the shards end together. Every shard's Playwright JSON report updates
+`.ci-local/e2e-timings.json` (per checkout, kept across commits), read over the committed seed
+`e2e/timings.json` (measured on vazio; refresh it by copying a checkout's file over it when the
+suite has changed a lot). A file never timed counts as the median, and with no timings at all the
+files are dealt by index. The deal is written to
+`.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
+the files it ran before.
 
 The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
 `ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.
@@ -440,6 +478,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | What is in a request | The host's instructions to the model, the parts the app's call named (its words and its pictures, resized on the device to 1600 px), the JSON Schema for the answer, a token cap, a random device id. Never a key; never a record the app did not pass. |
 | What it sends on | `google/gemini-2.5-flash-lite` (or `AI_MODEL`), always — the sender cannot choose the model, the token cap (≤ 4 000) or the provider rules (`data_collection: "deny"`). No tools, no web search. |
 | Size | 6 MiB a request, checked before parsing; ≤ 4 pictures of ≤ 3 MiB each as data URLs; ≤ 40 000 characters of text. Too big is refused, never cut. |
+| Recordings (voice, docs/29) | Where a browser cannot turn speech into words (Firefox), the shell sends ONE `audio` part — `data:audio/wav;base64,…`, 16 kHz mono, ≤ 2.7 MB (a minute), never with a picture — and the relay hands it to the same model as `input_audio`. The same limits and the same ledger as every request: about $0.0006 a minute of speech. Nothing else about the relay changes; an older relay refuses the part (`400 part`), and the shell then uses the person's own key. |
 | Limits | 20 a day and 100 a month per device id, 60 a day per address (first `X-Forwarded-For`), 2 at once per device. |
 | Spending cap | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service a calendar month (UTC), checked **before** each request with a cent of room; what each request really cost (OpenRouter's `usage.cost`) is added after it. Past it, every device is told "used up" and moves to its own key. |
 | State | The month's spend and each device's count in `AI_LEDGER` (a JSON file), written on every change, so a restart does not start the month again. A file it cannot read stops it starting. Daily limits are in memory. |
@@ -724,7 +763,66 @@ container again if `package.json` changed, and `docker restart potyro-rooms`. A 
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
-## The gallery on potyro.com (docs/24 §10): NOT deployed yet
+## Moving to a new home: apps.vaz.io → potyro.app
+
+Browser storage belongs to one origin. Everything a person made on `apps.vaz.io` — apps, records,
+photos and files, Studio conversations, who they are — lives in that site's storage in their browser,
+and `potyro.app` cannot read a byte of it. So the old site carries it across, once, when the person
+asks, and **no server sees any of it**.
+
+**What the person sees.** On the old site's home, a banner: *Potyro has a new home — bring your apps
+over to potyro.app*. "Bring my apps over" opens potyro.app in a new window, which shows exactly what
+will come in — every app, its records and files, which ones arrive sealed, and that they come too —
+and waits. Nothing is written until they press **Bring them in**. Then the old banner says *Done — your
+apps are on potyro.app*. Nothing on the old site is deleted. "Save them as a file instead" is the
+fallback where a window cannot be opened: a `potyro-move-<date>.zip` to choose on `potyro.app/?move`.
+
+**How it travels** (`packages/shell/src/move-*.ts`):
+
+| Step | |
+|---|---|
+| Pack (`move-gather.ts`) | Each app the way Export packs one: records, photos, files, `ctx.storage` and its own code, copied with their ids into an in-memory SQLite. A synced app is packed from its *space* (that is where its records are), with the files it kept on the device. Studio conversations, version history, cases and diagnoses come as rows; the person's look, language and per-app choices as preferences. |
+| Hand over (`move-protocol.ts`) | The old site opens `potyro.app/?move=<channel>` — a fresh 128-bit id, the only thing in the URL. The new window says a content-free *hello* to its opener; the old site answers with an **offer** (the manifest and the archive's SHA-256), addressed to the new home's exact origin. |
+| Confirm | The new site shows the offer. Only after **Bring them in** does it ask for the archive, and it takes it only from the origin that offered, only from its opener, only on its channel, and only if its digest is the one offered. Anything else — another site, a frame, a message out of turn — is ignored without a word. |
+| Bring in (`move-bring-in.ts`) | Through the existing paths: `copyStoreData` (an upsert by id, so a merge), `saveUserApp` (so it is in History), `adoptPortableIdentity` (which checks the seed gives the secret and the secret the id before writing anything). |
+
+**Which sites count.** `move-origins.ts`, and nowhere else: `https://potyro.app` and
+`https://apps.vaz.io` exactly, plus `VITE_POTYRO_MOVE_ORIGINS` (comma-separated) for a self-hosted
+Potyro that moves too, plus `localhost` on any port on a dev server. The old → new pair is
+`NEW_HOMES` (or `VITE_POTYRO_NEW_HOME` for a build); a dev server takes
+`localStorage["potyro:dev:new-home"] = "http://localhost:<port>"`, which is how two `pnpm dev`
+servers on two ports play both parts (`e2e/move-home-trusted.spec.ts`).
+
+**Merge, never duplicate** (`move-plan.ts`). An app not on the new site comes as it was. One with the
+same code joins the one there (its records merged by id). An untouched example joins the newer copy;
+an untouched example there is replaced by the person's edited one. Changed on both sides, it comes in
+beside the one there, as "Notes (from apps.vaz.io)". Where each app went is remembered
+(`potyro:move:received`), so moving again — after a closed window, or after more work on the old
+site — lands in the same place and doubles nothing.
+
+**Trust.** An app runs directly on the new site only if it did on the old one *and* it was the
+person's own; one that came from someone else (a link, a maker's credit, someone's space) stays
+sealed. A saved file brings **every** app sealed, because a file can be from anyone.
+
+**Who you are moves too — over the window, never in a file.** The identity is a seed (`@potyro/identity`):
+carrying it is what entering the recovery words on a second device does, done for the person between
+two windows they have open. So their records' `createdBy` still names them, their words still work,
+and the new site is the same account. It replaces an identity the new site minted by itself and
+never shared under; one that is in use there is kept, and the person is told to enter their words if
+they want to be the old one. A file never carries it: whoever finds a file in Downloads holding the
+secret could sign as them. After a file move, the words under **You** do it.
+
+**Shared apps come as the person's own copy.** A site's relay is its own `/sync`, so the spaces on
+apps.vaz.io's relay are not where potyro.app looks. A synced or shared app arrives with everything in it, local to the
+new site; the people it was shared with keep the space on the old site, and sharing again from
+potyro.app makes a new one. (If the relay's data is ever moved to potyro.app's relay, nothing here
+needs to change: the account is the same.)
+
+**For the deployment.** Neither site may send `Cross-Origin-Opener-Policy` (other than
+`unsafe-none`): it cuts `window.opener` across origins, and only the file path would work. The shell's
+`frame-src 'none'` is unaffected — nothing here is a frame.
+
+## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
 
 The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, `favicon.svg` and
 `shots/*.jpg`. Nothing runs on the server for it, it keeps no logs of its own, and it loads nothing

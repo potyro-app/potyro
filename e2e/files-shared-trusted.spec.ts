@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // A shared app's files, on demand (#255), on two devices through a real relay.
 //
@@ -9,7 +10,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // arrives when they open it; once here it opens with the relay out of reach; and a shipped file that
 // an update of the app replaces reaches them too.
 
-const RELAY = process.env.POTYRO_RELAY ?? "ws://localhost:4201";
+const RELAY = process.env.POTYRO_RELAY ?? E2E_RELAY;
 
 const APP = `import { defineApp } from "potyro";
 export default defineApp({

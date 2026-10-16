@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — a plain .mjs script, imported here for its pure half.
-import { PERMS, withPermissions } from "../scripts/patch-manifest.mjs";
+import { PERMS, withPermissions, withSpeechQuery } from "../scripts/patch-manifest.mjs";
 
 const MANIFEST = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -21,15 +21,23 @@ const names = (xml: string): string[] => [...xml.matchAll(/android\.permission\.
 describe("the manifest patch", () => {
   it("adds what a Capacitor plugin does not merge for us", () => {
     const { xml, added } = withPermissions(MANIFEST) as { xml: string; added: string[] };
-    expect(added).toEqual(["USE_EXACT_ALARM", "SCHEDULE_EXACT_ALARM", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"]);
+    // RECORD_AUDIO is for voice input only (docs/29), asked at runtime when something listens; the
+    // live camera still asks getUserMedia for video only (docs/25).
+    expect(added).toEqual(["USE_EXACT_ALARM", "SCHEDULE_EXACT_ALARM", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA", "RECORD_AUDIO"]);
     // No storage permission: the adapter asks the camera plugin for the one alias a capture needs,
     // rather than declaring access to every photo on the phone (capacitor-capabilities.ts).
     expect(xml).not.toContain("READ_EXTERNAL_STORAGE");
-    // Nor the microphone: the live camera asks getUserMedia for video only (docs/25).
-    expect(xml).not.toContain("RECORD_AUDIO");
     expect(names(xml)).toContain("INTERNET"); // what was there already stays
     expect(xml.trimEnd().endsWith("</manifest>")).toBe(true);
-    expect(PERMS).toHaveLength(5);
+    expect(PERMS).toHaveLength(6);
+  });
+
+  it("makes the speech recognizer visible to the app, once", () => {
+    const { xml, added } = withSpeechQuery(MANIFEST) as { xml: string; added: boolean };
+    expect(added).toBe(true);
+    expect(xml).toContain('<action android:name="android.speech.RecognitionService" />');
+    expect(xml.trimEnd().endsWith("</manifest>")).toBe(true);
+    expect(withSpeechQuery(xml)).toEqual({ xml, added: false });
   });
 
   it("is idempotent — every cap sync runs it again", () => {

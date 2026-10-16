@@ -4,7 +4,7 @@ Every picture under `examples/files/` comes from Wikimedia Commons and is in the
 dedicated to it under CC0 — no attribution is legally required, and it is given here anyway. Each was
 cropped, resized and re-encoded as WebP for the example apps.
 
-## recipes (611 KB)
+## recipes (612 KB)
 
 | File | Source | Author | License |
 |---|---|---|---|
@@ -21,7 +21,7 @@ cropped, resized and re-encoded as WebP for the example apps.
 | `photos/guacamole.webp` | [File:Guacomole.jpg](https://commons.wikimedia.org/wiki/File:Guacomole.jpg) | Popo le Chien | CC0 |
 | `photos/berry-yogurt-pots.webp` | [File:Granola and yogurt - Bubbles + Brunch 2018 - Sarah Stierch 02.jpg](https://commons.wikimedia.org/wiki/File:Granola_and_yogurt_-_Bubbles_%2B_Brunch_2018_-_Sarah_Stierch_02.jpg) | Missvain | CC0 |
 | `photos/street-tacos.webp` | [File:Tacos in a soft tortilla 5.jpg](https://commons.wikimedia.org/wiki/File:Tacos_in_a_soft_tortilla_5.jpg) | Kurt Kaiser | CC0 |
-| `art/market.webp` | [File:Vegetable Seller 2.jpg](https://commons.wikimedia.org/wiki/File:Vegetable_Seller_2.jpg) | Wilfredor | CC0 |
+| `art/market.webp` | [File:Peppers - Campo de' Fiori - Rome, Italy - DSC01647.jpg](https://commons.wikimedia.org/wiki/File:Peppers_-_Campo_de%27_Fiori_-_Rome,_Italy_-_DSC01647.jpg) | Daderot | CC0 |
 
 ## plants (399 KB)
 
