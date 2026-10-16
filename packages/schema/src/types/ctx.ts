@@ -31,12 +31,20 @@ export interface CameraCapability {
 export type LiveCameraOptions = { facing?: "user" | "environment"; width?: number; height?: number; faces?: boolean | FaceOptions };  // ideal px, 640×480
 export type LiveCameraStop = "app" | "person" | "hidden" | "closed" | "ended" | "replaced";
 export type LiveCameraFailure = "denied" | "missing" | "busy" | "hidden" | "failed";
-export type LiveFrameInfo = { time: number; width: number; height: number; faces?: Face[]; facesFailed?: FacesFailure };
+/**
+ * A frame: `time` (ms, the video's clock), its size, and with `faces` the faces found and
+ * `facesTime`, the `time` of the frame they were found in (`time - facesTime` is how stale they are;
+ * equal with `faces: { sameFrame: true }`, which also hands `frame`, that frame's still, only valid
+ * inside the callback).
+ */
+export type LiveFrameInfo = { time: number; width: number; height: number; faces?: Face[]; facesTime?: number; facesFailed?: FacesFailure; frame?: ImageBitmap };
 
 /** A running live camera. Frames are not mirrored; it stops when the page is hidden or the app is left. */
 export interface LiveCamera {
   readonly video: HTMLVideoElement; readonly stream: MediaStream; readonly facing: "user" | "environment";
   readonly width: number; readonly height: number; readonly active: boolean;
+  /** What draws on this device: `"gpu"`, or `"software"` (no real graphics chip: a VM, a blocked driver) — draw less, smaller. */
+  readonly graphics: "gpu" | "software" | "unknown";
   onFrame(cb: (video: HTMLVideoElement, info: LiveFrameInfo) => void): () => void;
   snap(opts?: { type?: "image/jpeg" | "image/png" | "image/webp"; quality?: number }): Promise<Blob>;
   onStop(cb: (why: LiveCameraStop) => void): () => void;
@@ -197,15 +205,16 @@ export interface CtxUi {
   /** A progress bar for a long action. */
   progress(label: Words): UiProgress;
   /**
-   * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
-   * picks where, so no permission. `true` when copied or shared, `false` when closed.
+   * Hand words, an http(s) link and/or files on: share sheet, Copy or Save a copy, after showing what
+   * goes (pictures previewed). The person picks where, so no permission. `true` when copied, shared
+   * or saved, `false` when closed. At most 10 files, 25 MB together.
    *
    * `app` instead of `url`: a link to THIS app, opening `page` with `params` (docs/24 §11) — on the
    * other person's own copy when they have one, else as a demo they can keep, which then lands there.
    * The page must declare the params (`link: { params: [...] }`); values are text. A link only opens
    * the page: nothing runs because of it.
    */
-  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink }): Promise<boolean>;
+  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; files?: ShareFile[] }): Promise<boolean>;
 }
 
 /** A link to the app making it: which page it opens, and with what (docs/24 §11). */
@@ -213,6 +222,13 @@ export interface ShareAppLink {
   page: string;
   params?: Record<string, string>;
 }
+
+/**
+ * A file for `ctx.ui.share`: a picture or file the app made (a Blob — `cam.snap()`, `canvas.toBlob` — bytes, or
+ * a File, which keeps its name), a file in the app's folder (a `file` field's value, a `FileInfo`), or
+ * a photo field's value.
+ */
+export type ShareFile = Blob | Uint8Array | FileRef | MediaRef;
 
 /**
  * A map that is on screen right now.

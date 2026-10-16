@@ -2239,7 +2239,7 @@ msgstr "Weiter"
 msgid "Continue “{0}”"
 msgstr "„{0}“ fortsetzen"
 
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copied"
 msgstr "Kopiert"
 
@@ -2252,12 +2252,12 @@ msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
 msgstr "Nach „{copyName}“ kopiert. Sie beginnt leer — die App, nicht die Daten."
 
 #. Share dialog: copy an app's words (and link)
-#: ../shell/src/dialog.tsx
 #: ../shell/src/identity-panel.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copy"
 msgstr "Kopieren"
 
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Copy link"
 msgstr "Link kopieren"
 
@@ -2347,12 +2347,12 @@ msgstr "Konnte es nicht hinzufügen: {failed}"
 msgid "Couldn’t bring it in: {failed}"
 msgstr "Konnte es nicht übernehmen: {failed}"
 
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Couldn't copy — select the link and copy it yourself."
 msgstr "Kopieren ging nicht — markiere den Link und kopiere ihn selbst."
 
 #. Share dialog: copying an app's words failed
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Couldn't copy — select the text and copy it yourself."
 msgstr "Kopieren ging nicht — markiere den Text und kopiere ihn selbst."
 
@@ -2372,6 +2372,11 @@ msgstr "„{name}“ konnte nicht als deine eigene laufen, deshalb öffnet sie s
 msgid "Couldn’t run “{name}” as yours, so it opens sealed. {why}"
 msgstr "„{name}“ konnte nicht als deine eigene laufen, deshalb öffnet sie sich versiegelt. {why}"
 
+#. Share dialog: Save a copy failed
+#: ../shell/src/share-body.tsx
+msgid "Couldn't save it. Try again."
+msgstr "Konnte nicht gespeichert werden. Versuch es noch einmal."
+
 #: ../views/src/record-form.tsx
 msgid "Couldn't save: {saveError}"
 msgstr "Speichern fehlgeschlagen: {saveError}"
@@ -2383,6 +2388,11 @@ msgstr "„{title}“ konnte noch nicht an das Potyro-Team gesendet werden. Es i
 #: ../shell/src/platform-request-card.tsx
 msgid "Couldn't send it yet. It's saved on this device and will be sent later."
 msgstr "Konnte noch nicht gesendet werden. Es ist auf diesem Gerät gespeichert und wird später gesendet."
+
+#. Share dialog: the share sheet failed for files only
+#: ../shell/src/share-body.tsx
+msgid "Couldn't share it. Save a copy instead."
+msgstr "Teilen hat nicht geklappt. Speichere stattdessen eine Kopie."
 
 #. Form button that saves a new record
 #: ../views/src/record-form.tsx
@@ -2621,11 +2631,11 @@ msgstr "Nicht teilen"
 #. Leave edit mode
 #. Share dialog: close it
 #: ../shell/src/ask-panel.tsx
-#: ../shell/src/dialog.tsx
 #: ../shell/src/engine-settings.tsx
 #: ../shell/src/filter-chrome.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/share-body.tsx
 #: ../shell/src/suggest-wording.tsx
 #: ../views/src/date-input.tsx
 #: ../views/src/pick-list.tsx
@@ -3918,7 +3928,7 @@ msgid "Making it via {label}… {elapsed}"
 msgstr "Wird über {label} erstellt… {elapsed}"
 
 #. Share dialog: the link to an app's page is being made
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-sheet.tsx
 msgid "Making the link…"
 msgstr "Link wird erstellt…"
@@ -5305,8 +5315,10 @@ msgstr "gleich wie {label}"
 msgid "Save"
 msgstr "Speichern"
 
+#. Share dialog: download or keep the files on this device
 #: ../shell/src/file-viewer.tsx
 #: ../shell/src/files-panel.tsx
+#: ../shell/src/share-body.tsx
 #: ../views/src/file-input.tsx
 msgid "Save a copy"
 msgstr "Kopie speichern"
@@ -5345,6 +5357,11 @@ msgstr "Clip speichern"
 msgid "Save them as a file instead"
 msgstr "Stattdessen als Datei speichern"
 
+#. Share dialog: Save a copy worked, one file
+#: ../shell/src/share-body.tsx
+msgid "Saved"
+msgstr "Gespeichert"
+
 #: ../shell/src/share-sheet.tsx
 msgid "Saved {file}."
 msgstr "{file} gespeichert."
@@ -5352,6 +5369,11 @@ msgstr "{file} gespeichert."
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "{packed} gespeichert. Schick es jemandem – mit „App hinzufügen“ fügt er oder sie es hinzu."
+
+#. Share dialog: Save a copy worked, several files
+#: ../shell/src/share-body.tsx
+msgid "Saved the files"
+msgstr "Die Dateien sind gespeichert"
 
 #: ../shell/src/move-banner.tsx
 msgid "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
@@ -5519,7 +5541,7 @@ msgid "Share anyway"
 msgstr "Trotzdem teilen"
 
 #: ../shell/src/dialog.tsx
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Share link"
 msgstr "Link teilen"
 
@@ -5528,7 +5550,7 @@ msgid "Share text to Potyro from another app and it will wait here for you to pi
 msgstr "Teile Text aus einer anderen App mit Potyro, und er wartet hier, bis du wählst, wohin er kommt."
 
 #. Opens the device's own share sheet
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "Share…"
 msgstr "Teilen…"
 
@@ -6123,7 +6145,7 @@ msgid "The link could not be fetched from here"
 msgstr "Der Link konnte von hier aus nicht geladen werden"
 
 #. Share dialog: making the link to an app's page failed
-#: ../shell/src/dialog.tsx
+#: ../shell/src/share-body.tsx
 msgid "The link could not be made. The words can still be sent."
 msgstr "Der Link konnte nicht erstellt werden. Der Text kann trotzdem verschickt werden."
 
@@ -6996,9 +7018,11 @@ msgstr "Als wer sollen dich die Leute sehen, mit denen du teilst?"
 msgid "What to add"
 msgstr "Was hinzukommen soll"
 
+#. Share dialog: the files an app hands over
 #. Share dialog: the words an app hands over, read-only
-#: ../shell/src/dialog.tsx
 #: ../shell/src/platform-request-card.tsx
+#: ../shell/src/share-body.tsx
+#: ../shell/src/share-body.tsx
 msgid "What will be sent"
 msgstr "Was gesendet wird"
 

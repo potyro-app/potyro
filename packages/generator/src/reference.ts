@@ -174,7 +174,9 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "Face",
     summary: "a face in a live frame: eyes (pupils, how open), mouth, nose, brows, expressions (smile, blink…), head turn — `live({ faces: true })`",
-    declarations: ["FacePoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    declarations: ["FacePoint", "FaceMeshPoint", "FaceEye", "FaceExpressions", "Face", "FaceOptions", "FacesFailure"],
+    notes:
+      "Each face also has `matrix` (the head in 3D, 16 numbers column-major; see Face.matrix) and, with `points: true`, mesh points with depth `z`. `info.time - info.facesTime` is how old the faces are. A warp that must not lag: `faces: { sameFrame: true }`, then draw `info.frame ?? video`. `cam.graphics === \"software\"`: draw less (smaller canvas, fewer effects).",
     cues: /\bfaces?\b|\binfo\.faces\b|\b(eyes?|mouth|smil\w*|blink\w*|wink\w*|twarz\w*|oczy|usta|rosto|olhos|boca|gesicht|augen|mund|cara|ojos)\b/i,
     uses: /\bfaces\s*:|\.faces\b/,
   },
@@ -271,13 +273,15 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.ui.share",
     summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
-    declarations: ["ShareAppLink", "PageLink"],
+    declarations: ["ShareAppLink", "PageLink", "ShareFile"],
     members: [{ of: "CtxUi", name: "share" }],
     notes: [
       "A link to one of the app's pages: the page declares what a link may hand it, `link: { params: [\"code\"] }`, and",
       "`ctx.ui.share({ text, app: { page: \"play\", params: { code } } })` makes it. It opens the friend's own copy of the app",
       "there (or a demo they can keep, which lands there). The page reads `ctx.params.code` (a custom view: `props.param?.code`):",
       "text, at most 200 characters, possibly typed by a stranger. Never act on it by itself — fill a box, and let the person tap.",
+      "Pictures and files too: `files: [blob, record.picture, photoField]` (a Blob such as `cam.snap()` or `canvas.toBlob()`, bytes,",
+      "a file field's value, a photo field's value; at most 10, 25 MB together). The person sees them and picks Share… or Save a copy.",
     ].join("\n"),
     cues: /\bshare\(|link:\s*\{\s*params|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|invit\w*|deep ?links?|udostępni\w*|zapros\w*|compartilh\w*|convid\w*|teilen|einlad\w*|compartir|invitar\w*)\b/i,
     uses: /\.share\(|link:\s*\{\s*params/,

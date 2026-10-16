@@ -14,7 +14,7 @@
 //   - it never restarts by itself — the app hears `onStop` and asks the person.
 
 import type { Face, FacesFailure, LiveCamera, LiveCameraFailure, LiveCameraOptions, LiveCameraStop, LiveFrameInfo } from "potyro";
-import { facesFailureOf, type FaceFinder, type FaceLoader, type FindOptions } from "./faces.js";
+import { facesFailureOf, graphicsOf, type FaceFinder, type FaceLoader, type FindOptions } from "./faces.js";
 
 /** The platform half of `ctx.caps.camera.live` (docs/05). */
 export interface LiveCameraCap {
@@ -50,6 +50,18 @@ export interface LiveCameraDeps {
   metadataTimeoutMs?: number;
   /** How faces are found, until `useFaces` says otherwise. */
   faces?: FaceLoader;
+  /**
+   * A still of the video's current frame, for `faces: { sameFrame: true }`. Called in the same task
+   * as the find, so both see the same picture.
+   */
+  grab?(video: HTMLVideoElement): Promise<ImageBitmap>;
+  /** What draws on this page (`LiveCamera.graphics`); asked once, the first time a session starts. */
+  graphics?(): "gpu" | "software" | "unknown";
+}
+
+/** What a session asked of faces: the finder's options and whether frames wait for their faces. */
+export interface SessionFaces extends FindOptions {
+  sameFrame: boolean;
 }
 
 export const LIVE_MIN = 160;
@@ -73,11 +85,11 @@ export function liveConstraints(opts: LiveCameraOptions = {}): MediaStreamConstr
 }
 
 /** What `live({ faces })` asked for, or `null` for no faces. */
-export function faceOptions(opt: LiveCameraOptions["faces"]): FindOptions | null {
+export function faceOptions(opt: LiveCameraOptions["faces"]): SessionFaces | null {
   if (!opt) return null;
   const o = typeof opt === "object" ? opt : {};
   const max = typeof o.max === "number" && Number.isFinite(o.max) ? Math.round(Math.min(4, Math.max(1, o.max))) : 1;
-  return { max, points: o.points === true };
+  return { max, points: o.points === true, detail: o.detail === "high" ? "high" : "normal", sameFrame: o.sameFrame === true };
 }
 
 /** An error an app can tell apart by `code`; the message is for the log. */
@@ -145,6 +157,8 @@ class Session implements LiveCamera {
   // Faces, when asked for: the finder once loaded, the last faces found, and whether one is being found.
   private finder: FaceFinder | null = null;
   private faces: Face[] = [];
+  /** The `time` of the frame `faces` were found in; absent until a find has answered. */
+  private facesTime: number | undefined;
   private facesFailed: FacesFailure | undefined;
   private finding = false;
 
@@ -154,8 +168,9 @@ class Session implements LiveCamera {
     readonly facing: "user" | "environment",
     private readonly deps: LiveCameraDeps,
     private readonly ended: (s: Session) => void,
-    private readonly wantFaces: FindOptions | null = null,
+    private readonly wantFaces: SessionFaces | null = null,
     loadFaces: FaceLoader | null = null,
+    readonly graphics: "gpu" | "software" | "unknown" = "unknown",
   ) {
     for (const track of stream.getVideoTracks()) track.addEventListener("ended", () => this.halt("ended"));
     if (!wantFaces) return;
@@ -278,9 +293,9 @@ class Session implements LiveCamera {
    * slow device skips frames instead of queueing them, and drawing never waits: each frame carries
    * the latest faces found (a frame or two old while one is being found).
    */
-  private findFaces(time: number): void {
+  private findFaces(time: number): Promise<boolean> | null {
     const finder = this.finder;
-    if (!finder || this.finding || !this.wantFaces) return;
+    if (!finder || this.finding || !this.wantFaces) return null;
     this.finding = true;
     let pending: Promise<Face[]>;
     try {
@@ -288,27 +303,69 @@ class Session implements LiveCamera {
     } catch (e) {
       pending = Promise.reject(e);
     }
-    pending.then(
+    return pending.then(
       (found) => {
         this.finding = false;
-        if (this.alive) this.faces = found;
+        if (!this.alive) return false;
+        this.faces = found;
+        this.facesTime = time;
+        return true;
       },
       (e) => {
         this.finding = false;
         this.finder = null;
         this.faces = [];
+        this.facesTime = undefined;
         this.facesFailed = facesFailureOf(e);
+        return false;
       },
     );
   }
 
-  private emit(frame: LiveFrameInfo): void {
-    let info = frame;
-    if (this.wantFaces) {
-      this.findFaces(frame.time);
-      info = { ...frame, faces: this.faces };
-      if (this.facesFailed) info.facesFailed = this.facesFailed;
+  /**
+   * `sameFrame`: a frame is handed on only once its own faces are found, with a still of it — the
+   * video itself will have moved on by then. Frames that come while a find runs are not handed on.
+   */
+  private emitInStep(frame: LiveFrameInfo): void {
+    if (this.finding) return;
+    // The still first, then the find, in this same task: both are of the frame now on the video.
+    let still: Promise<ImageBitmap | null>;
+    try {
+      still = this.deps.grab ? this.deps.grab(this.video).catch(() => null) : Promise.resolve(null);
+    } catch {
+      still = Promise.resolve(null);
     }
+    const found = this.findFaces(frame.time);
+    if (!found) return;
+    void Promise.all([found, still]).then(([ok, bitmap]) => {
+      if (ok && this.alive) {
+        const info: LiveFrameInfo = { ...frame, faces: this.faces, facesTime: frame.time };
+        if (bitmap) info.frame = bitmap;
+        this.deliver(info);
+      } else if (this.alive) {
+        // The finder broke on this frame: say so on it, and carry on as an ordinary camera.
+        this.deliver(this.withFaces(frame));
+      }
+      bitmap?.close();
+    });
+  }
+
+  private withFaces(frame: LiveFrameInfo): LiveFrameInfo {
+    const info: LiveFrameInfo = { ...frame, faces: this.faces };
+    if (this.facesTime !== undefined) info.facesTime = this.facesTime;
+    if (this.facesFailed) info.facesFailed = this.facesFailed;
+    return info;
+  }
+
+  private emit(frame: LiveFrameInfo): void {
+    if (!this.wantFaces) return this.deliver(frame);
+    // Until the finder is ready (or once it has failed) frames flow as usual, with no faces.
+    if (this.wantFaces.sameFrame && this.finder) return this.emitInStep(frame);
+    void this.findFaces(frame.time);
+    this.deliver(this.withFaces(frame));
+  }
+
+  private deliver(info: LiveFrameInfo): void {
     for (const fn of [...this.frameFns]) {
       if (!this.alive) return;
       try {
@@ -324,6 +381,7 @@ export function createLiveCamera(deps: LiveCameraDeps): LiveCameraCap {
   let current: Session | null = null;
   let seq = 0;
   let loadFaces: FaceLoader | null = deps.faces ?? null;
+  let graphics: "gpu" | "software" | "unknown" | undefined;
   const watchers = new Set<(on: LiveCamera | null) => void>();
   const tell = () => {
     for (const fn of [...watchers]) {
@@ -405,7 +463,8 @@ export function createLiveCamera(deps: LiveCameraDeps): LiveCameraCap {
       const requested = constraints.video as { facingMode: { ideal: "user" | "environment" } };
       const said = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
       const facing = said === "environment" || said === "user" ? said : requested.facingMode.ideal;
-      const session = new Session(video, stream, facing, deps, ended, faceOptions(opts.faces), loadFaces);
+      graphics ??= deps.graphics ? deps.graphics() : "unknown";
+      const session = new Session(video, stream, facing, deps, ended, faceOptions(opts.faces), loadFaces, graphics);
       current = session;
       // A track that ended while we were starting (a camera unplugged mid-prompt) ends the session now.
       if (stream.getVideoTracks().some((t) => t.readyState === "ended")) session.halt("ended");
@@ -443,6 +502,8 @@ export function sharedLiveCamera(): LiveCameraCap | null {
       const id = requestAnimationFrame(() => cb());
       return () => cancelAnimationFrame(id);
     },
+    grab: (video) => createImageBitmap(video),
+    graphics: () => graphicsOf(() => document.createElement("canvas")),
   });
   return shared;
 }
