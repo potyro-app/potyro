@@ -169,7 +169,7 @@ interface Ctx {
   // ---- native capabilities (may be denied/scoped for untrusted apps) ----
   caps: {
     camera?:        { capture(opts?: { source?: "camera"|"library" }): Promise<Blob>;
-                      live?(opts?: { facing?: "user"|"environment"; width?: number; height?: number; faces?: boolean | { max?: number; points?: boolean } }): Promise<LiveCamera>; };  // trusted only, below
+                      live?(opts?: { facing?: "user"|"environment"; width?: number; height?: number; faces?: boolean | { max?: number; points?: boolean; sameFrame?: boolean; detail?: "normal" | "high" } }): Promise<LiveCamera>; };  // trusted only, below
     notifications?: { schedule(n: { id: string; at: Date; title: string; body?: string }): Promise<void>;
                       cancel(id: string): Promise<void>; supportsExactScheduling: boolean; };
     geo?:           { current(): Promise<{ lat: number; lng: number }>; };
@@ -298,8 +298,8 @@ camera and resolves to a handle a custom view draws from:
 interface LiveCamera {
   readonly video: HTMLVideoElement;  readonly stream: MediaStream;   // playing, muted, not in the page
   readonly width: number;  readonly height: number;  readonly facing: "user" | "environment";
-  readonly active: boolean;
-  onFrame(cb: (video: HTMLVideoElement, info: { time: number; width: number; height: number; faces?: Face[]; facesFailed?: "unsupported" | "failed" }) => void): () => void;
+  readonly active: boolean;  readonly graphics: "gpu" | "software" | "unknown";  // software: draw less
+  onFrame(cb: (video: HTMLVideoElement, info: { time: number; width: number; height: number; faces?: Face[]; facesTime?: number; facesFailed?: "unsupported" | "failed"; frame?: ImageBitmap }) => void): () => void;
   snap(opts?: { type?: string; quality?: number }): Promise<Blob>;   // the current frame
   onStop(cb: (why: "app" | "person" | "hidden" | "closed" | "ended" | "replaced") => void): () => void;
   stop(): void;
@@ -319,8 +319,13 @@ width, `open`), `mouth` (corners, top, bottom, outlines), `nose`, `brows`, `expr
 `jawOpen`, `smile`, `blinkLeft`, `blinkRight`, `browUp`, `browDown`, `pucker`, `puff`, each 0–1) and
 `turn` (`roll`, `yaw`, `pitch`, radians). Points are in the video's pixels, not mirrored; left and right
 are the person's own. `faces: { max: 2, points: true }` finds up to four faces and adds all 478 mesh
-points. Where faces cannot be found `info.facesFailed` says why and the camera carries on. The types
-(`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceOptions`, `FacesFailure`) are exported by
+points (each with depth, `z`). Each face carries `matrix`, the head in 3D (16 numbers, column-major;
+docs/25 maps a canonical-face point to the picture). `info.facesTime` is the time of the frame the faces
+came from; `faces: { sameFrame: true }` holds each frame back until its own faces are found and hands
+`info.frame`, a still of it (for warps that must not lag); `faces: { detail: "high" }` finds in the
+whole picture rather than one shrunk to 640 px. Where faces cannot be found `info.facesFailed` says
+why and the camera carries on. The types
+(`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceMeshPoint`, `FaceOptions`, `FacesFailure`) are exported by
 `potyro` from `types/faces.ts`, which sits outside the model's reference (#341).
 
 **Trusted apps only, for now.** In a shared app `live` is `undefined` (its logic runs in the browser

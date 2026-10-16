@@ -14,6 +14,16 @@ export interface FacePoint {
   y: number;
 }
 
+/**
+ * A point of the whole mesh (`Face.points`): `x`, `y` in the video's pixels, and `z` its depth on the
+ * same scale as `x` (video pixels, approximate): 0 is about the middle of the head, NEGATIVE is
+ * nearer the camera — the nose tip is the most negative. Good for which part is in front, and for
+ * shading a warp; not a distance in centimetres (`Face.matrix` is that).
+ */
+export interface FaceMeshPoint extends FacePoint {
+  z: number;
+}
+
 /** One eye: its middle, the pupil (the iris's centre), its outline, and its size. */
 export interface FaceEye {
   center: FacePoint;
@@ -73,14 +83,39 @@ export interface Face {
    * down is positive.
    */
   turn: { roll: number; yaw: number; pitch: number };
-  /** All 478 points of the face mesh (MediaPipe's numbering), only with `faces: { points: true }`. */
-  points?: FacePoint[];
+  /** All 478 points of the face mesh (MediaPipe's numbering), with depth, only with `faces: { points: true }`. */
+  points?: FaceMeshPoint[];
+  /**
+   * Where the head is, in 3D: MediaPipe's facial transformation matrix, 16 numbers, COLUMN-major
+   * (`m[12..14]` is the move). It takes a point of the canonical face — centimetres, the head's middle
+   * at 0, +x to the person's left, +y up, +z out of the face — to the camera's space (centimetres,
+   * the camera at 0 looking down −z, +y up). To the picture, with the camera's 63° vertical view:
+   * `const t = Math.tan((63 / 2) * Math.PI / 180), X = m[0]*x + m[4]*y + m[8]*z + m[12], Y = m[1]*x +
+   * m[5]*y + m[9]*z + m[13], Z = m[2]*x + m[6]*y + m[10]*z + m[14]; px = (1 + X / (-Z * t * width /
+   * height)) / 2 * width; py = (1 - Y / (-Z * t)) / 2 * height`. The nose tip is (0, -1.13, 7.48).
+   * Absent when the finder gives none (a fake, an older Potyro).
+   */
+  matrix?: number[];
 }
 
-/** `live({ faces })`: `true`, or how many faces (1–4, default 1) and whether to hand over every point. */
+/** `live({ faces })`: `true`, or options. */
 export interface FaceOptions {
+  /** How many faces: 1–4, default 1. */
   max?: number;
+  /** Hand over every mesh point (`Face.points`). */
   points?: boolean;
+  /**
+   * Every frame carries the faces found in THAT frame: `onFrame` is called only once a frame's faces
+   * are found, with `info.frame`, a still of that very picture — draw it instead of the video. For a
+   * warp that must not slide off the face. Costs the find's time in lag (~20–40 ms) and frames: the
+   * rate is the finder's, not the camera's.
+   */
+  sameFrame?: boolean;
+  /**
+   * `"high"` finds faces in the camera's whole picture instead of one shrunk to 640 px on its long
+   * side: small or far faces are found, and their points are finer. Slower on a big picture.
+   */
+  detail?: "normal" | "high";
 }
 
 /**

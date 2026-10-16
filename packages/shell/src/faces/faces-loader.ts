@@ -13,8 +13,13 @@ import { FACES_DIR, FACES_MODEL } from "./faces-assets.js";
 
 /** How long the runtime and the model may take to arrive and start, before faces are given up. */
 const INIT_TIMEOUT_MS = 90_000;
-/** The long side a frame is shrunk to before it crosses to the worker: the landmarker reads 256 px. */
+/**
+ * The long side a frame is shrunk to before it crosses to the worker: the landmarker reads the face
+ * at 256 px, so 640 is plenty for a face that fills a good part of the picture. `detail: "high"`
+ * sends the camera's whole picture (up to its 1920), for a small or far face.
+ */
 const FRAME_MAX = 640;
+const FRAME_MAX_HIGH = 1920;
 
 const unsupported = (why: string) => Object.assign(new Error(why), { code: "unsupported" });
 const failed = (why: string) => Object.assign(new Error(why), { code: "failed" });
@@ -46,7 +51,7 @@ function devScript(): Promise<FaceFinder> | null {
   const read = (): Face[] => {
     try {
       const sketches = JSON.parse(localStorage.getItem("potyro:faces-script") ?? "[]") as FaceSketch[];
-      return sketches.map((s) => sketchFace({ ...s, x: s.x * size.w, y: s.y * size.h, size: s.size * size.w }));
+      return sketches.map((s) => sketchFace({ ...s, x: s.x * size.w, y: s.y * size.h, size: s.size * size.w, frame: { width: size.w, height: size.h } }));
     } catch {
       return [];
     }
@@ -80,7 +85,7 @@ function startWorker(): Promise<FaceFinder> {
         const vh = video.videoHeight;
         if (dead) throw dead;
         if (!vw || !vh) return [];
-        const k = Math.min(1, FRAME_MAX / Math.max(vw, vh));
+        const k = Math.min(1, (opts.detail === "high" ? FRAME_MAX_HIGH : FRAME_MAX) / Math.max(vw, vh));
         const frame = await createImageBitmap(video, { resizeWidth: Math.round(vw * k), resizeHeight: Math.round(vh * k), resizeQuality: "low" });
         const id = nextId++;
         const raw = await new Promise<RawFace[]>((ok, no) => {

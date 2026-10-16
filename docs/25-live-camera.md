@@ -68,16 +68,87 @@ cam.onFrame((video, { faces, facesFailed }) => {
   reads the lips' own gap, so a mouth open without the jaw dropping counts.
 - **`faces: { max, points }`**: up to `max` faces (1–4, default 1); `points: true` adds `Face.points`,
   all 478 mesh points in MediaPipe's numbering.
-- **Timing.** Finding runs at most once per frame and never holds a frame back: while one find is
+- **Timing.** Finding runs at most once per frame and never holds a frame back (unless the app asks,
+  `sameFrame` below): while one find is
   running, frames go by with the latest faces found (a frame or two old). A slow device finds faces
   less often; it never draws less often. The first frames carry `faces: []` while the finder loads.
 - **Failure** never stops the camera. `info.facesFailed` is `"unsupported"` (this device or Potyro
   cannot find faces: no Worker or WebAssembly SIMD, or no finder at all) or `"failed"` (the model
   would not load, or the finder broke); `faces` is then `[]`. Say it once in your own words and carry on.
-- **The types** (`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceOptions`, `FacesFailure`) are
+- **The types** (`Face`, `FaceEye`, `FaceExpressions`, `FacePoint`, `FaceMeshPoint`, `FaceOptions`, `FacesFailure`) are
   exported by `potyro`, from `packages/schema/src/types/faces.ts`. Like every capability since #341
   they are outside the core of the model's prompt: it carries one index line, and the declarations
   come through `lookup("Face")` and beside a request that asks for faces.
+
+### For warps: depth, the head in 3D, timing, detail, graphics (faces v2)
+
+Added 2026-10-16, after a prototype that reshaped a nose live had to guess at what the finder knew.
+All of it is additive: no app changes, no `schemaVersion` moves.
+
+```ts
+const cam = await ctx.caps.camera!.live!({ faces: { points: true, sameFrame: true, detail: "high" } });
+cam.graphics;                                   // "gpu" | "software" | "unknown"
+cam.onFrame((video, { time, faces, facesTime, frame, width, height }) => {
+  g.drawImage(frame ?? video, 0, 0);            // with sameFrame: the very picture the faces are of
+  const f = faces?.[0];
+  f?.points?.[1].z;                             // depth of the nose tip: negative, in front
+  f?.matrix;                                    // 16 numbers, column-major: the head in 3D
+  time - (facesTime ?? time);                   // how old the faces are, in ms (0 with sameFrame)
+});
+```
+
+- **`Face.points[i].z`** (`FaceMeshPoint`). MediaPipe's landmark depth, scaled like `x`: video
+  pixels, approximate. 0 is about the middle of the head and **negative is nearer the camera** (the
+  nose tip is the most negative). It says what is in front of what and how the surface curves — for
+  shading or pushing a warp along the face. It is not a distance from the camera (the matrix is).
+- **`Face.matrix`**: MediaPipe's facial transformation matrix (`outputFacialTransformationMatrixes`),
+  16 numbers, **column-major** (`m[12..14]` is the move). It maps a point of MediaPipe's *canonical
+  face* — centimetres, the head's middle at 0, +x to the person's left, +y up, +z out of the face —
+  into the camera's space (centimetres, camera at 0 looking down −z, +y up), under a perspective
+  camera with a **63° vertical field of view** (MediaPipe's default environment). To the picture:
+
+  ```ts
+  function toPicture(m: number[], p: { x: number; y: number; z: number }, width: number, height: number) {
+    const t = Math.tan((63 / 2) * Math.PI / 180);
+    const X = m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12];
+    const Y = m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13];
+    const Z = m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14];
+    return { x: (1 + X / (-Z * t * (width / height))) / 2 * width, y: (1 - Y / (-Z * t)) / 2 * height };
+  }
+  toPicture(f.matrix, { x: 0, y: -1.13, z: 7.48 }, info.width, info.height);   // ≈ f.nose
+  ```
+
+  Canonical points worth knowing: the nose tip (0, −1.13, 7.48), the outer eye corners (±4.45, 2.66,
+  3.17), the chin (0, −9.40, 4.26). Measured on the Mona Lisa fixture: the canonical nose tip lands
+  **4.4–6 px** from the finder's own nose tip (a 640×480 and a 1920×1080 frame) — the matrix is a fit
+  of the whole mesh to a rigid head, so it is steadier than any single point and a few pixels off
+  any one of them. Its move is in centimetres for a 63° camera; a real camera's view differs, so
+  treat distances as relative (nearer, further) rather than as a tape measure. Absent when the finder gives none (the fakes give one; an older Potyro does not).
+- **`info.facesTime`**: the `time` of the frame the faces were found in. Faces are found one at a
+  time, off the page, so ordinarily they are behind the picture: measured **67–100 ms** (two or
+  three frames at 30 fps) on the desktop CPU path. Absent until the first find has answered.
+- **`faces: { sameFrame: true }`** — for a warp that must not slide off the face. `onFrame` is then
+  called only once a frame's own faces are found, with **`info.frame`**, an `ImageBitmap` still of
+  that very frame (valid inside the callback; it is closed after — copy it to keep it). Draw `frame`,
+  not `video`: the video has moved on. `facesTime === time` on every such frame. Frames that come
+  while a find runs are not handed on, and until the finder has loaded (or if it fails) frames come
+  as usual, without `frame`. **The trade-off, measured** (headless desktop Chromium, CPU path):
+  delivery **26–48 ms** after the frame was on the video (median), and **15–26 fps** instead of the
+  camera's 30 — the finder's rate, not the camera's. On a phone with the GPU path, both are better;
+  not yet measured there.
+- **`faces: { detail: "high" }`**: the finder gets the camera's whole picture (up to 1920 px)
+  instead of one shrunk to 640 px on its long side. It does **not** find smaller faces — the face
+  detector reads the whole picture at 128 px either way, and a Mona Lisa 400 px wide in a 1920×1080
+  frame was found by neither — it gives the mesh a sharper crop of a face already found. **Cost,
+  measured** on a 1920×1080 camera: faces found 9.4–13.5 times a second against 13.0–14.6 (≈10–35 %
+  fewer), drawing unchanged at 30 fps; on a 640×480 camera it is the same as normal (nothing to
+  shrink). Ask for it when a face is small in a large picture and its outline must be precise.
+- **`cam.graphics`**: what draws on this page — `"gpu"`, `"software"` (WebGL on SwiftShader,
+  llvmpipe or Microsoft's Basic Render Driver: a VM, a headless browser, a driver the browser
+  blocklists), or `"unknown"` (the browser will not say). Read once per page from a throwaway WebGL
+  context, the same test the face finder uses to choose its own GPU or CPU path. On `"software"`,
+  draw less: a smaller canvas, fewer passes, no per-pixel effects. The headless test browser says
+  `"software"`.
 
 ### How Potyro finds them
 
@@ -95,8 +166,9 @@ cam.onFrame((video, { faces, facesFailed }) => {
   service worker caches what the page fetches (cache-first for every non-navigation, `public/sw.js`),
   so after the first use faces work offline; nothing is precached for people who never use them.
 - **Off the page's thread.** The landmarker runs in a worker (`packages/shell/src/faces/`); each frame
-  crosses as an `ImageBitmap` shrunk to 640 px on its long side (transferred, not copied), and the
-  mesh comes back as two small typed arrays. The page turns them into `Face`s (`faceFrom` in
+  crosses as an `ImageBitmap` shrunk to 640 px on its long side (the whole picture with
+  `detail: "high"`; transferred, not copied), and the mesh, its scores and its matrix come back as
+  three small typed arrays. The page turns them into `Face`s (`faceFrom` in
   `@potyro/capabilities`).
 - **GPU, then CPU.** The worker uses the GPU delegate where its WebGL is a real GPU, and the CPU
   (XNNPACK) where it is a software one (SwiftShader, llvmpipe: VMs, headless browsers, blocklisted
