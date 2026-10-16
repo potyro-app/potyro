@@ -774,6 +774,10 @@ msgstr "{original} (z {site})"
 msgid "{pendingKind}: tap the one for “{pendingText}”"
 msgstr "{pendingKind}: dotknij tej dla „{pendingText}”"
 
+#: ../shell/src/move-page.tsx
+msgid "{quiet, plural, one {And # more that is already here, with nothing new in it.} other {And # more that are already here, with nothing new in them.}}"
+msgstr "{quiet, plural, one {I jeszcze # aplikacja, która już tu jest, bez niczego nowego.} few {I jeszcze # aplikacje, które już tu są, bez niczego nowego.} many {I jeszcze # aplikacji, które już tu są, bez niczego nowego.} other {I jeszcze # aplikacji, które już tu są, bez niczego nowego.}}"
+
 #: ../shell/src/ask-review.tsx
 msgid "{ran, plural, one {ran # action} other {ran # actions}}"
 msgstr "{ran, plural, one {uruchomiono # akcję} few {uruchomiono # akcje} many {uruchomiono # akcji} other {uruchomiono # akcji}}"
@@ -3991,6 +3995,10 @@ msgstr "Nowa aplikacja"
 msgid "New group name"
 msgstr "Nowa nazwa grupy"
 
+#: ../shell/src/move-page.tsx
+msgid "new here"
+msgstr "nowa tutaj"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr "Nowa na tym urządzeniu"
@@ -4714,6 +4722,10 @@ msgstr "Potyro ma nowy adres"
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Potyro is open in another tab"
 msgstr "Potyro jest otwarte w innej karcie"
+
+#: ../shell/src/move-page.tsx
+msgid "Potyro is open in another tab of this site. Press “Use it here”: this page comes back and asks you again."
+msgstr "Potyro jest otwarte w innej karcie tej strony. Naciśnij „Używaj tutaj”: ta strona wróci i zapyta ponownie."
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -6847,6 +6859,10 @@ msgstr "Zmieniasz {field} z {from} na {to}"
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {field} from {from} to {to} on {record}"
 msgstr "Zmieniasz {field} z {from} na {to} w: {record}"
+
+#: ../shell/src/move-page.tsx
+msgid "You come too, with the same recovery words, so what you made is still yours."
+msgstr "Ty też się przenosisz, z tymi samymi słowami, więc to, co zrobiłeś, nadal jest twoje."
 
 #: ../shell/src/move-page.tsx
 msgid "You come too: here you will be {who}, with the same recovery words, so what you made is still yours."

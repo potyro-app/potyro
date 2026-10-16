@@ -173,6 +173,16 @@ describe("moving to a new home", () => {
     expect(identity.peekIdentity()).toBeNull();
   });
 
+  it("a file that claims to carry who you are is not believed", async () => {
+    await become(OLD);
+    const packed = await packEverything({ from: "https://apps.vaz.io", withIdentity: true });
+    expect(packed.manifest.identity).toBeDefined();
+    await become(NEW);
+    const result = await bringInEverything(readMoveArchive(packed.bytes), { via: "file" });
+    expect(result.identity).toBe("none");
+    expect(identity.peekIdentity()).toBeNull();
+  });
+
   it("refuses a damaged or hostile file by name, and brings nothing in", async () => {
     await become(OLD);
     const packed = await packEverything({ from: "https://apps.vaz.io", withIdentity: false });

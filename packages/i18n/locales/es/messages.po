@@ -774,6 +774,10 @@ msgstr "{original} (de {site})"
 msgid "{pendingKind}: tap the one for “{pendingText}”"
 msgstr "{pendingKind}: toca el de “{pendingText}”"
 
+#: ../shell/src/move-page.tsx
+msgid "{quiet, plural, one {And # more that is already here, with nothing new in it.} other {And # more that are already here, with nothing new in them.}}"
+msgstr "{quiet, plural, one {Y # más que ya está aquí, sin nada nuevo.} other {Y # más que ya están aquí, sin nada nuevo.}}"
+
 #: ../shell/src/ask-review.tsx
 msgid "{ran, plural, one {ran # action} other {ran # actions}}"
 msgstr "{ran, plural, one {ejecutó # acción} other {ejecutó # acciones}}"
@@ -3991,6 +3995,10 @@ msgstr "Nueva app"
 msgid "New group name"
 msgstr "Nombre del grupo nuevo"
 
+#: ../shell/src/move-page.tsx
+msgid "new here"
+msgstr "nueva aquí"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr "Nueva en este dispositivo"
@@ -4714,6 +4722,10 @@ msgstr "Potyro tiene una nueva casa"
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Potyro is open in another tab"
 msgstr "Potyro está abierto en otra pestaña"
+
+#: ../shell/src/move-page.tsx
+msgid "Potyro is open in another tab of this site. Press “Use it here”: this page comes back and asks you again."
+msgstr "Potyro está abierto en otra pestaña de este sitio. Pulsa “Usarlo aquí”: esta página vuelve y te pregunta otra vez."
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -6847,6 +6859,10 @@ msgstr "Cambiaste {field} de {from} a {to}"
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {field} from {from} to {to} on {record}"
 msgstr "Cambiaste {field} de {from} a {to} en {record}"
+
+#: ../shell/src/move-page.tsx
+msgid "You come too, with the same recovery words, so what you made is still yours."
+msgstr "Tú también vienes, con las mismas palabras de recuperación, así que lo que hiciste sigue siendo tuyo."
 
 #: ../shell/src/move-page.tsx
 msgid "You come too: here you will be {who}, with the same recovery words, so what you made is still yours."

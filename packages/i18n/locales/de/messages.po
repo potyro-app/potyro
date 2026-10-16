@@ -774,6 +774,10 @@ msgstr "{original} (von {site})"
 msgid "{pendingKind}: tap the one for “{pendingText}”"
 msgstr "{pendingKind}: Tippe auf die für „{pendingText}“"
 
+#: ../shell/src/move-page.tsx
+msgid "{quiet, plural, one {And # more that is already here, with nothing new in it.} other {And # more that are already here, with nothing new in them.}}"
+msgstr "{quiet, plural, one {Und # weitere, die schon hier ist, ohne etwas Neues.} other {Und # weitere, die schon hier sind, ohne etwas Neues.}}"
+
 #: ../shell/src/ask-review.tsx
 msgid "{ran, plural, one {ran # action} other {ran # actions}}"
 msgstr "{ran, plural, one {# Aktion ausgeführt} other {# Aktionen ausgeführt}}"
@@ -3991,6 +3995,10 @@ msgstr "Neue App"
 msgid "New group name"
 msgstr "Neuer Gruppenname"
 
+#: ../shell/src/move-page.tsx
+msgid "new here"
+msgstr "neu hier"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
 msgstr "Neu auf diesem Gerät"
@@ -4714,6 +4722,10 @@ msgstr "Potyro hat eine neue Adresse"
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Potyro is open in another tab"
 msgstr "Potyro ist in einem anderen Tab geöffnet"
+
+#: ../shell/src/move-page.tsx
+msgid "Potyro is open in another tab of this site. Press “Use it here”: this page comes back and asks you again."
+msgstr "Potyro ist in einem anderen Tab dieser Seite offen. Drück „Hier verwenden“: Diese Seite kommt zurück und fragt dich noch einmal."
 
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
@@ -6847,6 +6859,10 @@ msgstr "Du hast {field} von {from} auf {to} geändert"
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {field} from {from} to {to} on {record}"
 msgstr "Du hast {field} bei {record} von {from} auf {to} geändert"
+
+#: ../shell/src/move-page.tsx
+msgid "You come too, with the same recovery words, so what you made is still yours."
+msgstr "Du kommst mit, mit denselben Wörtern, also bleibt deins, was du gemacht hast."
 
 #: ../shell/src/move-page.tsx
 msgid "You come too: here you will be {who}, with the same recovery words, so what you made is still yours."
