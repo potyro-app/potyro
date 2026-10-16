@@ -196,8 +196,19 @@ export interface CtxUi {
   /**
    * Hand words and/or an http(s) link on: share sheet or Copy, after showing what goes. The person
    * picks where, so no permission. `true` when copied or shared, `false` when closed.
+   *
+   * `app` instead of `url`: a link to THIS app, opening `page` with `params` (docs/24 §11) — on the
+   * other person's own copy when they have one, else as a demo they can keep, which then lands there.
+   * The page must declare the params (`link: { params: [...] }`); values are text. A link only opens
+   * the page: nothing runs because of it.
    */
-  share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;
+  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink }): Promise<boolean>;
+}
+
+/** A link to the app making it: which page it opens, and with what (docs/24 §11). */
+export interface ShareAppLink {
+  page: string;
+  params?: Record<string, string>;
 }
 
 /**

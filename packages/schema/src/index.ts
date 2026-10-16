@@ -71,6 +71,7 @@ export type {
   CtxUi,
   UiItem,
   UiProgress,
+  ShareAppLink,
   CtxMedia,
   CtxFiles,
   CtxFormat,
@@ -108,6 +109,7 @@ export type {
   PageInput,
   AppInput,
   Page,
+  PageLink,
   View,
   ViewType,
   ListView,
@@ -171,6 +173,7 @@ export type {
 } from "./types/infer.js";
 
 export { LAYOUT_TYPES } from "./types/app.js";
+export { LINK_LIMITS, LINK_PARAM_NAME, linkParamsOf, acceptLinkParams, checkLinkRequest } from "./links.js";
 export { resolveView, basePageId, layoutItemId } from "./layout.js";
 
 // ---- names from before the rename (#114) ----

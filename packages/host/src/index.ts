@@ -9,6 +9,7 @@ export type {
   NavBridge,
   MakeCtxBase,
   ShownUiItem,
+  ShownShare,
 } from "./types.js";
 export {
   formatLocaleFor,
