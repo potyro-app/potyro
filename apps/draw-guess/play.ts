@@ -203,6 +203,10 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
   let teardownScreen: (() => void) | null = null;
   let unsubscribe: (() => void) | null = null;
   let name = "";
+  // A game this person was invited to by a link (docs/24 §11): the Play page's `code`, from the link.
+  // It only fills the box — joining is still the person's tap. Used once: back on the start screen
+  // after that game, the box is empty again.
+  let invite = parseCode(String(props.param?.code ?? ""));
   const myLang: Lang = isLang(ctx.locale) ? ctx.locale : "en";
 
   // The sound switch, in the corner of every screen.
@@ -250,7 +254,9 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
     const note = h("p", { class: "dg-note", role: "status", "aria-live": "polite" }, message ? t(message) : "");
     if (message) note.classList.add("dg-note-bad");
     const newBtn = h("button", { class: "dg-btn dg-btn-hot", type: "button" }, h("span", { "aria-hidden": "true" }, "✏️"), t(W.newGame));
-    const joinBtn = h("button", { class: "dg-btn", type: "submit" }, t(W.join));
+    const invited = invite;
+    if (invited) codeIn.value = showCode(invited);
+    const joinBtn = h("button", { class: invited ? "dg-btn dg-btn-hot" : "dg-btn", type: "submit" }, t(W.join));
     const doodle = new Board(t(W.board));
     const stopDoodle = playDoodle(doodle);
     const art = h("div", { class: "dg-hero-art", "aria-hidden": "true" }, doodle.canvas);
@@ -272,7 +278,16 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
       const n = takeName();
       if (n) begin(newCode(strongRandom), n, true);
     });
-    const form = on(h("form", { class: "dg-join" }, h("label", { for: "dg-code", class: "dg-label" }, t(W.haveCode)), h("div", { class: "dg-row" }, codeIn, joinBtn)), "submit", (e) => {
+    const form = on(
+      h(
+        "form",
+        { class: invited ? "dg-join dg-invited" : "dg-join" },
+        invited ? h("p", { class: "dg-invite-note" }, t(W.invited)) : null,
+        h("label", { for: "dg-code", class: "dg-label" }, t(W.haveCode)),
+        h("div", { class: "dg-row" }, codeIn, joinBtn),
+      ),
+      "submit",
+      (e) => {
       e.preventDefault();
       const n = takeName();
       if (!n) return;
@@ -284,9 +299,13 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
         return;
       }
       begin(code, n, false);
-    });
+      },
+    );
     on(nameIn, "keydown", (e) => {
-      if ((e as KeyboardEvent).key === "Enter") newBtn.click();
+      if ((e as KeyboardEvent).key !== "Enter") return;
+      // Invited: Enter after your name joins that game; otherwise it starts a new one.
+      if (invited) form.requestSubmit();
+      else newBtn.click();
     });
 
     const how = howFriendsJoin();
@@ -319,12 +338,20 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
       note.classList.add("dg-note-bad");
       newBtn.disabled = true;
       joinBtn.disabled = true;
+    } else if (invited) {
+      // Straight to the one thing left to do: your name if it is missing, else Join. After the shell has
+      // put the page up, which settles its own focus first.
+      const next = nameIn.value ? joinBtn : nameIn;
+      setTimeout(() => {
+        if (next.isConnected) next.focus({ preventScroll: true });
+      }, 60);
     }
   };
 
   // ---- into a game ----
 
   const begin = (code: string, who: string, fresh: boolean) => {
+    invite = null;
     const room = ctx.caps.network?.room;
     if (!room) return showStart(W.unavailable);
     current?.leave();
@@ -445,7 +472,10 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
       .split("")
       .forEach((ch, i) => tiles.append(ch === "-" ? h("span", { class: "dg-tile-gap" }) : h("span", { class: "dg-tile", style: `--dg-i:${i};--dg-r:${((i % 3) - 1) * 2.5}deg` }, ch)));
     const invite = on(h("button", { class: "dg-btn dg-btn-hot", type: "button" }, h("span", { "aria-hidden": "true" }, "💌"), t(W.invite)), "click", () => {
-      void ctx.ui.share({ title: W.inviteTitle, text: t(W.inviteText, { code: showCode(s.code) }) }).catch(() => undefined);
+      // A link that opens the game's Play page with this code filled in, on a friend's own copy — or,
+      // for a friend without the game, as a demo they can keep (docs/24 §11). The words carry the code
+      // too, for anyone who would rather type it.
+      void ctx.ui.share({ title: W.inviteTitle, text: t(W.inviteText, { code: showCode(s.code) }), app: { page: "play", params: { code: s.code } } }).catch(() => undefined);
     });
     const people = h("ul", { class: "dg-people", "aria-label": t(W.players, { n: online(g).length }) });
     for (const pl of g.players) {
