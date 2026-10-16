@@ -10,7 +10,8 @@
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import type { Person } from "potyro";
+import { pickLanguage, word, type Person } from "potyro";
+import { languagePrefs } from "./locale.js";
 import { MemoryStore, readAppPackage, type AppPackage } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { App } from "./App.js";
@@ -63,7 +64,10 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
 
 /** The app's name, as the link says it, before any of its code has run. */
 export function demoName(pkg: AppPackage): string {
-  const declared = typeof pkg.declared?.name === "string" ? pkg.declared.name : undefined;
+  // A name in several languages (#302) is said in the viewer's.
+  const d = pkg.declared;
+  const app = { language: typeof d?.language === "string" ? d.language : undefined, languages: Array.isArray(d?.languages) ? (d.languages as string[]) : undefined };
+  const declared = d?.name === undefined ? undefined : word(d.name, pickLanguage(languagePrefs(), app), app) || undefined;
   const written = /\bname\s*:\s*["'`]([^"'`\n]{1,80})["'`]/.exec(pkg.source)?.[1];
   return pkg.credit?.name ?? declared ?? written ?? t({ message: "Shared app", comment: "A demo app whose name could not be read" });
 }
