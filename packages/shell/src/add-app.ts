@@ -24,7 +24,7 @@ import { validateDefinition } from "./validate-app.js";
 import { trySealed, type Trial } from "./app-trial.js";
 import { inspectLibraries, libraryChanges, prepareCode, type LibraryLine, type PackageDeps } from "./package-libraries.js";
 import { memoryModules, withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
-import { freeAppId, getUserApp, listUserApps, removeUserApp, saveUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
+import { freeAppId, getUserApp, listUserApps, removeUserApp, saveUserApp, seedToKeep, setUserAppShipped, type UserApp } from "./user-apps.js";
 import { importChat, parseChatRecord } from "./studio-chat.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { openStore } from "./open-store.js";
@@ -403,6 +403,9 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
       origin: "imported",
+      // The sample records it came with, kept for a demo link of it (docs/24 §3) — never the
+      // person's own: these are the package's, not what they have added since.
+      seed: seedToKeep(pkg.seed),
       // Who made it travels with it; a remix says what it remixed instead (docs/24 §6). An update keeps
       // what the app already said about itself.
       ...(update ? {} : remix ? { remixOf: remix } : pkg.credit ? { credit: pkg.credit } : {}),
