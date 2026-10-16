@@ -724,7 +724,7 @@ container again if `package.json` changed, and `docker restart potyro-rooms`. A 
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
-## The gallery on potyro.com (docs/24 §10): NOT deployed yet
+## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
 
 The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, `favicon.svg` and
 `shots/*.jpg`. Nothing runs on the server for it, it keeps no logs of its own, and it loads nothing
