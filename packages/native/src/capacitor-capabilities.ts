@@ -8,9 +8,10 @@
 // composition root swaps this in for WebCapabilities when running under Capacitor.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap, SocketCap } from "@potyro/capabilities";
-import { pickFilesFromInput, sharedLiveCamera, sharedWebSockets } from "@potyro/capabilities";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap, SocketCap, SpeechCap } from "@potyro/capabilities";
+import { pickFilesFromInput, sharedLiveCamera, sharedWebSockets, sharedWebSpeech } from "@potyro/capabilities";
 import { localOpenerOver, type LocalSocketPlugin } from "./local-sockets.js";
+import { speechOverPlugin, type SpeechPlugin } from "./native-speech.js";
 
 // --- Minimal plugin shapes (a subset of the real @capacitor/* APIs we actually use) -------------
 
@@ -80,6 +81,10 @@ export interface CapacitorHostHelpers {
   sockets: SocketCap | null;
   /** Android's `PotyroLocalSocket` plugin, for ws:// to the local network (docs/28 §6). */
   localSockets: LocalSocketPlugin;
+  /** Voice input; the recognizer plugin over the WebView's own speech by default (docs/29). */
+  speech: SpeechCap | null;
+  /** Android's `PotyroSpeech` plugin: the phone's own recognizer, on the device where it can (docs/29). */
+  speechPlugin: SpeechPlugin;
 }
 
 /**
@@ -175,6 +180,8 @@ export class CapacitorCapabilities implements Capabilities {
    * https://localhost — and, on Android, ws:// to the local network over Potyro's own plugin.
    */
   readonly sockets: SocketCap | null;
+  /** The phone's recognizer (Android's plugin), else the WebView's speech, else a recording to write down (docs/29). */
+  readonly speech: SpeechCap | null;
 
   constructor(plugins: CapacitorPlugins, helpers?: Partial<CapacitorHostHelpers>) {
     const fetchImpl = helpers?.fetchImpl ?? ((input: string) => globalThis.fetch(input));
@@ -264,6 +271,8 @@ export class CapacitorCapabilities implements Capabilities {
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
     this.liveCamera = helpers?.liveCamera !== undefined ? helpers.liveCamera : sharedLiveCamera();
     this.sockets = helpers?.sockets !== undefined ? helpers.sockets : sharedWebSockets(helpers?.localSockets ? localOpenerOver(helpers.localSockets) : undefined);
+    const web = sharedWebSpeech();
+    this.speech = helpers?.speech !== undefined ? helpers.speech : helpers?.speechPlugin ? speechOverPlugin(helpers.speechPlugin, web) : web;
   }
 }
 
@@ -292,5 +301,12 @@ export async function createCapacitorCapabilities(): Promise<Capabilities> {
   // ws:// to the local network is Android's own plugin (docs/28 §6); iOS connects to wss:// only for now.
   // Held in the helpers, never returned or awaited: an awaited plugin hangs (deep-links.ts).
   const localSockets = Capacitor.getPlatform() === "android" ? Capacitor.registerPlugin<LocalSocketPlugin>("PotyroLocalSocket") : undefined;
-  return new CapacitorCapabilities(plugins, { maxPendingNotifications: Capacitor.getPlatform() === "ios" ? IOS_PENDING_LIMIT : null, ...(localSockets ? { localSockets } : {}) });
+  // The phone's recognizer (docs/29): Android's own plugin; on iOS only once the iOS developer has
+  // added PotyroSpeech (ios-templates/, docs/27), else the WebView's speech.
+  const speechPlugin = Capacitor.isPluginAvailable("PotyroSpeech") ? Capacitor.registerPlugin<SpeechPlugin>("PotyroSpeech") : undefined;
+  return new CapacitorCapabilities(plugins, {
+    maxPendingNotifications: Capacitor.getPlatform() === "ios" ? IOS_PENDING_LIMIT : null,
+    ...(localSockets ? { localSockets } : {}),
+    ...(speechPlugin ? { speechPlugin } : {}),
+  });
 }

@@ -130,7 +130,10 @@
         "es": "Una lista de la compra en el orden en que recorres la tienda. Marca, arrastra, listo.",
         "pl": "Lista zakupów w kolejności, w jakiej chodzisz po sklepie. Odhacz, przeciągnij, gotowe.",
         "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
-      }
+      },
+      "link": "https://potyro.app/s/oED3SuuJiC5LUmt6hYhaMw#k=OuglhT87vfcL5VkOvWd-Ig",
+      "screenshot": "shots/groceries.jpg",
+      "publishedAt": "2026-10-16T15:54:28.953Z"
     },
     {
       "id": "recipes",
@@ -155,7 +158,10 @@
         "es": "Recetas con sus calorías calculadas, y lo que puedes cocinar con lo que tienes.",
         "pl": "Przepisy z policzonymi kaloriami i to, co ugotujesz z tego, co masz.",
         "it": "Ricette con le calorie già calcolate, e cosa puoi cucinare con quello che hai."
-      }
+      },
+      "link": "https://potyro.app/s/VcqvUs0Nz_OrMtT0K5Rctg#k=11XcSDkPMDvjmm8thEO24A",
+      "screenshot": "shots/recipes.jpg",
+      "publishedAt": "2026-10-16T15:55:34.992Z"
     },
     {
       "id": "plants",
@@ -180,7 +186,10 @@
         "es": "Tus plantas, y cuál necesita agua hoy, según la estación.",
         "pl": "Twoje rośliny i to, którą dziś podlać, zależnie od pory roku.",
         "it": "Le tue piante, e quale ha bisogno d’acqua oggi, secondo la stagione."
-      }
+      },
+      "link": "https://potyro.app/s/wFZgHBFnxuS6BNTM1OgLQA#k=CqFQLFJ6Zh38NyTAkwEdbA",
+      "screenshot": "shots/plants.jpg",
+      "publishedAt": "2026-10-16T15:56:16.661Z"
     },
     {
       "id": "places",
@@ -205,7 +214,10 @@
         "es": "Lugares que te encantan o quieres ver, en un mapa, y cuáles están abiertos ahora.",
         "pl": "Miejsca, które lubisz albo chcesz zobaczyć, na mapie, i które są teraz otwarte.",
         "it": "Luoghi che ami o vuoi vedere, su una mappa, e quali sono aperti adesso."
-      }
+      },
+      "link": "https://potyro.app/s/VWMGVZaVJqR59vf_oQlWJA#k=D2pyNZI-PzPt0tTEk-tSnA",
+      "screenshot": "shots/places.jpg",
+      "publishedAt": "2026-10-16T15:56:29.588Z"
     },
     {
       "id": "split",
@@ -230,7 +242,10 @@
         "es": "Gastos compartidos con compañeros de piso o amigos, y quién debe a quién, al céntimo.",
         "pl": "Wspólne wydatki ze współlokatorami lub znajomymi i kto komu ile jest winien, co do grosza.",
         "it": "Spese condivise con coinquilini o amici, e chi deve quanto a chi, al centesimo."
-      }
+      },
+      "link": "https://potyro.app/s/6-tZ_oQGhkbhcBLaNjJVag#k=92u9Puq1fVfNtgA8edm_lA",
+      "screenshot": "shots/split.jpg",
+      "publishedAt": "2026-10-16T15:57:08.444Z"
     },
     {
       "id": "workout",
@@ -255,7 +270,10 @@
         "es": "Un registro de empuje, tirón y piernas: cada serie que levantas, y tu mejor marca.",
         "pl": "Dziennik push, pull i nogi: każda seria i twój najlepszy wynik do tej pory.",
         "it": "Un diario di spinta, trazione e gambe: ogni serie che sollevi, e il tuo record finora."
-      }
+      },
+      "link": "https://potyro.app/s/K8b2fitphjZY0Ho5cXx54Q#k=9S4_E_HMi-oym7IEsPmdZA",
+      "screenshot": "shots/workout.jpg",
+      "publishedAt": "2026-10-16T15:57:51.059Z"
     },
     {
       "id": "receipt-split",
@@ -282,7 +300,10 @@
         "es": "Fotografía un tique y sus líneas se convierten en cosas que repartir.",
         "pl": "Zrób zdjęcie paragonu, a jego pozycje staną się rzeczami do podziału.",
         "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
-      }
+      },
+      "link": "https://potyro.app/s/OOHekFheSTuvxARbR1Qc9w#k=lhaNZFlxaJXjk_gYqZVoUg",
+      "screenshot": "shots/receipt-split.jpg",
+      "publishedAt": "2026-10-16T15:58:44.830Z"
     },
     {
       "id": "markdown-notes",
@@ -309,7 +330,10 @@
         "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
         "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
         "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
-      }
+      },
+      "link": "https://potyro.app/s/7_hzK38FYkIkVzugEvyonQ#k=FTCdbYbofxXYi3JfGLHnZA",
+      "screenshot": "shots/markdown-notes.jpg",
+      "publishedAt": "2026-10-16T15:59:33.141Z"
     },
     {
       "id": "pantry",

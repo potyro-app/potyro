@@ -82,3 +82,12 @@ export function readDemoLink(pathname: string, hash: string): DemoLink | null {
   if (hosted && key && ID_RE.test(hosted[1]!)) return { kind: "hosted", id: hosted[1]!, key, ...remix };
   return null;
 }
+
+/**
+ * A demo link as text again, without its intents (`remix=1`, where to land): what a link made from
+ * inside the demo starts from (docs/24 §11).
+ */
+export function demoLinkText(link: DemoLink, origin: string, pathname: string): string {
+  const site = `${origin}${siteBase(pathname)}`;
+  return link.kind === "hosted" ? `${site}s/${link.id}#k=${link.key}` : `${site}#${INLINE_KEY}=${toBase64Url(link.zip)}`;
+}
