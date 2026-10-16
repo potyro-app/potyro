@@ -133,7 +133,7 @@ interface Ctx {
   now(): Date;
   today(): Date;
 
-  // ---- runtime inputs (view filter params, custom-view args) — PER PAGE ----
+  // ---- runtime inputs (view filter params, custom-view args, what a link opened the page with) — PER PAGE ----
   params: Readonly<Record<string, unknown>>;
 
   // ---- the app-wide selection, when the app declares a top-level `scope` (docs/03) ----
@@ -213,7 +213,8 @@ interface Ctx {
         menu<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
         form<T>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
         progress(label: Words): { update(fraction: number, detail?: string): void; done(): void };
-        share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>; };   // true = copied / handed on
+        share(opts: { text?: Words; url?: string; title?: Words;
+                      app?: { page: string; params?: Record<string, string> } }): Promise<boolean>; };   // true = copied / handed on
   // UiItem<T> = { id: T; label: Words; detail?: Words; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
@@ -249,12 +250,48 @@ what a trusted one does, with no permission prompt — none of them reach outsid
 - **Share.** For a result, a message or a link the person sends on themselves ("Daily #12 4/6" and its
   grid; an invite from `ctx.space.invite()`). They choose where it goes — the share sheet or the
   clipboard — so it needs no permission and works the same sealed. `url` must be http(s), `text` at
-  most 10,000 characters; the answer is `true` once it was copied or handed on.
+  most 10,000 characters; the answer is `true` once it was copied or handed on. **`app`** instead of
+  `url` is a link to one of this app's own pages — see "Params from links" below.
 - **Untrusted apps.** A question does not hold the sealed box: while a form is open the page keeps
   rendering, and the call's time budget pauses until it is answered.
 
 These are new optional members: no existing app changes, so `schemaVersion` (the app's own data
 version) is not bumped.
+
+### Params from links (docs/24 §11)
+
+A link can open an app at one of its pages, with `ctx.params` filled in: "Invite friends" in a game
+sends a link that opens its Play page with the game's code in the box. The page says what a link may
+hand it, and the app asks for the link through the share dialog:
+
+```ts
+pages: [{ id: "play", title: "Play", link: { params: ["code"] }, view: { type: "custom", entity: "game", mount } }],
+
+// in an action or a custom view
+await ctx.ui.share({ title: "Play with me", text: `Or type the code ${code}`, app: { page: "play", params: { code } } });
+
+// on the Play page, on the friend's device
+const code = props.param?.code;            // a custom view (ViewProps.param); a filter reads ctx.params.code
+```
+
+- **Who it opens for.** The person's own copy of the app when they have one — any copy, whatever it is
+  called on their device — else the demo the link carries, which opens on that page and lands there
+  again once they keep it (and after "run it as mine" reloads it). A link to an app they do not have
+  never installs anything.
+- **What the page gets.** Only the names in `link.params`, each a string of at most
+  `LINK_LIMITS.chars` (200) characters, at most `LINK_LIMITS.params` (8) of them. Anything else in a
+  link — another name, a longer value, a page the app does not have — is dropped, silently: anyone can
+  write a link. Without `link`, a link can open the page with nothing.
+- **What it never does.** A link only opens a page and hands it text. Nothing runs because of it: the
+  game fills in the code and waits for Join. Treat the values as what they are — something a stranger
+  may have typed.
+- **Making one.** `app.page` must be one of the app's pages and every param one it declares, as text
+  within the cap; otherwise `ui.share` throws, in the action, saying what to declare. The app never
+  sees the address — the shell makes it, so a sealed app can invite people too, revealing nothing but
+  the params. `url` and `app` are one or the other.
+
+`link` is a new optional page member and `app` a new optional `share` option: no app changes, and no
+`schemaVersion` moves.
 
 ### An app's words in several languages (#302, docs/20)
 

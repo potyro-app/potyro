@@ -945,6 +945,11 @@ msgstr "link, który każdy może wypróbować"
 msgid "A link anyone can try"
 msgstr "Link, który każdy może wypróbować"
 
+#. Heading when a link opens an app this device does not have
+#: ../shell/src/main.tsx
+msgid "A link to an app"
+msgstr "Link do aplikacji"
+
 #: ../shell/src/backup-switch.tsx
 msgid "A new device signed in with your words can bring them all back."
 msgstr "Nowe urządzenie zalogowane twoimi słowami może je wszystkie przywrócić."
@@ -3685,6 +3690,8 @@ msgstr "Utwórz link"
 msgid "Making it via {label}… {elapsed}"
 msgstr "Tworzenie przez {label}… {elapsed}"
 
+#. Share dialog: the link to an app's page is being made
+#: ../shell/src/dialog.tsx
 #: ../shell/src/share-sheet.tsx
 msgid "Making the link…"
 msgstr "Tworzę link…"
@@ -4426,6 +4433,10 @@ msgstr "Otwórz {name}"
 #: ../shell/src/data-page.tsx
 msgid "Open app"
 msgstr "Otwórz aplikację"
+
+#: ../shell/src/main.tsx
+msgid "Open your apps"
+msgstr "Otwórz swoje aplikacje"
 
 #: ../shell/src/data-page.tsx
 #: ../shell/src/file-viewer.tsx
@@ -5725,6 +5736,11 @@ msgstr "Link odpowiedział {status}"
 msgid "The link could not be fetched from here"
 msgstr "Nie udało się pobrać linku stąd"
 
+#. Share dialog: making the link to an app's page failed
+#: ../shell/src/dialog.tsx
+msgid "The link could not be made. The words can still be sent."
+msgstr "Nie udało się utworzyć linku. Tekst nadal można wysłać."
+
 #: ../shell/src/studio-engine.ts
 msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
 msgstr "Model odpowiedział wyjaśnieniem zamiast aplikacji. Spróbuj ponownie albo powiedz to inaczej."
@@ -6061,6 +6077,10 @@ msgstr "Ten link jest uszkodzony: nie udało się odczytać aplikacji. Poproś o
 #: ../shell/src/demo.tsx
 msgid "This link no longer works: whoever shared it took it down, or it was never made."
 msgstr "Ten link już nie działa: osoba, która go udostępniła, wycofała go albo nigdy nie powstał."
+
+#: ../shell/src/main.tsx
+msgid "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
+msgstr "Ten link otwiera aplikację, której tu nie masz. Poproś osobę, która go wysłała, żeby udostępniła ci aplikację, i otwórz link jeszcze raz."
 
 #: ../views/src/timeline.tsx
 msgid "This month"

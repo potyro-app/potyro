@@ -339,8 +339,12 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
       newBtn.disabled = true;
       joinBtn.disabled = true;
     } else if (invited) {
-      // Straight to the one thing left to do: your name if it is missing, else Join.
-      (nameIn.value ? joinBtn : nameIn).focus({ preventScroll: true });
+      // Straight to the one thing left to do: your name if it is missing, else Join. After the shell has
+      // put the page up, which settles its own focus first.
+      const next = nameIn.value ? joinBtn : nameIn;
+      setTimeout(() => {
+        if (next.isConnected) next.focus({ preventScroll: true });
+      }, 60);
     }
   };
 

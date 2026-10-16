@@ -30,7 +30,7 @@ import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { openStore } from "./open-store.js";
 import { sourceHttp } from "./ask-sources.js";
 import { keepCode } from "./app-modules.js";
-import { derivedLine, newLine } from "./app-link.js";
+import { derivedLine, newLine } from "./app-line.js";
 
 export type AddSource = "file" | "link" | "paste";
 

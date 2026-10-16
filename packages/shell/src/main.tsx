@@ -1053,6 +1053,10 @@ async function boot(): Promise<void> {
     void show(next, root, caps);
     return true;
   });
+  // A link to an app's page pasted over this page's address changes only its fragment: boot reads links.
+  globalThis.addEventListener("hashchange", () => {
+    if (readAppTarget(location.hash)) location.reload();
+  });
   globalThis.addEventListener("popstate", () => {
     const next = route();
     if (canSwitchInPlace(next)) void show(next, root, caps);
@@ -1097,9 +1101,14 @@ function registerDeepLinks(): void {
   void onUrlOpen((url) => {
     // "Open with Potyro" on a file (#254): the same question as a file dropped on it.
     if (isOpenedFile(url)) return void receiveSharedFiles([{ uri: url, name: nameFromUri(url), mimeType: "" }]);
-    if (!/[#&]join=/.test(url)) return;
+    // An invite, or a link to one of an app's pages (docs/24 §11): the latter opens this device's copy.
+    if (!/[#&](join|app)=/.test(url)) return;
     const hash = url.slice(url.indexOf("#"));
+    // On the home screen the address has no query, so this changes only the fragment — which loads
+    // nothing by itself. Boot reads links, so it is booted again.
+    const fragmentOnly = !location.search;
     location.replace(`${location.pathname}${hash}`);
+    if (fragmentOnly) location.reload();
   });
 }
 
