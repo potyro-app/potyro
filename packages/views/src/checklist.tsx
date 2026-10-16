@@ -24,6 +24,7 @@
 // says where. So it is added ungrouped and the view asks — "Tap the aisle for Milk" — rather than
 // guessing, or making the person open a form to answer a question one tap can.
 
+import { useReportCount } from "./page-count.js";
 import { fmt } from "@potyro/i18n";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -175,6 +176,7 @@ export function ChecklistView(props: BuiltinViewProps) {
   const { runtime, pageId, params, navigate } = props;
   const view = getView(runtime, pageId) as unknown as ChecklistDef;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
+  useReportCount(loading ? undefined : rows.length);
   const texts = useRowTexts(runtime, pageId, rows, view);
   const rowGroups = useRowGroups(runtime, pageId, rows, view);
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing to do.`);

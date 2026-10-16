@@ -464,6 +464,11 @@ msgstr "{count, plural, one {Sonst bleibt es auf der Liste ({kind}: keine).} oth
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Mit # Person geteilt} other {Mit # Personen geteilt}}"
 
+#. How many records the page shows, read after its title
+#: ../shell/src/page-header.tsx
+msgid "{count} shown"
+msgstr "{count} angezeigt"
+
 #: ../shell/src/ask-review.tsx
 msgid "{created, plural, one {added # record} other {added # records}}"
 msgstr "{created, plural, one {# Eintrag hinzugefügt} other {# Einträge hinzugefügt}}"
@@ -1233,6 +1238,11 @@ msgstr "Element hinzufügen"
 msgid "Add an item…"
 msgstr "Element hinzufügen…"
 
+#. Under a short list: make one more record like these
+#: ../views/src/builtins.tsx
+msgid "Add another"
+msgstr "Weitere hinzufügen"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add app"
 msgstr "App hinzufügen"
@@ -1294,6 +1304,11 @@ msgstr "Quelle hinzufügen"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Add the API's address, or a link to its documentation."
 msgstr "Füge die Adresse der API oder einen Link zu ihrer Dokumentation hinzu."
+
+#. Button on an empty page: make its first record
+#: ../views/src/builtins.tsx
+msgid "Add the first one"
+msgstr "Ersten Eintrag hinzufügen"
 
 #. After a field's name and a colon, lower case
 #: ../views/src/media-input.tsx
@@ -1390,6 +1405,13 @@ msgstr "Alle Details und Quellen"
 #: ../views/src/steps.tsx
 msgid "All done."
 msgstr "Alles erledigt."
+
+#. On an app's home: a list of every page it has
+#. On an app's home: a list of every page it has
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
+msgid "All pages"
+msgstr "Alle Seiten"
 
 #. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
@@ -1610,6 +1632,7 @@ msgstr "Fragt nach"
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
+#: ../shell/src/page-header.tsx
 #: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Zurück"
@@ -2471,9 +2494,9 @@ msgstr "{label} verringern"
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 msgid "Delete"
 msgstr "Löschen"
 
@@ -2704,7 +2727,8 @@ msgstr "bearbeitet"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/map.tsx
 msgid "Edit"
 msgstr "Bearbeiten"
@@ -3824,10 +3848,10 @@ msgstr "Modell wird geladen…"
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
 #: ../views/src/calendar.tsx
 #: ../views/src/chart.tsx
 #: ../views/src/checklist.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/record-form.tsx
 #: ../views/src/relation-input.tsx
 #: ../views/src/stats.tsx
@@ -4031,8 +4055,8 @@ msgstr "Mehr"
 msgid "More — something new"
 msgstr "Mehr — etwas Neues"
 
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
+#: ../views/src/detail.tsx
 msgid "More actions"
 msgstr "Weitere Aktionen"
 
@@ -4322,7 +4346,7 @@ msgstr "Nicht bestätigt"
 msgid "Not downloaded — tap to get it"
 msgstr "Nicht heruntergeladen — tippen, um es zu holen"
 
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 #: ../views/src/steps.tsx
 msgid "Not found."
 msgstr "Nicht gefunden."
@@ -6569,9 +6593,7 @@ msgid "This Potyro already knew you as someone else, and apps here are shared un
 msgstr "Dieses Potyro kannte dich schon als jemand anderen, und Apps hier sind unter diesem Namen geteilt, darum blieb das so. Um die Person zu sein, die du auf {site} warst, gib unter Du die Wörter von dort ein."
 
 #: ../shell/src/data-table.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
-#: ../views/src/builtins.tsx
+#: ../views/src/detail.tsx
 msgid "this record"
 msgstr "dieser Eintrag"
 

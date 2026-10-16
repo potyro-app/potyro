@@ -49,6 +49,8 @@ export interface ActionDef {
   run: ActionFn;
   /** Button text; default: the key, humanised. */
   label?: Words;
+  /** A glyph before the label on its compact buttons. */
+  icon?: string;
   /** What it does, for Ask. */
   description?: string;
   input?: Record<string, Field>;
@@ -99,6 +101,8 @@ export interface ListDisplay {
   secondary?: Binding;
   media?: string;
   badges?: string[];
+  /** What leads a row with no photo: a tinted initial (default), the entity's icon, or nothing. */
+  lead?: "monogram" | "icon" | "none";
 }
 
 export interface ListView {
@@ -134,6 +138,8 @@ export interface GalleryView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
+  /** The cards' shape; default `"landscape"` (4:3). */
+  aspect?: "square" | "portrait" | "landscape";
 }
 
 export interface TableView {
@@ -169,6 +175,16 @@ export interface DetailView {
   /** Overrides the entity's `groups` for this page only. Without it the page shows the groups. */
   sections?: DetailSection[];
   actions?: DetailAction[];
+  /** The cover's picture: a photo field, or a computed returning a path in `ctx.files`
+   *  (`"art/squat.jpg"`). Default: the entity's first photo field; `false`: none. */
+  media?: string | false;
+  /** `"banner"` (picture across the top; default with one), `"full"` (fills the first screen), `"band"`
+   *  (the app's colour; default without), `"none"`. No record photo: the page's `background` image. */
+  cover?: "banner" | "full" | "band" | "none";
+  /** Fields as chips on the cover. Default: its enum fields. */
+  facts?: string[];
+  /** The ONE thing this page is for ("Start"): a big button on the cover. */
+  primaryAction?: DetailAction;
 }
 
 export interface CalendarView {
@@ -548,6 +564,13 @@ export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<Words>;
+  /** One line under the page's title. */
+  description?: Words;
+  /** A big button in the page's header ("Start workout"): a quick action's `id`, or the index of one
+   *  of its `actions`. The page then has no floating Add. */
+  primaryAction?: string | number;
+  /** This page's ground; overrides `theme.background`. */
+  background?: Backdrop;
   /** One emoji or short glyph for the page's tab (#111). Without it the tab shows the entity's icon. */
   icon?: string;
   hidden?: boolean;
@@ -642,8 +665,15 @@ export interface PermissionManifest {
   speech?: boolean;
 }
 
+/** What a page sits on: `"wash"` (default, a glow of the accent), `"dots"`, `"grain"`, `"plain"`, or
+ *  `{ image }`, a path in `ctx.files` (a shipped `"art/kitchen.jpg"`) shown behind the page's header
+ *  and as the cover of a record page with no photo. */
+export type Backdrop = "plain" | "wash" | "dots" | "grain" | { image: string };
+
 export interface Theme {
   accent?: string;
+  /** Every page's ground; a page's own `background` wins. */
+  background?: Backdrop;
 }
 
 /**

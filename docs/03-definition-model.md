@@ -292,6 +292,57 @@ untrusted app exactly as its views do. `ctx.params` are the page's, shared by ev
 page's `summary` and filter chips read the first item. `defineApp` fills `view` from a layout's
 first item, so anything that reads a page's view sees the primary one.
 
+### How a page looks — header, ground, covers, the one primary action
+
+Every page that lists or sums records opens on a **header** the shell draws: the page's icon and
+`title`, how many records it shows (told by the view, never queried twice), its `description`, its
+`summary` figures and its `primaryAction`. A list row leads with the record's photo — the page's
+`display.media`, else the entity's first photo field — or, without one, its initial in the record's
+own colour (its first coloured badge's, else one derived from its text). A short list offers the next
+record in its own shape; an empty one says `emptyText` and offers the first. An app that sets none of
+the options below still looks designed; they are for the app that wants its own.
+
+```ts
+theme: { accent: "#3a7", background: "grain" },        // every page's ground
+pages: [
+  {
+    id: "today", title: "Today",
+    description: "Your next session, and what you lifted last time",  // one line under the title
+    primaryAction: "start-session",   // a quickAction id, or the index of one of `actions`: a big button
+    background: { image: "art/gym.jpg" },               // a picture from the app's files, behind the header
+    view: { type: "list", entity: "session", display: { primary: "day", lead: "icon" } },
+  },
+  { id: "photos", title: "Photos", view: { type: "gallery", entity: "plant", aspect: "portrait" } },
+  {
+    id: "exercise", title: "Exercise", hidden: true,
+    view: {
+      type: "detail", entity: "exercise", param: "id",
+      cover: "full",                  // banner | full | band | none
+      media: "art",                   // a photo field, or a computed returning a path in ctx.files
+      facts: ["muscle", "level"],     // chips on the cover
+      primaryAction: "start",         // the ONE thing this page is for, big on the cover
+      actions: ["logSet"],            // the rest, quiet, in the bar under it
+    },
+  },
+]
+```
+
+| option | where | what it does |
+| --- | --- | --- |
+| `description` | page | one line under the page's title |
+| `primaryAction` | page | a quick action's `id`, or the index of one of the page's `actions`: a big button in the header; the page then has no floating Add |
+| `background` | page, `theme` | `"wash"` (default: a glow of the accent), `"dots"`, `"grain"`, `"plain"`, or `{ image }` — a path in the app's files, shown behind the header with a shade under the words, and the cover of a record page that has no photo |
+| `display.lead` | list | what leads a row with no photo: `"monogram"` (default), `"icon"` (the entity's), `"none"` |
+| `aspect` | gallery | `"landscape"` (4:3, default), `"square"`, `"portrait"` (4:5); a photo card carries its words on the photo |
+| `cover` | detail | `"banner"` (picture across the top, title on it — default with a picture), `"full"` (the picture fills the first screen), `"band"` (the app's colour — default without), `"none"` |
+| `media` | detail | the cover's picture: a media field, a file field, or a computed returning a path in `ctx.files`; `false` for none. Default: the entity's first photo field |
+| `facts` | detail | fields shown as chips on the cover; default: its enum fields with a value |
+| `primaryAction` | detail | an action key or `{ label, navigate }`: a full-width button on the cover; `actions` stay quiet beside it |
+| `icon` | an entity's `ActionDef` | a glyph before the action's label on its compact buttons |
+
+A record page shows only the fields that have a value; the form is where the rest is filled in.
+Everything here is data, so a shared app looks the same in the sealed box.
+
 ### Built-in view types (conveniences)
 
 `list · table · detail · gallery · calendar · map · steps`. Their bindings (`date` for

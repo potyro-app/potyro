@@ -148,6 +148,7 @@ export type {
   PermissionManifest,
   NetworkPermission,
   Theme,
+  Backdrop,
   Computed,
   ComputedDef,
   ActionFn,

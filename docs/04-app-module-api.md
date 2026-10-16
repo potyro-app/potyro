@@ -62,6 +62,18 @@ error. The launcher keeps what it can show (`checkTileContent`: a whole count up
 to 60 characters, three lines of 80, a picture reference — never an address) and makes a picture
 small (240 px) before keeping it.
 
+### How it looks — presentation options (all optional)
+
+`theme.background` / a page's `background` (`"wash"` default · `"dots"` · `"grain"` · `"plain"` · `{ image: "<path in ctx.files>" }`),
+a page's `description` and `primaryAction` (a quick action `id`, or the index of one of its `actions`: a big
+button in the page's header, no floating Add on that page), a list's `display.lead` (`"monogram"` ·
+`"icon"` · `"none"`), a gallery's `aspect` (`"landscape"` · `"square"` · `"portrait"`), a detail view's
+`cover` (`"banner"` · `"full"` · `"band"` · `"none"`), `media` (a photo field, or a computed returning a
+path in `ctx.files`), `facts` (fields as chips on the cover) and `primaryAction` (the one big button), and
+an `ActionDef`'s `icon`. They are data — the shell draws them, at either provenance — and an app that
+sets none still gets a page header, rows led by their photo or a tinted initial, and a cover on every
+record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.
+
 ## Function signatures
 
 ```ts
