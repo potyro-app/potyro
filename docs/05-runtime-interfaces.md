@@ -169,6 +169,12 @@ question once per app and host, 4 per app, 1 MiB a message, 1 MiB waiting each w
 `.room`, `.socket.send`, `.socket.close`), a `{ t: "sock" }` message per event and a `sockack` for
 each one the app takes — at most 64 events / 1 MiB untaken in the box, then the connection closes
 `"slow"`. The Android app adds ws:// to the local network through its own plugin (docs/28 §6).
+`open(url, { protocols, keepWhileHiddenMs })` gives each connection its own background grace
+(`HIDDEN_CLOSE_MS` unless asked, at most `HIDDEN_KEEP_MAX_MS`); `plainLocal` says whether this page can
+open ws:// to the home network. The shell's per-app wrapper adds, beside `allowed` / `allow` /
+`consentWords`: `turnedOff` and `onTurnedOff` (Edit tile's switches: off ends that target's
+connections at once, `why: "off"`), `localAddress` and `localAddressWords` (`hosts: ["local"]`). A
+`SocketTarget` is `{ host } | { rooms: true } | { local: address }`.
 
 `speech` is ONE microphone per page (`sharedWebSpeech()`, or `speechOverPlugin` in the Android app;
 the fake is `createFakeSpeech()`). It picks the engine (docs/29 §2), and where the browser has none
