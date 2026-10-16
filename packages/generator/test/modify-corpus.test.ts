@@ -42,7 +42,7 @@ const RIGHT: Record<string, Array<[string, string]>> = {
       `          if (ctx.params.sun && !p.needsDirectSun) return false;\n${PLANTS_LIST_RETURN}`,
     ],
   ],
-  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
+  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
   "recipes-put-spice-back": [
     [
       RECIPE_PHOTO,
@@ -67,7 +67,7 @@ const RIGHT: Record<string, Array<[string, string]>> = {
       '          options: ["want to go", "been", "favourite"],\n          default: "want to go",\n          colors: { "want to go": "yellow", been: "teal", favourite: "pink" },',
     ],
   ],
-  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true },", "        durationSec: { type: \"number\", hidden: true },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
+  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
   "places-phone-wrong-gate": [
     [PLACE_NOTES, `${PLACE_NOTES}\n        phone: { type: "text", label: { en: "Phone", "pt-BR": "Telefone", de: "Telefon", es: "Teléfono", pl: "Telefon", it: "Telefono" } },`],
   ],
