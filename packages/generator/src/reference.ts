@@ -268,11 +268,17 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url })`: hand a result or a link on (share sheet / Copy); no permission",
-    declarations: [],
+    summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
+    declarations: ["ShareAppLink", "PageLink"],
     members: [{ of: "CtxUi", name: "share" }],
-    cues: /\bshare\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir)\b/i,
-    uses: /\.share\(/,
+    notes: [
+      "A link to one of the app's pages: the page declares what a link may hand it, `link: { params: [\"code\"] }`, and",
+      "`ctx.ui.share({ text, app: { page: \"play\", params: { code } } })` makes it. It opens the friend's own copy of the app",
+      "there (or a demo they can keep, which lands there). The page reads `ctx.params.code` (a custom view: `props.param?.code`):",
+      "text, at most 200 characters, possibly typed by a stranger. Never act on it by itself — fill a box, and let the person tap.",
+    ].join("\n"),
+    cues: /\bshare\(|link:\s*\{\s*params|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|invit\w*|deep ?links?|udostępni\w*|zapros\w*|compartilh\w*|convid\w*|teilen|einlad\w*|compartir|invitar\w*)\b/i,
+    uses: /\.share\(|link:\s*\{\s*params/,
   },
   {
     key: "ctx.space",

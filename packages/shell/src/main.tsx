@@ -55,7 +55,8 @@ import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
 import { watchLiveCamera } from "./camera-indicator.js";
 import { loadFaces } from "./faces/faces-loader.js";
-import { readDemoLink, type DemoLink } from "./demo-link.js";
+import { demoLinkText, readDemoLink, siteBase, type DemoLink } from "./demo-link.js";
+import { holdArrival, readAppTarget, takeArrival, type AppTarget } from "./app-link.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -326,11 +327,25 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | f
 }
 
 /**
+ * Open this device's copy of the app a link is for, if it has one (docs/24 §11): the address becomes
+ * the app's own (`?user=<id>`, so a reload stays there and the fragment leaves the bar) and where the
+ * link lands goes along to the app's first render. Nothing is run because of the link.
+ */
+async function openLinkedApp(target: AppTarget): Promise<boolean> {
+  const { findLinkedApp } = await import("./app-link-find.js");
+  const here = await findLinkedApp(target.line);
+  if (!here) return false;
+  holdArrival(here.id, target);
+  history.replaceState(null, "", `${siteBase(location.pathname)}?user=${encodeURIComponent(here.id)}`);
+  return true;
+}
+
+/**
  * A demo link (docs/24): the app in it, running straight away — sealed, on records in memory, with
  * nothing installed and no question asked before it is on screen. Nothing here touches this device's
  * apps, identity or storage; "Keep this app" is the ordinary Add-an-app card.
  */
-async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
+async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): Promise<void> {
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   setShellCaps(caps);
   const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath }, { shareEvent }] = await Promise.all([import("./demo.js"), import("./share-events.js")]);
@@ -352,9 +367,11 @@ async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
   const name = demoName(pkg);
   mount(root, <Splash name={name} source={pkg.source} />);
   try {
-    const session = await openDemo(pkg, caps);
+    // Its links (`ctx.ui.share({ app })`) are this demo's own link with where to land: a friend the
+    // person invites from the demo gets the same demo, or their own copy.
+    const session = await openDemo(pkg, caps, { link: demoLinkText(link, location.origin, location.pathname) });
     shareEvent("demo-opened");
-    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} />);
+    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} target={target} />);
   } catch (e) {
     const why =
       e instanceof DemoDeclined
@@ -577,7 +594,12 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   const appCaps = capsForApp(caps, id);
   const picker = new PickerHost();
   const questions = new UiHost();
-  const ui = createUiBridge(toaster.push, picker, shellDialogs, questions);
+  // `ctx.ui.share({ app })`: a link to one of this app's pages (docs/24 §11), made from the app as it is saved now.
+  const ui = createUiBridge(toaster.push, picker, shellDialogs, questions, async (target) => {
+    const now = getUserApp(id) ?? saved;
+    const [{ makeAppLink }, { declaredAppId }] = await Promise.all([import("./app-link-make.js"), import("./source-declared.js")]);
+    return makeAppLink(now, await declaredAppId(now.source), target);
+  });
   const navHost = new NavHost();
   const nav = createNavBridge((pageId, param) => navHost.navigate(pageId, param));
 
@@ -726,6 +748,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       onExport={() => void exportApp(composed!.runtime, store, caps, provenance, saved.source, toaster, id)}
       onImport={() => void importApp(caps, toaster)}
       onData={() => navigateTo({ kind: "data", id })}
+      // Opened from a link to one of its pages (docs/24 §11): there, with what the link said.
+      arrival={takeArrival(id) ?? undefined}
       generator
     />,
   );
@@ -958,14 +982,33 @@ async function boot(): Promise<void> {
   // waits on it, and every read of a secret performs the same move if this has not finished.
   void secureIdentitySecrets().catch((e: unknown) => console.warn("[potyro] could not secure identity keys:", e));
 
+  // A link to one of an app's pages (docs/24 §11) opens the person's own copy when they have one —
+  // any copy of that app, whatever it is called here — and the demo it carries when they do not,
+  // which lands on that page once kept. A remix link (`&remix=1`) asks for a copy of one's own: the demo.
+  const target = readAppTarget(location.hash);
+  let demo = readDemoLink(location.pathname, location.hash);
+  if (target && !demo?.remix && (await openLinkedApp(target))) demo = null;
   // A demo link opens its app and nothing else: no examples seeded, no account read, no launcher.
-  const demo = readDemoLink(location.pathname, location.hash);
-  if (demo) return bootDemo(root, demo);
+  if (demo) return bootDemo(root, demo, target ?? undefined);
 
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
   // isolate. Before routing, because routing asks the registry whether an app exists.
   await seedExamples({ trusted: !SANDBOX, now: new Date().toISOString() });
+  // A link to an app with no demo in it, for someone who did not have it: an example, seeded just now,
+  // may be the app; if not, the screen says so, and nothing else happens.
+  if (target && readAppTarget(location.hash) && !(await openLinkedApp(target))) {
+    history.replaceState(null, "", siteBase(location.pathname));
+    mount(
+      root,
+      <Splash
+        name={t({ message: "A link to an app", comment: "Heading when a link opens an app this device does not have" })}
+        failed={t`This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again.`}
+        action={{ label: t`Open your apps`, run: async () => location.assign(siteBase(location.pathname)) }}
+      />,
+    );
+    return;
+  }
 
   // A shared link is handled before routing: it creates the local app, so the route it should land
   // on does not exist until the invite has been accepted.
@@ -1012,6 +1055,10 @@ async function boot(): Promise<void> {
     void show(next, root, caps);
     return true;
   });
+  // A link to an app's page pasted over this page's address changes only its fragment: boot reads links.
+  globalThis.addEventListener("hashchange", () => {
+    if (readAppTarget(location.hash)) location.reload();
+  });
   globalThis.addEventListener("popstate", () => {
     const next = route();
     if (canSwitchInPlace(next)) void show(next, root, caps);
@@ -1056,9 +1103,14 @@ function registerDeepLinks(): void {
   void onUrlOpen((url) => {
     // "Open with Potyro" on a file (#254): the same question as a file dropped on it.
     if (isOpenedFile(url)) return void receiveSharedFiles([{ uri: url, name: nameFromUri(url), mimeType: "" }]);
-    if (!/[#&]join=/.test(url)) return;
+    // An invite, or a link to one of an app's pages (docs/24 §11): the latter opens this device's copy.
+    if (!/[#&](join|app)=/.test(url)) return;
     const hash = url.slice(url.indexOf("#"));
+    // On the home screen the address has no query, so this changes only the fragment — which loads
+    // nothing by itself. Boot reads links, so it is booted again.
+    const fragmentOnly = !location.search;
     location.replace(`${location.pathname}${hash}`);
+    if (fragmentOnly) location.reload();
   });
 }
 
