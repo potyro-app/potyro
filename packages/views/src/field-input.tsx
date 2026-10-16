@@ -329,8 +329,8 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
 /**
  * Person picker over the app's space (KA-19).
  *
- * The candidate list is space membership, never a table the app maintains — which is why this is
- * not a relation input. Solo shows just you rather than an empty control: a `member` field has to be
+ * The candidate list is the app's people — space membership and its guests — never a table the app
+ * maintains, which is why this is not a relation input. Solo shows just you rather than an empty control: a `member` field has to be
  * usable *before* an app is shared, or every shared app is broken until the moment it is shared.
  */
 function MemberInput({
@@ -345,7 +345,9 @@ function MemberInput({
   onChange: (v: unknown) => void;
 }) {
   const ctx = runtime.ctx;
-  const people = ctx.space?.members ?? (ctx.me ? [ctx.me] : []);
+  // Everyone a member field can name: the members, and the guests named before they joined (docs/04
+  // §Guests) — so a trip's costs can say "Tom paid" before Tom has the app.
+  const people = ctx.people?.length ? ctx.people : (ctx.space?.members ?? (ctx.me ? [ctx.me] : []));
 
   if (field.many) {
     const selected = new Set(Array.isArray(value) ? (value as string[]) : []);
