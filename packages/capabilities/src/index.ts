@@ -48,3 +48,28 @@ export {
 } from "./sockets.js";
 export { createFakeSockets, type FakeSockets, type FakeSocketsOptions, type FakeConnection, type FakeHostBehaviour, type FakeRoomPeer } from "./fake-sockets.js";
 export { CONFORMANCE_CHECKS, type ConformanceCheck, type TargetExpectations } from "./conformance.js";
+export {
+  createWebSpeech,
+  sharedWebSpeech,
+  speechLanguage,
+  joinPieces,
+  pickEngine,
+  browserService,
+  recognitionCtor,
+  SpeechError,
+  SPEECH_MAX_MS,
+  CLOUD_MAX_MS,
+  type SpeechCap,
+  type SpeechWhere,
+  type SpeechEndWhy,
+  type ListenOptions,
+  type PlatformSpeechEvents,
+  type PlatformListening,
+  type Transcriber,
+  type Recognition,
+  type RecognitionCtor,
+  type WebSpeechDeps,
+  type RecorderDeps,
+} from "./speech.js";
+export { encodeWav, recordingToWav, WAV_RATE } from "./wav.js";
+export { createFakeSpeech, type FakeSpeech, type FakeSpeechOptions, type FakeListening } from "./fake-speech.js";

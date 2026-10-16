@@ -15,6 +15,7 @@ import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, Valu
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
+import { SpeechBridge, type BoxSpeechInfo } from "../speech-bridge.js";
 
 /**
  * The realm itself could not start on this browser — the frame did not load, or could not make its
@@ -141,7 +142,15 @@ export class RealmLoadedApp implements LoadedApp {
     },
     (sid) => this.unpin(sid),
   );
-  /** A ctx a connection was opened through stays nameable while it is open: its callbacks still use it. */
+  /** Listenings (docs/29): the host holds the microphone; `{ t: "speech" }` carries what it hears. */
+  private readonly speech = new SpeechBridge(
+    (ev) => this.port?.postMessage({ t: "speech", ev }),
+    (lid) => this.unpin(-lid),
+  );
+  /**
+   * A ctx a connection (by its sid) or a listening (by minus its lid) was opened through stays
+   * nameable while it is open: its callbacks still use it.
+   */
   private pinnedBy = new Map<number, number>();
 
   constructor(
@@ -206,6 +215,7 @@ export class RealmLoadedApp implements LoadedApp {
     this.o.onKill?.(reason);
     // The new realm will not know these connections' numbers: they end with the old one.
     this.sockets.endAll("stopped", "the app was stopped");
+    this.speech.endAll();
     this.teardown();
     for (const [, p] of this.pending) p.reject(new Error(`stopped: ${reason}`));
     this.pending.clear();
@@ -227,6 +237,7 @@ export class RealmLoadedApp implements LoadedApp {
   dispose(): void {
     this.disposed = true;
     this.sockets.endAll("left", "the app was closed");
+    this.speech.endAll();
     this.teardown();
     for (const [, p] of this.pending) p.reject(new Error("this app was closed"));
     this.pending.clear();
@@ -302,11 +313,17 @@ export class RealmLoadedApp implements LoadedApp {
       const value = await this.route(ctx, m.op as Op, Array.isArray(m.args) ? m.args : []);
       const opened = (m.op === "caps.network.socket" || m.op === "caps.network.room") && port === this.port ? (value as BoxSocketInfo) : null;
       if (opened) this.pinnedBy.set(opened.sid, ctxId);
+      const listening = m.op === "caps.speech.listen" && port === this.port ? (value as BoxSpeechInfo) : null;
+      if (listening) this.pinnedBy.set(-listening.lid, ctxId);
       reply(true, value);
       // Only now, after the realm has its number, may the connection's events follow.
       if (opened) {
         if (id) this.sockets.ready(opened.sid);
         else this.sockets.close(opened.sid);
+      }
+      if (listening) {
+        if (id) this.speech.ready(listening.lid);
+        else this.speech.stop(listening.lid);
       }
     } catch (e) {
       const code = (e as { code?: unknown } | null)?.code;
@@ -476,6 +493,12 @@ export class RealmLoadedApp implements LoadedApp {
         return this.question(() => this.sockets.open(ctx, s(0), x(1)));
       case "caps.network.room":
         return this.question(() => this.sockets.room(ctx, opt(0), x(1)));
+      // Voice (docs/29): `mediateCaps` put it here only if the manifest asked; asking waits on the person.
+      case "caps.speech.listen":
+        return this.question(() => this.speech.listen(ctx, x(0)));
+      case "caps.speech.stop":
+        this.speech.stop(Number(a[0]));
+        return null;
       case "caps.network.socket.send":
         return this.sockets.send(Number(a[0]), a[1]);
       case "caps.network.socket.close":

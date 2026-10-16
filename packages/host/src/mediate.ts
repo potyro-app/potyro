@@ -8,6 +8,7 @@ import type { AiCall, AiCap, Capabilities } from "@potyro/capabilities";
 import { AiError, makeAi, type AiDeps } from "./ai.js";
 import type { Provenance, UiBridge } from "./types.js";
 import { makeLiveNetwork, permittedHosts } from "./sockets.js";
+import { makeSpeech } from "./speech.js";
 
 /** What `ctx.caps.ai` needs from the ctx it lives on: the language and the app's own pictures. */
 export type AiContext = Omit<AiDeps, "before">;
@@ -219,6 +220,12 @@ export function mediateCaps(args: {
   const cap = args.caps.ai;
   if (cap && (trusted || args.permissions.ai === true)) {
     out.ai = trusted ? trustedAi(cap, args.ai ?? BLOBS_ONLY) : sealedAi(cap, args.ui, args.appName, args.ai ?? BLOBS_ONLY);
+  }
+  // Voice (docs/29): every app where the device can listen; a sealed one only when its manifest asked,
+  // and then it asks the person once. Absent otherwise, so `ctx.caps.speech` tells the app.
+  const speech = args.caps.speech;
+  if (speech && (trusted || args.permissions.speech === true)) {
+    out.speech = makeSpeech({ cap: speech, trusted, ui: args.ui, appName: args.appName, owner, locale: args.ai?.language ?? "en" });
   }
   return out;
 }
