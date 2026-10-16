@@ -120,6 +120,8 @@ importers:
         specifier: ^18.3.12
         version: 18.3.31
 
+  gallery: {}
+
   packages/ai-relay: {}
 
   packages/capabilities:
