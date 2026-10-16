@@ -21,7 +21,7 @@
 // records, so they are never translated.
 import { defineApp } from "potyro";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Ctx, Resolved, ViewProps } from "potyro";
+import type { Ctx, Resolved, UiTimer, ViewProps } from "potyro";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The arithmetic: plain functions, the same in the Train screen, the computed values and the tile.
@@ -275,8 +275,10 @@ const kgText = (ctx: Ctx, kg: number): string => ctx.format.number(kg, { maximum
 // ─────────────────────────────────────────────────────────────────────────────
 // The Train screen — a custom view (full React). Three states: the plan (what is next), the workout
 // (log sets against last time, rest between them), and the summary (what you just did, and broke).
-// The workout in progress lives in ctx.storage, rest clock included, so leaving the tab — or the app
-// — and coming back finds it exactly where it was.
+// The workout in progress lives in ctx.storage, so leaving the tab — or the app — and coming back
+// finds it exactly where it was. The rest between sets is a timer the SHELL keeps (`ctx.ui.timer`):
+// its chip stays in sight on every page, it rings at the end with the phone locked, and this screen
+// only draws it. While a workout is under way the screen stays on (`ctx.ui.keepAwake`).
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SetRow {
@@ -292,10 +294,14 @@ interface Active {
   startedAt: string; // ISO
   order: string[]; // exercise ids, in the routine's order when it started
   plan: Record<string, SetRow[]>;
-  /** When the rest in progress ends (ms since epoch), and how long it was. */
-  restEnd?: number;
-  restTotal?: number;
 }
+
+/** The rest timer's one id: a new rest restarts it rather than stacking a second (docs/04 §Timers). */
+const REST_ID = "rest";
+const REST_LABEL = { en: "Rest", "pt-BR": "Descanso", de: "Pause", es: "Descanso", pl: "Przerwa", it: "Recupero" };
+
+/** Seconds left on a timer: counted to its end while it runs, as the shell left it while paused. */
+const secondsLeft = (t: UiTimer, now: number): number => (t.endsAt ? Math.max(0, Math.ceil((t.endsAt.getTime() - now) / 1000)) : t.left);
 
 interface Summary {
   name: string;
@@ -318,6 +324,9 @@ function Train(props: ViewProps) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // The shell's rest timer as last read: the shell keeps it, so this is only what to draw.
+  const [rest, setRest] = useState<UiTimer | null>(null);
+  const reading = useRef(false);
   const hydrated = useRef(false);
   const adopted = useRef(false);
 
@@ -349,20 +358,38 @@ function Train(props: ViewProps) {
   }, [active]);
 
   // One clock for the workout and the rest: both are "now minus a moment", never a counter, so a
-  // locked phone or a background tab comes back to the right numbers.
+  // locked phone or a background tab comes back to the right numbers. The rest is read back from the
+  // shell on each tick: paused, stopped or rung on its chip, this screen follows.
+  const readRest = (): void => {
+    if (reading.current) return;
+    reading.current = true;
+    void ctx.ui
+      .timers()
+      .then((all) => setRest(all.find((t) => t.id === REST_ID) ?? null))
+      .catch(() => undefined)
+      .finally(() => {
+        reading.current = false;
+      });
+  };
   useEffect(() => {
     if (!active) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
+    readRest();
+    const id = setInterval(() => {
+      setNow(Date.now());
+      readRest();
+    }, 500);
     return () => clearInterval(id);
-  }, [active]);
-  const restLeft = active?.restEnd ? Math.ceil((active.restEnd - now) / 1000) : null;
-  useEffect(() => {
-    if (restLeft != null && restLeft <= 0 && active?.restEnd) {
-      void ctx.caps.haptics?.vibrate([0, 250, 120, 250]); // rest over — get ready
-      setActive((a) => (a ? { ...a, restEnd: undefined, restTotal: undefined } : a));
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restLeft]);
+  }, [active]);
+  // The phone is on the bench between sets: while a workout is under way the screen stays on.
+  const underWay = active != null;
+  useEffect(() => {
+    if (!underWay) return;
+    const awake = ctx.ui.keepAwake();
+    return () => awake.release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [underWay]);
+  const restLeft = rest ? secondsLeft(rest, now) : null;
 
   // The exercises this screen needs are the ones in routines and in sessions, which arrive with them
   // (a relation is read with its record): no third query, and none of an exercise's own figures,
@@ -643,46 +670,33 @@ function Train(props: ViewProps) {
     return num(ex?.restSec) > 0 ? Math.round(num(ex?.restSec)) : REST_SECONDS;
   };
 
-  const scheduleRest = async (seconds: number, nextLabel: string): Promise<void> => {
-    // The phone may lock between sets: where the device can schedule exactly, it says so itself.
-    const n = ctx.caps.notifications;
-    if (!n) return;
-    try {
-      await n.cancel("rest");
-      await n.schedule({
-        id: "rest",
-        at: new Date(Date.now() + seconds * 1000),
-        title: ctx.t({ en: "Rest's over", "pt-BR": "Fim do descanso", de: "Pause vorbei", es: "Se acabó el descanso", pl: "Koniec przerwy", it: "Recupero finito" }),
-        body: nextLabel,
-      });
-    } catch {
-      // A reminder is a nicety; the clock on the screen is the real one.
-    }
+  // The rest is the shell's timer: it rings at the end — with the phone locked too — so this screen
+  // neither buzzes nor schedules a reminder of its own (one ring, not two). The same id restarts it.
+  const startRest = (seconds: number): void => {
+    void ctx.ui
+      .timer({ label: REST_LABEL, seconds, id: REST_ID })
+      .then(setRest)
+      .catch(() => undefined);
   };
   const cancelRest = (): void => {
-    void ctx.caps.notifications?.cancel("rest").catch(() => undefined);
-    setActive((a) => (a ? { ...a, restEnd: undefined, restTotal: undefined } : a));
+    void rest?.cancel().catch(() => undefined);
+    setRest(null);
   };
 
   const toggleDone = (exId: string, i: number): void => {
     const rows = (plan[exId] ?? []).map((r, ri) => (ri === i ? { ...r, done: !r.done } : r));
     const ticked = rows[i]!.done;
-    let restEnd = active.restEnd;
-    let restTotal = active.restTotal;
     if (ticked) {
       void ctx.caps.haptics?.vibrate(35); // set logged — quick tick
       // The rest this exercise asks for: a heavy squat and a cable fly do not want the same wait.
       const wait = rows[i]!.kind === "warmup" ? Math.min(60, restFor(exId)) : restFor(exId);
-      restEnd = Date.now() + wait * 1000;
-      restTotal = wait;
-      const upcoming = rows.find((r) => !r.done) ? exById.get(exId) : exById.get(active.order.find((id) => id !== exId && !(plan[id] ?? []).every((r) => r.done)) ?? "");
-      void scheduleRest(wait, upcoming ? String(upcoming.name ?? "") : "");
+      startRest(wait);
       if (rows.every((r) => r.done)) {
         const nextEx = active.order.find((id) => id !== exId && !(plan[id] ?? []).every((r) => r.done));
         if (nextEx) setOpenId(nextEx);
       }
     }
-    setActive({ ...active, plan: { ...plan, [exId]: rows }, restEnd, restTotal });
+    setActive({ ...active, plan: { ...plan, [exId]: rows } });
   };
 
   const addSet = (exId: string): void => {
@@ -692,7 +706,7 @@ function Train(props: ViewProps) {
   };
 
   const stop = (): void => {
-    void ctx.caps.notifications?.cancel("rest").catch(() => undefined);
+    cancelRest();
     setActive(null);
     setOpenId(null);
   };
@@ -791,7 +805,7 @@ function Train(props: ViewProps) {
     setSummary(done);
   };
 
-  const restRatio = restLeft != null && active.restTotal ? Math.max(0, Math.min(1, restLeft / active.restTotal)) : 0;
+  const restRatio = restLeft != null && rest?.seconds ? Math.max(0, Math.min(1, restLeft / rest.seconds)) : 0;
 
   return (
     <div className="wk wk-active">
@@ -905,14 +919,14 @@ function Train(props: ViewProps) {
       </div>
 
       <div className="wk-bar">
-        {restLeft != null && restLeft > 0 ? (
-          <div className="wk-rest" role="timer" aria-label={ctx.t({ en: "Rest", "pt-BR": "Descanso", de: "Pause", es: "Descanso", pl: "Przerwa", it: "Recupero" })}>
+        {rest && restLeft != null && restLeft > 0 ? (
+          <div className="wk-rest" data-paused={rest.paused || undefined} role="timer" aria-label={ctx.t({ en: "Rest", "pt-BR": "Descanso", de: "Pause", es: "Descanso", pl: "Przerwa", it: "Recupero" })}>
             <svg className="wk-ring" viewBox="0 0 44 44" aria-hidden="true">
               <circle cx="22" cy="22" r="19" />
               <circle cx="22" cy="22" r="19" style={{ strokeDashoffset: `${(1 - restRatio) * 119.4}` }} />
             </svg>
             <span className="wk-rest-n">{mmss(restLeft)}</span>
-            <button type="button" onClick={() => setActive((a) => (a?.restEnd ? { ...a, restEnd: a.restEnd + 30_000, restTotal: (a.restTotal ?? 0) + 30 } : a))}>
+            <button type="button" onClick={() => startRest(restLeft + 30)}>
               +30s
             </button>
             <button type="button" onClick={cancelRest}>
@@ -1161,9 +1175,8 @@ export default defineApp({
       ].filter(Boolean),
     };
   },
-  // Buzz on a set and when a rest ends; a reminder when the rest is over where the device can
-  // schedule one exactly (a phone, not a browser tab).
-  permissions: { haptics: true, notifications: true },
+  // Buzz on a set and on a record. The rest's ring is the shell's timer, which needs no permission.
+  permissions: { haptics: true },
   nav: "tabs",
 
   quickActions: [
