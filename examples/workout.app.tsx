@@ -497,11 +497,30 @@ export default defineApp({
   id: "workout",
   name: { en: "PPL Log", "pt-BR": "Diário PPL", de: "PPL-Tagebuch", es: "Registro PPL", pl: "Dziennik PPL", it: "Diario PPL" },
   icon: "🏋",
-  version: "1.2.0",
+  version: "1.3.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#5B8DEF" },
+  category: "everyday",
+  // The launcher tile (docs/04 §Tile): the last session — which day, when, how long — and the next.
+  tile: async (ctx) => {
+    const sessions = (await ctx.query("session")).sort((a, b) => new Date(String(b.date)).getTime() - new Date(String(a.date)).getTime());
+    const last = sessions[0];
+    if (!last) return {};
+    const sets = ((last.entries as { sets?: unknown[] }[] | undefined) ?? []).reduce((n, e) => n + (e.sets?.length ?? 0), 0);
+    const next = DAYS[(DAYS.indexOf(last.day as (typeof DAYS)[number]) + 1) % DAYS.length];
+    return {
+      count: sessions.filter((s) => ctx.now().getTime() - new Date(String(s.date)).getTime() < 7 * 86_400_000).length,
+      title: `${capital(dayName(last.day, ctx))} · ${ctx.format.relative(new Date(String(last.date)), { unit: "day" })}`,
+      lines: [
+        [last.durationSec ? ctx.format.number(Math.round(Number(last.durationSec) / 60), { style: "unit", unit: "minute" }) : "", ctx.t({ en: "{n, plural, one {# set} other {# sets}}", "pt-BR": "{n, plural, one {# série} other {# séries}}", de: "{n, plural, one {# Satz} other {# Sätze}}", es: "{n, plural, one {# serie} other {# series}}", pl: "{n, plural, one {# seria} few {# serie} many {# serii} other {# serii}}", it: "{n, plural, one {# serie} other {# serie}}" }, { n: sets })]
+          .filter(Boolean)
+          .join(" · "),
+        ctx.t({ en: "Next: {day}", "pt-BR": "Próximo: {day}", de: "Als Nächstes: {day}", es: "Siguiente: {day}", pl: "Następnie: {day}", it: "Prossimo: {day}" }, { day: dayName(next, ctx) }),
+      ],
+    };
+  },
   permissions: { haptics: true }, // buzz on set-complete + rest-end
   nav: "grid", // land on an object grid (Exercises / Sessions) with the quick actions on top
 

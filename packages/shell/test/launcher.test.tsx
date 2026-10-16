@@ -14,6 +14,7 @@ vi.mock("../src/app-source.js", () => ({ inspect: async () => ({ entities: [], p
 vi.mock("../src/dialog.js", () => ({ shellDialogs: { confirm: async () => true, prompt: async (_m: string, o?: { default?: string }) => `${o?.default ?? ""} 2`, share: async () => {} } }));
 
 import { Launcher } from "../src/launcher.js";
+import { setLook } from "../src/look.js";
 import { USER_APPS_CHANGED, type UserApp } from "../src/user-apps.js";
 
 const app = (id: string, name = id): UserApp => ({ id, name, source: "export default 1", updatedAt: "2026-09-11T00:00:00.000Z", trusted: true });
@@ -233,5 +234,38 @@ describe("Launcher tile editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(tiles("Recipes")).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem("potyro:launcher")!)["user:recipes"].hue).toBeUndefined();
+  });
+});
+
+// #96: the Tiles home screen (the Start style), chosen in Look. A new app is placed on the wall once
+// its identity is read; the menu's Pin/Unpin puts it on the wall or takes it off, and All apps keeps it.
+describe("Launcher, Tiles style", () => {
+  const startStyle = () => setLook({ appearance: "system", launcher: "start" });
+  afterEach(() => setLook({ appearance: "system" }));
+
+  it("is not shown unless chosen: Classic is the default", () => {
+    seed(app("groceries", "Groceries"));
+    render(<Launcher {...props} />);
+    expect(document.querySelector(".k-metro")).toBeNull();
+    expect(screen.getByRole("searchbox", { name: "Find an app" })).toBeTruthy();
+  });
+
+  it("places an app on the wall once its identity is read, and Unpin/Pin take it off and back", async () => {
+    startStyle();
+    seed(app("groceries", "Groceries"), app("trips", "Trips"));
+    render(<Launcher {...props} />);
+    const onWall = () => Array.from(document.querySelectorAll<HTMLElement>(".k-metro-wall .k-metro-cell")).map((el) => el.dataset.key);
+    await vi.waitFor(() => expect(onWall()).toEqual(["user:groceries", "user:trips"]));
+    expect(JSON.parse(localStorage.getItem("potyro:launcher:wall")!).placed).toEqual(["user:groceries", "user:trips"]);
+    fireEvent.click(screen.getByRole("tab", { name: "All apps" }));
+    fireEvent.click(screen.getByRole("button", { name: /Actions for Trips/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+    expect(JSON.parse(localStorage.getItem("potyro:launcher:wall")!).unpinned).toEqual(["user:trips"]);
+    // Classic's own pins are untouched by the wall.
+    expect(JSON.parse(localStorage.getItem("potyro:launcher") ?? "{}")["user:trips"]?.pinned).toBeUndefined();
+    expect(tiles("Trips")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Pin Trips to Start" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Start" }));
+    expect(onWall()).toContain("user:trips");
   });
 });

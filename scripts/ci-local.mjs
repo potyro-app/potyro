@@ -150,12 +150,17 @@ function status(post) {
  * Build the shell and put it live. Refuses anything but a green origin/main, so what is live is
  * always something that passed the gate — never a branch, never an edit on top of a commit.
  *
- * Where it goes is `POTYRO_DEPLOY_TARGET`, an rsync destination. The default is the path on the
- * server; vazio's watcher uses an ssh alias whose key is locked to the web root by `rrsync`, so its
- * target is relative to that root (docs/16 §8). `version.json` in the web root names the live commit.
+* Where it goes is `POTYRO_DEPLOY_TARGET`: one rsync destination, or several separated by commas or
+ * spaces — every site that serves the shell (apps.vaz.io, potyro.app). The build is the same for
+ * all of them: the shell finds its relay and services from its own origin. The default is the path
+ * on the first server; vazio's watcher uses ssh aliases whose keys are locked to each web root by
+ * `rrsync`, so its targets are relative to those roots (docs/16 §8). `version.json` in each web root
+ * names the commit it serves, and a target already serving this commit is left alone.
  */
 function deploy() {
-  const target = process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/";
+  const targets = (process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/")
+    .split(/[\s,]+/)
+    .filter(Boolean);
   for (const s of ["ok", "fail"]) rmSync(join(dir, `deploy.${s}`), { force: true });
   if (dirty()) {
     console.error("✘ not deploying: tracked files are modified.");
@@ -170,8 +175,8 @@ function deploy() {
     console.error(`✘ not deploying: ${short} has not passed every step.`);
     process.exit(2);
   }
-  const live = liveCommit(target);
-  if (live === sha) {
+  const behind = targets.map((target) => ({ target, live: liveCommit(target) })).filter((t) => t.live !== sha);
+  if (!behind.length) {
     process.stdout.write(`✓ ${short} is already live\n`);
     return;
   }
@@ -179,13 +184,27 @@ function deploy() {
   if (!built.ok) return record("deploy", built);
   const dist = join(ROOT, "packages/shell/dist");
   writeFileSync(join(dist, "version.json"), `${JSON.stringify({ commit: sha, deployedAt: new Date().toISOString() })}\n`);
-  // `--delete`, or old hashed assets pile up on the server forever.
-  record("deploy", run("deploy-upload", "rsync", ["-az", "--delete", `${dist}/`, target]));
-  if (liveCommit(target) !== sha) {
-    console.error(`✘ uploaded, but ${target}version.json does not name ${short}`);
-    process.exit(1);
+  let failed = false;
+  let last = null;
+  for (const { target, live } of behind) {
+    // `--delete`, or old hashed assets pile up on the server forever.
+    const up = run("deploy-upload", "rsync", ["-az", "--delete", `${dist}/`, target]);
+    last = up;
+    if (!up.ok) {
+      record("deploy", up);
+      failed = true;
+      continue;
+    }
+    if (liveCommit(target) !== sha) {
+      console.error(`✘ uploaded, but ${target}version.json does not name ${short}`);
+      failed = true;
+      continue;
+    }
+    process.stdout.write(`✓ ${short} is live on ${target} (was ${live ? live.slice(0, 7) : "unknown"})\n`);
   }
-  process.stdout.write(`✓ ${short} is live (was ${live ? live.slice(0, 7) : "unknown"})\n`);
+  if (failed) process.exit(1);
+  record("deploy", last);
+  process.stdout.write(`✓ ${short} is live (was ${behind[0].live ? behind[0].live.slice(0, 7) : "unknown"})\n`);
 }
 
 /** The commit the target is serving, from its `version.json`, or null when it doesn't say. */
