@@ -631,7 +631,7 @@ export default defineApp({
         },
         receipt: { type: "media", accept: "image", full: true, label: { en: "Receipt", "pt-BR": "Nota", de: "Beleg", es: "Ticket", pl: "Paragon", it: "Scontrino" } },
         note: { type: "text", multiline: true, label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
-        group: { type: "relation", to: "group", hidden: true, default: (ctx) => ctx.scope.group?.id },
+        group: { type: "relation", to: "group", hidden: true, label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" }, default: (ctx) => ctx.scope.group?.id },
       },
       groups: [
         { title: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" }, fields: ["amount", "description", "category", "paidBy", "when"] },
@@ -684,7 +684,7 @@ export default defineApp({
                 );
           },
         },
-        yourShare: (expense: Resolved, ctx: Ctx) => money(sharesOf(expense, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0, ctx),
+        yourShare: { label: { en: "Your share", "pt-BR": "Sua parte", de: "Dein Anteil", es: "Tu parte", pl: "Twoja część", it: "La tua quota" }, value: (expense: Resolved, ctx: Ctx) => money(sharesOf(expense, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0, ctx) },
       },
     },
 
@@ -713,7 +713,7 @@ export default defineApp({
           label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" },
           placeholder: { en: "Settling up", "pt-BR": "Acertando as contas", de: "Ausgleich", es: "Saldando cuentas", pl: "Rozliczenie", it: "Saldo dei conti" },
         },
-        group: { type: "relation", to: "group", hidden: true, default: (ctx) => ctx.scope.group?.id },
+        group: { type: "relation", to: "group", hidden: true, label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" }, default: (ctx) => ctx.scope.group?.id },
       },
     },
   },

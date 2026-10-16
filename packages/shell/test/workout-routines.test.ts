@@ -51,6 +51,20 @@ describe("the first-run program", () => {
     expect(String(last.prs)).toBe("🏆 Bench Press: 67.5 kg, heaviest yet · 🏆 Overhead Press: 45 kg, heaviest yet");
   });
 
+  it("pictures a record by the kind of lifting it is: pressing, pulling or legs", async () => {
+    const { runtime } = await open((s) => seedIfEmpty(s, "workout", undefined, async () => undefined));
+    const art = (rows: { name: string; art: string }[], name: string) => rows.find((r) => r.name === name)!.art;
+    const exercises = (await runtime.ctx.query("exercise")) as unknown as { name: string; art: string }[];
+    expect(art(exercises, "Bench Press")).toBe("art/press.webp");
+    expect(art(exercises, "Pull-up")).toBe("art/pull.webp");
+    expect(art(exercises, "Squat")).toBe("art/plates.webp");
+    const routines = (await runtime.ctx.query("routine")) as unknown as { name: string; art: string }[];
+    expect([art(routines, "Push A"), art(routines, "Pull A"), art(routines, "Legs A")]).toEqual(["art/press.webp", "art/pull.webp", "art/plates.webp"]);
+    // No page wears a picture: the app sits on its plain ground, and the photos are for the records.
+    expect(workout.theme?.background).toBeUndefined();
+    expect(workout.pages.filter((p) => p.background)).toEqual([]);
+  });
+
   it("charts each exercise's estimated 1RM, rising", async () => {
     const { runtime } = await open((s) => seedIfEmpty(s, "workout", undefined, async () => undefined));
     const squat = (await runtime.ctx.query("exercise")).find((e) => e.name === "Squat")!;
