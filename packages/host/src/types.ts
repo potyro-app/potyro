@@ -19,6 +19,7 @@ import type {
   Localized,
   UiItem,
   UiProgress,
+  ViewProps,
 } from "potyro";
 import type { Capabilities } from "@potyro/capabilities";
 import type { Store } from "@potyro/store";
@@ -173,8 +174,43 @@ export interface LoadedApp {
   customView(pageId: string): CustomViewComponent | null;
   /** The `mount` form of a custom view, when the app declared one instead of `render`. */
   customViewMount?(pageId: string): CustomViewMount | null;
+  /**
+   * A sealed app's custom view, drawn in its own sandboxed frame (#267, docs/05 "Custom views"):
+   * present on the browser realm's apps when the page's view is custom, `null` otherwise. The view's
+   * code runs in that frame, never in the shell's realm; what it asks of `ctx` goes through the same
+   * mediated ctx as the app's logic.
+   */
+  sealedView?(pageRef: string): SealedView | null;
 
   dispose(): void;
+}
+
+/** Why a sealed view was taken down: it stopped answering, or it blocked the page's own thread. */
+export interface SealedViewStop {
+  reason: string;
+}
+
+export interface SealedViewEvents {
+  /** The watchdog took the view down. The shell shows the app's plain version and a calm notice. */
+  onStopped(stop: SealedViewStop): void;
+  /** The view's code could not be mounted (it threw): a contained failure of that part (#271). */
+  onFailed?(message: string): void;
+  /** The view's `mount` returned, or its first render did. */
+  onMounted?(): void;
+}
+
+/** One custom view of a sealed app, as the views see it (views/src/custom.tsx). */
+export interface SealedView {
+  /**
+   * `"off"` when its screens froze or stopped answering on this device before — a tab that died with
+   * one mounting, or the watchdog — so they are not mounted again until the person asks
+   * (`retry`). An endless loop can freeze Potyro at most once per app.
+   */
+  state(): "ready" | "off";
+  /** The person chose "Try its screen again". */
+  retry(): void;
+  /** Mount it into `el`, a frame the shell sizes; returns the teardown. */
+  mount(el: HTMLElement, props: ViewProps, events: SealedViewEvents): () => void;
 }
 
 export interface Host {

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import react from "@vitejs/plugin-react";
 import { linguiBabelPlugin, linguiVitePlugins } from "@potyro/i18n/build.mjs";
-import { realmWorkerPlugin } from "@potyro/host/realm-build.mjs";
+import { realmViewPlugin, realmWorkerPlugin } from "@potyro/host/realm-build.mjs";
 import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 // Relative, so the config's own bundler compiles them: the share service is plain Node + TypeScript.
@@ -246,8 +246,9 @@ function facesAssets(): Plugin {
 export default defineConfig({
   // The Lingui macros compile in plugin-react's Babel pass, and `.po` catalogs load as compiled JS
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
-  // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), shareLinksPlugin(), facesAssets()],
+  // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272), and
+  // `realmViewPlugin` the sealed custom views' frame runtime as `virtual:potyro-realm-view` (#267).
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets()],
   // The example .app.ts fixtures live OUTSIDE packages/shell, so their custom-view components
   // (which use React hooks) could otherwise resolve a second React module instance → "Invalid
   // hook call". Dedupe forces a single React across the app and the example modules.

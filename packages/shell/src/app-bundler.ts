@@ -152,6 +152,24 @@ export async function createAppBundler(): Promise<AppBundler> {
   return (source, modules, opts) => bundleAppSource(source, esbuild, stubs, modules, opts);
 }
 
+/**
+ * `react` and `react/jsx-runtime` for a VIEW bundle: the React of the sealed view's own frame, which
+ * its runtime puts on these two globals before the bundle runs (host/src/realm/view-runtime.ts).
+ */
+export const FRAME_REACT = "module.exports = Object.assign({}, globalThis.__reactReal, globalThis.__reactJsxReal);";
+
+/**
+ * The view bundle of a sealed app (#267): the SAME source as its logic bundle, once more, with React
+ * resolved to the view frame's own instead of the isolate stub, so its custom views render. It runs
+ * only inside a view's sandboxed frame — never in the shell's realm. `potyro` is the same stub as the
+ * logic's: `defineApp` returns the definition, and nothing of Zod comes along.
+ */
+export async function bundleViewSource(source: string, modules?: ModuleSource): Promise<string> {
+  const esbuild = await getEsbuild();
+  const [potyro, money] = await Promise.all([import("./isolate-stubs/potyro.ts?raw"), import("../../schema/src/money.ts?raw")]);
+  return bundleAppSource(source, esbuild, { potyro: potyroStub(potyro.default, money.default), react: FRAME_REACT }, modules);
+}
+
 /** `bundleTrustedModule`'s core, with esbuild injected (tests run it on the native one). */
 export async function bundleTrustedWith(source: string, esbuild: EsbuildLike, modules?: ModuleSource): Promise<string> {
   const real = (name: string) => `module.exports = globalThis.${name};`;
