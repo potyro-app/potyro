@@ -55,7 +55,7 @@ test.describe("desktop", () => {
     const wrap = exercise.locator(".k-number").filter({ has: page.getByRole("spinbutton", { name: "Add each time" }) });
     await expect(wrap.locator(".k-number-unit")).toHaveText("kg");
     await wrap.getByRole("button", { name: /Increase/ }).click();
-    await expect(step).toHaveValue("3.5");
+    await expect(step).toHaveValue("3");
     // At its minimum the button is disabled, not silently clamped.
     await step.fill("0");
     await expect(wrap.getByRole("button", { name: /Decrease/ })).toBeDisabled();

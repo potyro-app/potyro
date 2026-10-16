@@ -1313,6 +1313,7 @@ export default defineApp({
           type: "number",
           min: 0,
           default: 2.5,
+          step: 0.5,
           unit: "kg",
           width: "half",
           label: { en: "Add each time", "pt-BR": "Aumento", de: "Steigerung", es: "Aumento", pl: "Przyrost", it: "Incremento" },
