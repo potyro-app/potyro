@@ -11,7 +11,7 @@ test("a recorded path replays and names the step that goes nowhere", async ({ pa
   await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
 
   // Use the app the way the person did.
-  await page.locator(".k-list-row").first().click();
+  await page.locator(".k-card").first().click();
   await page.getByRole("button", { name: "Add a note" }).click();
   await page.getByRole("textbox", { name: "What did you expect?" }).fill("here I expected the map to open");
   await page.getByRole("button", { name: "Save note" }).click();
