@@ -2,6 +2,7 @@ import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // An app with a library, shared by link, opens on the other device (#281).
 //
@@ -14,7 +15,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // esm.sh is answered from e2e/fixtures/esm, never contacted: what a person sees is the check — the
 // question, the list drawing what the library computed, and the refusal naming the library.
 
-const RELAY = process.env.POTYRO_E2E_RELAY ?? "ws://localhost:4201";
+const RELAY = process.env.POTYRO_E2E_RELAY ?? E2E_RELAY;
 const ROOT = "https://esm.sh/fancy-sum@1.2.3?bundle";
 const BUNDLE = "https://esm.sh/fancy-sum@1.2.3/es2022/fancy-sum.bundle.mjs";
 const SITE: Record<string, string> = {

@@ -181,6 +181,17 @@ export async function seedExamples(opts: { trusted: boolean; now: string }): Pro
   return added;
 }
 
+/**
+ * Whether a saved app is one of the bundled examples, and if so whether it is still exactly as it was
+ * seeded here. `undefined` for an app that is not an example — or one seeded before fingerprints were
+ * kept, which cannot be told apart from an edited one by its bytes.
+ */
+export function exampleState(app: { id: string; source: string }): "untouched" | "edited" | undefined {
+  const known = seededState().get(app.id);
+  if (!known?.hash) return undefined;
+  return known.hash === fingerprint(app.source) ? "untouched" : "edited";
+}
+
 /** The bundled examples this device does not currently have — deleted, or never seeded. */
 export function missingExamples(): string[] {
   return EXAMPLE_IDS.filter((id) => !getUserApp(id));

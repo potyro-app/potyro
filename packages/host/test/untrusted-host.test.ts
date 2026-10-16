@@ -421,8 +421,10 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
     entities: { n: { fields: { t: { type: "text" }, k: { type: "number" } }, actions: {
       two: async function(r, ctx){ var a = await ctx.get("n", r.id); var b = await ctx.patch("n", r.id, { k: 1 }); var c = await ctx.patch("n", r.id, { k: 2 }); ctx.ui.toast("k=" + c.k); },
       askThenWrite: async function(r, ctx){ var v = await ctx.ui.menu({ items: [{ id: "a", label: "A" }] }); var c = await ctx.patch("n", r.id, { t: v }); ctx.ui.toast("t=" + c.t); },
-      shareIt: async function(r, ctx){ var ok = await ctx.ui.share({ title: { en: "Send it" }, text: { en: "Daily #3 4/6" }, url: "https://example.org/x" }); ctx.ui.toast("shared=" + ok); }
-    } } }, pages: [{ id: "p", title: "P", view: { type: "list", entity: "n" } }], reminders: [] };`;
+      shareIt: async function(r, ctx){ var ok = await ctx.ui.share({ title: { en: "Send it" }, text: { en: "Daily #3 4/6" }, url: "https://example.org/x" }); ctx.ui.toast("shared=" + ok); },
+      invite: async function(r, ctx){ var ok = await ctx.ui.share({ text: "Join me", app: { page: "p", params: { code: "KQ7M" } } }); ctx.ui.toast("invited=" + ok); },
+      inviteBadly: async function(r, ctx){ try { await ctx.ui.share({ text: "Join me", app: { page: "p", params: { secret: "x" } } }); ctx.ui.toast("sent"); } catch (e) { ctx.ui.toast("refused: " + (e && e.message)); } }
+    } } }, pages: [{ id: "p", title: "P", link: { params: ["code"] }, view: { type: "list", entity: "n" } }], reminders: [] };`;
 
   describe("host calls as promises", () => {
     async function sequence(ui: Partial<UiBridge>) {
@@ -456,6 +458,20 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
       expect(headless.toasts).toEqual(["shared=false"]);
       loaded.dispose();
       headless.loaded.dispose();
+    });
+
+    it("ctx.ui.share({ app }) asks the shell for a link to one of the app's pages, with only the params it declares (docs/24 §11)", async () => {
+      const seen: unknown[] = [];
+      const { loaded, ctx, toasts, rec } = await sequence({ share: async (o) => (seen.push(o), true) });
+      await loaded.callAction("n", "invite", { ...rec } as never, ctx);
+      // The app names a page and its params; the address is the shell's to make — it never sees one.
+      expect(seen).toEqual([{ text: "Join me", app: { page: "p", params: { code: "KQ7M" } } }]);
+      expect(toasts).toEqual(["invited=true"]);
+      // A param the page does not declare is the app's bug, said in the action, and nothing is sent.
+      await loaded.callAction("n", "inviteBadly", { ...rec } as never, ctx);
+      expect(seen).toHaveLength(1);
+      expect(toasts[1]).toMatch(/^refused: .*does not take `secret` from a link/);
+      loaded.dispose();
     });
 
     it("an action waits on a person past its budget while other calls run, then writes", async () => {

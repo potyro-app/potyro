@@ -72,8 +72,8 @@ test.describe("desktop", () => {
     await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
-    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
-    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last watered") });
+    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     const a = (await watered.boundingBox())!;
     const b = (await interval.boundingBox())!;
     expect(Math.abs(a.y - b.y)).toBeLessThan(2);
@@ -92,8 +92,8 @@ test.describe("phone", () => {
     await page.getByRole("button", { name: "Add: Plant" }).click();
     const form = page.locator(".k-form");
     await settled(page);
-    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last Watered") });
-    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Watering Interval Days" }) });
+    const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last watered") });
+    const interval = form.locator(".k-form-field").filter({ has: page.getByRole("spinbutton", { name: "Water every" }) });
     const a = (await watered.boundingBox())!;
     const b = (await interval.boundingBox())!;
     expect(b.y).toBeGreaterThan(a.y + a.height - 1);

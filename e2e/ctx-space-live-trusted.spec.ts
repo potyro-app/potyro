@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // APP CODE must see the space as it is now, not as it was at boot (KA-36 follow-up).
 //
@@ -47,9 +48,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

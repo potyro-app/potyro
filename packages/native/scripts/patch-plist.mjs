@@ -19,7 +19,11 @@
 //     plugin listens for it); nothing else uses the scheme.
 //   CFBundleDocumentTypes (public.data, public.content) — "Open with Potyro" on any file, the iOS
 //     counterpart of Android's ACTION_VIEW filter (#254).
-// NOT here: no microphone key (the live camera never asks for audio), no background modes (local
+//   NSMicrophoneUsageDescription | NSSpeechRecognitionUsageDescription — voice input (docs/29): the
+//     WebView's speech recognition (and the iOS developer's PotyroSpeech plugin) asks iOS for both,
+//     and without them iOS terminates the app when it is asked. The live camera still never asks for
+//     audio.
+// NOT here: no background modes (local
 // notifications need none), no ITSAppUsesNonExemptEncryption (an export-compliance answer the owner
 // gives, docs/27 §7).
 //
@@ -41,6 +45,8 @@ export const USAGE = {
   NSPhotoLibraryAddUsageDescription: "Potyro saves a picture to your photos when you ask it to.",
   NSLocationWhenInUseUsageDescription: "Potyro uses your location when one of your apps asks for where you are.",
   NSLocationAlwaysAndWhenInUseUsageDescription: "Potyro uses your location only while you use it, when one of your apps asks for where you are.",
+  NSMicrophoneUsageDescription: "Potyro uses the microphone only while you talk to the Studio or to one of your apps, and turns it off when you stop.",
+  NSSpeechRecognitionUsageDescription: "Potyro turns what you say into words — on your iPhone where it can — when you talk to the Studio or to one of your apps.",
 };
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

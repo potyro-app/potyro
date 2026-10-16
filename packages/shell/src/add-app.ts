@@ -31,6 +31,7 @@ import { openStore } from "./open-store.js";
 import { sourceHttp } from "./ask-sources.js";
 import { keepCode } from "./app-modules.js";
 import { resolveSeedFiles } from "./seed-files.js";
+import { derivedLine, newLine } from "./app-line.js";
 
 export type AddSource = "file" | "link" | "paste";
 
@@ -414,6 +415,10 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       // Who made it travels with it; a remix says what it remixed instead (docs/24 §6). An update keeps
       // what the app already said about itself.
       ...(update ? {} : remix ? { remixOf: remix } : pkg.credit ? { credit: pkg.credit } : {}),
+      // Which app it is (docs/24 §11): a kept copy is the same app, so its links open here too. A remix
+      // is an app of its own, which remembers what it remixed; a package that did not say is known by
+      // its declared id. An update keeps the line the app had (`saveUserApp`), or takes the package's.
+      ...(remix ? { line: newLine(), lineOf: pkg.line ?? derivedLine(inspected.id) } : pkg.line ? { line: pkg.line } : {}),
       // A library upgrade may change no line of the source: the note says what it did change. A remix's
       // says what it is a remix of, so History keeps the credit with the app's first version.
       note: remix ? remixNote(remix) : [update ? `Updated from ${from}` : `Added from ${from}`, update ? libraryChanges(existing!.lock, code.lock) : ""].filter(Boolean).join(" · "),
