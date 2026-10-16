@@ -7,6 +7,8 @@ import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import { ListView } from "../src/builtins.js";
+import { literalText } from "../src/dynamic.js";
+import { FN_SENTINEL } from "@potyro/runtime";
 
 // `Dynamic<string>` in a built-in view (#133): the empty state names the selection, and follows it.
 
@@ -47,6 +49,15 @@ async function makeRuntime(): Promise<{ runtime: PotyroRuntime; store: MemorySto
 }
 
 afterEach(cleanup);
+
+describe("what an option says before it is resolved", () => {
+  it("a sealed app's definition carries the sentinel where its function was: that is resolved, never shown", () => {
+    expect(literalText(FN_SENTINEL, "fallback")).toBeNull();
+    expect(literalText(() => "x", "fallback")).toBeNull();
+    expect(literalText("Last hour", "fallback")).toBe("Last hour");
+    expect(literalText(undefined, "fallback")).toBe("fallback");
+  });
+});
 
 describe("a function-valued emptyText", () => {
   it("renders the resolved text and follows the selection", async () => {

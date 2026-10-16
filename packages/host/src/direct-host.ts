@@ -6,6 +6,7 @@
 import { actionRun, computedRun, resolveView, type AppDefinition, type CustomViewComponent, type CustomViewMount, type Resolved, type Value } from "potyro";
 import type { Binding, ReminderWhen } from "potyro";
 import type { BindingRef, LoadedApp, Provenance } from "./types.js";
+import { retireAppSockets } from "./sockets.js";
 
 type Fn = (...args: unknown[]) => unknown;
 
@@ -169,6 +170,7 @@ export class DirectLoadedApp implements LoadedApp {
   }
 
   dispose(): void {
-    // Nothing to release for the direct runner.
+    // The module lives on in the page: a reconnect timer it set must not open anything for it now.
+    retireAppSockets(this);
   }
 }
