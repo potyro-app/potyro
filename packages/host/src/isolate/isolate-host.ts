@@ -3,13 +3,15 @@
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
 // memory + time limits.
 
-import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, Value, Words } from "potyro";
+import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, UiTimer, Value, Words } from "potyro";
+import type { TimerData } from "../timers.js";
 import { localize } from "potyro";
 import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "../values-gate.js";
+import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { HARNESS_SOURCE } from "./harness.js";
@@ -95,6 +97,8 @@ class IsolateLoadedApp implements LoadedApp {
 
   private ctxHost: Ctx | null = null;
   private progress = new Map<string, UiProgress>();
+  /** Screens the box holds on, by its id for each (`ui.keepAwake`). */
+  private awake = new Map<string, { release(): void }>();
   private disposed = false;
   /** Questions open for the person, and the time they have held calls up — a call's budget pauses for them. */
   private questionsOpen = 0;
@@ -168,7 +172,7 @@ class IsolateLoadedApp implements LoadedApp {
         const me = this.ctxHost?.me.id;
         if (!me) throw new Error("ctx.create: no identity to stamp the record with");
         const clean = stampAuthor(op.data, me);
-        assertValuesFit(this.shown(), op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me));
+        assertValuesFit(this.shown(), op.entity as string, clean, currentPeople(this.ctxHost?.space, this.ctxHost?.me, guestBookOf(this.ctxHost)));
         const row = await this.store.insert(op.entity as string, clean as Partial<PotyroRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
       }
@@ -176,8 +180,8 @@ class IsolateLoadedApp implements LoadedApp {
         const clean = stripAuthor(op.data);
         const current = (await this.store.get(op.entity as string, op.id as string)) as Record<string, unknown> | null;
         assertPatchFits(this.shown(), op.entity as string, clean, current, {
-          now: currentPeople(this.ctxHost?.space, this.ctxHost?.me),
-          ever: everyone(this.store),
+          now: currentPeople(this.ctxHost?.space, this.ctxHost?.me, guestBookOf(this.ctxHost)),
+          ever: everyone(this.store, guestBookOf(this.ctxHost)),
         });
         const row = await this.store.update(op.entity as string, op.id as string, clean as Partial<PotyroRecord>);
         return serialize(await resolveRecord(this.resolveDeps, op.entity as string, row, false));
@@ -262,6 +266,30 @@ class IsolateLoadedApp implements LoadedApp {
       }
       case "nav":
         this.ctxHost?.navigate(op.page as string, op.params as Record<string, string>);
+        return nul;
+      case "ui.timer": {
+        const ctx = this.ctxHost;
+        if (!ctx) throw new Error("ui.timer: the app is not running");
+        const o = (op.opts ?? null) as { label?: Words; seconds?: number; id?: string | null } | null;
+        return serialize(plainTimerOf(await ctx.ui.timer(o ? { label: o.label as Words, seconds: Number(o.seconds), ...(o.id == null ? {} : { id: String(o.id) }) } : (o as never))) as unknown as Value);
+      }
+      case "ui.timers":
+        return serialize(((await this.ctxHost?.ui.timers()) ?? []).map(plainTimerOf) as unknown as Value);
+      case "ui.timer.control": {
+        const verb = String(op.verb);
+        const timer = ((await this.ctxHost?.ui.timers()) ?? []).find((t) => t.id === String(op.id));
+        if (timer && (verb === "cancel" || verb === "pause" || verb === "resume")) await timer[verb]();
+        return nul;
+      }
+      case "guests.add": {
+        const added = await this.ctxHost?.guests.add(String(op.name));
+        return serialize((added ? { ...added } : null) as unknown as Value);
+      }
+      case "guests.rename":
+        await this.ctxHost?.guests.rename(String(op.id), String(op.name));
+        return nul;
+      case "guests.remove":
+        await this.ctxHost?.guests.remove(String(op.id));
         return nul;
       case "cap.geo.current":
         return serialize((await this.ctxHost?.caps.geo?.current()) ?? null);
@@ -479,6 +507,16 @@ class IsolateLoadedApp implements LoadedApp {
       case "cap.haptics.vibrate":
         void this.ctxHost?.caps.haptics?.vibrate(op.pattern as number | number[]);
         return;
+      case "ui.keepAwake": {
+        // Like a progress bar: a handle in the VM, an id out here.
+        const id = String(op.id);
+        if (op.hold && !this.awake.has(id) && this.ctxHost && this.awake.size < 32) this.awake.set(id, this.ctxHost.ui.keepAwake());
+        else if (!op.hold) {
+          this.awake.get(id)?.release();
+          this.awake.delete(id);
+        }
+        return;
+      }
       default:
         // Unknown sync op — ignore (fire-and-forget contract).
         return;
@@ -591,6 +629,8 @@ class IsolateLoadedApp implements LoadedApp {
    */
   private async invoke(payload: Record<string, unknown>, ctx: Ctx): Promise<Value> {
     this.ctxHost = ctx;
+    // Records are resolved out here: a member's name, a guest, come from this call's ctx.
+    this.resolveDeps.ctx = ctx;
     const code = `globalThis.__potyro.call(${JSON.stringify(serialize(payload))})`;
     let handle: QuickJSHandle | null = null;
     let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
@@ -637,6 +677,7 @@ class IsolateLoadedApp implements LoadedApp {
       capsAvailable: this.capsAvailable(ctx),
       me: ctx.me,
       space: ctx.space ? { id: ctx.space.id, role: ctx.space.role, members: ctx.space.members } : undefined,
+      people: ctx.people.map((p) => ({ id: p.id, name: p.name, ...(p.guest ? { guest: true } : {}) })),
       // The selection is plain resolved data, like `record` — nothing to reach back through.
       scope: ctx.scope,
       // Which language the words are in, so `ctx.locale` and `ctx.t(words)` never leave the box.
@@ -707,6 +748,8 @@ class IsolateLoadedApp implements LoadedApp {
   }
   dispose(): void {
     this.sockets.endAll("left", "the app was closed");
+    for (const [, held] of this.awake) held.release();
+    this.awake.clear();
     this.speech.endAll();
     this.disposed = true;
     this.vm.dispose();
@@ -784,4 +827,9 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
       throw e;
     }
   };
+}
+
+/** A timer handle as the data that crosses (its methods do not). */
+function plainTimerOf(t: UiTimer): TimerData {
+  return { id: t.id, label: t.label, seconds: t.seconds, endsAt: t.endsAt ? t.endsAt.toISOString() : null, left: t.left, paused: t.paused };
 }

@@ -302,8 +302,49 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /\.share\(|link:\s*\{\s*params/,
   },
   {
+    key: "ctx.ui.keepAwake",
+    summary: "`const awake = ctx.ui.keepAwake()` … `awake.release()`: keep the screen on while a page is followed (cooking, a workout); let go when the app is left; no permission",
+    declarations: ["UiKeepAwake"],
+    members: [{ of: "CtxUi", name: "keepAwake" }],
+    notes: "Hold it from a custom view while it is on screen (release on unmount), or from an action that starts something to follow; never on every page.",
+    cues: /keepAwake|\b(keep (?:the )?screen (?:on|awake)|screen (?:on|awake)|wake ?lock|cook(?:ing)? mode|hands[- ]free|tela ligada|pantalla encendida|ekran nie gaśnie|schermo acceso|bildschirm an)\b/i,
+    uses: /\.keepAwake\(/,
+  },
+  {
+    key: "ctx.ui.timer",
+    summary:
+      "`await ctx.ui.timer({ label, seconds, id? })`: a countdown the shell keeps on a chip across pages, ringing with the screen locked; `ctx.ui.timers()` lists this app's; `pause()`/`resume()`/`cancel()`; no permission",
+    declarations: ["UiTimerOptions", "UiTimer"],
+    members: [
+      { of: "CtxUi", name: "timer" },
+      { of: "CtxUi", name: "timers" },
+    ],
+    also: ["ctx.ui.timers"],
+    notes: [
+      "A countdown a person waits on (a rest between sets, a step in a recipe) is `ctx.ui.timer`, never setInterval in a view:",
+      "a view's state is gone when the page changes, and the shell's timer goes on with the screen locked. Give a repeating one an",
+      "`id` (\"rest\") so starting it again restarts it; read `ctx.ui.timers()` again for what is running.",
+    ].join("\n"),
+    cues: /ui\.timers?\(|\b(timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|egg timer|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|zeitschaltuhr)\b/i,
+    uses: /ui\.timers?\(/,
+  },
+  {
+    key: "ctx.guests",
+    summary:
+      "people not joined yet (\"Tom\"): `await ctx.guests.add(name)` → a Person for a `member` field; `ctx.people` is everyone a member field can name (members and guests, `guest: true`); whoever joins claims one, and records naming it name them",
+    declarations: ["CtxGuests"],
+    members: [
+      { of: "Ctx", name: "people" },
+      { of: "Ctx", name: "guests" },
+    ],
+    also: ["ctx.people"],
+    notes: "For \"everyone in the group\" (a split, a rota) read `ctx.people`, not `ctx.space?.members ?? [ctx.me]`, which leaves the guests out. Compare people by `id`.",
+    cues: /ctx\.(?:guests|people)\b|\b(guests?|placeholders?|not (?:joined|signed up) yet|before they join|participants?|tricount|splitwise|convidad\w*|gość\w*|uczestni\w*|gäste?|teilnehmer\w*|invitad\w*|partecipant\w*)\b/i,
+    uses: /ctx\.(?:guests|people)\b/,
+  },
+  {
     key: "ctx.space",
-    summary: "the people the app's data is shared with: `ctx.space?.members ?? [ctx.me]` (each `{ id, name, role }`); undefined for a solo app",
+    summary: "the people the app's data is shared with: `ctx.space?.members` (each `{ id, name, role }`); undefined for a solo app. Everyone a field can name, guests included: `ctx.people`",
     declarations: ["SpaceRole", "Member", "Space"],
     cues: /\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|wspóln\w*|rodzin\w*|família|familia|partilh\w*|gemeinsam\w*)\b/i,
     uses: /ctx\.space\b/,

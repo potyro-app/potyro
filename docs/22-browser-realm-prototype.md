@@ -579,6 +579,9 @@ for as long as it spins; the protections below bound what that can cost.
   that are not ctx (`watchQuery`, `watchRecord` and the hooks over them, `runAction`,
   `reconcileReminders`) and the `navigate` prop are `VIEW_OPS`, accepted on a view's port only; a
   view's live connections (docs/28) have their own `SocketBridge` on its port.
+- **The open app's services work from a screen.** `ui.keepAwake`, `ui.timer`/`timers` and
+  `guests.*` (#369) are on the view's port too: a view's keep-awakes are held under its own names and
+  released when it goes, its timers are the app's. Voice (`caps.speech.listen`) stays the logic's.
 - **What is different inside.** `ctx.media.url` / `ctx.files.url`: the host sends the bytes and the
   frame makes its own `blob:` URL (the shell's do not load in an opaque origin). `runtime.definition`
   is the localized definition as data. `ctx.caps.camera.live` is not there — it stays trusted-only

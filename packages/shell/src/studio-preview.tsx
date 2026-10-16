@@ -28,6 +28,8 @@ import { promotionFixes } from "./promotion.js";
 import { TrustDialog } from "./trust-dialog.js";
 import { getUserApp } from "./user-apps.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { timerHub } from "./timer-hub.js";
+import { t as tl } from "@lingui/core/macro";
 import { PickerHost } from "./picker.js";
 import { UiHost } from "./ui-host.js";
 import { openStore } from "./open-store.js";
@@ -88,7 +90,11 @@ export async function buildPreview(
       store,
       // A preview reads a receipt the way the app will (docs/23), under the app's own switch and spend.
       caps: capsForApp(createWebCapabilities(), storeNamespace ?? "studio-draft"),
-      ui: createUiBridge(toaster.push, picker, dialogs, questions),
+      // A countdown tried in the preview is a real one, on its chip; the screen is not held for a
+      // preview, which has no moment of being left to let it go.
+      ui: createUiBridge(toaster.push, picker, dialogs, questions, undefined, {
+        timers: timerHub.bridgeFor(`studio:${storeNamespace ?? "draft"}`, tl({ message: "Preview", comment: "A timer started from the Studio's preview of an app" })),
+      }),
       nav: createNavBridge(() => {}),
     };
     // Its libraries and own modules (#266, #258), from the store the preview just opened.

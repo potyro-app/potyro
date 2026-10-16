@@ -15,7 +15,7 @@
 
 import { fieldValueProblem, humanizeKey } from "potyro";
 import type { AppDefinition, Id, Person } from "potyro";
-import type { FieldEdit, Store } from "@potyro/store";
+import { isGuestId, type FieldEdit, type Store } from "@potyro/store";
 import { memberName } from "./people.js";
 
 /** One field of one record changing, ready to show. */
@@ -187,5 +187,6 @@ function build(
 function namesSomeoneWhoWasHere(value: unknown, everyone: ReadonlySet<string>): boolean {
   if (!everyone.size || value == null) return true;
   const ids = (Array.isArray(value) ? value : [value]).map((v) => (typeof v === "string" ? v : (v as { id?: unknown } | null)?.id));
-  return ids.every((id) => typeof id === "string" && everyone.has(id));
+  // A guest (docs/04 §Guests) is not an account: the values gate has already kept out one never added.
+  return ids.every((id) => typeof id === "string" && (everyone.has(id) || isGuestId(id)));
 }

@@ -198,7 +198,7 @@ const CUSTOM_APP = `globalThis.__potyroApp = {
   ]
 };`;
 
-async function setup(withViews = true, probe?: () => Promise<boolean>) {
+async function setup(withViews = true, probe?: () => Promise<boolean>, extraUi: Partial<UiBridge> = {}) {
   const store = new MemoryStore();
   await store.open("s");
   const kills: string[] = [];
@@ -212,7 +212,7 @@ async function setup(withViews = true, probe?: () => Promise<boolean>) {
   });
   const host = createHost({ loadIsolated });
   const loaded = (await host.load({ kind: "bundle", code: CUSTOM_APP, provenance: "untrusted" })) as RealmLoadedApp;
-  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null, ...extraUi };
   const makeCtx = () => host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} }, me: { id: "me-1", name: "Me" } });
   return { store, loaded, makeCtx, kills, guard };
 }
@@ -271,6 +271,42 @@ describe("a view's ops go through the logic's op table", () => {
     await answer({ id: 5, ctxId: viewCtxId, op: "runtime.watchQuery", args: [1, "n"] }, logic);
     expect(posted[4]).toMatchObject({ ok: false, error: "op not allowed: runtime.watchQuery" });
     loaded.dispose();
+  });
+
+  it("a sealed screen keeps the screen on and runs timers through the same ops; its holds go when it goes", async () => {
+    let held = 0;
+    const timers: Array<{ id: string; label: string; seconds: number; endsAt: string | null; left: number; paused: boolean }> = [];
+    const { loaded, makeCtx } = await setup(true, undefined, {
+      keepAwake: () => {
+        held++;
+        return { release: () => void held-- };
+      },
+      timers: {
+        start: async (o) => {
+          const t = { id: o.id ?? `t${timers.length + 1}`, label: o.label, seconds: o.seconds, endsAt: null, left: o.seconds, paused: false };
+          timers.push(t);
+          return t;
+        },
+        list: async () => timers,
+        control: async () => {},
+      },
+    });
+    const { ch, posted, viewCtxId } = viewChannel(makeCtx);
+    const answer = answerOf(loaded);
+    // The logic's hold "w1" and the view's "w1" are two holds, not one.
+    await answer({ id: 0, ctxId: viewCtxId, op: "ui.keepAwake", args: ["w1", "hold"] }, ch);
+    await loaded.callPageAction("all", 0, makeCtx());
+    const logic = (loaded as unknown as { logic: Channel }).logic;
+    await answer({ id: 0, ctxId: 1, op: "ui.keepAwake", args: ["w1", "hold"] }, { ...logic, ctx: () => makeCtx() });
+    expect(held).toBe(2);
+    await answer({ id: 1, ctxId: viewCtxId, op: "ui.timer", args: [{ label: "Rest", seconds: 90 }] }, ch);
+    expect(posted[0]).toMatchObject({ id: 1, ok: true, value: { label: "Rest", seconds: 90 } });
+    expect(timers).toHaveLength(1);
+    // The view goes: its hold goes with it, the logic's stays.
+    (loaded as unknown as { releaseHolds(p: string): void }).releaseHolds(ch.progress);
+    expect(held).toBe(1);
+    loaded.dispose();
+    expect(held).toBe(0);
   });
 
   it("offers a sealed view for a custom page only, and only when the shell gave a way to bundle views", async () => {
