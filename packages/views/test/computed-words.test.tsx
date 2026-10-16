@@ -4,13 +4,14 @@
 // a detail row, a table cell, a badge and a group heading. Without either it reads as before.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { defineApp, type PotyroApp } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
-import { DetailView, ListView, TableView } from "../src/builtins.js";
+import { ListView, TableView } from "../src/builtins.js";
+import { DetailView } from "../src/detail.js";
 import { shownValue } from "../src/format.js";
 
 const app: PotyroApp = defineApp({
@@ -82,7 +83,8 @@ describe("a computed's value in words", () => {
     const { runtime } = await makeRuntime(["pl"]);
     render(<ListView runtime={runtime} pageId="list" params={{}} setParam={() => {}} navigate={() => {}} />);
     await screen.findByText("Soup");
-    expect(screen.getAllByText("wegańska").length).toBeGreaterThanOrEqual(2);
+    // The name is the record's own and shows at once; the badge is worked out, and follows it.
+    await waitFor(() => expect(screen.getAllByText("wegańska").length).toBeGreaterThanOrEqual(2));
     expect(screen.queryByText("vegan")).toBeNull();
   });
 

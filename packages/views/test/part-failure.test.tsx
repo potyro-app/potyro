@@ -198,7 +198,8 @@ describe("a computed that throws for one record of several", () => {
       expect(screen.getByText("Cafe A")).toBeTruthy();
       expect(screen.getByText("Bar B")).toBeTruthy();
       // The records it worked for have their value; the one it failed for has none.
-      expect(screen.getByText("mon days")).toBeTruthy();
+      // A row's name is its own and shows at once; its worked-out line follows.
+      await waitFor(() => expect(screen.getByText("mon days")).toBeTruthy());
       expect(screen.getByText("tue+wed days")).toBeTruthy();
       expect(screen.queryByText(/undefined/)).toBeNull();
       await waitFor(() => expect(heard.map((f) => f.what)).toContain("computed spot.days"));

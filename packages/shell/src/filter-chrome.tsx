@@ -68,14 +68,17 @@ const isOptionChip = (chip: FilterChip): boolean => !DIRECT_TYPES.has(chip.type 
  * identifier.
  */
 function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; pageId: string; params: Record<string, unknown> }) {
-  const actions = runtime.definition.pages.find((p) => p.id === pageId)?.actions;
+  const page = runtime.definition.pages.find((p) => p.id === pageId);
+  const actions = page?.actions;
+  // The page's primary action is its header's big button, not one more chip.
+  const primary = (page as { primaryAction?: string | number } | undefined)?.primaryAction;
   // Which button is mid-run — a `run` that awaits the position or the network takes a moment, and a
   // button that looks inert while it works gets pressed again.
   const [busy, setBusy] = useState<number | null>(null);
   if (!actions?.length) return null;
   return (
     <>
-      {actions.map((action, index) => (
+      {actions.map((action, index) => index === primary ? null : (
         <button
           key={`${action.label}:${index}`}
           type="button"
