@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const GALLERY_DIR = resolve(here, "..");
 const ROOT = resolve(GALLERY_DIR, "..");
 
-/** Where "Report a link" writes to. A placeholder until Potyro has its own address; one place only. */
+/** Where "Report a link" writes to (it reaches the Potyro team). Named here and nowhere else. */
 export const CONTACT = "contact@potyro.com";
 /** Potyro itself: where "Open Potyro" goes. */
 export const APP_SITE = "https://potyro.app/";

@@ -1617,6 +1617,8 @@ msgid "brought in"
 msgstr "hinzugefügt"
 
 #. Opens Potyro's gallery of apps to try and make your own
+#. Opens Potyro's gallery of apps to try and make your own
+#: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "Browse the gallery"
 msgstr ""
@@ -2851,6 +2853,11 @@ msgstr "Vollbild"
 #: ../shell/src/point-target.ts
 msgid "gallery"
 msgstr "Galerie"
+
+#. App bar: Potyro's gallery of apps; one short word
+#: ../shell/src/launcher-metro.tsx
+msgid "Gallery"
+msgstr ""
 
 #. A launcher tile group
 #: ../shell/src/launcher-groups.ts
