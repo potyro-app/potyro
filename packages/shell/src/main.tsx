@@ -931,6 +931,23 @@ async function offerAccountApps(): Promise<void> {
   }
 }
 
+/** The realm probe's screen, in a root of its own (realm-probe-screen.tsx). */
+async function openRealmProbe(): Promise<void> {
+  const { RealmProbeScreen } = await import("./realm-probe-screen.js");
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const probeRoot = createRoot(host);
+  probeRoot.render(
+    <RealmProbeScreen
+      onClose={() => {
+        probeRoot.unmount();
+        host.remove();
+        if (/probe=realm/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+      }}
+    />,
+  );
+}
+
 async function boot(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("no #root");
@@ -943,6 +960,9 @@ async function boot(): Promise<void> {
   // device's, else English. English needs no fetch; another language is one small chunk, from the
   // service worker's cache when offline. The pseudo-language is offered in dev builds only.
   await startI18n({ pseudo: import.meta.env.DEV });
+  // The sealed-screen device check (#267, docs/22 §5), in dev and release builds alike, and nothing
+  // at all unless the URL asks for it. It sits over whatever opens underneath.
+  if (/(^#|[#&])probe=realm(&|$)/.test(location.hash)) void openRealmProbe();
   // Right after the language, before anything opens storage: if another tab has it, that is said
   // in words — whether it is known now or only once that tab takes it over later.
   watchStorageOwner();

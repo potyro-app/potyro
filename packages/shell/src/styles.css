@@ -2532,6 +2532,68 @@ th.k-data-raw {
   margin-left: auto;
 }
 
+/* The sealed-screen device check (#267): read at arm's length on a phone. */
+.k-probe {
+  max-width: 34rem;
+  display: grid;
+  gap: var(--space-3);
+}
+.k-probe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.k-probe-head h2 {
+  margin: 0;
+}
+.k-probe-tick {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  min-width: 5ch;
+  text-align: right;
+}
+.k-probe-verdict {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 1.1rem + 1.5vw, 1.9rem);
+  line-height: 1.25;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--ok-tint);
+  border: 1px solid var(--ok-line);
+}
+.k-probe-verdict[data-freezes="yes"] {
+  background: var(--danger-tint);
+  border-color: var(--danger-line);
+}
+.k-probe-numbers {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: 1.15rem;
+}
+.k-probe-numbers dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-align: right;
+}
+.k-probe-json {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
 /* States */
 .k-loading,
 .k-empty,
