@@ -24,7 +24,8 @@
 
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { AggregateRow, Resolved } from "potyro";
+import { actionInfo, type AggregateRow, type Resolved } from "potyro";
+import { humanizeKey } from "./format.js";
 import type { BuiltinViewProps } from "./types.js";
 import { useDynamicText } from "./dynamic.js";
 
@@ -43,12 +44,33 @@ function toRows(value: unknown): AggregateRow[] {
       detail: typeof r.detail === "string" ? r.detail : undefined,
       tone: r.tone === "positive" || r.tone === "negative" ? r.tone : "neutral",
       group: typeof r.group === "string" ? r.group : undefined,
+      ...targetsOf(r),
     });
   }
   return out;
 }
 
-export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
+const str = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+
+/** Where a row leads, kept only when it is whole: a record, a page, an action on a record. */
+function targetsOf(r: Record<string, unknown>): Pick<AggregateRow, "record" | "open" | "action"> {
+  const out: Pick<AggregateRow, "record" | "open" | "action"> = {};
+  const rec = r.record as Record<string, unknown> | undefined;
+  if (rec && str(rec.entity) && (str(rec.id) || typeof rec.id === "number")) out.record = { entity: rec.entity, id: String(rec.id) };
+  const open = r.open as Record<string, unknown> | undefined;
+  if (open && str(open.page)) {
+    const params: Record<string, string> = {};
+    if (open.params && typeof open.params === "object") for (const [k, v] of Object.entries(open.params)) if (v != null) params[k] = String(v);
+    out.open = { page: open.page, params };
+  }
+  const act = r.action as Record<string, unknown> | undefined;
+  if (act && str(act.entity) && (str(act.id) || typeof act.id === "number") && str(act.key)) {
+    out.action = { entity: act.entity, id: String(act.id), key: act.key, ...(str(act.label) ? { label: act.label } : {}) };
+  }
+  return out;
+}
+
+export function AggregateView({ runtime, pageId, params, navigate }: BuiltinViewProps) {
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   // Both may be functions of ctx (#133) — "Balances for the Lisbon trip".
   const { t } = useLingui();
@@ -124,17 +146,69 @@ export function AggregateView({ runtime, pageId, params }: BuiltinViewProps) {
           {section.group ? <h3 className="k-aggregate-group">{section.group}</h3> : null}
           <ul className="k-aggregate-rows">
             {section.rows.map((row, j) => (
-              <li key={row.id ?? `${row.label}-${j}`} className="k-aggregate-row" data-tone={row.tone}>
-                <span className="k-aggregate-label">
-                  {row.label}
-                  {row.detail ? <small className="k-aggregate-detail">{row.detail}</small> : null}
-                </span>
-                {row.value != null ? <span className="k-aggregate-value">{String(row.value)}</span> : null}
-              </li>
+              <AggregateRowItem key={row.id ?? `${row.label}-${j}`} row={row} runtime={runtime} navigate={navigate} />
             ))}
           </ul>
         </div>
       ))}
     </section>
   );
+}
+
+/**
+ * One row. With a `record` or `open` the whole row opens it (its label is the button, so the keyboard
+ * reaches it); with an `action`, a small button at its end runs that action on that record.
+ */
+function AggregateRowItem({ row, runtime, navigate }: { row: AggregateRow; runtime: BuiltinViewProps["runtime"]; navigate: BuiltinViewProps["navigate"] }) {
+  const go = rowTarget(row, runtime, navigate);
+  const action = row.action;
+  const actionLabel = action ? action.label ?? actionInfo(runtime.definition.entities[action.entity], action.key)?.label ?? humanizeKey(action.key) : "";
+  return (
+    <li className="k-aggregate-row" data-tone={row.tone} data-clickable={go ? "true" : undefined} onClick={go}>
+      <span className="k-aggregate-label">
+        {go ? (
+          <button type="button" className="k-aggregate-open" onClick={(e) => { e.stopPropagation(); go(); }}>
+            {row.label}
+          </button>
+        ) : (
+          row.label
+        )}
+        {row.detail ? <small className="k-aggregate-detail">{row.detail}</small> : null}
+      </span>
+      {row.value != null ? <span className="k-aggregate-value">{String(row.value)}</span> : null}
+      {action ? (
+        <button
+          type="button"
+          className="k-action k-row-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            void runtime.runAction(action.entity, action.key, action.id);
+          }}
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+      {go ? (
+        <span className="k-row-chevron" aria-hidden>
+          ›
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+/** What tapping a row does: open its page, or its record's page (the entity's detail page). */
+function rowTarget(row: AggregateRow, runtime: BuiltinViewProps["runtime"], navigate: BuiltinViewProps["navigate"]): (() => void) | undefined {
+  if (row.open) {
+    const { page, params } = row.open;
+    return () => navigate(page, params ?? {});
+  }
+  if (row.record) {
+    const { entity, id } = row.record;
+    const page = runtime.definition.pages.find((p) => (p.view as { type?: string; entity?: string }).type === "detail" && (p.view as { entity?: string }).entity === entity);
+    if (!page) return undefined;
+    const param = (page.view as { param?: string }).param ?? "id";
+    return () => navigate(page.id, { [param]: id });
+  }
+  return undefined;
 }

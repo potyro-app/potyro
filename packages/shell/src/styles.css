@@ -13847,3 +13847,235 @@ button.k-metro-group-name {
   }
 }
 /* tokens-only: end — start screen */
+
+/* tokens-only: start — views 2: related records, tappable aggregates, checklist tiles, emoji pins */
+/* Records that point at this one, inside a record page's section: a lighter list than the page's own. */
+.k-section .k-rel-list {
+  margin: 0 calc(-1 * 0.35rem);
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.k-section .k-rel-list .k-list-row {
+  min-height: 3.4rem;
+  padding: 0.5rem 0.35rem;
+  border-radius: var(--radius-sm);
+}
+.k-section .k-rel-list > li + li::before {
+  left: calc(0.35rem + 44px + 0.8rem);
+}
+.k-rel-timeline > li + li::before {
+  left: 5.6rem;
+}
+.k-rel-when {
+  flex: none;
+  width: 4.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.k-rel-add {
+  margin-top: var(--space-1);
+  border-radius: var(--radius-sm);
+  min-height: 3rem;
+  padding-inline: 0.35rem;
+}
+.k-rel-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.k-rel-empty .k-muted {
+  padding: 0;
+  margin: 0;
+}
+.k-detail-sections > .k-section:has(.k-rel-list, .k-rel-chart) {
+  grid-column: 1 / -1;
+}
+/* A small bar chart: one bar a day, week or month, the total in display type above it. */
+.k-rel-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.k-rel-total {
+  margin: 0;
+}
+.k-rel-total-value {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.k-rel-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 4px;
+  height: 7rem;
+}
+.k-rel-bar {
+  position: relative;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.k-rel-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: linear-gradient(to top, var(--accent), color-mix(in oklab, var(--accent) 70%, var(--surface)));
+  transform-origin: bottom;
+  transition: transform var(--dur-slow) var(--ease);
+}
+.k-rel-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+/* An aggregate row that leads somewhere: the whole row is the target, its label the button. */
+.k-aggregate-row[data-clickable] {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-aggregate-row[data-clickable]:hover {
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface));
+}
+.k-aggregate-open {
+  all: unset;
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-aggregate-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.k-aggregate-row .k-row-action {
+  flex: none;
+}
+.k-aggregate-row .k-aggregate-label {
+  flex: 1 1 auto;
+}
+
+/* An item's own glyph, before its words. */
+.k-check-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.k-check-text:has(.k-check-icon) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+.k-check-text:has(.k-check-icon) .k-check-detail {
+  flex-basis: 100%;
+  padding-left: 1.75rem;
+}
+/* `layout: "tiles"`: items as a grid of big squares to tap, the glyph large. */
+.k-checklist[data-layout="tiles"] .k-check-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(8.5rem, 44%), 1fr));
+  gap: var(--space-3);
+}
+.k-checklist[data-layout="tiles"] .k-check-row {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-height: 7.5rem;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(90% 90% at 100% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 70%),
+    var(--surface);
+}
+.k-checklist[data-layout="tiles"] .k-check {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+}
+.k-checklist[data-layout="tiles"] .k-check-icon {
+  font-size: 2rem;
+}
+.k-checklist[data-layout="tiles"] .k-check-text {
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.k-checklist[data-layout="tiles"] .k-check-text:has(.k-check-icon) .k-check-detail {
+  padding-left: 0;
+}
+.k-checklist[data-layout="tiles"] .k-check-open,
+.k-checklist[data-layout="tiles"] .k-check-grip {
+  position: absolute;
+  bottom: 0.25rem;
+  right: 0.25rem;
+}
+.k-checklist[data-layout="tiles"] .k-check-row[data-done] {
+  background: var(--surface-sunken);
+}
+/* Earlier items, offered while typing: a row of chips under the box. */
+.k-check-add {
+  flex-wrap: wrap;
+}
+.k-check-add .k-input {
+  flex: 1 1 10rem;
+}
+.k-check-suggest {
+  flex-basis: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.k-check-suggestion {
+  min-height: 2.25rem;
+}
+
+/* A record pinned by its own glyph: a round badge in its colour, with a point. */
+.k-map-pin {
+  --pin: var(--accent);
+  width: 2.6rem;
+  height: 2.9rem;
+  display: grid;
+  place-items: start center;
+  cursor: pointer;
+}
+/* The head is turned, not the marker: MapLibre positions the marker with its own transform. */
+.k-map-pin-head {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--surface-raised);
+  border: 3px solid var(--pin);
+  box-shadow: var(--shadow);
+}
+.k-map-pin-glyph {
+  transform: rotate(45deg);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-rel-bar-fill,
+  .k-aggregate-row[data-clickable] {
+    transition: none;
+  }
+}
+/* tokens-only: end — views 2 */

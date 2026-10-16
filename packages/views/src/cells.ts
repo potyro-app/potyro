@@ -58,6 +58,10 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
         if (display.primary !== undefined) {
           cell.primary = str(await runtime.resolveBinding({ kind: "view", page: pageId, path: "display.primary" }, row, ctx));
         }
+        if (display.icon !== undefined) {
+          const icon = str(await runtime.resolveBinding({ kind: "view", page: pageId, path: "display.icon" }, row, ctx)).trim();
+          if (icon) cell.icon = icon;
+        }
         if (display.secondary !== undefined) {
           cell.secondary = str(
             await runtime.resolveBinding({ kind: "view", page: pageId, path: "display.secondary" }, row, ctx),
