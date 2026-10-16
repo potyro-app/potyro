@@ -108,7 +108,18 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   }
 
   var progressSeq = 0;
-  function makeCtx(app, params, nowIso, capsAvailable, me, space, scope, wl){
+  var awakeSeq = 0;
+  // A timer crosses as data; its three methods are rebuilt here, each one a host call by id.
+  function timerOf(d){
+    if (!d) return d;
+    return Object.freeze({
+      id: d.id, label: d.label, seconds: d.seconds, endsAt: d.endsAt ? new Date(d.endsAt) : null, left: d.left, paused: !!d.paused,
+      cancel: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"cancel"}); },
+      pause: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"pause"}); },
+      resume: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"resume"}); }
+    });
+  }
+  function makeCtx(app, params, nowIso, capsAvailable, me, space, scope, wl, people){
     var fixedNow = new Date(nowIso);
     wl = wl || {};
     var ctx = {
@@ -126,6 +137,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       // Always present, exactly as in a trusted app — so one app source behaves the same either way.
       me: me || { id: "local", name: "Me" },
       space: space,
+      people: Object.freeze((people || []).slice()),
+      guests: {
+        add: function(name){ return bridge({op:"guests.add", name:String(name)}); },
+        rename: async function(id, name){ await bridge({op:"guests.rename", id:String(id), name:String(name)}); },
+        remove: async function(id){ await bridge({op:"guests.remove", id:String(id)}); }
+      },
       scope: scope || {},
       now: function(){ return new Date(nowIso); },
       today: function(){ return new Date(fixedNow.getFullYear(), fixedNow.getMonth(), fixedNow.getDate()); },
@@ -202,6 +219,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         menu: function(o){ return bridge({op:"ui.menu", opts:o}); },
         form: function(o){ return bridge({op:"ui.form", opts:o}); },
         share: function(o){ return bridge({op:"ui.share", opts:o}); },
+        keepAwake: function(){
+          var id = "w" + (++awakeSeq);
+          bridgeSync({op:"ui.keepAwake", id:id, hold:true});
+          return { release: function(){ bridgeSync({op:"ui.keepAwake", id:id, hold:false}); } };
+        },
+        timer: async function(o){ return timerOf(await bridge({op:"ui.timer", opts: o ? {label:o.label, seconds:o.seconds, id: o.id == null ? null : o.id} : null})); },
+        timers: async function(){ var list = await bridge({op:"ui.timers"}); return (list || []).map(timerOf); },
         progress: function(label){
           var id = "p" + (++progressSeq);
           bridgeSync({op:"ui.progress", id:id, label:words(label)});
@@ -378,7 +402,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       var p = __deserialize(payloadJson);
       var app = globalThis.__potyroApp;
       if (!app) return __serialize({ ok:false, error:"no app loaded" });
-      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope, p.words);
+      var ctx = makeCtx(app, p.params || {}, p.nowIso, p.capsAvailable || [], p.me, p.space, p.scope, p.words, p.people);
       var record = (p.record !== undefined && p.record !== null) ? p.record : null;
       try {
         var result = null;

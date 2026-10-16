@@ -161,6 +161,10 @@ interface Ctx {
   // is a `member` field, not `createdBy`.
   me: Person;                                         // { id, name }
   space?: { id: string; role: "admin" | "writer" | "reader"; members: Person[]; invite(role?): Promise<string> };
+  // Everyone a `member` field can name now: the members (just you, solo) and the guests nobody has
+  // claimed (`guest: true`). Fixed per pass. Guests are placeholder people — see "Guests" below.
+  people: Person[];
+  guests: { add(name: string): Promise<Person>; rename(id, name): Promise<void>; remove(id): Promise<void> };
 
   // ---- app-scoped key/value storage (separate from entity records) ----
   storage: { get<T>(k: string): Promise<T | null>; set(k: string, v: unknown): Promise<void>;
@@ -213,7 +217,11 @@ interface Ctx {
         menu<T>(opts: { title?: Words; items: UiItem<T>[] }): Promise<T | null>;
         form<T>(opts: { title: Words; fields: Record<string, Field>; initial?: Partial<T>; submit?: Words }): Promise<T | null>;
         progress(label: Words): { update(fraction: number, detail?: string): void; done(): void };
-        share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>; };   // true = copied / handed on
+        share(opts: { text?: Words; url?: string; title?: Words }): Promise<boolean>;   // true = copied / handed on
+        keepAwake(): { release(): void };                                          // the screen stays on (below)
+        timer(opts: { label: Words; seconds: number; id?: string }): Promise<UiTimer>;   // a countdown the shell keeps
+        timers(): Promise<UiTimer[]>; };
+  // UiTimer = { id; label; seconds; endsAt: Date | null; left: number; paused; cancel(); pause(); resume() }
   // UiItem<T> = { id: T; label: Words; detail?: Words; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
@@ -372,6 +380,89 @@ room). The socket is the shell's, never the sealed frame's: messages cross the r
 QuickJS bridge (bytes as base64 there). Plain `ws://` works only where it can: the device itself, a
 page served over http (development), and the Android app to the local network (docs/28 §6). A new
 optional member: no app's `schemaVersion` changes.
+
+### Keeping the screen on (`ctx.ui.keepAwake`)
+
+For a page someone follows without touching — a recipe being cooked, a workout under way:
+
+```ts
+mount(el, { ctx }) {
+  const awake = ctx.ui.keepAwake();    // the screen stops dimming
+  // …
+  return () => awake.release();        // and may sleep again when the view goes
+}
+```
+
+Holds count per app, so two views asking are one lock and the last `release()` lets go; **leaving
+the app lets go of every hold**, released or not. It only stops the screen dimming while Potyro is in
+front, so it needs no permission and works the same sealed. On the web it is the Screen Wake Lock,
+asked for again whenever Potyro comes back to the front (the browser drops it on every glance away);
+in the Android app, the window's keep-screen-on flag (`PotyroKeepAwake`, packages/native); on iOS the
+web's lock (iOS 18.4 and later). A browser without either: the screen dims as before, and nothing
+throws.
+
+### Timers (`ctx.ui.timer`)
+
+A countdown the **shell** keeps for the app, so it survives what the app does not: a page change, the
+person leaving the app, a reload, a locked screen.
+
+```ts
+const rest = await ctx.ui.timer({ label: { en: "Rest", pl: "Odpoczynek" }, seconds: 90, id: "rest" });
+rest.endsAt;            // when it rings (null while paused); `left` is the seconds left when read
+await rest.pause();     // resume(), cancel() — the person can do the same on its chip
+const running = await ctx.ui.timers();   // this app's, counting or paused, soonest first
+```
+
+- **A chip** under the top bar shows each running timer on every page of the app and on the home
+  screen — another app's names its app and opens it. Pause, resume and stop are on the chip. At the
+  end it chimes and buzzes, and the chip turns "Time's up" until the person says Done.
+- **At the end, with the screen locked:** a notification is scheduled for its end on the device —
+  exactly the scheduling reminders use, so it rings with Potyro closed on Android and iOS. On the web
+  a closed tab cannot ring: Potyro rings on time while it is open (a system notification too if the
+  person allowed them and the tab is behind another), else the moment it is in front again. That is
+  why a cook mode pairs a timer with `keepAwake`.
+- **`id`** names a timer: starting one with the id of one that is running restarts it ("rest" restarts
+  the rest timer rather than stacking a second). Without one, every call is new.
+- **Limits:** 1 second to a day; a label is required; at most 10 at once per app (the 11th throws).
+  The label is `Words`, shown in the app's language; a rung timer is no longer in `timers()`.
+
+No permission — the person sees every timer on its chip and can stop it — and the same sealed (the
+shell owns the countdown; the app only asks). Both are new optional members: no app's
+`schemaVersion` changes.
+
+### Guests — people who have not joined yet (`ctx.people`, `ctx.guests`)
+
+A shared app is often set up before the others are in it: a trip's costs, a flat's chores. A **guest**
+is a name — "Ana", "Tom" — that a `member` field can hold until that person joins:
+
+```ts
+const tom = await ctx.guests.add("Tom");               // { id: "guest_…", name: "Tom", guest: true }
+await ctx.create("expense", { what: "Dinner", amount: 4200, paidBy: tom.id });
+const everyone = ctx.people;                           // members and open guests — what a split divides by
+```
+
+- **Claiming.** When someone joins the shared app, Potyro asks them once whether they are one of the
+  guests (and People keeps "That's me" for later). From then on every record naming the guest names
+  *them* — `e.paidBy` resolves to their account, `{ id, name }` like any member, and the guest leaves
+  `ctx.people`. Nothing is rewritten: the stored value is still the guest's id, so a copy that was
+  offline, an export and the history all agree, and `createdBy` (KA-18) is untouched — it still says
+  who typed the record. One person claims at most one guest; the first claim of a guest wins.
+- **Who may do what.** Everyone in the app sees the same guests. Anyone who can change the app adds
+  one; renaming and removing a guest are for whoever added it, or the owner; the owner (or the guest's
+  creator) can also say a guest is the same person as a member or another guest ("Same person as…",
+  for a duplicate or someone who joined without claiming). App code gets the same rules through
+  `ctx.guests` and an error in words otherwise; claiming and "same person" are the person's, in the
+  People panel, never app calls. The rules are applied when the guests are read, on every device, so
+  a copy that wrote past them changes nothing.
+- **Values.** A `member` value may be set to a guest that is not removed, and a stored one may name
+  any guest there has ever been — a removed guest still reads with its name. A solo app has guests too:
+  they are set up on this device and go with the app when it is shared.
+- **Reading people:** use `ctx.people` for "everyone in the group". `ctx.space?.members ?? [ctx.me]`
+  still works, and leaves the guests out.
+
+New optional members; no record changes and no app's `schemaVersion` moves. Seeded sample data can
+name guests the same way (the shell's seeders write them through `writePeople`), so a demo group can
+be lively before anyone joins.
 
 ### How `ctx` differs by trust
 

@@ -9,7 +9,8 @@
 // would have to survive it too, and the next reader cannot tell a bug from a tampered change.
 
 import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "potyro";
-import type { Store } from "@potyro/store";
+import { isGuestId, type Store } from "@potyro/store";
+import type { GuestBook } from "./guests.js";
 
 /** How a field is named in a message: its label — already in the person's language when the
  *  definition is the localized one the ctx passes (#302). */
@@ -100,9 +101,12 @@ export function assertCountable(definition: AppDefinition, entity: string, field
  * Silent by design. A value someone's copy should never have written is not news to the people
  * reading the record; the change simply does not take.
  */
-export async function fittingValue(store: Store, entity: string, id: string, key: string, field: Field, value: unknown): Promise<unknown> {
-  // A `member` value must name someone who has been in this space, removed people included.
-  const ever: PeopleIds = field.type === "member" && store.memberIds ? everyone(store) : undefined;
+export async function fittingValue(store: Store, entity: string, id: string, key: string, field: Field, value: unknown, guests?: GuestBook): Promise<unknown> {
+  // A `member` value must name someone who has been in this space, removed people included — or a
+  // guest there has ever been (docs/04 §Guests). Before the guests are read, a guest's id is given
+  // the benefit of the doubt: the first pass after opening must not blank every guest's records.
+  let ever: PeopleIds = field.type === "member" && store.memberIds ? everyone(store, guests) : undefined;
+  if (ever && guests && !guests.loaded) ever = new Set([...ever, ...memberIdsIn(field, value).filter(isGuestId)]);
   const fits = (v: unknown): boolean => fieldValueProblem(field, v, "read") === null && memberProblem(field, v, ever, "") === null;
   if (fits(value)) {
     if (field.type === "list" && Array.isArray(value)) return sanitiseListRows(field.of, value as Record<string, unknown>[]);
@@ -116,15 +120,15 @@ export async function fittingValue(store: Store, entity: string, id: string, key
   return undefined;
 }
 
-/** Everyone who has ever been in the store's space, or `undefined` when it cannot say. */
-export function everyone(store: Store): PeopleIds {
+/** Everyone who has ever been in the store's space (and every guest), or `undefined` when it cannot say. */
+export function everyone(store: Store, guests?: GuestBook): PeopleIds {
   const ids = store.memberIds?.() ?? [];
   // An empty list is a group not loaded yet, not a space with nobody in it: do not block on it.
-  return ids.length ? new Set(ids) : undefined;
+  return ids.length ? new Set([...ids, ...(guests?.everIds() ?? [])]) : undefined;
 }
 
-/** The people a `member` value may be SET to now: the space's current members, and you. */
-export function currentPeople(space: { members: readonly { id: string }[] } | undefined, me: { id: string } | undefined): PeopleIds {
+/** The people a `member` value may be SET to now: the space's current members, you, and the guests. */
+export function currentPeople(space: { members: readonly { id: string }[] } | undefined, me: { id: string } | undefined, guests?: GuestBook): PeopleIds {
   if (!space) return undefined;
-  return new Set([...space.members.map((m) => m.id), ...(me ? [me.id] : [])]);
+  return new Set([...space.members.map((m) => m.id), ...(me ? [me.id] : []), ...(guests?.settableIds() ?? [])]);
 }

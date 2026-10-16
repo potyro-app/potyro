@@ -252,18 +252,36 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url })`: hand a result or a link on (share sheet / Copy); no permission",
-    declarations: [],
-    members: [{ of: "CtxUi", name: "share" }],
-    cues: /\bshare\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir)\b/i,
-    uses: /\.share\(/,
+    // The shell's own services an app asks for with no permission. One line for three (#341's budget):
+    // a timer and the screen kept on are found here, and `lookup` shows each one's declaration.
+    summary: "`share({ text, url })` hands a result on; `timer({ label, seconds })` is a countdown that outlives the page; `keepAwake()` keeps the screen on",
+    declarations: ["UiKeepAwake", "UiTimerOptions", "UiTimer"],
+    members: [
+      { of: "CtxUi", name: "share" },
+      { of: "CtxUi", name: "keepAwake" },
+      { of: "CtxUi", name: "timer" },
+      { of: "CtxUi", name: "timers" },
+    ],
+    notes: [
+      "A countdown a person waits on (a rest between sets, a step in a recipe) is `ctx.ui.timer`, never setInterval in a view:",
+      "a view's state is gone when the page changes, and the shell's timer goes on with the screen locked. Give a repeating one an",
+      "`id` (\"rest\") so starting it again restarts it; read `ctx.ui.timers()` for what is running. Hold `keepAwake()` while a",
+      "page is followed hands-free (a custom view: release on unmount), never on every page.",
+    ].join("\n"),
+    cues: /\b(?:share|timers?|keepAwake)\(|\b(share|sharing|send (?:it |this )?to|whatsapp|copy (?:the |a )?link|udostępni\w*|compartilh\w*|teilen|compartir|timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|keep (?:the )?screen (?:on|awake)|wake ?lock|cook(?:ing)? mode|hands[- ]free|tela ligada|pantalla encendida|ekran nie gaśnie|schermo acceso|bildschirm an)\b/i,
+    uses: /\.(?:share|timers?|keepAwake)\(/,
   },
   {
     key: "ctx.space",
-    summary: "the people the app's data is shared with: `ctx.space?.members ?? [ctx.me]` (each `{ id, name, role }`); undefined for a solo app",
-    declarations: ["SpaceRole", "Member", "Space"],
-    cues: /\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|wspóln\w*|rodzin\w*|família|familia|partilh\w*|gemeinsam\w*)\b/i,
-    uses: /ctx\.space\b/,
+    summary: "who is in the app: `ctx.people` (members, and guests not joined yet: `ctx.guests.add(name)`); `ctx.space` (roles) is undefined solo",
+    declarations: ["SpaceRole", "Member", "Space", "CtxGuests"],
+    members: [
+      { of: "Ctx", name: "people" },
+      { of: "Ctx", name: "guests" },
+    ],
+    notes: "For \"everyone in the group\" (a split, a rota) read `ctx.people`: it has the guests, whom `ctx.space?.members` leaves out. A guest's `id` goes in a `member` field like anyone's; compare people by `id`.",
+    cues: /\bctx\.(?:people|guests)\b|\b(shared|together|partner|family|household|room ?mates?|flat ?mates?|team|members?|everyone|each of us|who (?:owes|paid|did)|guests?|participants?|not joined yet|wspóln\w*|rodzin\w*|uczestni\w*|família|familia|partilh\w*|convidad\w*|gemeinsam\w*|teilnehmer\w*|invitad\w*|partecipant\w*)\b/i,
+    uses: /ctx\.(?:space|people|guests)\b/,
   },
   {
     key: "ctx.views",
@@ -332,6 +350,9 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
   const fragments = new Map<string, string>();
   const decls = declarations(full);
   for (const c of CAPABILITIES) {
+    // Several members may leave one declaration for one capability (`share`, `timer`… of CtxUi):
+    // one fragment per declaration, with every member it lost, in the order they are declared.
+    const cut = new Map<string, { head: string; ranges: Array<[number, number]>; own: string[] }>();
     for (const m of c.members ?? []) {
       const host = decls.find((d) => d.name === m.of);
       if (!host) throw new Error(`CAPABILITIES: ${c.key} cuts ${m.name} out of ${m.of}, which is not declared`);
@@ -339,9 +360,15 @@ export function splitReference(coreSources: Readonly<Record<string, string>>, lo
       const range = memberRange(own, m.name);
       if (!range) throw new Error(`CAPABILITIES: ${m.of} has no member ${m.name} (${c.key})`);
       for (let i = range[0]; i <= range[1]; i += 1) drop.add(host.from + i);
-      const head = own.find((l) => START.test(l))!.replace(/\{.*$/, "{");
-      fragments.set(c.key, `// ${m.of}, continued (${c.key}):\n${head}\n${own.slice(range[0], range[1] + 1).join("\n")}\n}`);
+      const entry = cut.get(m.of) ?? { head: own.find((l) => START.test(l))!.replace(/\{.*$/, "{"), ranges: [], own };
+      entry.ranges.push(range);
+      cut.set(m.of, entry);
     }
+    const parts = [...cut].map(([of, { head, ranges, own }]) => {
+      const body = ranges.sort((x, y) => x[0] - y[0]).map(([from, to]) => own.slice(from, to + 1).join("\n"));
+      return `// ${of}, continued (${c.key}):\n${head}\n${body.join("\n")}\n}`;
+    });
+    if (parts.length) fragments.set(c.key, parts.join("\n\n"));
   }
 
   const capabilities: Record<string, string> = {};

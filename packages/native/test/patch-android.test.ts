@@ -24,6 +24,18 @@ describe("patch-android", () => {
     expect(withPluginRegistered(source)).toEqual({ source, added: false });
   });
 
+  it("registers keep-awake too, and adds it to an activity patched before it existed", () => {
+    const { source } = withPluginRegistered(GENERATED);
+    expect(source.match(/registerPlugin\(KeepAwakePlugin\.class\)/g)).toHaveLength(1);
+    expect(source.indexOf("registerPlugin(KeepAwakePlugin.class);")).toBeLessThan(source.indexOf("super.onCreate(savedInstanceState);"));
+    const older = withPluginRegistered(GENERATED, ["LocalSocketPlugin"]).source;
+    const upgraded = withPluginRegistered(older);
+    expect(upgraded.added).toBe(true);
+    expect(upgraded.source.match(/registerPlugin\(LocalSocketPlugin\.class\)/g)).toHaveLength(1);
+    expect(upgraded.source.match(/registerPlugin\(KeepAwakePlugin\.class\)/g)).toHaveLength(1);
+    expect(upgraded.source.indexOf("KeepAwakePlugin")).toBeLessThan(upgraded.source.indexOf("super.onCreate(savedInstanceState);"));
+  });
+
   it("adds to an onCreate that is already there", () => {
     const has = GENERATED.replace("extends BridgeActivity {}", "extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle b) {\n        super.onCreate(b);\n    }\n}").replace("import com.getcapacitor.BridgeActivity;", "import android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;");
     const { source } = withPluginRegistered(has);
