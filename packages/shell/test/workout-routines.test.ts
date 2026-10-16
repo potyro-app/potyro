@@ -47,8 +47,8 @@ describe("the first-run program", () => {
     expect(rows).toHaveLength(30);
     const last = [...rows].sort((a, b) => +b.date - +a.date)[0]!;
     expect(last.title).toBe("Push A");
-    expect(last.recordCount).toBe(2);
-    expect(String(last.records)).toBe("🏆 Bench Press: 67.5 kg, heaviest yet\n🏆 Overhead Press: 45 kg, heaviest yet");
+    expect(last.records).toHaveLength(2);
+    expect(String(last.prs)).toBe("🏆 Bench Press: 67.5 kg, heaviest yet · 🏆 Overhead Press: 45 kg, heaviest yet");
   });
 
   it("charts each exercise's estimated 1RM, rising", async () => {
@@ -72,15 +72,15 @@ describe("a device that still holds v1 records", () => {
     await store.kvSet("__appVersion", "1.3.0");
   }
 
-  it("migrates: sessions get an empty routine, sets a kind, exercises a step — and the old day stays", async () => {
+  it("migrates: sessions get an empty routine and no records, exercises a step — and the old day stays", async () => {
     const store = new MemoryStore();
     await store.open("workout");
     await v1(store);
     const { ran } = await migrateOnLoad(store, workout);
     expect(ran.map((m) => `${m.from}→${m.to}`)).toEqual(["1.3.0→2.0.0"]);
     const sessions = await store.all("session");
-    expect(sessions.every((s) => s.routine === null && s.day)).toBe(true);
-    expect((sessions[0]!.entries as { sets: { kind: string }[] }[])[0]!.sets[0]!.kind).toBe("work");
+    expect(sessions.every((s) => s.routine === null && Array.isArray(s.records) && s.day)).toBe(true);
+    expect((sessions[0]!.entries as { sets: unknown[] }[])[0]!.sets[0]).toEqual({ kg: 80, reps: 5 }); // a set with no kind is a working set
     const exercises = await store.all("exercise");
     expect(exercises.every((e) => e.step === 2.5 && Array.isArray(e.muscles) && e.day)).toBe(true);
   });

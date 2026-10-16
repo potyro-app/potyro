@@ -1,13 +1,14 @@
-// Workout's first-run records: a PPL program someone has been running for ten weeks, and a second
-// program (Upper/Lower) resting on the shelf — proof that routines are just records.
+// Workout's first-run records: a PPL program someone has been running for about eleven weeks, and a
+// second program (Upper/Lower) resting on the shelf — proof that routines are just records.
 //
 // The history is a real double progression, so every chart rises the way a lifter's would: each
 // exercise climbs from the bottom of its rep range to the top over three sessions, then the weight
 // goes up and the reps start again. Thirty sessions in turn — Push A, Pull A, Legs A — with two
-// weeks off three weeks ago, so the streak reads three or four weeks in a row rather than eleven. The last session, yesterday,
-// was Push A: two lifts went up in weight that day (Bench Press and Overhead Press, the two personal
-// records its summary shows), the rest repeated the session before. So the Train screen opens on
-// "Next up: Pull A".
+// weeks off three weeks ago, so the streak reads three or four weeks in a row rather than eleven.
+// The last session, yesterday, was Push A: two lifts went up in weight that day (Bench Press and
+// Overhead Press, the two personal records its page shows), the rest repeated the session before.
+// So the Train screen opens on "Next up: Pull A". Each session keeps the records it broke, worked
+// out here the way the app works them out when a workout is finished.
 import type { Store } from "@potyro/store";
 import type { SeedPhoto } from "../seed.js";
 
@@ -61,7 +62,7 @@ const range = (text: string): [number, number] => {
 };
 
 /** The sets of a lift on its k-th time: double progression, three sessions to a step. */
-function setsFor(lift: Lift, k: number): { kg: number; reps: number; kind: string }[] {
+function setsFor(lift: Lift, k: number): Set_[] {
   const [lo, hi] = range(lift.repRange);
   const cycle = k + lift.phase;
   const kg = lift.bodyweight ? 0 : lift.start + Math.floor(cycle / 3) * lift.step;
@@ -69,12 +70,39 @@ function setsFor(lift: Lift, k: number): { kg: number; reps: number; kind: strin
   const top = cycle % 3 === 2;
   const reps = cycle % 3 === 0 ? lo : top ? hi : mid;
   const extra = lift.bodyweight ? Math.floor(cycle / 3) : 0; // a bodyweight lift progresses on reps alone
-  const out: { kg: number; reps: number; kind: string }[] = [];
+  const out: Set_[] = [];
   if (lift.warmup) out.push({ kg: Math.round((kg * 0.5) / 2.5) * 2.5, reps: 8, kind: "warmup" });
   for (let i = 0; i < lift.sets; i++) {
     // The last set of a session that has not reached the top is the hardest: one rep short.
     const last = i === lift.sets - 1 && !top;
-    out.push({ kg, reps: Math.max(1, reps + extra - (last ? 1 : 0)), kind: "work" });
+    out.push({ kg, reps: Math.max(1, reps + extra - (last ? 1 : 0)) });
+  }
+  return out;
+}
+
+type Set_ = { kg: number; reps: number; kind?: "warmup" };
+const e1rm = (kg: number, reps: number): number => (reps <= 0 || kg <= 0 ? 0 : reps === 1 ? kg : Math.round(kg * (1 + reps / 30) * 2) / 2);
+
+/**
+ * The records a session broke, the way the app works them out when a workout is finished (its
+ * `recordsIn`): a loaded lift by its heaviest working set and its best estimated 1RM, a bodyweight
+ * lift by its most reps — against every earlier time, and never on a first time.
+ */
+function recordsOf(entries: { lift: Lift; exercise: string; sets: Set_[] }[], earlier: ReadonlyMap<string, Set_[]>) {
+  const out: { exercise: string; kind: string; value: number }[] = [];
+  for (const { lift, exercise, sets } of entries) {
+    const now = sets.filter((s) => s.kind !== "warmup");
+    const before = (earlier.get(exercise) ?? []).filter((s) => s.kind !== "warmup");
+    if (!now.length || !before.length) continue;
+    if (lift.bodyweight) {
+      const reps = Math.max(...now.map((s) => s.reps));
+      if (reps > Math.max(...before.map((s) => s.reps))) out.push({ exercise, kind: "reps", value: reps });
+      continue;
+    }
+    const heaviest = Math.max(...now.map((s) => s.kg));
+    if (heaviest > Math.max(...before.map((s) => s.kg))) out.push({ exercise, kind: "heaviest", value: heaviest });
+    const best = Math.max(...now.map((s) => e1rm(s.kg, s.reps)));
+    if (best > Math.max(...before.map((s) => e1rm(s.kg, s.reps)))) out.push({ exercise, kind: "e1rm", value: best });
   }
   return out;
 }
@@ -126,6 +154,7 @@ export async function seedWorkout(store: Store, _me: string | undefined, _photo:
   const now = Date.now();
   const times = new Map<string, number>(); // how many times each lift has been done so far
   const lastSets = new Map<string, ReturnType<typeof setsFor>>();
+  const done = new Map<string, Set_[]>(); // every set so far, per exercise: what a record has to beat
   const oldestFirst = [...SCHEDULE].sort((a, b) => b - a);
   for (let i = 0; i < oldestFirst.length; i++) {
     const daysAgo = oldestFirst[i]!;
@@ -138,15 +167,18 @@ export async function seedWorkout(store: Store, _me: string | undefined, _photo:
       // Yesterday only the two big presses moved up; everything else was a repeat of last time.
       const sets = final && lift.name !== "Bench Press" && lift.name !== "Overhead Press" ? (lastSets.get(lift.name) ?? setsFor(lift, k)) : setsFor(lift, k);
       lastSets.set(lift.name, sets);
-      return { exercise: id(lift.name), sets };
+      return { lift, exercise: id(lift.name), sets };
     });
+    const records = recordsOf(entries, done);
+    for (const e of entries) done.set(e.exercise, [...(done.get(e.exercise) ?? []), ...e.sets]);
     const date = new Date(now - daysAgo * DAY);
     date.setHours(i % 2 ? 18 : 7, i % 3 ? 30 : 0, 0, 0);
     await store.insert("session", {
       routine: turn.routine,
       date,
       durationSec: (52 + ((i * 7) % 17)) * 60,
-      entries,
+      entries: entries.map(({ exercise, sets }) => ({ exercise, sets })),
+      records,
     });
   }
 }
