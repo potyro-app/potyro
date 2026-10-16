@@ -136,6 +136,10 @@ export interface AppShape {
   icon?: string;
   /** `theme.accent`. */
   accent?: string;
+  /** It declares a live launcher tile (`tile`), however it is written. */
+  tile?: boolean;
+  /** `category`, when written literally: the launcher's group for it. */
+  category?: string;
   /** Set when the module itself can't be read structurally at all. */
   blocked?: string;
 }
@@ -366,6 +370,9 @@ export async function inspect(source: string): Promise<AppShape> {
   const words = literalWords(propValue(def, "name"));
   const icon = literalString(propValue(def, "icon"));
   const accent = literalString(propValue(propValue(def, "theme"), "accent"));
+  // `tile: (ctx) => …` and `tile(ctx) { … }` alike: only whether it is there matters.
+  const tile = asArray(def.properties).some((p) => (p.type === "ObjectProperty" || p.type === "ObjectMethod") && p.computed !== true && keyOf(p) === "tile");
+  const category = literalString(propValue(def, "category"));
   const langs = literalLanguages(def);
   const name = typeof words === "string" ? words : words && langs.language ? words[langs.language] : undefined;
   return {
@@ -376,6 +383,8 @@ export async function inspect(source: string): Promise<AppShape> {
     ...langs,
     ...(icon ? { icon } : {}),
     ...(accent ? { accent } : {}),
+    ...(tile ? { tile: true } : {}),
+    ...(category ? { category } : {}),
   };
 }
 

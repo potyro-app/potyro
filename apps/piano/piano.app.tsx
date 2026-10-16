@@ -1175,6 +1175,7 @@ export default defineApp({
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#C9772B" },
+  category: "music",
   permissions: { haptics: true }, // a buzz when a timer ends (a plan file comes in through ctx.files, which needs none)
   nav: "tabs",
 

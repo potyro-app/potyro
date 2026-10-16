@@ -13,11 +13,14 @@
 // bug in #78 (a list read once) cannot come back.
 
 import { useEffect, useSyncExternalStore } from "react";
+import { pickLanguage } from "potyro";
 import { plural } from "@lingui/core/macro";
 import { USER_APPS_CHANGED, listUserApps, type UserApp } from "./user-apps.js";
 import { inspect } from "./app-source.js";
 import { shownName } from "./app-words.js";
 import { LOCALE_KEY, languagePrefs, onLanguagePrefsChange } from "./locale.js";
+import { showTile, type CheckedTile, type ShownTile } from "./tile-content.js";
+import { categoryOf } from "./launcher-groups.js";
 
 /** There is one kind of app (#152): the examples are seeded into the same registry as yours. The
  *  key keeps its `user:` prefix so entries written before that stay valid. */
@@ -48,6 +51,39 @@ export interface LauncherEntry {
   people?: { id: string; name: string }[];
   /** What wants attention in the app, as last known while it was open (#86, phase 1). */
   signals?: AppSignals;
+  /** Its live tile's last answer (docs/04 §Tile), for the version of the app it was run on. */
+  tile?: TileCache;
+}
+
+/**
+ * The last thing an app's live tile said (`tile-runner.ts`), kept beside its tile so the wall paints
+ * it at once and a phone's widget can read it later. Without `tile` the face is the plain one: the
+ * app's tile threw, ran out of time or said nothing the launcher can show.
+ */
+export interface TileCache {
+  /** `sourceHash` of the version it was run on: another version runs it again. */
+  hash: string;
+  /** When it was run (ISO). */
+  at: string;
+  tile?: CheckedTile;
+  /** Its picture, made small: a `data:` URL. */
+  image?: string;
+}
+
+/** Keep a tile's answer. A picture that does not fit the launcher's storage is let go, never the rest. */
+export function recordTile(key: AppKey, cache: TileCache): void {
+  const prev = getEntry(key).tile;
+  if (prev && JSON.stringify({ ...prev, at: "" }) === JSON.stringify({ ...cache, at: "" }) && Date.parse(cache.at) - Date.parse(prev.at) < 60_000) return;
+  try {
+    updateEntry(key, { tile: cache });
+  } catch {
+    const { image: _too_big, ...rest } = cache;
+    try {
+      updateEntry(key, { tile: rest });
+    } catch {
+      // storage full: the face stays as it was
+    }
+  }
 }
 
 /**
@@ -98,8 +134,13 @@ export function recordSignals(key: AppKey, patch: Partial<AppSignals>): void {
   updateEntry(key, { signals: next });
 }
 
+/** What an identity read holds; an older read (without the tile and category) is read again. */
+const IDENTITY_V = 2;
+
 export interface AppIdentity {
   hash: string;
+  /** Which reading of the source this is (`IDENTITY_V`). */
+  v?: number;
   name?: string;
   /** The declared name per language, its own language, and the ones it carries (#302). */
   names?: Record<string, string>;
@@ -107,6 +148,10 @@ export interface AppIdentity {
   languages?: string[];
   icon?: string;
   accent?: string;
+  /** It declares a live tile (`AppDefinition.tile`). */
+  tile?: boolean;
+  /** `AppDefinition.category`, for the wall's groups. */
+  category?: string;
 }
 
 /** One row of the launcher: what the app is, joined with what this device knows about it. */
@@ -127,6 +172,14 @@ export interface InstalledApp {
   sync: boolean;
   /** The members last seen in the space (synced apps only, once opened). */
   people: { id: string; name: string }[];
+  /** What kind of app it is, for the wall's groups: its declared `category`, else the local rule's. */
+  category?: string;
+  /** It declares a live tile. */
+  live: boolean;
+  /** What it declares about itself (its category, its tile) has been read for this version. */
+  identified: boolean;
+  /** Its live face in the person's language, when its tile last said something for this version. */
+  face?: ShownTile;
   entry: LauncherEntry;
   user: UserApp;
 }
@@ -152,19 +205,23 @@ export async function ensureIdentities(apps: readonly InstalledApp[]): Promise<v
     apps.map(async (app) => {
       if (reading.has(app.key)) return;
       const hash = sourceHash(app.user.source);
-      if (app.entry.identity?.hash === hash) return;
+      if (app.entry.identity?.hash === hash && app.entry.identity.v === IDENTITY_V) return;
       reading.add(app.key);
       try {
-        if (getEntry(app.key).identity?.hash === hash) return;
+        const known = getEntry(app.key).identity;
+        if (known?.hash === hash && known.v === IDENTITY_V) return;
         const shape = await inspect(app.user.source);
         const identity: AppIdentity = {
           hash,
+          v: IDENTITY_V,
           ...(shape.name ? { name: shape.name } : {}),
           ...(shape.names ? { names: shape.names } : {}),
           ...(shape.language ? { language: shape.language } : {}),
           ...(shape.languages ? { languages: shape.languages } : {}),
           ...(shape.icon ? { icon: shape.icon } : {}),
           ...(shape.accent ? { accent: shape.accent } : {}),
+          ...(shape.tile ? { tile: true } : {}),
+          ...(shape.category ? { category: shape.category } : {}),
         };
         updateEntry(app.key, { identity });
       } finally {
@@ -283,6 +340,10 @@ export function listInstalledApps(): InstalledApp[] {
     const identity = entry.identity && entry.identity.hash === sourceHash(user.source) ? entry.identity : undefined;
     // The record's name, not the source's: it starts as the declared one when the app is saved,
     // and Rename in the launcher changes it — which the tile has to show.
+    const cache = entry.tile && entry.tile.hash === sourceHash(user.source) ? entry.tile : undefined;
+    const words = { language: identity?.language, languages: identity?.languages };
+    const shownIn = identity?.language ? pickLanguage(languagePrefs(), words) : undefined;
+    const category = categoryOf(user.id, identity?.category);
     return {
       key,
       kind: "user",
@@ -295,6 +356,10 @@ export function listInstalledApps(): InstalledApp[] {
       trusted: user.trusted !== false,
       sync: Boolean(user.sync),
       people: user.sync ? (entry.people ?? []) : [],
+      ...(category ? { category } : {}),
+      live: Boolean(identity?.tile),
+      identified: identity?.v === IDENTITY_V,
+      ...(cache?.tile && identity?.tile ? { face: showTile(cache.tile, shownIn, words, cache.image) } : {}),
       entry,
       user,
     };

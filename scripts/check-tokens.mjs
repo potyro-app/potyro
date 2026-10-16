@@ -23,6 +23,18 @@ const INLINE = new Set([
   "--tile-accent",
   "--k-hue",
   "--swatch",
+  // The Start screen (#96): each tile's colour (contrast-checked in tile-colour.ts), its press tilt
+  // and size, a group's tint, and the wall's measured grid and turnstile delay (launcher-metro.tsx).
+  "--tile-bg",
+  "--tile-tx",
+  "--tile-ty",
+  "--tile-w",
+  "--tile-h",
+  "--group-tint",
+  "--metro-unit",
+  "--metro-gap",
+  "--metro-cols",
+  "--metro-leave",
   // Where a balloon's tail sits, measured against the button it hangs off (`useAnchored`).
   "--k-tail",
   // Set on <html> by Capacitor 8 on Android: the status and gesture bars, when env() reports 0.
