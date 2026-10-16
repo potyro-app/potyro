@@ -52,13 +52,19 @@ const LONG = 60_000;
  * @typedef {{ id: string; outcome: "made" | "kept" | "failed"; link?: string; why?: string }} Outcome
  */
 
+/**
+ * Noise that is no fault of the app's, the same list as the e2e console guard's (e2e/console-guard.ts):
+ * the sealed frame's CSP asks for CSP3's `webrtc 'block'` on purpose, and Chromium says it does not know it.
+ */
+const EXPECTED = [/^Unrecognized Content-Security-Policy directive 'webrtc'\.$/];
+
 /** Console errors and uncaught errors on every page of a context. @param {import("@playwright/test").BrowserContext} context */
 function watchErrors(context) {
   /** @type {string[]} */
   const errors = [];
   const watch = (/** @type {import("@playwright/test").Page} */ page) => {
     page.on("console", (m) => {
-      if (m.type() === "error") errors.push(m.text());
+      if (m.type() === "error" && !EXPECTED.some((re) => re.test(m.text()))) errors.push(m.text());
     });
     page.on("pageerror", (e) => errors.push(e.message));
   };
@@ -105,9 +111,12 @@ async function bringApp(page, app, scratch) {
   }
   const id = "example" in from ? from.example : app.id;
   let saved;
-  for (let i = 0; i < 60 && !saved; i++) {
+  // The examples are seeded as the shell boots; a slow first boot gets one more page load.
+  for (let i = 0; i < 80 && !saved; i++) {
     saved = (await savedApps(page)).find((a) => a.id === id);
-    if (!saved) await page.waitForTimeout(500);
+    if (saved) break;
+    if (i === 40) await page.reload();
+    await page.waitForTimeout(500);
   }
   if (!saved) throw new Error(`“${id}” is not among the apps on ${page.url()}`);
   await page.getByRole("button", { name: `Actions for ${saved.name}` }).waitFor({ timeout: LONG });
