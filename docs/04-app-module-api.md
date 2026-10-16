@@ -180,8 +180,8 @@ interface Ctx {
     haptics?:       { vibrate(pattern?: number | number[]): Promise<void>; };  // non-sensitive
     filesystem?:    { pick(): Promise<Blob>; save(name: string, data: Blob): Promise<void>; };
     network?:       { fetch(input: string, init?: RequestInit): Promise<Response>;   // gated
-                      socket(url: string, opts?: { protocols?: string | string[] }): Promise<Socket>;  // docs/28
-                      room(id?: string, opts?: { name?: string }): Promise<Room>; };   // Potyro's rooms, docs/26
+                      socket(url: string, opts?: { protocols?: string | string[]; keepWhileHidden?: "90s" | "5m" }): Promise<Socket>;  // docs/28
+                      room(id?: string, opts?: { name?: string; keepWhileHidden?: "90s" | "5m" }): Promise<Room>; };   // Potyro's rooms, docs/26
     ai?: {                                                                  // docs/23; permissions: { ai: true }
       // Read a picture or a text into a plain shape. The answer is checked against it by the host.
       extract<const S extends AiShape>(req: { schema: S; instructions?: string;
@@ -402,12 +402,20 @@ actions: [{ label: "Follow BTC", run: async (ctx) => {
 `send(data)` resolves once the message is on its way and rejects with a `code` — `"closed"`,
 `"too-big"` (over 1 MiB; a room's 64 KiB) or `"full"` (1 MiB still waiting to go). `onClose` hears
 `{ code, reason, why }`, `why` being `"app" | "server" | "network" | "left" | "hidden" | "too-big" |
-"slow" | "stopped"`. A refused connect rejects with a `code`: `"offline" | "denied" | "refused" |
-"unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden"`. **Potyro closes every connection when
-the person leaves the app or Potyro has been in the background 30 s, and never reconnects by itself**
+"slow" | "stopped" | "off"`. A refused connect rejects with a `code`: `"offline" | "denied" | "refused" |
+"unreachable" | "not-allowed-host" | "insecure" | "too-many" | "hidden" | "off"` (`"off"`: the person
+turned it off in Edit tile — do not retry). **Potyro closes every connection when
+the person leaves the app or Potyro has been in the background 30 s (`keepWhileHidden: "5m"` asks for
+longer, at most 15 min — for a chat), and never reconnects by itself**
 (docs/28 §5 has the five-line reconnect pattern); nothing opens while it is in the background
 (`"hidden"`), so an app that tries again every few seconds picks up when the person comes back. Messages that arrive before `onMessage` are held and
 handed to the first callback. Inside a callback `ctx` works; `ctx.now()` is the opening call's time.
+
+Records only a feed writes — the ticks above, a quake list — are marked on their entity with
+`editableBy: "app"` (docs/03): no built-in view or form then offers people Add, Edit or Delete for
+them, nor ticks, drags or renames them in place, while `ctx.create`/`patch`/`delete` and the app's
+actions go on writing them. Leave it off for records people manage themselves, even when an action
+adds them (Word Watch's watched words).
 
 `room(id?, { name })` joins a room on Potyro's own relay (docs/26) — no address to know: `room()` makes
 a new id (put it in a share link), `room(id)` joins one. `room.me`, `room.members` (the others, oldest
@@ -420,8 +428,10 @@ declares — any other is refused at once, nobody asked — and is asked once pe
 device: "“Price Board” wants a live connection to stream.binance.com." ("…to Potyro’s rooms." for a
 room). The socket is the shell's, never the sealed frame's: messages cross the realm's port and the
 QuickJS bridge (bytes as base64 there). Plain `ws://` works only where it can: the device itself, a
-page served over http (development), and the Android app to the local network (docs/28 §6). A new
-optional member: no app's `schemaVersion` changes.
+page served over http (development), and the Android app to the local network (docs/28 §6). A
+device on the person's home network, whose address differs in every home: declare `hosts: ["local"]`
+and connect to `ws://local:<port>/…` — Potyro asks the person for the address once and names it in the
+question (docs/28 §6). A new optional member: no app's `schemaVersion` changes.
 
 ### Keeping the screen on (`ctx.ui.keepAwake`)
 
@@ -592,6 +602,14 @@ interface ViewProps {
 A custom view is a normal React component. It can call `props.runtime.ctx` for the full `ctx`,
 render anything, keep local state, and use hooks. There is no ceiling — if a screen needs
 bespoke logic, it's just a component.
+
+The shell lays some of its own chrome over the app's screen, and says how much as CSS custom
+properties a custom view reads instead of guessing:
+
+| Property | What it is |
+|---|---|
+| `--k-chrome-bottom` | The room the shell's tab bar (and the phone's gesture bar) takes at the bottom. A view with its own bottom bar sits above it: `bottom: var(--k-chrome-bottom, 0px)`. |
+| `--k-chrome-top` | The room the shell's chrome takes at the top of the app's screen, under its top bar — the "Camera on" sign while the live camera runs (docs/25), `0px` otherwise. A stage with something of its own at its top (a badge, a score) keeps it below: `padding-top: var(--k-chrome-top, 0px)`. It changes while the view is open; a view that sizes itself in script measures again when it does. |
 
 ## Design rules for `ctx`
 

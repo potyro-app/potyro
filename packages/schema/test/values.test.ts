@@ -105,7 +105,7 @@ describe("a record's values", () => {
 });
 
 describe("editableBy (KA-21)", () => {
-  it("accepts anyone or creator, and rejects anything else", async () => {
+  it("accepts anyone, creator or app (a feed's records), and rejects anything else", async () => {
     const { structureSchema } = await import("../src/index.js");
     const app = (editableBy: unknown) => ({
       id: "t", name: "T", version: "1.0.0", schemaVersion: 1,
@@ -114,6 +114,7 @@ describe("editableBy (KA-21)", () => {
     });
     expect(structureSchema.safeParse(app("creator")).success).toBe(true);
     expect(structureSchema.safeParse(app("anyone")).success).toBe(true);
+    expect(structureSchema.safeParse(app("app")).success).toBe(true);
     expect(structureSchema.safeParse(app(undefined)).success).toBe(true);
     expect(structureSchema.safeParse(app("admins")).success).toBe(false);
   });

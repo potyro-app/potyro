@@ -59,7 +59,7 @@ async function segmentFill(page: Page, n: number): Promise<number[]> {
 const intersects = (a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-test("Mirror Monsters on a phone: the kaleidoscope fills every segment, and Camera on stays off the app's name", async ({ page }) => {
+test("Mirror Monsters on a phone: the kaleidoscope fills every segment, and Camera on stays off the app's name and its picture", async ({ page }) => {
   await addAsMine(page, "mirror-monsters.potyro-app.zip", packApp("mirror-monsters", "mirror-monsters.app.ts"));
   await expect(page.getByRole("heading", { name: "Meet your monster" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Turn on the camera" }).click();
@@ -76,9 +76,11 @@ test("Mirror Monsters on a phone: the kaleidoscope fills every segment, and Came
         const s = (await sign(page).boundingBox())!;
         const bar = (await page.locator(".k-topbar").boundingBox())!;
         const name = (await title.boundingBox())!;
-        return { name: intersects(s, name), bar: intersects(s, bar), onScreen: s.x >= 0 && s.x + s.width <= width };
+        // Nor on the app's picture: the stage keeps below it (--k-chrome-top, docs/04).
+        const stage = (await page.locator(".mm-stage").boundingBox())!;
+        return { name: intersects(s, name), bar: intersects(s, bar), stage: intersects(s, stage), onScreen: s.x >= 0 && s.x + s.width <= width };
       })
-      .toEqual({ name: false, bar: false, onScreen: true });
+      .toEqual({ name: false, bar: false, stage: false, onScreen: true });
   }
   await sign(page).getByRole("button", { name: "Turn off" }).click({ trial: true });
 

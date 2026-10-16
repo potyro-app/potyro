@@ -93,6 +93,8 @@ export default defineApp({
   quickActions: [],
   entities: {
     symbol: {
+      // The feed and the app's own actions (Add, Set an alert, Remove) write these; a form never does (docs/03 editableBy).
+      editableBy: "app",
       label: { en: "Symbol", "pt-BR": "Ativo", de: "Wert", es: "Valor", pl: "Symbol", it: "Simbolo" },
       icon: "📈",
       displayField: "code",
@@ -128,6 +130,7 @@ export default defineApp({
       },
     },
     point: {
+      editableBy: "app",
       label: { en: "Price point", "pt-BR": "Ponto de preço", de: "Kurspunkt", es: "Punto de precio", pl: "Punkt cenowy", it: "Punto di prezzo" },
       displayField: "code",
       fields: {
@@ -138,6 +141,7 @@ export default defineApp({
       },
     },
     alert: {
+      editableBy: "app",
       label: { en: "Alert", "pt-BR": "Alerta", de: "Alarm", es: "Alerta", pl: "Alert", it: "Avviso" },
       icon: "🔔",
       displayField: "code",
@@ -152,6 +156,7 @@ export default defineApp({
       },
     },
     feed: {
+      editableBy: "app",
       label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
       displayField: "state",
       fields: {
