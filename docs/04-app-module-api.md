@@ -415,6 +415,17 @@ the arguments it is handed — no store, no cap, no person — with an allow-lis
 limits, and the host's locale, never the app's. The same code formats for a trusted app, so a date
 reads identically at every provenance (a parity test holds it, against both sealed runners).
 
+**Custom views of a shared app run sealed too** (#267, since 2026-10-16). The view is drawn in a
+sandboxed frame of its own — an opaque origin with the realm's CSP, never the shell's page — from the
+same source, and `props.runtime.ctx` there is the same mediated `ctx` the app's logic gets: every
+member that reaches the store, a capability, the person or the shell is a message the host answers
+through the one op table, so the view has exactly the logic's authority and nothing more. What a view
+notices: `ctx.media.url` and `ctx.files.url` hand back URLs the frame made itself (the shell's own do
+not load in another origin); `props.runtime.definition` is data, its functions left out; and
+`ctx.caps.camera.live` is **not** there — the live camera stays with apps that run as yours for now
+(docs/25). A view that stops answering for 2 s, or blocks the page for 2 s, is taken down and the
+app's plain pages are shown instead (docs/22 §11). A trusted app's views run direct, as before.
+
 ## `ViewProps` (what a custom view receives)
 
 ```ts
@@ -460,7 +471,8 @@ the model works down, stopping at the first rung that fits:
    #341 the prompt carries the core of them; each capability (`ctx.caps.*`, `ctx.files`, `ctx.ui.share`…)
    is one index line, its declarations a `lookup` away and put beside a request that names it
    (`CAPABILITIES` in `packages/generator/src/reference.ts`).
-2. **A `custom` view** when no built-in fits — the person's own app runs trusted.
+2. **A `custom` view** when no built-in fits — the person's own app runs trusted, and a shared one
+   draws it in its sealed frame (#267).
 3. **The doable parts**, as SEARCH/REPLACE edits, with the rest listed under **`Not done:`** in the
    prose (carried as `notDone`, shown in the Studio, filed as diagnoses). A request is never refused
    because one part of it cannot be done.

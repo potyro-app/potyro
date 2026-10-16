@@ -126,9 +126,10 @@ a fixture video of Leonardo's Mona Lisa (public domain) and checks the monster's
   always the browser's or the phone's own.
 - **Shared (sealed) apps: not yet.** `ctx.caps.camera.live` is `undefined` there; `capture()` is
   unchanged. Three reasons, each of which would have to change first:
-  1. **There is nothing to draw on.** A sealed app's logic runs in a Worker in a sandboxed frame
-     (#272, docs/22); its custom views are trusted-only until the view phase lands. A frame stream
-     without a surface serves only analysis-only toys, and no app asks for that today.
+  1. **There was nothing to draw on.** A sealed app's logic runs in a Worker in a sandboxed frame
+     (#272, docs/22). Since 2026-10-16 its custom views draw in sandboxed frames too (#267, docs/22
+     §11), so the surface now exists — `live` is the follow-up (Mirror Monsters sealed), along the
+     path below, and is still `undefined` in a sealed view.
   2. **The realm is request/response.** Every op is one call answered once, inside one evaluation pass
      with a CPU budget. A stream is a long-lived subscription the protocol does not have; bolting it
      on before its consumer exists would be designing it blind.
@@ -136,7 +137,7 @@ a fixture video of Leonardo's Mona Lisa (public domain) and checks the monster's
      worth more than any record. It should reach code someone else wrote together with the view
      phase, under one review — not ahead of it.
 
-  **The path, when sealed views land:** the session stays on the HOST (the shell's page owns
+  **The path, now that sealed views have landed:** the session stays on the HOST (the shell's page owns
   `getUserMedia`, the indicator and every stop rule below, exactly as now). A new op `caps.camera.live`
   opens it for the realm after the consent prompt ("“X” wants to see your camera, live"), bound to the
   realm's lifetime; frames cross as transferred `ImageBitmap`s (zero-copy), at most 15 a second and
