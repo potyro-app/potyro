@@ -140,6 +140,45 @@ describe("FilterChrome record-source chips (pantry)", () => {
   });
 });
 
+// A layout page (#105): the chips are the page's, whichever item declares them.
+describe("FilterChrome on a layout", () => {
+  it("shows the chips of the first item that declares any, even when it is not the first item", async () => {
+    const layoutApp = defineApp({
+      id: "layout-chips",
+      name: "Layout Chips",
+      version: "1.0.0",
+      schemaVersion: 1,
+      entities: {
+        status: { displayField: "state", fields: { state: { type: "text" } } },
+        quake: { displayField: "place", fields: { place: { type: "text" }, mag: { type: "number" } } },
+      },
+      pages: [
+        {
+          id: "live",
+          title: "Live",
+          layout: {
+            type: "stack",
+            items: [
+              { view: { type: "aggregate", entity: "status", rows: () => [] } },
+              { view: { type: "list", entity: "quake", filters: [{ label: "Last 24 h", param: "day", type: "boolean" }] } },
+            ],
+          },
+        },
+      ],
+    });
+    const store = new MemoryStore();
+    await store.open("layout-chips");
+    const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+    const host = createHost();
+    const loaded = await host.load({ kind: "module", app: layoutApp });
+    const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} } });
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="live" params={{}} setParam={setParam} />);
+    fireEvent.click(screen.getByRole("switch", { name: "Last 24 h" }));
+    expect(setParam).toHaveBeenCalledWith("day", true);
+  });
+});
+
 // What comes back OUT of the sheet: only what was chosen, each a chip that takes itself off.
 describe("FilterChrome shows what was chosen", () => {
   it("lists the picked values beside the button, and a tap on one clears it", async () => {
