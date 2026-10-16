@@ -236,6 +236,9 @@ export interface LoadedApp {
   callTile(ctx: Ctx): Promise<Value>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
+  customViewMount?(viewId: string): CustomViewMount | null; // trusted only, the `mount` form
+  // A sealed app's custom view, drawn in a sandboxed frame of its own (#267): the realm's apps only.
+  sealedView?(pageRef: string): SealedView | null;
   dispose(): void;
 }
 
@@ -348,14 +351,49 @@ the signed transaction's; in a local store it is one kv key, `people:log`, outsi
 `kv:` prefix. `copyStoreData` carries guests as what they add up to (`copyPeople`), so starting or
 stopping sync keeps them, claims included.
 
-Custom views from **untrusted** apps: rendering arbitrary DOM from untrusted code is a bigger
-surface than pure functions. Policy — **custom views run only for trusted apps**; an untrusted app
-falls back to its built-in views. This keeps the untrusted path to value-returning functions, which
-cross the realm's port (or the isolate's bridge) safely. The realm's frame could host views, but
-only desktop Chromium keeps the shell alive when a view in it spins (docs/22 §4.2), so views of
-shared apps stay off until the Android probe decides phase 3.
+Custom views from **untrusted** apps (#267, owner decision 2026-10-16, docs/22 §11). Policy —
+**a shared app's custom views run in the sealed box, on every engine, behind a watchdog**; they
+never run in the shell's realm.
 
-**That policy used to make shared apps useless, and no longer does (KA-24).** A shared app's main
+- **Where.** One sandboxed frame per mounted view (`sandbox="allow-scripts"`, srcdoc, the realm CSP,
+  WebRTC deleted first), in the place the shell gives the view: the shell keeps the chrome and the
+  navigation, the frame is as wide as the content area and exactly as tall as the room below it,
+  down to the shell's bottom bar (a taller view scrolls inside it, so a bar the view fixes to its
+  bottom stays on screen). It is its own frame, not the logic's,
+  so a stuck view goes without the app's logic, a second view is not frozen with it, and its
+  document goes with every unmount.
+- **What runs.** `RealmLoadedApp.sealedView(pageRef)` → `SealedView` (`state`, `retry`, `mount`).
+  The view bundle is the same source as the logic's, bundled again with React resolved to the
+  frame's own (`bundleViewSource`); the frame runtime (`virtual:potyro-realm-view`, React inside)
+  evaluates it and mounts `mount(el, props)` or `render(props)`.
+- **What it reaches.** `ViewProps.runtime.ctx` is the realm's ctx proxy: every op goes through the
+  same `answer`/`route` table as the logic's, on a fresh mediated ctx per op (as a trusted view's
+  `runtime.ctx` is fresh per access), so `mediateCaps`, the values gate and authorship are the
+  same calls — host-side a view's op and the logic's cannot be told apart. The `Runtime` members that
+  are not ctx (`watchQuery`, `watchRecord` and the hooks over them, `runAction`,
+  `reconcileReminders`) and the `navigate` prop are `VIEW_OPS`, accepted on a view's port only.
+  File and picture URLs cross as bytes; the frame makes its own URLs. `ctx.caps.camera.live` is not
+  there (trusted only for now). `ui.keepAwake`, `ui.timer`/`timers` and `guests.*` are allowed from a
+  view's port, as from the logic's: they are the open app's own services (a rest timer, a screen kept
+  on while a recipe cooks). A view's keep-awakes are held under its own names and let go when the view
+  goes; its timers are the app's and outlive it, as they outlive the app's page. Listening
+  (`caps.speech.listen`) is the logic's alone for now: what it hears goes to the logic's port.
+- **Theme.** Every custom property where the view sits, its colour scheme, font and ink, sent at
+  mount and again when the theme changes.
+- **Freezes.** A watchdog pings the view every 250 ms: unanswered for **2 s** (a frame out of
+  process — desktop Chromium) or the page's own check **2 s** late while the view shows (a frame
+  sharing the page's thread — Firefox, WebKit, Chromium without site isolation) takes the view down;
+  the page then shows the app's plain version with a calm notice and "Try its screen again". A
+  crash-loop guard writes a marker before every mount; a marker left stale by a tab that froze or
+  died turns that app's views off on the device until the person asks, so an endless loop can freeze
+  Potyro at most once per app. After a silent stop, a realm frame that does not answer means the
+  stuck view still holds Chromium's shared sandbox process: every realm is restarted so it exits.
+- **Where views cannot run sealed** — the QuickJS fallback, and the Studio's preview, which still
+  previews in QuickJS — the page says the screen runs only as yours and offers the trust dialog (in a
+  demo link, "Keep this app" first).
+
+**Before #267, that policy kept shared apps' views off — and that used to make shared apps useless,
+which it no longer did since KA-24.** A shared app's main
 screen is typically an *aggregate* — "who owes whom", "what's still to buy" — and `computed` is
 per-record, so aggregates had no declarative home and had to be custom views. A friend's app
 therefore arrived untrusted (correctly) and rendered its whole point as a blank rectangle, whose only
@@ -454,7 +492,8 @@ export interface ViewRegistration { type: string; component: ViewComponent; requ
 ```
 
 The `custom` view type is registered like any other; its component simply delegates to the
-app-provided `customView` (trusted apps only, per Host policy).
+app-provided `customView` (trusted apps), or mounts the sealed app's `sealedView` into a place it
+sizes and shows the plain version when that view is stopped or off (`views/src/custom.tsx`, #267).
 
 A view's full-screen layer (a form sheet) is portalled to `usePortalRoot()`, which is
 `document.body` unless a host frames the app in a screen of its own (`PortalRootContext`, #261):

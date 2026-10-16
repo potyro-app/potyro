@@ -7,7 +7,7 @@
 //
 // "Keep this app" is the Add-an-app card, fed the package the link carried, as a link: sealed, never
 // "I wrote this", promotable later from the app (docs/07).
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Person } from "potyro";
@@ -132,7 +132,8 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
     }),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
     me: demoPerson(),
-    loadIsolated: await createSharedAppLoader(store),
+    // Its custom views draw in their own sealed frames, as any shared app's do (#267).
+    loadIsolated: await createSharedAppLoader(store, undefined, { source: pkg.source, modules, appKey: `demo:${pkg.declared?.id ?? "app"}`, name }),
   });
   // The demo records, once the app has said which entities it keeps. Never anyone's real records:
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
@@ -158,6 +159,10 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
   const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
+  // A screen that cannot run here asks to "Run it as mine…": nothing is installed in a demo, so the
+  // first step is keeping it (sealed, docs/07); it can be promoted from the app once kept. A card
+  // already open (Make it mine, from the link) stays as it is.
+  const keep = useCallback((): void => setAdding((a) => a ?? "keep"), []);
   const name = demoName(pkg);
   const credit = creditLine(pkg.credit);
   return (
@@ -190,6 +195,7 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
         questions={session.questions}
         runtime={session.composed.runtime}
         provenance="untrusted"
+        onTrustRequest={keep}
         toaster={session.toaster}
         name={name}
         // A link to one of its pages (docs/24 §11): the demo opens there, as the kept copy will.

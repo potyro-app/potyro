@@ -24,8 +24,9 @@ MessagePort (#272, docs/22; QuickJS-WASM stays behind a flag as the fallback). T
    internals directly; they get `ctx`. Growing the system means growing `ctx` (docs/04).
 3. **Provenance decides execution, not the app.** Trusted (user's own) → direct. Untrusted
    (imported/shared) → a browser realm: an opaque-origin sandboxed iframe with a strict CSP, logic
-   in its Worker, host power only through the mediated `ctx` over MessagePorts, denied-by-default
-   caps, a permission prompt and a watchdog. Never run untrusted app code with ambient authority,
+   in its Worker, its custom views each in a sandboxed frame of their own (#267), host power only
+   through the mediated `ctx` over MessagePorts, denied-by-default caps, a permission prompt and a
+   watchdog. Never run untrusted app code with ambient authority,
    and never in the shell's own realm. (The QuickJS-WASM isolate is the fallback behind a flag until
    the owner removes it; the shell must be served with `frame-src 'none'`, docs/07.)
 4. **Structure is declarative and validated; logic is typed, not validated.** `packages/schema`
