@@ -21,13 +21,17 @@ import { mediaFieldFor } from "./lead.js";
 import { pictureOf, usePictureUrl } from "./picture.js";
 import { backdropImage, pageOf } from "./backdrop.js";
 import { useDeleteRecord } from "./builtins.js";
+import { RelatedRecords, type RelatedSpec } from "./related.js";
+
+/** A section of the page: fields, or the records that point at this one (`related`). */
+type DetailGroup = ResolvedGroup & { related?: RelatedSpec; index?: number };
 
 type DetailAction = string | { label: string; navigate: { page: string; param?: Record<string, string> } };
 
 interface DetailViewDef {
   entity: string;
   param?: string;
-  sections?: { title?: string; fields: string[]; collapsible?: boolean; collapsed?: boolean }[];
+  sections?: { title?: string; fields?: string[]; related?: RelatedSpec; collapsible?: boolean; collapsed?: boolean }[];
   actions?: DetailAction[];
   media?: string | false;
   cover?: "banner" | "full" | "band" | "none";
@@ -40,7 +44,7 @@ const DEFAULT_FACTS = 3;
 
 export function DetailView(props: BuiltinViewProps) {
   const { t } = useLingui();
-  const { runtime, pageId, params, navigate, onEdit } = props;
+  const { runtime, pageId, params, navigate, onEdit, onCreate } = props;
   const view = getView(runtime, pageId) as DetailViewDef;
   const id = String((view.param && params[view.param]) ?? "");
   const { record, loading } = runtime.useRecord(view.entity, id);
@@ -79,10 +83,11 @@ export function DetailView(props: BuiltinViewProps) {
 
   // The page's own `sections` override; otherwise the entity's `groups`, the same arrangement the
   // form uses (#100), so what was edited under "Nutrition" is read back under "Nutrition".
-  const groups: ResolvedGroup[] = view.sections
-    ? view.sections.map((s) => ({
+  const groups: DetailGroup[] = view.sections
+    ? view.sections.map((s, index) => ({
         ...(s.title ? { title: s.title } : {}),
-        fields: s.fields,
+        fields: s.fields ?? [],
+        ...(s.related ? { related: s.related, index } : {}),
         collapsed: s.collapsed === true,
         collapsible: s.collapsible === true || s.collapsed === true,
       }))
@@ -93,7 +98,7 @@ export function DetailView(props: BuiltinViewProps) {
   // ingredients"), and keeps its row.
   const stored = (f: string): boolean => Boolean(entityDef?.fields[f]);
   const shown = (f: string): boolean => !(pictured && own && f === coverField) && !(stored(f) && isBlank(record[f]));
-  const visibleGroups = groups.map((g) => ({ ...g, fields: g.fields.filter(shown) })).filter((g) => g.fields.length > 0);
+  const visibleGroups = groups.map((g) => ({ ...g, fields: g.fields.filter(shown) })).filter((g) => g.fields.length > 0 || g.related);
 
   const runDetailAction = (a: DetailAction): void => {
     if (typeof a === "string") void runtime.runAction(view.entity, a, id);
@@ -111,7 +116,25 @@ export function DetailView(props: BuiltinViewProps) {
   // With a primary action on the cover, the bar's actions are all quiet: one loud button per page.
   const fillFirst = !view.primaryAction;
 
-  const fieldsOf = (group: ResolvedGroup) => (
+  const fieldsOf = (group: DetailGroup) =>
+    group.related ? (
+      <>
+        {group.fields.length ? fieldsList(group) : null}
+        <RelatedRecords
+          runtime={runtime}
+          pageId={pageId}
+          index={group.index ?? 0}
+          recordId={id}
+          spec={group.related}
+          navigate={navigate}
+          onEdit={onEdit}
+          onCreate={onCreate}
+        />
+      </>
+    ) : (
+      fieldsList(group)
+    );
+  const fieldsList = (group: ResolvedGroup) => (
     <dl>
       {group.fields.map((f) => (
         <div className="k-field" key={f} data-wide={wideField(runtime, view.entity, f) || undefined}>

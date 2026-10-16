@@ -135,6 +135,8 @@ export type {
   CustomView,
   ListDisplay,
   DetailSection,
+  RelatedSection,
+  ChecklistQuickAdd,
   DetailAction,
   FilterChip,
   OnOpen,

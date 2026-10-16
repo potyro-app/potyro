@@ -29,6 +29,8 @@ export interface Badge {
 export interface DisplayCell {
   primary?: string;
   secondary?: string;
+  /** The record's own glyph (`display.icon`): its lead, its pin. */
+  icon?: string;
   mediaUrl?: string;
   /** A badge is its text plus, for an enum value, the tint that value wears everywhere (#98). */
   badges?: Badge[];

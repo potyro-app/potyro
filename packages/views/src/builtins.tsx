@@ -260,7 +260,7 @@ export function ListView(props: BuiltinViewProps) {
             data-active={selectedKey !== undefined && params[selectedKey] === row.id ? "true" : undefined}
             onClick={openRow ? () => openRow(row) : undefined}
           >
-            <Lead url={cell.mediaUrl} text={primary} badges={cell.badges} kind={lead} icon={entityDef?.icon} />
+            <Lead url={cell.mediaUrl} text={primary} badges={cell.badges} kind={cell.icon ? "icon" : lead} icon={cell.icon ?? entityDef?.icon} />
             <span className="k-list-text">
               <span className="k-primary" data-k-value>{primary}</span>
               {cell.secondary ? <span className="k-secondary" data-k-value>{cell.secondary}</span> : null}
@@ -397,8 +397,8 @@ export function GalleryView(props: BuiltinViewProps) {
             <span className="k-card-media" style={cell.mediaUrl ? undefined : leadStyle(cell.badges, primary)}>
               {cell.mediaUrl ? (
                 <img src={cell.mediaUrl} alt="" loading="lazy" decoding="async" draggable={false} />
-              ) : lead === "none" ? null : (
-                <Lead text={primary} badges={cell.badges} kind={lead} icon={entityDef?.icon} className="k-card-glyph" />
+              ) : lead === "none" && !cell.icon ? null : (
+                <Lead text={primary} badges={cell.badges} kind={cell.icon ? "icon" : lead} icon={cell.icon ?? entityDef?.icon} className="k-card-glyph" />
               )}
             </span>
             <span className="k-card-caption">
