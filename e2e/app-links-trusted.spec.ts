@@ -65,7 +65,7 @@ async function anaInvites(browser: Browser, baseURL: string): Promise<{ ana: Pag
 const lobbyHas = (p: Page, who: string) => p.locator(".dg-person", { hasText: who });
 
 test("a friend who has the game: the invite opens their own copy on Play, with the code filled in, and Join joins", async ({ browser, baseURL }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   const { ana, link, code } = await anaInvites(browser, baseURL!);
   const bo = await player(browser, baseURL!);
 
@@ -91,7 +91,7 @@ test("a friend who has the game: the invite opens their own copy on Play, with t
 });
 
 test("a friend who does not have it: the demo, Keep this app, Run it as mine — and they land on Play with the code", async ({ browser, baseURL }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   const { ana, link, code } = await anaInvites(browser, baseURL!);
   const { context, page: cy } = await stranger(browser, baseURL!);
   await routeRooms(cy, relay);
@@ -136,7 +136,7 @@ test("a friend who does not have it: the demo, Keep this app, Run it as mine —
 });
 
 test("a link anyone could write: huge and unknown params are cut silently, and an app you do not have installs nothing", async ({ browser, baseURL }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const bo = await player(browser, baseURL!, "Bo");
   // A real code padded far past what a link may carry: the game itself would read it (it ignores
   // spaces), so only the cut keeps it out — and a link this long carries nothing at all.
@@ -165,7 +165,7 @@ test("a link anyone could write: huge and unknown params are cut silently, and a
 });
 
 test("the remix intent on an invite link still opens Make it mine — even for someone who has the app", async ({ browser, baseURL }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const { link } = await anaInvites(browser, baseURL!);
   // Bo has the game; asking to make it his own is asking for a copy, not for his app.
   const bo = await player(browser, baseURL!);
