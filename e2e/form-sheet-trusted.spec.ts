@@ -76,6 +76,8 @@ test.describe("phone", () => {
   test("a swipe down on the header closes an untouched form", async ({ page }) => {
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
+    // Today's one big button is "Add a plant"; the Plants list has the floating form button.
+    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
     await page.getByRole("button", { name: "Add: Plant" }).click();
     const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await expect(dialog).toBeVisible();

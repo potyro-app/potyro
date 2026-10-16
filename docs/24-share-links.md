@@ -69,7 +69,10 @@ A demo shows the app as it looks with something in it, and must never show the s
 The device that shares builds them, in this order:
 
 1. **The app's own sample data**: the first-run records a bundled example writes (`seed.ts`), run
-   into a throwaway in-memory store and read back. Run without the sharer's account id (`me` is
+   into a throwaway in-memory store and read back. A sample photo is written as the path of the
+   file the example ships with (`{ "file": "photos/x.webp" }`), the file travels in `files/`, and
+   the viewer's device makes the record's copy (`seed-files.ts`) — so an example with photos makes
+   a hosted link of a few hundred KB, too long for the inline form. Run without the sharer's account id (`me` is
    undefined), so no record names anyone.
 2. For an app added from a package, **the seed its package came with** (`seed.json`, #253): the
    app's own sample data, kept beside the app when it was added (`UserApp.seed`, at most 64 KB of

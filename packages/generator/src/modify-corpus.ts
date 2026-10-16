@@ -363,9 +363,11 @@ export const MODIFY_CASES: readonly ModifyCase[] = [
     ],
     decidedBy: "start as not visited",
     instruction: "Ok, now do that thing with visited that I asked for.",
+    // Places 2.0 keeps a status (want to go / been / favourite) where it had a visited switch: "not
+    // visited" is "want to go".
     landed: (d, before) =>
-      d.pages.length === before.pages.length && (d.entities.place?.fields?.visited as { default?: unknown } | undefined)?.default === false,
-    expects: "a new place starts as not visited, and no page is added",
+      d.pages.length === before.pages.length && (d.entities.place?.fields?.status as { default?: unknown } | undefined)?.default === "want to go",
+    expects: "a new place starts as want to go (not visited), and no page is added",
   },
 
   // platform (#263): what the person mostly wants needs a device feature Potyro does not offer (no

@@ -30,6 +30,7 @@ import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { openStore } from "./open-store.js";
 import { sourceHttp } from "./ask-sources.js";
 import { keepCode } from "./app-modules.js";
+import { resolveSeedFiles } from "./seed-files.js";
 import { derivedLine, newLine } from "./app-line.js";
 
 export type AddSource = "file" | "link" | "paste";
@@ -325,13 +326,17 @@ export async function applyShippedFiles(store: Store, files: PackagedFile[], opt
   return result;
 }
 
-/** Insert a package's first records. Only entities the app declares; a row's own fields as given. */
+/**
+ * Insert a package's first records. Only entities the app declares; a row's own fields as given —
+ * except a photo named by a file the app shipped with, `{ "file": "photos/x.webp" }`, which becomes
+ * the record's own copy of that picture (seed-files.ts). Its shipped files must be in its folder first.
+ */
 export async function applySeed(store: Store, seed: AppPackage["seed"], entities: readonly string[]): Promise<number> {
   let n = 0;
   for (const [entity, rows] of Object.entries(seed ?? {})) {
     if (!entities.includes(entity)) continue;
     for (const row of rows) {
-      await store.insert(entity, row as never);
+      await store.insert(entity, (await resolveSeedFiles(store, row)) as never);
       n++;
     }
   }

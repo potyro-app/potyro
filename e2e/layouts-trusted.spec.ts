@@ -1,13 +1,20 @@
 import { test, expect, type Page } from "./console-guard";
 
-// Page layouts (#105). Plants opens on "Today": a grid of the watering figures, the overdue list
-// and this month's calendar — three views on one page, three columns on a wide page, one column
-// on a phone. Recipes' first page is a split: on a wide screen a row fills the recipe beside the
-// list; on a phone the row opens the recipe page, as any list does.
+// Page layouts (#105). Plants opens on "Today": a grid of the watering figures, the thirsty plants and
+// what comes up this week — three views on one page, three columns on a wide page, one column on a
+// phone. Places' "All places" is a split: on a wide screen a row fills the place beside the list; on
+// a phone the row opens the place's page, as any list does.
 
 async function open(page: Page, app: string, title: string): Promise<void> {
   await page.goto(`/?user=${app}`);
   await expect(page.locator("h1").first()).toHaveText(title, { timeout: 30_000 });
+}
+
+async function allPlaces(page: Page, phone = false): Promise<void> {
+  await open(page, "places", "Places");
+  if (phone) await page.locator(".k-tabbar .k-tab", { hasText: "All places" }).tap();
+  else await page.locator(".k-sidenav .k-tab", { hasText: "All places" }).click();
+  await expect(page.locator(".k-layout-split")).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe("desktop", () => {
@@ -17,42 +24,42 @@ test.describe("desktop", () => {
     await open(page, "plants", "Plants");
     await expect(page.locator(".k-page-title")).toHaveText("Today");
     const grid = page.locator(".k-layout-grid");
-    await expect(grid.locator(".k-layout-title")).toHaveText(["Watering", "Overdue", "This month"]);
-    // The figures (an aggregate), the overdue plant (a list) and the calendar, each its own view.
+    await expect(grid.locator(".k-layout-title")).toHaveText(["Watering", "Thirsty", "Coming up"]);
+    // The figures (an aggregate), the thirsty plants and the week ahead (lists), each its own view.
     await expect(grid.getByRole("region", { name: "Watering" })).toContainText("Due now");
-    await expect(grid.getByRole("region", { name: "Overdue" }).locator(".k-list-row")).toContainText([/Fern/]);
-    await expect(grid.getByRole("region", { name: "This month" }).locator(".k-cal-event").first()).toBeVisible();
-    // Three columns: the calendar spans the row under the two above it.
+    await expect(grid.getByRole("region", { name: "Thirsty" }).locator(".k-list-row", { hasText: "Fern" })).toBeVisible();
+    await expect(grid.getByRole("region", { name: "Coming up" }).locator(".k-list-row").first()).toBeVisible();
+    // Three columns: the week ahead spans the row under the two above it.
     const watering = (await grid.getByRole("region", { name: "Watering" }).boundingBox())!;
-    const overdue = (await grid.getByRole("region", { name: "Overdue" }).boundingBox())!;
-    const month = (await grid.getByRole("region", { name: "This month" }).boundingBox())!;
-    expect(Math.abs(watering.y - overdue.y)).toBeLessThan(2);
-    expect(overdue.width).toBeGreaterThan(watering.width * 1.6);
-    expect(month.y).toBeGreaterThan(watering.y + watering.height - 1);
-    expect(month.width).toBeGreaterThan(overdue.width + watering.width - 2);
-    // Watering from the Overdue block patches the record through the item's own view.
-    await grid.getByRole("region", { name: "Overdue" }).getByRole("button", { name: "Water" }).first().click();
-    await expect(grid.getByRole("region", { name: "Overdue" }).locator(".k-list-row", { hasText: "Fern" })).toHaveCount(0);
+    const thirsty = (await grid.getByRole("region", { name: "Thirsty" }).boundingBox())!;
+    const coming = (await grid.getByRole("region", { name: "Coming up" }).boundingBox())!;
+    expect(Math.abs(watering.y - thirsty.y)).toBeLessThan(2);
+    expect(thirsty.width).toBeGreaterThan(watering.width * 1.6);
+    expect(coming.y).toBeGreaterThan(Math.min(watering.y + watering.height, thirsty.y + thirsty.height) - 1);
+    expect(coming.width).toBeGreaterThan(thirsty.width + watering.width - 2);
+    // Watering from the Thirsty block patches the record through the item's own view.
+    const thirstyBlock = grid.getByRole("region", { name: "Thirsty" });
+    await thirstyBlock.locator(".k-list-row", { hasText: "Fern" }).getByRole("button", { name: "Water" }).click();
+    await expect(thirstyBlock.locator(".k-list-row", { hasText: "Fern" })).toHaveCount(0);
   });
 
-  test("Recipes' split: a row fills the recipe on the right without leaving the page", async ({ page }) => {
-    await open(page, "recipes", "Recipes");
+  test("Places' split: a row fills the place on the right without leaving the page", async ({ page }) => {
+    await allPlaces(page);
     const split = page.locator(".k-layout-split");
     await expect(split).toHaveAttribute("data-wide", "true");
     await expect(split.locator(".k-layout-empty")).toHaveText("Choose one on the left.");
-    await split.locator(".k-list-row .k-list-text").first().click();
+    const rows = split.locator(".k-list-row");
+    const first = ((await rows.first().locator(".k-primary").textContent()) ?? "").trim();
+    await rows.first().locator(".k-list-text").click();
     const detail = split.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    await expect(detail.locator(".k-detail-title")).toHaveText("Chicken Caesar");
-    await expect(split.locator(".k-list-row[data-active='true']")).toContainText("Chicken Caesar");
-    // Still the Recipes page, with its list beside the record.
-    await expect(page.locator(".k-page-title")).toHaveText("Recipes");
-    await expect(split.locator(".k-list-row")).toHaveCount(2);
-    await split.locator(".k-list-row .k-list-text").nth(1).click();
-    await expect(detail.locator(".k-detail-title")).toHaveText("Fluffy Pancakes");
-    // The record's actions are its own: Cook leaves for the cook-along page.
-    await detail.getByRole("button", { name: "Cook", exact: true }).click();
-    await expect(page.locator("#cook-heading")).toContainText("Cooking:");
+    await expect(detail.locator(".k-detail-title")).toHaveText(first);
+    await expect(split.locator(".k-list-row[data-active='true']")).toContainText(first);
+    // Still the All places page, with its list beside the record.
+    await expect(page.locator(".k-page-title")).toHaveText("All places");
+    const second = ((await rows.nth(1).locator(".k-primary").textContent()) ?? "").trim();
+    await rows.nth(1).locator(".k-list-text").click();
+    await expect(detail.locator(".k-detail-title")).toHaveText(second);
   });
 });
 
@@ -63,11 +70,11 @@ test.describe("phone", () => {
     await open(page, "plants", "Plants");
     const grid = page.locator(".k-layout-grid");
     const watering = (await grid.getByRole("region", { name: "Watering" }).boundingBox())!;
-    const overdue = (await grid.getByRole("region", { name: "Overdue" }).boundingBox())!;
-    expect(overdue.y).toBeGreaterThan(watering.y + watering.height - 1);
-    expect(Math.abs(overdue.width - watering.width)).toBeLessThan(2);
+    const thirsty = (await grid.getByRole("region", { name: "Thirsty" }).boundingBox())!;
+    expect(thirsty.y).toBeGreaterThan(watering.y + watering.height - 1);
+    expect(Math.abs(thirsty.width - watering.width)).toBeLessThan(2);
 
-    await open(page, "recipes", "Recipes");
+    await allPlaces(page, true);
     await expect(page.locator(".k-layout-split")).not.toHaveAttribute("data-wide", "true");
     await expect(page.locator(".k-layout-split article.k-detail")).toHaveCount(0);
     await page.locator(".k-list-row .k-list-text").first().tap();

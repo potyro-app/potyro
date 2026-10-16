@@ -41,13 +41,13 @@ test("map shows its pins on first open, before any filter is touched", async ({ 
 
   // The seeded places must be on the map immediately. Asserting the *markers*, not just the canvas:
   // a blank map with markers resolved in state passes every weaker check.
-  await expect(page.locator(".maplibregl-marker")).toHaveCount(3);
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
 });
 
 test("map reopens where the user left it", async ({ page }) => {
   const zooms = await captureTileZooms(page);
   await openMap(page);
-  await expect(page.locator(".maplibregl-marker")).toHaveCount(3);
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(13);
 
   // Zoom in by wheel over the canvas — a real user gesture, which is what the map agrees to
   // remember. (Clicking the canvas would open the "add a place here" form instead.)
