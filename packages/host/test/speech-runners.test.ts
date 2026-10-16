@@ -112,6 +112,27 @@ describe("ctx.caps.speech in every runner", () => {
   });
 
   for (const runner of RUNNERS) {
+    it(`${runner.name}: an action that awaits what is said is not stopped by its budget while the person speaks`, async () => {
+      const store = new MemoryStore();
+      await store.open("voice");
+      const fake = createFakeSpeech();
+      const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+      const caps = new FakeCapabilities({ speech: fake.cap });
+      const host = createHost({ loadIsolated: await runner.loader(store, { timeoutMs: 300 }) });
+      const wait = `async function (r, ctx) { var s = await ctx.caps.speech.listen(); var t = await s.result; await ctx.create("msg", { text: "kept " + t }); }`;
+      const json = JSON.stringify(definition).replace('"run":{"fields":{"out":{"type":"text"}}}', `"run":{"fields":{"out":{"type":"text"}},"actions":{"wait":${wait}}}`);
+      const loaded = await host.load({ kind: "bundle", code: `globalThis.__potyroApp = ${json};`, provenance: "untrusted" });
+      const row = await store.insert("run", { out: "" });
+      const done = loaded.callAction("run", "wait", { ...row } as never, host.makeCtx(loaded, { store, caps, ui, nav, language: "en" } as MakeCtxBase));
+      await until(async () => fake.active);
+      await new Promise((r) => setTimeout(r, 900)); // three budgets of speaking
+      fake.say("a long sentence");
+      fake.finish();
+      await done;
+      expect((await store.all("msg")).map((m) => String(m.text))).toEqual(["kept a long sentence"]);
+      loaded.dispose();
+    }, 60_000);
+
     it(`${runner.name}: the same records as trusted, after asking once; closing the app ends its listening`, async () => {
       const { out, asked, lastEnd } = await scenario(runner);
       expect(out).toEqual(expect.arrayContaining(EXPECTED));

@@ -26,7 +26,10 @@ export interface Voice {
   holding: boolean;
   problem: string | null;
   start(): void;
+  /** Stop listening; words still on their way (the cloud engine's) land in the box. */
   stop(): void;
+  /** Stop, and keep nothing more: the person took over by typing. */
+  release(): void;
   setHolding(h: boolean): void;
   clearProblem(): void;
 }
@@ -39,6 +42,8 @@ export function useVoice(onHeard: (text: string, final: boolean) => void, onStar
   const [problem, setProblem] = useState<string | null>(null);
   const session = useRef<SpeechSession | null>(null);
   const stopWanted = useRef(false);
+  /** The person typed over it: what the microphone still says goes nowhere. */
+  const released = useRef(false);
   const heard = useRef(onHeard);
   heard.current = onHeard;
   const started = useRef(onStart);
@@ -58,18 +63,19 @@ export function useVoice(onHeard: (text: string, final: boolean) => void, onStar
     setProblem(null);
     setPhase("starting");
     stopWanted.current = false;
+    released.current = false;
     started.current();
     void studioListen(() => setPhase("working")).then(
       (s) => {
         session.current = s;
         setPhase("listening");
-        s.onText((text, final) => heard.current(text, final));
+        s.onText((text, final) => {
+          if (!released.current) heard.current(text, final);
+        });
         // Let go before the microphone was on: stop as soon as it is.
         if (stopWanted.current) s.stop();
         s.result.then(
-          (text) => {
-            if (text) heard.current(text, true);
-          },
+          () => {},
           (e: unknown) => setProblem(voiceProblem(e)),
         ).finally(() => {
           session.current = null;
@@ -92,7 +98,13 @@ export function useVoice(onHeard: (text: string, final: boolean) => void, onStar
     session.current?.stop();
   }, []);
 
-  return { where, phase, holding, problem, start, stop, setHolding, clearProblem: () => setProblem(null) };
+  const release = useCallback((): void => {
+    released.current = true;
+    stopWanted.current = true;
+    session.current?.stop();
+  }, []);
+
+  return { where, phase, holding, problem, start, stop, release, setHolding, clearProblem: () => setProblem(null) };
 }
 
 function MicGlyph() {
@@ -209,9 +221,9 @@ export function VoiceStrip({ voice }: { voice: Voice }) {
         ) : (
           <Trans comment="Studio microphone after a tap: it keeps listening until tapped again">Listening — tap ■ to stop</Trans>
         )}
-      </span>
-      <span className="k-voice-where" data-leaves={voice.where.engine !== "device" || undefined} title={whereWords}>
-        {whereWords}
+        <span className="k-voice-where" data-leaves={voice.where.engine !== "device" || undefined}>
+          {whereWords}
+        </span>
       </span>
     </div>
   );

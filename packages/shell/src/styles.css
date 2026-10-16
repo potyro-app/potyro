@@ -6795,8 +6795,8 @@ body:has(.k-tabbar) .k-toasts {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.45rem 0.6rem 0.45rem 0.85rem;
-  border-radius: 999px;
+  padding: 0.5rem 0.75rem 0.5rem 0.9rem;
+  border-radius: 1rem;
   background: var(--voice);
   color: var(--voice-ink);
   font-size: 0.86rem;
@@ -6826,18 +6826,15 @@ body:has(.k-tabbar) .k-toasts {
 .k-voice-strip-text {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
 }
 .k-voice-where {
-  flex: none;
-  max-width: 45%;
-  padding: 0.12rem 0.55rem;
-  border-radius: 999px;
-  background: oklch(100% 0 0 / 0.2);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  opacity: 0.88;
 }
 .k-voice-where[data-leaves]::before {
   content: "↗ ";

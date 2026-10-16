@@ -709,7 +709,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               value={description}
               onChange={(e) => {
                 // Typing takes over from the microphone: what was heard stays, to be changed.
-                if (voice.phase === "listening") voice.stop();
+                if (voice.phase === "listening") voice.release();
                 setDescription(e.target.value);
               }}
               onKeyDown={(e) => {
