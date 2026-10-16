@@ -33,6 +33,9 @@ import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
 import { AddAppDialog } from "./add-app-dialog.js";
+import { canRemix, RemixDialog } from "./remix.js";
+import { tileCredit } from "./credit-words.js";
+import { openGallery } from "./gallery-link.js";
 import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
@@ -165,6 +168,8 @@ interface UserActions {
   /** Sealed apps only: let it run as yours (owner, 2026-10-13) — reachable even when the app cannot
    *  open sealed at all, which is when the app's own badge never appears. */
   onPromote: () => void;
+  /** Sealed apps only: Make it mine — your own copy to change, opened in the Studio (docs/24 §6). */
+  onRemix: () => void;
 }
 
 function TileMenu({
@@ -220,6 +225,7 @@ function TileMenu({
     else return;
     e.preventDefault();
   };
+  const credit = tileCredit(app.user);
   const item = (action: string, label: string, fn: () => void, extra: { className?: string; disabled?: boolean } = {}) => (
     <button type="button" role="menuitem" data-action={action} className={`k-tile-menu-item${extra.className ? ` ${extra.className}` : ""}`} disabled={extra.disabled} onClick={run(fn)}>
       {label}
@@ -244,6 +250,8 @@ function TileMenu({
           <div ref={menuRef} className="k-tile-menu" role="menu" aria-label={t`Actions for ${app.name}`} onKeyDown={onMenuKey}>
             {/* The menu already says whose it is (aria-label); the title is for the eye. */}
             <div className="k-tile-menu-title" aria-hidden>{app.name}</div>
+            {/* Who made it, and what it is a remix of (docs/24 §6): the tile's own details. */}
+            {credit ? <div className="k-tile-menu-note k-tile-menu-credit">{credit}</div> : null}
             {attentionOf(app.entry, Date.now()).total ? (
               <div className="k-tile-menu-note">{describeAttention(attentionOf(app.entry, Date.now()))}</div>
             ) : null}
@@ -257,6 +265,7 @@ function TileMenu({
             {item("share", t`Share`, user.onShare)}
             {item("rename", t`Rename`, user.onRename)}
             {item("duplicate", t`Duplicate`, user.onDuplicate)}
+            {canRemix(app.user) ? item("remix", t({ message: "Make it mine", comment: "Tile menu: your own copy of this app, to change in the Studio" }), user.onRemix) : null}
             {!app.trusted ? item("promote", t`Let it run as yours`, user.onPromote) : null}
             <div className="k-tile-menu-sep" role="separator" />
             {item("delete", t`Delete`, user.onDelete, { className: "k-danger" })}
@@ -411,6 +420,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
   // app badly enough that its own header is no longer reachable.
   const [history, setHistory] = useState<UserApp | null>(null);
   const [promoting, setPromoting] = useState<UserApp | null>(null);
+  // Make it mine (docs/24 §6): a copy of a sealed app to change, through the Add-an-app card.
+  const [remixing, setRemixing] = useState<UserApp | null>(null);
   // Share (docs/24): a link anyone can try, or an invite to use it together.
   const [sharing, setSharing] = useState<UserApp | null>(null);
   // The tile editor (#83): this device's name, icon and colour for an app.
@@ -664,6 +675,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         onData: () => navigateTo({ kind: "data", id: a.id }),
         onFiles: () => navigateTo({ kind: "data", id: a.id, files: true }),
         onPromote: () => setPromoting(a.user),
+        onRemix: () => setRemixing(a.user),
       }}
     />
   );
@@ -710,6 +722,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
       {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {remixing ? <RemixDialog app={remixing} onClose={() => setRemixing(null)} /> : null}
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
 
       {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
@@ -840,6 +853,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           entries={[
             { key: "describe", label: t`Describe a new app`, icon: "✦", onSelect: () => onNewApp() },
             { key: "add", label: t`Add an app someone sent you`, icon: "⤓", onSelect: () => setAdding({}) },
+            { key: "gallery", label: t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), icon: "▦", onSelect: () => openGallery() },
           ]}
         />
       ) : null}

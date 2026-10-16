@@ -1,0 +1,356 @@
+{
+  "format": "potyro-gallery/1",
+  "categories": {
+    "home": { "en": "Home", "pt-BR": "Casa", "de": "Zuhause", "es": "Hogar", "pl": "Dom", "it": "Casa" },
+    "food": { "en": "Food", "pt-BR": "Comida", "de": "Essen", "es": "Comida", "pl": "Jedzenie", "it": "Cibo" },
+    "money": { "en": "Money", "pt-BR": "Dinheiro", "de": "Geld", "es": "Dinero", "pl": "Pieniądze", "it": "Soldi" },
+    "garden": { "en": "Plants", "pt-BR": "Plantas", "de": "Pflanzen", "es": "Plantas", "pl": "Rośliny", "it": "Piante" },
+    "travel": { "en": "Places", "pt-BR": "Lugares", "de": "Orte", "es": "Lugares", "pl": "Miejsca", "it": "Luoghi" },
+    "fitness": { "en": "Fitness", "pt-BR": "Exercício", "de": "Training", "es": "Ejercicio", "pl": "Ćwiczenia", "it": "Allenamento" },
+    "notes": { "en": "Notes", "pt-BR": "Notas", "de": "Notizen", "es": "Notas", "pl": "Notatki", "it": "Note" },
+    "plans": { "en": "Plans", "pt-BR": "Planos", "de": "Pläne", "es": "Planes", "pl": "Plany", "it": "Piani" },
+    "wellbeing": { "en": "Wellbeing", "pt-BR": "Bem-estar", "de": "Wohlbefinden", "es": "Bienestar", "pl": "Samopoczucie", "it": "Benessere" },
+    "play": { "en": "Play", "pt-BR": "Jogos", "de": "Spiele", "es": "Juegos", "pl": "Gry", "it": "Giochi" },
+    "creative": { "en": "Creative", "pt-BR": "Criar", "de": "Kreativ", "es": "Crear", "pl": "Twórcze", "it": "Creare" },
+    "music": { "en": "Music", "pt-BR": "Música", "de": "Musik", "es": "Música", "pl": "Muzyka", "it": "Musica" },
+    "world": { "en": "The world", "pt-BR": "O mundo", "de": "Die Welt", "es": "El mundo", "pl": "Świat", "it": "Il mondo" }
+  },
+  "apps": [
+    {
+      "id": "groceries",
+      "status": "ready",
+      "from": { "example": "groceries" },
+      "category": "home",
+      "icon": "🛒",
+      "name": { "en": "Groceries", "pt-BR": "Compras", "de": "Einkäufe", "es": "Compras", "pl": "Zakupy", "it": "Spesa" },
+      "line": {
+        "en": "A shopping list in the order you walk the shop. Tick, drag, done.",
+        "pt-BR": "Uma lista de compras na ordem em que você anda pelo mercado. Marque, arraste, pronto.",
+        "de": "Eine Einkaufsliste in der Reihenfolge, in der du durch den Laden gehst. Abhaken, ziehen, fertig.",
+        "es": "Una lista de la compra en el orden en que recorres la tienda. Marca, arrastra, listo.",
+        "pl": "Lista zakupów w kolejności, w jakiej chodzisz po sklepie. Odhacz, przeciągnij, gotowe.",
+        "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
+      }
+    },
+    {
+      "id": "recipes",
+      "status": "ready",
+      "from": { "example": "recipes" },
+      "category": "food",
+      "icon": "🍳",
+      "name": { "en": "Recipes", "pt-BR": "Receitas", "de": "Rezepte", "es": "Recetas", "pl": "Przepisy", "it": "Ricette" },
+      "line": {
+        "en": "Recipes with their calories worked out, and what you can cook with what you have.",
+        "pt-BR": "Receitas com as calorias calculadas, e o que dá para cozinhar com o que você tem.",
+        "de": "Rezepte mit ausgerechneten Kalorien, und was du mit dem kochen kannst, was du da hast.",
+        "es": "Recetas con sus calorías calculadas, y lo que puedes cocinar con lo que tienes.",
+        "pl": "Przepisy z policzonymi kaloriami i to, co ugotujesz z tego, co masz.",
+        "it": "Ricette con le calorie già calcolate, e cosa puoi cucinare con quello che hai."
+      }
+    },
+    {
+      "id": "plants",
+      "status": "ready",
+      "from": { "example": "plants" },
+      "category": "garden",
+      "icon": "🌱",
+      "name": { "en": "Plants", "pt-BR": "Plantas", "de": "Pflanzen", "es": "Plantas", "pl": "Rośliny", "it": "Piante" },
+      "line": {
+        "en": "Your plants, and which one needs water today, by the season.",
+        "pt-BR": "Suas plantas, e qual precisa de água hoje, de acordo com a estação.",
+        "de": "Deine Pflanzen, und welche heute Wasser braucht, je nach Jahreszeit.",
+        "es": "Tus plantas, y cuál necesita agua hoy, según la estación.",
+        "pl": "Twoje rośliny i to, którą dziś podlać, zależnie od pory roku.",
+        "it": "Le tue piante, e quale ha bisogno d’acqua oggi, secondo la stagione."
+      }
+    },
+    {
+      "id": "places",
+      "status": "ready",
+      "from": { "example": "places" },
+      "category": "travel",
+      "icon": "📍",
+      "name": { "en": "Places", "pt-BR": "Lugares", "de": "Orte", "es": "Lugares", "pl": "Miejsca", "it": "Luoghi" },
+      "line": {
+        "en": "Places you love or want to see, on a map, and which are open right now.",
+        "pt-BR": "Lugares de que você gosta ou quer conhecer, num mapa, e quais estão abertos agora.",
+        "de": "Orte, die du liebst oder sehen willst, auf einer Karte, und welche gerade offen sind.",
+        "es": "Lugares que te encantan o quieres ver, en un mapa, y cuáles están abiertos ahora.",
+        "pl": "Miejsca, które lubisz albo chcesz zobaczyć, na mapie, i które są teraz otwarte.",
+        "it": "Luoghi che ami o vuoi vedere, su una mappa, e quali sono aperti adesso."
+      }
+    },
+    {
+      "id": "split",
+      "status": "ready",
+      "from": { "example": "split" },
+      "category": "money",
+      "icon": "🧾",
+      "name": { "en": "Split", "pt-BR": "Dividir", "de": "Aufteilen", "es": "Dividir", "pl": "Podział", "it": "Dividi" },
+      "line": {
+        "en": "Shared costs with flatmates or friends, and who owes whom, to the cent.",
+        "pt-BR": "Gastos divididos com quem mora com você ou com amigos, e quem deve a quem, até o centavo.",
+        "de": "Gemeinsame Kosten mit Mitbewohnern oder Freunden, und wer wem was schuldet, auf den Cent.",
+        "es": "Gastos compartidos con compañeros de piso o amigos, y quién debe a quién, al céntimo.",
+        "pl": "Wspólne wydatki ze współlokatorami lub znajomymi i kto komu ile jest winien, co do grosza.",
+        "it": "Spese condivise con coinquilini o amici, e chi deve quanto a chi, al centesimo."
+      }
+    },
+    {
+      "id": "workout",
+      "status": "ready",
+      "from": { "example": "workout" },
+      "category": "fitness",
+      "icon": "🏋",
+      "name": { "en": "PPL Log", "pt-BR": "Diário PPL", "de": "PPL-Tagebuch", "es": "Registro PPL", "pl": "Dziennik PPL", "it": "Diario PPL" },
+      "line": {
+        "en": "A push, pull and legs log: every set you lift, and your best so far.",
+        "pt-BR": "Um diário de treino push, pull e legs: cada série, e o seu melhor até agora.",
+        "de": "Ein Push-Pull-Beine-Tagebuch: jeder Satz, den du hebst, und deine Bestleistung bisher.",
+        "es": "Un registro de empuje, tirón y piernas: cada serie que levantas, y tu mejor marca.",
+        "pl": "Dziennik push, pull i nogi: każda seria i twój najlepszy wynik do tej pory.",
+        "it": "Un diario di spinta, trazione e gambe: ogni serie che sollevi, e il tuo record finora."
+      }
+    },
+    {
+      "id": "receipt-split",
+      "status": "ready",
+      "from": { "package": ["apps/receipt-split/receipt-split.app.ts"] },
+      "category": "money",
+      "icon": "🧾",
+      "name": { "en": "Receipt Split", "pt-BR": "Dividir a conta", "de": "Kassenbon teilen", "es": "Dividir el tique", "pl": "Podział paragonu", "it": "Dividi lo scontrino" },
+      "line": {
+        "en": "Photograph a receipt and its lines become items you can share out.",
+        "pt-BR": "Fotografe uma nota fiscal e cada linha vira um item para dividir.",
+        "de": "Fotografiere einen Kassenbon, und seine Zeilen werden zu Posten, die ihr aufteilt.",
+        "es": "Fotografía un tique y sus líneas se convierten en cosas que repartir.",
+        "pl": "Zrób zdjęcie paragonu, a jego pozycje staną się rzeczami do podziału.",
+        "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
+      }
+    },
+    {
+      "id": "markdown-notes",
+      "status": "ready",
+      "from": { "package": ["apps/markdown-notes/notes.app.tsx"] },
+      "category": "notes",
+      "icon": "📝",
+      "name": { "en": "Notes", "pt-BR": "Notas", "de": "Notizen", "es": "Notas", "pl": "Notatki", "it": "Note" },
+      "line": {
+        "en": "Notes written in Markdown, kept as files you can take anywhere.",
+        "pt-BR": "Notas escritas em Markdown, guardadas como arquivos que você leva para qualquer lugar.",
+        "de": "Notizen in Markdown, als Dateien gespeichert, die du überallhin mitnehmen kannst.",
+        "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
+        "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
+        "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
+      }
+    },
+    {
+      "id": "pantry",
+      "status": "coming-soon",
+      "waitsFor": "#342",
+      "category": "food",
+      "icon": "🥫",
+      "name": { "en": "Pantry", "pt-BR": "Despensa", "de": "Vorrat", "es": "Despensa", "pl": "Spiżarnia", "it": "Dispensa" },
+      "line": {
+        "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
+        "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
+        "de": "Fotografiere ein Regal oder einen Bon: was in deiner Küche ist, nach dem, was zuerst verdirbt.",
+        "es": "Fotografía un estante o un tique: lo que hay en tu cocina, por lo que caduca antes.",
+        "pl": "Zrób zdjęcie półki albo paragonu: co masz w kuchni, od tego, co psuje się najpierw.",
+        "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
+      }
+    },
+    {
+      "id": "plant-doctor",
+      "status": "coming-soon",
+      "waitsFor": "#343",
+      "category": "garden",
+      "icon": "🩺",
+      "name": { "en": "Plant Doctor", "pt-BR": "Médico de plantas", "de": "Pflanzendoktor", "es": "Doctor de plantas", "pl": "Doktor roślin", "it": "Dottore delle piante" },
+      "line": {
+        "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
+        "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
+        "de": "Fotografiere eine Pflanze und erfahre in einfachen Worten, was ihr fehlen könnte.",
+        "es": "Fotografía una planta y entérate de qué le puede pasar, con palabras sencillas.",
+        "pl": "Zrób zdjęcie rośliny i dowiedz się prostymi słowami, co może jej dolegać.",
+        "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
+      }
+    },
+    {
+      "id": "poster-event",
+      "status": "coming-soon",
+      "waitsFor": "#340",
+      "category": "plans",
+      "icon": "🗓️",
+      "name": { "en": "Poster to Calendar", "pt-BR": "Do cartaz à agenda", "de": "Vom Plakat in den Kalender", "es": "Del cartel al calendario", "pl": "Z plakatu do kalendarza", "it": "Dal poster al calendario" },
+      "line": {
+        "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
+        "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
+        "de": "Fotografiere ein Plakat oder ein Ticket, und es wird ein Termin in deinem Kalender.",
+        "es": "Fotografía un cartel o una entrada, y se convierte en un evento en tu calendario.",
+        "pl": "Zrób zdjęcie plakatu albo biletu, a stanie się wydarzeniem w twoim kalendarzu.",
+        "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
+      }
+    },
+    {
+      "id": "earthquakes",
+      "status": "coming-soon",
+      "waitsFor": "#356",
+      "category": "world",
+      "icon": "🌋",
+      "name": { "en": "Earthquakes", "pt-BR": "Terremotos", "de": "Erdbeben", "es": "Terremotos", "pl": "Trzęsienia ziemi", "it": "Terremoti" },
+      "line": {
+        "en": "Earthquakes around the world, on a map, as they happen.",
+        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
+        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
+        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
+        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
+        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
+      }
+    },
+    {
+      "id": "word-watch",
+      "status": "coming-soon",
+      "waitsFor": "#356",
+      "category": "world",
+      "icon": "💬",
+      "name": { "en": "Word Watch", "pt-BR": "De olho na palavra", "de": "Wortwache", "es": "Vigía de palabras", "pl": "Na tropie słowa", "it": "Occhio alla parola" },
+      "line": {
+        "en": "Pick a word and watch it go by on Bluesky, live.",
+        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
+        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
+        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
+        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
+        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
+      }
+    },
+    {
+      "id": "ticker",
+      "status": "coming-soon",
+      "waitsFor": "#356",
+      "category": "world",
+      "icon": "📈",
+      "name": { "en": "Ticker", "pt-BR": "Cotações", "de": "Kurse", "es": "Cotizaciones", "pl": "Notowania", "it": "Quotazioni" },
+      "line": {
+        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
+        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
+        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
+        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
+        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
+        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
+      }
+    },
+    {
+      "id": "daily",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "play",
+      "icon": "🎨",
+      "name": { "en": "Potyro Daily", "pt-BR": "Potyro Diário", "de": "Potyro Täglich", "es": "Potyro Diario", "pl": "Potyro Codziennie", "it": "Potyro Quotidiano" },
+      "line": {
+        "en": "One colour puzzle a day, the same for everyone.",
+        "pt-BR": "Um desafio de cores por dia, o mesmo para todo mundo.",
+        "de": "Ein Farbrätsel am Tag, für alle dasselbe.",
+        "es": "Un reto de colores al día, el mismo para todos.",
+        "pl": "Jedna kolorowa łamigłówka dziennie, ta sama dla wszystkich.",
+        "it": "Un rompicapo di colori al giorno, lo stesso per tutti."
+      }
+    },
+    {
+      "id": "palette-catcher",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "creative",
+      "icon": "🎨",
+      "name": { "en": "Palette Catcher", "pt-BR": "Caça-paletas", "de": "Palettenfänger", "es": "Cazapaletas", "pl": "Łowca palet", "it": "Acchiappa palette" },
+      "line": {
+        "en": "Catch the colours of a photo, then keep and share the palette.",
+        "pt-BR": "Capture as cores de uma foto, depois guarde e compartilhe a paleta.",
+        "de": "Fang die Farben eines Fotos ein, dann behalte und teile die Palette.",
+        "es": "Atrapa los colores de una foto, y guarda y comparte la paleta.",
+        "pl": "Złap kolory ze zdjęcia, a potem zachowaj i udostępnij paletę.",
+        "it": "Cattura i colori di una foto, poi tieni e condividi la palette."
+      }
+    },
+    {
+      "id": "photo-puzzle",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "play",
+      "icon": "🧩",
+      "name": { "en": "Photo Puzzle", "pt-BR": "Quebra-cabeça de foto", "de": "Fotopuzzle", "es": "Puzle de fotos", "pl": "Fotopuzzle", "it": "Puzzle di foto" },
+      "line": {
+        "en": "Any photo becomes a jigsaw you can send to a friend.",
+        "pt-BR": "Qualquer foto vira um quebra-cabeça para mandar a um amigo.",
+        "de": "Jedes Foto wird ein Puzzle, das du jemandem schicken kannst.",
+        "es": "Cualquier foto se convierte en un puzle que puedes mandar a un amigo.",
+        "pl": "Każde zdjęcie staje się układanką, którą wyślesz znajomemu.",
+        "it": "Qualsiasi foto diventa un puzzle da mandare a un amico."
+      }
+    },
+    {
+      "id": "piano",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "music",
+      "icon": "🎹",
+      "name": { "en": "Piano", "pt-BR": "Piano", "de": "Klavier", "es": "Piano", "pl": "Pianino", "it": "Pianoforte" },
+      "line": {
+        "en": "A practice plan for the piano, a little every day, week by week.",
+        "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
+        "de": "Ein Übungsplan fürs Klavier, jeden Tag ein bisschen, Woche für Woche.",
+        "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
+        "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
+        "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
+      }
+    },
+    {
+      "id": "mood-sleep",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "wellbeing",
+      "icon": "🌙",
+      "name": { "en": "Sleep & Mood", "pt-BR": "Sono e humor", "de": "Schlaf & Stimmung", "es": "Sueño y ánimo", "pl": "Sen i nastrój", "it": "Sonno e umore" },
+      "line": {
+        "en": "How you slept and how you felt, and what the mornings add up to.",
+        "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
+        "de": "Wie du geschlafen und dich gefühlt hast, und was die Morgen zusammen ergeben.",
+        "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
+        "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
+        "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
+      }
+    },
+    {
+      "id": "photo-garden",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "creative",
+      "icon": "🌸",
+      "name": { "en": "Photo Garden", "pt-BR": "Jardim de fotos", "de": "Fotogarten", "es": "Jardín de fotos", "pl": "Ogród zdjęć", "it": "Giardino di foto" },
+      "line": {
+        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
+        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
+        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
+        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
+        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
+        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
+      }
+    },
+    {
+      "id": "draw-guess",
+      "status": "coming-soon",
+      "waitsFor": "#267",
+      "category": "play",
+      "icon": "✏️",
+      "name": { "en": "Draw & Guess", "pt-BR": "Desenhe e adivinhe", "de": "Malen & Raten", "es": "Dibuja y adivina", "pl": "Rysuj i zgaduj", "it": "Disegna e indovina" },
+      "line": {
+        "en": "A party game: one person draws, everyone else guesses, live.",
+        "pt-BR": "Um jogo para a turma: uma pessoa desenha, o resto adivinha, ao vivo.",
+        "de": "Ein Partyspiel: eine Person malt, alle anderen raten, live.",
+        "es": "Un juego para fiestas: una persona dibuja, el resto adivina, en vivo.",
+        "pl": "Gra na imprezę: jedna osoba rysuje, reszta zgaduje, na żywo.",
+        "it": "Un gioco di gruppo: una persona disegna, tutti gli altri indovinano, in tempo reale."
+      }
+    }
+  ]
+}

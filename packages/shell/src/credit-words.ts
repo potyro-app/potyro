@@ -24,6 +24,15 @@ export function creditLine(credit: AppCredit | undefined): string | null {
 }
 
 /**
+ * What an app's tile says about who made it (docs/24 §6): a remix says what it remixed — it is the
+ * person's own, so no "By" — and a kept app says its maker's credit. Null for an app of the person's own.
+ */
+export function tileCredit(app: { credit?: AppCredit; remixOf?: AppCredit }): string | null {
+  if (app.remixOf) return remixLine(app.remixOf);
+  return creditLine(app.credit);
+}
+
+/**
  * The credit a link to this app carries (docs/24 §6). A kept app is passed on as its maker's, never
  * as the person's who passes it on; a remix is theirs, and says what it remixed; anything else is theirs.
  */

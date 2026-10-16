@@ -47,6 +47,8 @@ import { StudioTools, type ToolsTab } from "./studio-tools.js";
 import { ownName, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { platformAsk, useStudioRequests } from "./studio-requests.js";
+import { remixLine } from "./credit-words.js";
+import { remixSuggestions } from "./remix-suggestions.js";
 
 /** What "Write the code yourself" starts from when there is no app yet. */
 const STARTER = `import { defineApp } from "potyro";
@@ -182,6 +184,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   // The name the person reads (#302): their own for it, or the source's in their language.
   const appName = preview ? shownName(savedName, preview.composed.runtime.core.app.definition, languagePrefs()) : (savedName ?? t`Your app`);
   const hasApp = appId !== null;
+  // A remix (docs/24 §6): greeted with what it remixed and changes drawn from the app, until asked for one.
+  const remixedFrom = appId ? getUserApp(appId)?.remixOf : undefined;
+  const remix = remixedFrom ? { credit: remixLine(remixedFrom), suggestions: preview ? remixSuggestions(preview.composed.runtime.definition) : [] } : null;
 
   /** Read the conversation back: its messages, and every version it does not already tell. */
   const refresh = useCallback(async (): Promise<void> => {
@@ -663,6 +668,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onLook={() => setPreviewOpen(true)}
               onSuggest={(s) => setDescription(s)}
               existing={hasApp}
+              remix={remix}
               requests={requests}
             />
             {problem ? <p className="k-form-error k-studio-problem">{problem}</p> : null}
