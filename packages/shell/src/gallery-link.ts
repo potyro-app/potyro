@@ -1,4 +1,4 @@
-// Where Potyro's gallery is (docs/24 §9): a static page of apps to try and make your own, served on
+// Where Potyro's gallery is (docs/24 §10): a static page of apps to try and make your own, served on
 // potyro.com (docs/16). A build may name another (`VITE_POTYRO_GALLERY`), as the browser tests do.
 
 /** The gallery's address, when the build names none. */

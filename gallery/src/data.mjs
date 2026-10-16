@@ -1,4 +1,4 @@
-// The gallery's data (docs/24 §9): which apps it shows, in six languages, and the demo link each one
+// The gallery's data (docs/24 §10): which apps it shows, in six languages, and the demo link each one
 // opens. One file, `gallery/gallery.json`, edited by people (names, lines, categories, which apps are
 // ready) and by `pnpm gallery:publish` (each ready app's link and screenshot, nothing else).
 //

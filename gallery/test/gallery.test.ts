@@ -1,4 +1,4 @@
-// The gallery's data and page (docs/24 §9): the data is checked before anything is built or
+// The gallery's data and page (docs/24 §10): the data is checked before anything is built or
 // published, the words are in all six languages, and the page asks nothing of anyone else.
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
