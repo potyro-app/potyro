@@ -86,13 +86,14 @@ test.describe("desktop", () => {
     await expect(page.getByRole("checkbox", { name: "Spinach" })).toHaveCount(0);
     await expect(page.getByRole("checkbox", { name: "Rice" })).toHaveCount(0);
 
-    // Remembered: one more time bought, and one tap from the list — a tile, unticked while it is off it.
+    // Remembered, and one tap from the list: a tile, until it is back on it.
     await page.locator(".k-sidenav .k-tab", { hasText: "Usuals" }).click();
     const tile = page.locator(".k-checklist").getByRole("checkbox", { name: "Spinach", exact: true });
     await expect(tile).toHaveAttribute("aria-checked", "false");
-    await expect(tile.locator("xpath=ancestor::li")).toContainText("5 times, last today");
+    // What is on the list already is not offered: Milk is on it.
+    await expect(page.locator(".k-checklist").getByRole("checkbox", { name: "Milk", exact: true })).toHaveCount(0);
     await tile.click();
-    await expect(tile).toHaveAttribute("aria-checked", "true");
+    await expect(tile).toHaveCount(0);
     await page.locator(".k-sidenav .k-tab", { hasText: "List" }).click();
     const back = page.getByRole("checkbox", { name: "Spinach" });
     await expect(back).toHaveAttribute("aria-checked", "false");
