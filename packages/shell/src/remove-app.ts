@@ -11,6 +11,7 @@ import { removeUserApp, type UserApp } from "./user-apps.js";
 import { recordLeft } from "./account-offer.js";
 import { setAiStanding } from "./ai-setting.js";
 import { forgetSocketStanding } from "./app-sockets.js";
+import { forgetSpeechStanding } from "./app-speech.js";
 
 /**
  * Ask, then delete. Answers whether it happened.
@@ -41,6 +42,7 @@ export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sy
   setAiStanding(app.id, undefined);
   // And the hosts it was let connect to (docs/28), for the same reason.
   forgetSocketStanding(app.id);
+  forgetSpeechStanding(app.id);
   return true;
 }
 
