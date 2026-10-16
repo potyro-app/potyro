@@ -40,6 +40,8 @@ export interface SealedViewDeps {
   baseOf(ctx: Ctx, ctxId: number): CtxBase;
   /** Answer one op through the app's op table (realm-host.ts). */
   answer(m: Extract<ViewToHost, { t: "op" }>, ch: Channel): void;
+  /** Let go of what a port holds by name (its screen keep-awakes), when its view goes. */
+  releaseHolds?(prefix: string): void;
   /** The watchdog stopped the view: `kind` says how it knew (realm-host.ts escalates on "silent"). */
   stopped?(kind: Extract<ViewVerdict, { stop: true }>["kind"], reason: string): void;
   watchdog?: ViewWatchdogOptions;
@@ -163,6 +165,7 @@ export class SealedViewController implements SealedView {
       for (const unwatch of watches.values()) unwatch();
       watches.clear();
       sockets.endAll("left", "the screen was closed");
+      d.releaseHolds?.(`v${viewCtxId}:`);
       frame?.kill();
       frame = null;
       // The place is the shell's again: the height this view asked for goes with it.

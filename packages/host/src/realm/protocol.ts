@@ -39,6 +39,8 @@ export interface CtxBase {
   nowIso: string;
   me: { id: string; name: string };
   space?: { id: string; role: string; members: readonly { id: string; name?: string }[] };
+  /** `ctx.people`: members and the open guests, as plain data. */
+  people: readonly { id: string; name: string; guest?: true }[];
   scope: Record<string, Resolved | undefined>;
   locale: string;
   formatLocale: string;
@@ -84,6 +86,14 @@ export const OPS = [
   "ui.form",
   "ui.progress",
   "ui.share",
+  // A screen held on, by a number the realm picked: "hold" / "release" (docs/04).
+  "ui.keepAwake",
+  "ui.timer",
+  "ui.timers",
+  "ui.timer.control",
+  "guests.add",
+  "guests.rename",
+  "guests.remove",
   "navigate",
   "views.call",
   "caps.camera.capture",

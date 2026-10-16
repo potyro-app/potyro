@@ -12,6 +12,8 @@ import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
 import type { LoadedApp, MakeCtxBase, ShownShare, ShownUiItem } from "./types.js";
+import { GUEST_BOOK } from "./guests.js";
+import { checkTimer, plainTimer, timerHandle, unkeptTimer, TIMER_LIMITS, type TimerVerb } from "./timers.js";
 
 const KV_PREFIX = "kv:";
 
@@ -376,9 +378,28 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     return offset || end != null ? out.slice(offset, end) : out;
   };
 
+  const guests = base.guests;
+  // Fixed per pass like the space: everyone a member field may name, guests nobody claimed included.
+  const people = Object.freeze(
+    guests ? guests.people() : [...(base.space ? base.space.members.map((m) => ({ id: m.id, name: m.name })) : []), ...(base.space?.members.some((m) => m.id === me.id) ? [] : [{ id: me.id, name: me.name }])],
+  );
+  const noGuests = (): never => {
+    throw new Error("Guests are not available here.");
+  };
+  const timerControl = async (id: string, verb: TimerVerb): Promise<void> => {
+    await ui.timers?.control(String(id), verb);
+  };
+
   const ctx: Ctx = {
     me,
     ...(base.space ? { space: base.space } : {}),
+    people,
+    // Through the host's book, which checks who may do what before it writes (guests.ts).
+    guests: {
+      add: async (name) => (guests ? guests.add(String(name ?? "")) : noGuests()),
+      rename: async (id, name) => (guests ? guests.rename(String(id), String(name ?? "")) : noGuests()),
+      remove: async (id) => (guests ? guests.remove(String(id)) : noGuests()),
+    },
 
     async query(entity, spec) {
       const rows = await store.all(entity);
@@ -395,7 +416,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       // `createdBy` is stamped HERE and the app's own value is dropped first (KA-18, authorship.ts).
       // Who entered a record is not who it is about (spike F5): that is a `member` field.
       const clean = stampAuthor(data, me.id);
-      assertValuesFit(deps.definition, entity, clean, currentPeople(base.space, me));
+      assertValuesFit(deps.definition, entity, clean, currentPeople(base.space, me, base.guests));
       const row = await store.insert(entity, clean as Partial<PotyroRecord>);
       forget(); // data changed → invalidate memoized computed and related rows for this pass
       return resolveRecord(deps, entity, row);
@@ -405,8 +426,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       // Authorship is a fact about the insert, so an edit can never change it (authorship.ts).
       const clean = stripAuthor(data);
       assertPatchFits(deps.definition, entity, clean, (await store.get(entity, id)) as Record<string, unknown> | null, {
-        now: currentPeople(base.space, me),
-        ever: everyone(store),
+        now: currentPeople(base.space, me, base.guests),
+        ever: everyone(store, base.guests),
       });
       const row = await store.update(entity, id, clean as Partial<PotyroRecord>);
       forget();
@@ -521,6 +542,30 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         if (!ui.share) return false;
         return ui.share(files.length ? { ...shared, files } : shared);
       },
+      // Harmless, so no permission and the same sealed: it only keeps the screen from dimming while
+      // Potyro is in front, and the shell lets go when the app is left (docs/04 §Keeping the screen on).
+      keepAwake: () => {
+        const held = ui.keepAwake?.();
+        let released = false;
+        return {
+          release: () => {
+            if (released) return;
+            released = true;
+            held?.release();
+          },
+        };
+      },
+      // The shell keeps the countdown; the app only asks (docs/04 §Timers).
+      timer: async (opts) => {
+        const asked = checkTimer(opts, say);
+        if (!ui.timers) return timerHandle(unkeptTimer(asked, fixedNow), timerControl);
+        const running = (await ui.timers.list()).map(plainTimer);
+        if (!running.some((t) => t.id === asked.id) && running.length >= TIMER_LIMITS.perApp) {
+          throw new Error(`ui.timer: at most ${TIMER_LIMITS.perApp} timers at once — stop one first`);
+        }
+        return timerHandle(plainTimer(await ui.timers.start(asked)), timerControl);
+      },
+      timers: async () => (ui.timers ? (await ui.timers.list()).map((t) => timerHandle(plainTimer(t), timerControl)) : []),
     },
 
     // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is
@@ -546,6 +591,9 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
     },
   };
 
+  // The guest book rides the HOST's ctx only, out of sight: record resolution and the values gate read
+  // it (resolve.ts, values-gate.ts); nothing sends a symbol into a sealed box.
+  if (guests) Object.defineProperty(ctx, GUEST_BOOK, { value: guests, enumerable: false });
   deps.ctx = ctx;
   return ctx;
 }

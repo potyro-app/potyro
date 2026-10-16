@@ -247,7 +247,8 @@ export interface Host {
   // builds the ctx handed to app fns, applying trust mediation to caps. `language` is the one the
   // app's words are shown in (from the runtime, #302) and `formatLocale` the tag ctx.format uses:
   makeCtx(app: LoadedApp, base: { store: Store; caps: Capabilities; ui: UiBridge; nav: NavBridge; params?: Record<string, unknown>;
-                                  language?: Language; formatLocale?: string }): Ctx;
+                                  language?: Language; formatLocale?: string;
+                                  me?: Person; space?: Space; guests?: GuestBook }): Ctx;   // guests: below
   promote(appId: string): Promise<void>;                     // untrusted → trusted (user action)
 }
 ```
@@ -308,6 +309,48 @@ once and puts the link in when it is made; a bridge with no `makeLink` (the Stud
 words alone. An `AppPackage` carries the app's `line` (`manifest.json`), which is what such a link
 matches on the receiving device.
 
+**The shell's own services: the screen kept on and countdowns (docs/04).** Two more optional members
+of `UiBridge`, given only to an OPEN app (`createUiBridge(…, { keepAwake, timers })` in main.tsx), since
+both have to know whose they are:
+
+```ts
+interface UiBridge {
+  // …
+  keepAwake?(): { release(): void };   // shell: ScreenAwake counts holds per app, drops them all when the app is left
+  timers?: TimerBridge;                // shell: TimerHub, per app — what the chips show
+}
+interface TimerBridge {
+  start(o: { label: string; seconds: number; id?: string }): Promise<TimerData>;   // label already in the app's language
+  list(): Promise<TimerData[]>;        // this app's, counting or paused, soonest first
+  control(id: string, verb: "cancel" | "pause" | "resume"): Promise<void>;
+}
+interface TimerData { id: string; label: string; seconds: number; endsAt: string | null; left: number; paused: boolean }
+```
+
+`ctx` checks `ui.timer`'s options (1 s to a day, a label, at most 10 at once) and hands app code a
+frozen `UiTimer` built from `TimerData` with `cancel/pause/resume` calling `control` — the same three
+methods are rebuilt from the data inside the realm and the isolate, which carry timers as plain data
+(ops `ui.timer`, `ui.timers`, `ui.timer.control`) and a keep-awake as a number per hold
+(`ui.keepAwake` hold/release, let go when the box goes). Headless, `keepAwake` holds nothing and a
+timer is answered but not kept. The shell keeps timers in this device's storage, schedules a
+notification for each one's end through the device's `NotificationCap` (exact on Android/iOS, the
+same path reminders take) and cancels it on pause and stop; on the web there is none, and the hub
+rings on time while the page is open, else when it is in front again.
+
+**Guests (docs/04).** A `GuestBook` (`@potyro/host`) per open app, made by the runtime
+(`RuntimeCore.guests`) over the app's store and identity, keeps the guests folded in memory so a pass
+reads them synchronously; a change from anyone invalidates the runtime like a membership change.
+`buildCtx` builds `ctx.people` and `ctx.guests` from it and hangs it on the HOST's ctx under a symbol
+(`guestBookOf(ctx)`) that never crosses into a box: record resolution reads it (a guest id resolves
+to the guest, or to whoever claimed it) and so does the values gate (a `member` value may name a
+guest that is not removed; a stored one may name any guest there has ever been). The realm's
+`CtxBase` and the isolate's payload carry `people` as plain data; `guests.add/rename/remove` are ops.
+The log itself is in the store, behind no new `Store` method (`people-log.ts`): in a synced store it
+rides `postMessage`/`messages` under the reserved thread `potyro:people`, so its author and time are
+the signed transaction's; in a local store it is one kv key, `people:log`, outside `ctx.storage`'s
+`kv:` prefix. `copyStoreData` carries guests as what they add up to (`copyPeople`), so starting or
+stopping sync keeps them, claims included.
+
 Custom views from **untrusted** apps (#267, owner decision 2026-10-16, docs/22 §11). Policy —
 **a shared app's custom views run in the sealed box, on every engine, behind a watchdog**; they
 never run in the shell's realm.
@@ -330,7 +373,11 @@ never run in the shell's realm.
   are not ctx (`watchQuery`, `watchRecord` and the hooks over them, `runAction`,
   `reconcileReminders`) and the `navigate` prop are `VIEW_OPS`, accepted on a view's port only.
   File and picture URLs cross as bytes; the frame makes its own URLs. `ctx.caps.camera.live` is not
-  there (trusted only for now).
+  there (trusted only for now). `ui.keepAwake`, `ui.timer`/`timers` and `guests.*` are allowed from a
+  view's port, as from the logic's: they are the open app's own services (a rest timer, a screen kept
+  on while a recipe cooks). A view's keep-awakes are held under its own names and let go when the view
+  goes; its timers are the app's and outlive it, as they outlive the app's page. Listening
+  (`caps.speech.listen`) is the logic's alone for now: what it hears goes to the logic's port.
 - **Theme.** Every custom property where the view sits, its colour scheme, font and ink, sent at
   mount and again when the theme changes.
 - **Freezes.** A watchdog pings the view every 250 ms: unanswered for **2 s** (a frame out of
