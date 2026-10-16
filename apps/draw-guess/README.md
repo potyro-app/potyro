@@ -13,16 +13,16 @@ is kept on a server, and the relay only passes messages on.
 ## Inviting: the game's code
 
 **New game** makes a code like `KQ7M-XR4P-2DHC`. The lobby shows it as big tiles to read out across a
-room, and **Invite friends** sends it (`ctx.ui.share`: the share sheet, or Copy). Friends tap
-**Join** and type it, in any case, with or without the dashes.
+room, and **Invite friends** sends a link (`ctx.ui.share({ app: { page: "play", params: { code } } })`,
+docs/24 §11) with the code in its words too. The link opens the friend's own copy of the game on Play
+with the code already in the box (the page declares `link: { params: ["code"] }`); they say their name
+and tap **Join** — the link only fills the box, it never joins by itself. A friend who does not have
+the game gets its demo from the same link, and lands on Play with the code once they keep it. Typing
+the code still works, in any case, with or without the dashes: for a code read out across a room, or
+shown on the host's screen.
 
-The code *is* the room: its id on the relay is the code behind a fixed prefix (`code.ts`). Why a code
-to type, and not a link that opens the game:
+The code *is* the room: its id on the relay is the code behind a fixed prefix (`code.ts`).
 
-- **An app cannot read a link.** A Potyro link opens Potyro (`?user=<app>` for an app you have, a
-  demo link for one you do not); nothing hands an app the rest of a URL, and the friend's copy of the
-  app has another id anyway. A code works the same whether the invite came by message, was read out,
-  or was shown on the host's screen.
 - **12 characters with no look-alikes is 59 random bits** (31¹²) — shorter than the 128 bits the relay
   suggests, on purpose: it is typed on a phone. A room lives only while someone is in it, and everyone
   who joins appears in the lobby for all to see. Guessing a live one means ~2⁵⁸ tries at a relay that
@@ -34,10 +34,12 @@ The drawing board is a **custom view** (a canvas), and Potyro runs an app's own 
 app runs as yours (docs/05; shared apps' views are a later phase of docs/22). So a friend needs the
 app as theirs — and it is fully readable code. The path, as it is today:
 
-1. You send the app: in its menu, **Share → A link anyone can try** (docs/24).
+1. You tap **Invite friends** in the lobby and send the link (or, before a game, the app's menu:
+   **Share → A link anyone can try**, docs/24).
 2. They open it (it runs sealed, and the Play page says it needs to run as theirs), tap **Keep this
    app**, **Add app**, then **Run it as mine… → Yes, run it as yours**.
-3. They tap **Join** and type the code.
+3. They land on Play with the code filled in (from an invite link), say their name and tap **Join** —
+   or type the code.
 
 The start screen and the lobby say this in three short steps ("How friends join"), in six languages.
 

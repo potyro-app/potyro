@@ -18,7 +18,6 @@
 // shows the wrong app, and nothing runs.
 import { LINK_LIMITS, LINK_PARAM_NAME } from "potyro";
 import { parseLine } from "@potyro/store";
-import { toBase64Url } from "./demo-link.js";
 
 /** The fragment keys: the app's line, the page, and each param behind `p.`. */
 export const APP_KEY = "app";
@@ -41,22 +40,7 @@ export interface AppTarget {
   params: Record<string, string>;
 }
 
-/** A line of its own, for an app made here: 128 random bits. */
-export function newLine(): string {
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  return toBase64Url(bytes);
-}
-
-/** The line of an app that never got one of its own: its declared id. */
-export function derivedLine(declaredId: string | undefined): string | undefined {
-  return declaredId ? parseLine(`id:${declaredId}`) : undefined;
-}
-
-/** An app's line: its own, else its declared id's. */
-export function lineFor(app: { line?: string }, declaredId: string | undefined): string | undefined {
-  return parseLine(app.line) ?? derivedLine(declaredId);
-}
+export { derivedLine, lineFor, newLine } from "./app-line.js";
 
 /**
  * Where a link wants to land, if it says (`app=` is there and is a line). Anyone can write a link, so

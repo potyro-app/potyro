@@ -16,7 +16,7 @@ import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
 import { libraryLock, lockJson, parseLock, type AppCredit, type AppLock } from "@potyro/store";
-import { newLine } from "./app-link.js";
+import { newLine } from "./app-line.js";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
