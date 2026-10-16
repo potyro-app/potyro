@@ -14,14 +14,15 @@ test("places app runs the M3 flow in the browser (trusted)", async ({ page }) =>
   await openPlaces(page);
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
-  // All-places list → open a place → detail → run the markVisited action.
+  // All-places list → open a place → detail → run an action.
   await page.locator(".k-tab", { hasText: "All places" }).click();
   const row = page.locator(".k-list-row", { hasText: "Corner Café" });
   await expect(row).toBeVisible();
   await row.click();
   await expect(page.locator("article.k-detail")).toBeVisible();
-  // Labelled, not keyed: an action's key is an identifier, so the button reads "Mark Visited".
-  await page.getByRole("button", { name: "Mark Visited" }).click(); // action runs without error
+  // Labelled, not keyed: an action's key is an identifier, so the button reads "Favourite".
+  await page.locator("article.k-detail").getByRole("button", { name: "Favourite" }).click(); // action runs without error
+  await expect(page.locator("article.k-detail .k-facts")).toContainText("favourite");
 
   // Map page: the canvas renders (not the empty state → markers resolved) and the Open-now chip toggles.
   await page.locator(".k-tab", { hasText: "Map" }).click();

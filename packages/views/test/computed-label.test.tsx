@@ -9,7 +9,8 @@ import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type NavBridge, type UiBridge } from "@potyro/host";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
-import { DetailView, TableView } from "../src/builtins.js";
+import { TableView } from "../src/builtins.js";
+import { DetailView } from "../src/detail.js";
 import { fieldLabel } from "../src/format.js";
 
 const app: PotyroApp = defineApp({

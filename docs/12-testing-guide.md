@@ -271,7 +271,7 @@ word, press Enter, it becomes a chip; Backspace on the empty box removes the las
 
 ## 4c. Dates — a day, not a moment (#103)
 
-Any form with a date: **New Plant** in Plants ("Last Watered"), or the e2e fixture app. The box
+Any form with a date: **New Plant** in Plants ("Last watered"), or the e2e fixture app. The box
 says the day in words — "Today, 12 Sep", "In 3 days, 15 Sep", "Thu, 24 Dec" — and **never asks for
 an hour**. Tap **Today** / **Yesterday** / **Tomorrow** and the box fills; **Clear** empties it.
 The calendar button opens a month grid: a popover under the box on a wide screen, a bottom sheet on

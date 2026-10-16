@@ -18,6 +18,6 @@ test("a sealed app's tile runs in its box and its live face shows on the wall", 
   await expect(groceries.locator(".k-metro-tile")).toBeVisible({ timeout: 30_000 });
   // It is sealed: the shield says so.
   await expect(groceries.getByRole("img", { name: "Runs sealed" })).toBeVisible();
-  await expect(groceries.locator(".k-metro-face-live")).toContainText("5 to buy", { timeout: 45_000 });
+  await expect(groceries.locator(".k-metro-face-live")).toContainText("11 to buy", { timeout: 45_000 });
   await expect(page.locator('.k-metro-wall .k-metro-cell[data-key="user:plants"] .k-metro-face-live')).toContainText(/\d to water/, { timeout: 45_000 });
 });

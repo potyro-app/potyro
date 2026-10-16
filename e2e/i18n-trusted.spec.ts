@@ -314,8 +314,10 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     await settled(sheet);
     // Its fields and their options are the app's words: the form's labels, and the choices it offers.
     const words = await sheet.locator(".k-form-label, [role=radio], [aria-pressed], .k-chip").allTextContents();
+    // A field's placeholder is the app's words too ("The cardamom bun"), like its label.
+    const hints = await sheet.locator("[placeholder]").evaluateAll((els) => els.map((e) => e.getAttribute("placeholder") ?? "").filter(Boolean));
     // "opening hour": a list field's own word for one row, after "Add:".
-    expect(await englishIn(sheet, ["Place", "opening hour", ...words.map((w) => w.replace(/[*\s]+$/, "").trim())])).toEqual([]);
+    expect(await englishIn(sheet, ["Place", "opening hour", ...hints, ...words.map((w) => w.replace(/[*\s]+$/, "").trim())])).toEqual([]);
     await shot(page, "form-sheet");
   });
 

@@ -81,7 +81,7 @@ test("expenses written before sharing still split with the person you share with
   await expect(shareOf(bo, "Expense A")).toContainText("your share €50.00", { timeout: 60_000 });
   await expect(shareOf(bo, "Groceries")).toContainText("your share €21.42", { timeout: 60_000 });
   await expect(shareOf(bo, "Internet")).toContainText("your share €19.50", { timeout: 60_000 });
-  await expect(bo.locator(".k-list")).not.toContainText("your share €0.00");
+  await expect(bo.locator("main")).not.toContainText("your share €0.00");
 
   await ctxA.close();
   await ctxB.close();

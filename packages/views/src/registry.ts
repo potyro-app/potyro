@@ -1,7 +1,8 @@
 import type { ComponentType } from "react";
 import type { View } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
-import { DetailView, GalleryView, ListView, TableView } from "./builtins.js";
+import { GalleryView, ListView, TableView } from "./builtins.js";
+import { DetailView } from "./detail.js";
 import { CalendarView } from "./calendar.js";
 import { StepsView } from "./steps.js";
 import { MapView } from "./map.js";

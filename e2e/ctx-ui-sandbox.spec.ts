@@ -52,9 +52,9 @@ test("Workout's Log set works untrusted", async ({ page }) => {
   await page.locator(".k-tl-card").first().click();
   await page.getByRole("button", { name: "Log set" }).click();
   const form = page.getByRole("dialog", { name: "Log set" });
-  await expect(form.getByRole("spinbutton", { name: "Reps" })).toHaveValue("6");
+  await expect(form.getByRole("spinbutton", { name: "Reps" })).toHaveValue("9");
   await form.getByRole("button", { name: "Log set" }).click();
-  await expect(page.locator(".k-toast")).toHaveText("Logged 42.5 kg × 6");
+  await expect(page.locator(".k-toast")).toHaveText("Logged 30 kg × 9");
 });
 
 // A sealed app's own screen asks too (#267): Workout's Train view runs in its sandboxed frame, and

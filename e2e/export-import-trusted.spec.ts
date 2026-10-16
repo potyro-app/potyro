@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 test("export → import round-trips app data (trusted)", async ({ page }) => {
   await page.goto("/?app=recipes");
   await expect(page.locator("h1")).toHaveText("Recipes");
-  await expect(page.locator(".k-list-row", { hasText: "Fluffy Pancakes" })).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: "Fluffy Pancakes" })).toBeVisible();
 
   // Export the current (seed) data to a bundle file.
   const [download] = await Promise.all([
@@ -30,8 +30,8 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   const modal = page.locator(".k-modal");
   await modal.getByRole("textbox").first().fill("Ephemeral Dish");
   await modal.getByRole("button", { name: "Create" }).click();
-  await page.getByRole("button", { name: /Recipes/ }).click(); // create-and-open → back to the list
-  await expect(page.locator(".k-list-row", { hasText: "Ephemeral Dish" })).toBeVisible();
+  await page.getByRole("button", { name: /Recipes/ }).first().click(); // create-and-open → back to the cookbook
+  await expect(page.locator(".k-card", { hasText: "Ephemeral Dish" })).toBeVisible();
 
   // Import the earlier bundle → replaces the live data (reloads the app).
   const [chooser] = await Promise.all([
@@ -47,6 +47,6 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
   // It says it worked — and the page is the app, not a boot error that also has no "Ephemeral Dish".
   await expect(page.locator(".k-toast")).toContainText("Imported data into Recipes");
-  await expect(page.locator(".k-list-row", { hasText: "Fluffy Pancakes" })).toBeVisible(); // bundle data restored
-  await expect(page.locator(".k-list-row", { hasText: "Ephemeral Dish" })).toHaveCount(0); // not in the bundle
+  await expect(page.locator(".k-card", { hasText: "Fluffy Pancakes" })).toBeVisible(); // bundle data restored
+  await expect(page.locator(".k-card", { hasText: "Ephemeral Dish" })).toHaveCount(0); // not in the bundle
 });

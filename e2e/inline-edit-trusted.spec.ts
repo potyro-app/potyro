@@ -272,7 +272,7 @@ test("a record's text is never offered, even when a placeholder or label reads t
   await expect(page.locator(".k-checklist").getByRole("checkbox", { name: "Milk" })).toBeVisible();
   await editMode(page);
   // The tab is the app's own word, so it is offered — which also proves the marks are in.
-  await expect.poll(() => marked(page)).toContain("Shopping");
+  await expect.poll(() => marked(page)).toContain("List");
   const words = await marked(page);
   expect(words).not.toContain("Milk");
   expect(words).not.toContain("Produce");
