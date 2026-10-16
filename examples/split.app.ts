@@ -297,11 +297,11 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
  * as a payment — the balances move at once. When the money comes to you, the app offers a message to
  * send asking for it (payments themselves happen outside: no bank is ever connected).
  */
-async function settleUp(ctx: Ctx): Promise<void> {
+async function settleUp(ctx: Ctx, direct = false): Promise<void> {
   const { net } = await standing(ctx);
   const moves = settlements(net);
   const other = "__other";
-  const choice = await ctx.ui.sheet<string>({
+  const choice = direct && moves.length === 1 ? "0" : await ctx.ui.sheet<string>({
     title: moves.length
       ? ctx.t({ en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" })
       : ctx.t({ en: "All square 🎉", "pt-BR": "Tudo certo 🎉", de: "Alles ausgeglichen 🎉", es: "Cuentas saldadas 🎉", pl: "Wszystko rozliczone 🎉", it: "Tutto in pari 🎉" }),
@@ -467,6 +467,15 @@ export default defineApp({
             pl: "Do czego jest ta grupa",
             it: "A cosa serve questo gruppo",
           },
+        },
+      },
+      actions: {
+        // What a row under "To settle up" runs (the row cannot say which transfer it is, so with one
+        // transfer it goes straight to the payment, and with several it asks which).
+        settle: {
+          label: { en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" },
+          icon: "💸",
+          run: (_group, ctx) => settleUp(ctx, true),
         },
       },
     },
@@ -821,6 +830,8 @@ export default defineApp({
                     value: money(s.amount, ctx),
                     tone: "neutral" as const,
                     group: ctx.t({ en: "To settle up", "pt-BR": "Para acertar", de: "Zum Ausgleichen", es: "Para saldar", pl: "Do rozliczenia", it: "Da saldare" }),
+                    // Tap Settle on the row: the payment is filled in from it, to confirm.
+                    ...(ctx.scope.group ? { action: { entity: "group", id: String(ctx.scope.group.id), key: "settle", label: ctx.t({ en: "Settle", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }) } } : {}),
                   })),
                 ];
               },
@@ -853,7 +864,8 @@ export default defineApp({
                     { who: payer === ctx.me?.id ? "me" : "other", name: nameOf(payer, ctx), share: String(e.yourShare) },
                   );
                 },
-                badges: ["kind"],
+                // The category's emoji leads the row: the feed's rhythm, and what it was at a glance.
+                icon: (e: Resolved) => CATEGORY_EMOJI[String(e.kind)] ?? "🧾",
               },
               onOpen: { page: "expense", param: { expenseId: "id" } },
               emptyText: {

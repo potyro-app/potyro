@@ -1875,6 +1875,11 @@ export default defineApp({
         sections: [
           { title: { en: "Routine", "pt-BR": "Rotina", de: "Routine", es: "Rutina", pl: "Plan", it: "Routine" }, fields: ["summary", "lastDone", "active", "order"] },
           { title: { en: "Exercises", "pt-BR": "Exercícios", de: "Übungen", es: "Ejercicios", pl: "Ćwiczenia", it: "Esercizi" }, fields: ["exercises"] },
+          // Every time it was done, newest first: the sessions that point at this routine.
+          {
+            title: { en: "Done", "pt-BR": "Feitos", de: "Gemacht", es: "Hechos", pl: "Zrobione", it: "Fatti" },
+            related: { entity: "session", via: "routine", view: "timeline", date: "date", display: { primary: "title", secondary: "duration" }, limit: 8, onOpen: { page: "session", param: { sessionId: "id" } } },
+          },
           { title: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["note"] },
         ],
       },
