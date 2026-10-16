@@ -15,7 +15,7 @@
 // The search chip matches what is stored: a recipe's name as typed, and its tags' stored keys.
 import { defineApp } from "potyro";
 import { useEffect, useState } from "react";
-import type { AiImage, Ctx, Resolved, ViewProps } from "potyro";
+import type { AiImage, Ctx, Resolved, UiTimer, ViewProps } from "potyro";
 
 // ---- Your own code, in the same file. An app is one file: the Studio edits it, a share link carries
 // it, and it runs anywhere the shell does. ----
@@ -118,7 +118,12 @@ const slotName = (s: unknown, ctx: Ctx): string => {
 // ---- Cook mode (docs M1 DoD): a full React component — the "no ceiling" escape hatch. One step at a
 // time in type you can read from the stove, the step's timer one tap away, the ingredients scaled to
 // the servings you are cooking, and "Cooked it" at the end. Every step also has its tick in the list
-// underneath, so you can see where you are and jump back. ----
+// underneath, so you can see where you are and jump back.
+//
+// A step's timer is the SHELL's (`ctx.ui.timer`), one per step: its chip stays in sight while you
+// read the next step, look up a substitute in another app or lock the phone, and it rings at the end
+// whatever the screen shows. While cook mode is open the screen stays on (`ctx.ui.keepAwake`): flour
+// on your hands is not the moment to unlock a phone. ----
 interface Step {
   text: string;
   durationSec?: number;
@@ -174,23 +179,37 @@ function CookAlong(props: ViewProps) {
   const [at, setAt] = useState(0);
   const [done, setDone] = useState<Set<number>>(() => new Set());
   const [servings, setServings] = useState<number | null>(null);
-  const [timer, setTimer] = useState<{ step: number; endsAt: number } | null>(null);
+  // The shell's timers for this app, as last read. The shell keeps and rings them; this only draws.
+  const [timers, setTimers] = useState<UiTimer[]>([]);
   const [now, setNow] = useState(() => Date.now());
 
-  // A running timer ticks every second; when it ends the phone buzzes and says which step it was.
+  // Read back every second: a timer paused, stopped or rung on its chip shows here too.
   useEffect(() => {
-    if (!timer) return;
-    const id = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= timer.endsAt) {
-        setTimer(null);
-        void ctx.caps.haptics?.vibrate([200, 100, 200]);
-        ctx.ui.toast(ctx.t({ en: "Time's up: step {n}", "pt-BR": "Acabou o tempo: passo {n}", de: "Zeit ist um: Schritt {n}", es: "Se acabó el tiempo: paso {n}", pl: "Czas minął: krok {n}", it: "Tempo scaduto: passaggio {n}" }, { n: timer.step + 1 }));
-      }
-    }, 1000);
+    let reading = false;
+    const read = (): void => {
+      setNow(Date.now());
+      if (reading) return;
+      reading = true;
+      void ctx.ui
+        .timers()
+        .then(setTimers)
+        .catch(() => undefined)
+        .finally(() => {
+          reading = false;
+        });
+    };
+    read();
+    const id = setInterval(read, 1000);
     return () => clearInterval(id);
-  }, [timer, ctx]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The screen stays on for as long as cook mode is open, and may sleep again when it closes.
+  useEffect(() => {
+    const awake = ctx.ui.keepAwake();
+    return () => awake.release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) return <p>{ctx.t({ en: "Loading…", "pt-BR": "Carregando…", de: "Wird geladen…", es: "Cargando…", pl: "Wczytywanie…", it: "Caricamento…" })}</p>;
   if (!record) {
@@ -219,8 +238,27 @@ function CookAlong(props: ViewProps) {
     await runtime.runAction("recipe", "markCooked", record.id);
     ctx.navigate("detail", { recipeId: record.id });
   };
-  const left = timer ? Math.max(0, Math.ceil((timer.endsAt - now) / 1000)) : 0;
+  // One timer per step of this recipe: two pans can count down at once, and starting a step's timer
+  // again restarts it rather than stacking a second.
+  const timerId = (i: number): string => `step:${record.id}:${i}`;
+  const timer = timers.find((t) => t.id === timerId(at));
+  const left = timer ? (timer.endsAt ? Math.max(0, Math.ceil((timer.endsAt.getTime() - now) / 1000)) : timer.left) : 0;
   const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  const toggleTimer = (seconds: number): void => {
+    if (timer) {
+      setTimers((all) => all.filter((t) => t !== timer));
+      void timer.cancel().catch(() => undefined);
+      return;
+    }
+    void ctx.ui
+      .timer({
+        label: ctx.t({ en: "{name}, step {n}", "pt-BR": "{name}, passo {n}", de: "{name}, Schritt {n}", es: "{name}, paso {n}", pl: "{name}, krok {n}", it: "{name}, passaggio {n}" }, { name: String(record.name), n: at + 1 }),
+        seconds,
+        id: timerId(at),
+      })
+      .then((t) => setTimers((all) => [...all.filter((x) => x.id !== t.id), t]))
+      .catch((e: unknown) => ctx.ui.toast(e instanceof Error ? e.message : String(e)));
+  };
   const stepWord = ctx.t({ en: "Step {n} of {total}", "pt-BR": "Passo {n} de {total}", de: "Schritt {n} von {total}", es: "Paso {n} de {total}", pl: "Krok {n} z {total}", it: "Passaggio {n} di {total}" }, { n: at + 1, total: steps.length });
 
   return (
@@ -249,10 +287,11 @@ function CookAlong(props: ViewProps) {
               <button
                 type="button"
                 className="ck-timer"
-                data-running={timer?.step === at}
-                onClick={() => setTimer(timer?.step === at ? null : { step: at, endsAt: Date.now() + Number(step.durationSec) * 1000 })}
+                data-running={timer != null}
+                data-paused={timer?.paused || undefined}
+                onClick={() => toggleTimer(Number(step.durationSec))}
               >
-                {timer?.step === at
+                {timer
                   ? `⏱ ${clock} · ${ctx.t({ en: "stop", "pt-BR": "parar", de: "stopp", es: "parar", pl: "stop", it: "ferma" })}`
                   : `⏱ ${ctx.t({ en: "Start a {time} timer", "pt-BR": "Iniciar timer de {time}", de: "{time}-Timer starten", es: "Poner temporizador de {time}", pl: "Włącz minutnik: {time}", it: "Avvia timer di {time}" }, { time: minutesText(Math.max(1, Math.round(Number(step.durationSec) / 60)), ctx) })}`}
               </button>
@@ -446,7 +485,8 @@ export default defineApp({
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#E4A93C" },
-  permissions: { camera: true, filesystem: true, ai: true, haptics: true },
+  // A step timer rings through the shell (`ctx.ui.timer`), which needs no permission.
+  permissions: { camera: true, filesystem: true, ai: true },
   nav: "tabs",
   // What can be added by hand: a recipe (typed in; the Recipes page's own button also reads one from a
   // photo or pasted text) and an ingredient. Meals come from a recipe's "Plan it", shopping items from
