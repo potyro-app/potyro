@@ -597,7 +597,7 @@ export default defineApp({
       actions: {
         toggleStock: {
           label: {
-            en: "Toggle Stock",
+            en: "Have it / used up",
             "pt-BR": "Tenho / acabou",
             de: "Vorrat umschalten",
             es: "Tengo / se acabó",
@@ -713,8 +713,8 @@ export default defineApp({
             durationSec: { type: "duration", unit: "s", label: { en: "Time", "pt-BR": "Tempo", de: "Zeit", es: "Tiempo", pl: "Czas", it: "Tempo" } },
           },
         },
-        lastCookedAt: { type: "datetime", hidden: true },
-        timesCooked: { type: "number", default: 0, integer: true, hidden: true },
+        lastCookedAt: { type: "datetime", hidden: true, label: { en: "Last cooked", "pt-BR": "Feita pela última vez", de: "Zuletzt gekocht", es: "Cocinada por última vez", pl: "Ostatnio gotowane", it: "Cucinata l'ultima volta" } },
+        timesCooked: { type: "number", default: 0, integer: true, hidden: true, label: { en: "Times cooked", "pt-BR": "Vezes feitas", de: "Mal gekocht", es: "Veces cocinada", pl: "Razy ugotowane", it: "Volte cucinata" } },
         notes: {
           type: "text",
           multiline: true,
