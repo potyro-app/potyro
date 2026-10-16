@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // An app in two languages, shared between an English device and a Polish one (#302, docs/20 §6).
 //
@@ -11,7 +12,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 // own text is never translated, and an enum keeps its stored option while its label follows the
 // device.
 
-const RELAY = process.env.POTYRO_RELAY_URL ?? "ws://localhost:4201";
+const RELAY = process.env.POTYRO_RELAY_URL ?? E2E_RELAY;
 
 const APP = `import { defineApp } from "potyro";
 

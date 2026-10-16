@@ -2,6 +2,7 @@ import { test, expect, type Page, type BrowserContext } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // Adopting a collaborator's edit — and the WHITE PAGE that used to be.
 //
@@ -31,9 +32,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, opts?: { app?: boolean }): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, seedApp]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!seedApp || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",
