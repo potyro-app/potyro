@@ -125,21 +125,23 @@ process.on("exit", () => {
   for (const f of claimed) rmSync(f, { force: true });
 });
 /**
- * Running shards' process groups. Stopping this script stops them with SIGINT, which Playwright
- * treats as "shut down": it stops its own dev servers and relay too. Those are in process groups of
- * their own (Playwright starts them detached), so killing the shard's group outright would leave
- * them listening — on ports nobody holds a claim to any more. SIGKILL only if they will not go.
+ * Running shards' process groups, and the mark every process a shard starts carries in its
+ * environment (`POTYRO_E2E_SHARD`). Playwright starts its dev servers and relay detached, in process
+ * groups of their own, and does not always take them down when it is stopped — measured: they
+ * outlived it, listening on ports nobody held a claim to any more. So when a shard ends, for any
+ * reason, whatever still carries its mark is killed (`sweep`, by /proc, so Linux only — the CI
+ * machine). Stopping this script sends the shards SIGINT, waits for them, then sweeps.
  */
-const shardGroups = new Set();
+const shardGroups = new Map(); // pid → mark
 const SHUTDOWN_GRACE_MS = 20_000;
 let stopping = false;
 function stopShards() {
-  if (stopping) process.exit(130);
+  if (stopping) return;
   stopping = true;
   if (!shardGroups.size) process.exit(130);
-  for (const pid of shardGroups) signalGroup(pid, "SIGINT");
+  for (const pid of shardGroups.keys()) signalGroup(pid, "SIGINT");
   setTimeout(() => {
-    for (const pid of shardGroups) signalGroup(pid, "SIGKILL");
+    for (const [pid, mark] of shardGroups) (signalGroup(pid, "SIGKILL"), sweep(mark));
     process.exit(130);
   }, SHUTDOWN_GRACE_MS).unref();
 }
@@ -150,9 +152,26 @@ function signalGroup(pid, sig) {
     /* already gone */
   }
 }
+/** Kill every process whose environment carries `POTYRO_E2E_SHARD=<mark>`. */
+function sweep(mark) {
+  const needle = `POTYRO_E2E_SHARD=${mark}\0`;
+  let pids;
+  try {
+    pids = readdirSync("/proc").filter((d) => /^\d+$/.test(d) && Number(d) !== process.pid);
+  } catch {
+    return; // no /proc: not Linux
+  }
+  for (const pid of pids) {
+    try {
+      if (`${readFileSync(`/proc/${pid}/environ`, "latin1")}\0`.includes(needle)) process.kill(Number(pid), "SIGKILL");
+    } catch {
+      /* gone, or not ours to read */
+    }
+  }
+}
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, stopShards);
 process.on("exit", () => {
-  for (const pid of shardGroups) signalGroup(pid, "SIGKILL");
+  for (const [pid, mark] of shardGroups) (signalGroup(pid, "SIGKILL"), sweep(mark));
 });
 
 /**
@@ -311,10 +330,12 @@ async function runShard(i, files) {
   const report = join(dir, `${f}.json`);
   rmSync(report, { force: true });
   const block = await claimBlock();
+  const mark = `${process.pid}-${i}-${block.base}`;
   const args = ["exec", "playwright", "test", ...files, "--workers=1", "--retries=1", "--reporter=line,json", `--output=test-results/shard-${i}`];
   const env = {
     ...process.env,
     POTYRO_E2E_PORT_BASE: String(block.base),
+    POTYRO_E2E_SHARD: mark,
     // Its own Vite dependency cache, by shard number so it stays warm from one run to the next.
     POTYRO_VITE_CACHE_DIR: join(ROOT, "node_modules", ".vite-e2e", `shard-${i}`),
     PLAYWRIGHT_JSON_OUTPUT_NAME: report,
@@ -333,9 +354,10 @@ async function runShard(i, files) {
     };
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
-    shardGroups.add(child.pid);
+    shardGroups.set(child.pid, mark);
     child.once("close", (code) => {
       shardGroups.delete(child.pid);
+      sweep(mark);
       if (stopping && !shardGroups.size) process.exit(130);
       resolve(code);
     });
