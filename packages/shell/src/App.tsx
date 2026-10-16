@@ -785,9 +785,6 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // Promote/demote trust. Promotion runs the app DIRECTLY (not in the isolate) — a deliberate,
   // prompted decision (CLAUDE.md rule 3). Only for your own saved apps.
   const [trustPrompt, setTrustPrompt] = useState(false);
-  const grantedCaps = Object.entries(def.permissions ?? {})
-    .filter(([, v]) => v)
-    .map(([k]) => k);
   const setTrust = (trusted: boolean): void => {
     if (!appId) {
       // A preview: the Studio promotes the app it is showing, when it is a sealed one.
@@ -1148,7 +1145,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {trustPrompt ? (
         <TrustDialog
           name={def.name}
-          permissions={grantedCaps}
+          permissions={def.permissions ?? {}}
           trusted={provenance === "trusted"}
           onCancel={() => setTrustPrompt(false)}
           onPromote={() => setTrust(true)}
