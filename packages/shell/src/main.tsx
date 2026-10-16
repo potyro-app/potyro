@@ -50,6 +50,7 @@ import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 import { navigateTo, setRouteHandler, type ShellRoute } from "./router.js";
 import { DataPage } from "./data-page.js";
 import { SharePage } from "./share-page.js";
+import { MovePage } from "./move-page.js";
 import { rememberShare } from "./share-inbox.js";
 import { IncomingFiles } from "./incoming-files-host.js";
 import { receiveSharedFiles } from "./incoming-files.js";
@@ -68,6 +69,7 @@ function route(): Route {
   const p = new URLSearchParams(location.search);
   if (p.has("data")) return { kind: "data", ...(p.get("data") ? { id: p.get("data")! } : {}), ...(p.has("files") ? { files: true } : {}) };
   if (p.has("share")) return { kind: "share" };
+  if (p.has("move")) return { kind: "move", ...(p.get("move") ? { channel: p.get("move")! } : {}) };
   const id = p.get("user") ?? p.get("app");
   if (id && getUserApp(id)) return { kind: "user", id };
   return { kind: "home" };
@@ -788,6 +790,11 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
     await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
     return;
   }
+  if (r.kind === "move") {
+    mount(root, <MovePage key={`move:${seq}`} channel={r.channel} />);
+    await prev?.dispose().catch((e: unknown) => console.warn("[potyro] closing the previous app failed:", e));
+    return;
+  }
   if (r.kind === "data") {
     // Mounted before the app it came from is put away: the page opens that app's store too, and the
     // storage worker keeps a database open while anyone still holds it.
@@ -820,7 +827,7 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
 function canSwitchInPlace(next: Route): boolean {
   if (current?.sync) return false;
   if (sessionStorage.getItem(IMPORT_KEY)) return false;
-  return next.kind === "home" || next.kind === "data" || next.kind === "share" || !getUserApp(next.id)?.sync;
+  return next.kind === "home" || next.kind === "data" || next.kind === "share" || next.kind === "move" || !getUserApp(next.id)?.sync;
 }
 
 // Where the identity's secrets live (#57): the platform keystore on a device, else this browser's
