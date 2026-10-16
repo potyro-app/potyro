@@ -8,7 +8,7 @@
 // composition root swaps this in for WebCapabilities when running under Capacitor.
 
 import type { Geo } from "potyro";
-import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap, SocketCap, SpeechCap } from "@potyro/capabilities";
+import type { Capabilities, CameraCap, FileCap, GeoCap, HapticsCap, LiveCameraCap, NetworkCap, NotificationCap, ShareCap, SocketCap, SpeechCap } from "@potyro/capabilities";
 import { pickFilesFromInput, sharedLiveCamera, sharedWebSockets, sharedWebSpeech } from "@potyro/capabilities";
 import { localOpenerOver, type LocalSocketPlugin } from "./local-sockets.js";
 import { speechOverPlugin, type SpeechPlugin } from "./native-speech.js";
@@ -57,12 +57,44 @@ export interface HapticsPlugin {
   vibrate(opts: { duration: number }): Promise<void>;
 }
 
+export interface SharePlugin {
+  share(opts: { title?: string; text?: string; url?: string; files?: string[]; dialogTitle?: string }): Promise<unknown>;
+}
+
 export interface CapacitorPlugins {
   Camera: CameraPlugin;
   Geolocation: GeolocationPlugin;
   LocalNotifications: LocalNotificationsPlugin;
   Filesystem: FilesystemPlugin;
   Haptics: HapticsPlugin;
+  /** @capacitor/share; absent = no share sheet (the dialog copies and saves). */
+  Share?: SharePlugin;
+}
+
+/** A file's name as it goes into the cache folder: no folders, nothing a path would trip on. */
+const cacheName = (name: string): string => name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(0, 120) || "file";
+
+/** The phone's share sheet as a `ShareCap`: files land in the cache, then go by their file:// URLs. */
+export function nativeShare(Share: SharePlugin, Filesystem: FilesystemPlugin, blobToBase64: (b: Blob) => Promise<string>): ShareCap {
+  return {
+    // The sheet takes words, links and any file; nothing here is refused.
+    canShare: () => true,
+    share: async (p) => {
+      const files: string[] = [];
+      const batch = `potyro-share/${Date.now()}`;
+      for (const [i, f] of (p.files ?? []).entries()) {
+        const { uri } = await Filesystem.writeFile({ path: `${batch}/${i + 1}-${cacheName(f.name)}`, data: await blobToBase64(f), directory: "CACHE", recursive: true });
+        files.push(uri);
+      }
+      try {
+        await Share.share({ ...(p.title ? { title: p.title, dialogTitle: p.title } : {}), ...(p.text ? { text: p.text } : {}), ...(p.url ? { url: p.url } : {}), ...(files.length ? { files } : {}) });
+      } catch (e) {
+        // The plugin rejects "Share canceled" when the person backs out: not a failure.
+        if (/cancel/i.test(e instanceof Error ? e.message : String(e))) throw new DOMException("Share canceled", "AbortError");
+        throw e;
+      }
+    },
+  };
 }
 
 /** Injectable host helpers (overridable in tests; default to the WebView globals). */
@@ -180,6 +212,12 @@ export class CapacitorCapabilities implements Capabilities {
    * https://localhost — and, on Android, ws:// to the local network over Potyro's own plugin.
    */
   readonly sockets: SocketCap | null;
+  /**
+   * The phone's own share sheet, through @capacitor/share: the WebView has no `navigator.share`, so
+   * without this the share dialog could only copy. Files are written to the app's cache first (the
+   * plugin shares file:// URLs through Capacitor's FileProvider); the OS clears that folder.
+   */
+  readonly share: ShareCap | null;
   /** The phone's recognizer (Android's plugin), else the WebView's speech, else a recording to write down (docs/29). */
   readonly speech: SpeechCap | null;
 
@@ -271,6 +309,7 @@ export class CapacitorCapabilities implements Capabilities {
     this.network = { fetch: (input, init) => globalThis.fetch(input, init) };
     this.liveCamera = helpers?.liveCamera !== undefined ? helpers.liveCamera : sharedLiveCamera();
     this.sockets = helpers?.sockets !== undefined ? helpers.sockets : sharedWebSockets(helpers?.localSockets ? localOpenerOver(helpers.localSockets) : undefined);
+    this.share = plugins.Share ? nativeShare(plugins.Share, Filesystem, blobToBase64) : null;
     const web = sharedWebSpeech();
     this.speech = helpers?.speech !== undefined ? helpers.speech : helpers?.speechPlugin ? speechOverPlugin(helpers.speechPlugin, web) : web;
   }
@@ -279,13 +318,14 @@ export class CapacitorCapabilities implements Capabilities {
 /** Wire the real @capacitor/* plugins (native runtime only). Dynamically imported so the web bundle
  *  never pulls Capacitor. */
 export async function createCapacitorCapabilities(): Promise<Capabilities> {
-  const [{ Capacitor }, { Camera }, { Geolocation }, { LocalNotifications }, { Filesystem, Directory }, { Haptics }] = await Promise.all([
+  const [{ Capacitor }, { Camera }, { Geolocation }, { LocalNotifications }, { Filesystem, Directory }, { Haptics }, { Share }] = await Promise.all([
     import("@capacitor/core"),
     import("@capacitor/camera"),
     import("@capacitor/geolocation"),
     import("@capacitor/local-notifications"),
     import("@capacitor/filesystem"),
     import("@capacitor/haptics"),
+    import("@capacitor/share"),
   ]);
   // Adapt the real plugins to our minimal shapes (enums → the string/const values we declared).
   const plugins: CapacitorPlugins = {
@@ -293,9 +333,11 @@ export async function createCapacitorCapabilities(): Promise<Capabilities> {
     Geolocation: Geolocation as unknown as GeolocationPlugin,
     LocalNotifications: LocalNotifications as unknown as LocalNotificationsPlugin,
     Filesystem: {
-      writeFile: (opts) => Filesystem.writeFile({ ...opts, directory: Directory.Documents }),
+      // Saved copies go to Documents; files on their way to the share sheet wait in the cache.
+      writeFile: (opts) => Filesystem.writeFile({ ...opts, directory: opts.directory === "CACHE" ? Directory.Cache : Directory.Documents }),
     },
     Haptics: Haptics as unknown as HapticsPlugin,
+    Share: Share as unknown as SharePlugin,
   };
   // getPlatform() is a plain function on the core object, not a plugin proxy, so nothing awaits a plugin.
   // ws:// to the local network is Android's own plugin (docs/28 §6); iOS connects to wss:// only for now.

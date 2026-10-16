@@ -685,6 +685,100 @@ button {
 .k-share-actions {
   flex-wrap: wrap;
 }
+/* The dialog's main way sits last, where the eye and the thumb end up, however many ways there are. */
+.k-share-actions > .k-primary-action {
+  order: 1;
+}
+
+/* Files an app hands over (`ctx.ui.share({ files })`): shown before anything leaves. One picture is
+   the dialog's subject, large and framed like a print; several sit in a row that scrolls sideways,
+   each a square with its name and size under it. Anything that is not a picture shows its kind. */
+.k-dialog.k-share-dialog-files {
+  width: min(460px, 94vw);
+}
+.k-share-files {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-2);
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.k-share-file {
+  flex: 0 0 auto;
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  scroll-snap-align: start;
+}
+.k-share-file-picture,
+.k-share-file-glyph {
+  width: 112px;
+  height: 112px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+}
+.k-share-file-picture {
+  object-fit: cover;
+  display: block;
+}
+.k-share-file-glyph {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.k-share-file-name {
+  font-size: 0.8rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-share-file-size {
+  margin-top: calc(-1 * var(--space-1));
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+/* One file: the picture is the point. */
+.k-share-files-one {
+  justify-content: center;
+  overflow: visible;
+}
+.k-share-files-one .k-share-file {
+  width: auto;
+  max-width: 100%;
+  align-items: center;
+}
+.k-share-files-one .k-share-file-picture {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(46vh, 360px);
+  border-radius: var(--radius);
+  border-width: 6px;
+  border-color: var(--surface-raised);
+  transform: rotate(-1deg);
+  transition: transform var(--dur-slow) var(--ease);
+}
+.k-share-files-one .k-share-file-picture:hover {
+  transform: rotate(0deg) scale(1.01);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-share-files-one .k-share-file-picture,
+  .k-share-files-one .k-share-file-picture:hover {
+    transform: none;
+    transition: none;
+  }
+}
 
 /* Destructive actions read as destructive. Not red-by-default screaming — this is still a small
    inline control — but unmistakably not the same thing as "Edit". */
