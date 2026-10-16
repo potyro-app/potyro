@@ -42,6 +42,8 @@ export interface MapMarker {
   lng: number;
   title: string;
   color?: string;
+  /** The record's own glyph (`display.icon`): drawn as the pin. */
+  icon?: string;
 }
 
 /**
@@ -81,6 +83,21 @@ function toLatLng(v: unknown): { lat: number; lng: number } | null {
   return null;
 }
 
+/** An emoji pin: a round badge with a point, in the marker's colour when it has one. */
+function emojiPin(icon: string, color: string | undefined): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "k-map-pin";
+  if (color) el.style.setProperty("--pin", color);
+  const head = document.createElement("span");
+  head.className = "k-map-pin-head";
+  const glyph = document.createElement("span");
+  glyph.className = "k-map-pin-glyph";
+  glyph.textContent = icon;
+  head.appendChild(glyph);
+  el.appendChild(head);
+  return el;
+}
+
 /** Resolve geo/title/color per row (async host calls), skipping rows without a valid geo point. */
 export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): MapMarker[] {
   const [markers, setMarkers] = useState<MapMarker[]>([]);
@@ -88,7 +105,7 @@ export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Reso
   useEffect(() => {
     let alive = true;
     const ctx = runtime.ctx;
-    const resolve = (path: "geo" | "title" | "color", row: Resolved) =>
+    const resolve = (path: "geo" | "title" | "color" | "display.icon", row: Resolved) =>
       runtime.resolveBinding({ kind: "view", page: pageId, path }, row, ctx);
 
     void Promise.all(
@@ -97,7 +114,9 @@ export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Reso
         if (!geo) return null;
         const title = String((await resolve("title", row)) ?? "");
         const colorRaw = await resolve("color", row);
-        return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw) };
+        const iconRaw = await resolve("display.icon", row);
+        const icon = iconRaw == null ? "" : String(iconRaw).trim();
+        return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw), ...(icon ? { icon } : {}) };
       }),
     ).then((ms) => {
       if (alive) setMarkers(ms.filter((m): m is MapMarker => m !== null));
@@ -391,7 +410,8 @@ export function MapView(props: BuiltinViewProps) {
       markerObjs.current = [];
       const bounds = new maplibre.LngLatBounds();
       for (const mk of markers) {
-        const marker = new maplibre.Marker({ color: mk.color }).setLngLat([mk.lng, mk.lat]);
+        // A record with its own glyph is pinned BY it: an emoji in a round badge of its colour.
+        const marker = (mk.icon ? new maplibre.Marker({ element: emojiPin(mk.icon, mk.color), anchor: "bottom" }) : new maplibre.Marker({ color: mk.color })).setLngLat([mk.lng, mk.lat]);
         // Tapping a pin shows WHICH place it is, and offers a way in. Navigating straight off the
         // tap gave no way to just look at the map: every touch left the page.
         const onOpen = onOpenRef.current;
