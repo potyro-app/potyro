@@ -238,7 +238,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.caps.speech",
     summary:
-      "voice input, live words as the person speaks: `const s = await ctx.caps.speech.listen()`, `s.onText((text, final) => …)`, `s.stop()`, `await s.result` (`permissions: { speech: true }`)",
+      "voice input: `listen()` → live words as the person speaks (`onText`), `stop()`, `result` (`permissions: { speech: true }`)",
     declarations: ["SpeechEngine", "SpeechFailure", "SpeechOptions", "SpeechSession", "SpeechCapability"],
     notes: [
       "Start it from a button the person presses (an action or a custom view), keep the session in a module-level variable, and",

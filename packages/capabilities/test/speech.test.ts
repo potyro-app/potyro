@@ -9,6 +9,7 @@ import {
   createWebSpeech,
   encodeWav,
   joinPieces,
+  mayAskLocal,
   pickEngine,
   speechLanguage,
   type PlatformSpeechEvents,
@@ -148,6 +149,16 @@ describe("pickEngine — by environment (docs/29 §2)", () => {
     expect(await pickEngine({ recognition: Ctor, navigator: CHROME }, "pl-PL")).toEqual({ engine: "browser", service: "Google" });
     expect(await pickEngine({ recognition: fakeRecognition().Ctor, navigator: SAFARI }, "en-US")).toEqual({ engine: "browser", service: "Apple" });
   });
+  it("asks for on-device only where asking is safe: Google Chrome, or a polyfill", async () => {
+    const native = Object.assign(function () {}, { available: Math.max }) as unknown as RecognitionCtor; // native code
+    const poly = Object.assign(function () {}, { available: async () => "available" }) as unknown as RecognitionCtor;
+    expect(mayAskLocal(native, { userAgentData: { brands: [{ brand: "Chromium" }] } })).toBe(false);
+    expect(mayAskLocal(native, { userAgentData: { brands: [{ brand: "Chromium" }, { brand: "Google Chrome" }] } })).toBe(true);
+    expect(mayAskLocal(poly, undefined)).toBe(true);
+    const { Ctor } = fakeRecognition({ local: "available" });
+    expect(await pickEngine({ recognition: Ctor, navigator: CHROME, askLocal: false }, "en-US")).toEqual({ engine: "browser", service: "Google" });
+  });
+
   it("Firefox: the cloud engine only with a transcriber and a microphone to record", async () => {
     const deps = { navigator: FIREFOX, getUserMedia: async () => rec.stream, MediaRecorder: rec.Recorder };
     expect(await pickEngine(deps, "en-US")).toBeNull();

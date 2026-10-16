@@ -6789,6 +6789,10 @@ body:has(.k-tabbar) .k-toasts {
   border-color: var(--voice);
   box-shadow: 0 0 0 3px var(--voice-tint), var(--shadow);
 }
+.k-voice-note {
+  margin: var(--space-2) var(--space-4) 0;
+  font-size: 0.8rem;
+}
 .k-voice-strip {
   width: min(44rem, 100%);
   margin: 0 auto var(--space-2);

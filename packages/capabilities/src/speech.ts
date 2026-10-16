@@ -404,7 +404,22 @@ async function cloudListen(t: Transcriber, d: RecorderDeps, opts: ListenOptions,
 
 // ---------------------------------------------------------------- the web's SpeechCap
 
+/**
+ * May `SpeechRecognition.available()` be asked here? In Google Chrome, yes. In other Chromium builds
+ * it can take the page down: Playwright's Chromium crashes its renderer on the call (2026-10-16,
+ * measured), and Brave, Vivaldi and distribution builds lack the same on-device component. There the
+ * browser's service is assumed — the honest, less private answer. A polyfill (not native code) is
+ * always asked. Pure apart from reading the function's source.
+ */
+export function mayAskLocal(Ctor: RecognitionCtor, nav: { userAgentData?: { brands?: Array<{ brand: string }> } } | undefined): boolean {
+  if (typeof Ctor.available !== "function") return false;
+  if (!/\[native code\]/.test(Function.prototype.toString.call(Ctor.available))) return true;
+  return (nav?.userAgentData?.brands ?? []).some((b) => b.brand === "Google Chrome");
+}
+
 export interface WebSpeechDeps extends RecorderDeps {
+  /** Ask the browser whether it can listen on the device (`mayAskLocal`); asked when absent. */
+  askLocal?: boolean;
   recognition?: RecognitionCtor | null;
   navigator?: { userAgent?: string; vendor?: string };
   doc?: { readonly hidden: boolean; addEventListener(type: "visibilitychange", fn: () => void): void };
@@ -415,7 +430,7 @@ export interface WebSpeechDeps extends RecorderDeps {
 export async function pickEngine(d: WebSpeechDeps, language: string): Promise<(SpeechWhere & { local?: boolean }) | null> {
   const Ctor = d.recognition;
   if (Ctor) {
-    if (typeof Ctor.available === "function") {
+    if (typeof Ctor.available === "function" && d.askLocal !== false) {
       try {
         if ((await Ctor.available({ langs: [language], processLocally: true })) === "available") return { engine: "device", local: true };
       } catch {
@@ -455,8 +470,11 @@ export function createWebSpeech(deps: WebSpeechDeps = {}, slot: Slot = pageSlot)
 export function sharedWebSpeech(): SpeechCap | null {
   const g = globalThis as unknown as { navigator?: Navigator; document?: Document; MediaRecorder?: typeof MediaRecorder; AudioContext?: typeof AudioContext };
   const media = g.navigator?.mediaDevices;
+  const recognition = recognitionCtor();
+  const nav = g.navigator as unknown as { userAgentData?: { brands?: Array<{ brand: string }> } } | undefined;
   const deps: WebSpeechDeps = {
-    recognition: recognitionCtor(),
+    recognition,
+    askLocal: recognition ? mayAskLocal(recognition, nav) : false,
     navigator: g.navigator,
     doc: g.document,
     ...(media?.getUserMedia ? { getUserMedia: (c: MediaStreamConstraints) => media.getUserMedia(c) } : {}),
