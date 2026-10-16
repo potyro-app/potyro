@@ -16,7 +16,7 @@ import { ActionMenu, type MenuEntry } from "./menu.js";
 import { enumSwatch } from "./enum.js";
 import { useRowGroups, type RowGroup } from "./row-groups.js";
 import { Fold, foldKey } from "./fold.js";
-import { editLockFor } from "./edit-lock.js";
+import { byPeople, editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
@@ -85,6 +85,8 @@ export function RowActions({
 }) {
   const { t } = useLingui();
   const explain = (): void => runtime.ctx.ui.toast(locked!);
+  // A feed's records (`editableBy: "app"`) are not people's to delete; the app's own actions stay.
+  if (!byPeople(runtime, entity)) onDelete = undefined;
   if (!actions?.length && !onEdit && !onDelete) return null;
   return (
     <span className="k-row-actions" onClick={(e) => e.stopPropagation()}>
@@ -468,7 +470,7 @@ export function DetailView(props: BuiltinViewProps) {
             <Trans>Edit</Trans>
           </button>
         ) : null}
-        {locked ? (
+        {!byPeople(runtime, view.entity) ? null : locked ? (
           // Edit and Delete are all this menu holds; someone else's record offers neither, so the
           // menu is inactive rather than a list of things that would each refuse.
           <button type="button" className="k-menu-btn" aria-label={t`More actions`} aria-disabled onClick={explain}>

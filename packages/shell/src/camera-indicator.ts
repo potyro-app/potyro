@@ -17,6 +17,14 @@ const CLASS = "k-camera-on";
 const BAR = ".k-topbar";
 /** Where the bar ends, for the stylesheet; set on the root, because the sign's own style is the shell's. */
 const TOP_VAR = "--k-camera-on-top";
+/**
+ * How much of the top of the app's screen — under its top bar, or under the top of the page when it
+ * has none — the shell's own chrome covers, for an app's custom view to keep clear (docs/04): the
+ * sign, while it shows, and the gap under it. Like `--k-chrome-bottom`; 0px when nothing is there.
+ */
+const CHROME_TOP_VAR = "--k-chrome-top";
+/** Room left under the sign before the app's own things. */
+const CLEARANCE_PX = 8;
 
 /** Keep the indicator on screen while `cap` runs. Returns the way to stop watching. */
 export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): () => void {
@@ -50,6 +58,10 @@ export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): (
     } else if (el.dataset.under) {
       delete el.dataset.under;
     }
+    // Measured after it moved: where the sign ends, from where the app's screen starts.
+    const under = rect && rect.height > 0 && rect.bottom > 0 ? rect.bottom : 0;
+    const room = `${Math.max(0, Math.round(el.getBoundingClientRect().bottom - under + CLEARANCE_PX))}px`;
+    if (doc.documentElement.style.getPropertyValue(CHROME_TOP_VAR) !== room) doc.documentElement.style.setProperty(CHROME_TOP_VAR, room);
   };
 
   const build = (): HTMLElement => {
@@ -113,6 +125,7 @@ export function watchLiveCamera(cap: LiveCameraCap, doc: Document = document): (
     win?.removeEventListener("resize", place);
     doc.removeEventListener("scroll", place, { capture: true });
     doc.documentElement.style.removeProperty(TOP_VAR);
+    doc.documentElement.style.removeProperty(CHROME_TOP_VAR);
     el?.remove();
     el = null;
   };

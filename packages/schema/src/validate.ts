@@ -195,7 +195,7 @@ const entitySchema = z.object({
   groups: z.array(fieldGroupSchema).optional(),
   computed: z.record(z.union([zFn, computedDefSchema])).optional(),
   actions: z.record(z.union([zFn, actionDefSchema])).optional(),
-  editableBy: z.enum(["anyone", "creator"]).optional(),
+  editableBy: z.enum(["anyone", "creator", "app"]).optional(),
 });
 
 const quickActionSchema = z.object({

@@ -56,6 +56,9 @@ entities: {
     // Who may change or delete a record (KA-21). "anyone" (default) or "creator": in a shared app only
     // the person who added it — everyone else's edit simply does not take, and their Edit/Delete are
     // drawn inactive. Enforced from the sync log's signatures, not from the `createdBy` value.
+    // "app": only the app's own code writes them — a live feed's records. No view or form offers
+    // Add, Edit or Delete for them, and nothing changes them in place (a tick, a drag); the app's
+    // functions and actions still write through ctx. Additive: no schemaVersion bump.
     editableBy: "anyone",
     fields: {
       name:       { type: "text", required: true },

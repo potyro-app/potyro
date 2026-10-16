@@ -15,6 +15,7 @@ import type { RelationField } from "potyro";
 import { displayFieldFor } from "./format.js";
 import { PickList } from "./pick-list.js";
 import { RecordForm } from "./record-form.js";
+import { byPeople } from "./edit-lock.js";
 
 export interface RelationInputProps {
   runtime: PotyroRuntime;
@@ -90,7 +91,7 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
       anchor={triggerRef}
       onToggle={toggle}
       onClear={!field.many && !field.required ? () => onChange(null) : undefined}
-      onCreate={(query) => setCreating({ name: query })}
+      onCreate={byPeople(runtime, field.to) ? (query) => setCreating({ name: query }) : undefined}
       createNoun={noun}
       onClose={() => {
         setOpen(false);

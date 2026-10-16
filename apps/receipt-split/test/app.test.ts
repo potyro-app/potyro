@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkReferences, isPotyroApp, structureSchema, type Ctx } from "potyro";
+import { checkReferences, fieldValueProblem, isPotyroApp, structureSchema, type Ctx } from "potyro";
 import app from "../receipt-split.app.js";
 
 const source = readFileSync(new URL("../receipt-split.app.ts", import.meta.url), "utf8");
@@ -52,5 +52,21 @@ describe("Receipt Split", () => {
     const none = fakeCtx({ items: [] }, { ai: false });
     await read(none.ctx);
     expect(none.toasts).toEqual(["AI isn't available here."]);
+  });
+});
+
+describe("its sample receipt", () => {
+  // The package's seed.json: what a new copy starts with, and what a demo link of it opens on (docs/24 §3).
+  it("ships a seed whose every value fits its field", () => {
+    const seed = JSON.parse(readFileSync(new URL("../seed.json", import.meta.url), "utf8")) as Record<string, Array<Record<string, unknown>>>;
+    expect(Object.keys(seed)).toEqual(["item"]);
+    const fields = app.entities.item!.fields;
+    expect(seed.item!.length).toBeGreaterThan(2);
+    for (const row of seed.item!) {
+      for (const [key, value] of Object.entries(row)) {
+        expect(fields[key], key).toBeDefined();
+        expect(fieldValueProblem(fields[key]!, value, "write", key), `${key}=${JSON.stringify(value)}`).toBeNull();
+      }
+    }
   });
 });

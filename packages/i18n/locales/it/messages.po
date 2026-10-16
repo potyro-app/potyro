@@ -4901,6 +4901,11 @@ msgstr "Potyro è aperto in un’altra scheda di questo sito. Premi “Usalo qui
 msgid "Potyro’s rooms"
 msgstr "Stanze di Potyro"
 
+#. What an app asks this device for, lower case: Potyro's own relay for live multiplayer rooms (ctx.caps.network.room, docs/28)
+#: ../shell/src/capability-words.ts
+msgid "Potyro’s rooms (play live with people who have the link)"
+msgstr "le stanze di Potyro (giocare dal vivo con chi ha il link)"
+
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
 msgstr "tempi precisi"
@@ -6095,6 +6100,11 @@ msgstr "i gruppi devono restare quelli che ci sono ora"
 #: ../shell/src/capability-words.ts
 msgid "the internet"
 msgstr "internet"
+
+#. What an app asks this device for, lower case; sites is a list of web addresses, e.g. api.example.com
+#: ../shell/src/capability-words.ts
+msgid "the internet, only these sites: {sites}"
+msgstr "internet, solo questi siti: {sites}"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "The key goes in"
