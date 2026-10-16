@@ -209,7 +209,7 @@ export const totalSize = (files: ReadonlyArray<{ size: number }>): number => fil
  */
 export async function shippedPackage(
   store: Store,
-  app: { source: string; sourceName?: string; lock: AppLock | undefined; code?: ReadonlyArray<{ path: string; data: Uint8Array }>; declared?: AppDeclaration },
+  app: { source: string; sourceName?: string; lock: AppLock | undefined; code?: ReadonlyArray<{ path: string; data: Uint8Array }>; declared?: AppDeclaration; line?: string },
 ): Promise<Uint8Array> {
   const space = fileSpace(store);
   const files: PackagedFile[] = [];
@@ -223,5 +223,6 @@ export async function shippedPackage(
     if (c.path.startsWith(".modules/")) files.push({ path: c.path, data: c.data, mime: "text/javascript" });
     else if (c.path.startsWith(".src/")) modules.push({ path: c.path.slice(".src/".length), data: c.data });
   }
-  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: undefined, chat: undefined, ...(app.declared ? { declared: app.declared } : {}) });
+  // Which app it is (docs/24 §11): a copy made from this package opens from the same links.
+  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: undefined, chat: undefined, ...(app.declared ? { declared: app.declared } : {}), ...(app.line ? { line: app.line } : {}) });
 }

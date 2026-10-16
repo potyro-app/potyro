@@ -9,6 +9,7 @@
 
 import type { Resolved } from "potyro";
 import type { RealmSocketEvent } from "./realm-sockets.js";
+import type { RealmSpeechEvent } from "./realm-speech.js";
 
 /** What app code is called for — the `LoadedApp` call surface, by name. */
 export type CallKind =
@@ -110,6 +111,9 @@ export const OPS = [
   "caps.network.socket.close",
   "caps.ai.extract",
   "caps.ai.ask",
+  // Voice input (docs/29): the host owns the microphone; the realm has a number for each listening.
+  "caps.speech.listen",
+  "caps.speech.stop",
 ] as const;
 export type Op = (typeof OPS)[number];
 
@@ -120,7 +124,9 @@ export type HostToRealm =
   /** `code`: an Error's own code (a socket's "denied", AI's "offline"…), so the app reads the same as a trusted one. */
   | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }
   /** Something happened on a live connection (docs/28). */
-  | { t: "sock"; ev: RealmSocketEvent };
+  | { t: "sock"; ev: RealmSocketEvent }
+  /** A listening heard something, or ended (docs/29). */
+  | { t: "speech"; ev: RealmSpeechEvent };
 
 // ---- realm → host ----
 export type RealmToHost =

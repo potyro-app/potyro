@@ -59,8 +59,11 @@ export interface UiBridge {
   menu?<T>(opts: { title?: string; items: ShownUiItem<T>[] }): Promise<T | null>;
   form?(opts: { title: string; fields: Record<string, Localized<Field>>; initial?: Record<string, unknown>; submit?: string }): Promise<Record<string, unknown> | null>;
   progress?(label: string): UiProgress;
-  /** `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`). */
-  share?(opts: { text?: string; url?: string; title?: string }): Promise<boolean>;
+  /**
+   * `ctx.ui.share`: a headless bridge leaves it out, and `ctx` answers it as not shared (`false`).
+   * With `app`, the shell makes the link to this app's page itself (docs/24 §11).
+   */
+  share?(opts: ShownShare): Promise<boolean>;
   /**
    * `ctx.ui.keepAwake`: hold the screen on until the handle is released or the app is left. A headless
    * bridge leaves it out, and `ctx` hands back a handle that holds nothing.
@@ -68,6 +71,15 @@ export interface UiBridge {
   keepAwake?(): { release(): void };
   /** `ctx.ui.timer` / `timers`: this app's countdowns, kept by the shell. Headless, a timer is not kept. */
   timers?: TimerBridge;
+}
+
+/** What `ctx.ui.share` hands the shell, checked (`checkShare`): words in the app's language, an http(s) `url` or an `app` link. */
+export interface ShownShare {
+  text?: string;
+  url?: string;
+  title?: string;
+  /** A link to this app: one of its pages, with the params that page declares (`link.params`). */
+  app?: { page: string; params: Record<string, string> };
 }
 
 /** What the shell provides to build `ctx.navigate`. */

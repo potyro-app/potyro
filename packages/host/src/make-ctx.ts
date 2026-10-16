@@ -2,8 +2,8 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, UiItem, Value, Words } from "potyro";
-import { checkFormFields, localize, localizeFields, word } from "potyro";
+import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
+import { checkFormFields, checkLinkRequest, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
 import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
 import { fileInfo, fileSpace, isReservedPath, mimeOf, type FileSpace, type FileTarget, type Store } from "@potyro/store";
@@ -11,7 +11,7 @@ import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "./authorship.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "./resolve.js";
-import type { LoadedApp, MakeCtxBase, ShownUiItem } from "./types.js";
+import type { LoadedApp, MakeCtxBase, ShownShare, ShownUiItem } from "./types.js";
 import { GUEST_BOOK } from "./guests.js";
 import { checkTimer, plainTimer, timerHandle, unkeptTimer, TIMER_LIMITS, type TimerVerb } from "./timers.js";
 
@@ -37,9 +37,14 @@ const SHARE_MAX = 10_000;
 /**
  * What `ui.share` hands the shell, checked: something to send, a link only if it is http(s) — the
  * share sheet opens it, so a `javascript:` or `file:` address must never get there — and words in
- * the language the app is shown in.
+ * the language the app is shown in. `app` asks for a link to this app (docs/24 §11): one of its
+ * pages, with params that page declares; the shell makes the address, so the app never names one.
  */
-export function checkShare(opts: { text?: Words; url?: string; title?: Words } | undefined, say: (w: Words | undefined) => string): { text?: string; url?: string; title?: string } {
+export function checkShare(
+  opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink } | undefined,
+  say: (w: Words | undefined) => string,
+  pages: ReadonlyArray<Pick<Page, "id" | "link">> = [],
+): ShownShare {
   if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text } or { url }");
   const text = opts.text === undefined || opts.text === null ? undefined : say(opts.text);
   let url: string | undefined;
@@ -53,9 +58,11 @@ export function checkShare(opts: { text?: Words; url?: string; title?: Words } |
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("ui.share: `url` must be http(s)");
     url = parsed.href;
   }
-  if (!text && !url) throw new Error("ui.share needs { text } or { url }");
+  const app = opts.app === undefined || opts.app === null ? undefined : checkLinkRequest(opts.app, pages);
+  if (app && url) throw new Error("ui.share takes `url` or `app`, not both");
+  if (!text && !url && !app) throw new Error("ui.share needs { text } or { url }");
   if (text && text.length > SHARE_MAX) throw new Error(`ui.share: \`text\` is longer than ${SHARE_MAX} characters`);
-  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
+  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(app ? { app } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
 }
 
 /** The base language of a tag: "pt-BR" → "pt". */
@@ -441,7 +448,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       },
       progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
       share: async (opts) => {
-        const shared = checkShare(opts, say);
+        const shared = checkShare(opts, say, app.definition.pages);
         return ui.share ? ui.share(shared) : false;
       },
       // Harmless, so no permission and the same sealed: it only keeps the screen from dimming while

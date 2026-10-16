@@ -45,3 +45,4 @@ export async function maybeCreateNativeCapabilities(): Promise<Capabilities | nu
 }
 export { setImmersive, onBackButton } from "./immersive.js";
 export { keepScreenOn, keepScreenOnOver, type KeepAwakePlugin } from "./keep-awake.js";
+export { speechOverPlugin, type SpeechPlugin } from "./native-speech.js";

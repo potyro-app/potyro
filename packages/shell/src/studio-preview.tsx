@@ -92,7 +92,7 @@ export async function buildPreview(
       caps: capsForApp(createWebCapabilities(), storeNamespace ?? "studio-draft"),
       // A countdown tried in the preview is a real one, on its chip; the screen is not held for a
       // preview, which has no moment of being left to let it go.
-      ui: createUiBridge(toaster.push, picker, dialogs, questions, {
+      ui: createUiBridge(toaster.push, picker, dialogs, questions, undefined, {
         timers: timerHub.bridgeFor(`studio:${storeNamespace ?? "draft"}`, tl({ message: "Preview", comment: "A timer started from the Studio's preview of an app" })),
       }),
       nav: createNavBridge(() => {}),
