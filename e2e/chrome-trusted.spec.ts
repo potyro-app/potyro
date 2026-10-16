@@ -16,8 +16,11 @@ test.describe("phone", () => {
 
   test("the first row is near the top; the tools are behind one menu; every page is reachable", async ({ page }) => {
     await openRecipes(page);
+    // The page's header (its title and count) sits between the top bar and the rows now, so the
+    // first row is under it — still in the top quarter, never pushed off the first screen.
+    await expect(page.locator(".k-page-hero .k-page-title")).toHaveText("Recipes");
     const row = (await page.locator(".k-list-row").first().boundingBox())!;
-    expect(row.y).toBeLessThanOrEqual(120);
+    expect(row.y).toBeLessThanOrEqual(812 / 4);
     // No provenance pill, and no shell tool above the content.
     await expect(page.locator(".k-prov")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Studio" })).toHaveCount(0);
