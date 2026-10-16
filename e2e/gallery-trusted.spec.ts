@@ -117,10 +117,14 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
     await expect(page.getByRole("link", { name: "Open Potyro" })).toHaveAttribute("href", "https://potyro.app/");
     await expect(page.getByRole("heading", { name: "On the workbench" })).toBeVisible();
 
+    // Measure colours once the cards have finished rising in: mid-animation text is half transparent,
+    // and on a busy CI machine axe caught it there as low contrast.
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
     await page.getByRole("button", { name: "Switch to dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
     const dark = await new AxeBuilder({ page }).analyze();
     expect(dark.violations.map((v) => v.id)).toEqual([]);
     expect(foreign).toEqual([]);
