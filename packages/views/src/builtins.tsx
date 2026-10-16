@@ -396,7 +396,7 @@ export function GalleryView(props: BuiltinViewProps) {
                 own colour with its initial, never a striped placeholder that says "missing". */}
             <span className="k-card-media" style={cell.mediaUrl ? undefined : leadStyle(cell.badges, primary)}>
               {cell.mediaUrl ? (
-                <img src={cell.mediaUrl} alt="" loading="lazy" decoding="async" />
+                <img src={cell.mediaUrl} alt="" loading="lazy" decoding="async" draggable={false} />
               ) : lead === "none" ? null : (
                 <Lead text={primary} badges={cell.badges} kind={lead} icon={entityDef?.icon} className="k-card-glyph" />
               )}
