@@ -172,6 +172,9 @@ for (const mine of [false, true]) {
     await rows(page).first().click();
     await expect(page.locator(".k-field", { hasText: "Strength" })).toBeVisible();
     await expect(page.getByRole("link", { name: /seismicportal\.eu\/eventdetails/ })).toBeVisible();
+    // The feed's record is the feed's (`editableBy: "app"`): nothing on its page edits or deletes it.
+    await expect(page.locator(".k-detail").getByRole("button", { name: "Edit" })).toHaveCount(0);
+    await expect(page.locator(".k-detail").getByRole("button", { name: "More actions" })).toHaveCount(0);
     expect(outside.filter((u) => !u.startsWith("ws://localhost"))).toEqual([]);
   });
 }

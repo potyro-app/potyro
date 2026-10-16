@@ -227,7 +227,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
       {asking && promote ? (
         <TrustDialog
           name={def.name}
-          permissions={Object.entries(def.permissions ?? {}).filter(([, v]) => v).map(([k]) => k)}
+          permissions={def.permissions ?? {}}
           onCancel={() => setAsking(false)}
           onPromote={() => {
             setAsking(false);

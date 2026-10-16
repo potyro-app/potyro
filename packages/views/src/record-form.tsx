@@ -15,6 +15,7 @@ import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { SwitchRow } from "./switch.js";
+import { byPeople } from "./edit-lock.js";
 
 export interface RecordFormProps {
   runtime: PotyroRuntime;
@@ -329,6 +330,9 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
 
   const submit = async (e?: React.FormEvent): Promise<void> => {
     e?.preventDefault();
+    // Records only the app writes (`editableBy: "app"`) are never saved from a form; nothing offers
+    // one for them, and this holds even if something did.
+    if (!byPeople(runtime, entity)) return onCancel();
     const missing: Record<string, string> = {};
     for (const group of groups) {
       for (const key of group.fields) {

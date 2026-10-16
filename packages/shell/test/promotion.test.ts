@@ -92,8 +92,14 @@ describe("what an app declares it asks for, read without running it", () => {
 export default defineApp({ id: "p", name: "P", version: "1.0.0", schemaVersion: 1,${permissions ? ` permissions: ${permissions},` : ""} entities: {}, pages: [] });`;
 
   it("names every capability set to true, and none when there is no permissions object", async () => {
-    expect(await declaredPermissions(src("{ camera: true, geo: false, notifications: true }"))).toEqual(["camera", "notifications"]);
-    expect(await declaredPermissions(src())).toEqual([]);
+    expect(await declaredPermissions(src("{ camera: true, geo: false, notifications: true }"))).toEqual({ camera: true, notifications: true });
+    expect(await declaredPermissions(src())).toEqual({});
+  });
+
+  it("reads a network permission as written: its sites and its rooms, or the internet when its sites are not written out", async () => {
+    expect(await declaredPermissions(src("{ network: { rooms: true } }"))).toEqual({ network: { rooms: true } });
+    expect(await declaredPermissions(src('{ network: { hosts: ["a.example"] }, geo: true }'))).toEqual({ network: { hosts: ["a.example"] }, geo: true });
+    expect(await declaredPermissions(src("{ network: { hosts: [API_HOST] } }"))).toEqual({ network: true });
   });
 
   it("is null — not 'nothing' — when it cannot be read literally", async () => {

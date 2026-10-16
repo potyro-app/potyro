@@ -108,10 +108,14 @@ export function makeRealmCtx(base: CtxBase, tx: Transport): Ctx {
       // The host opens and holds the connection (the realm connects nowhere); this is its handle.
       socket: async (url, o) => {
         const p = o?.protocols;
-        return realmSocket(await call<RealmSocketInfo>("caps.network.socket", String(url), p == null ? undefined : { protocols: Array.isArray(p) ? p.map(String) : String(p) }), call, tx);
+        const keep = o?.keepWhileHidden == null ? {} : { keepWhileHidden: String(o.keepWhileHidden) };
+        const opts = p == null && o?.keepWhileHidden == null ? undefined : { ...(p == null ? {} : { protocols: Array.isArray(p) ? p.map(String) : String(p) }), ...keep };
+        return realmSocket(await call<RealmSocketInfo>("caps.network.socket", String(url), opts), call, tx);
       },
-      room: async (rid, o) =>
-        realmSocket(await call<RealmSocketInfo>("caps.network.room", rid == null ? undefined : String(rid), o?.name == null ? undefined : { name: String(o.name) }), call, tx) as never,
+      room: async (rid, o) => {
+        const opts = o?.name == null && o?.keepWhileHidden == null ? undefined : { ...(o?.name == null ? {} : { name: String(o.name) }), ...(o?.keepWhileHidden == null ? {} : { keepWhileHidden: String(o.keepWhileHidden) }) };
+        return realmSocket(await call<RealmSocketInfo>("caps.network.room", rid == null ? undefined : String(rid), opts), call, tx) as never;
+      },
     },
     filesystem: {
       pick: () => call<Blob>("caps.filesystem.pick"),
