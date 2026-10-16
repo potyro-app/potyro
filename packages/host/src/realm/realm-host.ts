@@ -145,8 +145,17 @@ export class RealmLoadedApp implements LoadedApp {
   /** Listenings (docs/29): the host holds the microphone; `{ t: "speech" }` carries what it hears. */
   private readonly speech = new SpeechBridge(
     (ev) => this.port?.postMessage({ t: "speech", ev }),
-    (lid) => this.unpin(-lid),
+    (lid) => {
+      this.unpin(-lid);
+      if (this.listening.delete(lid)) this.questionClosed();
+    },
   );
+  /**
+   * Listenings that are on: each is the person speaking, so — like a question — the calls waiting on
+   * it (an action awaiting `result`) do not use their budget meanwhile. A listening ends by itself
+   * (a pause, five minutes), so this cannot hold a box open for ever.
+   */
+  private readonly listening = new Set<number>();
   /**
    * A ctx a connection (by its sid) or a listening (by minus its lid) was opened through stays
    * nameable while it is open: its callbacks still use it.
@@ -314,7 +323,11 @@ export class RealmLoadedApp implements LoadedApp {
       const opened = (m.op === "caps.network.socket" || m.op === "caps.network.room") && port === this.port ? (value as BoxSocketInfo) : null;
       if (opened) this.pinnedBy.set(opened.sid, ctxId);
       const listening = m.op === "caps.speech.listen" && port === this.port ? (value as BoxSpeechInfo) : null;
-      if (listening) this.pinnedBy.set(-listening.lid, ctxId);
+      if (listening) {
+        this.pinnedBy.set(-listening.lid, ctxId);
+        this.listening.add(listening.lid);
+        this.questionOpened();
+      }
       reply(true, value);
       // Only now, after the realm has its number, may the connection's events follow.
       if (opened) {
@@ -333,12 +346,20 @@ export class RealmLoadedApp implements LoadedApp {
 
   /** The person is being asked something: the calls waiting on it do not use their budget meanwhile. */
   private async question<T>(run: () => Promise<T>): Promise<T> {
-    if (this.questionsOpen++ === 0) this.questionSince = now();
+    this.questionOpened();
     try {
       return await run();
     } finally {
-      if (--this.questionsOpen === 0) this.questionMs += now() - this.questionSince;
+      this.questionClosed();
     }
+  }
+
+  private questionOpened(): void {
+    if (this.questionsOpen++ === 0) this.questionSince = now();
+  }
+
+  private questionClosed(): void {
+    if (--this.questionsOpen === 0) this.questionMs += now() - this.questionSince;
   }
 
   /**

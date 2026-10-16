@@ -99,7 +99,14 @@ class IsolateLoadedApp implements LoadedApp {
    */
   private readonly sockets = new SocketBridge((ev) => this.socketIn(ev));
   /** Listenings (docs/29): the host holds the microphone; what it hears goes in through `__potyro.speech`. */
-  private readonly speech = new SpeechBridge((ev) => this.speechIn(ev));
+  private readonly speech = new SpeechBridge(
+    (ev) => this.speechIn(ev),
+    (lid) => {
+      if (this.listening.delete(lid)) this.closeQuestion();
+    },
+  );
+  /** Listenings that are on: the person speaking, which — like a question — pauses a call's budget. */
+  private readonly listening = new Set<number>();
 
   constructor(
     private readonly vm: QuickJSAsyncContextLike,
@@ -423,7 +430,12 @@ class IsolateLoadedApp implements LoadedApp {
             this.settle(id, true, json);
             // The box has the connection's number now: its events may follow.
             if (opens) this.sockets.ready(deserialize<BoxSocketInfo>(json).sid);
-            if (listens) this.speech.ready(deserialize<BoxSpeechInfo>(json).lid);
+            if (listens) {
+              const lid = deserialize<BoxSpeechInfo>(json).lid;
+              this.listening.add(lid);
+              this.openQuestion();
+              this.speech.ready(lid);
+            }
           },
           (e: unknown) => this.settle(id, false, errorForBox(e)),
         );
