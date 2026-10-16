@@ -160,9 +160,14 @@ interface AppProps {
    * and this is how the trust dialog in here does it.
    */
   onPromote?: () => void;
+  /**
+   * Answers a screen's "Run it as mine…" instead of the trust dialog: a demo link, where nothing is
+   * installed to promote, offers "Keep this app" first (#267).
+   */
+  onTrustRequest?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, onTrustRequest }: AppProps) {
   const { t } = useLingui();
   const def = runtime.definition;
   // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
@@ -899,17 +904,15 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
   useEffect(() => {
-    // An app that is not installed (a demo link) cannot be promoted — nothing is saved to promote —
-    // so the dialog would be a dead end: the demo answers the request with "Keep this app" instead.
-    if (!appId) return;
     // Not while the Studio is open over this app: its preview has its own dialog, and one tap must
-    // not open two.
+    // not open two. Where nothing is installed to promote (a demo link), the host answers instead.
     const open = (): void => {
-      if (!genOpenRef.current) setTrustPrompt(true);
+      if (onTrustRequest) onTrustRequest();
+      else if (!genOpenRef.current) setTrustPrompt(true);
     };
     globalThis.addEventListener(TRUST_REQUEST, open);
     return () => globalThis.removeEventListener(TRUST_REQUEST, open);
-  }, [appId]);
+  }, [onTrustRequest]);
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
