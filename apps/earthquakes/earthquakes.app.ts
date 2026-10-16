@@ -148,6 +148,8 @@ export default defineApp({
   quickActions: [],
   entities: {
     quake: {
+      // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
+      editableBy: "app",
       label: { en: "Earthquake", "pt-BR": "Terremoto", de: "Erdbeben", es: "Terremoto", pl: "Trzęsienie ziemi", it: "Terremoto" },
       icon: "🌍",
       displayField: "place",
@@ -183,6 +185,7 @@ export default defineApp({
       },
     },
     feed: {
+      editableBy: "app",
       label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
       displayField: "state",
       fields: {

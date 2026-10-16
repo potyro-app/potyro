@@ -15,6 +15,11 @@
      (see `.wk-bar` in the workout example). */
   --k-chrome-bottom: 0px;
 
+  /* How much room the shell's own chrome takes at the top of the app's screen, under its top bar:
+     the "Camera on" sign while it shows (camera-indicator.ts sets it), else nothing. A custom view
+     with something of its own at the top of its stage keeps it below this (docs/04). */
+  --k-chrome-top: 0px;
+
   /* Where the app's top bar ends: the "Camera on" sign sits under it. camera-indicator.ts sets it. */
   --k-camera-on-top: 0px;
 
@@ -323,7 +328,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  text-transform: capitalize;
+}
+/* "Camera", "Potyro's rooms (play live…)": a capital to start each line, never one on every word. */
+.k-trust-caps li::first-letter {
+  text-transform: uppercase;
 }
 
 /* Edit mode — point-and-describe affordances */

@@ -403,6 +403,12 @@ longer, at most 15 min — for a chat), and never reconnects by itself**
 (`"hidden"`), so an app that tries again every few seconds picks up when the person comes back. Messages that arrive before `onMessage` are held and
 handed to the first callback. Inside a callback `ctx` works; `ctx.now()` is the opening call's time.
 
+Records only a feed writes — the ticks above, a quake list — are marked on their entity with
+`editableBy: "app"` (docs/03): no built-in view or form then offers people Add, Edit or Delete for
+them, nor ticks, drags or renames them in place, while `ctx.create`/`patch`/`delete` and the app's
+actions go on writing them. Leave it off for records people manage themselves, even when an action
+adds them (Word Watch's watched words).
+
 `room(id?, { name })` joins a room on Potyro's own relay (docs/26) — no address to know: `room()` makes
 a new id (put it in a share link), `room(id)` joins one. `room.me`, `room.members` (the others, oldest
 first, kept current) and `onPresence(e => …)` (`{ type: "join" | "leave", member }`) come from the
@@ -506,6 +512,14 @@ interface ViewProps {
 A custom view is a normal React component. It can call `props.runtime.ctx` for the full `ctx`,
 render anything, keep local state, and use hooks. There is no ceiling — if a screen needs
 bespoke logic, it's just a component.
+
+The shell lays some of its own chrome over the app's screen, and says how much as CSS custom
+properties a custom view reads instead of guessing:
+
+| Property | What it is |
+|---|---|
+| `--k-chrome-bottom` | The room the shell's tab bar (and the phone's gesture bar) takes at the bottom. A view with its own bottom bar sits above it: `bottom: var(--k-chrome-bottom, 0px)`. |
+| `--k-chrome-top` | The room the shell's chrome takes at the top of the app's screen, under its top bar — the "Camera on" sign while the live camera runs (docs/25), `0px` otherwise. A stage with something of its own at its top (a badge, a score) keeps it below: `padding-top: var(--k-chrome-top, 0px)`. It changes while the view is open; a view that sizes itself in script measures again when it does. |
 
 ## Design rules for `ctx`
 
