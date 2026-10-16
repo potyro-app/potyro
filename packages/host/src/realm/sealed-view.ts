@@ -145,6 +145,8 @@ export class SealedViewController implements SealedView {
       sockets.endAll("left", "the screen was closed");
       frame?.kill();
       frame = null;
+      // The place is the shell's again: the height this view asked for goes with it.
+      el.style.height = "";
     };
     const stop = (kind: Extract<ViewVerdict, { stop: true }>["kind"], reason: string): void => {
       if (over) return;
