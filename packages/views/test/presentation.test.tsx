@@ -118,13 +118,13 @@ describe("a short list", () => {
     const onCreate = vi.fn();
     render(<ListView {...props(runtime, "list")} onCreate={onCreate} />);
     await screen.findByText("squat");
-    fireEvent.click(screen.getByRole("button", { name: "Add: Exercise" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add another" }));
     expect(onCreate).toHaveBeenCalledWith("exercise", {});
     cleanup();
     for (const name of ["a", "b", "c"]) await runtime.ctx.create("exercise", { name });
     render(<ListView {...props(runtime, "list")} onCreate={onCreate} />);
     await screen.findByText("squat");
-    expect(screen.queryByRole("button", { name: "Add: Exercise" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add another" })).toBeNull();
   });
 
   it("an empty page says the app's words and offers the first one", async () => {
@@ -132,7 +132,7 @@ describe("a short list", () => {
     const onCreate = vi.fn();
     render(<ListView {...props(runtime, "list")} onCreate={onCreate} />);
     expect(await screen.findByText("Nothing here yet.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Add: Exercise/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add the first one/ }));
     expect(onCreate).toHaveBeenCalledWith("exercise", {});
   });
 });

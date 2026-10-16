@@ -1,7 +1,7 @@
 // Resolve display bindings (which may be functions → async host calls) for a batch of rows,
 // outside of render. Keeps the view components synchronous.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { computedInfo, type EntityDef, type Resolved } from "potyro";
 import type { DisplayCell } from "./types.js";
@@ -18,7 +18,19 @@ function str(v: unknown): string {
 }
 
 export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Resolved[]): DisplayCell[] {
-  const [cells, setCells] = useState<DisplayCell[]>([]);
+  const [shown, setShown] = useState<{ cells: DisplayCell[]; minted: string[] }>({ cells: [], minted: [] });
+  // The photo URLs the cells ON SCREEN point at. They are freed only once other cells have replaced
+  // them (or the view has gone) — never when the rows merely change. Freed on a change, every picture
+  // on screen pointed at a dead URL until the new batch arrived, and a lazy one that had not loaded
+  // yet never did: a gallery showed blank cards and the console "ERR_FILE_NOT_FOUND".
+  const onScreen = useRef<string[]>([]);
+  useEffect(() => {
+    const before = onScreen.current;
+    onScreen.current = shown.minted;
+    const keep = new Set(shown.minted);
+    before.filter((u) => !keep.has(u)).forEach(releaseMediaUrl);
+  }, [shown]);
+  useEffect(() => () => onScreen.current.forEach(releaseMediaUrl), []);
 
   useEffect(() => {
     let alive = true;
@@ -66,15 +78,16 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
         return cell;
       }),
     ).then((cs) => {
-      if (alive) setCells(cs);
+      // Overtaken by newer rows: these cells will never be shown, so their URLs are freed now.
+      if (alive) setShown({ cells: cs, minted });
+      else minted.forEach(releaseMediaUrl);
     });
 
     return () => {
       alive = false;
-      minted.forEach(releaseMediaUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime, pageId, rows]);
 
-  return cells;
+  return shown.cells;
 }
